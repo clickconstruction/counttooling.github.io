@@ -28,9 +28,9 @@
       --purple: #a47fff;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; padding-top: env(safe-area-inset-top); }
     .app { display: flex; flex-direction: column; height: 100vh; }
-    .header { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .header { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 250; }
     .header .logo { font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); margin-right: 8px; }
     .header .divider { width: 1px; height: 24px; background: var(--border); }
     .header button { min-height: 44px; min-width: 44px; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
@@ -39,20 +39,54 @@
     .header button.danger { color: var(--red); border-color: var(--red); }
     .header button.danger:hover { background: rgba(232,84,71,0.2); }
     .header .spacer { flex: 1; }
-    .header #setScale.scale-set { display: flex; flex-direction: column; align-items: center; line-height: 1.2; padding: 6px 10px; }
-    .header #setScale.scale-set .scale-value { font-size: 0.75rem; font-family: 'DM Mono', monospace; }
+    .header #setScale.scale-set { display: none; }
     .header .hamburger { display: none; }
+    .sidebar-logo { display: none; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); padding: 16px 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-header-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-header-buttons .sidebar-btn { flex: 1; min-width: 80px; }
+    .sidebar-tool-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-tool-buttons .sidebar-btn { flex: 1; min-width: 80px; }
+    .sidebar-tool-buttons #doneEditingSidebar { flex: 1 1 100%; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-value { font-size: 0.7rem; font-family: 'DM Mono', monospace; }
+    .quick-line-mobile { display: none; }
+    .quick-line-desktop { display: inline; }
+    @media (max-width: 768px) { .quick-line-desktop { display: none; } .quick-line-mobile { display: inline; } }
+    .sidebar-scale-display { display: none; padding: 8px 12px; font-family: 'DM Mono', monospace; font-size: 0.9rem; color: var(--accent); background: var(--surface2); border-radius: 6px; margin-bottom: 8px; }
+    @media (min-width: 769px) { .sidebar-scale-display { display: none !important; } }
+    @media (max-width: 768px) { .sidebar-scale-display.visible { display: block; } }
     @media (max-width: 768px) {
-      .header .hamburger { display: flex; }
-      .header .sidebar-triggers { display: none; }
+      .header .hamburger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; border-radius: 0; font-size: 1.25rem; }
+      .header .hamburger:hover { background: transparent; }
+      .header .logo { display: none; }
+      .header .divider.sidebar-triggers { display: none; }
+      .header #polylineBtn { display: none; }
+      .header #doneEditing { display: none; }
+      .header .header-primary-btn { display: none; }
+      .header #setScale:not(.scale-set) { display: inline-flex; align-items: center; justify-content: center; }
+      .header-active-type { display: none; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text2); }
+      .header-active-type.visible { display: inline-flex; }
+      .header-active-type .header-type-icon { width: 18px; height: 18px; flex-shrink: 0; }
+      .header-active-type .header-type-icon svg { width: 18px; height: 18px; }
+      .header-active-type .header-type-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+    @media (min-width: 769px) { .header-active-type { display: none !important; } }
+      .header .header-primary-divider { display: none; }
+      .sidebar-logo { display: block; }
+      .sidebar-header-buttons { display: flex; }
+      .sidebar-tool-buttons { display: flex; }
+      .header #clearPage { display: none; }
+      .sidebar-clear-page { display: block; }
     }
     .main { display: flex; flex: 1; overflow: hidden; }
     .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; transition: transform 0.2s; }
     @media (max-width: 768px) {
-      .sidebar { position: fixed; left: 0; top: 52px; bottom: 0; z-index: 100; transform: translateX(-100%); }
+      .sidebar { position: fixed; left: 0; top: 52px; bottom: 0; z-index: 100; transform: translateX(-100%); padding-left: env(safe-area-inset-left); }
       body.sidebar-open .sidebar { transform: translateX(0); }
       .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
       body.sidebar-open .sidebar-backdrop { display: block; }
+      .zoom-bar button { width: 44px; height: 44px; }
+      .polyline-finish-bar button { min-height: 44px; }
+      .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
     }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
@@ -75,16 +109,23 @@
     .sidebar-item-line-type .line-type-row { display: flex; align-items: center; gap: 8px; }
     .sidebar-btn { width: 100%; padding: 10px 16px; margin-bottom: 8px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-family: inherit; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
     .sidebar-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .sidebar-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .sidebar-btn.active:hover { background: var(--accent2); border-color: var(--accent2); }
     .sidebar-btn.sidebar-btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .sidebar-btn.sidebar-btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
-    .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-    .canvas-wrapper { flex: 1; overflow: hidden; position: relative; }
+    .sidebar-btn.danger { color: var(--red); border-color: var(--red); }
+    .sidebar-btn.danger:hover { background: rgba(232,84,71,0.2); }
+    .sidebar-clear-page { display: none; }
+    .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; -webkit-tap-highlight-color: transparent; }
+    .canvas-wrapper { flex: 1; overflow: hidden; position: relative; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
     .canvas-container { position: absolute; transform-origin: 0 0; }
     .canvas-container canvas { display: block; position: absolute; left: 0; top: 0; }
     .canvas-container .pdf-canvas { z-index: 0; }
     .canvas-container .ann-canvas { z-index: 1; pointer-events: none; }
     .canvas-container .ann-canvas.interactive { pointer-events: auto; }
-    .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--surface); border-top: 1px solid var(--border); }
+    .page-zoom-row { display: flex; align-items: center; gap: 0; background: var(--surface); border-top: 1px solid var(--border); }
+    .page-zoom-row .page-nav { flex: 1; }
+    .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; }
     .zoom-bar button { width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar .zoom-pct { font-family: 'DM Mono', monospace; min-width: 48px; text-align: center; font-size: 0.85rem; }
     .page-nav { display: flex; align-items: center; gap: 8px; padding: 8px; }
@@ -118,6 +159,12 @@
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
     .modal-card.modal-card-toast { width: fit-content; max-width: none; }
+    .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .counter-tab { flex: 1; padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
+    .counter-tab:hover { color: var(--text); }
+    .counter-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+    .counter-tab-panel { margin-top: 0; }
+    .counter-choose-list { max-height: 200px; overflow-y: auto; }
     .context-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 120px; }
     .context-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     .context-menu button:hover { background: var(--surface2); }
@@ -132,26 +179,43 @@
     <header class="header">
       <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
       <span class="logo">ClickCount</span>
-      <span class="divider"></span>
-      <button id="uploadPdf">Upload PDF</button>
+      <span class="divider header-primary-divider"></span>
+      <button id="uploadPdf" class="header-primary-btn">Upload PDF</button>
       <input type="file" id="pdfInput" accept=".pdf" multiple>
-      <span class="divider"></span>
-      <button id="setScale">Set Scale</button>
+      <span class="divider header-primary-divider"></span>
+      <button id="setScale" class="header-primary-btn">Set Scale</button>
       <span class="divider sidebar-triggers"></span>
       <button id="moveBtn" class="sidebar-triggers">Move</button>
       <button id="counterBtn" class="sidebar-triggers">Counter</button>
-      <button id="quickLine" class="sidebar-triggers">Quick Line</button>
+      <span id="headerActiveCounter" class="header-active-type"></span>
+      <button id="quickLine" class="sidebar-triggers"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
+      <span id="headerActiveLineType" class="header-active-type"></span>
       <button id="polylineBtn" class="sidebar-triggers">Polyline</button>
       <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
       <span class="spacer"></span>
-      <button id="exportBtn">Export</button>
-      <button id="importBtn">Import</button>
+      <button id="exportBtn" class="header-primary-btn">Export</button>
+      <button id="importBtn" class="header-primary-btn">Import</button>
       <input type="file" id="importInput" accept=".json">
       <button id="clearPage" class="danger">Clear Page</button>
     </header>
     <div class="main">
       <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
       <aside class="sidebar">
+        <div class="sidebar-logo">ClickCount</div>
+        <div class="sidebar-section sidebar-header-buttons">
+          <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
+          <button id="uploadPdfSidebar" class="sidebar-btn">Upload PDF</button>
+          <button id="setScaleSidebar" class="sidebar-btn">Set Scale</button>
+          <button id="exportBtnSidebar" class="sidebar-btn">Export</button>
+          <button id="importBtnSidebar" class="sidebar-btn">Import</button>
+        </div>
+        <div class="sidebar-section sidebar-tool-buttons">
+          <button id="moveBtnSidebar" class="sidebar-btn">Move</button>
+          <button id="counterBtnSidebar" class="sidebar-btn">Counter</button>
+          <button id="quickLineSidebar" class="sidebar-btn"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
+          <button id="polylineBtnSidebar" class="sidebar-btn">Polyline</button>
+          <button id="doneEditingSidebar" class="sidebar-btn sidebar-btn-primary" style="display:none;">Done Editing</button>
+        </div>
         <div class="sidebar-section" id="pagesSection">
           <h3 id="pagesSectionTitle" class="section-settings" title="Click to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
           <div id="pagesList"></div>
@@ -178,6 +242,9 @@
           <button id="printReport" class="sidebar-btn sidebar-btn-primary">Print Report</button>
           <button id="exportPdf" class="sidebar-btn">Export PDF</button>
         </div>
+        <div class="sidebar-section sidebar-clear-page">
+          <button id="clearPageSidebar" class="sidebar-btn danger">Clear Page</button>
+        </div>
       </aside>
       <div class="canvas-area">
         <div class="canvas-wrapper" id="canvasWrapper">
@@ -186,16 +253,18 @@
             <canvas id="annCanvas" class="ann-canvas"></canvas>
           </div>
         </div>
-        <div class="zoom-bar">
-          <button id="zoomOut">−</button>
-          <span class="zoom-pct" id="zoomPct">100%</span>
-          <button id="zoomIn">+</button>
-          <button id="zoomFit" title="Fit">⊡</button>
-        </div>
-        <div class="page-nav">
-          <button id="prevPage">‹</button>
-          <span id="pageInfo">Page 0 of 0</span>
-          <button id="nextPage">›</button>
+        <div class="page-zoom-row">
+          <div class="page-nav">
+            <button id="prevPage">‹</button>
+            <span id="pageInfo">Page 0 of 0</span>
+            <button id="nextPage">›</button>
+          </div>
+          <div class="zoom-bar">
+            <button id="zoomOut">−</button>
+            <span class="zoom-pct" id="zoomPct">100%</span>
+            <button id="zoomIn">+</button>
+            <button id="zoomFit" title="Fit">⊡</button>
+          </div>
         </div>
         <div class="polyline-finish-bar" id="polylineFinishBar">
           <button id="finishPolyline">Finish</button>
@@ -235,26 +304,38 @@
   </div>
   <div class="modal-overlay" id="counterModal">
     <div class="modal-card">
-      <h2>Create Counter</h2>
-      <div class="form-group">
-        <label>Name</label>
-        <input type="text" id="counterName" placeholder="e.g. Water Closet">
+      <div class="counter-modal-tabs">
+        <button class="counter-tab active" data-tab="choose">Choose Counter</button>
+        <button class="counter-tab" data-tab="create">Create Counter</button>
       </div>
-      <div class="form-group">
-        <label>Search icon</label>
-        <input type="text" id="counterIconSearch" placeholder="Search...">
+      <div id="counterCreatePanel" class="counter-tab-panel" style="display:none;">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="counterName" placeholder="e.g. Water Closet">
+        </div>
+        <div class="form-group">
+          <label>Search icon</label>
+          <input type="text" id="counterIconSearch" placeholder="Search...">
+        </div>
+        <div class="form-group">
+          <label>Icon</label>
+          <div class="icon-grid" id="counterIconGrid"></div>
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-row" id="counterColorRow"></div>
+        </div>
+        <div class="actions">
+          <button id="counterCancel">Cancel</button>
+          <button id="counterCreate">Create Counter</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Icon</label>
-        <div class="icon-grid" id="counterIconGrid"></div>
-      </div>
-      <div class="form-group">
-        <label>Color</label>
-        <div class="color-row" id="counterColorRow"></div>
-      </div>
-      <div class="actions">
-        <button id="counterCancel">Cancel</button>
-        <button id="counterCreate">Create Counter</button>
+      <div id="counterChoosePanel" class="counter-tab-panel">
+        <div id="counterChooseList" class="counter-choose-list"></div>
+        <p id="counterChooseEmpty" class="counter-choose-empty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">Add a counter first using Create Counter.</p>
+        <div class="actions" style="margin-top:16px;">
+          <button id="counterChooseCancel">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
@@ -484,7 +565,9 @@
     exportSettings: { markerScale: 0.75, lineScale: 0.75 },
     recentLineColors: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, longPressTimer: null, longPressFired: false,
-    longPressStart: null, pinchStartDistance: null, pinchStartZoom: null
+    longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
+    touchPanStart: null, touchPanning: false,
+    lastScaleTapTime: 0
   };
 
   <!-- SECTION: Math & Format Helpers -->
@@ -594,7 +677,7 @@
     const coordsEl = document.getElementById('statusCoords');
     let mode = 'Ready';
     if (state.tool === TOOL.SCALE) mode = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
-    else if (state.tool === TOOL.LINE) mode = state.quickLineStart ? 'Click end point' : 'Click start point';
+    else if (state.tool === TOOL.LINE) mode = state.quickLineStart ? 'Tap end point' : 'Tap start point';
     else if (state.tool === TOOL.POLYLINE) mode = 'Click to add points';
     else if (state.tool === TOOL.COUNTER) mode = 'Click to place marker';
     else if (state.tool === TOOL.EDIT_POLY) mode = 'Edit polyline';
@@ -895,21 +978,69 @@
     document.getElementById('prevPage').disabled = state.currentPage <= 0;
     document.getElementById('nextPage').disabled = state.currentPage >= state.pages.length - 1;
     const setScaleBtn = document.getElementById('setScale');
+    const setScaleSidebarBtn = document.getElementById('setScaleSidebar');
     const scale = getPageScale(state.currentPage);
-    if (scale) {
-      setScaleBtn.classList.add('scale-set');
-      setScaleBtn.innerHTML = 'Scale<br><span class="scale-value">1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + '</span>';
-    } else {
-      setScaleBtn.classList.remove('scale-set');
-      setScaleBtn.textContent = 'Set Scale';
+    const setScaleContent = (btn) => {
+      if (scale) {
+        btn.classList.add('scale-set');
+        btn.innerHTML = 'Scale<br><span class="scale-value">1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + '</span>';
+      } else {
+        btn.classList.remove('scale-set');
+        btn.textContent = 'Set Scale';
+      }
+    };
+    setScaleContent(setScaleBtn);
+    if (setScaleSidebarBtn) setScaleContent(setScaleSidebarBtn);
+    const sidebarScaleEl = document.getElementById('sidebarScaleDisplay');
+    if (sidebarScaleEl) {
+      if (scale) {
+        sidebarScaleEl.textContent = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1);
+        sidebarScaleEl.classList.add('visible');
+      } else {
+        sidebarScaleEl.textContent = '';
+        sidebarScaleEl.classList.remove('visible');
+      }
     }
     document.getElementById('moveBtn').classList.toggle('active', state.tool === TOOL.NONE);
     document.getElementById('quickLine').classList.toggle('active', state.tool === TOOL.LINE);
     document.getElementById('polylineBtn').classList.toggle('active', state.tool === TOOL.POLYLINE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
+    const moveBtnSidebar = document.getElementById('moveBtnSidebar');
+    const counterBtnSidebar = document.getElementById('counterBtnSidebar');
+    const quickLineSidebar = document.getElementById('quickLineSidebar');
+    const polylineBtnSidebar = document.getElementById('polylineBtnSidebar');
+    if (moveBtnSidebar) moveBtnSidebar.classList.toggle('active', state.tool === TOOL.NONE);
+    if (counterBtnSidebar) counterBtnSidebar.classList.toggle('active', state.tool === TOOL.COUNTER);
+    if (quickLineSidebar) quickLineSidebar.classList.toggle('active', state.tool === TOOL.LINE);
+    if (polylineBtnSidebar) polylineBtnSidebar.classList.toggle('active', state.tool === TOOL.POLYLINE);
     document.getElementById('setScale').classList.toggle('active', state.tool === TOOL.SCALE);
+    if (setScaleSidebarBtn) setScaleSidebarBtn.classList.toggle('active', state.tool === TOOL.SCALE);
     document.getElementById('doneEditing').style.display = state.tool === TOOL.EDIT_POLY ? 'block' : 'none';
+    const doneEditingSidebar = document.getElementById('doneEditingSidebar');
+    if (doneEditingSidebar) doneEditingSidebar.style.display = state.tool === TOOL.EDIT_POLY ? 'block' : 'none';
     document.getElementById('polylineFinishBar').classList.toggle('visible', !!state.drawingPolyline);
+    const activeLineEl = document.getElementById('headerActiveLineType');
+    const activeCounterEl = document.getElementById('headerActiveCounter');
+    if (activeLineEl) {
+      const lt = state.tool === TOOL.LINE && state.activeLineTypeId ? state.lineTypes.find(l => l.id === state.activeLineTypeId) : null;
+      if (lt) {
+        activeLineEl.innerHTML = '<span class="header-type-swatch" style="background:' + (lt.color || '#4a9eff') + '"></span>';
+        activeLineEl.classList.add('visible');
+      } else {
+        activeLineEl.innerHTML = '';
+        activeLineEl.classList.remove('visible');
+      }
+    }
+    if (activeCounterEl) {
+      const counter = state.tool === TOOL.COUNTER && state.activeCounterType ? state.counters.find(c => c.id === state.activeCounterType) : null;
+      if (counter) {
+        activeCounterEl.innerHTML = '<span class="header-type-icon"><svg viewBox="' + iconVbFor(counter.icon) + '" width="18" height="18"><path fill="' + (counter.color || '#e8c547') + '" d="' + counter.icon + '"/></svg></span>';
+        activeCounterEl.classList.add('visible');
+      } else {
+        activeCounterEl.innerHTML = '';
+        activeCounterEl.classList.remove('visible');
+      }
+    }
     renderPagesList();
     renderCountersList();
     renderLineTypesList();
@@ -1170,7 +1301,6 @@
       setScaleFirstPolylineToastTimer = null;
     }, 3000);
   }
-
   let addLineTypeFirstToastTimer = null;
   function showAddLineTypeFirstToast() {
     if (addLineTypeFirstToastTimer) clearTimeout(addLineTypeFirstToastTimer);
@@ -1231,6 +1361,7 @@
 
   <!-- SECTION: Modals & Handlers -->
   document.getElementById('uploadPdf').onclick = () => document.getElementById('pdfInput').click();
+  document.getElementById('uploadPdfSidebar').onclick = () => document.getElementById('pdfInput').click();
   document.getElementById('pdfInput').onchange = async (e) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -1250,7 +1381,19 @@
     e.target.value = '';
   };
 
-  document.getElementById('setScale').onclick = () => { state.tool = TOOL.SCALE; state.scaleMode = SCALE_MODES.POINT_A; state.scalePointA = null; state.scalePointB = null; updateUI(); };
+  const setScaleClick = () => {
+    state.tool = TOOL.SCALE;
+    state.scaleMode = SCALE_MODES.POINT_A;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    if (document.getElementById('scaleModal').classList.contains('visible')) {
+      hideModal('scaleModal');
+    }
+    updateUI();
+    renderPdf();
+  };
+  document.getElementById('setScale').onclick = setScaleClick;
+  document.getElementById('setScaleSidebar').onclick = setScaleClick;
   document.getElementById('moveBtn').onclick = () => {
     state.tool = TOOL.NONE;
     state.quickLineStart = null;
@@ -1271,8 +1414,11 @@
       showSelectLineTypeModal();
       return;
     }
+    if (state.quickLineStart) {
+      state.quickLineStart = null;
+      renderPdf();
+    }
     state.tool = TOOL.LINE;
-    state.quickLineStart = null;
     updateUI();
   };
   document.getElementById('polylineBtn').onclick = () => {
@@ -1287,7 +1433,37 @@
     cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
     showModal('polylineModal');
   };
+  function showCounterTab(tab) {
+    document.querySelectorAll('.counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('counterCreatePanel').style.display = tab === 'create' ? '' : 'none';
+    document.getElementById('counterChoosePanel').style.display = tab === 'choose' ? '' : 'none';
+    if (tab === 'choose') populateCounterChooseList();
+  }
+  function populateCounterChooseList() {
+    const list = document.getElementById('counterChooseList');
+    const empty = document.getElementById('counterChooseEmpty');
+    list.innerHTML = '';
+    if (!state.counters.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    state.counters.forEach(c => {
+      const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
+      const div = document.createElement('div');
+      div.className = 'sidebar-item';
+      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span>';
+      div.onclick = () => {
+        state.activeCounterType = c.id;
+        state.tool = TOOL.COUNTER;
+        hideModal('counterModal');
+        updateUI();
+      };
+      list.appendChild(div);
+    });
+  }
   document.getElementById('counterBtn').onclick = () => {
+    showCounterTab('choose');
     document.getElementById('counterName').value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
@@ -1298,7 +1474,15 @@
     cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
     showModal('counterModal');
   };
+  document.querySelectorAll('.counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
+  document.getElementById('counterChooseCancel').onclick = () => hideModal('counterModal');
   document.getElementById('doneEditing').onclick = () => exitEditMode(true);
+
+  document.getElementById('moveBtnSidebar').onclick = () => document.getElementById('moveBtn').click();
+  document.getElementById('counterBtnSidebar').onclick = () => document.getElementById('counterBtn').click();
+  document.getElementById('quickLineSidebar').onclick = () => document.getElementById('quickLine').click();
+  document.getElementById('polylineBtnSidebar').onclick = () => document.getElementById('polylineBtn').click();
+  document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
   document.getElementById('scaleCancel').onclick = () => hideModal('scaleModal');
   document.getElementById('scaleSet').onclick = () => {
@@ -1318,6 +1502,7 @@
 
   const iconVbFor = (p) => [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, BATTERY_PATH, CHARGING_PATH, WALL_SCONCE_PATH].includes(p) ? '0 0 512 512' : '0 0 640 640';
   document.getElementById('addCounter').onclick = () => {
+    showCounterTab('create');
     document.getElementById('counterName').value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
@@ -1487,6 +1672,7 @@
     a.download = 'takeoff-project.json';
     a.click();
   };
+  document.getElementById('exportBtnSidebar').onclick = () => document.getElementById('exportBtn').click();
 
   document.getElementById('exportPdf').onclick = () => {
     if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
@@ -1550,6 +1736,7 @@
   };
 
   document.getElementById('importBtn').onclick = () => document.getElementById('importInput').click();
+  document.getElementById('importBtnSidebar').onclick = () => document.getElementById('importInput').click();
   document.getElementById('importInput').onchange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
@@ -1575,6 +1762,7 @@
   };
 
   document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
+  document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageCancel').onclick = () => hideModal('clearPageConfirmModal');
   document.getElementById('clearPageConfirm').onclick = () => {
     hideModal('clearPageConfirmModal');
@@ -1638,6 +1826,9 @@
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
     if (state.tool === TOOL.SCALE) {
+      const now = Date.now();
+      if (now - state.lastScaleTapTime < 400) return;
+      state.lastScaleTapTime = now;
       if (state.scaleMode === SCALE_MODES.POINT_A) { state.scalePointA = pdf; state.scaleMode = SCALE_MODES.POINT_B; }
       else if (state.scaleMode === SCALE_MODES.POINT_B) {
         state.scalePointB = pdf;
@@ -1807,42 +1998,96 @@
       state.pinchStartDistance = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       state.pinchStartZoom = state.zoom;
     } else if (e.touches.length === 1) {
+      const c = getClientCoords(e);
+      state.touchPanStart = { x: c.x, y: c.y, panX: state.pan.x, panY: state.pan.y };
       state.longPressTimer = setTimeout(() => {
         state.longPressFired = true;
-        const c = getClientCoords(e);
         const ev = new MouseEvent('contextmenu', { clientX: c.x, clientY: c.y, bubbles: true });
         (cWrapper || pdfCanvas).dispatchEvent(ev);
       }, 500);
-      state.longPressStart = getClientCoords(e);
+      state.longPressStart = c;
     }
   }, { passive: true });
 
   (cWrapper || pdfCanvas).addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && state.pinchStartDistance) {
+      e.preventDefault();
       const d = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       const scale = d / state.pinchStartDistance;
       state.zoom = Math.max(0.2, Math.min(8, state.pinchStartZoom * scale));
       renderPdf();
       updateUI();
-    } else if (e.touches.length === 1 && state.longPressTimer && state.longPressStart) {
+    } else if (e.touches.length === 1 && state.touchPanStart) {
       const c = getClientCoords(e);
-      if (ptDist(state.longPressStart, c) > 10) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+      const moved = ptDist(state.touchPanStart, c) > 10;
+      if (state.tool === TOOL.LINE && state.quickLineStart && moved) {
+        if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+        const pt = canvasPointFromEvent(e);
+        const pdf = canvasToPdf(pt.x, pt.y);
+        state.mousePos = pdf;
+        renderAnnotations();
+        e.preventDefault();
+      } else if (moved && state.tool === TOOL.NONE && !state.editingPolyline) {
+        if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+        state.touchPanning = true;
+        e.preventDefault();
+        state.pan = { x: state.touchPanStart.panX + (c.x - state.touchPanStart.x), y: state.touchPanStart.panY + (c.y - state.touchPanStart.y) };
+        updateContainerTransform();
+      } else if (moved && state.longPressTimer && state.longPressStart) {
+        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) ? 25 : 10;
+        if (ptDist(state.longPressStart, c) > tapCancelThreshold) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+      }
     }
-  }, { passive: true });
+  }, { passive: false });
+
+  function handleTouchAsCanvasTap(clientX, clientY) {
+    if (!state.pages.length) return;
+    const rect = (document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper'))?.getBoundingClientRect();
+    if (!rect) return;
+    const pt = { x: clientX - rect.left, y: clientY - rect.top };
+    const pdf = canvasToPdf(pt.x, pt.y);
+    state.mousePos = pdf;
+    if (state.tool === TOOL.LINE) {
+      const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
+      if (!state.quickLineStart) {
+        state.quickLineStart = pdf;
+      } else {
+        const page = state.pages[state.currentPage];
+        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId });
+        state.quickLineStart = null;
+      }
+      renderPdf();
+      updateUI();
+      return;
+    }
+    const ev = new MouseEvent('click', { clientX, clientY, bubbles: true });
+    (cWrapper || pdfCanvas).dispatchEvent(ev);
+  }
 
   (cWrapper || pdfCanvas).addEventListener('touchend', (e) => {
     if (e.touches.length < 2) state.pinchStartDistance = null;
+    if (state.touchPanning) {
+      state.touchPanning = false;
+      state.touchPanStart = null;
+      return;
+    }
     if (e.changedTouches && e.changedTouches.length && state.longPressTimer) {
       clearTimeout(state.longPressTimer);
       state.longPressTimer = null;
       if (!state.longPressFired) {
+        e.preventDefault();
         const c = getClientCoords(e);
-        const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
-        (cWrapper || pdfCanvas).dispatchEvent(ev);
+        if (state.tool === TOOL.LINE) {
+          handleTouchAsCanvasTap(c.x, c.y);
+        } else {
+          const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
+          (cWrapper || pdfCanvas).dispatchEvent(ev);
+        }
       }
       state.longPressFired = false;
     }
-  }, { passive: true });
+    state.touchPanStart = null;
+  }, { passive: false });
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.context-menu') && !e.target.closest('#contextMenu')) document.getElementById('contextMenu').classList.remove('visible');
@@ -1862,6 +2107,8 @@
         if (addLineTypeFirstToastTimer) { clearTimeout(addLineTypeFirstToastTimer); addLineTypeFirstToastTimer = null; }
       } else if (document.getElementById('selectLineTypeModal').classList.contains('visible')) {
         hideModal('selectLineTypeModal');
+      } else if (document.getElementById('counterModal').classList.contains('visible')) {
+        hideModal('counterModal');
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
       else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }

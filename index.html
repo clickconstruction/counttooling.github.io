@@ -658,12 +658,121 @@
 
   /* Tooltip */
   [title] { position: relative; }
+
+  /* Polyline finish bar - mobile-friendly alternative to double-tap */
+  .polyline-finish-bar {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    z-index: 40;
+  }
+  .polyline-finish-btn {
+    min-height: 44px;
+    min-width: 80px;
+    padding: 0 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .polyline-finish-btn:hover { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    header {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      flex-wrap: nowrap;
+      min-height: 52px;
+    }
+    header::-webkit-scrollbar { height: 4px; }
+    .tool-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 0 14px;
+      flex-shrink: 0;
+    }
+    .sidebar-add, .edit-poly-btn {
+      min-width: 44px;
+      min-height: 44px;
+      width: 44px;
+      height: 44px;
+    }
+    .page-item, .counter-item, .poly-item {
+      min-height: 44px;
+    }
+    .zoom-btn {
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .page-nav button {
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      width: 280px;
+      max-width: 85vw;
+      z-index: 200;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+    }
+    .sidebar-open .sidebar {
+      transform: translateX(0);
+    }
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 199;
+    }
+    .sidebar-open .sidebar-backdrop {
+      display: block;
+    }
+    .hamburger-btn {
+      display: flex;
+      min-width: 44px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 18px;
+    }
+    .hamburger-btn:hover { border-color: var(--accent); color: var(--accent); }
+  }
+  @media (min-width: 769px) {
+    .hamburger-btn { display: none; }
+  }
 </style>
 </head>
 <body>
 
 <!-- ═══ HEADER ═══ -->
 <header>
+  <button class="hamburger-btn" id="btn-hamburger" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
   <div class="logo">ClickCount</div>
   <div class="header-divider"></div>
 
@@ -708,6 +817,7 @@
 
 <!-- ═══ BODY ═══ -->
 <div class="app-body">
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
   <!-- ── LEFT SIDEBAR ── -->
   <div class="sidebar">
@@ -778,6 +888,12 @@
     </div>
 
     <div id="hud"></div>
+
+    <!-- Polyline finish bar (mobile-friendly alternative to double-tap) -->
+    <div class="polyline-finish-bar" id="polyline-finish-bar" style="display:none">
+      <button class="polyline-finish-btn" onclick="finishPolyline(false)">Finish</button>
+      <button class="polyline-finish-btn" id="polyline-close-btn" onclick="finishPolyline(true)" style="display:none">Close</button>
+    </div>
 
     <!-- Page nav -->
     <div class="page-nav" id="page-nav" style="display:none">
@@ -988,6 +1104,11 @@ const state = {
   editingPolyline: null,     // polyline object removed from ann.polylines while being edited
   editingPolyIndex: null,    // original index in ann.polylines for reinsertion
   draggingVertexIdx: null,   // index of vertex currently being dragged
+  longPressTimer: null,
+  longPressFired: false,
+  longPressStart: null,
+  pinchStartDistance: null,
+  pinchStartZoom: null,
 };
 
 // Page annotations structure factory
@@ -1081,9 +1202,17 @@ function updatePanTransform() {
 }
 
 // ─── CANVAS COORDINATE HELPERS ───────────────────────────────────────────────
+// Works for both mouse and touch events.
+function getClientCoords(e) {
+  if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
 function canvasPos(e) {
   const rect = annCanvas.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const c = getClientCoords(e);
+  return { x: c.x - rect.left, y: c.y - rect.top };
 }
 
 // Returns coordinates normalized to PDF-space (zoom-independent).
@@ -1091,9 +1220,10 @@ function canvasPos(e) {
 // pinned to the correct location regardless of zoom level.
 function pdfPos(e) {
   const rect = annCanvas.getBoundingClientRect();
+  const c = getClientCoords(e);
   return {
-    x: (e.clientX - rect.left) / state.zoom,
-    y: (e.clientY - rect.top) / state.zoom,
+    x: (c.x - rect.left) / state.zoom,
+    y: (c.y - rect.top) / state.zoom,
   };
 }
 
@@ -1518,7 +1648,16 @@ function confirmPolyline() {
   closeModal('modal-polyline');
   state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId: lineTypeId || undefined };
   setTool(TOOL.POLYLINE);
-  setStatus('Click to add vertices. Double-click to finish. Right-click to close polygon.');
+  setStatus('Click to add vertices. Double-click or tap Finish to complete.');
+  updatePolylineFinishBar();
+}
+
+function updatePolylineFinishBar() {
+  const bar = document.getElementById('polyline-finish-bar');
+  const closeBtn = document.getElementById('polyline-close-btn');
+  const show = state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 2;
+  bar.style.display = show ? 'flex' : 'none';
+  if (show) closeBtn.style.display = state.drawingPolyline.points.length >= 3 ? '' : 'none';
 }
 
 // ─── COUNTER MODAL ─────────────────────────────────────────────────────────
@@ -1762,6 +1901,51 @@ annCanvas.addEventListener('mouseup', e => {
 
 annCanvas.addEventListener('mouseleave', () => { hideHUD(); });
 
+// Touch passthrough: synthesize mouse events so existing handlers work without 300ms delay
+function synthMouseEvent(type, touchEvent) {
+  const c = getClientCoords(touchEvent);
+  return new MouseEvent(type, { clientX: c.x, clientY: c.y, button: 0, buttons: type === 'mouseup' ? 0 : 1, bubbles: true });
+}
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD = 10;
+annCanvas.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  e.preventDefault();
+  const c = getClientCoords(e);
+  state.longPressStart = c;
+  state.longPressFired = false;
+  if (state.longPressTimer) clearTimeout(state.longPressTimer);
+  state.longPressTimer = setTimeout(() => {
+    state.longPressTimer = null;
+    state.longPressFired = true;
+    const ev = new MouseEvent('contextmenu', { clientX: state.longPressStart.x, clientY: state.longPressStart.y, bubbles: true });
+    ev.preventDefault = () => {};
+    annCanvas.dispatchEvent(ev);
+  }, LONG_PRESS_MS);
+  annCanvas.dispatchEvent(synthMouseEvent('mousedown', e));
+}, { passive: false });
+annCanvas.addEventListener('touchmove', e => {
+  if (e.touches.length !== 1) return;
+  if (state.longPressTimer && state.longPressStart) {
+    const c = getClientCoords(e);
+    const dx = c.x - state.longPressStart.x, dy = c.y - state.longPressStart.y;
+    if (Math.sqrt(dx*dx + dy*dy) > LONG_PRESS_MOVE_THRESHOLD) {
+      clearTimeout(state.longPressTimer);
+      state.longPressTimer = null;
+    }
+  }
+  e.preventDefault();
+  annCanvas.dispatchEvent(synthMouseEvent('mousemove', e));
+}, { passive: false });
+annCanvas.addEventListener('touchend', e => {
+  if (e.changedTouches.length !== 1) return;
+  e.preventDefault();
+  if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+  annCanvas.dispatchEvent(synthMouseEvent('mouseup', e));
+  if (!state.longPressFired) annCanvas.dispatchEvent(synthMouseEvent('click', e));
+  state.longPressFired = false;
+}, { passive: false });
+
 annCanvas.addEventListener('click', e => {
   if (e.button !== 0) return;
   if (state.tool === TOOL.EDIT_POLY) return; // handled by mousedown/mouseup
@@ -1807,6 +1991,7 @@ annCanvas.addEventListener('click', e => {
 
   if (state.tool === TOOL.POLYLINE && state.drawingPolyline) {
     state.drawingPolyline.points.push(pdfPos(e));
+    updatePolylineFinishBar();
     redraw();
     return;
   }
@@ -1864,9 +2049,10 @@ annCanvas.addEventListener('contextmenu', e => {
   if (target) {
     state.ctxTarget = target;
     const menu = document.getElementById('ctx-menu');
+    const c = getClientCoords(e);
     menu.style.display = 'block';
-    menu.style.left = e.clientX + 'px';
-    menu.style.top = e.clientY + 'px';
+    menu.style.left = c.x + 'px';
+    menu.style.top = c.y + 'px';
   }
 });
 
@@ -1902,6 +2088,65 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mouseup', e => {
   if (e.button !== 0) return;
   if (state.isPanning) {
+    state.isPanning = false;
+    state.panStart = null;
+    canvasArea.classList.remove('panning');
+  }
+});
+
+// Touch support for pan and pinch-to-zoom
+function touchDistance(e) {
+  if (e.touches.length < 2) return 0;
+  const a = e.touches[0], b = e.touches[1];
+  return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+}
+
+canvasArea.addEventListener('touchstart', e => {
+  if (e.touches.length === 2 && state.pages.length > 0) {
+    state.pinchStartDistance = touchDistance(e);
+    state.pinchStartZoom = state.zoom;
+    e.preventDefault();
+    return;
+  }
+  if (e.touches.length !== 1) return;
+  if (state.tool !== TOOL.NONE) return;
+  if (e.target.closest('button')) return;
+  if (state.pages.length === 0) return;
+  if (document.getElementById('canvas-wrapper').style.display === 'none') return;
+  state.isPanning = true;
+  state.panStart = getClientCoords(e);
+  canvasArea.classList.add('panning');
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && state.pinchStartDistance != null) {
+    const d = touchDistance(e);
+    const scale = d / state.pinchStartDistance;
+    const delta = (scale - 1) * 0.5;
+    state.pinchStartDistance = d;
+    state.pinchStartZoom = state.zoom;
+    adjustZoom(Math.max(-0.1, Math.min(0.1, delta)));
+    e.preventDefault();
+    return;
+  }
+  if (!state.isPanning || !state.panStart || e.touches.length !== 1) return;
+  const c = getClientCoords(e);
+  const dx = c.x - state.panStart.x;
+  const dy = c.y - state.panStart.y;
+  state.pan.x += dx;
+  state.pan.y += dy;
+  state.panStart = c;
+  updatePanTransform();
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  if (e.touches.length < 2) {
+    state.pinchStartDistance = null;
+    state.pinchStartZoom = null;
+  }
+  if (e.touches.length === 0 && state.isPanning) {
     state.isPanning = false;
     state.panStart = null;
     canvasArea.classList.remove('panning');
@@ -1997,6 +2242,7 @@ function finishPolyline(closed) {
   ann.polylines.push({ ...state.drawingPolyline });
   state.drawingPolyline = null;
   setTool(TOOL.NONE);
+  updatePolylineFinishBar();
   redraw();
   renderLineTypeList();
   renderPolyList();
@@ -2089,6 +2335,7 @@ function setTool(tool) {
   } else {
     canvasArea.classList.remove('mode-pan', 'panning');
   }
+  updatePolylineFinishBar();
 }
 
 // ─── PAGE NAVIGATION ──────────────────────────────────────────────────────────
@@ -2547,6 +2794,14 @@ function saveToStorage() {
 
 // ─── UID ──────────────────────────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).slice(2, 10); }
+
+// ─── SIDEBAR (mobile) ─────────────────────────────────────────────────────────
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-open');
+}
+function closeSidebar() {
+  document.body.classList.remove('sidebar-open');
+}
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 (function init() {

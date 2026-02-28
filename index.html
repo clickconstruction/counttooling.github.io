@@ -1819,7 +1819,7 @@ function renderLineTypeList() {
     const nameSpan = document.createElement('span');
     nameSpan.className = 'line-type-name';
     nameSpan.textContent = lt.name;
-    nameSpan.ondblclick = (e) => {
+    onDoubleTapOrDblClick(nameSpan, (e) => {
       e.stopPropagation();
       startInlineRename(nameSpan, lt.name, (val) => {
         lt.name = val;
@@ -1828,7 +1828,7 @@ function renderLineTypeList() {
         updateSummary();
         saveToStorage();
       });
-    };
+    });
     const statsSpan = document.createElement('span');
     statsSpan.className = 'line-type-stats';
     statsSpan.textContent = `${stats.runs} runs · ${formatDist(stats.length)}`;
@@ -2371,6 +2371,23 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── SIDEBAR RENDERS ──────────────────────────────────────────────────────────
+// Mobile-friendly: dblclick rarely fires on touch; detect two clicks within 400ms
+function onDoubleTapOrDblClick(el, handler) {
+  let lastTap = 0;
+  const DBL_MS = 400;
+  el.addEventListener('click', (e) => {
+    const now = Date.now();
+    if (lastTap && now - lastTap < DBL_MS) {
+      lastTap = 0;
+      e.preventDefault();
+      e.stopPropagation();
+      handler(e);
+    } else {
+      lastTap = now;
+    }
+  });
+}
+
 function startInlineRename(spanEl, currentValue, onSave) {
   const input = document.createElement('input');
   input.type = 'text';
@@ -2406,13 +2423,13 @@ function updatePageList() {
     const pageName = document.createElement('span');
     pageName.className = 'page-name';
     pageName.textContent = p.label;
-    pageName.ondblclick = (e) => {
+    onDoubleTapOrDblClick(pageName, (e) => {
       e.stopPropagation();
       startInlineRename(pageName, p.label, (val) => {
         state.pages[i].label = val;
         saveToStorage();
       });
-    };
+    });
     el.appendChild(pageNum);
     el.appendChild(pageName);
     if (hasAnn) {
@@ -2484,13 +2501,13 @@ function renderCounterList() {
     const counterName = document.createElement('div');
     counterName.className = 'counter-name';
     counterName.textContent = def.name;
-    counterName.ondblclick = (e) => {
+    onDoubleTapOrDblClick(counterName, (e) => {
       e.stopPropagation();
       startInlineRename(counterName, def.name, (val) => {
         def.name = val;
         saveToStorage();
       });
-    };
+    });
     counterInfo.appendChild(counterName);
     const countSpan = document.createElement('span');
     countSpan.className = 'counter-count';
@@ -2586,7 +2603,7 @@ function renderPolyList() {
       const nameSpan = document.createElement('span');
       nameSpan.className = 'poly-name';
       nameSpan.textContent = item.name;
-      nameSpan.ondblclick = (e) => {
+      onDoubleTapOrDblClick(nameSpan, (e) => {
         e.stopPropagation();
         const target = item.isPoly
           ? (state.editingPolyline && state.editingPolyline.id === item.id ? state.editingPolyline : ann.polylines.find(p => p.id === item.id))
@@ -2598,7 +2615,7 @@ function renderPolyList() {
           redraw();
           saveToStorage();
         });
-      };
+      });
       const distSpan = document.createElement('span');
       distSpan.className = 'poly-dist';
       distSpan.textContent = formatDist(item.dist);

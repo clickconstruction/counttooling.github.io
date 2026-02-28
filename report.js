@@ -1,78 +1,115 @@
-// ─── PRINT REPORT ──────────────────────────────────────────────────────────────
-// Loaded after main script; uses global state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml
+/**
+ * ClickCount Print Report
+ * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml
+ */
+(function() {
+  function escapeHtml(s) {
+    if (s == null) return '';
+    const t = String(s);
+    return t
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+  function buildReportHtml() {
+    if (!window.state || !state.pages || !state.pages.length) return '';
 
-function buildReportHtml() {
-  const parts = [];
-  parts.push('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Takeoff Report</title>');
-  parts.push('<style>body{font-family:system-ui,sans-serif;padding:20px;max-width:600px;margin:0 auto}h1{font-size:1.25rem;margin-bottom:1rem}.page-block{margin-bottom:1.5rem;page-break-inside:avoid}.page-title{font-weight:600;margin-bottom:0.5rem;font-size:14px}table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}caption{text-align:left;font-size:11px;font-weight:600;color:#666;margin-bottom:4px}th,td{padding:4px 8px;text-align:left;border-bottom:1px solid #ddd}@media print{body{padding:0;max-width:100%}}</style></head><body><h1>Takeoff Report</h1>');
+    const styles = `
+      body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; color: #000; margin: 2em; }
+      .report-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 1em; }
+      .page-header { font-size: 1.2rem; font-weight: bold; margin: 1.5em 0 0.5em 0; }
+      .section-header { font-size: 0.9rem; color: #535353; margin: 1em 0 0.5em 0; }
+      .report-table { border-collapse: collapse; width: 100%; margin-bottom: 0.5em; }
+      .report-table th, .report-table td { border-bottom: 1px solid #d5d5d5; padding: 8px 12px; text-align: left; }
+      .report-table th { font-weight: bold; }
+      .report-type-cell { display: flex; align-items: center; gap: 8px; }
+      .report-type-cell .report-type-icon svg { width: 20px; height: 20px; flex-shrink: 0; }
+      .report-type-cell .report-type-swatch { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @media print { .report-type-swatch { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      section { margin-bottom: 2em; }
+    `;
 
-  state.pages.forEach((page, i) => {
-    const ann = page.annotations || makeAnnotations();
-    parts.push('<div class="page-block"><div class="page-title">Page ' + (i + 1) + ': ' + escapeHtml(page.label) + '</div>');
+    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Takeoff Report</title><style>' + styles + '</style></head><body>';
+    html += '<h1 class="report-title">Takeoff Report</h1>';
 
-    const counterRows = state.counters
-      .map(def => ({ def, count: (ann.counterMarkers[def.id] || []).length }))
-      .filter(r => r.count > 0);
-    if (counterRows.length > 0) {
-      parts.push('<table><caption>Counters</caption><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>');
-      counterRows.forEach(r => {
-        parts.push('<tr><td>' + renderIconHtml(r.def.icon) + ' ' + escapeHtml(r.def.name) + '</td><td>' + r.count + '</td></tr>');
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      const label = escapeHtml(page.label || 'Page ' + (i + 1));
+      html += '<section>';
+      html += '<h2 class="page-header">Page ' + (i + 1) + ': ' + label + '</h2>';
+
+      const counterRows = [];
+      (state.counters || []).forEach(c => {
+        const markers = ann.counterMarkers?.[c.id] || [];
+        if (markers.length > 0) {
+          counterRows.push({ type: c.name, count: markers.length, icon: c.icon, color: c.color });
+        }
       });
-      parts.push('</tbody></table>');
-    }
+      if (counterRows.length > 0) {
+        html += '<h3 class="section-header">Counters</h3>';
+        html += '<table class="report-table"><tr><th>Type</th><th>Count</th></tr>';
+        counterRows.forEach(r => {
+          const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
+          html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.type) + '</span></td><td>' + r.count + '</td></tr>';
+        });
+        html += '</table>';
+      }
 
-    const typeStats = {};
-    (ann.quickLines || []).forEach(l => {
-      const d = ptDist({ x: l.x1, y: l.y1 }, { x: l.x2, y: l.y2 });
-      const k = l.lineTypeId || '__ungrouped__';
-      if (!typeStats[k]) typeStats[k] = { runs: 0, length: 0 };
-      typeStats[k].runs++;
-      typeStats[k].length += d;
-    });
-    (ann.polylines || []).forEach(p => {
-      const d = polylineDistance(p.points, p.closed);
-      const k = p.lineTypeId || '__ungrouped__';
-      if (!typeStats[k]) typeStats[k] = { runs: 0, length: 0 };
-      typeStats[k].runs++;
-      typeStats[k].length += d;
-    });
-    const lineTypeIds = state.lineTypes.map(l => l.id);
-    const ordered = [
-      ...lineTypeIds.filter(k => typeStats[k]),
-      ...(typeStats['__ungrouped__'] ? ['__ungrouped__'] : []),
-      ...Object.keys(typeStats).filter(k => !lineTypeIds.includes(k) && k !== '__ungrouped__')
-    ];
-    if (ordered.length > 0) {
-      parts.push('<table><caption>Line Types</caption><thead><tr><th>Type</th><th>Runs</th><th>Length</th></tr></thead><tbody>');
-      ordered.forEach(k => {
-        const s = typeStats[k];
-        const name = k === '__ungrouped__' ? 'Ungrouped' : (state.lineTypes.find(l => l.id === k)?.name || 'Unknown');
-        parts.push('<tr><td>' + escapeHtml(name) + '</td><td>' + s.runs + '</td><td>' + escapeHtml(formatDist(s.length)) + '</td></tr>');
+      const lineTypeRows = [];
+      (state.lineTypes || []).forEach(lt => {
+        let runs = 0;
+        let len = 0;
+        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          runs++;
+          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+        });
+        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          runs++;
+          len += polylineDistance(poly.points || [], poly.closed);
+        });
+        if (runs > 0) {
+          lineTypeRows.push({ type: lt.name, runs, length: formatDist(len, page.scale), color: lt.color });
+        }
       });
-      parts.push('</tbody></table>');
+      if (lineTypeRows.length > 0) {
+        html += '<h3 class="section-header">Line Types</h3>';
+        html += '<table class="report-table"><tr><th>Type</th><th>Runs</th><th>Length</th></tr>';
+        lineTypeRows.forEach(r => {
+          const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
+          html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(r.type) + '</span></td><td>' + r.runs + '</td><td>' + r.length + '</td></tr>';
+        });
+        html += '</table>';
+      }
+
+      html += '</section>';
+    });
+
+    html += '</body></html>';
+    return html;
+  }
+
+  function printReport() {
+    if (!window.state || !state.pages || !state.pages.length) {
+      alert('No pages loaded. Upload a PDF first.');
+      return;
     }
+    const html = buildReportHtml();
+    const w = window.open('', '_blank');
+    if (!w) {
+      alert('Popup blocked. Please allow popups for this site.');
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+  }
 
-    parts.push('</div>');
-  });
+  window.escapeHtml = escapeHtml;
+  window.buildReportHtml = buildReportHtml;
+  window.printReport = printReport;
 
-  parts.push('</body></html>');
-  return parts.join('');
-}
-
-function printReport() {
-  if (state.pages.length === 0) { alert('No document loaded.'); return; }
-  const html = buildReportHtml();
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-}
+  document.getElementById('printReport').addEventListener('click', printReport);
+})();

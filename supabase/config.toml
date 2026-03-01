@@ -1,0 +1,31 @@
+# Supabase local config (optional for Edge Functions deploy)
+# Run: supabase link (to link to your project) then supabase functions deploy admin-create-user
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[functions]
+verify_jwt = true
+
+# Admin Edge Functions validate JWT in-code via getUser(); gateway verification can reject valid tokens
+[functions.admin-list-users]
+verify_jwt = false
+[functions.admin-create-user]
+verify_jwt = false
+[functions.admin-delete-user]
+verify_jwt = false
+[functions.admin-delete-project]
+verify_jwt = false

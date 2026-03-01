@@ -21,16 +21,17 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate Helpers | 688–700 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 700–974 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 974–1362 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 1362–1822 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, setScaleFirst toasts, selectLineTypeModal, clearPageConfirmModal |
+| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, setScaleFirst toasts, selectLineTypeModal, clearPageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal |
 | Canvas Event Handlers | 1822–1895 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
 | Event Binding | 1895–2165 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE, preventDefault on touchend), keyboard (Escape, arrows, Enter) |
-| Init & Persistence | 2090–2165 | localStorage restore, save interval, window globals |
+| Init & Persistence | 2240–2470 | initSupabaseAuth, localStorage restore, save interval, window globals |
 
 ## Search Hints (grep patterns)
 
 | To find | Pattern |
 |---------|---------|
 | Section markers | `SECTION:` or `SECTION: PDF Rendering` |
+| PDF upload / size limit | `pdfInput` or `PDF_MAX_SIZE_BYTES` |
 | PDF render logic | `function renderPdf` |
 | Annotation drawing | `function renderAnnotations` |
 | Export PDF | `exportPdfModal` or `exportPdfDo` or `renderAnnotationsToContext` |
@@ -55,6 +56,13 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Header active type | `headerActiveCounter` or `headerActiveLineType` |
 | Counter modal tabs | `counter-tab` or `counterChooseList` |
 | Page/zoom row | `page-zoom-row` |
+| Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
+| Save/Load project | `saveProjectModal` or `loadProjectModal` |
+| Admin panel | `adminPanelModal` or `adminCreateUser` |
+| Manage User modal | `manageUserModal` or `openManageUserModal` or `deleteUser` |
+| Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject`; opened via `settingsManageProjects` in Project Settings |
+| User Settings | `mySettingsModal` or `openMySettings` — email, change password, Add User / Manage User (admin), All Users list (admin), Sign Out |
+| Project Settings | `settingsModal` — Save/Load/Close Project, Manage Projects (admin), Export, Import |
 
 ## Key Globals (used by report.js)
 
@@ -73,7 +81,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 ## Mobile Layout (max-width: 768px)
 
 - **Header**: Hamburger, Set Scale (when no scale), Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250
-- **Sidebar** (slide-in): ClickCount logo, scale display (1 ft = X when set), Upload PDF / Set Scale / Export / Import, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Print Report, Export PDF, Clear Page
+- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), scale display (1 ft = X when set), Upload PDF / Set Scale, Sign In / Save Project / Load Project (when Supabase enabled), Export / Import, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Print Report, Export PDF, Clear Page
 - **Touch**: Single-finger pan, pinch-to-zoom, long-press (500ms) for context menu; `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE mode (direct touch, no synthetic click); `preventDefault` on touchend to avoid ghost click double-placement; 25px movement threshold for LINE/POLYLINE taps
 - **Scale taps**: 400ms debounce to avoid double-tap on mobile
 
@@ -107,3 +115,5 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Scale badge** — Page number in Pages uses `.badge-scale-set` (yellow background, black text) when page has scale
 - **Pages collapse** — Click "Pages" heading toggles `pagesListCollapsed`; `#pagesSection.collapsed` hides list
 - **Zoom** — Range 0.2–800%; CSS scale during wheel; debounced PDF re-render; translate3d for pan
+- **Supabase Phase 1 & 2** — Admin-provisioned auth (Sign In only), Add User / Manage User (admin creates and deletes accounts) in User Settings, Manage Projects (admin lists and deletes projects) in Project Settings, Save Project / Load Project; `profiles` and `projects` tables (`pdf_path`, `pdf_hash`, `size_bytes`); `pdfs` storage bucket; Edge Functions `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`; RPC `list_users_for_admin`, `list_projects_for_admin`; hash-based skip on upload; IndexedDB cache (10 projects, 500 MB); config via `config.js` (SUPABASE_SETUP.md)
+- **PDF size limit** — When Supabase is enabled, PDF uploads over 50 MB are rejected with an alert (Supabase storage limit)

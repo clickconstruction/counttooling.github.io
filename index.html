@@ -7,8 +7,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <script src="config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #0f0f11;
@@ -39,9 +42,16 @@
     .header button.danger { color: var(--red); border-color: var(--red); }
     .header button.danger:hover { background: rgba(232,84,71,0.2); }
     .header .spacer { flex: 1; }
+    .header .header-settings-gear { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 12px; background: none; border: none; border-radius: 0; color: var(--text2); cursor: pointer; font-size: 0.9rem; }
+    .header .header-settings-gear:hover { background: none; color: var(--text); }
     .header #setScale.scale-set { display: none; }
     .header .hamburger { display: none; }
-    .sidebar-logo { display: none; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); padding: 16px 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo { display: none; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); padding: 16px 12px; border-bottom: 1px solid var(--border); align-items: center; justify-content: space-between; gap: 12px; }
+    .sidebar-logo-title { flex: 1; }
+    .sidebar-logo-icons { display: none; align-items: center; gap: 8px; }
+    .sidebar-logo-icon { display: flex; align-items: center; justify-content: center; padding: 8px; background: none; border: none; border-radius: 6px; color: var(--text2); cursor: pointer; }
+    .sidebar-logo-icon:hover { background: var(--surface2); color: var(--text); }
+    .sidebar-logo-icon svg { width: 20px; height: 20px; }
     .sidebar-header-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-header-buttons .sidebar-btn { flex: 1; min-width: 80px; }
     .sidebar-tool-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
@@ -60,6 +70,7 @@
       .header .hamburger:hover { background: transparent; }
       .header .logo { display: none; }
       .header .divider.sidebar-triggers { display: none; }
+      .header #settingsGearBtn { display: none; }
       .header #polylineBtn { display: none; }
       .header #doneEditing { display: none; }
       .header .header-primary-btn { display: none; }
@@ -71,7 +82,8 @@
       .header-active-type .header-type-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
     @media (min-width: 769px) { .header-active-type { display: none !important; } }
       .header .header-primary-divider { display: none; }
-      .sidebar-logo { display: block; }
+      .sidebar-logo { display: flex; }
+      .sidebar-logo-icons.supabase-only { display: flex; }
       .sidebar-header-buttons { display: flex; }
       .sidebar-tool-buttons { display: flex; }
       .header #clearPage { display: none; }
@@ -132,12 +144,23 @@
     .page-nav button { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; }
     .polyline-finish-bar { display: none; padding: 8px; background: var(--surface2); border-top: 1px solid var(--border); gap: 8px; }
     .polyline-finish-bar.visible { display: flex; }
-    .status-bar { padding: 4px 12px; font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .status-bar { padding: 4px 12px; font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .status-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .status-bar .status-bar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+    .status-bar .status-bar-link { color: var(--accent); cursor: pointer; white-space: nowrap; }
+    .status-bar .status-bar-link:hover { text-decoration: underline; }
+    .status-bar .status-bar-link.danger { color: var(--red); }
+    .status-bar .status-bar-link.danger:hover { color: var(--red); }
+    .status-bar .status-bar-sep { color: var(--text2); opacity: 0.6; user-select: none; }
+    .header .replaced-by-status-bar { display: none !important; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
     .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; }
     .modal-card h2 { margin-bottom: 16px; font-size: 1.1rem; }
+    .modal-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .modal-card-header h2 { margin: 0; }
+    .modal-close-btn { background: none; border: none; color: var(--text2); font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 4px; margin: -4px -4px -4px 8px; border-radius: 4px; }
+    .modal-close-btn:hover { color: var(--text); background: var(--surface2); }
     .modal-card .form-group { margin-bottom: 16px; }
     .modal-card .form-group-center { text-align: center; }
     .modal-card label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: var(--text2); }
@@ -155,16 +178,71 @@
     .modal-card .actions button:first-child { background: transparent; color: var(--text2); border: 1px solid var(--border); }
     .modal-card .actions button:first-child:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .modal-card .actions button:last-child { background: var(--accent); color: var(--bg); }
+    .settings-menu { display: flex; flex-direction: column; gap: 8px; }
+    .settings-menu-btn { width: 100%; padding: 12px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 1rem; cursor: pointer; transition: all 0.15s ease; }
+    .settings-menu-btn:hover { background: var(--surface3); border-color: var(--border2); }
+    .settings-menu-btn.danger { color: var(--red); border-color: var(--red); }
+    .settings-menu-btn.danger:hover { background: rgba(232,84,71,0.2); }
     .modal-card .actions button:last-child:hover { background: var(--accent2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
+    .save-project-progress { margin: 12px 0; font-size: 0.9rem; color: var(--text2); }
+    .save-project-progress ul { margin: 0; padding-left: 20px; list-style: none; }
+    .save-project-progress li { margin: 4px 0; }
+    .save-project-progress li.pending { color: var(--text3); }
+    .save-project-progress li.done { color: var(--green); }
+    .save-project-progress li.done::before { content: "✓ "; }
     .modal-card.modal-card-toast { width: fit-content; max-width: none; }
+    .modal-card-large { max-width: 700px; width: 95%; }
+    #manageProjectsList { max-height: 50vh; }
+    .specific-pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; max-height: 50vh; overflow-y: auto; margin-bottom: 16px; }
+    .specific-page-card { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
+    .specific-page-thumb { width: 100%; height: 120px; object-fit: contain; background: #fff; border-radius: 4px; border: 1px solid var(--border); }
+    .specific-page-card select { width: 100%; padding: 6px 8px; font-size: 0.85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text); }
+    .specific-page-label { font-size: 0.85rem; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .specific-pages-bulk-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .specific-pages-bulk-actions button {
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: inherit;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .specific-pages-bulk-actions button:hover {
+      background: var(--surface3);
+      border-color: var(--border2);
+      color: var(--text);
+    }
+    .specific-pages-bulk-actions button.bulk-marked:hover { border-color: var(--green); background: rgba(71,200,142,0.15); }
+    .specific-pages-bulk-actions button.bulk-unmarked:hover { border-color: var(--blue); background: rgba(74,158,255,0.15); }
+    .specific-pages-bulk-actions button.bulk-exclude:hover { border-color: var(--red); background: rgba(232,84,71,0.15); }
+    .settings-users-list .settings-project-name { flex: 1; font-size: 1.05rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
     .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
     .counter-tab { flex: 1; padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
     .counter-tab:hover { color: var(--text); }
     .counter-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
     .counter-tab-panel { margin-top: 0; }
     .counter-choose-list { max-height: 200px; overflow-y: auto; }
+    .line-type-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .line-type-tab { flex: 1; padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
+    .line-type-tab:hover { color: var(--text); }
+    .line-type-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+    .line-type-tab-panel { margin-top: 0; }
+    .choose-line-type-list { max-height: 200px; overflow-y: auto; }
+    .settings-users-list { max-height: 200px; overflow-y: auto; margin-top: 8px; font-size: 0.9rem; }
+    .settings-users-list .settings-user-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; }
+    .settings-users-list .settings-user-row:last-child { margin-bottom: 0; }
+    .settings-users-list .settings-user-email { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .settings-users-list .settings-user-role { color: var(--accent); font-size: 0.8rem; flex-shrink: 0; }
+    .settings-users-list .settings-user-last { color: var(--text3); font-size: 0.8rem; flex-shrink: 0; }
+    .settings-users-list .settings-user-delete { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--red); color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .settings-users-list .settings-user-delete:hover { opacity: 0.9; }
+    .settings-users-list .settings-user-delete:disabled { opacity: 0.5; cursor: not-allowed; }
     .context-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 120px; }
     .context-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     .context-menu button:hover { background: var(--surface2); }
@@ -191,21 +269,43 @@
       <button id="quickLine" class="sidebar-triggers"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
       <span id="headerActiveLineType" class="header-active-type"></span>
       <button id="polylineBtn" class="sidebar-triggers">Polyline</button>
+      <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Project Settings" title="Project Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
+      </button>
       <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
       <span class="spacer"></span>
-      <button id="exportBtn" class="header-primary-btn">Export</button>
-      <button id="importBtn" class="header-primary-btn">Import</button>
+      <button id="authBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Sign In</button>
+      <button id="saveProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Save Project</button>
+      <button id="loadProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Load Project</button>
+      <button id="manageUsersBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Manage Users</button>
+      <button id="exportBtn" class="header-primary-btn replaced-by-status-bar">Export</button>
+      <button id="importBtn" class="header-primary-btn replaced-by-status-bar">Import</button>
       <input type="file" id="importInput" accept=".json">
-      <button id="clearPage" class="danger">Clear Page</button>
+      <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
     </header>
     <div class="main">
       <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
       <aside class="sidebar">
-        <div class="sidebar-logo">ClickCount</div>
+        <div class="sidebar-logo">
+          <span class="sidebar-logo-title">ClickCount</span>
+          <div class="sidebar-logo-icons supabase-only">
+            <button type="button" class="sidebar-logo-icon" id="sidebarLogoUser" aria-label="User" title="User">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M320 312C386.3 312 440 258.3 440 192C440 125.7 386.3 72 320 72C253.7 72 200 125.7 200 192C200 258.3 253.7 312 320 312zM290.3 368C191.8 368 112 447.8 112 546.3C112 562.7 125.3 576 141.7 576L498.3 576C514.7 576 528 562.7 528 546.3C528 447.8 448.2 368 349.7 368L290.3 368z"/></svg>
+            </button>
+            <button type="button" class="sidebar-logo-icon" id="sidebarLogoGear" aria-label="Project Settings" title="Project Settings">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
+            </button>
+          </div>
+        </div>
         <div class="sidebar-section sidebar-header-buttons">
           <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
           <button id="uploadPdfSidebar" class="sidebar-btn">Upload PDF</button>
           <button id="setScaleSidebar" class="sidebar-btn">Set Scale</button>
+          <button id="authBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Sign In</button>
+          <button id="settingsSidebarBtn" class="sidebar-btn supabase-only" style="display:none;">Project Settings</button>
+          <button id="saveProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Save Project</button>
+          <button id="loadProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Load Project</button>
+          <button id="manageUsersBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Manage Users</button>
           <button id="exportBtnSidebar" class="sidebar-btn">Export</button>
           <button id="importBtnSidebar" class="sidebar-btn">Import</button>
         </div>
@@ -239,8 +339,9 @@
           <div id="summaryList"></div>
         </div>
         <div class="sidebar-section">
-          <button id="printReport" class="sidebar-btn sidebar-btn-primary">Print Report</button>
-          <button id="exportPdf" class="sidebar-btn">Export PDF</button>
+          <button id="printReport" class="sidebar-btn sidebar-btn-primary">Show Report</button>
+          <button id="exportPdf" class="sidebar-btn">Combined PDF</button>
+          <button id="specificPages" class="sidebar-btn">Specific Pages</button>
         </div>
         <div class="sidebar-section sidebar-clear-page">
           <button id="clearPageSidebar" class="sidebar-btn danger">Clear Page</button>
@@ -274,6 +375,11 @@
           <span class="dot"></span>
           <span id="statusMode">Ready</span>
           <span id="statusCoords">—</span>
+          <div class="status-bar-actions" id="statusBarActions">
+            <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
+            <span class="status-bar-sep supabase-only" id="statusBarSep2">|</span>
+            <span class="status-bar-link danger" id="statusBarClearPage">Clear Page</span>
+          </div>
         </div>
       </div>
     </div>
@@ -434,7 +540,7 @@
   </div>
   <div class="modal-overlay" id="exportPdfModal">
     <div class="modal-card">
-      <h2>Export PDF</h2>
+      <h2>Combined PDF</h2>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
       <div class="form-group">
         <label>Marker size: <span id="exportMarkerScaleVal">75</span>%</label>
@@ -447,6 +553,25 @@
       <div class="actions">
         <button id="exportPdfCancel">Cancel</button>
         <button id="exportPdfDo">Export</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="specificPagesModal">
+    <div class="modal-card modal-card-large">
+      <h2>Specific Pages</h2>
+      <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
+      <div class="form-group form-group-center" style="margin-bottom:12px;">
+        <label><input type="checkbox" id="specificPagesIncludeReport" checked> Include takeoff report</label>
+      </div>
+      <div class="specific-pages-bulk-actions">
+        <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
+        <button type="button" id="specificPagesAllUnmarked" class="bulk-unmarked">All Not Marked Up</button>
+        <button type="button" id="specificPagesAllExclude" class="bulk-exclude">Exclude All</button>
+      </div>
+      <div id="specificPagesGrid" class="specific-pages-grid"></div>
+      <div class="actions">
+        <button id="specificPagesCancel">Cancel</button>
+        <button id="specificPagesDownload">Download</button>
       </div>
     </div>
   </div>
@@ -476,18 +601,34 @@
       <p style="margin:0;font-size:1rem;">Set Scale first to use Polyline.</p>
     </div>
   </div>
-  <div class="modal-overlay" id="addLineTypeFirstModal">
-    <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Add a line type first.</p>
-    </div>
-  </div>
-  <div class="modal-overlay" id="selectLineTypeModal">
+  <div class="modal-overlay" id="chooseLineTypeModal">
     <div class="modal-card">
-      <h2>Select Line Type</h2>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);">Choose a line type for Quick Line:</p>
-      <div id="selectLineTypeList"></div>
-      <div class="actions" style="margin-top:16px;">
-        <button id="selectLineTypeCancel">Cancel</button>
+      <div class="line-type-modal-tabs">
+        <button class="line-type-tab active" data-tab="choose">Choose Line Type</button>
+        <button class="line-type-tab" data-tab="create">Create Line Type</button>
+      </div>
+      <div id="chooseLineTypePanel" class="line-type-tab-panel">
+        <p class="form-group" style="margin-bottom:12px;color:var(--text2);">Choose a line type for Quick Line:</p>
+        <div id="chooseLineTypeList" class="choose-line-type-list"></div>
+        <p id="chooseLineTypeEmpty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">Add a line type first using <strong>Create Line Type</strong>.</p>
+        <div class="actions" style="margin-top:16px;">
+          <button id="chooseLineTypeCancel">Cancel</button>
+        </div>
+      </div>
+      <div id="createLineTypePanel" class="line-type-tab-panel" style="display:none;">
+        <h2>Create Line Type</h2>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="createLineTypeName" placeholder="e.g. Pipe">
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-row" id="createLineTypeColorRow"></div>
+        </div>
+        <div class="actions">
+          <button id="createLineTypeCancel">Cancel</button>
+          <button id="createLineTypeCreate">Create Line Type</button>
+        </div>
       </div>
     </div>
   </div>
@@ -501,6 +642,164 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="deletePageConfirmModal">
+    <div class="modal-card">
+      <h2>Delete Page</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Are you sure you want to delete:</p>
+      <p id="deletePageName" style="margin:0 0 16px 0;font-weight:500;"></p>
+      <p style="margin:0 0 24px 0;color:var(--text2);">All annotations will be lost and you will have to re-upload the page to add it back without annotations.</p>
+      <div class="actions">
+        <button id="deletePageCancel">Cancel</button>
+        <button id="deletePageConfirm" class="danger">Delete Page</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2 id="settingsTitle">Project Settings</h2>
+        <button type="button" class="modal-close-btn" id="settingsModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="settings-menu">
+        <button type="button" class="settings-menu-btn" id="settingsSaveProject">Save Project</button>
+        <button type="button" class="settings-menu-btn" id="settingsLoadProject">Load Project</button>
+        <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
+        <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
+        <button type="button" class="settings-menu-btn" id="settingsExport">Export</button>
+        <button type="button" class="settings-menu-btn" id="settingsImport">Import</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="mySettingsModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>User Settings</h2>
+        <button type="button" class="modal-close-btn" id="mySettingsModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <p id="mySettingsEmail" class="form-group" style="margin:0;font-weight:500;"></p>
+      </div>
+      <form id="mySettingsPasswordForm">
+        <div class="form-group">
+          <label>New password</label>
+          <input type="password" id="mySettingsNewPassword" placeholder="New password" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Confirm new password</label>
+          <input type="password" id="mySettingsConfirmPassword" placeholder="Confirm" autocomplete="new-password">
+        </div>
+        <p id="mySettingsPasswordError" class="form-group" style="color:var(--red);display:none;"></p>
+        <p id="mySettingsPasswordSuccess" class="form-group" style="color:var(--green);display:none;"></p>
+        <div class="actions">
+          <button type="submit" id="mySettingsChangePassword">Change Password</button>
+        </div>
+      </form>
+      <div class="form-group" id="mySettingsUsersListSection" style="display:none;">
+        <label>All Users</label>
+        <div id="mySettingsUsersList" class="settings-users-list"></div>
+      </div>
+      <div class="form-group" id="mySettingsManageUsersSection" style="display:none;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="settings-menu-btn" id="mySettingsManageUsers">Add User</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsManageUser">Manage User</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <button type="button" class="settings-menu-btn danger" id="mySettingsSignOut">Sign Out</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card">
+      <h2>Sign In</h2>
+      <form id="authForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+        </div>
+        <p id="authError" class="form-group" style="color:var(--red);display:none;"></p>
+        <div class="actions">
+          <button type="button" id="authCancel">Cancel</button>
+          <button type="submit" id="authSignIn">Sign In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="adminPanelModal">
+    <div class="modal-card">
+      <h2>Manage Users</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Create new user accounts. Share the password with the user. To list or delete users, use Supabase Dashboard.</p>
+      <form id="adminCreateForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="adminCreateEmail" placeholder="user@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="adminCreatePassword" placeholder="Temporary password" autocomplete="new-password">
+        </div>
+        <p id="adminCreateError" class="form-group" style="color:var(--red);display:none;"></p>
+        <p id="adminCreateSuccess" class="form-group" style="color:var(--green);display:none;"></p>
+        <div class="actions">
+          <button type="button" id="adminPanelClose">Close</button>
+          <button type="submit" id="adminCreateUser">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="manageUserModal">
+    <div class="modal-card">
+      <h2>Manage Users</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Select a user to delete. You cannot delete yourself.</p>
+      <div id="manageUserList" class="settings-users-list"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="manageUserModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="manageProjectsModal">
+    <div class="modal-card modal-card-large">
+      <h2>Manage Projects</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">View and delete projects. Deletion removes the project and its stored PDF.</p>
+      <div id="manageProjectsList" class="settings-users-list"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="manageProjectsModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="saveProjectModal">
+    <div class="modal-card">
+      <h2>Save Project</h2>
+      <div class="form-group">
+        <label>Project name</label>
+        <input type="text" id="saveProjectName" placeholder="Untitled">
+      </div>
+      <p id="saveProjectError" class="form-group" style="color:var(--red);display:none;"></p>
+      <div id="saveProjectProgress" class="save-project-progress" style="display:none;">
+        <ul id="saveProjectChecklist"></ul>
+      </div>
+      <div class="actions">
+        <button type="button" id="saveProjectCancel">Cancel</button>
+        <button type="button" id="saveProjectDo">Save</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="loadProjectModal">
+    <div class="modal-card">
+      <h2>Load Project</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
+      <div id="loadProjectList" class="form-group" style="max-height:200px;overflow-y:auto;"></div>
+      <p id="loadProjectEmpty" class="form-group" style="color:var(--text2);display:none;">No projects yet. Save your first project to get started.</p>
+      <div class="actions">
+        <button id="loadProjectCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
   <div class="context-menu" id="contextMenu">
     <button class="danger" id="ctxDelete">Delete</button>
   </div>
@@ -508,6 +807,15 @@
   (function() {
   <!-- SECTION: Constants -->
   if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || '';
+  const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) || '';
+  const SUPABASE_ENABLED = !!(SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.includes('supabase'));
+  let supabase = null;
+  if (SUPABASE_ENABLED && typeof window.supabase !== 'undefined') {
+    const { createClient } = window.supabase;
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
 
   const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5 };
   const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
@@ -567,8 +875,89 @@
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
-    lastScaleTapTime: 0
+    lastScaleTapTime: 0,
+    currentProjectId: null,
+    currentProjectName: null,
+    isAdmin: false,
+    pendingDeletePage: null,
+    supabaseSession: null,
+    pdfBuffer: null,
+    pdfStoragePath: null,
+    lastSavedAt: null
   };
+
+  async function sha256Hex(buffer) {
+    const hash = await crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  const PDF_CACHE_DB = 'clickcount-pdf-cache';
+  const PDF_CACHE_STORE = 'pdfs';
+  const PDF_CACHE_META_STORE = 'meta';
+  const PDF_CACHE_MAX_ENTRIES = 10;
+  const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
+
+  function openPdfCacheDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(PDF_CACHE_DB, 1);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve(req.result);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(PDF_CACHE_STORE)) {
+          db.createObjectStore(PDF_CACHE_STORE, { keyPath: 'projectId' });
+        }
+        if (!db.objectStoreNames.contains(PDF_CACHE_META_STORE)) {
+          db.createObjectStore(PDF_CACHE_META_STORE, { keyPath: 'projectId' });
+        }
+      };
+    });
+  }
+
+  async function pdfCacheGet(projectId, pdfHash) {
+    try {
+      const db = await openPdfCacheDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(PDF_CACHE_STORE, 'readonly');
+        const req = tx.objectStore(PDF_CACHE_STORE).get(projectId);
+        req.onsuccess = () => {
+          const entry = req.result;
+          if (entry && entry.pdfHash === pdfHash && entry.blob) resolve(entry.blob);
+          else resolve(null);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    } catch (_) { return null; }
+  }
+
+  async function pdfCachePut(projectId, blob, pdfHash) {
+    try {
+      const db = await openPdfCacheDb();
+      const size = blob.size;
+      const lastUsed = Date.now();
+      const tx = db.transaction([PDF_CACHE_STORE, PDF_CACHE_META_STORE], 'readwrite');
+      const store = tx.objectStore(PDF_CACHE_STORE);
+      const metaStore = tx.objectStore(PDF_CACHE_META_STORE);
+      const entries = await new Promise((resolve, reject) => {
+        const req = metaStore.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      let totalBytes = entries.reduce((s, e) => s + (e.size || 0), 0);
+      const byLastUsed = [...entries].sort((a, b) => (a.lastUsed || 0) - (b.lastUsed || 0));
+      for (const evict of byLastUsed) {
+        if (entries.length < PDF_CACHE_MAX_ENTRIES && totalBytes + size <= PDF_CACHE_MAX_BYTES) break;
+        if (evict.projectId === projectId) break;
+        store.delete(evict.projectId);
+        metaStore.delete(evict.projectId);
+        totalBytes -= evict.size || 0;
+        entries.splice(entries.findIndex(e => e.projectId === evict.projectId), 1);
+      }
+      store.put({ projectId, blob, pdfHash });
+      metaStore.put({ projectId, lastUsed, size });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch (_) { /* ignore */ }
+  }
 
   <!-- SECTION: Math & Format Helpers -->
   function ptDist(a, b) { return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2); }
@@ -675,12 +1064,26 @@
   function updateStatus() {
     const modeEl = document.getElementById('statusMode');
     const coordsEl = document.getElementById('statusCoords');
-    let mode = 'Ready';
-    if (state.tool === TOOL.SCALE) mode = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
-    else if (state.tool === TOOL.LINE) mode = state.quickLineStart ? 'Tap end point' : 'Tap start point';
-    else if (state.tool === TOOL.POLYLINE) mode = 'Click to add points';
-    else if (state.tool === TOOL.COUNTER) mode = 'Click to place marker';
-    else if (state.tool === TOOL.EDIT_POLY) mode = 'Edit polyline';
+    const projectSegment = state.currentProjectName || (state.pages.length ? 'Untitled' : '—');
+    let lastSavedSegment = '—';
+    if (state.lastSavedAt) {
+      const d = new Date(state.lastSavedAt);
+      const agoSec = (Date.now() - d.getTime()) / 1000;
+      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      let agoStr = 'Just now';
+      if (agoSec >= 86400) agoStr = Math.floor(agoSec / 86400) + 'd ago';
+      else if (agoSec >= 3600) agoStr = Math.floor(agoSec / 3600) + 'hr ago';
+      else if (agoSec >= 60) agoStr = Math.floor(agoSec / 60) + 'min ago';
+      lastSavedSegment = timeStr + ' | ' + agoStr;
+    }
+    let mode = projectSegment + ' - ' + lastSavedSegment;
+    let toolHint = '';
+    if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
+    else if (state.tool === TOOL.LINE) toolHint = state.quickLineStart ? 'Tap end point' : 'Tap start point';
+    else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
+    else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
+    else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
+    if (toolHint) mode += ' | ' + toolHint;
     if (modeEl) modeEl.textContent = mode;
     if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : '—';
   }
@@ -700,7 +1103,17 @@
   <!-- SECTION: PDF Rendering -->
   function renderPdf() {
     const page = state.pages[state.currentPage];
-    if (!page || !page.pdfPage) return;
+    if (!page || !page.pdfPage) {
+      pdfCanvas.width = 0;
+      pdfCanvas.height = 0;
+      pdfCanvas.style.width = '0';
+      pdfCanvas.style.height = '0';
+      annCanvas.width = 0;
+      annCanvas.height = 0;
+      annCanvas.style.width = '0';
+      annCanvas.style.height = '0';
+      return;
+    }
     if (pdfRenderTask) {
       pdfRenderPending = true;
       return;
@@ -1041,6 +1454,35 @@
         activeCounterEl.classList.remove('visible');
       }
     }
+    if (SUPABASE_ENABLED) {
+      const authBtn = document.getElementById('authBtn');
+      const authBtnSidebar = document.getElementById('authBtnSidebar');
+      const saveProjectBtn = document.getElementById('saveProjectBtn');
+      const saveProjectBtnSidebar = document.getElementById('saveProjectBtnSidebar');
+      const loadProjectBtn = document.getElementById('loadProjectBtn');
+      const loadProjectBtnSidebar = document.getElementById('loadProjectBtnSidebar');
+      const manageUsersBtn = document.getElementById('manageUsersBtn');
+      const manageUsersBtnSidebar = document.getElementById('manageUsersBtnSidebar');
+      document.querySelectorAll('.supabase-only').forEach(el => { el.style.display = ''; });
+      const loggedIn = !!(state.supabaseSession && state.supabaseSession.user);
+      if (authBtn) authBtn.textContent = loggedIn ? (state.supabaseSession?.user?.email || 'Sign Out') : 'Sign In';
+      if (authBtnSidebar) authBtnSidebar.textContent = loggedIn ? 'User' : 'Sign In';
+      if (saveProjectBtn) saveProjectBtn.style.display = loggedIn ? '' : 'none';
+      if (saveProjectBtnSidebar) saveProjectBtnSidebar.style.display = loggedIn ? '' : 'none';
+      if (loadProjectBtn) loadProjectBtn.style.display = loggedIn ? '' : 'none';
+      if (loadProjectBtnSidebar) loadProjectBtnSidebar.style.display = loggedIn ? '' : 'none';
+      if (manageUsersBtn) manageUsersBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
+      if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
+      const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
+      if (settingsManageProjectsBtn) settingsManageProjectsBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
+      const settingsSidebarBtn = document.getElementById('settingsSidebarBtn');
+      if (settingsSidebarBtn) settingsSidebarBtn.style.display = loggedIn ? '' : 'none';
+      const statusBarAuth = document.getElementById('statusBarAuth');
+      if (statusBarAuth) { statusBarAuth.textContent = loggedIn ? (state.supabaseSession?.user?.email || 'Sign Out') : 'Sign In'; statusBarAuth.style.display = ''; }
+    } else {
+      document.querySelectorAll('.supabase-only').forEach(el => { el.style.display = 'none'; });
+      document.querySelectorAll('#statusBarActions .supabase-only').forEach(el => { el.style.display = 'none'; });
+    }
     renderPagesList();
     renderCountersList();
     renderLineTypesList();
@@ -1054,13 +1496,27 @@
     el.innerHTML = '';
     state.pages.forEach((p, i) => {
       const div = document.createElement('div');
-      div.className = 'sidebar-item';
+      div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
       const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length);
       const hasScale = !!p.scale;
-      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span>' + (hasAnn ? ' <span style="color:var(--accent)">•</span>' : '') + '<span class="edit-btn" title="Rename">✎</span>';
-      div.onclick = (e) => { if (!e.target.closest('.edit-btn')) { state.currentPage = i; renderPdf(); updateUI(); } };
-      div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { p.label = v; updateUI(); }); });
-      onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { p.label = v; updateUI(); }); });
+      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span>' + (hasAnn ? ' <span style="color:var(--accent)">•</span>' : '') + '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>';
+      div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; renderPdf(); updateUI(); } };
+      const deletePage = () => {
+        if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
+        state.pages.splice(i, 1);
+        if (state.currentPage >= state.pages.length) state.currentPage = Math.max(0, state.pages.length - 1);
+        else if (state.currentPage > i) state.currentPage--;
+        if (state.selectedLinePageIdx === i) { state.selectedLineId = null; state.selectedLinePageIdx = null; }
+        else if (state.selectedLinePageIdx > i) state.selectedLinePageIdx--;
+        if (state.editingPolyline && state.editingPolyIndex === i) exitEditMode(false);
+        else if (state.editingPolyline && state.editingPolyIndex > i) state.editingPolyIndex--;
+        updateUI();
+        renderPdf();
+      };
+      const pageName = p.label || 'Page ' + (i + 1);
+      const editBtn = div.querySelector('.edit-btn');
+      div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { p.label = v; updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
+      onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { p.label = v; updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
       el.appendChild(div);
     });
   }
@@ -1214,7 +1670,7 @@
     el.addEventListener('dblclick', (e) => { e.preventDefault(); handler(); });
   }
 
-  function startRename(el, onSave) {
+  function startRename(el, onSave, opts) {
     if (!el) return;
     const span = el.tagName === 'SPAN' ? el : el.querySelector('.name');
     if (!span) return;
@@ -1224,24 +1680,56 @@
     inp.value = originalText;
     inp.className = 'rename-input';
     inp.style.cssText = 'width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px;';
-    span.replaceWith(inp);
+    let wrapper = inp;
+    if (opts?.onDelete) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'rename-with-delete';
+      wrapper.style.cssText = 'display:flex;align-items:center;gap:6px;width:100%;';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'page-delete-btn danger';
+      delBtn.title = 'Delete page';
+      delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e85447" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
+      delBtn.style.cssText = 'flex-shrink:0;width:24px;height:24px;padding:0;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
+        inp.dataset.cancelled = '1';
+        state.pendingDeletePage = { onDelete: opts.onDelete };
+        document.getElementById('deletePageName').textContent = opts.pageName || 'this page';
+        showModal('deletePageConfirmModal');
+      };
+      inp.style.flex = '1';
+      inp.style.minWidth = '0';
+      wrapper.appendChild(delBtn);
+      wrapper.appendChild(inp);
+    }
+    span.replaceWith(wrapper);
+    if (opts?.editBtn) opts.editBtn.style.display = 'none';
     inp.focus();
     inp.setSelectionRange(inp.value.length, inp.value.length);
     inp.onclick = inp.onmousedown = inp.onmouseup = (e) => e.stopPropagation();
-    inp.onblur = () => {
+    inp.onblur = (e) => {
       if (inp.dataset.cancelled) return;
+      if (opts?.onDelete && wrapper.contains && e.relatedTarget && wrapper.contains(e.relatedTarget)) return;
       const v = inp.value.trim();
       if (v) onSave(v);
-      inp.replaceWith(span);
-      span.textContent = v || originalText;
+      if (opts?.editBtn) opts.editBtn.style.display = '';
+      const newSpan = document.createElement('span');
+      newSpan.className = 'name';
+      newSpan.textContent = v || originalText;
+      wrapper.replaceWith(newSpan);
       updateUI();
     };
     inp.onkeydown = (e) => {
       if (e.key === 'Enter') inp.blur();
       if (e.key === 'Escape') {
         inp.dataset.cancelled = '1';
-        span.textContent = originalText;
-        inp.replaceWith(span);
+        if (opts?.editBtn) opts.editBtn.style.display = '';
+        const newSpan = document.createElement('span');
+        newSpan.className = 'name';
+        newSpan.textContent = originalText;
+        wrapper.replaceWith(newSpan);
         updateUI();
       }
     };
@@ -1301,33 +1789,44 @@
       setScaleFirstPolylineToastTimer = null;
     }, 3000);
   }
-  let addLineTypeFirstToastTimer = null;
-  function showAddLineTypeFirstToast() {
-    if (addLineTypeFirstToastTimer) clearTimeout(addLineTypeFirstToastTimer);
-    showModal('addLineTypeFirstModal');
-    addLineTypeFirstToastTimer = setTimeout(() => {
-      hideModal('addLineTypeFirstModal');
-      addLineTypeFirstToastTimer = null;
-    }, 3000);
+  function showLineTypeTab(tab) {
+    document.querySelectorAll('.line-type-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('chooseLineTypePanel').style.display = tab === 'choose' ? '' : 'none';
+    document.getElementById('createLineTypePanel').style.display = tab === 'create' ? '' : 'none';
+    if (tab === 'choose') populateChooseLineTypeList();
+    else if (tab === 'create') {
+      document.getElementById('createLineTypeName').value = '';
+      const cr = document.getElementById('createLineTypeColorRow');
+      cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
+      cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
+    }
   }
-
-  function showSelectLineTypeModal() {
-    const el = document.getElementById('selectLineTypeList');
-    el.innerHTML = '';
+  function populateChooseLineTypeList() {
+    const list = document.getElementById('chooseLineTypeList');
+    const empty = document.getElementById('chooseLineTypeEmpty');
+    list.innerHTML = '';
+    if (!state.lineTypes.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
     state.lineTypes.forEach(lt => {
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type';
       div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><span class="swatch" style="background:' + (lt.color || '#4a9eff') + '"></span>';
       div.onclick = () => {
         state.activeLineTypeId = lt.id;
-        hideModal('selectLineTypeModal');
+        hideModal('chooseLineTypeModal');
         state.tool = TOOL.LINE;
         state.quickLineStart = null;
         updateUI();
       };
-      el.appendChild(div);
+      list.appendChild(div);
     });
-    showModal('selectLineTypeModal');
+  }
+  function showChooseLineTypeModal() {
+    showLineTypeTab('choose');
+    showModal('chooseLineTypeModal');
   }
 
   function showLineColorModal(currentColor, onApply) {
@@ -1359,14 +1858,59 @@
     }
   }
 
+  async function initSupabaseAuth() {
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    state.supabaseSession = session;
+    if (session?.user) {
+      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).single();
+      state.isAdmin = !!profile?.is_admin;
+    } else {
+      state.isAdmin = false;
+    }
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      state.supabaseSession = session;
+      if (session?.user) {
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).single();
+        state.isAdmin = !!profile?.is_admin;
+      } else {
+        state.isAdmin = false;
+        state.currentProjectId = null;
+        state.currentProjectName = null;
+        state.pdfBuffer = null;
+        state.pdfStoragePath = null;
+        state.lastSavedAt = null;
+      }
+      updateUI();
+    });
+  }
+
   <!-- SECTION: Modals & Handlers -->
   document.getElementById('uploadPdf').onclick = () => document.getElementById('pdfInput').click();
   document.getElementById('uploadPdfSidebar').onclick = () => document.getElementById('pdfInput').click();
+  const PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase storage limit)
+  function titleFromPdfFilename(name) {
+    if (!name) return 'Untitled';
+    const s = String(name).replace(/\.pdf$/i, '').trim();
+    return s || 'Untitled';
+  }
   document.getElementById('pdfInput').onchange = async (e) => {
     const files = e.target.files;
     if (!files?.length) return;
-    for (const f of files) {
+    const useFirstOnly = SUPABASE_ENABLED && state.supabaseSession?.user;
+    const filesToProcess = useFirstOnly ? [files[0]] : Array.from(files);
+    const startPageIdx = state.pages.length;
+    for (const f of filesToProcess) {
+      if (SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
+        alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
+        e.target.value = '';
+        return;
+      }
       const buf = await f.arrayBuffer();
+      if (useFirstOnly) {
+        state.pdfBuffer = buf.slice(0);
+        state.pdfStoragePath = null;
+      }
       const pdf = await pdfjsLib.getDocument(buf).promise;
       const numPages = pdf.numPages;
       for (let i = 0; i < numPages; i++) {
@@ -1375,7 +1919,8 @@
         state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
       }
     }
-    state.currentPage = state.pages.length - 1;
+    state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
+    state.currentPage = startPageIdx;
     renderPdf();
     updateUI();
     e.target.value = '';
@@ -1406,12 +1951,8 @@
       showSetScaleFirstToast();
       return;
     }
-    if (!state.lineTypes.length) {
-      showAddLineTypeFirstToast();
-      return;
-    }
-    if (!state.activeLineTypeId) {
-      showSelectLineTypeModal();
+    if (!state.lineTypes.length || !state.activeLineTypeId) {
+      showChooseLineTypeModal();
       return;
     }
     if (state.quickLineStart) {
@@ -1558,7 +2099,21 @@
   };
   document.getElementById('lineTypeSettingsClose').onclick = () => hideModal('lineTypeSettingsModal');
   document.getElementById('lineColorCancel').onclick = () => { state.pendingLineColorApply = null; hideModal('lineColorModal'); };
-  document.getElementById('selectLineTypeCancel').onclick = () => hideModal('selectLineTypeModal');
+  document.querySelectorAll('.line-type-tab').forEach(t => t.onclick = () => showLineTypeTab(t.dataset.tab));
+  document.getElementById('chooseLineTypeCancel').onclick = () => hideModal('chooseLineTypeModal');
+  document.getElementById('createLineTypeCancel').onclick = () => hideModal('chooseLineTypeModal');
+  document.getElementById('createLineTypeCreate').onclick = () => {
+    const name = document.getElementById('createLineTypeName').value.trim() || 'Line';
+    const colorSel = document.querySelector('#createLineTypeColorRow .color-swatch.selected');
+    const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    const newLt = { id: uid(), name, color };
+    state.lineTypes.push(newLt);
+    state.activeLineTypeId = newLt.id;
+    hideModal('chooseLineTypeModal');
+    state.tool = TOOL.LINE;
+    state.quickLineStart = null;
+    updateUI();
+  };
   document.getElementById('lineColorCustom').onchange = () => applyLineColor(document.getElementById('lineColorCustom').value);
   document.getElementById('lineTypeSize').oninput = () => {
     state.lineTypeSettings.lineSize = parseInt(document.getElementById('lineTypeSize').value, 10);
@@ -1677,7 +2232,7 @@
   document.getElementById('exportPdf').onclick = () => {
     if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Export PDF requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Combined PDF requires jsPDF. Please refresh the page.'); return; }
     document.getElementById('exportMarkerScale').value = Math.round((state.exportSettings.markerScale ?? 0.75) * 100);
     document.getElementById('exportMarkerScaleVal').textContent = document.getElementById('exportMarkerScale').value;
     document.getElementById('exportLineScale').value = Math.round((state.exportSettings.lineScale ?? 0.75) * 100);
@@ -1694,6 +2249,171 @@
 
   document.getElementById('exportPdfCancel').onclick = () => hideModal('exportPdfModal');
 
+  let specificPagesSelections = {};
+  function openSpecificPagesModal() {
+    if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
+    const jsPDFLib = window.jspdf;
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Specific Pages requires jsPDF. Please refresh the page.'); return; }
+    specificPagesSelections = {};
+    state.pages.forEach((_, i) => { specificPagesSelections[i] = 'marked'; });
+    try {
+      const stored = localStorage.getItem('specificPagesIncludeReport');
+      document.getElementById('specificPagesIncludeReport').checked = stored !== '0';
+    } catch (_) {}
+    const grid = document.getElementById('specificPagesGrid');
+    grid.innerHTML = '';
+    state.pages.forEach((page, i) => {
+      const card = document.createElement('div');
+      card.className = 'specific-page-card';
+      card.dataset.pageIndex = String(i);
+      const img = document.createElement('img');
+      img.className = 'specific-page-thumb';
+      img.alt = 'Page ' + (i + 1);
+      img.style.background = '#fff';
+      const label = document.createElement('div');
+      label.className = 'specific-page-label';
+      label.textContent = page.label || 'Page ' + (i + 1);
+      const select = document.createElement('select');
+      select.innerHTML = '<option value="marked">Marked up</option><option value="unmarked">Not marked up</option><option value="exclude">Exclude</option>';
+      select.value = 'marked';
+      select.onchange = () => { specificPagesSelections[i] = select.value; updateSpecificPagesDownloadState(); };
+      card.appendChild(img);
+      card.appendChild(label);
+      card.appendChild(select);
+      grid.appendChild(card);
+      (async () => {
+        const THUMB_SCALE = 0.4;
+        const viewport = page.pdfPage.getViewport({ scale: THUMB_SCALE });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'display' }).promise;
+        img.src = canvas.toDataURL('image/jpeg', 0.8);
+      })();
+    });
+    updateSpecificPagesDownloadState();
+    showModal('specificPagesModal');
+  }
+  function sanitizeForFilename(s) {
+    const raw = (s || 'Untitled').replace(/\.pdf$/i, '').trim();
+    const cleaned = raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, '_').trim();
+    return cleaned || 'Untitled';
+  }
+  function updateSpecificPagesDownloadState() {
+    const hasIncluded = Object.values(specificPagesSelections).some(v => v !== 'exclude');
+    document.getElementById('specificPagesDownload').disabled = !hasIncluded;
+  }
+  function setAllSpecificPagesTo(value) {
+    state.pages.forEach((_, i) => { specificPagesSelections[i] = value; });
+    document.querySelectorAll('#specificPagesGrid select').forEach((sel, i) => {
+      if (specificPagesSelections[i] !== undefined) sel.value = specificPagesSelections[i];
+    });
+    updateSpecificPagesDownloadState();
+  }
+  async function downloadSpecificPages() {
+    const included = state.pages.map((_, i) => i).filter(i => specificPagesSelections[i] !== 'exclude');
+    if (!included.length) return;
+    hideModal('specificPagesModal');
+    const jsPDFLib = window.jspdf;
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
+    const includeReport = document.getElementById('specificPagesIncludeReport').checked;
+    try { localStorage.setItem('specificPagesIncludeReport', includeReport ? '1' : '0'); } catch (_) {}
+    const EXPORT_SCALE = 4;
+    const PT_TO_MM = 25.4 / 72;
+    const exportOverrides = { markerScale: state.exportSettings.markerScale ?? 0.75, lineScale: state.exportSettings.lineScale ?? 0.75 };
+    const btn = document.getElementById('specificPages');
+    const origText = btn.textContent;
+    btn.textContent = 'Downloading…';
+    try {
+      let doc = null;
+      if (includeReport) {
+        doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+        btn.textContent = 'Exporting report…';
+        await addReportPagesToPdf(doc);
+      }
+      for (let idx = 0; idx < included.length; idx++) {
+        const i = included[idx];
+        const page = state.pages[i];
+        btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
+        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+        if (specificPagesSelections[i] === 'marked') renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+        if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+        else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
+        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+      }
+      if (doc) {
+        const baseName = sanitizeForFilename(state.currentProjectName);
+        doc.save('takeoff-specific-pages_' + baseName + '.pdf');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Download failed: ' + (err.message || err));
+    }
+    btn.textContent = origText;
+  }
+
+  document.getElementById('specificPages').onclick = openSpecificPagesModal;
+  document.getElementById('specificPagesCancel').onclick = () => hideModal('specificPagesModal');
+  document.getElementById('specificPagesDownload').onclick = downloadSpecificPages;
+  document.getElementById('specificPagesAllMarked').onclick = () => setAllSpecificPagesTo('marked');
+  document.getElementById('specificPagesAllUnmarked').onclick = () => setAllSpecificPagesTo('unmarked');
+  document.getElementById('specificPagesAllExclude').onclick = () => setAllSpecificPagesTo('exclude');
+  document.getElementById('specificPagesIncludeReport').onchange = () => {
+    try { localStorage.setItem('specificPagesIncludeReport', document.getElementById('specificPagesIncludeReport').checked ? '1' : '0'); } catch (_) {}
+  };
+
+  async function addReportPagesToPdf(doc) {
+    if (typeof window.buildReportHtml !== 'function' || typeof html2canvas !== 'function') return 0;
+    const html = window.buildReportHtml();
+    if (!html) return 0;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;left:-9999px;width:210mm;height:297mm;';
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument;
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+    await new Promise(r => setTimeout(r, 100));
+    const body = iframeDoc.body;
+    if (!body) { document.body.removeChild(iframe); return 0; }
+    const reportCanvas = await html2canvas(body, { scale: 2, useCORS: true, logging: false });
+    document.body.removeChild(iframe);
+    const A4_W = 210, A4_H = 297;
+    const scale = 2;
+    const pxPerMm = (96 / 25.4) * scale;
+    const pageHeightPx = Math.floor(A4_H * pxPerMm);
+    let totalH = reportCanvas.height;
+    let y = 0;
+    let pageCount = 0;
+    while (y < totalH) {
+      const sliceH = Math.min(pageHeightPx, totalH - y);
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = reportCanvas.width;
+      sliceCanvas.height = sliceH;
+      const sctx = sliceCanvas.getContext('2d');
+      sctx.fillStyle = '#fff';
+      sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      sctx.drawImage(reportCanvas, 0, y, reportCanvas.width, sliceH, 0, 0, reportCanvas.width, sliceH);
+      const imgData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      const imgH = sliceH / pxPerMm;
+      const hMm = Math.min(imgH, A4_H);
+      if (pageCount > 0) doc.addPage([A4_W, hMm], 'p');
+      doc.addImage(imgData, 'JPEG', 0, 0, A4_W, hMm);
+      y += sliceH;
+      pageCount++;
+    }
+    return pageCount;
+  }
+
   document.getElementById('exportPdfDo').onclick = async () => {
     const markerScale = parseInt(document.getElementById('exportMarkerScale').value, 10) / 100;
     const lineScale = parseInt(document.getElementById('exportLineScale').value, 10) / 100;
@@ -1707,12 +2427,15 @@
     const origText = btn.textContent;
     const exportOverrides = { markerScale, lineScale };
     try {
+      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+      btn.textContent = 'Exporting report…';
+      await addReportPagesToPdf(doc);
       const firstViewport = state.pages[0].pdfPage.getViewport({ scale: EXPORT_SCALE });
       const firstW = (firstViewport.width / EXPORT_SCALE) * PT_TO_MM;
       const firstH = (firstViewport.height / EXPORT_SCALE) * PT_TO_MM;
-      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [firstW, firstH] });
+      doc.addPage([firstW, firstH], firstW > firstH ? 'l' : 'p');
       for (let i = 0; i < state.pages.length; i++) {
-        btn.textContent = 'Exporting ' + (i + 1) + '/' + state.pages.length + '…';
+        btn.textContent = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
         const page = state.pages[i];
         const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE });
         const canvas = document.createElement('canvas');
@@ -1724,10 +2447,11 @@
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
         const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        if (i > 0) doc.addPage([wMm, hMm], 'p');
+        if (i > 0) doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
         doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
       }
-      doc.save('takeoff-with-marks.pdf');
+      const baseName = sanitizeForFilename(state.currentProjectName);
+      doc.save('takeoff-with-marks_' + baseName + '.pdf');
     } catch (err) {
       console.error(err);
       alert('Export failed: ' + (err.message || err));
@@ -1763,7 +2487,15 @@
 
   document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
+  document.getElementById('statusBarClearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageCancel').onclick = () => hideModal('clearPageConfirmModal');
+  document.getElementById('deletePageCancel').onclick = () => { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; };
+  document.getElementById('deletePageConfirm').onclick = () => {
+    hideModal('deletePageConfirmModal');
+    const pending = state.pendingDeletePage;
+    state.pendingDeletePage = null;
+    if (pending?.onDelete) pending.onDelete();
+  };
   document.getElementById('clearPageConfirm').onclick = () => {
     hideModal('clearPageConfirmModal');
     const page = state.pages[state.currentPage];
@@ -1779,6 +2511,708 @@
 
   document.getElementById('hamburger').onclick = () => document.body.classList.toggle('sidebar-open');
   document.getElementById('sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
+
+  function formatLastSignIn(ts) {
+    if (!ts) return 'Never';
+    const d = new Date(ts);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return diffDays + ' days ago';
+    if (diffDays < 30) return Math.floor(diffDays / 7) + ' weeks ago';
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+  }
+  function openMySettings() {
+    const user = state.supabaseSession?.user;
+    if (!user) { document.getElementById('authBtn').click(); return; }
+    document.getElementById('mySettingsEmail').textContent = user.email || '—';
+    document.getElementById('mySettingsNewPassword').value = '';
+    document.getElementById('mySettingsConfirmPassword').value = '';
+    document.getElementById('mySettingsPasswordError').style.display = 'none';
+    document.getElementById('mySettingsPasswordSuccess').style.display = 'none';
+    document.getElementById('mySettingsManageUsersSection').style.display = state.isAdmin ? 'block' : 'none';
+    const usersListSection = document.getElementById('mySettingsUsersListSection');
+    const usersListEl = document.getElementById('mySettingsUsersList');
+    if (state.isAdmin) {
+      usersListSection.style.display = 'block';
+      usersListEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+      const session = state.supabaseSession;
+      if (!session?.access_token) {
+        usersListEl.innerHTML = '<p style="color:var(--red);">Not authenticated. Please sign in again.</p>';
+        return;
+      }
+      function renderUsers(list) {
+        if (!list || list.length === 0) {
+          usersListEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
+          return;
+        }
+        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        usersListEl.innerHTML = list.map((u) =>
+          '<div class="settings-user-row">' +
+          '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
+          '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
+          '<span class="settings-user-last">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
+          '</div>'
+        ).join('');
+      }
+      function showErr(msg, hint) {
+        usersListEl.innerHTML = '<p style="color:var(--red);">' + (msg + '').replace(/</g, '&lt;') + '</p>' +
+          (hint ? '<p style="font-size:12px;color:var(--text3);margin-top:8px;">' + hint + '</p>' : '');
+      }
+      const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY };
+      function tryEdgeFn() {
+        const ctrl = new AbortController();
+        setTimeout(() => ctrl.abort(), 10000);
+        fetch(SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers, signal: ctrl.signal })
+          .then(async (res) => {
+            let data;
+            try { data = await res.json(); } catch (_) { data = {}; }
+            if (res.ok && data.users) renderUsers(data.users);
+            else showErr((data && data.error) || ('HTTP ' + res.status), 'Deploy: supabase functions deploy admin-list-users --no-verify-jwt');
+          }).catch((e) => showErr((e && e.name === 'AbortError') ? 'Request timed out' : (e && e.message)));
+      }
+      const rpcCtrl = new AbortController();
+      setTimeout(() => rpcCtrl.abort(), 6000);
+      fetch(SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: '{}',
+        signal: rpcCtrl.signal
+      }).then(async (res) => {
+        let data;
+        try { data = await res.json(); } catch (_) { data = {}; }
+        if (res.ok && Array.isArray(data)) { renderUsers(data); return; }
+        tryEdgeFn();
+      }).catch(() => tryEdgeFn());
+    } else {
+      usersListSection.style.display = 'none';
+    }
+    showModal('mySettingsModal');
+  }
+
+  function openManageUserModal() {
+    const listEl = document.getElementById('manageUserList');
+    const session = state.supabaseSession;
+    if (!session?.access_token) return;
+    listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+    hideModal('mySettingsModal');
+    showModal('manageUserModal');
+    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY };
+    function fetchAndRender() {
+      function tryEdgeFn() {
+        fetch(SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers })
+          .then(async (res) => {
+            let data;
+            try { data = await res.json(); } catch (_) { data = {}; }
+            if (res.ok && data.users) renderList(data.users);
+            else listEl.innerHTML = '<p style="color:var(--red);">' + ((data && data.error) || ('HTTP ' + res.status)).replace(/</g, '&lt;') + '</p>';
+          }).catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
+      }
+      const rpcCtrl = new AbortController();
+      setTimeout(() => rpcCtrl.abort(), 6000);
+      fetch(SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}', signal: rpcCtrl.signal })
+        .then(async (res) => {
+          let data;
+          try { data = await res.json(); } catch (_) { data = {}; }
+          if (res.ok && Array.isArray(data)) { renderList(data); return; }
+          tryEdgeFn();
+        }).catch(() => tryEdgeFn());
+    }
+    function renderList(users) {
+      if (!users || users.length === 0) {
+        listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
+        return;
+      }
+      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const currentId = session.user?.id;
+      listEl.innerHTML = users.map((u) => {
+        const isSelf = u.id === currentId;
+        return '<div class="settings-user-row" data-user-id="' + esc(u.id) + '">' +
+          '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
+          '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
+          '<span class="settings-user-last">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
+          '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
+          '</div>';
+      }).join('');
+      listEl.querySelectorAll('.settings-user-delete:not([disabled])').forEach((btn) => {
+        btn.onclick = () => deleteUser(btn.dataset.userId, btn.dataset.email, btn);
+      });
+    }
+    fetchAndRender();
+  }
+
+  async function deleteUser(userId, email, btnEl) {
+    if (!confirm('Delete ' + (email || userId) + '? This cannot be undone.')) return;
+    const session = state.supabaseSession;
+    if (!session?.access_token) return;
+    btnEl.disabled = true;
+    btnEl.textContent = 'Deleting…';
+    try {
+      const res = await fetch(SUPABASE_URL + '/functions/v1/admin-delete-user', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: userId })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        const row = btnEl.closest('.settings-user-row');
+        row.remove();
+        if (!document.getElementById('manageUserList').querySelector('.settings-user-row')) {
+          document.getElementById('manageUserList').innerHTML = '<p style="color:var(--text3);">No users</p>';
+        }
+      } else {
+        alert(data.error || 'Delete failed');
+        btnEl.disabled = false;
+        btnEl.textContent = 'Delete';
+      }
+    } catch (e) {
+      alert(e.message || 'Delete failed');
+      btnEl.disabled = false;
+      btnEl.textContent = 'Delete';
+    }
+  }
+
+  function openManageProjectsModal() {
+    const listEl = document.getElementById('manageProjectsList');
+    const session = state.supabaseSession;
+    if (!session?.access_token) return;
+    listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+    hideModal('mySettingsModal');
+    showModal('manageProjectsModal');
+    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY };
+    const formatSizeMb = function (bytes) {
+      if (bytes == null || bytes < 0) return '';
+      const mb = bytes / (1024 * 1024);
+      return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
+    };
+    fetch(SUPABASE_URL + '/rest/v1/rpc/list_projects_for_admin', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' })
+      .then(async (res) => {
+        let data;
+        try { data = await res.json(); } catch (_) { data = {}; }
+        if (!res.ok) {
+          listEl.innerHTML = '<p style="color:var(--red);">' + ((data && data.message) || ('HTTP ' + res.status)).replace(/</g, '&lt;') + '</p>';
+          return;
+        }
+        if (!Array.isArray(data) || data.length === 0) {
+          listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>';
+          return;
+        }
+        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        listEl.innerHTML = data.map((p) => {
+          const sizeStr = formatSizeMb(p.size_bytes);
+          const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';
+          const meta = [dateStr, sizeStr].filter(Boolean).join(' · ');
+          return '<div class="settings-user-row" data-project-id="' + esc(p.id) + '">' +
+            '<span class="settings-project-name" title="' + esc(p.name) + '">' + esc(p.name || 'Untitled') + '</span>' +
+            '<span class="settings-user-role">' + esc(p.owner_email || '—') + '</span>' +
+            '<span class="settings-user-last">' + esc(meta) + '</span>' +
+            '<button type="button" class="settings-user-delete" data-project-id="' + esc(p.id) + '" data-project-name="' + esc(p.name || 'Untitled') + '">Delete</button>' +
+            '</div>';
+        }).join('');
+        listEl.querySelectorAll('.settings-user-delete').forEach((btn) => {
+          btn.onclick = () => deleteProject(btn.dataset.projectId, btn.dataset.projectName, btn);
+        });
+      })
+      .catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
+  }
+
+  async function deleteProject(projectId, name, btnEl) {
+    if (!confirm('Delete project "' + (name || projectId) + '"? This cannot be undone.')) return;
+    const session = state.supabaseSession;
+    if (!session?.access_token) return;
+    btnEl.disabled = true;
+    btnEl.textContent = 'Deleting…';
+    try {
+      const res = await fetch(SUPABASE_URL + '/functions/v1/admin-delete-project', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: projectId })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        const row = btnEl.closest('.settings-user-row');
+        row.remove();
+        if (!document.getElementById('manageProjectsList').querySelector('.settings-user-row')) {
+          document.getElementById('manageProjectsList').innerHTML = '<p style="color:var(--text3);">No projects</p>';
+        }
+      } else {
+        alert(data.error || 'Delete failed');
+        btnEl.disabled = false;
+        btnEl.textContent = 'Delete';
+      }
+    } catch (e) {
+      alert(e.message || 'Delete failed');
+      btnEl.disabled = false;
+      btnEl.textContent = 'Delete';
+    }
+  }
+
+  if (SUPABASE_ENABLED) {
+    document.getElementById('authBtn').onclick = () => {
+      if (state.supabaseSession?.user) {
+        const titleEl = document.getElementById('settingsTitle');
+        if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
+        showModal('settingsModal');
+      } else {
+        document.getElementById('authError').style.display = 'none';
+        document.getElementById('authError').textContent = '';
+        document.getElementById('authEmail').value = '';
+        document.getElementById('authPassword').value = '';
+        showModal('authModal');
+      }
+      updateUI();
+    };
+    document.getElementById('authBtnSidebar').onclick = () => document.getElementById('authBtn').click();
+    document.getElementById('settingsSidebarBtn').onclick = () => {
+      const titleEl = document.getElementById('settingsTitle');
+      if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
+      document.body.classList.remove('sidebar-open');
+      showModal('settingsModal');
+    };
+    document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); openMySettings(); };
+    document.getElementById('sidebarLogoGear').onclick = () => {
+      const titleEl = document.getElementById('settingsTitle');
+      if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
+      document.body.classList.remove('sidebar-open');
+      showModal('settingsModal');
+    };
+    document.getElementById('statusBarAuth').onclick = () => openMySettings();
+    document.getElementById('settingsGearBtn').onclick = () => document.getElementById('authBtn').click();
+    document.getElementById('authCancel').onclick = () => hideModal('authModal');
+    document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
+    document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
+    async function openLoadProjectModal() {
+      let user = state.supabaseSession?.user;
+      if (!user && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        state.supabaseSession = session;
+        user = session?.user;
+        updateUI();
+      }
+      if (!user) {
+        showModal('authModal');
+        return;
+      }
+      const listEl = document.getElementById('loadProjectList');
+      const emptyEl = document.getElementById('loadProjectEmpty');
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'none';
+      const { data: projects, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, size_bytes').eq('user_id', user.id).order('updated_at', { ascending: false });
+      if (error) {
+        listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects.</p>';
+        showModal('loadProjectModal');
+        return;
+      }
+      if (!projects || projects.length === 0) {
+        emptyEl.style.display = 'block';
+        showModal('loadProjectModal');
+        return;
+      }
+      const formatSizeMb = function (bytes) {
+        if (bytes == null || bytes < 0) return '';
+        const mb = bytes / (1024 * 1024);
+        return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
+      };
+      for (let i = 0; i < projects.length; i++) {
+        const proj = projects[i];
+        let sizeBytes = proj.size_bytes;
+        if (sizeBytes == null && proj.pdf_path) {
+          try {
+            const { data: info } = await supabase.storage.from('pdfs').info(proj.pdf_path);
+            const sz = info && (info.metadata?.size ?? info.size);
+            sizeBytes = (proj.data ? JSON.stringify(proj.data).length : 0) + (typeof sz === 'number' && sz >= 0 ? sz : 0);
+          } catch (_) { sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0; }
+        } else if (sizeBytes == null) {
+          sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0;
+        }
+        const div = document.createElement('div');
+        div.className = 'sidebar-item';
+        const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
+        const sizeStr = formatSizeMb(sizeBytes);
+        div.innerHTML = '<span class="name">' + (proj.name || 'Untitled') + '</span><span class="badge">' + date + (sizeStr ? ' · ' + sizeStr : '') + '</span>';
+        div.onclick = async () => {
+          const d = proj.data || {};
+          if (proj.pdf_path) {
+            try {
+              let buf;
+              const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
+              if (cachedBlob) {
+                buf = await cachedBlob.arrayBuffer();
+              } else {
+                const { data: signed, error: urlErr } = await supabase.storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
+                if (urlErr) throw urlErr;
+                buf = null;
+                const pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
+                state.pages = [];
+                const numPages = pdf.numPages;
+                for (let i = 0; i < numPages; i++) {
+                  const pdfPage = await pdf.getPage(i + 1);
+                  const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
+                }
+                if (d.counters) state.counters = d.counters;
+                if (d.lineTypes) state.lineTypes = d.lineTypes;
+                (d.pages || []).forEach(p => {
+                  const page = state.pages[p.index];
+                  if (page) {
+                    if (p.annotations) page.annotations = p.annotations;
+                    page.scale = p.scale !== undefined ? p.scale : null;
+                  }
+                });
+                state.pdfStoragePath = proj.pdf_path;
+                state.pdfBuffer = null;
+                if (proj.pdf_hash) {
+                  supabase.storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
+                    if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
+                  });
+                }
+              }
+              if (buf !== null) {
+              const pdf = await pdfjsLib.getDocument(buf).promise;
+              state.pages = [];
+              const numPages = pdf.numPages;
+              for (let i = 0; i < numPages; i++) {
+                const pdfPage = await pdf.getPage(i + 1);
+                const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+                state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
+              }
+              if (d.counters) state.counters = d.counters;
+              if (d.lineTypes) state.lineTypes = d.lineTypes;
+              (d.pages || []).forEach(p => {
+                const page = state.pages[p.index];
+                if (page) {
+                  if (p.annotations) page.annotations = p.annotations;
+                  page.scale = p.scale !== undefined ? p.scale : null;
+                }
+              });
+              state.pdfStoragePath = proj.pdf_path;
+              state.pdfBuffer = null;
+              }
+            } catch (e) {
+              listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
+              return;
+            }
+          } else {
+            state.pdfStoragePath = null;
+            state.pdfBuffer = null;
+            if (d.counters) state.counters = d.counters;
+            if (d.lineTypes) state.lineTypes = d.lineTypes;
+            (d.pages || []).forEach(p => {
+              const page = state.pages[p.index];
+              if (page) {
+                if (p.annotations) page.annotations = p.annotations;
+                page.scale = p.scale !== undefined ? p.scale : null;
+              }
+            });
+          }
+          state.currentProjectId = proj.id;
+          state.currentProjectName = proj.name || 'Untitled';
+          state.lastSavedAt = proj.updated_at || null;
+          state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
+          hideModal('loadProjectModal');
+          updateUI();
+          renderPdf();
+        };
+        listEl.appendChild(div);
+      }
+      showModal('loadProjectModal');
+    }
+    document.getElementById('settingsLoadProject').onclick = () => {
+      hideModal('settingsModal');
+      openLoadProjectModal();
+    };
+    document.getElementById('settingsCloseProject').onclick = () => {
+      hideModal('settingsModal');
+      if (state.pages.length > 0 && !confirm('Close project? Any unsaved changes will be lost.')) return;
+      state.pages = [];
+      state.currentPage = 0;
+      state.currentProjectId = null;
+      state.currentProjectName = null;
+      state.pdfBuffer = null;
+      state.pdfStoragePath = null;
+      state.lastSavedAt = null;
+      state.pagesListCollapsed = true;
+      document.getElementById('pagesSection').classList.add('collapsed');
+      document.getElementById('pagesCollapseIcon').textContent = '▶';
+      updateUI();
+      renderPdf();
+    };
+    document.getElementById('settingsExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
+    document.getElementById('settingsImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
+    document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
+    document.getElementById('mySettingsSignOut').onclick = () => { hideModal('mySettingsModal'); supabase.auth.signOut(); updateUI(); };
+    document.getElementById('mySettingsModalClose').onclick = () => hideModal('mySettingsModal');
+    document.getElementById('mySettingsManageUsers').onclick = () => { hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };
+    document.getElementById('mySettingsManageUser').onclick = () => openManageUserModal();
+    document.getElementById('mySettingsPasswordForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const newPw = document.getElementById('mySettingsNewPassword').value;
+      const confirmPw = document.getElementById('mySettingsConfirmPassword').value;
+      const errEl = document.getElementById('mySettingsPasswordError');
+      const successEl = document.getElementById('mySettingsPasswordSuccess');
+      errEl.style.display = 'none';
+      successEl.style.display = 'none';
+      if (!newPw || newPw.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (newPw !== confirmPw) {
+        errEl.textContent = 'Passwords do not match';
+        errEl.style.display = 'block';
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) {
+        errEl.textContent = error.message || 'Failed to update password';
+        errEl.style.display = 'block';
+        return;
+      }
+      successEl.textContent = 'Password updated';
+      successEl.style.display = 'block';
+      document.getElementById('mySettingsNewPassword').value = '';
+      document.getElementById('mySettingsConfirmPassword').value = '';
+    };
+    document.getElementById('authForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const errEl = document.getElementById('authError');
+      errEl.style.display = 'none';
+      if (!email || !password) {
+        errEl.textContent = 'Email and password required';
+        errEl.style.display = 'block';
+        return;
+      }
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        errEl.textContent = error.message || 'Sign in failed';
+        errEl.style.display = 'block';
+        return;
+      }
+      state.supabaseSession = data.session;
+      hideModal('authModal');
+      updateUI();
+    };
+    document.getElementById('saveProjectBtn').onclick = () => {
+      document.getElementById('saveProjectName').value = state.currentProjectName || 'Untitled';
+      document.getElementById('saveProjectError').style.display = 'none';
+      document.getElementById('saveProjectDo').disabled = false;
+      document.getElementById('saveProjectDo').textContent = 'Save';
+      document.getElementById('saveProjectProgress').style.display = 'none';
+      document.getElementById('saveProjectChecklist').innerHTML = '';
+      showModal('saveProjectModal');
+    };
+    document.getElementById('saveProjectBtnSidebar').onclick = () => document.getElementById('saveProjectBtn').click();
+    document.getElementById('saveProjectCancel').onclick = () => hideModal('saveProjectModal');
+    document.getElementById('saveProjectDo').onclick = async () => {
+      const name = document.getElementById('saveProjectName').value.trim() || 'Untitled';
+      const errEl = document.getElementById('saveProjectError');
+      const saveBtn = document.getElementById('saveProjectDo');
+      const progressEl = document.getElementById('saveProjectProgress');
+      const checklistEl = document.getElementById('saveProjectChecklist');
+      errEl.style.display = 'none';
+      const user = state.supabaseSession?.user;
+      if (!user) {
+        errEl.textContent = 'Please sign in to save.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const origText = saveBtn.textContent;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      checklistEl.innerHTML = '';
+      progressEl.style.display = 'block';
+      const addStep = (id, label) => {
+        const li = document.createElement('li');
+        li.id = 'saveStep-' + id;
+        li.className = 'pending';
+        li.textContent = label;
+        checklistEl.appendChild(li);
+      };
+      const markStepDone = (id) => {
+        const li = document.getElementById('saveStep-' + id);
+        if (li) li.classList.add('done');
+      };
+      const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+      const withTimeout = (promise, ms, label) =>
+        Promise.race([
+          promise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
+          )
+        ]);
+      const data = {
+        version: 1,
+        counters: state.counters,
+        lineTypes: state.lineTypes,
+        pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale }))
+      };
+      const dataJson = JSON.stringify(data);
+      const dataSize = dataJson.length;
+      const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
+      log('Starting save', { userId: user.id, name, hasPdfBuffer: !!state.pdfBuffer, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
+      try {
+        let pdfPath = state.pdfStoragePath;
+        if (state.pdfBuffer) {
+          let projectId = state.currentProjectId;
+          const pdfSize = state.pdfBuffer.byteLength;
+          const sizeBytes = dataSize + pdfSize;
+          let skipUpload = false;
+          if (projectId) {
+            const { data: row } = await supabase.from('projects').select('pdf_hash').eq('id', projectId).eq('user_id', user.id).single();
+            const newHash = await sha256Hex(state.pdfBuffer);
+            if (row?.pdf_hash === newHash) {
+              skipUpload = true;
+              log('PDF unchanged (hash match), skipping upload');
+            }
+          }
+          if (!projectId) {
+            addStep('data', 'Saving project data');
+            await tick();
+            log('Inserting project...');
+            const t0 = Date.now();
+            const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes }).select('id').single(), 60000, 'Save project');
+            log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
+            if (error) throw error;
+            projectId = row?.id;
+            if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
+            state.currentProjectId = projectId;
+            markStepDone('data');
+            await tick();
+          }
+          if (!skipUpload) {
+            addStep('pdf', 'Uploading PDF');
+            await tick();
+            const storagePath = user.id + '/' + projectId + '/document.pdf';
+            log('Uploading PDF...', { path: storagePath, size: state.pdfBuffer.byteLength });
+            const t1 = Date.now();
+            const { error: uploadErr } = await withTimeout(supabase.storage.from('pdfs').upload(storagePath, state.pdfBuffer, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
+            log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
+            if (uploadErr) throw uploadErr;
+            pdfPath = storagePath;
+            markStepDone('pdf');
+            await tick();
+            const newHash = await sha256Hex(state.pdfBuffer);
+            addStep('update', 'Updating project');
+            await tick();
+            log('Updating project with pdf_path and pdf_hash...');
+            const t2 = Date.now();
+            const { error: updateErr } = await withTimeout(supabase.from('projects').update({ name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, updated_at: new Date().toISOString() }).eq('id', projectId).eq('user_id', user.id), 30000, 'Update project');
+            log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
+            if (updateErr) throw updateErr;
+            markStepDone('update');
+          } else {
+            addStep('update', 'Updating project');
+            await tick();
+            log('Updating project data (PDF unchanged)...');
+            const t2 = Date.now();
+            const { error: updateErr } = await withTimeout(supabase.from('projects').update({ name, data, size_bytes: sizeBytes, updated_at: new Date().toISOString() }).eq('id', projectId).eq('user_id', user.id), 30000, 'Update project');
+            log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
+            if (updateErr) throw updateErr;
+            markStepDone('update');
+          }
+        } else if (state.currentProjectId) {
+          addStep('data', 'Updating project data');
+          await tick();
+          let sizeBytes = dataSize;
+          if (state.pdfStoragePath) {
+            try {
+              const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
+              const sz = info && (info.metadata?.size ?? info.size);
+              if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
+            } catch (_) { /* ignore */ }
+          }
+          log('Updating existing project (no PDF)...');
+          const t3 = Date.now();
+          const { error } = await withTimeout(supabase.from('projects').update({ name, data, size_bytes: sizeBytes, updated_at: new Date().toISOString() }).eq('id', state.currentProjectId).eq('user_id', user.id), 30000, 'Update project');
+          log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
+          if (error) throw error;
+          markStepDone('data');
+        } else {
+          addStep('data', 'Saving project data');
+          await tick();
+          log('Inserting project (no PDF)...');
+          const t4 = Date.now();
+          const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize }).select('id').single(), 60000, 'Save project');
+          log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
+          if (error) throw error;
+          const projectId = row?.id;
+          if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
+          state.currentProjectId = projectId;
+          markStepDone('data');
+        }
+        state.currentProjectName = name;
+        state.pdfBuffer = null;
+        if (pdfPath) state.pdfStoragePath = pdfPath;
+        state.lastSavedAt = new Date().toISOString();
+        log('Save complete');
+        hideModal('saveProjectModal');
+        updateUI();
+      } catch (e) {
+        console.error('[Save] Failed:', e);
+        log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
+        errEl.textContent = ((e?.message) || (e?.details) || (e?.hint) || String(e) || 'Save failed') + ' Click Save again to retry.';
+        errEl.style.display = 'block';
+        errEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = origText;
+      }
+    };
+    document.getElementById('loadProjectBtn').onclick = () => openLoadProjectModal();
+    document.getElementById('loadProjectBtnSidebar').onclick = () => openLoadProjectModal();
+    document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
+    document.getElementById('manageUsersBtn').onclick = () => {
+      document.getElementById('adminCreateEmail').value = '';
+      document.getElementById('adminCreatePassword').value = '';
+      document.getElementById('adminCreateError').style.display = 'none';
+      document.getElementById('adminCreateSuccess').style.display = 'none';
+      showModal('adminPanelModal');
+    };
+    document.getElementById('manageUsersBtnSidebar').onclick = () => document.getElementById('manageUsersBtn').click();
+    document.getElementById('adminPanelClose').onclick = () => hideModal('adminPanelModal');
+    document.getElementById('manageUserModalClose').onclick = () => hideModal('manageUserModal');
+    document.getElementById('manageProjectsModalClose').onclick = () => hideModal('manageProjectsModal');
+    document.getElementById('adminCreateForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('adminCreateEmail').value.trim();
+      const password = document.getElementById('adminCreatePassword').value;
+      const errEl = document.getElementById('adminCreateError');
+      const successEl = document.getElementById('adminCreateSuccess');
+      errEl.style.display = 'none';
+      successEl.style.display = 'none';
+      if (!email || !password) {
+        errEl.textContent = 'Email and password required';
+        errEl.style.display = 'block';
+        return;
+      }
+      const session = state.supabaseSession;
+      if (!session?.access_token) return;
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/admin-create-user', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          errEl.textContent = json.error || 'Create failed';
+          errEl.style.display = 'block';
+          return;
+        }
+        successEl.textContent = 'User created. Share the password with them.';
+        successEl.style.display = 'block';
+        document.getElementById('adminCreateEmail').value = '';
+        document.getElementById('adminCreatePassword').value = '';
+      } catch (e) {
+        errEl.textContent = e.message || 'Create failed';
+        errEl.style.display = 'block';
+      }
+    };
+  }
 
   document.getElementById('ctxDelete').onclick = () => {
     const t = state.ctxTarget;
@@ -2102,16 +3536,23 @@
       } else if (document.getElementById('setScaleFirstPolylineModal').classList.contains('visible')) {
         hideModal('setScaleFirstPolylineModal');
         if (setScaleFirstPolylineToastTimer) { clearTimeout(setScaleFirstPolylineToastTimer); setScaleFirstPolylineToastTimer = null; }
-      } else if (document.getElementById('addLineTypeFirstModal').classList.contains('visible')) {
-        hideModal('addLineTypeFirstModal');
-        if (addLineTypeFirstToastTimer) { clearTimeout(addLineTypeFirstToastTimer); addLineTypeFirstToastTimer = null; }
-      } else if (document.getElementById('selectLineTypeModal').classList.contains('visible')) {
-        hideModal('selectLineTypeModal');
+      } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
+        hideModal('chooseLineTypeModal');
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
         hideModal('counterModal');
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
       else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
+      else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
+      else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
+      else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
+      else if (document.getElementById('mySettingsModal').classList.contains('visible')) { hideModal('mySettingsModal'); }
+      else if (document.getElementById('authModal').classList.contains('visible')) { hideModal('authModal'); }
+      else if (document.getElementById('adminPanelModal').classList.contains('visible')) { hideModal('adminPanelModal'); }
+      else if (document.getElementById('manageUserModal').classList.contains('visible')) { hideModal('manageUserModal'); }
+      else if (document.getElementById('manageProjectsModal').classList.contains('visible')) { hideModal('manageProjectsModal'); }
+      else if (document.getElementById('saveProjectModal').classList.contains('visible')) { hideModal('saveProjectModal'); }
+      else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       else if (state.tool === TOOL.LINE) {
@@ -2157,7 +3598,10 @@
   window.formatDist = formatDist;
   window.renderIconHtml = renderIconHtml;
 
-  updateUI();
+  (async function init() {
+    await initSupabaseAuth();
+    updateUI();
+  })();
   })();
   </script>
   <script src="report.js"></script>

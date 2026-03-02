@@ -186,6 +186,10 @@
     .modal-card .actions button:last-child:hover { background: var(--accent2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
+    .macros-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .macros-table th, .macros-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    .macros-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }
+    .macros-table kbd { display: inline-block; padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 0.9rem; }
     .save-project-progress { margin: 12px 0; font-size: 0.9rem; color: var(--text2); }
     .save-project-progress ul { margin: 0; padding-left: 20px; list-style: none; }
     .save-project-progress li { margin: 4px 0; }
@@ -379,6 +383,8 @@
           <div class="status-bar-actions" id="statusBarActions">
             <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
             <span class="status-bar-sep supabase-only" id="statusBarSep2">|</span>
+            <span class="status-bar-link" id="statusBarMacros">Macros</span>
+            <span class="status-bar-sep">|</span>
             <span class="status-bar-link danger" id="statusBarClearPage">Clear Page</span>
           </div>
         </div>
@@ -607,6 +613,26 @@
   <div class="modal-overlay" id="pipeToolingCopiedModal">
     <div class="modal-card modal-card-toast">
       <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="macrosModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Keyboard Shortcuts</h2>
+        <button type="button" class="modal-close-btn" id="macrosModalClose" aria-label="Close">×</button>
+      </div>
+      <table class="macros-table">
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><kbd>M</kbd></td><td>Move mode</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Set Scale</td></tr>
+        <tr><td><kbd>C</kbd></td><td>Counter mode</td></tr>
+        <tr><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
+        <tr><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
+        <tr><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Finish polyline / Exit edit mode</td></tr>
+      </table>
     </div>
   </div>
   <div class="modal-overlay" id="chooseLineTypeModal">
@@ -2533,6 +2559,8 @@
   document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('statusBarClearPage').onclick = () => showModal('clearPageConfirmModal');
+  document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
+  document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
   document.getElementById('clearPageCancel').onclick = () => hideModal('clearPageConfirmModal');
   document.getElementById('deletePageCancel').onclick = () => { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; };
   document.getElementById('deletePageConfirm').onclick = () => {
@@ -3597,6 +3625,7 @@
       else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
+      else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
       else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }

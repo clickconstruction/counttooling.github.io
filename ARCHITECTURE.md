@@ -9,7 +9,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | index.html | 1–805 | HTML structure (head, body, modals) |
 | index.html | 15–252 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
 | index.html | 806–3606 | JavaScript (IIFE) |
-| report.js | 1–115 | Print report; uses globals from index.html |
+| report.js | 1–250 | Print report, Summary, getPipeToolingSummary; uses globals from index.html |
 
 ## index.html Section Map
 
@@ -21,7 +21,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate Helpers | 688–700 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 700–974 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 974–1362 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal |
+| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal |
 | Canvas Event Handlers | 1822–1895 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
 | Event Binding | 1895–2165 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE, preventDefault on touchend), keyboard (Escape, arrows, Enter) |
 | Init & Persistence | 2240–2470 | initSupabaseAuth, localStorage restore, save interval, window globals |
@@ -64,11 +64,12 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | User Settings | `mySettingsModal` or `openMySettings` — email, change password, Add User / Manage User (admin), All Users list (admin), Sign Out |
 | Project Settings | `settingsModal` — Save/Load/Close Project, Manage Projects (admin), Export, Import |
 | Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report checkbox |
+| For PipeTooling | `forPipeTooling` or `getPipeToolingSummary` |
 | Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |
 
 ## Key Globals (used by report.js)
 
-These must remain on `window`: `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`, `renderIconHtml`.
+These must remain on `window`: `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`, `renderIconHtml`. Report.js also exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`.
 
 ## Data Flow
 
@@ -83,7 +84,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 ## Mobile Layout (max-width: 768px)
 
 - **Header**: Hamburger, Set Scale (when no scale), Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250
-- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), scale display (1 ft = X when set), Upload PDF / Set Scale, Sign In / Save Project / Load Project (when Supabase enabled), Export / Import, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Clear Page
+- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), scale display (1 ft = X when set), Upload PDF / Set Scale, Sign In / Save Project / Load Project (when Supabase enabled), Export / Import, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, For PipeTooling, Clear Page
 - **Touch**: Single-finger pan, pinch-to-zoom, long-press (500ms) for context menu; `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE mode (direct touch, no synthetic click); `preventDefault` on touchend to avoid ghost click double-placement; 25px movement threshold for LINE/POLYLINE taps
 - **Scale taps**: 400ms debounce to avoid double-tap on mobile
 
@@ -102,7 +103,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Page/zoom row** — Page nav and zoom bar in same row; zoom bar to the right of page bar
 - **Add line type first** — Shown in Choose Line Type modal when no line types exist
 - **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
-- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report checkbox persisted); Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`
+- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report checkbox persisted), For PipeTooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid), all persisted
 - **Line Type Settings** — Click "Line Types" heading: opacity, line size
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`

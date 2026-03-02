@@ -1560,7 +1560,7 @@
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id ? ' active' : '');
       div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row"><span class="swatch" style="background:' + lt.color + '"></span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span><span class="edit-btn" title="Rename">✎</span></div>';
-      div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; updateUI(); } };
+      div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) state.quickLineStart = null; updateUI(); } };
       div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { lt.color = color; }); });
       div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { lt.name = v; updateUI(); }); });
       onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { lt.name = v; updateUI(); }); });
@@ -2074,7 +2074,10 @@
     const icon = sel ? sel.dataset.path : ICONS[0].value;
     const colorSel = document.querySelector('#counterColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
-    state.counters.push({ id: uid(), name, icon, color });
+    const newCounter = { id: uid(), name, icon, color };
+    state.counters.push(newCounter);
+    state.activeCounterType = newCounter.id;
+    state.tool = TOOL.COUNTER;
     hideModal('counterModal');
     updateUI();
   };
@@ -2091,7 +2094,9 @@
     const name = document.getElementById('lineTypeName').value.trim() || 'Line';
     const colorSel = document.querySelector('#lineTypeColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
-    state.lineTypes.push({ id: uid(), name, color });
+    const newLt = { id: uid(), name, color };
+    state.lineTypes.push(newLt);
+    state.activeLineTypeId = newLt.id;
     hideModal('lineTypeModal');
     updateUI();
   };
@@ -3550,6 +3555,14 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, [contenteditable="true"]')) return;
+    const k = e.key.toLowerCase();
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
+      else if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
+      else if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
+      else if (k === 'l') { document.getElementById('quickLine').click(); e.preventDefault(); }
+      else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
+    }
     if (e.key === 'Escape') {
       if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
         hideModal('setScaleFirstModal');

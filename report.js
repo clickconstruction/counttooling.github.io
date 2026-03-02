@@ -14,6 +14,21 @@
       .replace(/'/g, '&#39;');
   }
 
+  function pickScaleForLineType(pagesList) {
+    const preferredUnits = ['ft', 'in', 'm', 'cm', 'yd'];
+    for (const u of preferredUnits) {
+      for (const p1 of pagesList) {
+        const scale = state.pages[p1 - 1]?.scale;
+        if (scale && scale.unit === u) return scale;
+      }
+    }
+    for (const p1 of pagesList) {
+      const scale = state.pages[p1 - 1]?.scale;
+      if (scale) return scale;
+    }
+    return state.pages[0]?.scale ?? null;
+  }
+
   function buildReportHtml() {
     if (!window.state || !state.pages || !state.pages.length) return '';
 
@@ -87,8 +102,127 @@
       html += '</section>';
     });
 
+    const counterSummary = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.counters || []).forEach(c => {
+        const markers = ann.counterMarkers?.[c.id] || [];
+        if (markers.length > 0) {
+          if (!counterSummary[c.id]) counterSummary[c.id] = { name: c.name, icon: c.icon, color: c.color, total: 0, pages: [] };
+          counterSummary[c.id].total += markers.length;
+          counterSummary[c.id].pages.push(i + 1);
+        }
+      });
+    });
+
+    const lineTypeSummary = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.lineTypes || []).forEach(lt => {
+        let runs = 0, len = 0;
+        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          runs++;
+          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+        });
+        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          runs++;
+          len += polylineDistance(poly.points || [], poly.closed);
+        });
+        if (runs > 0) {
+          if (!lineTypeSummary[lt.id]) lineTypeSummary[lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
+          lineTypeSummary[lt.id].runs += runs;
+          lineTypeSummary[lt.id].lengthPdfPts += len;
+          lineTypeSummary[lt.id].pages.push(i + 1);
+        }
+      });
+    });
+
+    html += '<section>';
+    html += '<h2 class="page-header">Summary</h2>';
+    const hasSummary = Object.keys(counterSummary).length > 0 || Object.keys(lineTypeSummary).length > 0;
+    if (hasSummary) {
+      html += '<table class="report-table"><tr><th>Item</th><th>Total</th><th>Pages</th></tr>';
+      (state.counters || []).forEach(c => {
+        const r = counterSummary[c.id];
+        if (r) {
+          const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
+          html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.name) + '</span></td><td>' + r.total + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+        }
+      });
+      (state.lineTypes || []).forEach(lt => {
+        const r = lineTypeSummary[lt.id];
+        if (r) {
+          const scale = pickScaleForLineType(r.pages);
+          const unit = scale?.unit || 'px';
+          const num = scale
+            ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
+            : String(Math.round(r.lengthPdfPts));
+          const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
+          html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+        }
+      });
+      html += '</table>';
+    } else {
+      html += '<p class="section-header">No items to summarize.</p>';
+    }
+    html += '</section>';
+
     html += '</body></html>';
     return html;
+  }
+
+  function getPipeToolingSummary() {
+    if (!window.state || !state.pages || !state.pages.length) return '';
+    const counterSummary = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.counters || []).forEach(c => {
+        const markers = ann.counterMarkers?.[c.id] || [];
+        if (markers.length > 0) {
+          if (!counterSummary[c.id]) counterSummary[c.id] = { name: c.name, total: 0, pages: [] };
+          counterSummary[c.id].total += markers.length;
+          counterSummary[c.id].pages.push(i + 1);
+        }
+      });
+    });
+    const lineTypeSummary = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.lineTypes || []).forEach(lt => {
+        let runs = 0, len = 0;
+        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          runs++;
+          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+        });
+        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          runs++;
+          len += polylineDistance(poly.points || [], poly.closed);
+        });
+        if (runs > 0) {
+          if (!lineTypeSummary[lt.id]) lineTypeSummary[lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
+          lineTypeSummary[lt.id].lengthPdfPts += len;
+          lineTypeSummary[lt.id].pages.push(i + 1);
+        }
+      });
+    });
+    const lines = [];
+    (state.counters || []).forEach(c => {
+      const r = counterSummary[c.id];
+      if (r) lines.push([r.name, r.total, r.pages.join(', ')].join('\t'));
+    });
+    (state.lineTypes || []).forEach(lt => {
+      const r = lineTypeSummary[lt.id];
+      if (r) {
+        const scale = pickScaleForLineType(r.pages);
+        const unit = scale?.unit || 'px';
+        const num = scale
+          ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
+          : String(Math.round(r.lengthPdfPts));
+        const fixture = unit + ' of ' + r.name;
+        lines.push([fixture, num, r.pages.join(', ')].join('\t'));
+      }
+    });
+    return lines.join('\n');
   }
 
   function printReport() {
@@ -110,6 +244,7 @@
   window.escapeHtml = escapeHtml;
   window.buildReportHtml = buildReportHtml;
   window.printReport = printReport;
+  window.getPipeToolingSummary = getPipeToolingSummary;
 
   document.getElementById('printReport').addEventListener('click', printReport);
 })();

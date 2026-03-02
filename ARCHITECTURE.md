@@ -6,9 +6,9 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| index.html | 1–170 | HTML structure |
-| index.html | 12–170 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
-| index.html | 280–2165 | JavaScript (IIFE) |
+| index.html | 1–805 | HTML structure (head, body, modals) |
+| index.html | 15–252 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
+| index.html | 806–3606 | JavaScript (IIFE) |
 | report.js | 1–115 | Print report; uses globals from index.html |
 
 ## index.html Section Map
@@ -21,7 +21,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate Helpers | 688–700 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 700–974 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 974–1362 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, setScaleFirst toasts, selectLineTypeModal, clearPageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal |
+| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal |
 | Canvas Event Handlers | 1822–1895 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
 | Event Binding | 1895–2165 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE, preventDefault on touchend), keyboard (Escape, arrows, Enter) |
 | Init & Persistence | 2240–2470 | initSupabaseAuth, localStorage restore, save interval, window globals |
@@ -63,6 +63,8 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject`; opened via `settingsManageProjects` in Project Settings |
 | User Settings | `mySettingsModal` or `openMySettings` — email, change password, Add User / Manage User (admin), All Users list (admin), Sign Out |
 | Project Settings | `settingsModal` — Save/Load/Close Project, Manage Projects (admin), Export, Import |
+| Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report checkbox |
+| Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |
 
 ## Key Globals (used by report.js)
 
@@ -81,7 +83,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 ## Mobile Layout (max-width: 768px)
 
 - **Header**: Hamburger, Set Scale (when no scale), Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250
-- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), scale display (1 ft = X when set), Upload PDF / Set Scale, Sign In / Save Project / Load Project (when Supabase enabled), Export / Import, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Print Report, Export PDF, Clear Page
+- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), scale display (1 ft = X when set), Upload PDF / Set Scale, Sign In / Save Project / Load Project (when Supabase enabled), Export / Import, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Clear Page
 - **Touch**: Single-finger pan, pinch-to-zoom, long-press (500ms) for context menu; `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE mode (direct touch, no synthetic click); `preventDefault` on touchend to avoid ghost click double-placement; 25px movement threshold for LINE/POLYLINE taps
 - **Scale taps**: 400ms debounce to avoid double-tap on mobile
 
@@ -93,14 +95,14 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Per-page scale** — Each page has `page.scale`; Set Scale only affects current page; `getPageScale(pi)` helper
 - **Scale crosshair** — Plus icon at scale point A/B when setting scale
 - **Scale toasts** — "Set Scale first to use Quick Line" / "Set Scale first to use Polyline" (3s auto-dismiss, Escape to close)
-- **Select Line Type modal** — When Line/Quick Line clicked with no active line type; pick from list
+- **Choose Line Type modal** — When Line/Quick Line clicked with no line types or no active line type; tabs: Choose Line Type / Create Line Type (like Counter modal); empty state: "Add a line type first using **Create Line Type**"
 - **Counter modal** — Tabs: Choose Counter (default), Create Counter; Choose Counter lists existing counters to select; Create Counter for new counter; selected icon outlined with accent; color palette 9 colors (no white)
 - **Line button restart** — When drawing a line (quickLineStart set), tap Line again to clear start point and restart
 - **Header active type** — On mobile: counter icon (SVG, colored) next to Counter when active; line type color swatch next to Line when active
 - **Page/zoom row** — Page nav and zoom bar in same row; zoom bar to the right of page bar
-- **Add line type first toast** — "Add a line type first" when no line types exist
+- **Add line type first** — Shown in Choose Line Type modal when no line types exist
 - **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
-- **Export PDF** — Button below Print Report; modal with marker size and line width sliders (25–150%); uses jsPDF; JPEG compression; settings persisted
+- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report checkbox persisted); Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid), all persisted
 - **Line Type Settings** — Click "Line Types" heading: opacity, line size
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
@@ -111,9 +113,13 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Rename** — Edit buttons on pages, counters, line types, lines; Escape cancels (reverts); arrow keys move cursor in input
 - **Line type layout** — Two-row: name on top, swatch + runs/length + edit on bottom
 - **Lines layout** — Name on top, length below, swatch + edit on bottom; click to select/highlight on canvas
-- **Selection highlight** — `.sidebar-item.active` for selected counter, line type, line
+- **Selection highlight** — `.sidebar-item.active` for selected counter, line type, line, and current page in Pages list
 - **Scale badge** — Page number in Pages uses `.badge-scale-set` (yellow background, black text) when page has scale
 - **Pages collapse** — Click "Pages" heading toggles `pagesListCollapsed`; `#pagesSection.collapsed` hides list
+- **Page edit/delete** — Edit (yellow icon) and delete (red icon) per page; delete shows confirmation modal with page name; edit icon hidden while editing
+- **Default project title** — On PDF upload, `state.currentProjectName` set from filename minus `.pdf`
+- **First page on upload** — When uploading PDF, first page of added PDF is selected by default
+- **Status bar** — Shows `[project name] - [last saved time] | [time ago]` when project open; tool hints appended when in active tool mode
 - **Zoom** — Range 0.2–800%; CSS scale during wheel; debounced PDF re-render; translate3d for pan
 - **Supabase Phase 1 & 2** — Admin-provisioned auth (Sign In only), Add User / Manage User (admin creates and deletes accounts) in User Settings, Manage Projects (admin lists and deletes projects) in Project Settings, Save Project / Load Project; `profiles` and `projects` tables (`pdf_path`, `pdf_hash`, `size_bytes`); `pdfs` storage bucket; Edge Functions `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`; RPC `list_users_for_admin`, `list_projects_for_admin`; hash-based skip on upload; IndexedDB cache (10 projects, 500 MB); config via `config.js` (SUPABASE_SETUP.md)
 - **PDF size limit** — When Supabase is enabled, PDF uploads over 50 MB are rejected with an alert (Supabase storage limit)

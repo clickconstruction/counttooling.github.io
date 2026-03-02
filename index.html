@@ -342,6 +342,7 @@
           <button id="printReport" class="sidebar-btn sidebar-btn-primary">Show Report</button>
           <button id="exportPdf" class="sidebar-btn">Combined PDF</button>
           <button id="specificPages" class="sidebar-btn">Specific Pages</button>
+          <button id="forPipeTooling" class="sidebar-btn">For PipeTooling</button>
         </div>
         <div class="sidebar-section sidebar-clear-page">
           <button id="clearPageSidebar" class="sidebar-btn danger">Clear Page</button>
@@ -599,6 +600,11 @@
   <div class="modal-overlay" id="setScaleFirstPolylineModal">
     <div class="modal-card modal-card-toast">
       <p style="margin:0;font-size:1rem;">Set Scale first to use Polyline.</p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="pipeToolingCopiedModal">
+    <div class="modal-card modal-card-toast">
+      <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
     </div>
   </div>
   <div class="modal-overlay" id="chooseLineTypeModal">
@@ -2371,6 +2377,21 @@
     try { localStorage.setItem('specificPagesIncludeReport', document.getElementById('specificPagesIncludeReport').checked ? '1' : '0'); } catch (_) {}
   };
 
+  document.getElementById('forPipeTooling').onclick = async () => {
+    const text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary() : '';
+    if (!text) {
+      alert('No items to summarize. Add counters or line types first.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showModal('pipeToolingCopiedModal');
+      setTimeout(() => hideModal('pipeToolingCopiedModal'), 1500);
+    } catch (err) {
+      alert('Could not copy to clipboard: ' + (err.message || err));
+    }
+  };
+
   async function addReportPagesToPdf(doc) {
     if (typeof window.buildReportHtml !== 'function' || typeof html2canvas !== 'function') return 0;
     const html = window.buildReportHtml();
@@ -3543,6 +3564,7 @@
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
       else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
+      else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
       else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }

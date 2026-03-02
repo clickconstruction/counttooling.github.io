@@ -507,16 +507,18 @@
       <div class="form-group form-group-center">
         <label><input type="checkbox" id="counterShowRings"> Show ring around counters</label>
       </div>
-      <div class="form-group counter-ring-options">
-        <label>Ring size: <span id="counterRingSizeVal">100</span>%</label>
-        <input type="range" id="counterRingSize" min="50" max="200" value="100" step="5">
-      </div>
-      <div class="form-group counter-ring-options">
-        <label>Ring opacity: <span id="counterRingOpacityVal">100</span>%</label>
-        <input type="range" id="counterRingOpacity" min="20" max="100" value="100" step="5">
-      </div>
-      <div class="form-group form-group-center counter-ring-options">
-        <label><input type="checkbox" id="counterRingSolid"> Solid ring</label>
+      <div id="counterRingSection">
+        <div class="form-group counter-ring-options">
+          <label>Ring size: <span id="counterRingSizeVal">100</span>%</label>
+          <input type="range" id="counterRingSize" min="50" max="200" value="100" step="5">
+        </div>
+        <div class="form-group counter-ring-options">
+          <label>Ring opacity: <span id="counterRingOpacityVal">100</span>%</label>
+          <input type="range" id="counterRingOpacity" min="20" max="100" value="100" step="5">
+        </div>
+        <div class="form-group form-group-center counter-ring-options">
+          <label><input type="checkbox" id="counterRingSolid"> Solid ring</label>
+        </div>
       </div>
       <div class="actions">
         <button id="counterSettingsClose">Done</button>
@@ -873,7 +875,7 @@
     scalePointA: null, scalePointB: null, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
-    counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: false, outlineSize: 0 },
+    counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 },
     pagesListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2 },
     exportSettings: { markerScale: 0.75, lineScale: 0.75 },
@@ -1209,7 +1211,7 @@
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, BATTERY_PATH, CHARGING_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
-    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: false, outlineSize: 0 };
+    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
     const s = cs.size;
     const opacity = cs.opacity;
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
@@ -1314,7 +1316,7 @@
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, BATTERY_PATH, CHARGING_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
-    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: false, outlineSize: 0 };
+    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
     const s = (cs.size || 20) * scale * markerScale;
     const opacity = cs.opacity;
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
@@ -1535,7 +1537,7 @@
       div.className = 'sidebar-item' + (state.activeCounterType === c.id ? ' active' : '');
       const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
       div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Rename">✎</span>';
-      div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; updateUI(); } };
+      div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
       div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { c.color = color; }); });
       div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { c.name = v; updateUI(); }); });
       onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { c.name = v; updateUI(); }); });
@@ -1560,7 +1562,7 @@
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id ? ' active' : '');
       div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row"><span class="swatch" style="background:' + lt.color + '"></span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span><span class="edit-btn" title="Rename">✎</span></div>';
-      div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) state.quickLineStart = null; updateUI(); } };
+      div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
       div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { lt.color = color; }); });
       div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { lt.name = v; updateUI(); }); });
       onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { lt.name = v; updateUI(); }); });
@@ -1825,6 +1827,9 @@
         hideModal('chooseLineTypeModal');
         state.tool = TOOL.LINE;
         state.quickLineStart = null;
+        state.pagesListCollapsed = true;
+        document.getElementById('pagesSection').classList.add('collapsed');
+        document.getElementById('pagesCollapseIcon').textContent = '▶';
         updateUI();
       };
       list.appendChild(div);
@@ -2004,6 +2009,9 @@
         state.activeCounterType = c.id;
         state.tool = TOOL.COUNTER;
         hideModal('counterModal');
+        state.pagesListCollapsed = true;
+        document.getElementById('pagesSection').classList.add('collapsed');
+        document.getElementById('pagesCollapseIcon').textContent = '▶';
         updateUI();
       };
       list.appendChild(div);
@@ -2078,6 +2086,9 @@
     state.counters.push(newCounter);
     state.activeCounterType = newCounter.id;
     state.tool = TOOL.COUNTER;
+    state.pagesListCollapsed = true;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
     hideModal('counterModal');
     updateUI();
   };
@@ -2097,6 +2108,9 @@
     const newLt = { id: uid(), name, color };
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
+    state.pagesListCollapsed = true;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
     hideModal('lineTypeModal');
     updateUI();
   };
@@ -2123,6 +2137,9 @@
     hideModal('chooseLineTypeModal');
     state.tool = TOOL.LINE;
     state.quickLineStart = null;
+    state.pagesListCollapsed = true;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
     updateUI();
   };
   document.getElementById('lineColorCustom').onchange = () => applyLineColor(document.getElementById('lineColorCustom').value);
@@ -2150,6 +2167,7 @@
     document.getElementById('counterOutline').value = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
     document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
     document.getElementById('counterShowRings').checked = state.counterSettings.showRings;
+    document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
     document.getElementById('counterNumberSize').value = state.counterSettings.numberSize || 10;
     document.getElementById('counterNumberSizeVal').textContent = state.counterSettings.numberSize || 10;
     document.getElementById('counterRingSize').value = state.counterSettings.ringSize != null ? state.counterSettings.ringSize : 100;
@@ -2177,6 +2195,7 @@
   };
   document.getElementById('counterShowRings').onchange = () => {
     state.counterSettings.showRings = document.getElementById('counterShowRings').checked;
+    document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
     renderAnnotations();
   };
   document.getElementById('counterNumberSize').oninput = () => {

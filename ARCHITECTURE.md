@@ -61,8 +61,9 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Admin panel | `adminPanelModal` or `adminCreateUser` |
 | Manage User modal | `manageUserModal` or `openManageUserModal` or `deleteUser` |
 | Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject`; opened via `settingsManageProjects` in Project Settings |
+| Manage Icons modal | `manageIconsModal` or `openManageIconsModal`; opened via `settingsManageIcons` in Project Settings; edit icon display names; `getIconName(path)` |
 | User Settings | `mySettingsModal` or `openMySettings` — email, change password, Add User / Manage User (admin), All Users list (admin), Sign Out |
-| Project Settings | `settingsModal` — Save/Load/Close Project, Manage Projects (admin), Export, Import |
+| Project Settings | `settingsModal` — Save/Load/Close Project, Manage Projects (admin), Manage Icons, Export, Import |
 | Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report checkbox |
 | For PipeTooling | `forPipeTooling` or `getPipeToolingSummary` |
 | Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |

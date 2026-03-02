@@ -198,6 +198,11 @@
     .save-project-progress li.done::before { content: "✓ "; }
     .modal-card.modal-card-toast { width: fit-content; max-width: none; }
     .modal-card-large { max-width: 700px; width: 95%; }
+    .manage-icons-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+    .manage-icons-list .manage-icon-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
+    .manage-icons-list .manage-icon-row .icon-svg { flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+    .manage-icons-list .manage-icon-row .icon-svg svg { width: 24px; height: 24px; }
+    .manage-icons-list .manage-icon-row input { flex: 1; min-width: 0; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 1rem; }
     #manageProjectsList { max-height: 50vh; }
     .specific-pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; max-height: 50vh; overflow-y: auto; margin-bottom: 16px; }
     .specific-page-card { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
@@ -605,6 +610,11 @@
       <p style="margin:0;font-size:1rem;">Set Scale first to use Quick Line.</p>
     </div>
   </div>
+  <div class="modal-overlay" id="outOfBoundsModal">
+    <div class="modal-card modal-card-toast">
+      <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
+    </div>
+  </div>
   <div class="modal-overlay" id="setScaleFirstPolylineModal">
     <div class="modal-card modal-card-toast">
       <p style="margin:0;font-size:1rem;">Set Scale first to use Polyline.</p>
@@ -699,8 +709,23 @@
         <button type="button" class="settings-menu-btn" id="settingsLoadProject">Load Project</button>
         <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
+        <button type="button" class="settings-menu-btn" id="settingsManageIcons">Manage Icons</button>
         <button type="button" class="settings-menu-btn" id="settingsExport">Export</button>
         <button type="button" class="settings-menu-btn" id="settingsImport">Import</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="manageIconsModal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-card-header">
+        <h2>Manage Icons</h2>
+        <button type="button" class="modal-close-btn" id="manageIconsModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Edit display names for each icon. These names appear in reports and when creating counters.</p>
+      <div id="manageIconsList" class="manage-icons-list"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="manageIconsCancel">Cancel</button>
+        <button type="button" id="manageIconsSave">Save</button>
       </div>
     </div>
   </div>
@@ -894,6 +919,11 @@
   ];
 
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [] }; }
+  function getIconName(path) {
+    if (state.iconNames && state.iconNames[path]) return state.iconNames[path];
+    const ic = ICONS.find(i => i.value === path);
+    return ic ? ic.name : 'Icon';
+  }
 
   <!-- SECTION: State -->
   const state = {
@@ -902,6 +932,7 @@
     quickLineStart: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 },
+    iconNames: {},
     pagesListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2 },
     exportSettings: { markerScale: 0.75, lineScale: 0.75 },
@@ -1063,6 +1094,15 @@
     const el = document.querySelector('.canvas-wrapper');
     const rect = el ? el.getBoundingClientRect() : { left: 0, top: 0 };
     return { x: (canvasX - state.pan.x) / state.zoom, y: (canvasY - state.pan.y) / state.zoom };
+  }
+
+  function isPointInPageBounds(p) {
+    const page = state.pages[state.currentPage];
+    if (!page?.pdfPage) return false;
+    const scale = state.zoom * dpr();
+    const vp = page.pdfPage.getViewport({ scale });
+    const w = vp.width / scale, h = vp.height / scale;
+    return p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h;
   }
 
   function hitTest(pos, radius = 12) {
@@ -1823,6 +1863,15 @@
       setScaleFirstPolylineToastTimer = null;
     }, 3000);
   }
+  let outOfBoundsToastTimer = null;
+  function showOutOfBoundsToast() {
+    if (outOfBoundsToastTimer) clearTimeout(outOfBoundsToastTimer);
+    showModal('outOfBoundsModal');
+    outOfBoundsToastTimer = setTimeout(() => {
+      hideModal('outOfBoundsModal');
+      outOfBoundsToastTimer = null;
+    }, 2000);
+  }
   function showLineTypeTab(tab) {
     document.querySelectorAll('.line-type-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('chooseLineTypePanel').style.display = tab === 'choose' ? '' : 'none';
@@ -2084,11 +2133,16 @@
   const iconVbFor = (p) => [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, BATTERY_PATH, CHARGING_PATH, WALL_SCONCE_PATH].includes(p) ? '0 0 512 512' : '0 0 640 640';
   document.getElementById('addCounter').onclick = () => {
     showCounterTab('create');
-    document.getElementById('counterName').value = '';
+    document.getElementById('counterName').value = getIconName(ICONS[0].value);
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     grid.innerHTML = ICONS.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => { grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); });
+    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
+      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      const path = c.dataset.path;
+      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
+    });
     const cr = document.getElementById('counterColorRow');
     cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
     cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
@@ -2099,7 +2153,12 @@
     const grid = document.getElementById('counterIconGrid');
     const filtered = q ? ICONS.filter(ic => ic.terms.some(t => t.includes(q))) : ICONS;
     grid.innerHTML = filtered.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => { grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); });
+    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
+      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      const path = c.dataset.path;
+      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
+    });
   };
   document.getElementById('counterCancel').onclick = () => hideModal('counterModal');
   document.getElementById('counterCreate').onclick = () => {
@@ -2277,7 +2336,7 @@
   document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; renderPdf(); updateUI(); } };
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale })) };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale })) };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -2541,6 +2600,7 @@
         const data = JSON.parse(r.result);
         if (data.counters) state.counters = data.counters;
         if (data.lineTypes) state.lineTypes = data.lineTypes;
+        if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         (data.pages || []).forEach(p => {
           const page = state.pages[p.index];
           if (page) {
@@ -2747,6 +2807,20 @@
     }
   }
 
+  function openManageIconsModal() {
+    const listEl = document.getElementById('manageIconsList');
+    listEl.innerHTML = '';
+    ICONS.forEach((ic, i) => {
+      const row = document.createElement('div');
+      row.className = 'manage-icon-row';
+      const currentName = state.iconNames && state.iconNames[ic.value] !== undefined ? state.iconNames[ic.value] : ic.name;
+      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      row.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="var(--accent)" d="' + ic.value + '"/></svg></span><input type="text" data-icon-index="' + i + '" value="' + esc(currentName) + '" placeholder="' + esc(ic.name || 'Icon') + '">';
+      listEl.appendChild(row);
+    });
+    showModal('manageIconsModal');
+  }
+
   function openManageProjectsModal() {
     const listEl = document.getElementById('manageProjectsList');
     const session = state.supabaseSession;
@@ -2927,6 +3001,7 @@
                 }
                 if (d.counters) state.counters = d.counters;
                 if (d.lineTypes) state.lineTypes = d.lineTypes;
+                if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 (d.pages || []).forEach(p => {
                   const page = state.pages[p.index];
                   if (page) {
@@ -2972,6 +3047,7 @@
             state.pdfBuffer = null;
             if (d.counters) state.counters = d.counters;
             if (d.lineTypes) state.lineTypes = d.lineTypes;
+            if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
             (d.pages || []).forEach(p => {
               const page = state.pages[p.index];
               if (page) {
@@ -3012,6 +3088,7 @@
       updateUI();
       renderPdf();
     };
+    document.getElementById('settingsManageIcons').onclick = () => { hideModal('settingsModal'); openManageIconsModal(); };
     document.getElementById('settingsExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
     document.getElementById('settingsImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
@@ -3121,6 +3198,7 @@
         version: 1,
         counters: state.counters,
         lineTypes: state.lineTypes,
+        iconNames: state.iconNames || {},
         pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale }))
       };
       const dataJson = JSON.stringify(data);
@@ -3249,6 +3327,25 @@
     document.getElementById('adminPanelClose').onclick = () => hideModal('adminPanelModal');
     document.getElementById('manageUserModalClose').onclick = () => hideModal('manageUserModal');
     document.getElementById('manageProjectsModalClose').onclick = () => hideModal('manageProjectsModal');
+    document.getElementById('manageIconsModalClose').onclick = () => hideModal('manageIconsModal');
+    document.getElementById('manageIconsCancel').onclick = () => hideModal('manageIconsModal');
+    document.getElementById('manageIconsSave').onclick = () => {
+      const listEl = document.getElementById('manageIconsList');
+      const rows = listEl.querySelectorAll('.manage-icon-row');
+      const next = {};
+      rows.forEach((row) => {
+        const inp = row.querySelector('input');
+        const idx = parseInt(inp.dataset.iconIndex, 10);
+        const ic = ICONS[idx];
+        if (ic && inp) {
+          const v = inp.value.trim();
+          if (v && v !== ic.name) next[ic.value] = v;
+        }
+      });
+      state.iconNames = next;
+      hideModal('manageIconsModal');
+      updateUI();
+    };
     document.getElementById('adminCreateForm').onsubmit = async (e) => {
       e.preventDefault();
       const email = document.getElementById('adminCreateEmail').value.trim();
@@ -3333,6 +3430,7 @@
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
     if (state.tool === TOOL.SCALE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const now = Date.now();
       if (now - state.lastScaleTapTime < 400) return;
       state.lastScaleTapTime = now;
@@ -3345,6 +3443,7 @@
       }
       renderPdf();
     } else if (state.tool === TOOL.LINE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       if (!state.quickLineStart) state.quickLineStart = pdf;
       else {
@@ -3354,9 +3453,11 @@
       }
       renderPdf();
     } else if (state.tool === TOOL.POLYLINE && state.drawingPolyline) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       state.drawingPolyline.points.push(pdf);
       renderAnnotations();
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
       if (page && page.annotations) {
         if (!page.annotations.counterMarkers[state.activeCounterType]) page.annotations.counterMarkers[state.activeCounterType] = [];
@@ -3555,6 +3656,7 @@
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
     if (state.tool === TOOL.LINE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       if (!state.quickLineStart) {
         state.quickLineStart = pdf;
@@ -3617,6 +3719,9 @@
       } else if (document.getElementById('setScaleFirstPolylineModal').classList.contains('visible')) {
         hideModal('setScaleFirstPolylineModal');
         if (setScaleFirstPolylineToastTimer) { clearTimeout(setScaleFirstPolylineToastTimer); setScaleFirstPolylineToastTimer = null; }
+      } else if (document.getElementById('outOfBoundsModal').classList.contains('visible')) {
+        hideModal('outOfBoundsModal');
+        if (outOfBoundsToastTimer) { clearTimeout(outOfBoundsToastTimer); outOfBoundsToastTimer = null; }
       } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
         hideModal('chooseLineTypeModal');
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
@@ -3659,6 +3764,7 @@
       if (data.lineTypeSettings) state.lineTypeSettings = { ...state.lineTypeSettings, ...data.lineTypeSettings };
       if (data.exportSettings) state.exportSettings = { ...state.exportSettings, ...data.exportSettings };
       if (data.recentLineColors) state.recentLineColors = data.recentLineColors;
+      if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
       (data.pageAnnotations || []).forEach((ann, i) => {
         if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
       });
@@ -3671,7 +3777,7 @@
   }
 
   setInterval(() => {
-    if (state.pages.length || state.counters.length || state.lineTypes.length) localStorage.setItem('takeoff-state', JSON.stringify({ counters: state.counters, lineTypes: state.lineTypes, counterSettings: state.counterSettings, lineTypeSettings: state.lineTypeSettings, exportSettings: state.exportSettings, recentLineColors: state.recentLineColors, pageAnnotations: state.pages.map(p => p.annotations), pageScales: state.pages.map(p => p.scale) }));
+    if (state.pages.length || state.counters.length || state.lineTypes.length) localStorage.setItem('takeoff-state', JSON.stringify({ counters: state.counters, lineTypes: state.lineTypes, counterSettings: state.counterSettings, lineTypeSettings: state.lineTypeSettings, exportSettings: state.exportSettings, recentLineColors: state.recentLineColors, iconNames: state.iconNames || {}, pageAnnotations: state.pages.map(p => p.annotations), pageScales: state.pages.map(p => p.scale) }));
   }, 5000);
 
   window.state = state;

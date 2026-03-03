@@ -629,6 +629,11 @@
       <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
     </div>
   </div>
+  <div class="modal-overlay" id="airboardToastModal">
+    <div class="modal-card modal-card-toast">
+      <p id="airboardToastText" style="margin:0;font-size:1rem;"></p>
+    </div>
+  </div>
   <div class="modal-overlay" id="macrosModal">
     <div class="modal-card">
       <div class="modal-card-header">
@@ -767,6 +772,16 @@
           <button type="button" class="settings-menu-btn" id="mySettingsManageUsers">Add User</button>
           <button type="button" class="settings-menu-btn" id="mySettingsManageUser">Manage User</button>
         </div>
+      </div>
+      <div class="form-group supabase-only" id="mySettingsAirboardSection">
+        <label>Airboard</label>
+        <p class="form-group" style="margin:0 0 8px 0;color:var(--text2);font-size:0.9rem;">Save your counters and line types to your account. They will be restored when you sign in on any device.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Airboard</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsLoadAirboard">Load from Cloud</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Airboard</button>
+        </div>
+        <p id="mySettingsAirboardStatus" class="form-group" style="margin:8px 0 0 0;font-size:0.85rem;color:var(--text3);"></p>
       </div>
       <div class="form-group">
         <button type="button" class="settings-menu-btn danger" id="mySettingsSignOut">Sign Out</button>
@@ -2333,6 +2348,14 @@
 
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) { document.getElementById(id).classList.remove('visible'); }
+  let airboardToastTimer = null;
+  function showToast(msg) {
+    if (airboardToastTimer) clearTimeout(airboardToastTimer);
+    const el = document.getElementById('airboardToastText');
+    if (el) el.textContent = msg || '';
+    showModal('airboardToastModal');
+    airboardToastTimer = setTimeout(() => { hideModal('airboardToastModal'); airboardToastTimer = null; }, 2000);
+  }
 
   let setScaleFirstToastTimer = null;
   function showSetScaleFirstToast() {
@@ -2434,6 +2457,34 @@
     }
   }
 
+  async function fetchUserAirboard() {
+    const user = state.supabaseSession?.user;
+    if (!supabase || !user) return null;
+    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order').eq('user_id', user.id).single();
+    if (error && error.code !== 'PGRST116') return null;
+    if (!data) return null;
+    return {
+      counters: data.counters || [],
+      lineTypes: data.line_types || [],
+      iconNames: (data.icon_names && typeof data.icon_names === 'object') ? data.icon_names : {},
+      iconOrder: Array.isArray(data.icon_order) ? data.icon_order : null
+    };
+  }
+  async function saveUserAirboard() {
+    const user = state.supabaseSession?.user;
+    if (!supabase || !user) return false;
+    const payload = {
+      user_id: user.id,
+      counters: state.counters || [],
+      line_types: state.lineTypes || [],
+      icon_names: state.iconNames || {},
+      icon_order: state.iconOrder || null,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('user_airboard').upsert(payload, { onConflict: 'user_id' });
+    return !error;
+  }
+
   async function initSupabaseAuth() {
     if (!supabase) return;
     const { data: { session } } = await supabase.auth.getSession();
@@ -2449,6 +2500,14 @@
       if (session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).single();
         state.isAdmin = !!profile?.is_admin;
+        const airboard = await fetchUserAirboard();
+        if (airboard && (airboard.counters?.length || airboard.lineTypes?.length)) {
+          state.counters = airboard.counters;
+          state.lineTypes = airboard.lineTypes;
+          state.iconNames = airboard.iconNames || {};
+          state.iconOrder = airboard.iconOrder;
+          showToast('Airboard restored from your account');
+        }
       } else {
         state.isAdmin = false;
         state.currentProjectId = null;
@@ -2458,6 +2517,7 @@
         state.lastSavedAt = null;
       }
       updateUI();
+      renderPdf();
     });
   }
 
@@ -3421,9 +3481,7 @@
   if (SUPABASE_ENABLED) {
     document.getElementById('authBtn').onclick = () => {
       if (state.supabaseSession?.user) {
-        const titleEl = document.getElementById('settingsTitle');
-        if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
-        showModal('settingsModal');
+        openMySettings();
       } else {
         document.getElementById('authError').style.display = 'none';
         document.getElementById('authError').textContent = '';
@@ -3448,7 +3506,15 @@
       showModal('settingsModal');
     };
     document.getElementById('statusBarAuth').onclick = () => openMySettings();
-    document.getElementById('settingsGearBtn').onclick = () => document.getElementById('authBtn').click();
+    document.getElementById('settingsGearBtn').onclick = () => {
+      if (state.supabaseSession?.user) {
+        const titleEl = document.getElementById('settingsTitle');
+        if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
+        showModal('settingsModal');
+      } else {
+        document.getElementById('authBtn').click();
+      }
+    };
     document.getElementById('authCancel').onclick = () => hideModal('authModal');
     document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
     document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
@@ -3618,6 +3684,41 @@
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
     document.getElementById('mySettingsSignOut').onclick = () => { hideModal('mySettingsModal'); supabase.auth.signOut(); updateUI(); };
     document.getElementById('mySettingsModalClose').onclick = () => hideModal('mySettingsModal');
+    document.getElementById('mySettingsSaveAirboard').onclick = async () => {
+      const ok = await saveUserAirboard();
+      if (ok) {
+        showToast('Airboard saved to your account');
+        const statusEl = document.getElementById('mySettingsAirboardStatus');
+        if (statusEl) statusEl.textContent = 'Last saved: just now';
+      } else {
+        alert('Failed to save airboard. Please try again.');
+      }
+    };
+    document.getElementById('mySettingsLoadAirboard').onclick = async () => {
+      if (state.counters.length || state.lineTypes.length) {
+        if (!confirm('Replace your current airboard with the saved version from the cloud?')) return;
+      }
+      const data = await fetchUserAirboard();
+      if (!data) {
+        showToast('No saved airboard found');
+        return;
+      }
+      state.counters = data.counters;
+      state.lineTypes = data.lineTypes;
+      state.iconNames = data.iconNames;
+      state.iconOrder = data.iconOrder;
+      updateUI();
+      renderPdf();
+      showToast('Airboard loaded from cloud');
+    };
+    document.getElementById('mySettingsExportAirboard').onclick = () => {
+      const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null };
+      const a = document.createElement('a');
+      a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
+      a.download = 'airboard-backup.json';
+      a.click();
+      showToast('Airboard exported');
+    };
     document.getElementById('mySettingsManageUsers').onclick = () => { hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };
     document.getElementById('mySettingsManageUser').onclick = () => openManageUserModal();
     document.getElementById('mySettingsPasswordForm').onsubmit = async (e) => {
@@ -4258,6 +4359,7 @@
       else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
+      else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }

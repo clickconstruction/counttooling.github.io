@@ -21,9 +21,9 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate Helpers | 688–700 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 700–974 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 974–1362 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal, macrosModal (Keyboard Shortcuts) |
+| Modals & Handlers | 1362–1950 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal, loadProjectModal, macrosModal (Keyboard Shortcuts) |
 | Canvas Event Handlers | 1822–1895 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
-| Event Binding | 1895–2165 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P when not in input/textarea) |
+| Event Binding | 1895–2165 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P/D/H/N when not in input/textarea) |
 | Init & Persistence | 2240–2470 | initSupabaseAuth, localStorage restore, save interval, window globals |
 
 ## Search Hints (grep patterns)
@@ -66,8 +66,10 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Project Settings | `settingsModal` — Save/Load/Close Project, Manage Projects (admin), Manage Icons, Export, Import |
 | Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report checkbox |
 | For PipeTooling | `forPipeTooling` or `getPipeToolingSummary` |
+| Bundle Notes | `bundleNotes` or `addNotesToPdf` or `hasAnyNotes` |
+| Note modal | `noteModal` — Add/Edit Note (textarea, Cancel/Done); double-click or context Edit to edit |
 | Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |
-| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/P/Esc/arrows/Enter shortcuts |
+| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/P/D/H/N/Esc/arrows/Enter shortcuts |
 
 ## Key Globals (used by report.js)
 
@@ -106,7 +108,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Page/zoom row** — Page nav and zoom bar in same row; zoom bar to the right of page bar
 - **Add line type first** — Shown in Choose Line Type modal when no line types exist
 - **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
-- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report checkbox persisted), For PipeTooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`
+- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report checkbox persisted), For PipeTooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast), Bundle Highlights, Bundle Notes; Combined PDF and Specific Pages modals have Bundle highlights/notes checkboxes; Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`, `highlights-summary_[project name].pdf`, `notes-summary_[project name].pdf`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid); Ring section only visible when "Show ring around counters" checked; solid ring default true; all persisted
 - **Line Type Settings** — Click "Line Types" heading: opacity, line size
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
@@ -118,7 +120,8 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Line type layout** — Two-row: name on top, swatch + runs/length + edit on bottom
 - **Lines layout** — Name on top, length below, swatch + edit on bottom; click to select/highlight on canvas
 - **Selection highlight** — `.sidebar-item.active` for selected counter, line type, line, and current page in Pages list
-- **Hotkeys** — M (Move), S (Set Scale), C (Counter), L (Quick Line), P (Polyline); ignored when focus is in input/textarea/contenteditable
+- **Page annotation notes** — Note tool (N hotkey); click to place, modal for text; fixed-size on screen; double-click or context Edit to edit; context Delete; Notes section in Print Report; Bundle Notes PDF
+- **Hotkeys** — M (Move), S (Set Scale), C (Counter), L (Quick Line), P (Polyline), D (Measure), H (Highlight), N (Note); ignored when focus is in input/textarea/contenteditable (Escape still closes modals)
 - **Tool switching on click** — Clicking a line type switches to Quick Line mode; clicking a counter switches to Counter mode
 - **New counter/line type selected by default** — Newly created counter or line type becomes active immediately
 - **Macros** — Status bar "Macros" link opens Keyboard Shortcuts modal (M/S/C/L/P/Esc/arrows/Enter)

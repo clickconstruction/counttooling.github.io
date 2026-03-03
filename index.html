@@ -44,12 +44,10 @@
     .header .spacer { flex: 1; }
     .header .header-settings-gear { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 12px; background: none; border: none; border-radius: 0; color: var(--text2); cursor: pointer; font-size: 0.9rem; }
     .header .header-settings-gear:hover { background: none; color: var(--text); }
-    .header #measureBtn { background: none; border: none; border-radius: 0; margin-right: -6px; }
-    .header #measureBtn:hover { background: var(--surface2); }
-    .header #measureBtn.active { background: var(--accent); color: var(--bg); border: none; }
-    .header #highlightBtn { background: none; border: none; border-radius: 0; }
-    .header #highlightBtn:hover { background: var(--surface2); }
-    .header #highlightBtn.active { background: var(--accent); color: var(--bg); border: none; }
+    .header .header-tools-tight { display: flex; align-items: center; gap: 2px; }
+    .header .header-tools-tight .sidebar-triggers { background: none; border: none; border-radius: 0; }
+    .header .header-tools-tight .sidebar-triggers:hover { background: var(--surface2); }
+    .header .header-tools-tight .sidebar-triggers.active { background: var(--accent); color: var(--bg); border: none; }
     .header #setScale.scale-set { display: none; }
     .header .hamburger { display: none; }
     .sidebar-logo { display: none; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); padding: 16px 12px; border-bottom: 1px solid var(--border); align-items: center; justify-content: space-between; gap: 12px; }
@@ -80,6 +78,7 @@
       .header #settingsGearBtn { display: none; }
       .header #polylineBtn { display: none; }
       .header #highlightBtn { display: none; }
+      .header #noteBtn { display: none; }
       .header #doneEditing { display: none; }
       .header .header-primary-btn { display: none; }
       .header #setScale:not(.scale-set) { display: inline-flex; align-items: center; justify-content: center; }
@@ -180,6 +179,11 @@
     .modal-card .form-group-center { text-align: center; }
     .modal-card label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: var(--text2); }
     .modal-card input, .modal-card select { width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 1rem; }
+    #noteModal .form-group { margin-bottom: 20px; }
+    #noteModalText { width: 100%; min-height: 120px; padding: 14px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; font-size: 1rem; line-height: 1.6; resize: vertical; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    #noteModalText::placeholder { color: var(--text3); }
+    #noteModalText:hover { border-color: var(--border2); }
+    #noteModalText:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232, 197, 71, 0.2); }
     .modal-card .color-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .modal-card .color-swatch { width: 28px; height: 28px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
     .modal-card .color-swatch.selected { border-color: var(--accent); }
@@ -293,12 +297,17 @@
       <input type="file" id="pdfInput" accept=".pdf" multiple>
       <span class="divider header-primary-divider"></span>
       <button id="setScale" class="header-primary-btn">Set Scale</button>
-      <button id="measureBtn" class="sidebar-triggers" title="Measure distance" aria-label="Measure">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
-      </button>
-      <button id="highlightBtn" class="sidebar-triggers" title="Highlight" aria-label="Highlight">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg>
-      </button>
+      <span class="header-tools-tight">
+        <button id="measureBtn" class="sidebar-triggers" title="Measure distance" aria-label="Measure">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
+        </button>
+        <button id="highlightBtn" class="sidebar-triggers" title="Highlight" aria-label="Highlight">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg>
+        </button>
+        <button id="noteBtn" class="sidebar-triggers" title="Note" aria-label="Note">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
+        </button>
+      </span>
       <span class="divider sidebar-triggers"></span>
       <button id="moveBtn" class="sidebar-triggers">Move</button>
       <button id="counterBtn" class="sidebar-triggers">Counter</button>
@@ -355,6 +364,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg>
             Highlight
           </button>
+          <button id="noteBtnSidebar" class="sidebar-btn" title="Note">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
+            Note
+          </button>
           <button id="moveBtnSidebar" class="sidebar-btn">Move</button>
           <button id="counterBtnSidebar" class="sidebar-btn">Counter</button>
           <button id="quickLineSidebar" class="sidebar-btn"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
@@ -389,6 +402,7 @@
           <button id="specificPages" class="sidebar-btn">Specific Pages</button>
           <button id="forPipeTooling" class="sidebar-btn">For PipeTooling</button>
           <button id="bundleHighlights" class="sidebar-btn">Bundle Highlights</button>
+          <button id="bundleNotes" class="sidebar-btn">Bundle Notes</button>
         </div>
         <div class="sidebar-section sidebar-clear-page">
           <button id="clearPageSidebar" class="sidebar-btn danger">Clear Page</button>
@@ -619,6 +633,9 @@
       <div class="form-group form-group-center">
         <label><input type="checkbox" id="exportBundleHighlights" checked> Bundle highlights to PDF</label>
       </div>
+      <div class="form-group form-group-center">
+        <label><input type="checkbox" id="exportBundleNotes" checked> Bundle notes to PDF</label>
+      </div>
       <div class="actions">
         <button id="exportPdfCancel">Cancel</button>
         <button id="exportPdfDo">Export</button>
@@ -634,6 +651,9 @@
       </div>
       <div class="form-group form-group-center" style="margin-bottom:12px;">
         <label><input type="checkbox" id="specificPagesBundleHighlights" checked> Bundle highlights to PDF</label>
+      </div>
+      <div class="form-group form-group-center" style="margin-bottom:12px;">
+        <label><input type="checkbox" id="specificPagesBundleNotes" checked> Bundle notes to PDF</label>
       </div>
       <div class="specific-pages-bulk-actions">
         <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
@@ -703,6 +723,7 @@
         <tr><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
         <tr><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
         <tr><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
+        <tr><td><kbd>N</kbd></td><td>Note mode</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
         <tr><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
         <tr><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
@@ -738,6 +759,18 @@
           <button id="createLineTypeCancel">Cancel</button>
           <button id="createLineTypeCreate">Create Line Type</button>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal-card">
+      <h2 id="noteModalTitle">Add Note</h2>
+      <div class="form-group">
+        <textarea id="noteModalText" rows="5" placeholder="Enter note text..."></textarea>
+      </div>
+      <div class="actions">
+        <button id="noteModalCancel">Cancel</button>
+        <button id="noteModalDone">Done</button>
       </div>
     </div>
   </div>
@@ -935,6 +968,7 @@
     </div>
   </div>
   <div class="context-menu" id="contextMenu">
+    <button id="ctxEdit" style="display:none;">Edit</button>
     <button class="danger" id="ctxDelete">Delete</button>
   </div>
   <script>
@@ -951,7 +985,7 @@
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
-  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7 };
+  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8 };
   const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
   const uid = () => Math.random().toString(36).slice(2, 10);
   const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47'];
@@ -1485,7 +1519,7 @@
     { value: CHESSBOARD_PATH, terms: ['chessboard','chess','board','grid','checkered'], name: 'Chessboard' }
   ];
 
-  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [] }; }
+  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [] }; }
   function getIconName(path) {
     if (state.iconNames && state.iconNames[path]) return state.iconNames[path];
     const ic = ICONS.find(i => i.value === path);
@@ -1504,7 +1538,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 },
     iconNames: {},
@@ -1515,9 +1549,9 @@
     linesListCollapsed: false,
     summaryListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2 },
-    exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true },
+    exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
-    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, longPressTimer: null, longPressFired: false,
+    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     lastScaleTapTime: 0,
@@ -1670,6 +1704,26 @@
     return (sqPdfPts / (ppu * ppu)).toFixed(1) + ' ' + scale.unit + '²';
   }
 
+  let _measureCanvas = null;
+  function wrapNoteText(text, maxWidth, font, lineHeight) {
+    if (!_measureCanvas) _measureCanvas = document.createElement('canvas');
+    const ctx = _measureCanvas.getContext('2d');
+    ctx.font = font || '14px DM Sans';
+    const lh = lineHeight != null ? lineHeight : 14;
+    const words = (text || '').split(/\s+/).filter(Boolean);
+    const lines = [];
+    let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = w;
+      } else current = test;
+    }
+    if (current) lines.push(current);
+    return { lines, height: lines.length * lh };
+  }
+
   function getClientCoords(e) {
     if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
     if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -1742,6 +1796,20 @@
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'highlight', index: i };
     }
+    for (let i = 0; i < (ann.notes || []).length; i++) {
+      const n = ann.notes[i];
+      const w = n.width || 150;
+      const fontSizeHandle = { x: n.x - 8, y: n.y + 8 };
+      const widthHandle = { x: n.x + w, y: n.y + 8 };
+      if (ptDist(pos, fontSizeHandle) <= r) return { type: 'noteFontSize', index: i };
+      if (ptDist(pos, widthHandle) <= r) return { type: 'noteResize', index: i };
+      const fontSize = n.fontSize || 14;
+      const scale = state.zoom * dpr();
+      const font = fontSize * scale + 'px DM Sans';
+      const { lines } = wrapNoteText(n.text, w * scale, font, fontSize * scale);
+      const heightPdf = lines.length * fontSize;
+      if (pos.x >= n.x && pos.x <= n.x + w && pos.y >= n.y && pos.y <= n.y + heightPdf) return { type: 'note', index: i };
+    }
     return null;
   }
 
@@ -1773,6 +1841,7 @@
     else if (state.tool === TOOL.LINE) toolHint = state.quickLineStart ? 'Tap end point' : 'Tap start point';
     else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
     else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
+    else if (state.tool === TOOL.NOTE) toolHint = 'Click to add note';
     else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
     else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
     if (toolHint) mode += ' | ' + toolHint;
@@ -1901,6 +1970,28 @@
       ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.globalAlpha = 1;
     });
+    (ann.notes || []).forEach(n => {
+      if (!n.text) return;
+      const w = n.width || 150;
+      const fontSize = n.fontSize || 14;
+      const scale = z * dpr();
+      const font = fontSize * scale + 'px DM Sans';
+      const lineHeight = fontSize * scale;
+      const { lines } = wrapNoteText(n.text, w * scale, font, lineHeight);
+      const p = toCanvas({ x: n.x, y: n.y });
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.font = font;
+      ctx.fillStyle = '#e85447';
+      ctx.textBaseline = 'top';
+      lines.forEach((line, i) => { ctx.fillText(line, 0, i * lineHeight); });
+      ctx.restore();
+      const fontSizeHandlePos = toCanvas({ x: n.x - 8, y: n.y + 8 });
+      const widthHandlePos = toCanvas({ x: n.x + w, y: n.y + 8 });
+      ctx.fillStyle = '#666';
+      ctx.fillRect(fontSizeHandlePos.x - 3, fontSizeHandlePos.y - 3, 6, 6);
+      ctx.fillRect(widthHandlePos.x - 3, widthHandlePos.y - 3, 6, 6);
+    });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
     const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
@@ -2026,6 +2117,20 @@
       ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.globalAlpha = 1;
     });
+    (ann.notes || []).forEach(n => {
+      if (!n.text) return;
+      const w = n.width || 150;
+      const fontSize = n.fontSize || 14;
+      const maxW = w * scale;
+      const font = (fontSize * scale) + 'px sans-serif';
+      const lh = fontSize * scale;
+      const { lines } = wrapNoteText(n.text, maxW, font, lh);
+      const p = tc({ x: n.x, y: n.y });
+      ctx.font = font;
+      ctx.fillStyle = '#e85447';
+      ctx.textBaseline = 'top';
+      lines.forEach((line, i) => { ctx.fillText(line, p.x, p.y + i * lh); });
+    });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
     const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
@@ -2141,6 +2246,7 @@
     document.getElementById('quickLine').classList.toggle('active', state.tool === TOOL.LINE);
     document.getElementById('polylineBtn').classList.toggle('active', state.tool === TOOL.POLYLINE);
     document.getElementById('highlightBtn').classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
+    document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
     const moveBtnSidebar = document.getElementById('moveBtnSidebar');
     const counterBtnSidebar = document.getElementById('counterBtnSidebar');
@@ -2152,6 +2258,8 @@
     if (polylineBtnSidebar) polylineBtnSidebar.classList.toggle('active', state.tool === TOOL.POLYLINE);
     const highlightBtnSidebar = document.getElementById('highlightBtnSidebar');
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
+    const noteBtnSidebar = document.getElementById('noteBtnSidebar');
+    if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('setScale').classList.toggle('active', state.tool === TOOL.SCALE);
     if (setScaleSidebarBtn) setScaleSidebarBtn.classList.toggle('active', state.tool === TOOL.SCALE);
     const measureBtn = document.getElementById('measureBtn');
@@ -2220,6 +2328,8 @@
     renderSummary();
     const bundleBtn = document.getElementById('bundleHighlights');
     if (bundleBtn) bundleBtn.disabled = !hasAnyHighlights();
+    const bundleNotesBtn = document.getElementById('bundleNotes');
+    if (bundleNotesBtn) bundleNotesBtn.disabled = !hasAnyNotes();
     updateStatus();
   }
 
@@ -2229,7 +2339,7 @@
     state.pages.forEach((p, i) => {
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
-      const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length) || (p.annotations?.highlights?.length);
+      const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length) || (p.annotations?.highlights?.length) || (p.annotations?.notes?.length);
       const hasScale = !!p.scale;
       div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span>' + (hasAnn ? ' <span style="color:var(--accent)">•</span>' : '') + '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>';
       div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
@@ -2875,6 +2985,8 @@
   document.getElementById('quickLineSidebar').onclick = () => document.getElementById('quickLine').click();
   document.getElementById('polylineBtnSidebar').onclick = () => document.getElementById('polylineBtn').click();
   document.getElementById('highlightBtnSidebar').onclick = () => document.getElementById('highlightBtn').click();
+  document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; updateUI(); };
+  document.getElementById('noteBtnSidebar').onclick = () => document.getElementById('noteBtn').click();
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
   document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
@@ -3161,6 +3273,7 @@
     document.getElementById('exportLineScale').value = Math.round((state.exportSettings.lineScale ?? 0.75) * 100);
     document.getElementById('exportLineScaleVal').textContent = document.getElementById('exportLineScale').value;
     document.getElementById('exportBundleHighlights').checked = state.exportSettings.bundleHighlightsToPdf !== false;
+    document.getElementById('exportBundleNotes').checked = state.exportSettings.bundleNotesToPdf !== false;
     showModal('exportPdfModal');
   };
 
@@ -3185,6 +3298,7 @@
       document.getElementById('specificPagesIncludeReport').checked = stored !== '0';
     } catch (_) {}
     document.getElementById('specificPagesBundleHighlights').checked = state.exportSettings.bundleHighlightsToPdf !== false;
+    document.getElementById('specificPagesBundleNotes').checked = state.exportSettings.bundleNotesToPdf !== false;
     const grid = document.getElementById('specificPagesGrid');
     grid.innerHTML = '';
     state.pages.forEach((page, i) => {
@@ -3244,7 +3358,9 @@
     if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
     const includeReport = document.getElementById('specificPagesIncludeReport').checked;
     const bundleHighlights = document.getElementById('specificPagesBundleHighlights').checked;
+    const bundleNotes = document.getElementById('specificPagesBundleNotes').checked;
     state.exportSettings.bundleHighlightsToPdf = bundleHighlights;
+    state.exportSettings.bundleNotesToPdf = bundleNotes;
     try { localStorage.setItem('specificPagesIncludeReport', includeReport ? '1' : '0'); } catch (_) {}
     const EXPORT_SCALE = 4;
     const PT_TO_MM = 25.4 / 72;
@@ -3280,6 +3396,10 @@
       if (doc && bundleHighlights && hasAnyHighlights()) {
         btn.textContent = 'Exporting highlights…';
         await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
+      }
+      if (doc && bundleNotes && hasAnyNotes()) {
+        btn.textContent = 'Exporting notes…';
+        await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
       }
       if (doc) {
         const baseName = sanitizeForFilename(state.currentProjectName);
@@ -3338,6 +3458,27 @@
     btn.textContent = origText;
   };
 
+  document.getElementById('bundleNotes').onclick = async () => {
+    if (!hasAnyNotes()) return;
+    const jsPDFLib = window.jspdf;
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Bundle Notes requires jsPDF. Please refresh the page.'); return; }
+    const btn = document.getElementById('bundleNotes');
+    const origText = btn.textContent;
+    btn.textContent = 'Exporting…';
+    const EXPORT_SCALE = 4;
+    const exportOverrides = { markerScale: state.exportSettings.markerScale ?? 0.75, lineScale: state.exportSettings.lineScale ?? 0.75 };
+    try {
+      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+      await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
+      const baseName = sanitizeForFilename(state.currentProjectName);
+      doc.save('notes-summary_' + baseName + '.pdf');
+    } catch (err) {
+      console.error(err);
+      alert('Export failed: ' + (err.message || err));
+    }
+    btn.textContent = origText;
+  };
+
   async function addReportPagesToPdf(doc) {
     if (typeof window.buildReportHtml !== 'function' || typeof html2canvas !== 'function') return 0;
     const html = window.buildReportHtml();
@@ -3383,6 +3524,97 @@
 
   function hasAnyHighlights() {
     return state.pages.some(p => (p.annotations?.highlights?.length || 0) > 0);
+  }
+
+  function hasAnyNotes() {
+    return state.pages.some(p => (p.annotations?.notes?.length || 0) > 0);
+  }
+
+  async function addNotesToPdf(doc, options = {}) {
+    const scale = options.scale ?? 4;
+    const exportOverrides = options.exportOverrides ?? {};
+    const pageFilter = options.pageFilter ?? (() => true);
+    const PT_TO_MM = 25.4 / 72;
+    const CROP_RADIUS = 80;
+    const items = [];
+    state.pages.forEach((page, pageIdx) => {
+      if (!pageFilter(pageIdx)) return;
+      const notes = page.annotations?.notes || [];
+      notes.forEach(n => {
+        if (n.text) items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), note: n });
+      });
+    });
+    if (!items.length) return 0;
+    const summaryByPage = {};
+    items.forEach(it => {
+      const key = it.pageIdx;
+      if (!summaryByPage[key]) summaryByPage[key] = { pageIdx: it.pageIdx, pageLabel: it.pageLabel, count: 0 };
+      summaryByPage[key].count++;
+    });
+    if (doc.getNumberOfPages() > 1) doc.addPage([210, 297], 'p');
+    doc.setFontSize(14);
+    doc.text('Notes Summary', 14, 20);
+    doc.setFontSize(10);
+    let y = 35;
+    doc.text('Page', 14, y);
+    doc.text('Label', 50, y);
+    doc.text('# Notes', 120, y);
+    y += 8;
+    Object.values(summaryByPage).forEach(row => {
+      doc.text(String(row.pageIdx + 1), 14, y);
+      doc.text(row.pageLabel, 50, y);
+      doc.text(String(row.count), 120, y);
+      y += 7;
+    });
+    let pageCount = doc.getNumberOfPages();
+    for (let idx = 0; idx < items.length; idx++) {
+      const it = items[idx];
+      const page = state.pages[it.pageIdx];
+      const n = it.note;
+      const viewport = page.pdfPage.getViewport({ scale });
+      const pageW = viewport.width / scale, pageH = viewport.height / scale;
+      const noteW = n.width || 150;
+      const noteFontSize = n.fontSize || 14;
+      const font = (noteFontSize * scale) + 'px sans-serif';
+      const { height: noteH } = wrapNoteText(n.text, noteW * scale, font, noteFontSize * scale);
+      const pad = 8;
+      const minX = Math.max(0, n.x - pad);
+      const minY = Math.max(0, n.y - pad);
+      const maxX = Math.min(pageW, n.x + noteW + pad);
+      const maxY = Math.min(pageH, n.y + noteH / scale + pad);
+      let w = maxX - minX, hh = maxY - minY;
+      if (w < 1 || hh < 1) continue;
+      const fullCanvas = document.createElement('canvas');
+      fullCanvas.width = viewport.width;
+      fullCanvas.height = viewport.height;
+      const ctx = fullCanvas.getContext('2d');
+      await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+      renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+      const cropW = Math.max(1, Math.round(w * scale));
+      const cropH = Math.max(1, Math.round(hh * scale));
+      const cropCanvas = document.createElement('canvas');
+      cropCanvas.width = cropW;
+      cropCanvas.height = cropH;
+      const cropCtx = cropCanvas.getContext('2d');
+      cropCtx.drawImage(fullCanvas, minX * scale, minY * scale, cropW, cropH, 0, 0, cropW, cropH);
+      const imgData = cropCanvas.toDataURL('image/jpeg', 0.95);
+      const wMm = w * PT_TO_MM;
+      const hMm = hh * PT_TO_MM;
+      const caption = 'From Page ' + (it.pageIdx + 1) + ': ' + it.pageLabel;
+      const captionTop = 10;
+      const imageTop = 14;
+      const textTop = imageTop + hMm + 8;
+      const pdfPageW = Math.max(210, wMm + 28);
+      const pdfPageH = imageTop + hMm + 14 + 20;
+      doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
+      doc.setFontSize(9);
+      doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
+      doc.text(caption, 14, captionTop);
+      doc.setFontSize(10);
+      doc.text(n.text, 14, textTop, { maxWidth: pdfPageW - 28 });
+      pageCount++;
+    }
+    return pageCount;
   }
 
   async function addHighlightsToPdf(doc, options = {}) {
@@ -3472,6 +3704,7 @@
     state.exportSettings.markerScale = markerScale;
     state.exportSettings.lineScale = lineScale;
     state.exportSettings.bundleHighlightsToPdf = document.getElementById('exportBundleHighlights').checked;
+    state.exportSettings.bundleNotesToPdf = document.getElementById('exportBundleNotes').checked;
     hideModal('exportPdfModal');
     const jsPDFLib = window.jspdf;
     const EXPORT_SCALE = 4;
@@ -3506,6 +3739,10 @@
       if (state.exportSettings.bundleHighlightsToPdf !== false && hasAnyHighlights()) {
         btn.textContent = 'Exporting highlights…';
         await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
+      }
+      if (state.exportSettings.bundleNotesToPdf !== false && hasAnyNotes()) {
+        btn.textContent = 'Exporting notes…';
+        await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
       }
       const baseName = sanitizeForFilename(state.currentProjectName);
       doc.save('takeoff-with-marks_' + baseName + '.pdf');
@@ -3549,6 +3786,43 @@
   document.getElementById('statusBarClearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
+  function openNoteModal(mode, initialText, positionOrNote) {
+    document.getElementById('noteModalTitle').textContent = mode === 'edit' ? 'Edit Note' : 'Add Note';
+    document.getElementById('noteModalText').value = initialText || '';
+    if (mode === 'edit') {
+      state.editingNote = positionOrNote;
+      state.pendingNote = null;
+    } else {
+      state.pendingNote = positionOrNote;
+      state.editingNote = null;
+    }
+    showModal('noteModal');
+    document.getElementById('noteModalText').focus();
+  }
+  document.getElementById('noteModalCancel').onclick = () => {
+    hideModal('noteModal');
+    state.pendingNote = null;
+    state.editingNote = null;
+  };
+  document.getElementById('noteModalDone').onclick = () => {
+    const text = document.getElementById('noteModalText').value.trim();
+    hideModal('noteModal');
+    if (state.pendingNote) {
+      if (text) {
+        const page = state.pages[state.currentPage];
+        if (page && page.annotations) {
+          if (!page.annotations.notes) page.annotations.notes = [];
+          page.annotations.notes.push({ x: state.pendingNote.x, y: state.pendingNote.y, text, id: uid(), width: 150, fontSize: 14 });
+        }
+      }
+      state.pendingNote = null;
+    } else if (state.editingNote) {
+      state.editingNote.text = text;
+      state.editingNote = null;
+    }
+    renderPdf();
+    updateUI();
+  };
   document.getElementById('clearPageCancel').onclick = () => hideModal('clearPageConfirmModal');
   document.getElementById('deletePageCancel').onclick = () => { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; };
   document.getElementById('deletePageConfirm').onclick = () => {
@@ -4386,6 +4660,18 @@
     };
   }
 
+  document.getElementById('ctxEdit').onclick = () => {
+    const t = state.ctxTarget;
+    if (!t || (t.type !== 'note' && t.type !== 'noteResize' && t.type !== 'noteFontSize')) return;
+    const page = state.pages[state.currentPage];
+    const ann = page?.annotations;
+    const note = ann?.notes?.[t.index];
+    if (note) {
+      document.getElementById('contextMenu').classList.remove('visible');
+      state.ctxTarget = null;
+      openNoteModal('edit', note.text, note);
+    }
+  };
   document.getElementById('ctxDelete').onclick = () => {
     const t = state.ctxTarget;
     if (!t) return;
@@ -4413,6 +4699,8 @@
       }
     } else if (t.type === 'highlight') {
       ann.highlights.splice(t.index, 1);
+    } else if (t.type === 'note' || t.type === 'noteResize' || t.type === 'noteFontSize') {
+      ann.notes.splice(t.index, 1);
     }
     document.getElementById('contextMenu').classList.remove('visible');
     state.ctxTarget = null;
@@ -4422,6 +4710,8 @@
 
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
+    const editBtn = document.getElementById('ctxEdit');
+    editBtn.style.display = (state.ctxTarget?.type === 'note' || state.ctxTarget?.type === 'noteResize' || state.ctxTarget?.type === 'noteFontSize') ? 'block' : 'none';
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
     menu.classList.add('visible');
@@ -4497,6 +4787,15 @@
         state.highlightStart = null;
       }
       renderPdf();
+    } else if (state.tool === TOOL.NOTE) {
+      const tNote = hitTest(pdf);
+      if (tNote && (tNote.type === 'note' || tNote.type === 'noteResize' || tNote.type === 'noteFontSize')) {
+        const page = state.pages[state.currentPage];
+        const note = page?.annotations?.notes?.[tNote.index];
+        if (note) { openNoteModal('edit', note.text, note); return; }
+      }
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      openNoteModal('add', '', { x: pdf.x, y: pdf.y });
     } else if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
       const r = 12 / state.zoom;
@@ -4507,7 +4806,21 @@
   }
 
   function handleCanvasDblClick(e) {
-    if (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 2) finishPolyline(false);
+    if (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 2) {
+      finishPolyline(false);
+      return;
+    }
+    if (state.tool === TOOL.NONE || state.tool === TOOL.NOTE) {
+      const pt = canvasPointFromEvent(e);
+      const pdf = canvasToPdf(pt.x, pt.y);
+      const t = hitTest(pdf);
+      if (t && (t.type === 'note' || t.type === 'noteResize' || t.type === 'noteFontSize')) {
+        const page = state.pages[state.currentPage];
+        const ann = page?.annotations;
+        const note = ann?.notes?.[t.index];
+        if (note) openNoteModal('edit', note.text, note);
+      }
+    }
   }
 
   function handleContextMenu(e) {
@@ -4556,7 +4869,29 @@
     if (e.button !== 0) return;
     const pt = canvasPointFromEvent(e);
     state.mousePos = canvasToPdf(pt.x, pt.y);
-    if (state.tool === TOOL.NONE && !state.editingPolyline) {
+    const t = hitTest(state.mousePos);
+    if (t && t.type === 'noteResize') {
+      state.resizingNoteIdx = t.index;
+      state.resizingNotePageIdx = state.currentPage;
+    } else if (t && t.type === 'noteFontSize') {
+      const page = state.pages[state.currentPage];
+      const note = page?.annotations?.notes?.[t.index];
+      if (note) {
+        state.resizingNoteFontSizeIdx = t.index;
+        state.resizingNoteFontSizePageIdx = state.currentPage;
+        state.resizingNoteFontSizeStartY = state.mousePos.y;
+        state.resizingNoteFontSizeStartVal = note.fontSize || 14;
+      }
+    } else if (t && t.type === 'note') {
+      const page = state.pages[state.currentPage];
+      const note = page?.annotations?.notes?.[t.index];
+      if (note) {
+        state.draggingNoteIdx = t.index;
+        state.draggingNotePageIdx = state.currentPage;
+        state.draggingNoteOffset = { x: state.mousePos.x - note.x, y: state.mousePos.y - note.y };
+        state.dragNoteStartPos = { x: state.mousePos.x, y: state.mousePos.y };
+      }
+    } else if (state.tool === TOOL.NONE && !state.editingPolyline) {
       state.isPanning = true;
       state.panStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
     } else if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
@@ -4577,23 +4912,62 @@
     } else if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null && state.editingPolyline) {
       state.editingPolyline.points[state.draggingVertexIdx] = pdf;
       renderAnnotations();
+    } else if (state.resizingNoteIdx !== null && state.resizingNotePageIdx !== null) {
+      const page = state.pages[state.resizingNotePageIdx];
+      const note = page?.annotations?.notes?.[state.resizingNoteIdx];
+      if (note) {
+        note.width = Math.max(50, Math.min(400, pdf.x - note.x));
+        renderAnnotations();
+      }
+    } else if (state.resizingNoteFontSizeIdx !== null && state.resizingNoteFontSizePageIdx !== null && state.resizingNoteFontSizeStartY != null && state.resizingNoteFontSizeStartVal != null) {
+      const page = state.pages[state.resizingNoteFontSizePageIdx];
+      const note = page?.annotations?.notes?.[state.resizingNoteFontSizeIdx];
+      if (note) {
+        const dy = state.resizingNoteFontSizeStartY - pdf.y;
+        note.fontSize = Math.round(Math.max(8, Math.min(48, state.resizingNoteFontSizeStartVal + dy / 3)));
+        renderAnnotations();
+      }
+    } else if (state.draggingNoteIdx !== null && state.draggingNotePageIdx !== null && state.draggingNoteOffset) {
+      const page = state.pages[state.draggingNotePageIdx];
+      const note = page?.annotations?.notes?.[state.draggingNoteIdx];
+      if (note) {
+        note.x = pdf.x - state.draggingNoteOffset.x;
+        note.y = pdf.y - state.draggingNoteOffset.y;
+        renderAnnotations();
+      }
     } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart)) {
       renderAnnotations();
     }
+    const t = hitTest(pdf);
+    if (annCanvas) annCanvas.style.cursor = (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : '';
     updateStatus();
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseup', (e) => {
     if (e.button !== 0) return;
+    if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) state.justFinishedResize = true;
+    if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) state.justFinishedDragNote = true;
     state.isPanning = false;
     state.panStart = null;
     state.draggingVertexIdx = null;
+    state.resizingNoteIdx = null;
+    state.resizingNotePageIdx = null;
+    state.resizingNoteFontSizeIdx = null;
+    state.resizingNoteFontSizePageIdx = null;
+    state.resizingNoteFontSizeStartY = null;
+    state.resizingNoteFontSizeStartVal = null;
+    state.draggingNoteIdx = null;
+    state.draggingNotePageIdx = null;
+    state.draggingNoteOffset = null;
+    state.dragNoteStartPos = null;
   });
 
-  (cWrapper || pdfCanvas).addEventListener('mouseleave', () => { state.isPanning = false; state.panStart = null; });
+  (cWrapper || pdfCanvas).addEventListener('mouseleave', () => { state.isPanning = false; state.panStart = null; state.resizingNoteIdx = null; state.resizingNotePageIdx = null; state.resizingNoteFontSizeIdx = null; state.resizingNoteFontSizePageIdx = null; state.resizingNoteFontSizeStartY = null; state.resizingNoteFontSizeStartVal = null; state.draggingNoteIdx = null; state.draggingNotePageIdx = null; state.draggingNoteOffset = null; state.dragNoteStartPos = null; if (annCanvas) annCanvas.style.cursor = ''; });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
-    if (state.isPanning) return;
+    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote) { state.justFinishedResize = false; state.justFinishedDragNote = false; return; }
+    state.justFinishedResize = false;
+    state.justFinishedDragNote = false;
     handleCanvasClick(e);
   });
 
@@ -4719,6 +5093,12 @@
       updateUI();
       return;
     }
+    if (state.tool === TOOL.NOTE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      openNoteModal('add', '', { x: pdf.x, y: pdf.y });
+      updateUI();
+      return;
+    }
     const ev = new MouseEvent('click', { clientX, clientY, bubbles: true });
     (cWrapper || pdfCanvas).dispatchEvent(ev);
   }
@@ -4736,7 +5116,7 @@
       if (!state.longPressFired) {
         e.preventDefault();
         const c = getClientCoords(e);
-        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT) {
+        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT || state.tool === TOOL.NOTE) {
           handleTouchAsCanvasTap(c.x, c.y);
         } else {
           const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
@@ -4753,16 +5133,17 @@
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, textarea, [contenteditable="true"]')) return;
+    if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     const k = e.key.toLowerCase();
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
+      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
       else if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
       else if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
       else if (k === 'l') { document.getElementById('quickLine').click(); e.preventDefault(); }
       else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
       else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
       else if (k === 'h') { document.getElementById('highlightBtn').click(); e.preventDefault(); }
+      else if (k === 'n') { document.getElementById('noteBtn').click(); e.preventDefault(); }
     }
     if (e.key === 'Escape') {
       if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
@@ -4786,6 +5167,7 @@
       else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
+      else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; }
       else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
@@ -4814,6 +5196,9 @@
       } else if (state.tool === TOOL.HIGHLIGHT) {
         if (state.highlightStart) { state.highlightStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.NOTE) {
+        state.tool = TOOL.NONE;
+        updateUI();
       } else state.tool = TOOL.NONE;
     }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } }

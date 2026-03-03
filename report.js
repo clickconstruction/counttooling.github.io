@@ -99,6 +99,16 @@
         html += '</table>';
       }
 
+      const notes = ann.notes || [];
+      if (notes.length > 0) {
+        html += '<h3 class="section-header">Notes</h3>';
+        html += '<ul>';
+        notes.forEach(n => {
+          html += '<li>' + escapeHtml(n.text) + '</li>';
+        });
+        html += '</ul>';
+      }
+
       html += '</section>';
     });
 

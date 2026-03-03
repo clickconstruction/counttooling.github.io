@@ -44,6 +44,9 @@
     .header .spacer { flex: 1; }
     .header .header-settings-gear { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 12px; background: none; border: none; border-radius: 0; color: var(--text2); cursor: pointer; font-size: 0.9rem; }
     .header .header-settings-gear:hover { background: none; color: var(--text); }
+    .header #measureBtn { background: none; border: none; border-radius: 0; }
+    .header #measureBtn:hover { background: var(--surface2); }
+    .header #measureBtn.active { background: var(--accent); color: var(--bg); border: none; }
     .header #setScale.scale-set { display: none; }
     .header .hamburger { display: none; }
     .sidebar-logo { display: none; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); padding: 16px 12px; border-bottom: 1px solid var(--border); align-items: center; justify-content: space-between; gap: 12px; }
@@ -247,6 +250,9 @@
     .line-type-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
     .line-type-tab-panel { margin-top: 0; }
     .choose-line-type-list { max-height: 200px; overflow-y: auto; }
+    .scale-presets-list { max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .scale-presets-list button { width: 100%; padding: 10px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.95rem; cursor: pointer; }
+    .scale-presets-list button:hover { background: var(--surface3); }
     .settings-users-list { max-height: 200px; overflow-y: auto; margin-top: 8px; font-size: 0.9rem; }
     .settings-users-list .settings-user-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; }
     .settings-users-list .settings-user-row:last-child { margin-bottom: 0; }
@@ -275,6 +281,9 @@
       <input type="file" id="pdfInput" accept=".pdf" multiple>
       <span class="divider header-primary-divider"></span>
       <button id="setScale" class="header-primary-btn">Set Scale</button>
+      <button id="measureBtn" class="sidebar-triggers" title="Measure distance" aria-label="Measure">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
+      </button>
       <span class="divider sidebar-triggers"></span>
       <button id="moveBtn" class="sidebar-triggers">Move</button>
       <button id="counterBtn" class="sidebar-triggers">Counter</button>
@@ -323,6 +332,10 @@
           <button id="importBtnSidebar" class="sidebar-btn">Import</button>
         </div>
         <div class="sidebar-section sidebar-tool-buttons">
+          <button id="measureBtnSidebar" class="sidebar-btn" title="Measure distance">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
+            Measure
+          </button>
           <button id="moveBtnSidebar" class="sidebar-btn">Move</button>
           <button id="counterBtnSidebar" class="sidebar-btn">Counter</button>
           <button id="quickLineSidebar" class="sidebar-btn"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
@@ -403,24 +416,39 @@
   <div class="modal-overlay" id="scaleModal">
     <div class="modal-card">
       <h2>Set Scale</h2>
-      <p id="scaleInfo" class="form-group">You selected a line spanning 0 pdf-pts.</p>
-      <div class="form-group">
-        <label>Real-world length</label>
-        <input type="number" id="scaleValue" step="0.01" min="0.01" placeholder="e.g. 10">
+      <div id="scaleModalTabs" class="counter-modal-tabs">
+        <button class="counter-tab active" data-tab="points">Select two points</button>
+        <button class="counter-tab" data-tab="presets">Architectural & Engineering</button>
       </div>
-      <div class="form-group">
-        <label>Unit</label>
-        <select id="scaleUnit">
-          <option value="ft">ft</option>
-          <option value="in">in</option>
-          <option value="m">m</option>
-          <option value="cm">cm</option>
-          <option value="yd">yd</option>
-        </select>
+      <div id="scalePointsPanel" class="counter-tab-panel">
+        <p id="scaleInfo" class="form-group">You selected a line spanning 0 pdf-pts.</p>
+        <div class="form-group">
+          <label>Real-world length</label>
+          <input type="number" id="scaleValue" step="0.01" min="0.01" placeholder="e.g. 10">
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select id="scaleUnit">
+            <option value="ft">ft</option>
+            <option value="in">in</option>
+            <option value="m">m</option>
+            <option value="cm">cm</option>
+            <option value="yd">yd</option>
+          </select>
+        </div>
+        <div class="form-group" id="scaleSelectOnPdfGroup">
+          <button type="button" class="settings-menu-btn" id="scaleSelectOnPdf">Select on PDF</button>
+        </div>
+        <div class="actions">
+          <button id="scaleCancel">Cancel</button>
+          <button id="scaleSet">Set Scale</button>
+        </div>
       </div>
-      <div class="actions">
-        <button id="scaleCancel">Cancel</button>
-        <button id="scaleSet">Set Scale</button>
+      <div id="scalePresetsPanel" class="counter-tab-panel" style="display:none;">
+        <div id="scalePresetsList" class="scale-presets-list"></div>
+        <div class="actions" style="margin-top:16px;">
+          <button id="scalePresetsCancel">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
@@ -647,6 +675,7 @@
         <tr><td><kbd>C</kbd></td><td>Counter mode</td></tr>
         <tr><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
         <tr><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
+        <tr><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
         <tr><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
         <tr><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
@@ -895,10 +924,33 @@
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
-  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5 };
+  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6 };
   const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
   const uid = () => Math.random().toString(36).slice(2, 10);
   const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47'];
+  const SCALE_PRESETS = [
+    { label: '1/6" = 1\'', pixelsPerUnit: 12, unit: 'ft' },
+    { label: '3/32" = 1\'', pixelsPerUnit: 72 * 3 / 32, unit: 'ft' },
+    { label: '1/8" = 1\'', pixelsPerUnit: 72 / 8, unit: 'ft' },
+    { label: '3/16" = 1\'', pixelsPerUnit: 72 * 3 / 16, unit: 'ft' },
+    { label: '1/4" = 1\'', pixelsPerUnit: 72 / 4, unit: 'ft' },
+    { label: '3/8" = 1\'', pixelsPerUnit: 72 * 3 / 8, unit: 'ft' },
+    { label: '1/2" = 1\'', pixelsPerUnit: 72 / 2, unit: 'ft' },
+    { label: '3/4" = 1\'', pixelsPerUnit: 72 * 3 / 4, unit: 'ft' },
+    { label: '1" = 1\'', pixelsPerUnit: 72, unit: 'ft' },
+    { label: '1 1/2" = 1\'', pixelsPerUnit: 72 * 1.5, unit: 'ft' },
+    { label: '3" = 1\'', pixelsPerUnit: 72 * 3, unit: 'ft' },
+    { label: '1" = 10\'', pixelsPerUnit: 72 / 10, unit: 'ft' },
+    { label: '1" = 20\'', pixelsPerUnit: 72 / 20, unit: 'ft' },
+    { label: '1" = 30\'', pixelsPerUnit: 72 / 30, unit: 'ft' },
+    { label: '1" = 40\'', pixelsPerUnit: 72 / 40, unit: 'ft' },
+    { label: '1" = 50\'', pixelsPerUnit: 72 / 50, unit: 'ft' },
+    { label: '1" = 60\'', pixelsPerUnit: 72 / 60, unit: 'ft' },
+    { label: '1" = 70\'', pixelsPerUnit: 72 / 70, unit: 'ft' },
+    { label: '1" = 80\'', pixelsPerUnit: 72 / 80, unit: 'ft' },
+    { label: '1" = 90\'', pixelsPerUnit: 72 / 90, unit: 'ft' },
+    { label: '1" = 100\'', pixelsPerUnit: 72 / 100, unit: 'ft' }
+  ];
 
   const WC_PATH = 'M120 64C106.7 64 96 74.7 96 88C96 101.3 106.7 112 120 112L128 112L128 260.9C126.1 262.3 124.2 263.8 122.4 265.3C106.9 278.5 96 296.9 96 319.9C96 366.8 110.3 404 133 432.4C147.2 450.1 164.1 463.7 181.5 474.2L161.6 533.9C158.3 543.7 160 554.4 166 562.7C172 571 181.7 576 192 576L448 576C458.3 576 467.9 571.1 474 562.7C480.1 554.3 481.7 543.6 478.4 533.9L458.6 474.4C476 463.9 492.9 450.3 507.1 432.6C529.8 404.2 544.1 367.1 544.1 320.1C544.1 297 533.2 278.6 517.7 265.5C515.9 264 514 262.5 512.1 261.1L512.1 112.2L520.1 112.2C533.4 112.2 544.1 101.5 544.1 88.2C544.1 74.9 533.3 64 520 64L120 64zM192 144C192 135.2 199.2 128 208 128L240 128C248.8 128 256 135.2 256 144C256 152.8 248.8 160 240 160L208 160C199.2 160 192 152.8 192 144zM320 352C231.6 352 160 337.7 160 320C160 302.3 231.6 288 320 288C408.4 288 480 302.3 480 320C480 337.7 408.4 352 320 352z';
   const WF_PATH = 'M272 32L368 32C385.7 32 400 46.3 400 64C400 81.7 385.7 96 368 96L272 96C254.3 96 240 81.7 240 64C240 46.3 254.3 32 272 32zM176 208C176 172.7 204.7 144 240 144L400 144C435.3 144 464 172.7 464 208C464 232.1 450.7 253.1 431 264C450.7 274.9 464 295.9 464 320C464 344.1 450.7 365.1 431 376C450.7 386.9 464 407.9 464 432C464 456.1 450.7 477.1 431 488C450.7 498.9 464 519.9 464 544C464 579.3 435.3 608 400 608L240 608C204.7 608 176 579.3 176 544C176 519.9 189.3 498.9 209 488C189.3 477.1 176 456.1 176 432C176 407.9 189.3 386.9 209 376C189.3 365.1 176 344.1 176 320C176 295.9 189.3 274.9 209 264C189.3 253.1 176 232.1 176 208z';
@@ -1551,6 +1603,35 @@
     if (!scale) return Math.round(pdfPts) + ' px';
     return (pdfPts / scale.pixelsPerUnit).toFixed(2) + ' ' + scale.unit;
   }
+  function formatDistFeetInches(pdfPts, scale) {
+    scale = scale ?? getPageScale(state.currentPage);
+    if (!scale) return Math.round(pdfPts) + ' px';
+    const val = pdfPts / scale.pixelsPerUnit;
+    if (scale.unit === 'ft') {
+      let ft = Math.floor(val);
+      let inches = Math.round((val - ft) * 12);
+      if (inches >= 12) { inches = 0; ft++; }
+      return ft + "'-" + inches + '"';
+    }
+    if (scale.unit === 'in') {
+      const totalIn = val;
+      if (totalIn >= 12) {
+        let ft = Math.floor(totalIn / 12);
+        let inches = Math.round(totalIn - ft * 12);
+        if (inches >= 12) { inches = 0; ft++; }
+        return ft + "'-" + inches + '"';
+      }
+      return Math.round(totalIn) + '"';
+    }
+    if (scale.unit === 'yd') {
+      const valFt = val * 3;
+      let ft = Math.floor(valFt);
+      let inches = Math.round((valFt - ft) * 12);
+      if (inches >= 12) { inches = 0; ft++; }
+      return ft + "'-" + inches + '"';
+    }
+    return (val).toFixed(2) + ' ' + scale.unit;
+  }
   function formatArea(sqPdfPts, scale) {
     scale = scale ?? getPageScale(state.currentPage);
     if (!scale) return Math.round(sqPdfPts) + ' px²';
@@ -1651,7 +1732,7 @@
     }
     let mode = projectSegment + ' - ' + lastSavedSegment;
     let toolHint = '';
-    if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
+    if (state.tool === TOOL.SCALE || state.tool === TOOL.MEASURE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
     else if (state.tool === TOOL.LINE) toolHint = state.quickLineStart ? 'Tap end point' : 'Tap start point';
     else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
     else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
@@ -2007,6 +2088,10 @@
     if (polylineBtnSidebar) polylineBtnSidebar.classList.toggle('active', state.tool === TOOL.POLYLINE);
     document.getElementById('setScale').classList.toggle('active', state.tool === TOOL.SCALE);
     if (setScaleSidebarBtn) setScaleSidebarBtn.classList.toggle('active', state.tool === TOOL.SCALE);
+    const measureBtn = document.getElementById('measureBtn');
+    const measureBtnSidebar = document.getElementById('measureBtnSidebar');
+    if (measureBtn) measureBtn.classList.toggle('active', state.tool === TOOL.MEASURE);
+    if (measureBtnSidebar) measureBtnSidebar.classList.toggle('active', state.tool === TOOL.MEASURE);
     document.getElementById('doneEditing').style.display = state.tool === TOOL.EDIT_POLY ? 'block' : 'none';
     const doneEditingSidebar = document.getElementById('doneEditingSidebar');
     if (doneEditingSidebar) doneEditingSidebar.style.display = state.tool === TOOL.EDIT_POLY ? 'block' : 'none';
@@ -2079,7 +2164,7 @@
       const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length);
       const hasScale = !!p.scale;
       div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span>' + (hasAnn ? ' <span style="color:var(--accent)">•</span>' : '') + '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>';
-      div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; renderPdf(); updateUI(); } };
+      div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
       const deletePage = () => {
         if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
         state.pages.splice(i, 1);
@@ -2089,8 +2174,7 @@
         else if (state.selectedLinePageIdx > i) state.selectedLinePageIdx--;
         if (state.editingPolyline && state.editingPolyIndex === i) exitEditMode(false);
         else if (state.editingPolyline && state.editingPolyIndex > i) state.editingPolyIndex--;
-        updateUI();
-        renderPdf();
+        fitZoom();
       };
       const pageName = p.label || 'Page ' + (i + 1);
       const editBtn = div.querySelector('.edit-btn');
@@ -2189,14 +2273,15 @@
           state.selectedLineId = null;
           state.selectedLineIsPoly = false;
           state.selectedLinePageIdx = null;
+          updateUI();
+          renderPdf();
         } else if (lineId) {
           state.selectedLineId = lineId;
           state.selectedLineIsPoly = it.type === 'poly';
           state.selectedLinePageIdx = it.pageIdx;
           state.currentPage = it.pageIdx;
+          fitZoom();
         }
-        updateUI();
-        renderPdf();
       };
       const swatch = div.querySelector('.swatch');
       if (swatch) swatch.addEventListener('click', (e) => {
@@ -2349,12 +2434,12 @@
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) { document.getElementById(id).classList.remove('visible'); }
   let airboardToastTimer = null;
-  function showToast(msg) {
+  function showToast(msg, durationMs) {
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
     const el = document.getElementById('airboardToastText');
     if (el) el.textContent = msg || '';
     showModal('airboardToastModal');
-    airboardToastTimer = setTimeout(() => { hideModal('airboardToastModal'); airboardToastTimer = null; }, 2000);
+    airboardToastTimer = setTimeout(() => { hideModal('airboardToastModal'); airboardToastTimer = null; }, durationMs ?? 2000);
   }
 
   let setScaleFirstToastTimer = null;
@@ -2497,6 +2582,9 @@
     }
     supabase.auth.onAuthStateChange(async (event, session) => {
       state.supabaseSession = session;
+      if (event === 'TOKEN_REFRESHED') {
+        return;
+      }
       if (session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).single();
         state.isAdmin = !!profile?.is_admin;
@@ -2557,27 +2645,77 @@
     }
     state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
     state.currentPage = startPageIdx;
-    renderPdf();
-    updateUI();
+    fitZoom();
     e.target.value = '';
   };
 
+  function openScaleModal() {
+    const finishingTwoPoints = state.scalePointA && state.scalePointB;
+    const tabsEl = document.getElementById('scaleModalTabs');
+    const pointsPanel = document.getElementById('scalePointsPanel');
+    const presetsPanel = document.getElementById('scalePresetsPanel');
+    const selectOnPdfGroup = document.getElementById('scaleSelectOnPdfGroup');
+    const scaleInfo = document.getElementById('scaleInfo');
+    if (finishingTwoPoints) {
+      tabsEl.style.display = 'none';
+      presetsPanel.style.display = 'none';
+      pointsPanel.style.display = '';
+      selectOnPdfGroup.style.display = 'none';
+      scaleInfo.textContent = 'You selected a line spanning ' + Math.round(ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
+    } else {
+      tabsEl.style.display = '';
+      pointsPanel.style.display = '';
+      presetsPanel.style.display = 'none';
+      selectOnPdfGroup.style.display = '';
+      scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
+      document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'points'));
+    }
+    showModal('scaleModal');
+  }
+  function showScaleTab(tab) {
+    document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('scalePointsPanel').style.display = tab === 'points' ? '' : 'none';
+    document.getElementById('scalePresetsPanel').style.display = tab === 'presets' ? '' : 'none';
+    if (tab === 'presets') {
+      const list = document.getElementById('scalePresetsList');
+      list.innerHTML = '';
+      SCALE_PRESETS.forEach(p => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = p.label;
+        btn.onclick = () => {
+          const page = state.pages[state.currentPage];
+          if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit };
+          hideModal('scaleModal');
+          updateUI();
+          renderPdf();
+        };
+        list.appendChild(btn);
+      });
+    }
+  }
   const setScaleClick = () => {
-    state.tool = TOOL.SCALE;
-    state.scaleMode = SCALE_MODES.POINT_A;
     state.scalePointA = null;
     state.scalePointB = null;
-    if (document.getElementById('scaleModal').classList.contains('visible')) {
-      hideModal('scaleModal');
-    }
-    updateUI();
-    renderPdf();
+    state.scaleMode = SCALE_MODES.NONE;
+    state.tool = TOOL.NONE;
+    openScaleModal();
   };
   document.getElementById('setScale').onclick = setScaleClick;
   document.getElementById('setScaleSidebar').onclick = setScaleClick;
+  document.getElementById('measureBtn').onclick = () => {
+    state.tool = TOOL.MEASURE;
+    state.scaleMode = SCALE_MODES.POINT_A;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    updateUI();
+    renderPdf();
+  };
+  document.getElementById('measureBtnSidebar').onclick = () => document.getElementById('measureBtn').click();
   document.getElementById('moveBtn').onclick = () => {
     state.tool = TOOL.NONE;
     state.quickLineStart = null;
+    if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
     updateUI();
     renderPdf();
@@ -2655,7 +2793,7 @@
     cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
     showModal('counterModal');
   };
-  document.querySelectorAll('.counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
+  document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
   document.getElementById('counterChooseCancel').onclick = () => hideModal('counterModal');
   document.getElementById('doneEditing').onclick = () => exitEditMode(true);
 
@@ -2665,7 +2803,26 @@
   document.getElementById('polylineBtnSidebar').onclick = () => document.getElementById('polylineBtn').click();
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
-  document.getElementById('scaleCancel').onclick = () => hideModal('scaleModal');
+  document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
+  document.getElementById('scaleSelectOnPdf').onclick = () => {
+    hideModal('scaleModal');
+    state.tool = TOOL.SCALE;
+    state.scaleMode = SCALE_MODES.POINT_A;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    updateUI();
+    renderPdf();
+  };
+  document.getElementById('scalePresetsCancel').onclick = () => {
+    if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+    hideModal('scaleModal');
+    updateUI();
+  };
+  document.getElementById('scaleCancel').onclick = () => {
+    if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+    hideModal('scaleModal');
+    updateUI();
+  };
   document.getElementById('scaleSet').onclick = () => {
     const val = parseFloat(document.getElementById('scaleValue').value);
     const unit = document.getElementById('scaleUnit').value;
@@ -2885,8 +3042,8 @@
   document.getElementById('zoomOut').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); };
   document.getElementById('zoomIn').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(8, state.zoom + 0.1); renderPdf(); updateUI(); };
   document.getElementById('zoomFit').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } fitZoom(); };
-  document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; renderPdf(); updateUI(); } };
-  document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; renderPdf(); updateUI(); } };
+  document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } };
+  document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } };
 
   document.getElementById('exportBtn').onclick = () => {
     const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale })) };
@@ -3651,8 +3808,7 @@
           state.lastSavedAt = proj.updated_at || null;
           state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
           hideModal('loadProjectModal');
-          updateUI();
-          renderPdf();
+          fitZoom();
         };
         listEl.appendChild(div);
       }
@@ -4066,9 +4222,25 @@
       if (state.scaleMode === SCALE_MODES.POINT_A) { state.scalePointA = pdf; state.scaleMode = SCALE_MODES.POINT_B; }
       else if (state.scaleMode === SCALE_MODES.POINT_B) {
         state.scalePointB = pdf;
-        document.getElementById('scaleInfo').textContent = 'You selected a line spanning ' + Math.round(ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
         document.getElementById('scaleValue').value = '';
-        showModal('scaleModal');
+        openScaleModal();
+      }
+      renderPdf();
+    } else if (state.tool === TOOL.MEASURE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      const now = Date.now();
+      if (now - state.lastScaleTapTime < 400) return;
+      state.lastScaleTapTime = now;
+      if (state.scaleMode === SCALE_MODES.POINT_A) { state.scalePointA = pdf; state.scaleMode = SCALE_MODES.POINT_B; }
+      else if (state.scaleMode === SCALE_MODES.POINT_B) {
+        state.scalePointB = pdf;
+        const dist = ptDist(state.scalePointA, state.scalePointB);
+        const formatted = formatDistFeetInches(dist, getPageScale(state.currentPage));
+        showToast('Distance: ' + formatted, 5000);
+        state.scalePointA = null;
+        state.scalePointB = null;
+        state.scaleMode = SCALE_MODES.NONE;
+        state.tool = TOOL.NONE;
       }
       renderPdf();
     } else if (state.tool === TOOL.LINE) {
@@ -4340,6 +4512,7 @@
       else if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
       else if (k === 'l') { document.getElementById('quickLine').click(); e.preventDefault(); }
       else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
+      else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
     }
     if (e.key === 'Escape') {
       if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
@@ -4353,6 +4526,10 @@
         if (outOfBoundsToastTimer) { clearTimeout(outOfBoundsToastTimer); outOfBoundsToastTimer = null; }
       } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
         hideModal('chooseLineTypeModal');
+      } else if (document.getElementById('scaleModal').classList.contains('visible')) {
+        if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+        hideModal('scaleModal');
+        updateUI();
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
         hideModal('counterModal');
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
@@ -4377,10 +4554,17 @@
       else if (state.tool === TOOL.LINE) {
         if (state.quickLineStart) { state.quickLineStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.MEASURE) {
+        state.tool = TOOL.NONE;
+        state.scalePointA = null;
+        state.scalePointB = null;
+        state.scaleMode = SCALE_MODES.NONE;
+        updateUI();
+        renderPdf();
       } else state.tool = TOOL.NONE;
     }
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (state.currentPage > 0) { state.currentPage--; renderPdf(); updateUI(); } }
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if (state.currentPage < state.pages.length - 1) { state.currentPage++; renderPdf(); updateUI(); } }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } }
     if (e.key === 'Enter' && state.drawingPolyline && state.drawingPolyline.points.length >= 2) finishPolyline(false);
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
   });

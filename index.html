@@ -461,6 +461,7 @@
             <span class="zoom-pct" id="zoomPct">100%</span>
             <button id="zoomIn">+</button>
             <button id="zoomFit" title="Fit">⊡</button>
+            <button id="rotatePage" title="Rotate 90° right">↻</button>
           </div>
         </div>
         <div class="polyline-finish-bar" id="polylineFinishBar">
@@ -487,10 +488,10 @@
     <div class="modal-card">
       <h2>Set Scale</h2>
       <div id="scaleModalTabs" class="counter-modal-tabs">
-        <button class="counter-tab active" data-tab="points">Select two points</button>
-        <button class="counter-tab" data-tab="presets">Architectural & Engineering</button>
+        <button class="counter-tab" data-tab="points">Select two points</button>
+        <button class="counter-tab active" data-tab="presets">Architectural & Engineering</button>
       </div>
-      <div id="scalePointsPanel" class="counter-tab-panel">
+      <div id="scalePointsPanel" class="counter-tab-panel" style="display:none;">
         <p id="scaleInfo" class="form-group">You selected a line spanning 0 pdf-pts.</p>
         <div class="form-group">
           <label>Real-world length</label>
@@ -514,7 +515,7 @@
           <button id="scaleSet">Set Scale</button>
         </div>
       </div>
-      <div id="scalePresetsPanel" class="counter-tab-panel" style="display:none;">
+      <div id="scalePresetsPanel" class="counter-tab-panel">
         <div id="scalePresetsList" class="scale-presets-list"></div>
         <div class="actions" style="margin-top:16px;">
           <button id="scalePresetsCancel">Cancel</button>
@@ -1622,7 +1623,7 @@
     lineTypeSettings: { opacity: 1, lineSize: 2 },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
-    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
+    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     lastScaleTapTime: 0,
@@ -1797,6 +1798,49 @@
     return (sqPdfPts / (ppu * ppu)).toFixed(1) + ' ' + scale.unit + '²';
   }
 
+  function rotatePoint90CW(p, w, h) { return { x: h - p.y, y: p.x }; }
+  function rotateAnnotations(page, w, h) {
+    const r = (pt) => rotatePoint90CW(pt, w, h);
+    const ann = page.annotations || makeAnnotations();
+    if (ann.counterMarkers) {
+      const next = {};
+      for (const [cid, arr] of Object.entries(ann.counterMarkers)) {
+        next[cid] = (arr || []).map(m => ({ ...m, ...r({ x: m.x, y: m.y }) }));
+      }
+      ann.counterMarkers = next;
+    }
+    (ann.quickLines || []).forEach(q => {
+      const a = r({ x: q.x1, y: q.y1 }), b = r({ x: q.x2, y: q.y2 });
+      q.x1 = a.x; q.y1 = a.y; q.x2 = b.x; q.y2 = b.y;
+    });
+    (ann.polylines || []).forEach(poly => {
+      if (poly.points) poly.points = poly.points.map(pt => r(pt));
+    });
+    (ann.highlights || []).forEach(h => {
+      const a = r({ x: h.x1, y: h.y1 }), b = r({ x: h.x2, y: h.y2 });
+      h.x1 = a.x; h.y1 = a.y; h.x2 = b.x; h.y2 = b.y;
+    });
+    (ann.notes || []).forEach(n => {
+      const p = r({ x: n.x, y: n.y });
+      n.x = p.x; n.y = p.y;
+    });
+  }
+  function rotatePage90() {
+    const page = state.pages[state.currentPage];
+    if (!page || !page.pdfPage) return;
+    const rot = page.rotation ?? 0;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
+    const w = vp.width, h = vp.height;
+    rotateAnnotations(page, w, h);
+    page.rotation = (rot + 90) % 360;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    state.scaleMode = SCALE_MODES.NONE;
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
+
   let _measureCanvas = null;
   function wrapNoteText(text, maxWidth, font, lineHeight) {
     if (!_measureCanvas) _measureCanvas = document.createElement('canvas');
@@ -1856,7 +1900,7 @@
     const page = state.pages[state.currentPage];
     if (!page?.pdfPage) return false;
     const scale = state.zoom * dpr();
-    const vp = page.pdfPage.getViewport({ scale });
+    const vp = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
     const w = vp.width / scale, h = vp.height / scale;
     return p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h;
   }
@@ -1889,11 +1933,14 @@
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'highlight', index: i };
     }
+    const rot = (page.rotation ?? 0) * Math.PI / 180;
+    const cosR = Math.cos(rot), sinR = Math.sin(rot);
+    const localToViewport = (note, lx, ly) => ({ x: note.x + cosR * lx - sinR * ly, y: note.y + sinR * lx + cosR * ly });
     for (let i = 0; i < (ann.notes || []).length; i++) {
       const n = ann.notes[i];
       const w = n.width || 150;
-      const fontSizeHandle = { x: n.x - 8, y: n.y + 8 };
-      const widthHandle = { x: n.x + w, y: n.y + 8 };
+      const fontSizeHandle = localToViewport(n, -8, 8);
+      const widthHandle = localToViewport(n, w, 8);
       if (ptDist(pos, fontSizeHandle) <= r) return { type: 'noteFontSize', index: i };
       if (ptDist(pos, widthHandle) <= r) return { type: 'noteResize', index: i };
       const fontSize = n.fontSize || 14;
@@ -1901,7 +1948,9 @@
       const font = fontSize * scale + 'px DM Sans';
       const { lines } = wrapNoteText(n.text, w * scale, font, fontSize * scale);
       const heightPdf = lines.length * fontSize;
-      if (pos.x >= n.x && pos.x <= n.x + w && pos.y >= n.y && pos.y <= n.y + heightPdf) return { type: 'note', index: i };
+      const lx = cosR * (pos.x - n.x) + sinR * (pos.y - n.y);
+      const ly = -sinR * (pos.x - n.x) + cosR * (pos.y - n.y);
+      if (lx >= 0 && lx <= w && ly >= 0 && ly <= heightPdf) return { type: 'note', index: i };
     }
     return null;
   }
@@ -2009,7 +2058,7 @@
     pdfRenderId++;
     const thisRenderId = pdfRenderId;
     const scale = state.zoom * (window.devicePixelRatio || 1);
-    const viewport = page.pdfPage.getViewport({ scale });
+    const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
     if (!pdfOffscreenCanvas) pdfOffscreenCanvas = document.createElement('canvas');
     pdfOffscreenCanvas.width = viewport.width;
     pdfOffscreenCanvas.height = viewport.height;
@@ -2105,18 +2154,18 @@
       const lineHeight = fontSize * scale;
       const { lines } = wrapNoteText(n.text, w * scale, font, lineHeight);
       const p = toCanvas({ x: n.x, y: n.y });
+      const rot = (page.rotation ?? 0) * Math.PI / 180;
       ctx.save();
       ctx.translate(p.x, p.y);
+      ctx.rotate(rot);
       ctx.font = font;
       ctx.fillStyle = '#e85447';
       ctx.textBaseline = 'top';
       lines.forEach((line, i) => { ctx.fillText(line, 0, i * lineHeight); });
-      ctx.restore();
-      const fontSizeHandlePos = toCanvas({ x: n.x - 8, y: n.y + 8 });
-      const widthHandlePos = toCanvas({ x: n.x + w, y: n.y + 8 });
       ctx.fillStyle = '#666';
-      ctx.fillRect(fontSizeHandlePos.x - 3, fontSizeHandlePos.y - 3, 6, 6);
-      ctx.fillRect(widthHandlePos.x - 3, widthHandlePos.y - 3, 6, 6);
+      ctx.fillRect(-8 * scale - 3, 8 * scale - 3, 6, 6);
+      ctx.fillRect(w * scale - 3, 8 * scale - 3, 6, 6);
+      ctx.restore();
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
@@ -2252,10 +2301,15 @@
       const lh = fontSize * scale;
       const { lines } = wrapNoteText(n.text, maxW, font, lh);
       const p = tc({ x: n.x, y: n.y });
+      const rot = (page.rotation ?? 0) * Math.PI / 180;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(rot);
       ctx.font = font;
       ctx.fillStyle = '#e85447';
       ctx.textBaseline = 'top';
-      lines.forEach((line, i) => { ctx.fillText(line, p.x, p.y + i * lh); });
+      lines.forEach((line, i) => { ctx.fillText(line, 0, i * lh); });
+      ctx.restore();
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
@@ -2320,7 +2374,7 @@
   function getPageSize() {
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) return { w: 0, h: 0 };
-    const vp = page.pdfPage.getViewport({ scale: state.zoom });
+    const vp = page.pdfPage.getViewport({ scale: state.zoom, rotation: page.rotation ?? 0 });
     return { w: vp.width, h: vp.height };
   }
 
@@ -2330,7 +2384,7 @@
     const wrap = document.querySelector('.canvas-wrapper');
     if (!wrap) return;
     const r = wrap.getBoundingClientRect();
-    const vp = page.pdfPage.getViewport({ scale: 1 });
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
     const scaleX = r.width / vp.width, scaleY = r.height / vp.height;
     state.zoom = Math.max(0.2, Math.min(8, Math.min(scaleX, scaleY)));
     state.pan = { x: 0, y: 0 };
@@ -2970,7 +3024,7 @@
       for (let i = 0; i < numPages; i++) {
         const pdfPage = await pdf.getPage(i + 1);
         const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-        state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
+        state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
       }
     }
     if (state.pendingCanvasLoad && firstBuf) {
@@ -2993,6 +3047,7 @@
           if (page) {
             if (p.annotations) page.annotations = p.annotations;
             page.scale = p.scale !== undefined ? p.scale : null;
+            page.rotation = p.rotation ?? 0;
           }
         });
         state.pendingCanvasLoad = null;
@@ -3035,6 +3090,7 @@
                 if (page) {
                   if (p.annotations) page.annotations = p.annotations;
                   page.scale = p.scale !== undefined ? p.scale : null;
+                  page.rotation = p.rotation ?? 0;
                 }
               });
               state.currentProjectId = full.id;
@@ -3070,11 +3126,9 @@
       scaleInfo.textContent = 'You selected a line spanning ' + Math.round(ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
     } else {
       tabsEl.style.display = '';
-      pointsPanel.style.display = '';
-      presetsPanel.style.display = 'none';
       selectOnPdfGroup.style.display = '';
       scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
-      document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'points'));
+      showScaleTab('presets');
     }
     showModal('scaleModal');
   }
@@ -3485,6 +3539,7 @@
 
   document.getElementById('zoomOut').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); };
   document.getElementById('zoomIn').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(8, state.zoom + 0.1); renderPdf(); updateUI(); };
+  document.getElementById('rotatePage').onclick = () => rotatePage90();
   document.getElementById('zoomFit').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } fitZoom(); };
   document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } };
   document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } };
@@ -3500,7 +3555,7 @@
   };
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale })) };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -3576,7 +3631,7 @@
       grid.appendChild(card);
       (async () => {
         const THUMB_SCALE = 0.4;
-        const viewport = page.pdfPage.getViewport({ scale: THUMB_SCALE });
+        const viewport = page.pdfPage.getViewport({ scale: THUMB_SCALE, rotation: page.rotation ?? 0 });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -3633,7 +3688,7 @@
         const i = included[idx];
         const page = state.pages[i];
         btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE });
+        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -3825,7 +3880,7 @@
       const it = items[idx];
       const page = state.pages[it.pageIdx];
       const n = it.note;
-      const viewport = page.pdfPage.getViewport({ scale });
+      const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
       const pageW = viewport.width / scale, pageH = viewport.height / scale;
       const noteW = n.width || 150;
       const noteFontSize = n.fontSize || 14;
@@ -3915,7 +3970,7 @@
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
       let w = maxX - minX, hh = maxY - minY;
       if (w < 1 || hh < 1) continue;
-      const viewport = page.pdfPage.getViewport({ scale });
+      const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
       const pageW = viewport.width / scale, pageH = viewport.height / scale;
       const clampMinX = Math.max(0, minX), clampMinY = Math.max(0, minY);
       const clampMaxX = Math.min(pageW, maxX), clampMaxY = Math.min(pageH, maxY);
@@ -3970,14 +4025,14 @@
       const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
       btn.textContent = 'Exporting report…';
       await addReportPagesToPdf(doc);
-      const firstViewport = state.pages[0].pdfPage.getViewport({ scale: EXPORT_SCALE });
+      const firstViewport = state.pages[0].pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: state.pages[0].rotation ?? 0 });
       const firstW = (firstViewport.width / EXPORT_SCALE) * PT_TO_MM;
       const firstH = (firstViewport.height / EXPORT_SCALE) * PT_TO_MM;
       doc.addPage([firstW, firstH], firstW > firstH ? 'l' : 'p');
       for (let i = 0; i < state.pages.length; i++) {
         btn.textContent = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
         const page = state.pages[i];
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE });
+        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -4025,6 +4080,7 @@
           if (page) {
             if (p.annotations) page.annotations = p.annotations;
             page.scale = p.scale !== undefined ? p.scale : (data.scale || null);
+            page.rotation = p.rotation ?? 0;
           }
         });
         updateUI();
@@ -4522,7 +4578,7 @@
                 for (let i = 0; i < numPages; i++) {
                   const pdfPage = await pdf.getPage(i + 1);
                   const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
+                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
                 }
                 if (d.counters) state.counters = d.counters;
                 if (d.lineTypes) state.lineTypes = d.lineTypes;
@@ -4533,6 +4589,7 @@
                   if (page) {
                     if (p.annotations) page.annotations = p.annotations;
                     page.scale = p.scale !== undefined ? p.scale : null;
+                    page.rotation = p.rotation ?? 0;
                   }
                 });
                 state.pdfStoragePath = proj.pdf_path;
@@ -4550,7 +4607,7 @@
               for (let i = 0; i < numPages; i++) {
                 const pdfPage = await pdf.getPage(i + 1);
                 const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
+                state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
               }
               if (d.counters) state.counters = d.counters;
               if (d.lineTypes) state.lineTypes = d.lineTypes;
@@ -4559,6 +4616,7 @@
                 if (page) {
                   if (p.annotations) page.annotations = p.annotations;
                   page.scale = p.scale !== undefined ? p.scale : null;
+                  page.rotation = p.rotation ?? 0;
                 }
               });
               state.pdfStoragePath = proj.pdf_path;
@@ -4794,7 +4852,7 @@
         lineTypes: state.lineTypes,
         iconNames: state.iconNames || {},
         iconOrder: state.iconOrder || null,
-        pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale }))
+        pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
       };
       const dataJson = JSON.stringify(data);
       const dataSize = dataJson.length;
@@ -5255,6 +5313,8 @@
         state.resizingNoteFontSizeIdx = t.index;
         state.resizingNoteFontSizePageIdx = state.currentPage;
         state.resizingNoteFontSizeStartY = state.mousePos.y;
+        const rot = (page.rotation ?? 0) * Math.PI / 180;
+        state.resizingNoteFontSizeStartLocalY = -Math.sin(rot) * (state.mousePos.x - note.x) + Math.cos(rot) * (state.mousePos.y - note.y);
         state.resizingNoteFontSizeStartVal = note.fontSize || 14;
       }
     } else if (t && t.type === 'note') {
@@ -5291,14 +5351,18 @@
       const page = state.pages[state.resizingNotePageIdx];
       const note = page?.annotations?.notes?.[state.resizingNoteIdx];
       if (note) {
-        note.width = Math.max(50, Math.min(400, pdf.x - note.x));
+        const rot = (page.rotation ?? 0) * Math.PI / 180;
+        const localX = Math.cos(rot) * (pdf.x - note.x) + Math.sin(rot) * (pdf.y - note.y);
+        note.width = Math.max(50, Math.min(400, localX));
         renderAnnotations();
       }
-    } else if (state.resizingNoteFontSizeIdx !== null && state.resizingNoteFontSizePageIdx !== null && state.resizingNoteFontSizeStartY != null && state.resizingNoteFontSizeStartVal != null) {
+    } else if (state.resizingNoteFontSizeIdx !== null && state.resizingNoteFontSizePageIdx !== null && state.resizingNoteFontSizeStartLocalY != null && state.resizingNoteFontSizeStartVal != null) {
       const page = state.pages[state.resizingNoteFontSizePageIdx];
       const note = page?.annotations?.notes?.[state.resizingNoteFontSizeIdx];
       if (note) {
-        const dy = state.resizingNoteFontSizeStartY - pdf.y;
+        const rot = (page.rotation ?? 0) * Math.PI / 180;
+        const currentLocalY = -Math.sin(rot) * (pdf.x - note.x) + Math.cos(rot) * (pdf.y - note.y);
+        const dy = state.resizingNoteFontSizeStartLocalY - currentLocalY;
         note.fontSize = Math.round(Math.max(8, Math.min(48, state.resizingNoteFontSizeStartVal + dy / 3)));
         renderAnnotations();
       }
@@ -5330,6 +5394,7 @@
     state.resizingNoteFontSizeIdx = null;
     state.resizingNoteFontSizePageIdx = null;
     state.resizingNoteFontSizeStartY = null;
+    state.resizingNoteFontSizeStartLocalY = null;
     state.resizingNoteFontSizeStartVal = null;
     state.draggingNoteIdx = null;
     state.draggingNotePageIdx = null;
@@ -5337,7 +5402,7 @@
     state.dragNoteStartPos = null;
   });
 
-  (cWrapper || pdfCanvas).addEventListener('mouseleave', () => { state.isPanning = false; state.panStart = null; state.resizingNoteIdx = null; state.resizingNotePageIdx = null; state.resizingNoteFontSizeIdx = null; state.resizingNoteFontSizePageIdx = null; state.resizingNoteFontSizeStartY = null; state.resizingNoteFontSizeStartVal = null; state.draggingNoteIdx = null; state.draggingNotePageIdx = null; state.draggingNoteOffset = null; state.dragNoteStartPos = null; if (annCanvas) annCanvas.style.cursor = ''; });
+  (cWrapper || pdfCanvas).addEventListener('mouseleave', () => { state.isPanning = false; state.panStart = null; state.resizingNoteIdx = null; state.resizingNotePageIdx = null; state.resizingNoteFontSizeIdx = null; state.resizingNoteFontSizePageIdx = null; state.resizingNoteFontSizeStartY = null; state.resizingNoteFontSizeStartLocalY = null; state.resizingNoteFontSizeStartVal = null; state.draggingNoteIdx = null; state.draggingNotePageIdx = null; state.draggingNoteOffset = null; state.dragNoteStartPos = null; if (annCanvas) annCanvas.style.cursor = ''; });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
     if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote) { state.justFinishedResize = false; state.justFinishedDragNote = false; return; }
@@ -5605,6 +5670,9 @@
       } else if (data.scale) {
         state.pages.forEach(p => { p.scale = data.scale; });
       }
+      if (data.pageRotations) {
+        data.pageRotations.forEach((rot, i) => { if (state.pages[i]) state.pages[i].rotation = rot ?? 0; });
+      }
     } catch (_) {}
   }
 
@@ -5619,7 +5687,7 @@
       lineTypes: state.lineTypes,
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
-      pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale }))
+      pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
     };
     const dataSize = JSON.stringify(data).length;
     const name = state.currentProjectName || 'Untitled';
@@ -5674,7 +5742,7 @@
   }
 
   setInterval(() => {
-    if (state.pages.length || state.counters.length || state.lineTypes.length) localStorage.setItem('takeoff-state', JSON.stringify({ counters: state.counters, lineTypes: state.lineTypes, counterSettings: state.counterSettings, lineTypeSettings: state.lineTypeSettings, exportSettings: state.exportSettings, recentLineColors: state.recentLineColors, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pageAnnotations: state.pages.map(p => p.annotations), pageScales: state.pages.map(p => p.scale) }));
+    if (state.pages.length || state.counters.length || state.lineTypes.length) localStorage.setItem('takeoff-state', JSON.stringify({ counters: state.counters, lineTypes: state.lineTypes, counterSettings: state.counterSettings, lineTypeSettings: state.lineTypeSettings, exportSettings: state.exportSettings, recentLineColors: state.recentLineColors, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pageAnnotations: state.pages.map(p => p.annotations), pageScales: state.pages.map(p => p.scale), pageRotations: state.pages.map(p => p.rotation ?? 0) }));
   }, 5000);
 
   setInterval(async () => {
@@ -5712,7 +5780,7 @@
                 for (let i = 0; i < numPages; i++) {
                   const pdfPage = await pdf.getPage(i + 1);
                   const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null });
+                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
                 }
                 if (d.counters) state.counters = d.counters;
                 if (d.lineTypes) state.lineTypes = d.lineTypes;
@@ -5723,6 +5791,7 @@
                   if (page) {
                     if (p.annotations) page.annotations = p.annotations;
                     page.scale = p.scale !== undefined ? p.scale : null;
+                    page.rotation = p.rotation ?? 0;
                   }
                 });
                 state.currentProjectId = proj.id;

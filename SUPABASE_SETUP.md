@@ -34,7 +34,7 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **006_pdf_hash.sql** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
 
-**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Used by Save Airboard / Load from Cloud in User Settings. ✓ Applied
+**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Used by Save Artboard / Load from Cloud in User Settings. ✓ Applied
 
 ## 3. Deploy Edge Functions
 
@@ -95,15 +95,15 @@ on conflict (user_id) do update set is_admin = true;
 
 ## Usage
 
-- **Sign In** — Click "Sign In", enter credentials (provided by admin). If you have a saved airboard, it is restored automatically.
+- **Sign In** — Click "Sign In", enter credentials (provided by admin). If you have a saved artboard, it is restored automatically.
 - **Save Project** — When logged in, click "Save Project", enter name. The PDF is uploaded to Storage when you save (if you uploaded one).
 - **Load Project** — When logged in, click "Load Project", select from list. Projects with stored PDFs load the PDF automatically. Legacy projects (no PDF): upload your PDF first, then load.
 - **Add User** (admin only) — In User Settings, create new users with email + password; share password with user. Admin-created users are auto-confirmed and can sign in immediately. If an existing user sees "Email not confirmed", confirm them in Dashboard > Authentication > Users (or run `update auth.users set email_confirmed_at = now() where email = 'user@example.com';` in SQL Editor).
 - **Manage User** (admin only) — In User Settings, open Manage User to list all users and delete accounts (cannot delete yourself).
 - **All Users** (admin only) — In User Settings, view all users with role and last sign-in.
 - **Manage Projects** (admin only) — In Project Settings, open Manage Projects to list all projects across users and delete any project (removes project and stored PDF).
-- **Save Airboard** — In User Settings, save your counters and line types to your account. They are restored when you sign in on any device.
-- **Load from Cloud** — In User Settings, replace your current airboard with the saved version from your account.
+- **Save Artboard** — In User Settings, save your counters and line types to your account. They are restored when you sign in on any device.
+- **Load from Cloud** — In User Settings, replace your current artboard with the saved version from your account.
 
 ## Phase Status
 

@@ -906,12 +906,12 @@
         </div>
       </div>
       <div class="form-group supabase-only" id="mySettingsAirboardSection">
-        <label>Airboard</label>
+        <label>Artboard</label>
         <p class="form-group" style="margin:0 0 8px 0;color:var(--text2);font-size:0.9rem;">Save your counters and line types to your account. They will be restored when you sign in on any device.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Airboard</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Artboard</button>
           <button type="button" class="settings-menu-btn" id="mySettingsLoadAirboard">Load from Cloud</button>
-          <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Airboard</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Artboard</button>
         </div>
         <p id="mySettingsAirboardStatus" class="form-group" style="margin:8px 0 0 0;font-size:0.85rem;color:var(--text3);"></p>
       </div>
@@ -2872,8 +2872,8 @@
   async function fetchUserAirboard() {
     const user = state.supabaseSession?.user;
     if (!supabase || !user) return null;
-    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order').eq('user_id', user.id).single();
-    if (error && error.code !== 'PGRST116') return null;
+    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order').eq('user_id', user.id).maybeSingle();
+    if (error) return null;
     if (!data) return null;
     return {
       counters: data.counters || [],
@@ -2902,7 +2902,7 @@
     const { data: { session } } = await supabase.auth.getSession();
     state.supabaseSession = session;
     if (session?.user) {
-      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
     } else {
       state.isAdmin = false;
@@ -2913,7 +2913,7 @@
         return;
       }
       if (session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).single();
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         const airboard = await fetchUserAirboard();
         if (airboard && (airboard.counters?.length || airboard.lineTypes?.length)) {
@@ -4643,20 +4643,20 @@
     document.getElementById('mySettingsSaveAirboard').onclick = async () => {
       const ok = await saveUserAirboard();
       if (ok) {
-        showToast('Airboard saved to your account');
+        showToast('Artboard saved to your account');
         const statusEl = document.getElementById('mySettingsAirboardStatus');
         if (statusEl) statusEl.textContent = 'Last saved: just now';
       } else {
-        alert('Failed to save airboard. Please try again.');
+        alert('Failed to save artboard. Please try again.');
       }
     };
     document.getElementById('mySettingsLoadAirboard').onclick = async () => {
       if (state.counters.length || state.lineTypes.length) {
-        if (!confirm('Replace your current airboard with the saved version from the cloud?')) return;
+        if (!confirm('Replace your current artboard with the saved version from the cloud?')) return;
       }
       const data = await fetchUserAirboard();
       if (!data) {
-        showToast('No saved airboard found');
+        showToast('No saved artboard found');
         return;
       }
       state.counters = data.counters;
@@ -4665,15 +4665,15 @@
       state.iconOrder = data.iconOrder;
       updateUI();
       renderPdf();
-      showToast('Airboard loaded from cloud');
+      showToast('Artboard loaded from cloud');
     };
     document.getElementById('mySettingsExportAirboard').onclick = () => {
       const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null };
       const a = document.createElement('a');
       a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
-      a.download = 'airboard-backup.json';
+      a.download = 'artboard-backup.json';
       a.click();
-      showToast('Airboard exported');
+      showToast('Artboard exported');
     };
     document.getElementById('mySettingsManageUsers').onclick = () => { hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };
     document.getElementById('mySettingsManageUser').onclick = () => openManageUserModal();
@@ -4913,6 +4913,8 @@
       } catch (e) {
         console.error('[Save] Failed:', e);
         log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
+        window.lastSaveError = e;
+        try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
         const errMsg = (e?.message) || (e?.details) || (e?.hint) || String(e) || 'Save failed';
         showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
         saveProgressMessage = '';
@@ -4943,12 +4945,13 @@
       saveBtn.style.display = 'none';
       cancelBtn.disabled = true;
       cancelBtn.textContent = 'Cancel';
-      const ok = await performAutoSave();
-      if (ok) {
+      const result = await performAutoSave();
+      if (result.ok) {
         autoSaveDirty = false;
         hideModal('saveBeforeLoadModal');
       } else {
-        showToast('Save failed. Open Project Settings to retry.', 4000);
+        const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
+        showToast('Save failed' + (errMsg ? ': ' + errMsg : '') + '. Open Project Settings to retry.', 4000);
         msgEl.textContent = 'You have unsaved changes. Save before loading another project?';
         discardBtn.style.display = '';
         saveBtn.style.display = '';
@@ -5606,9 +5609,9 @@
   }
 
   async function performAutoSave() {
-    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return false;
-    if (saveInProgress) return false;
-    if (!state.pages.length && !state.currentProjectId) return false;
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return { ok: false, error: null };
+    if (saveInProgress) return { ok: false, error: null };
+    if (!state.pages.length && !state.currentProjectId) return { ok: false, error: null };
     const user = state.supabaseSession.user;
     const data = {
       version: 1,
@@ -5662,10 +5665,11 @@
         } catch (_) {}
       }
       updateUI();
-      return true;
+      return { ok: true };
     } catch (e) {
       console.error('[Auto-save] Failed:', e);
-      return false;
+      window.lastSaveError = e;
+      return { ok: false, error: e };
     }
   }
 
@@ -5677,7 +5681,8 @@
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
     if (!autoSaveDirty) return;
     autoSaveDirty = false;
-    await performAutoSave();
+    const result = await performAutoSave();
+    if (!result.ok && result.error) window.lastSaveError = result.error;
   }, AUTO_SAVE_INTERVAL_MS);
 
   window.state = state;

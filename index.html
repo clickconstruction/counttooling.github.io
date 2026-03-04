@@ -128,7 +128,8 @@
     .sidebar-item .icon-svg { width: 20px; height: 20px; flex-shrink: 0; }
     .sidebar-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
     .sidebar-item .badge { background: var(--surface3); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-family: 'DM Mono', monospace; }
-    .sidebar-item .badge.badge-scale-set { background: var(--accent); color: #000; }
+    .sidebar-item .badge.badge-scale-set { color: var(--accent); }
+    .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
     .sidebar-item .edit-btn { padding: 4px; cursor: pointer; opacity: 0.7; }
     .sidebar-item .edit-btn:hover { opacity: 1; }
     .sidebar-item-line-type { flex-direction: column; align-items: stretch; gap: 4px; }
@@ -158,7 +159,7 @@
     .page-nav { display: flex; align-items: center; gap: 8px; padding: 8px; }
     .page-nav-inner { display: flex; align-items: center; gap: 8px; }
     .page-nav button { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; }
-    .page-nav-marked-btn { color: var(--accent); border-color: var(--accent); }
+    .page-nav button.page-nav-marked-btn:not(:disabled) { color: var(--accent); border-color: var(--accent); }
     .page-nav-marked-btn:hover:not(:disabled) { background: rgba(232, 197, 71, 0.15); }
     .page-nav-marked-btn:disabled { opacity: 0.5; color: var(--text3); border-color: var(--border); cursor: default; }
     .polyline-finish-bar { display: none; padding: 8px; background: var(--surface2); border-top: 1px solid var(--border); gap: 8px; }
@@ -2486,7 +2487,7 @@
       div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
       const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length) || (p.annotations?.highlights?.length) || (p.annotations?.notes?.length);
       const hasScale = !!p.scale;
-      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span>' + (hasAnn ? ' <span style="color:var(--accent)">•</span>' : '') + '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>';
+      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span><span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>';
       div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
       const deletePage = () => {
         if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }

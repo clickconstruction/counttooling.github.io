@@ -225,6 +225,9 @@
     .modal-card .actions button:last-child:hover { background: var(--accent2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
+    .counter-line-type-pages-list { max-height: 200px; overflow-y: auto; }
+    .counter-line-type-pages-list .page-item { padding: 6px 8px; cursor: pointer; border-radius: 4px; }
+    .counter-line-type-pages-list .page-item:hover { background: var(--surface2); }
     .macros-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     .macros-table th, .macros-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
     .macros-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }
@@ -830,6 +833,40 @@
       <div class="actions">
         <button id="deletePageCancel">Cancel</button>
         <button id="deletePageConfirm" class="danger">Delete Page</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="counterLineTypeDetailsModal">
+    <div class="modal-card">
+      <h2 id="counterLineTypeDetailsTitle">Counter / Line</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="counterLineTypeDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="counterLineTypeDetailsSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
+          <span id="counterLineTypeDetailsSwatchLabel">Change</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>On pages</label>
+        <div id="counterLineTypeDetailsPages" class="counter-line-type-pages-list"></div>
+      </div>
+      <div class="actions">
+        <button id="counterLineTypeDetailsDelete" class="danger">Delete</button>
+        <button id="counterLineTypeDetailsClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deleteCounterLineTypeConfirmModal">
+    <div class="modal-card">
+      <h2>Delete <span id="deleteCounterLineTypeName"></span>?</h2>
+      <p id="deleteCounterLineTypeMessage" style="margin:0 0 24px 0;color:var(--text2);"></p>
+      <div class="actions">
+        <button id="deleteCounterLineTypeCancel">Cancel</button>
+        <button id="deleteCounterLineTypeConfirm" class="danger">Delete</button>
       </div>
     </div>
   </div>
@@ -2570,11 +2607,10 @@
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id ? ' active' : '');
       const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Rename">✎</span>';
+      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>';
       div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
       div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { c.color = color; markProjectDirty(); }); });
-      div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { c.name = v; markProjectDirty(); updateUI(); }); });
-      onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { c.name = v; markProjectDirty(); updateUI(); }); });
+      div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('counter', c); });
       el.appendChild(div);
     });
   }
@@ -2595,11 +2631,10 @@
       });
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row"><span class="swatch" style="background:' + lt.color + '"></span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span><span class="edit-btn" title="Rename">✎</span></div>';
+      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row"><span class="swatch" style="background:' + lt.color + '"></span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span><span class="edit-btn" title="Edit">✎</span></div>';
       div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
       div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { lt.color = color; markProjectDirty(); }); });
-      div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { lt.name = v; markProjectDirty(); updateUI(); }); });
-      onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { lt.name = v; markProjectDirty(); updateUI(); }); });
+      div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('lineType', lt); });
       el.appendChild(div);
     });
   }
@@ -2814,6 +2849,112 @@
 
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) { document.getElementById(id).classList.remove('visible'); }
+
+  let pendingDeleteCounterLineType = null;
+  function openCounterLineTypeDetailsModal(kind, item) {
+    const titleEl = document.getElementById('counterLineTypeDetailsTitle');
+    const nameEl = document.getElementById('counterLineTypeDetailsName');
+    const swatchEl = document.getElementById('counterLineTypeDetailsSwatch');
+    const swatchLabelEl = document.getElementById('counterLineTypeDetailsSwatchLabel');
+    const pagesEl = document.getElementById('counterLineTypeDetailsPages');
+    const deleteBtn = document.getElementById('counterLineTypeDetailsDelete');
+    titleEl.textContent = kind === 'counter' ? 'Counter' : 'Line Type';
+    nameEl.value = item.name || '';
+    nameEl.onblur = () => {
+      const v = nameEl.value.trim();
+      item.name = v || (kind === 'counter' ? 'Counter' : 'Line');
+      markProjectDirty();
+      updateUI();
+    };
+    const color = item.color || (kind === 'counter' ? '#e8c547' : '#4a9eff');
+    swatchEl.style.background = color;
+    swatchEl.onclick = () => {
+      showLineColorModal(color, (newColor) => {
+        item.color = newColor;
+        swatchEl.style.background = newColor;
+        markProjectDirty();
+        updateUI();
+        renderPdf();
+      });
+    };
+    swatchLabelEl.textContent = 'Change';
+    let totalCount = 0;
+    const pages = [];
+    if (kind === 'counter') {
+      state.pages.forEach((p, pi) => {
+        const n = (p.annotations?.counterMarkers?.[item.id] || []).length;
+        if (n > 0) { pages.push({ pageIdx: pi, count: n, label: p.label || 'Page ' + (pi + 1) }); totalCount += n; }
+      });
+    } else {
+      state.pages.forEach((p, pi) => {
+        const q = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === item.id).length;
+        const poly = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === item.id).length;
+        const runs = q + poly;
+        if (runs > 0) { pages.push({ pageIdx: pi, count: runs, label: p.label || 'Page ' + (pi + 1) }); totalCount += runs; }
+      });
+    }
+    pagesEl.innerHTML = '';
+    if (pages.length === 0) {
+      pagesEl.innerHTML = '<p style="margin:0;color:var(--text2);font-size:0.9rem;">Not used on any page</p>';
+    } else {
+      pages.forEach(({ pageIdx, count, label }) => {
+        const div = document.createElement('div');
+        div.className = 'page-item';
+        div.textContent = kind === 'counter' ? label + ': ' + count + ' marker' + (count !== 1 ? 's' : '') : label + ': ' + count + ' run' + (count !== 1 ? 's' : '');
+        div.onclick = () => {
+          state.currentPage = pageIdx;
+          fitZoom();
+          hideModal('counterLineTypeDetailsModal');
+          updateUI();
+          renderPdf();
+        };
+        pagesEl.appendChild(div);
+      });
+    }
+    deleteBtn.onclick = () => {
+      if (totalCount === 0) {
+        performDeleteCounterLineType(kind, item);
+        hideModal('counterLineTypeDetailsModal');
+      } else {
+        pendingDeleteCounterLineType = { kind, item };
+        document.getElementById('deleteCounterLineTypeName').textContent = item.name || (kind === 'counter' ? 'this counter' : 'this line type');
+        document.getElementById('deleteCounterLineTypeMessage').textContent = 'This will remove ' + totalCount + (kind === 'counter' ? ' marker' + (totalCount !== 1 ? 's' : '') : ' line' + (totalCount !== 1 ? 's' : '')) + ' from the project. Continue?';
+        showModal('deleteCounterLineTypeConfirmModal');
+      }
+    };
+    showModal('counterLineTypeDetailsModal');
+  }
+  function performDeleteCounterLineType(kind, item) {
+    if (kind === 'counter') {
+      const idx = state.counters.findIndex(c => c.id === item.id);
+      if (idx >= 0) state.counters.splice(idx, 1);
+      state.pages.forEach(p => {
+        if (p.annotations?.counterMarkers) delete p.annotations.counterMarkers[item.id];
+      });
+      if (state.activeCounterType === item.id) { state.activeCounterType = null; state.tool = TOOL.NONE; }
+    } else {
+      const idx = state.lineTypes.findIndex(lt => lt.id === item.id);
+      if (idx >= 0) state.lineTypes.splice(idx, 1);
+      state.pages.forEach(p => {
+        const ann = p.annotations;
+        if (ann) {
+          if (ann.quickLines) ann.quickLines = ann.quickLines.filter(q => q.lineTypeId !== item.id);
+          if (ann.polylines) ann.polylines = ann.polylines.filter(poly => poly.lineTypeId !== item.id);
+        }
+      });
+      if (state.activeLineTypeId === item.id) { state.activeLineTypeId = null; state.tool = TOOL.NONE; }
+      const selPage = state.pages[state.selectedLinePageIdx];
+      const selPoly = (selPage?.annotations?.polylines || []).find(p => p.id === state.selectedLineId);
+      const selQuick = (selPage?.annotations?.quickLines || []).find(q => q.id === state.selectedLineId);
+      if ((selPoly && selPoly.lineTypeId === item.id) || (selQuick && selQuick.lineTypeId === item.id)) {
+        state.selectedLineId = null; state.selectedLineIsPoly = false; state.selectedLinePageIdx = null;
+      }
+    }
+    markProjectDirty();
+    updateUI();
+    renderPdf();
+  }
+
   let airboardToastTimer = null;
   function showToast(msg, durationMs) {
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
@@ -4141,6 +4282,17 @@
     const pending = state.pendingDeletePage;
     state.pendingDeletePage = null;
     if (pending?.onDelete) pending.onDelete();
+  };
+  document.getElementById('counterLineTypeDetailsClose').onclick = () => hideModal('counterLineTypeDetailsModal');
+  document.getElementById('deleteCounterLineTypeCancel').onclick = () => { hideModal('deleteCounterLineTypeConfirmModal'); pendingDeleteCounterLineType = null; };
+  document.getElementById('deleteCounterLineTypeConfirm').onclick = () => {
+    hideModal('deleteCounterLineTypeConfirmModal');
+    const pending = pendingDeleteCounterLineType;
+    pendingDeleteCounterLineType = null;
+    if (pending) {
+      performDeleteCounterLineType(pending.kind, pending.item);
+      hideModal('counterLineTypeDetailsModal');
+    }
   };
   document.getElementById('clearPageConfirm').onclick = () => {
     hideModal('clearPageConfirmModal');

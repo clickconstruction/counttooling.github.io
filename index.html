@@ -1644,7 +1644,7 @@
   let savePdfInProgress = false;
   let saveProgressMessage = '';
   let lastSaveIncludedPdf = false;
-  const AUTO_SAVE_INTERVAL_MS = 5000;
+  const AUTO_SAVE_INTERVAL_MS = 60000;
 
   function markProjectDirty() {
     if (!state.pages.length && !state.currentProjectId) return;

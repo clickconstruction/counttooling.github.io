@@ -21,7 +21,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate Helpers | 1978–1989 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 2341–2939 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 2940–5087 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal (Include PDF checkbox), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
+| Modals & Handlers | 2940–5087 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, authModal, settingsModal (Project Settings), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal (Include PDF checkbox), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
 | Canvas Event Handlers | 5088–5220 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
 | Event Binding | 5221–5749 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P/D/H/N when not in input/textarea) |
 | Init & Persistence | 5221–5749 | initSupabaseAuth, localStorage restore, save interval (5s backup), performAutoSave (1 min), markProjectDirty, autoSaveDirty, lastSaveIncludedPdf, savePdfInProgress, pdfCachePut/Get, sha256Hex, clickcount-last-project restore, window globals |
@@ -53,10 +53,12 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Rename | `startRename` |
 | Pages collapse | `pagesListCollapsed` or `pagesSection` |
 | Mobile sidebar tools | `sidebar-tool-buttons` or `moveBtnSidebar` |
-| Mobile header tools | `sidebar-triggers` (Move, Counter, Line visible; Polyline hidden) |
+| Mobile header tools | `sidebar-triggers` (Move, Counter, Line visible; Polyline hidden); `has-pdf` (body class; Upload PDF vs Set Scale slot) |
 | Header active type | `headerActiveCounter` or `headerActiveLineType` |
 | Counter modal tabs | `counter-tab` or `counterChooseList` |
 | Page/zoom row | `page-zoom-row` |
+| Page rotation | `rotatePage90` or `rotatePage` or `page.rotation` |
+| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` or `counterLineTypeDetailsModal` |
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
 | Save/Load project | `saveProjectModal` or `loadProjectModal` |
 | Save before load | `saveBeforeLoadModal` or `openLoadProjectModalOrPromptSave` |
@@ -75,7 +77,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | User Settings | `mySettingsModal` or `openMySettings` — email, change password, Artboard (Save/Load/Export counters and line types to user profile), Add User / Manage User (admin), All Users list (admin), Sign Out; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard` |
 | Project Settings | `settingsModal` — Save Project to Cloud, Load Project from Cloud, Close Project, Add additional PDF pages, Advanced (collapsed) with Manage Icons, Export Canvas, Import Canvas |
 | Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report / Bundle highlights / Bundle notes with "— none to show" when no data |
-| Copy to PipeTooling | `forPipeTooling` or `getPipeToolingSummary` |
+| Copy to /Tooling | `forPipeTooling` or `getPipeToolingSummary` |
 | Show Highlights / Show Notes | `bundleHighlights` or `bundleNotes` or `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
 | Note modal | `noteModal` — Add/Edit Note (textarea, Cancel/Done); double-click or context Edit to edit |
 | Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |
@@ -97,8 +99,8 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 
 ## Mobile Layout (max-width: 768px)
 
-- **Header**: Hamburger, Set Scale (when no scale), Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250
-- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), scale display (1 ft = X when set), Upload PDF / Set Scale, Sign In / Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Copy to PipeTooling, Show Highlights, Show Notes (when data exists), Clear Page
+- **Header**: Hamburger, Upload PDF (when no PDF) or Set Scale (when PDF and no scale), Measure, Highlight, Note, Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); `body.has-pdf` toggled in updateUI; Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250
+- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile; User and Project Settings buttons hidden on mobile as redundant), Upload PDF / Set Scale (button shows "Scale 1 ft = X" when set), Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Copy to /Tooling, Show Highlights, Show Notes (when data exists), Clear Page
 - **Status bar**: Dual indicators (circle=canvas, square=PDF), project/sync status, Sign In (when Supabase), Macros (keyboard shortcuts modal), Clear Page
 - **Touch**: Single-finger pan, pinch-to-zoom, long-press (500ms) for context menu; `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE, HIGHLIGHT, and NOTE modes (direct touch, no synthetic click); `preventDefault` on touchend to avoid ghost click double-placement; 25px movement threshold for LINE/POLYLINE taps
 - **Scale taps**: 400ms debounce to avoid double-tap on mobile
@@ -106,8 +108,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 ## Features Beyond Spec (RECONSTITUTE.md)
 
 - **Move button** — Header button toggles active when `state.tool === TOOL.NONE`; left of Line; visible in header on mobile
-- **Set Scale button** — Dynamic: "Set Scale" when no scale; "Scale" + "1 ft = X" when set; opens scale modal for current page; clicking clears scale marks and closes modal (restart); hidden in header when scale is set (desktop and mobile); on mobile when no scale, shown before Move
-- **Sidebar scale display** — On mobile only: "1 ft = X" in sidebar when scale set
+- **Set Scale button** — Dynamic: "Set Scale" when no scale; "Scale" + "1 ft = X" when set; opens scale modal for current page; clicking clears scale marks and closes modal (restart); hidden in header when scale is set (desktop and mobile); on mobile: Upload PDF shown in header when no PDF; Set Scale shown when PDF loaded and no scale; sidebar button shows scale value when set (no separate scale display above it)
 - **Per-page scale** — Each page has `page.scale`; Set Scale only affects current page; `getPageScale(pi)` helper
 - **Scale crosshair** — Plus icon at scale point A/B when setting scale
 - **Scale toasts** — "Set Scale first to use Quick Line" / "Set Scale first to use Polyline" (3s auto-dismiss, Escape to close)
@@ -118,7 +119,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Page/zoom row** — Page nav and zoom bar in same row; zoom bar to the right of page bar
 - **Add line type first** — Shown in Choose Line Type modal when no line types exist
 - **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
-- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report / Bundle highlights / Bundle notes checkboxes with "— none to show" and disabled when no data); Copy to PipeTooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Show Highlights, Show Notes (open in new tab; hidden when no data); Combined PDF and Specific Pages modals have Bundle highlights/notes checkboxes; Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`, `highlights-summary_[project name].pdf`, `notes-summary_[project name].pdf`
+- **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report / Bundle highlights / Bundle notes checkboxes with "— none to show" and disabled when no data); Copy to /Tooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Show Highlights, Show Notes (open in new tab; hidden when no data); Combined PDF and Specific Pages modals have Bundle highlights/notes checkboxes; Combined PDF modal has marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`, `highlights-summary_[project name].pdf`, `notes-summary_[project name].pdf`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid); Ring section only visible when "Show ring around counters" checked; solid ring default true; all persisted
 - **Line Type Settings** — Click "Line Types" heading: opacity, line size
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
@@ -126,7 +127,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Quick line preview** — Line renders from first click to second while placing
 - **Quick Line Escape** — First Escape removes first point; second Escape exits to Move mode
 - **Line selection highlight** — Click line in Lines sidebar: `selectedLineId`, `selectedLinePageIdx`; selected line drawn thicker with glow on canvas
-- **Rename** — Edit buttons on pages, counters, line types, lines; Escape cancels (reverts); arrow keys move cursor in input
+- **Rename** — Edit buttons on pages, lines; Escape cancels (reverts); arrow keys move cursor in input; counters and line types: edit pen opens counterLineTypeDetailsModal with Name field
 - **Line type layout** — Two-row: name on top, swatch + runs/length + edit on bottom
 - **Lines layout** — Name on top, length below, swatch + edit on bottom; click to select/highlight on canvas
 - **Selection highlight** — `.sidebar-item.active` for selected counter, line type, line, and current page in Pages list
@@ -146,8 +147,11 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Marked page navigation** — ‹‹ and ›› buttons outside page nav; jump to previous/next page with annotations; yellow text and border when selectable
 - **Project Settings Advanced** — Collapsed by default; contains Manage Icons, Export Canvas, Import Canvas
 - **Add additional PDF pages** — In Project Settings when PDF uploaded; Upload PDF hidden in title bar
-- **Conditional sidebar visibility** — Show Highlights, Show Notes, Copy to PipeTooling, Show Report, Combined PDF hidden when no data
+- **Conditional sidebar visibility** — Show Highlights, Show Notes, Copy to /Tooling, Show Report, Combined PDF hidden when no data
 - **Export Options** — Yellow section title above Specific Pages in sidebar (`#exportOptionsSectionTitle`)
 - **Supabase Phase 1 & 2** — Admin-provisioned auth (Sign In only), Add User / Manage User (admin creates and deletes accounts) in User Settings, Manage Projects (admin lists and deletes projects) in Project Settings, Save Project to Cloud / Load Project from Cloud; save modal includes "Include PDF in this save" checkbox and "what will be saved" text; "Canvas only" badge for projects without PDF; project name on top in Manage/Load modals; save-before-load prompt when loading with unsaved changes; auto-save every 1 min (signed-in: Supabase; unsigned: localStorage); 5-second localStorage backup; PDF IndexedDB cache on save; last-project restore from `clickcount-last-project`; `profiles` and `projects` tables (`pdf_path`, `pdf_hash`, `size_bytes`); `pdfs` storage bucket; Edge Functions `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`; RPC `list_users_for_admin`, `list_projects_for_admin`; hash-based skip on upload; IndexedDB cache (10 projects, 500 MB); config via `config.js` (SUPABASE_SETUP.md)
 - **PDF size limit** — When Supabase is enabled, PDF uploads over 50 MB are rejected with an alert (Supabase storage limit)
 - **Artboard** — In User Settings (Supabase): Save Artboard, Load from Cloud, Export Artboard; saves counters and line types to user profile; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard`
+- **Page rotation** — Per-page `page.rotation` (0/90/180/270); rotate button (↻) in zoom bar next to zoom controls; `rotatePage90()`, `rotateAnnotations()`, `rotatePoint90CW()`; annotations transform on rotate; notes text rotates with page; persisted in save/load
+- **Counter/Line Type details modal** — Edit pen (✎) on counter or line type row opens `counterLineTypeDetailsModal`; Name (editable), Color (swatch), On pages (clickable jump), Delete (count=0 immediate; count>0 confirm + remove markers/lines); row click selects for placing; `openCounterLineTypeDetailsModal`, `performDeleteCounterLineType`
+- **Mobile sidebar redundancy** — User and Project Settings buttons hidden on mobile (`#authBtnSidebar`, `#settingsSidebarBtn`); icons in sidebar logo provide same access

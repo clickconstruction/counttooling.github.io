@@ -62,15 +62,16 @@
     .sidebar-tool-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-tool-buttons .sidebar-btn { flex: 1; min-width: 80px; }
     .sidebar-tool-buttons #measureBtnSidebar { margin-right: -6px; }
+    .sidebar-tool-buttons .sidebar-btn-icon-above { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .sidebar-tool-buttons #noteBtnSidebar,
+    .sidebar-tool-buttons #moveBtnSidebar,
+    .sidebar-tool-buttons #polylineBtnSidebar { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; }
     .sidebar-tool-buttons #doneEditingSidebar { flex: 1 1 100%; }
     .sidebar-header-buttons #setScaleSidebar.scale-set { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
     .sidebar-header-buttons #setScaleSidebar.scale-set .scale-value { font-size: 0.7rem; font-family: 'DM Mono', monospace; }
     .quick-line-mobile { display: none; }
     .quick-line-desktop { display: inline; }
     @media (max-width: 768px) { .quick-line-desktop { display: none; } .quick-line-mobile { display: inline; } }
-    .sidebar-scale-display { display: none; padding: 8px 12px; font-family: 'DM Mono', monospace; font-size: 0.9rem; color: var(--accent); background: var(--surface2); border-radius: 6px; margin-bottom: 8px; }
-    @media (min-width: 769px) { .sidebar-scale-display { display: none !important; } }
-    @media (max-width: 768px) { .sidebar-scale-display.visible { display: block; } }
     @media (max-width: 768px) {
       .header .hamburger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; border-radius: 0; font-size: 1.25rem; }
       .header .hamburger:hover { background: transparent; }
@@ -78,11 +79,11 @@
       .header .divider.sidebar-triggers { display: none; }
       .header #settingsGearBtn { display: none; }
       .header #polylineBtn { display: none; }
-      .header #highlightBtn { display: none; }
-      .header #noteBtn { display: none; }
       .header #doneEditing { display: none; }
       .header .header-primary-btn { display: none; }
-      .header #setScale:not(.scale-set) { display: inline-flex; align-items: center; justify-content: center; }
+      body:not(.has-pdf) .header #uploadPdf { display: inline-flex; align-items: center; justify-content: center; }
+      body:not(.has-pdf) .header #setScale { display: none !important; }
+      body.has-pdf .header #setScale:not(.scale-set) { display: inline-flex; align-items: center; justify-content: center; }
       .header-active-type { display: none; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text2); }
       .header-active-type.visible { display: inline-flex; }
       .header-active-type .header-type-icon { width: 18px; height: 18px; flex-shrink: 0; }
@@ -107,7 +108,7 @@
       .zoom-bar button { width: 44px; height: 44px; }
       .polyline-finish-bar button { min-height: 44px; }
       .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
-      #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar { display: none !important; }
+      #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
     }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
@@ -340,14 +341,22 @@
         <button id="noteBtn" class="sidebar-triggers" title="Note" aria-label="Note">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
         </button>
+        <button id="moveBtn" class="sidebar-triggers" title="Move" aria-label="Move">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
+        </button>
+        <button id="counterBtn" class="sidebar-triggers" title="Counter" aria-label="Counter">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
+        </button>
+        <span id="headerActiveCounter" class="header-active-type"></span>
+        <button id="quickLine" class="sidebar-triggers" title="Quick Line" aria-label="Quick Line">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg>
+        </button>
+        <span id="headerActiveLineType" class="header-active-type"></span>
+        <button id="polylineBtn" class="sidebar-triggers" title="Polyline" aria-label="Polyline">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
+        </button>
       </span>
       <span class="divider sidebar-triggers"></span>
-      <button id="moveBtn" class="sidebar-triggers">Move</button>
-      <button id="counterBtn" class="sidebar-triggers">Counter</button>
-      <span id="headerActiveCounter" class="header-active-type"></span>
-      <button id="quickLine" class="sidebar-triggers"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
-      <span id="headerActiveLineType" class="header-active-type"></span>
-      <button id="polylineBtn" class="sidebar-triggers">Polyline</button>
       <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Project Settings" title="Project Settings">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
       </button>
@@ -377,7 +386,6 @@
           </div>
         </div>
         <div class="sidebar-section sidebar-header-buttons">
-          <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
           <button id="uploadPdfSidebar" class="sidebar-btn">Upload PDF</button>
           <button id="setScaleSidebar" class="sidebar-btn">Set Scale</button>
           <button id="authBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Sign In</button>
@@ -401,10 +409,22 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
             Note
           </button>
-          <button id="moveBtnSidebar" class="sidebar-btn">Move</button>
-          <button id="counterBtnSidebar" class="sidebar-btn">Counter</button>
-          <button id="quickLineSidebar" class="sidebar-btn"><span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span></button>
-          <button id="polylineBtnSidebar" class="sidebar-btn">Polyline</button>
+          <button id="moveBtnSidebar" class="sidebar-btn" title="Move">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
+            Move
+          </button>
+          <button id="counterBtnSidebar" class="sidebar-btn" title="Counter">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
+            Counter
+          </button>
+          <button id="quickLineSidebar" class="sidebar-btn sidebar-btn-icon-above" title="Quick Line">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg>
+            <span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span>
+          </button>
+          <button id="polylineBtnSidebar" class="sidebar-btn" title="Polyline">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
+            Polyline
+          </button>
           <button id="doneEditingSidebar" class="sidebar-btn sidebar-btn-primary" style="display:none;">Done Editing</button>
         </div>
         <div class="sidebar-section" id="pagesSection">
@@ -2454,16 +2474,6 @@
     };
     setScaleContent(setScaleBtn);
     if (setScaleSidebarBtn) setScaleContent(setScaleSidebarBtn);
-    const sidebarScaleEl = document.getElementById('sidebarScaleDisplay');
-    if (sidebarScaleEl) {
-      if (scale) {
-        sidebarScaleEl.textContent = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1);
-        sidebarScaleEl.classList.add('visible');
-      } else {
-        sidebarScaleEl.textContent = '';
-        sidebarScaleEl.classList.remove('visible');
-      }
-    }
     document.getElementById('moveBtn').classList.toggle('active', state.tool === TOOL.NONE);
     document.getElementById('quickLine').classList.toggle('active', state.tool === TOOL.LINE);
     document.getElementById('polylineBtn').classList.toggle('active', state.tool === TOOL.POLYLINE);
@@ -2545,6 +2555,7 @@
     }
     const settingsCloseProject = document.getElementById('settingsCloseProject');
     if (settingsCloseProject) settingsCloseProject.style.display = (!state.pages.length && !state.currentProjectId) ? 'none' : '';
+    document.body.classList.toggle('has-pdf', state.pages.length > 0);
     const uploadPdfEl = document.getElementById('uploadPdf');
     const uploadPdfSidebarEl = document.getElementById('uploadPdfSidebar');
     if (uploadPdfEl) uploadPdfEl.style.display = state.pages.length ? 'none' : '';

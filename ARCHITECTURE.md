@@ -8,7 +8,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 |------|-------|---------|
 | index.html | 1–1045 | HTML structure (head, body, modals) |
 | index.html | 15–252 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
-| index.html | 1046–5749 | JavaScript (IIFE) |
+| index.html | 1046–6948 | JavaScript (IIFE) |
 | report.js | 1–261 | Print report, Summary (Item/Total/Pages; line types as `[unit] of [name]`, total numeric; `pickScaleForLineType` prefers ft), getPipeToolingSummary, escapeHtml; uses globals from index.html |
 
 ## index.html Section Map
@@ -21,10 +21,10 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate Helpers | 1978–1989 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 2341–2939 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 2940–5087 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal (Include PDF checkbox), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
+| Modals & Handlers | 2940–5087 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares, View links: create, copy URL, access log, revoke), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal (Include PDF checkbox), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
 | Canvas Event Handlers | 5088–5220 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
 | Event Binding | 5221–5749 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P/D/H/N when not in input/textarea) |
-| Init & Persistence | 5221–5749 | initSupabaseAuth, localStorage restore, save interval (5s backup), performAutoSave (1 min), markProjectDirty, autoSaveDirty, lastSaveIncludedPdf, savePdfInProgress, pdfCachePut/Get, sha256Hex, clickcount-last-project restore, window globals |
+| Init & Persistence | 5221–6948 | initSupabaseAuth, localStorage restore, save interval (5s backup), performAutoSave (5s when dirty), markProjectDirty, autoSaveDirty, lastSaveIncludedPdf, savePdfInProgress, pdfCachePut/Get, sha256Hex, clickcount-last-project restore, initViewOnlyMode, viewCacheGet/viewCachePut, window globals |
 
 ## Search Hints (grep patterns)
 
@@ -61,7 +61,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Counter/Line Type details modal | `openCounterLineTypeDetailsModal` or `counterLineTypeDetailsModal` |
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
 | Save/Load project | `saveProjectModal` or `loadProjectModal` |
-| Share project | `shareProjectModal` or `openShareProjectModal`; invite-to-project Edge Function |
+| Share project | `shareProjectModal` or `openShareProjectModal`; invite-to-project Edge Function; Share modal includes View links section (create, list, copy URL, access log, revoke) |
 | Checkout | `check_out_project`, `check_in_project`, `force_check_in_project` RPCs; `state.isViewer`, `state.canCheckOut` |
 | Save before load | `saveBeforeLoadModal` or `openLoadProjectModalOrPromptSave` |
 | Load annotations (hash match) | `loadAnnotationsModal` or `loadAnnotationsList` or `loadAnnotationsSkip` |
@@ -70,6 +70,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Status bar indicators | `updateStatus` or `statusBarDot` or `statusBarSquare` |
 | Pages badges | `badge-scale-set` or `badge-has-ann` or `renderPagesList` |
 | Marked page nav | `getMarkedPageIndices` or `prevMarkedPage` or `nextMarkedPage` |
+| View links / initViewOnlyMode | `initViewOnlyMode` or `get-view-project` or `viewCacheGet` |
 | Auto-save | `performAutoSave` or `markProjectDirty` or `autoSaveDirty` |
 | Project Settings Advanced | `settingsAdvancedSection` or `settingsAddAdditionalPages` |
 | Admin panel | `adminPanelModal` or `adminCreateUser` |
@@ -78,7 +79,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Manage Icons modal | `manageIconsModal` or `openManageIconsModal`; opened via `settingsManageIcons` in Project Settings; edit icon display names; `getIconName(path)` |
 | User Settings | `mySettingsModal` or `openMySettings` — email, change password, Artboard (Save/Load/Export counters and line types to user profile), Add User / Manage User (admin), All Users list (admin), Sign Out; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard` |
 | Project Settings gear | `settingsGearBtn` or `header-settings-gear` — top right on desktop; opens settingsModal |
-| Project Settings | `settingsModal` — Save Project to Cloud, Load Project from Cloud, Close Project, Check out / Check in / Force check-in, Share, Add additional PDF pages, Advanced (collapsed) with Manage Icons, Export Canvas, Import Canvas |
+| Project Settings | `settingsModal` — Save Project to Cloud, Load Project from Cloud, Close Project, Check out Project / Turn In Project / Force Turn In (admin only), Share, Add additional PDF pages, Advanced (collapsed) with Manage Icons, Export Canvas, Import Canvas |
 | Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report / Bundle highlights / Bundle notes with "— none to show" when no data |
 | Copy to PipeTooling | `forPipeTooling` or `getPipeToolingSummary` |
 | Show Highlights / Show Notes | `bundleHighlights` or `bundleNotes` or `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
@@ -153,7 +154,8 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Add additional PDF pages** — In Project Settings when PDF uploaded; Upload PDF hidden in title bar
 - **Conditional sidebar visibility** — Show Highlights, Show Notes, Copy to PipeTooling, Show Report, Combined PDF hidden when no data
 - **Export Options** — Yellow section title above Specific Pages in sidebar (`#exportOptionsSectionTitle`)
-- **Supabase Phase 1 & 2** — Admin-provisioned auth (Sign In only), Add User / Manage User (admin creates and deletes accounts) in User Settings, Manage Projects (admin lists and deletes projects) in Project Settings, Save Project to Cloud / Load Project from Cloud; save modal includes "Include PDF in this save" checkbox and "what will be saved" text; "Canvas only" badge for projects without PDF; project name on top in Manage/Load modals; save-before-load prompt when loading with unsaved changes; auto-save every 1 min (signed-in: Supabase; unsigned: localStorage); 5-second localStorage backup; PDF IndexedDB cache on save; last-project restore from `clickcount-last-project`; `profiles` and `projects` tables (`pdf_path`, `pdf_hash`, `size_bytes`); `pdfs` storage bucket; Edge Functions `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`; RPC `list_users_for_admin`, `list_projects_for_admin`; hash-based skip on upload; IndexedDB cache (10 projects, 500 MB); config via `config.js` (SUPABASE_SETUP.md)
+- **Supabase Phase 1 & 2** — Admin-provisioned auth (Sign In only), Add User / Manage User (admin creates and deletes accounts) in User Settings, Manage Projects (admin lists and deletes projects) in Project Settings, Save Project to Cloud / Load Project from Cloud; save modal includes "Include PDF in this save" checkbox and "what will be saved" text; "Canvas only" badge for projects without PDF; project name on top in Manage/Load modals; save-before-load prompt when loading with unsaved changes; auto-save every 5 seconds when dirty (signed-in: Supabase; unsigned: localStorage); 5-second localStorage backup; PDF IndexedDB cache on save; last-project restore from `clickcount-last-project`; `profiles` and `projects` tables (`pdf_path`, `pdf_hash`, `size_bytes`); `pdfs` storage bucket; Edge Functions `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`, `invite-to-project`, `get-view-project`; RPC `list_users_for_admin`, `list_projects_for_admin`; hash-based skip on upload; IndexedDB cache (10 projects, 500 MB); config via `config.js` (SUPABASE_SETUP.md)
+- **View links** — Share modal "View links" section: create, list, copy URL, access log, revoke; URL `?t=TOKEN`; `get-view-project` Edge Function (no JWT); email domain gate (clickplumbing.com); `viewCacheGet`/`viewCachePut` for IndexedDB; `viewLinkEmailModal`; `initViewOnlyMode(viewToken)` on boot when `?t=` present
 - **PDF size limit** — When Supabase is enabled, PDF uploads over 50 MB are rejected with an alert (Supabase storage limit)
 - **Artboard** — In User Settings (Supabase): Save Artboard, Load from Cloud, Export Artboard; saves counters and line types to user profile; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard`
 - **Page rotation** — Per-page `page.rotation` (0/90/180/270); rotate button (↻) in zoom bar next to zoom controls; `rotatePage90()`, `rotateAnnotations()`, `rotatePoint90CW()`; annotations transform on rotate; notes text rotates with page; persisted in save/load

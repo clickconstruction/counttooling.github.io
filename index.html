@@ -244,6 +244,7 @@
     .settings-advanced-section.collapsed .settings-advanced-buttons { display: none !important; }
     .settings-artboard-section.collapsed .settings-artboard-content { display: none !important; }
     .settings-password-section.collapsed .settings-password-content { display: none !important; }
+    #shareViewLinksContent.collapsed { display: none !important; }
     .modal-card .actions button:last-child:hover { background: var(--accent2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
@@ -1134,6 +1135,17 @@
       </div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Add users by email. Viewers can view only; editors can check out to edit.</p>
       <div id="shareProjectList" class="form-group" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div class="form-group" id="shareViewLinksSection" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px;" id="shareViewLinksHeader">
+          <h3 style="font-size:1rem;margin:0;">View links</h3>
+          <span id="shareViewLinksCollapseIcon">▼</span>
+        </div>
+        <div id="shareViewLinksContent">
+          <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (clickplumbing.com) to view.</p>
+          <button type="button" class="settings-menu-btn btn-yellow" id="shareViewLinkCreate" style="margin-bottom:12px;">Create view link</button>
+          <div id="shareViewLinksList" style="max-height:160px;overflow-y:auto;"></div>
+        </div>
+      </div>
       <div class="form-group">
         <label>Email</label>
         <input type="email" id="shareProjectEmail" placeholder="user@example.com" style="width:100%;min-width:240px;padding:8px 12px;font-size:1rem;box-sizing:border-box;margin-bottom:12px;">
@@ -1176,6 +1188,20 @@
       <div id="loadAnnotationsList" class="form-group" style="max-height:200px;overflow-y:auto;"></div>
       <div class="actions">
         <button id="loadAnnotationsSkip">Skip</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="viewLinkEmailModal">
+    <div class="modal-card">
+      <h2>View Plans</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Enter your email to view these plans.</p>
+      <div class="form-group">
+        <input type="email" id="viewLinkEmailInput" placeholder="you@clickplumbing.com" style="width:100%;min-width:240px;padding:8px 12px;font-size:1rem;box-sizing:border-box;margin-bottom:12px;">
+      </div>
+      <p id="viewLinkEmailError" class="form-group" style="color:var(--red);display:none;"></p>
+      <div class="actions">
+        <button type="button" id="viewLinkEmailCancel">Cancel</button>
+        <button type="button" id="viewLinkEmailSubmit" class="btn-yellow">Continue</button>
       </div>
     </div>
   </div>
@@ -1787,6 +1813,7 @@
 
   let autoSaveDirty = false;
   let lastModifiedAt = 0;
+  let viewLinkEmailResolve = null;
   let saveInProgress = false;
   let savePdfInProgress = false;
   let saveProgressMessage = '';
@@ -1825,12 +1852,14 @@
   const PDF_CACHE_DB = 'clickcount-pdf-cache';
   const PDF_CACHE_STORE = 'pdfs';
   const PDF_CACHE_META_STORE = 'meta';
+  const VIEW_PDFS_STORE = 'view_pdfs';
+  const VIEW_PDFS_META_STORE = 'view_pdfs_meta';
   const PDF_CACHE_MAX_ENTRIES = 10;
   const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
 
   function openPdfCacheDb() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(PDF_CACHE_DB, 1);
+      const req = indexedDB.open(PDF_CACHE_DB, 2);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (e) => {
@@ -1841,8 +1870,52 @@
         if (!db.objectStoreNames.contains(PDF_CACHE_META_STORE)) {
           db.createObjectStore(PDF_CACHE_META_STORE, { keyPath: 'projectId' });
         }
+        if (!db.objectStoreNames.contains(VIEW_PDFS_STORE)) {
+          db.createObjectStore(VIEW_PDFS_STORE, { keyPath: 'token' });
+        }
+        if (!db.objectStoreNames.contains(VIEW_PDFS_META_STORE)) {
+          db.createObjectStore(VIEW_PDFS_META_STORE, { keyPath: 'token' });
+        }
       };
     });
+  }
+
+  async function viewCacheGet(token, pdfHash) {
+    try {
+      const db = await openPdfCacheDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(VIEW_PDFS_STORE, 'readonly');
+        const req = tx.objectStore(VIEW_PDFS_STORE).get(token);
+        req.onsuccess = () => {
+          const entry = req.result;
+          if (entry && entry.pdfHash === pdfHash && entry.blob) resolve(entry.blob);
+          else resolve(null);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    } catch (_) { return null; }
+  }
+
+  async function viewCachePut(token, blob, pdfHash, meta) {
+    try {
+      const db = await openPdfCacheDb();
+      const tx = db.transaction([VIEW_PDFS_STORE, VIEW_PDFS_META_STORE], 'readwrite');
+      tx.objectStore(VIEW_PDFS_STORE).put({ token, blob, pdfHash });
+      tx.objectStore(VIEW_PDFS_META_STORE).put({ token, lastUsed: Date.now(), size: blob.size, projectId: meta?.projectId, name: meta?.name, data: meta?.data, pdfHash: pdfHash });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch (_) { /* ignore */ }
+  }
+
+  async function viewCacheGetMeta(token) {
+    try {
+      const db = await openPdfCacheDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(VIEW_PDFS_META_STORE, 'readonly');
+        const req = tx.objectStore(VIEW_PDFS_META_STORE).get(token);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    } catch (_) { return null; }
   }
 
   async function pdfCacheGet(projectId, pdfHash) {
@@ -2750,7 +2823,7 @@
     const settingsAddAdditionalPages = document.getElementById('settingsAddAdditionalPages');
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
     const settingsShareProject = document.getElementById('settingsShareProject');
-    if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId) ? '' : 'none';
+    if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user) ? '' : 'none';
     const settingsSaveProject = document.getElementById('settingsSaveProject');
     if (settingsSaveProject) settingsSaveProject.style.display = state.isViewer ? 'none' : '';
     const settingsAdvancedSection = document.getElementById('settingsAdvancedSection');
@@ -5171,7 +5244,89 @@
       } else {
         listEl.innerHTML = '<p style="color:var(--text3);font-size:0.9rem;">No one else has access yet.</p>';
       }
+      const viewLinksListEl = document.getElementById('shareViewLinksList');
+      if (viewLinksListEl) {
+        viewLinksListEl.innerHTML = '<p style="color:var(--text3);font-size:0.85rem;">Loading...</p>';
+        try {
+          const { data: links, error: linksErr } = await supabase.rpc('list_view_links', { p_project_id: state.currentProjectId });
+          viewLinksListEl.innerHTML = '';
+          if (linksErr || !links || links.length === 0) {
+            viewLinksListEl.innerHTML = '<p style="color:var(--text3);font-size:0.85rem;">No view links yet.</p>';
+          } else {
+            const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const base = window.location.origin + (window.location.pathname || '/');
+            const baseUrl = base + (base.includes('?') ? '&' : '?') + 't=';
+            links.forEach(function(l) {
+              const div = document.createElement('div');
+              div.className = 'share-view-link-row';
+              div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;';
+              const name = esc(l.name || 'View link');
+              const date = l.created_at ? new Date(l.created_at).toLocaleString() : '';
+              div.innerHTML = '<div style="flex:1;min-width:0;"><span style="font-weight:500;">' + name + '</span><div style="font-size:0.8rem;color:var(--text2);">' + date + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" class="settings-menu-btn share-view-link-copy" style="padding:4px 8px;font-size:0.85rem;" data-token="' + l.token + '" data-url="' + esc(baseUrl + l.token) + '">Copy URL</button><button type="button" class="settings-menu-btn share-view-link-log" style="padding:4px 8px;font-size:0.85rem;" data-id="' + l.id + '">Access log</button><button type="button" class="danger share-view-link-revoke" style="padding:4px 8px;font-size:0.85rem;border:none;background:transparent;cursor:pointer;" data-token="' + l.token + '">Revoke</button></div>';
+              div.querySelector('.share-view-link-copy').onclick = function() {
+                const url = this.dataset.url;
+                navigator.clipboard.writeText(url).then(() => showToast('Copied to clipboard')).catch(() => showToast('Failed to copy'));
+              };
+              div.querySelector('.share-view-link-log').onclick = async function() {
+                const id = this.dataset.id;
+                const { data: log } = await supabase.rpc('get_view_link_access_log', { p_view_link_id: id });
+                const lines = (log || []).map(function(r) { return (r.email || '') + ' — ' + (r.accessed_at ? new Date(r.accessed_at).toLocaleString() : ''); });
+                alert('Access log:\n\n' + (lines.length ? lines.join('\n') : 'No access yet'));
+              };
+              div.querySelector('.share-view-link-revoke').onclick = async function() {
+                const tok = this.dataset.token;
+                if (!confirm('Revoke this view link? It will stop working immediately.')) return;
+                const { data: res } = await supabase.rpc('revoke_view_link', { p_token: tok });
+                if (res && res.ok) openShareProjectModal();
+                else showToast((res && res.error) || 'Failed to revoke');
+              };
+              viewLinksListEl.appendChild(div);
+            });
+          }
+        } catch (e) {
+          viewLinksListEl.innerHTML = '<p style="color:var(--red);font-size:0.85rem;">Failed to load: ' + (e.message || 'Error') + '</p>';
+        }
+      }
     }
+    (function() {
+      const header = document.getElementById('shareViewLinksHeader');
+      const content = document.getElementById('shareViewLinksContent');
+      const icon = document.getElementById('shareViewLinksCollapseIcon');
+      if (header && content && icon) {
+        header.onclick = () => {
+          const collapsed = content.classList.toggle('collapsed');
+          icon.textContent = collapsed ? '▶' : '▼';
+        };
+      }
+    })();
+    document.getElementById('shareViewLinkCreate').onclick = async () => {
+      if (!state.currentProjectId || !supabase) return;
+      const btn = document.getElementById('shareViewLinkCreate');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      try {
+        const { data, error } = await supabase.rpc('create_view_link', { p_project_id: state.currentProjectId, p_name: null, p_expires_at: null });
+        if (error) throw new Error(error.message);
+        if (data && data.ok && data.token) {
+          const base = window.location.origin + (window.location.pathname || '/');
+          const url = base + (base.includes('?') ? '&' : '?') + 't=' + data.token;
+          navigator.clipboard.writeText(url).then(() => {
+            showToast('View link created and copied to clipboard');
+            openShareProjectModal();
+          }).catch(() => {
+            showToast('Link created: ' + url);
+            openShareProjectModal();
+          });
+        } else {
+          throw new Error((data && data.error) || 'Failed to create');
+        }
+      } catch (e) {
+        showToast(e.message || 'Failed to create view link');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create view link';
+      }
+    };
     document.getElementById('shareProjectModalClose').onclick = () => hideModal('shareProjectModal');
     document.getElementById('shareProjectUserSelect').onchange = function() {
       const sel = document.getElementById('shareProjectUserSelect');
@@ -6413,6 +6568,10 @@
       else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
       else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }
+      else if (document.getElementById('viewLinkEmailModal').classList.contains('visible')) {
+        if (typeof viewLinkEmailResolve === 'function') { viewLinkEmailResolve(null); viewLinkEmailResolve = null; }
+        hideModal('viewLinkEmailModal');
+      }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       else if (state.tool === TOOL.LINE) {
@@ -6556,7 +6715,161 @@
   window.formatDist = formatDist;
   window.renderIconHtml = renderIconHtml;
 
+  async function initViewOnlyMode(viewToken) {
+    const allowedEmail = localStorage.getItem('view:allowed:' + viewToken);
+    let email = allowedEmail ? allowedEmail.trim() : '';
+
+    function showViewEmailModal() {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('viewLinkEmailModal');
+        const input = document.getElementById('viewLinkEmailInput');
+        const errEl = document.getElementById('viewLinkEmailError');
+        const submitBtn = document.getElementById('viewLinkEmailSubmit');
+        const cancelBtn = document.getElementById('viewLinkEmailCancel');
+        if (!modal || !input) { resolve(null); return; }
+        viewLinkEmailResolve = resolve;
+        errEl.style.display = 'none';
+        input.value = email || '';
+        input.focus();
+        showModal('viewLinkEmailModal');
+        const done = (val) => {
+          viewLinkEmailResolve = null;
+          hideModal('viewLinkEmailModal');
+          resolve(val);
+        };
+        submitBtn.onclick = () => {
+          const val = (input.value || '').trim().toLowerCase();
+          if (!val) {
+            errEl.textContent = 'Enter your email';
+            errEl.style.display = 'block';
+            return;
+          }
+          email = val;
+          done(val);
+        };
+        if (cancelBtn) cancelBtn.onclick = () => done(null);
+        input.onkeydown = (e) => { if (e.key === 'Enter') submitBtn.click(); };
+      });
+    }
+
+    if (!email) {
+      await showViewEmailModal();
+      if (!email) return;
+    }
+
+    const domainMsg = (typeof window.VIEW_LINK_ALLOWED_DOMAINS === 'string' ? window.VIEW_LINK_ALLOWED_DOMAINS : 'clickplumbing.com');
+
+    async function fetchViewProject(useEmail) {
+      const res = await fetch(SUPABASE_URL + '/functions/v1/get-view-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: viewToken, email: useEmail })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.error === 'domain_restricted') {
+          const err = { domainRestricted: true, message: data.message || 'Access restricted to ' + domainMsg };
+          throw err;
+        }
+        if (data.error === 'email_required') {
+          throw new Error(data.message || 'Email required');
+        }
+        throw new Error(data.message || 'Failed to load');
+      }
+      return data;
+    }
+
+    let projectData = null;
+    const cachedMeta = await viewCacheGetMeta(viewToken);
+    const cachedBlob = cachedMeta ? await viewCacheGet(viewToken, cachedMeta.pdfHash) : null;
+    if (cachedBlob && cachedMeta && cachedMeta.data && cachedMeta.projectId) {
+      projectData = { projectId: cachedMeta.projectId, name: cachedMeta.name, data: cachedMeta.data, pdfHash: cachedMeta.pdfHash };
+    }
+    if (!projectData) {
+      while (true) {
+        try {
+          projectData = await fetchViewProject(email);
+          localStorage.setItem('view:allowed:' + viewToken, email);
+          break;
+        } catch (e) {
+          if (e && e.domainRestricted) {
+            const errEl = document.getElementById('viewLinkEmailError');
+            if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+            showModal('viewLinkEmailModal');
+            email = await showViewEmailModal();
+            if (!email) return;
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+
+    const d = projectData.data || {};
+    let buf = null;
+    if (cachedBlob && cachedMeta && projectData.projectId === cachedMeta.projectId) {
+      buf = await cachedBlob.arrayBuffer();
+    } else if (projectData.pdfSignedUrl) {
+      const pdfRes = await fetch(projectData.pdfSignedUrl);
+      if (!pdfRes.ok) throw new Error('Failed to load PDF');
+      buf = await pdfRes.arrayBuffer();
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      viewCachePut(viewToken, blob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d });
+    } else {
+      throw new Error('No PDF available');
+    }
+
+    const pdf = await pdfjsLib.getDocument(buf).promise;
+    state.pages = [];
+    const numPages = pdf.numPages;
+    for (let i = 0; i < numPages; i++) {
+      const pdfPage = await pdf.getPage(i + 1);
+      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+      state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+    }
+    if (d.counters) state.counters = d.counters;
+    if (d.lineTypes) state.lineTypes = d.lineTypes;
+    if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+    if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+    (d.pages || []).forEach(p => {
+      const page = state.pages[p.index];
+      if (page) {
+        if (p.annotations) page.annotations = p.annotations;
+        page.scale = p.scale !== undefined ? p.scale : null;
+        page.rotation = p.rotation ?? 0;
+      }
+    });
+    state.currentProjectId = projectData.projectId;
+    state.currentProjectName = projectData.name || 'Untitled';
+    state.pdfStoragePath = null;
+    state.pdfBuffer = null;
+    state.pdfHash = projectData.pdfHash || null;
+    state.isViewer = true;
+    state.canCheckOut = false;
+    state.checkedOutBy = null;
+    state.checkedOutAt = null;
+    state.checkedOutEmail = null;
+    state.projectOwnerId = null;
+    state.currentPage = 0;
+    document.body.classList.add('has-pdf');
+    fitZoom();
+    renderPdf();
+    updateUI();
+  }
+
   (async function init() {
+    const urlParams = new URLSearchParams(window.location.search || '');
+    const viewToken = urlParams.get('t');
+    if (viewToken && SUPABASE_ENABLED && SUPABASE_URL) {
+      try {
+        await initViewOnlyMode(viewToken);
+      } catch (e) {
+        console.error('[View link]', e);
+        showToast('Failed to load: ' + (e.message || 'Unknown error'), 5000);
+      }
+      updateUI();
+      return;
+    }
     await initSupabaseAuth();
     if (SUPABASE_ENABLED && supabase && state.supabaseSession?.user) {
       const uid = state.supabaseSession.user.id;

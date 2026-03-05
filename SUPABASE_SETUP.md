@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 018.
+**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 020.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
 
@@ -60,6 +60,10 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **018_inactivity_checkout.sql** — Changes checkout expiry from 12 hours to 30 minutes of inactivity. Adds `refresh_checkout_activity(project_id)` RPC; lock extends on user activity (edits, saves). Lock expires only after 30 minutes with no activity.
 
+**019_project_view_links.sql** — Creates `project_view_links` (token, project_id, created_by, expires_at, name) and `view_link_access_log` (view_link_id, token, project_id, email, accessed_at) for view-only share links with email domain gate.
+
+**020_view_link_rpcs.sql** — Creates `create_view_link`, `list_view_links`, `revoke_view_link`, `get_view_link_access_log` RPCs.
+
 ## 3. Deploy Edge Functions
 
 Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gateway does not reject requests; each function validates auth in-code via `getUser()`.
@@ -75,9 +79,10 @@ supabase functions deploy admin-delete-user
 supabase functions deploy admin-delete-project
 supabase functions deploy admin-list-users
 supabase functions deploy invite-to-project
+supabase functions deploy get-view-project
 ```
 
-**401 on admin functions / CORS on invite-to-project:** The gateway verifies JWT by default and can reject valid tokens (and block CORS preflight). `config.toml` sets `verify_jwt = false` for admin functions and `invite-to-project`. Deploy with:
+**401 on admin functions / CORS on invite-to-project:** The gateway verifies JWT by default and can reject valid tokens (and block CORS preflight). `config.toml` sets `verify_jwt = false` for admin functions, `invite-to-project`, and `get-view-project`. Deploy with:
 
 ```bash
 supabase link --project-ref YOUR_PROJECT_REF   # ref = part before .supabase.co in your URL
@@ -86,9 +91,12 @@ supabase functions deploy admin-create-user --no-verify-jwt
 supabase functions deploy admin-delete-user --no-verify-jwt
 supabase functions deploy admin-delete-project --no-verify-jwt
 supabase functions deploy invite-to-project --no-verify-jwt
+supabase functions deploy get-view-project --no-verify-jwt
 ```
 
-Each function still validates auth in-code via `getUser()`.
+Each function still validates auth in-code via `getUser()` (except `get-view-project`, which is unauthenticated and validates domain server-side).
+
+**View links:** `get-view-project` validates tokens and email domain (default: clickplumbing.com). Set `VIEW_LINK_ALLOWED_DOMAINS` in Supabase Dashboard (Functions > get-view-project > Secrets) if different.
 
 ## 4. Create First Admin
 
@@ -129,6 +137,7 @@ on conflict (user_id) do update set is_admin = true;
 - **All Users** (admin only) — In User Settings, view all users with role and last sign-in.
 - **Manage Projects** (admin only) — In Project Settings, open Manage Projects to list all projects across users and delete any project (removes project and stored PDF).
 - **Share** — In Project Settings, open Share to add users by email (viewer or editor). Any project member can add users. Editors can check out to edit; one editor at a time. Turn in releases the lock. 30-minute inactivity expiry (lock extends on edits/saves). System admins can force turn-in any project.
+- **View links** — In Share modal, view links section: Create view link (copy URL), list links, Access log (email, timestamp), Revoke. Recipients open the link, enter email (clickplumbing.com domain required), view plans. No sign-in. Cached in IndexedDB for repeat mobile visits.
 - **Save Artboard** — In User Settings, save your counters and line types to your account. They are restored when you sign in on any device.
 - **Load from Cloud** — In User Settings, replace your current artboard with the saved version from your account.
 
@@ -140,3 +149,4 @@ on conflict (user_id) do update set is_admin = true;
 | Phase 2: PDF storage | Complete |
 | Phase 3: Auto-save / sync | Not started |
 | Phase 4: Sharing & collaboration | Complete (checkout/turn-in, 30min inactivity expiry, admin force turn-in) |
+| Phase 5: View links | Complete (email domain gate, access log, IndexedDB cache) |

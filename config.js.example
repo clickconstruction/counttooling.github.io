@@ -4,3 +4,5 @@
 
 window.SUPABASE_URL = 'https://your-project.supabase.co';
 window.SUPABASE_ANON_KEY = 'your-anon-key';
+// Optional: allowed domains for view links (default: clickplumbing.com); Edge Function env overrides
+// window.VIEW_LINK_ALLOWED_DOMAINS = 'clickplumbing.com';

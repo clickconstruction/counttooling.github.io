@@ -375,6 +375,9 @@
     .settings-users-list .settings-user-delete { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--red); color: white; border: none; border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-user-delete:hover { opacity: 0.9; }
     .settings-users-list .settings-user-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+    .settings-users-list .settings-project-force-checkin { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+    .settings-users-list .settings-project-force-checkin:hover { background: var(--surface3); color: var(--text); }
+    .settings-users-list .settings-project-force-checkin:disabled { opacity: 0.5; cursor: not-allowed; }
     .context-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 120px; }
     .context-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     .context-menu button:hover { background: var(--surface2); }
@@ -3763,6 +3766,7 @@
     if (!supabase || !state.currentProjectId || !state.supabaseSession?.user) return;
     const prevCanCheckOut = state.canCheckOut;
     const prevCheckedOutEmail = state.checkedOutEmail;
+    const prevWasCheckedOut = state.checkedOutBy === state.supabaseSession?.user?.id;
     const { data: projects, error } = await supabase.rpc('list_accessible_projects');
     if (error || !projects) return;
     const proj = projects.find(function(p) { return p.id === state.currentProjectId; });
@@ -3774,7 +3778,9 @@
     state.canCheckOut = proj.can_check_out || false;
     updateUI();
     updateStatus();
-    if (!prevCanCheckOut && state.canCheckOut) {
+    if (prevWasCheckedOut && state.isViewer) {
+      showToast('Project was turned in. You can check out to edit again.');
+    } else if (!prevCanCheckOut && state.canCheckOut) {
       if (prevCheckedOutEmail) {
         showToast('Project is now available. You can check out to edit.');
       } else {
@@ -3846,6 +3852,11 @@
             page.rotation = p.rotation ?? 0;
           }
         });
+        if (d.pageScales) {
+          d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+        } else if (d.scale) {
+          state.pages.forEach(p => { p.scale = d.scale; });
+        }
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         state.pendingCanvasLoad = null;
@@ -3891,6 +3902,11 @@
                   page.rotation = p.rotation ?? 0;
                 }
               });
+              if (d.pageScales) {
+                d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+              } else if (d.scale) {
+                state.pages.forEach(p => { p.scale = d.scale; });
+              }
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.currentProjectId = full.id;
@@ -5237,21 +5253,53 @@
           const sizeStr = formatSizeMb(p.size_bytes);
           const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';
           const metaParts = [esc(p.owner_email || '—'), dateStr, sizeStr].filter(Boolean);
+          if (p.checked_out_email) metaParts.push('Checked out by ' + esc(p.checked_out_email));
           const meta = metaParts.join(' · ');
           const canvasOnlyBadge = !p.pdf_path ? ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
+          const showForceCheckIn = state.isAdmin && (p.checked_out_by || p.checked_out_email);
+          const forceCheckInBtn = showForceCheckIn
+            ? '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in (admin)</button>'
+            : '';
           return '<div class="settings-user-row settings-project-row" data-project-id="' + esc(p.id) + '">' +
             '<div class="settings-project-info">' +
             '<span class="settings-project-name" title="' + esc(p.name) + '">' + esc(p.name || 'Untitled') + '</span>' +
             '<div class="settings-project-meta">' + meta + canvasOnlyBadge + '</div>' +
             '</div>' +
+            forceCheckInBtn +
             '<button type="button" class="settings-user-delete" data-project-id="' + esc(p.id) + '" data-project-name="' + esc(p.name || 'Untitled') + '">Delete</button>' +
             '</div>';
         }).join('');
         listEl.querySelectorAll('.settings-user-delete').forEach((btn) => {
           btn.onclick = () => deleteProject(btn.dataset.projectId, btn.dataset.projectName, btn);
         });
+        listEl.querySelectorAll('.settings-project-force-checkin').forEach((btn) => {
+          btn.onclick = () => forceCheckInProjectFromManage(btn.dataset.projectId, btn);
+        });
       })
       .catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
+  }
+
+  async function forceCheckInProjectFromManage(projectId, btnEl) {
+    if (!supabase) return;
+    btnEl.disabled = true;
+    const origText = btnEl.textContent;
+    btnEl.textContent = 'Turning in…';
+    try {
+      const { data, error } = await supabase.rpc('force_check_in_project', { p_project_id: projectId });
+      const result = data || (error ? { ok: false, error: error.message } : { ok: false });
+      if (result.ok) {
+        showToast('Project force turned in.');
+        openManageProjectsModal();
+      } else {
+        showToast(result.error || 'Failed to force turn-in', 3000);
+        btnEl.disabled = false;
+        btnEl.textContent = origText;
+      }
+    } catch (e) {
+      showToast(e.message || 'Failed to force turn-in', 3000);
+      btnEl.disabled = false;
+      btnEl.textContent = origText;
+    }
   }
 
   async function deleteProject(projectId, name, btnEl) {
@@ -5864,6 +5912,11 @@
                     page.rotation = p.rotation ?? 0;
                   }
                 });
+                if (d.pageScales) {
+                  d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+                } else if (d.scale) {
+                  state.pages.forEach(p => { p.scale = d.scale; });
+                }
                 clearUndoStacks();
                 state.pdfStoragePath = proj.pdf_path;
                 state.pdfBuffer = null;
@@ -5892,6 +5945,11 @@
                   page.rotation = p.rotation ?? 0;
                 }
               });
+              if (d.pageScales) {
+                d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+              } else if (d.scale) {
+                state.pages.forEach(p => { p.scale = d.scale; });
+              }
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.pdfStoragePath = proj.pdf_path;

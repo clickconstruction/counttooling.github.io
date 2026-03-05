@@ -64,6 +64,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **020_view_link_rpcs.sql** — Creates `create_view_link`, `list_view_links`, `revoke_view_link`, `get_view_link_access_log` RPCs.
 
+**025_admin_list_projects_checkout.sql** — Extends `list_projects_for_admin()` to return `checked_out_by`, `checked_out_at`, `checked_out_email`. Used by Manage Projects modal for Force turn-in (admin) button on checked-out projects.
+
 ## 3. Deploy Edge Functions
 
 Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gateway does not reject requests; each function validates auth in-code via `getUser()`.

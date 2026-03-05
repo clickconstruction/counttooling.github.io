@@ -6,9 +6,9 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| index.html | 1–1045 | HTML structure (head, body, modals) |
-| index.html | 15–252 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
-| index.html | 1046–6948 | JavaScript (IIFE) |
+| index.html | 1–1050 | HTML structure (head, body, modals) |
+| index.html | 15–260 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
+| index.html | 1051–7466 | JavaScript (IIFE) |
 | report.js | 1–261 | Print report, Summary (Item/Total/Pages; line types as `[unit] of [name]`, total numeric; `pickScaleForLineType` prefers ft), getPipeToolingSummary, escapeHtml; uses globals from index.html |
 
 ## index.html Section Map
@@ -16,12 +16,12 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Section | Lines | Contents |
 |---------|-------|----------|
 | Constants | 1047–1607 | TOOL, SCALE_MODES, uid, COLORS (9, no white), icon paths, SCALE_CROSSHAIR_PATH, ICONS array |
-| State & makeAnnotations | 1608–1727 | state object (counterSettings, lineTypeSettings, exportSettings, recentLineColors, pagesListCollapsed, touchPanStart, touchPanning, pendingCanvasLoad), makeAnnotations() |
+| State & makeAnnotations | 1608–1750 | state object (counterSettings, lineTypeSettings, exportSettings, recentLineColors, pagesListCollapsed, touchPanStart, touchPanning, pendingCanvasLoad, isPanning, panStart), makeAnnotations(), undoStack, redoStack, pushUndoSnapshot, clearUndoStacks |
 | Math & Format Helpers | 1728–1977 | ptDist, polylineDistance, polygonArea, distToSegment, getPageScale, formatDist, formatArea |
 | Coordinate Helpers | 1978–1989 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
 | UI Render Functions | 2341–2939 | updateUI (scale-set, headerActiveCounter, headerActiveLineType), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 2940–5087 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares, View links: create, copy URL, access log, revoke), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects), saveProjectModal (Include PDF checkbox), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
+| Modals & Handlers | 2940–5100 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares, View links: create, copy URL, access log, revoke), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects, Force turn-in per row), saveProjectModal (Include PDF checkbox), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, summaryCountDetailModal (— by page), settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
 | Canvas Event Handlers | 5088–5220 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
 | Event Binding | 5221–5749 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P/D/H/N when not in input/textarea) |
 | Init & Persistence | 5221–6948 | initSupabaseAuth, localStorage restore, save interval (5s backup), performAutoSave (5s when dirty), markProjectDirty, autoSaveDirty, lastSaveIncludedPdf, savePdfInProgress, pdfCachePut/Get, sha256Hex, clickcount-last-project restore, initViewOnlyMode, viewCacheGet/viewCachePut, window globals |
@@ -62,7 +62,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
 | Save/Load project | `saveProjectModal` or `loadProjectModal` |
 | Share project | `shareProjectModal` or `openShareProjectModal`; invite-to-project Edge Function; Share modal includes View links section (create, list, copy URL, access log, revoke) |
-| Checkout | `check_out_project`, `check_in_project`, `force_check_in_project` RPCs; `state.isViewer`, `state.canCheckOut` |
+| Checkout | `check_out_project`, `check_in_project`, `force_check_in_project` RPCs; `state.isViewer`, `state.canCheckOut`; `subscribeToProjectCheckoutChanges`, `refreshProjectPermissions` for realtime |
 | Save before load | `saveBeforeLoadModal` or `openLoadProjectModalOrPromptSave` |
 | Load annotations (hash match) | `loadAnnotationsModal` or `loadAnnotationsList` or `loadAnnotationsSkip` |
 | Canvas-only load flow | `pendingCanvasLoad` |
@@ -75,17 +75,22 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Project Settings Advanced | `settingsAdvancedSection` or `settingsAddAdditionalPages` |
 | Admin panel | `adminPanelModal` or `adminCreateUser` |
 | Manage User modal | `manageUserModal` or `openManageUserModal` or `deleteUser` |
-| Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject`; opened via `settingsManageProjects` in Project Settings |
+| Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject` or `forceCheckInProjectFromManage`; Force turn-in (admin) per checked-out row; opened via `settingsManageProjects` in Project Settings |
 | Manage Icons modal | `manageIconsModal` or `openManageIconsModal`; opened via `settingsManageIcons` in Project Settings; edit icon display names; `getIconName(path)` |
 | User Settings | `mySettingsModal` or `openMySettings` — email, change password, Artboard (Save/Load/Export counters and line types to user profile), Add User / Manage User (admin), All Users list (admin), Sign Out; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard` |
 | Project Settings gear | `settingsGearBtn` or `header-settings-gear` — top right on desktop; opens settingsModal |
-| Project Settings | `settingsModal` — Save Project to Cloud, Load Project from Cloud, Close Project, Check out Project / Turn In Project / Force Turn In (admin only), Share, Add additional PDF pages, Advanced (collapsed) with Manage Icons, Export Canvas, Import Canvas |
+| Project Settings | `settingsModal` — Save Project to Cloud, Load Project from Cloud, Close Project, Check out Project / Save and Turn In Project / Force Turn In (admin only), Share, Add additional PDF pages, Advanced (collapsed) with Manage Icons, Export Canvas, Import Canvas |
 | Specific Pages modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report / Bundle highlights / Bundle notes with "— none to show" when no data |
 | Copy to PipeTooling | `forPipeTooling` or `getPipeToolingSummary` |
+| Copy Summary (Email/Text) | `copySummaryText` — copies counts and lines as plain text for email/paste |
+| Copy view link button | `copyViewLinkBtn` — header left of gear; copies view link (creates if none); hidden when viewer |
+| Summary count detail modal | `summaryCountDetailModal` or `openSummaryCountDetailModal` — "— by page" breakdown with thumbnails when clicking count/line in Summary |
+| Undo/Redo | `undoBtn`, `redoBtn` — bottom bar next to rotate; `undoStack`, `redoStack`, `pushUndoSnapshot`, `clearUndoStacks`; Ctrl+Z / Ctrl+Shift+Z |
+| Middle mouse pan | `e.button === 1`; `state.isPanning`, `state.panStart`; `moveCursorSvg` during pan |
 | Show Highlights / Show Notes | `bundleHighlights` or `bundleNotes` or `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
 | Note modal | `noteModal` — Add/Edit Note (textarea, Cancel/Done); double-click or context Edit to edit |
 | Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |
-| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/P/D/H/N/Esc/arrows/Enter shortcuts |
+| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/P/D/H/N/Esc/arrows/Enter/Ctrl+Z/Ctrl+Shift+Z shortcuts |
 
 ## Key Globals (used by report.js)
 
@@ -103,9 +108,10 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 
 ## Layout
 
-- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, Counter, Line, Polyline) on left; spacer; settings gear (Project Settings) in top right when Supabase enabled; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
+- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, Counter, Line, Polyline) on left; spacer; Copy view link button (left of gear) and settings gear (Project Settings) in top right when Supabase enabled; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
 - **Mobile header** (max-width: 768px): Hamburger, Upload PDF (when no PDF) or Set Scale (when PDF and no scale), Measure, Highlight, Note, Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); `body.has-pdf` toggled in updateUI; Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250; settings gear hidden (access via sidebar logo)
-- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile; User and Project Settings buttons hidden on mobile as redundant), Upload PDF / Set Scale (button shows "Scale 1 ft = X" when set), Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Copy to PipeTooling, Show Highlights, Show Notes (when data exists), Clear Page
+- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile; User and Project Settings buttons hidden on mobile as redundant), Upload PDF / Set Scale (button shows "Scale 1 ft = X" when set), Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Copy to PipeTooling, Copy Summary (Email/Text), Show Highlights, Show Notes (when data exists), Clear Page
+- **Bottom bar** (page/zoom row): Page nav, zoom controls, rotate, Undo, Redo
 - **Status bar**: Dual indicators (circle=canvas, square=PDF), project/sync status, Sign In (when Supabase), Macros (keyboard shortcuts modal), Clear Page
 - **Touch**: Single-finger pan, pinch-to-zoom, long-press (500ms) for context menu; `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE, HIGHLIGHT, and NOTE modes (direct touch, no synthetic click); `preventDefault` on touchend to avoid ghost click double-placement; 25px movement threshold for LINE/POLYLINE taps
 - **Scale taps**: 400ms debounce to avoid double-tap on mobile
@@ -161,3 +167,12 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Page rotation** — Per-page `page.rotation` (0/90/180/270); rotate button (↻) in zoom bar next to zoom controls; `rotatePage90()`, `rotateAnnotations()`, `rotatePoint90CW()`; annotations transform on rotate; notes text rotates with page; persisted in save/load
 - **Counter/Line Type details modal** — Edit pen (✎) on counter or line type row opens `counterLineTypeDetailsModal`; Name (editable), Color (swatch), On pages (clickable jump), Delete (count=0 immediate; count>0 confirm + remove markers/lines); row click selects for placing; `openCounterLineTypeDetailsModal`, `performDeleteCounterLineType`
 - **Mobile sidebar redundancy** — User and Project Settings buttons hidden on mobile (`#authBtnSidebar`, `#settingsSidebarBtn`); icons in sidebar logo provide same access
+- **Manage Projects Force turn-in** — Admin can force turn-in from Manage Projects modal per checked-out row; `list_projects_for_admin` returns `checked_out_by`, `checked_out_at`, `checked_out_email` (migration 025)
+- **Realtime force turn-in notification** — When admin force turns in, user with project open gets toast "Project was turned in. You can check out to edit again." and UI switches to view mode via `refreshProjectPermissions`; `subscribeToProjectCheckoutChanges` on projects table
+- **Save and Turn In** — Check-in button labeled "Save and Turn In Project"; saves if dirty then checks in; `withTimeout` on performAutoSave and check_in_project RPC to prevent hang
+- **Copy view link button** — Header button left of gear; copies most recent view link (creates if none); hidden when viewer; `.copied` class for feedback
+- **View link create permission** — Only owners and editors can create view links; copyViewLinkBtn and shareViewLinkCreate hidden when `state.isViewer`
+- **Undo/Redo** — Last 5 moves in local memory; buttons in bottom bar next to rotate; Ctrl+Z / Ctrl+Shift+Z; cleared on load or when viewer
+- **Middle mouse pan** — Hold middle mouse button to pan regardless of active tool; move SVG cursor during pan
+- **Summary count detail modal** — Click count or line in sidebar Summary opens modal with page breakdown and thumbnails
+- **Copy Summary (Email/Text)** — Export Options button copies counts and lines as plain text for email/paste

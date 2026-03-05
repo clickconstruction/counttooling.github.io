@@ -190,7 +190,8 @@
     .page-zoom-row { display: flex; align-items: center; gap: 0; background: var(--surface); border-top: 1px solid var(--border); }
     .page-zoom-row .page-nav { flex: 1; }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; }
-    .zoom-bar button { width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
     .zoom-bar .zoom-pct { font-family: 'DM Mono', monospace; min-width: 48px; text-align: center; font-size: 0.85rem; }
     .page-nav { display: flex; align-items: center; gap: 8px; padding: 8px; }
     .page-nav-inner { display: flex; align-items: center; gap: 8px; }
@@ -546,6 +547,12 @@
             <button id="zoomIn">+</button>
             <button id="zoomFit" title="Fit">⊡</button>
             <button id="rotatePage" title="Rotate 90° right">↻</button>
+            <button id="undoBtn" title="Undo" aria-label="Undo" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z"/></svg>
+            </button>
+            <button id="redoBtn" title="Redo" aria-label="Redo" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320zM451.3 331.3L347.3 435.3C342.7 439.9 335.8 441.2 329.9 438.8C324 436.4 320 430.5 320 424L320 368L224 368C206.3 368 192 353.7 192 336L192 304C192 286.3 206.3 272 224 272L320 272L320 216C320 209.5 323.9 203.7 329.9 201.2C335.9 198.7 342.8 200.1 347.3 204.7L451.3 308.7C457.5 314.9 457.5 325.1 451.3 331.3z"/></svg>
+            </button>
           </div>
         </div>
         <div class="polyline-finish-bar" id="polylineFinishBar">
@@ -838,6 +845,8 @@
       </div>
       <table class="macros-table">
         <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
         <tr><td><kbd>M</kbd></td><td>Move mode</td></tr>
         <tr><td><kbd>S</kbd></td><td>Set Scale</td></tr>
         <tr><td><kbd>C</kbd></td><td>Counter mode</td></tr>
@@ -1868,6 +1877,74 @@
     }
   }
 
+  const UNDO_STACK_SIZE = 5;
+  let undoStack = [];
+  let redoStack = [];
+
+  function getUndoableSnapshot() {
+    return {
+      pages: state.pages.map(p => ({
+        annotations: JSON.parse(JSON.stringify(p.annotations || {})),
+        scale: p.scale ? { ...p.scale } : null,
+        rotation: p.rotation ?? 0,
+        label: p.label
+      })),
+      counters: JSON.parse(JSON.stringify(state.counters)),
+      lineTypes: JSON.parse(JSON.stringify(state.lineTypes))
+    };
+  }
+
+  function pushUndoSnapshot() {
+    if (state.isViewer || !state.pages.length) return;
+    undoStack.push(getUndoableSnapshot());
+    if (undoStack.length > UNDO_STACK_SIZE) undoStack.shift();
+    redoStack = [];
+  }
+
+  function applySnapshot(snap) {
+    state.pages.forEach((p, i) => {
+      if (snap.pages[i]) {
+        p.annotations = snap.pages[i].annotations;
+        p.scale = snap.pages[i].scale;
+        p.rotation = snap.pages[i].rotation ?? 0;
+        if (snap.pages[i].label != null) p.label = snap.pages[i].label;
+      }
+    });
+    state.counters = snap.counters;
+    state.lineTypes = snap.lineTypes;
+    state.quickLineStart = null;
+    state.highlightStart = null;
+    state.drawingPolyline = null;
+    state.editingPolyline = null;
+    if (state.activeCounterType && !state.counters.some(c => c.id === state.activeCounterType)) state.activeCounterType = null;
+    if (state.activeLineTypeId && !state.lineTypes.some(lt => lt.id === state.activeLineTypeId)) state.activeLineTypeId = null;
+  }
+
+  function undo() {
+    if (undoStack.length === 0 || state.isViewer) return;
+    redoStack.push(getUndoableSnapshot());
+    const prev = undoStack.pop();
+    applySnapshot(prev);
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
+
+  function redo() {
+    if (redoStack.length === 0 || state.isViewer) return;
+    undoStack.push(getUndoableSnapshot());
+    const next = redoStack.pop();
+    applySnapshot(next);
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
+
+  function clearUndoStacks() {
+    undoStack = [];
+    redoStack = [];
+  }
+
   async function refreshCheckoutActivity() {
     if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
     const { data } = await supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId });
@@ -2098,6 +2175,7 @@
   function rotatePage90() {
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) return;
+    pushUndoSnapshot();
     const rot = page.rotation ?? 0;
     const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
     const w = vp.width, h = vp.height;
@@ -2749,7 +2827,11 @@
       state.editingPolyline = null;
     }
     document.getElementById('polylineFinishBar').classList.toggle('visible', !!state.drawingPolyline);
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'headerActiveCounter', 'headerActiveLineType'];
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
+    if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
+    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'headerActiveCounter', 'headerActiveLineType'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -2919,6 +3001,7 @@
       if (showEdit) {
         const deletePage = () => {
           if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
+          pushUndoSnapshot();
           state.pages.splice(i, 1);
           if (state.currentPage >= state.pages.length) state.currentPage = Math.max(0, state.pages.length - 1);
           else if (state.currentPage > i) state.currentPage--;
@@ -2931,8 +3014,8 @@
         };
         const pageName = p.label || 'Page ' + (i + 1);
         const editBtn = div.querySelector('.edit-btn');
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
-        onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
+        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
+        onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
       }
       el.appendChild(div);
     });
@@ -2949,7 +3032,7 @@
       div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { c.color = color; markProjectDirty(); }); });
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('counter', c); });
       }
       el.appendChild(div);
@@ -2976,7 +3059,7 @@
       div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + lt.color + '"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { lt.color = color; markProjectDirty(); }); });
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('lineType', lt); });
       }
       el.appendChild(div);
@@ -3049,6 +3132,7 @@
           showLineColorModal(
             (it.type === 'poly' ? it.poly.color : it.q.color) || (lt?.color || '#4a9eff'),
             (color) => {
+              pushUndoSnapshot();
               if (it.type === 'poly') it.poly.color = color;
               else it.q.color = color;
               markProjectDirty();
@@ -3057,10 +3141,10 @@
         });
         const editBtn = div.querySelector('.edit-btn');
         if (it.type === 'poly') editBtn.onclick = (e) => { e.stopPropagation(); enterEditMode(it.poly.id, it.pageIdx); };
-        else editBtn.onclick = (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { it.q.name = v; markProjectDirty(); updateUI(); }); };
+        else editBtn.onclick = (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); it.q.name = v; markProjectDirty(); updateUI(); }); };
         onDoubleTapOrDblClick(div.querySelector('.name'), () => {
-          if (it.type === 'poly') startRename(div.querySelector('.name'), (v) => { it.poly.name = v; markProjectDirty(); updateUI(); });
-          else startRename(div.querySelector('.name'), (v) => { it.q.name = v; markProjectDirty(); updateUI(); });
+          if (it.type === 'poly') startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); it.poly.name = v; markProjectDirty(); updateUI(); });
+          else startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); it.q.name = v; markProjectDirty(); updateUI(); });
         });
       }
       el.appendChild(div);
@@ -3180,6 +3264,7 @@
   function exitEditMode(save) {
     if (!state.editingPolyline) return;
     if (save && (state.editingPolyline.points || []).length >= 2) {
+      pushUndoSnapshot();
       const page = state.pages[state.editingPolyIndex];
       if (page && page.annotations) page.annotations.polylines.push(state.editingPolyline);
       markProjectDirty();
@@ -3209,6 +3294,7 @@
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
+      pushUndoSnapshot();
       item.name = v || (kind === 'counter' ? 'Counter' : 'Line');
       markProjectDirty();
       updateUI();
@@ -3217,6 +3303,7 @@
     swatchEl.style.background = color;
     swatchEl.onclick = () => {
       showLineColorModal(color, (newColor) => {
+        pushUndoSnapshot();
         item.color = newColor;
         swatchEl.style.background = newColor;
         markProjectDirty();
@@ -3272,6 +3359,7 @@
     showModal('counterLineTypeDetailsModal');
   }
   function performDeleteCounterLineType(kind, item) {
+    pushUndoSnapshot();
     if (kind === 'counter') {
       const idx = state.counters.findIndex(c => c.id === item.id);
       if (idx >= 0) state.counters.splice(idx, 1);
@@ -3587,6 +3675,7 @@
             page.rotation = p.rotation ?? 0;
           }
         });
+        clearUndoStacks();
         state.pendingCanvasLoad = null;
         state.currentProjectName = projName;
         state.pdfHash = uploadHash;
@@ -3630,6 +3719,7 @@
                   page.rotation = p.rotation ?? 0;
                 }
               });
+              clearUndoStacks();
               state.currentProjectId = full.id;
               state.currentProjectName = full.name || 'Untitled';
               lastSaveIncludedPdf = !!full.pdf_path;
@@ -3681,6 +3771,7 @@
         btn.type = 'button';
         btn.textContent = p.label;
         btn.onclick = () => {
+          pushUndoSnapshot();
           const page = state.pages[state.currentPage];
           if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit };
           markProjectDirty();
@@ -3738,6 +3829,8 @@
     state.tool = TOOL.LINE;
     updateUI();
   };
+  document.getElementById('undoBtn').onclick = () => { undo(); };
+  document.getElementById('redoBtn').onclick = () => { redo(); };
   document.getElementById('polylineBtn').onclick = () => {
     if (!getPageScale(state.currentPage)) {
       showSetScaleFirstToast('Polyline');
@@ -3837,6 +3930,7 @@
     const val = parseFloat(document.getElementById('scaleValue').value);
     const unit = document.getElementById('scaleUnit').value;
     if (!val || !state.scalePointA || !state.scalePointB) return;
+    pushUndoSnapshot();
     const page = state.pages[state.currentPage];
     if (page) page.scale = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit };
     markProjectDirty();
@@ -3888,6 +3982,7 @@
     const icon = sel ? sel.dataset.path : getOrderedIcons()[0].value;
     const colorSel = document.querySelector('#counterColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    pushUndoSnapshot();
     const newCounter = { id: uid(), name, icon, color };
     state.counters.push(newCounter);
     state.activeCounterType = newCounter.id;
@@ -3912,6 +4007,7 @@
     const name = document.getElementById('lineTypeName').value.trim() || 'Line';
     const colorSel = document.querySelector('#lineTypeColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    pushUndoSnapshot();
     const newLt = { id: uid(), name, color };
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
@@ -3932,6 +4028,7 @@
     const name = document.getElementById('createLineTypeName').value.trim() || 'Line';
     const colorSel = document.querySelector('#createLineTypeColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    pushUndoSnapshot();
     const newLt = { id: uid(), name, color };
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
@@ -4069,6 +4166,7 @@
   function finishPolyline(closed) {
     if (!state.drawingPolyline || state.drawingPolyline.points.length < 2) return;
     if (closed && state.drawingPolyline.points.length >= 3) state.drawingPolyline.closed = true;
+    pushUndoSnapshot();
     const page = state.pages[state.currentPage];
     if (page && page.annotations) page.annotations.polylines.push(state.drawingPolyline);
     state.drawingPolyline = null;
@@ -4624,6 +4722,7 @@
             page.rotation = p.rotation ?? 0;
           }
         });
+        clearUndoStacks();
         updateUI();
         renderPdf();
       } catch (err) { alert('Invalid import file'); }
@@ -4660,6 +4759,7 @@
     hideModal('noteModal');
     if (state.pendingNote) {
       if (text) {
+        pushUndoSnapshot();
         const page = state.pages[state.currentPage];
         if (page && page.annotations) {
           if (!page.annotations.notes) page.annotations.notes = [];
@@ -4668,6 +4768,7 @@
       }
       state.pendingNote = null;
     } else if (state.editingNote) {
+      pushUndoSnapshot();
       state.editingNote.text = text;
       state.editingNote = null;
     }
@@ -4696,6 +4797,7 @@
   };
   document.getElementById('clearPageConfirm').onclick = () => {
     hideModal('clearPageConfirmModal');
+    pushUndoSnapshot();
     const page = state.pages[state.currentPage];
     if (page) page.annotations = makeAnnotations();
     if (state.selectedLinePageIdx === state.currentPage) {
@@ -5219,6 +5321,7 @@
         state.checkedOutBy = null;
         state.checkedOutAt = null;
         state.checkedOutEmail = null;
+        clearUndoStacks();
         state.isViewer = true;
         state.canCheckOut = true;
         updateSettingsCheckoutSection();
@@ -5565,6 +5668,7 @@
                     page.rotation = p.rotation ?? 0;
                   }
                 });
+                clearUndoStacks();
                 state.pdfStoragePath = proj.pdf_path;
                 state.pdfBuffer = null;
                 if (proj.pdf_hash) {
@@ -5592,6 +5696,7 @@
                   page.rotation = p.rotation ?? 0;
                 }
               });
+              clearUndoStacks();
               state.pdfStoragePath = proj.pdf_path;
               state.pdfBuffer = null;
               }
@@ -5608,6 +5713,7 @@
             state.lineTypes = d.lineTypes || [];
             if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
             if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+            clearUndoStacks();
             autoSaveDirty = false;
             lastModifiedAt = 0;
           }
@@ -5663,6 +5769,7 @@
       hideModal('settingsModal');
       if (state.pages.length > 0 && !confirm('Close project? Any unsaved changes will be lost.')) return;
       await checkInCurrentProjectIfHeld();
+      clearUndoStacks();
       state.pages = [];
       state.currentPage = 0;
       state.currentProjectId = null;
@@ -5837,6 +5944,7 @@
           state.checkedOutBy = null;
           state.checkedOutAt = null;
           state.checkedOutEmail = null;
+          clearUndoStacks();
           state.isViewer = true;
           state.canCheckOut = true;
           updateUI();
@@ -6141,6 +6249,7 @@
   document.getElementById('ctxDelete').onclick = () => {
     const t = state.ctxTarget;
     if (!t) return;
+    pushUndoSnapshot();
     const page = state.pages[state.currentPage];
     const ann = page?.annotations;
     if (!ann) return;
@@ -6225,6 +6334,7 @@
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       if (!state.quickLineStart) state.quickLineStart = pdf;
       else {
+        pushUndoSnapshot();
         const page = state.pages[state.currentPage];
         if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId });
         state.quickLineStart = null;
@@ -6233,11 +6343,13 @@
       renderPdf();
     } else if (state.tool === TOOL.POLYLINE && state.drawingPolyline) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      pushUndoSnapshot();
       state.drawingPolyline.points.push(pdf);
       markProjectDirty();
       renderAnnotations();
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      pushUndoSnapshot();
       const page = state.pages[state.currentPage];
       if (page && page.annotations) {
         if (!page.annotations.counterMarkers[state.activeCounterType]) page.annotations.counterMarkers[state.activeCounterType] = [];
@@ -6251,6 +6363,7 @@
       if (!state.highlightStart) state.highlightStart = pdf;
       else {
         if (page && page.annotations) {
+          pushUndoSnapshot();
           if (!page.annotations.highlights) page.annotations.highlights = [];
           const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
           page.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
@@ -6306,6 +6419,7 @@
       const r = 12 / state.zoom;
       const idx = pts.findIndex(p => ptDist(pdf, p) < r);
       if (idx >= 0 && pts.length > 2) {
+        pushUndoSnapshot();
         pts.splice(idx, 1);
         renderAnnotations();
         updateUI();
@@ -6353,12 +6467,14 @@
     state.mousePos = canvasToPdf(pt.x, pt.y);
     const t = hitTest(state.mousePos);
     if (t && t.type === 'noteResize') {
+      pushUndoSnapshot();
       state.resizingNoteIdx = t.index;
       state.resizingNotePageIdx = state.currentPage;
     } else if (t && t.type === 'noteFontSize') {
       const page = state.pages[state.currentPage];
       const note = page?.annotations?.notes?.[t.index];
       if (note) {
+        pushUndoSnapshot();
         state.resizingNoteFontSizeIdx = t.index;
         state.resizingNoteFontSizePageIdx = state.currentPage;
         state.resizingNoteFontSizeStartY = state.mousePos.y;
@@ -6370,6 +6486,7 @@
       const page = state.pages[state.currentPage];
       const note = page?.annotations?.notes?.[t.index];
       if (note) {
+        pushUndoSnapshot();
         state.draggingNoteIdx = t.index;
         state.draggingNotePageIdx = state.currentPage;
         state.draggingNoteOffset = { x: state.mousePos.x - note.x, y: state.mousePos.y - note.y };
@@ -6575,6 +6692,7 @@
       if (!state.quickLineStart) {
         state.quickLineStart = pdf;
       } else {
+        pushUndoSnapshot();
         const page = state.pages[state.currentPage];
         if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId });
         state.quickLineStart = null;
@@ -6591,6 +6709,7 @@
         state.highlightStart = pdf;
       } else {
         if (page && page.annotations) {
+          pushUndoSnapshot();
           if (!page.annotations.highlights) page.annotations.highlights = [];
           const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
           page.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
@@ -6644,6 +6763,13 @@
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     const k = e.key.toLowerCase();
+    if (e.ctrlKey || e.metaKey) {
+      if (k === 'z') {
+        if (e.shiftKey) { redo(); e.preventDefault(); }
+        else { undo(); e.preventDefault(); }
+        return;
+      }
+    }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
       if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
       else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
@@ -6745,6 +6871,7 @@
       if (data.pageRotations) {
         data.pageRotations.forEach((rot, i) => { if (state.pages[i]) state.pages[i].rotation = rot ?? 0; });
       }
+      clearUndoStacks();
     } catch (_) {}
   }
 
@@ -6968,6 +7095,7 @@
     state.pdfStoragePath = null;
     state.pdfBuffer = null;
     state.pdfHash = projectData.pdfHash || null;
+    clearUndoStacks();
     state.isViewer = true;
     state.canCheckOut = false;
     state.checkedOutBy = null;
@@ -7049,6 +7177,7 @@
                 const hasValidCheckout = proj.checked_out_by === uid && !lockExpired;
                 state.isViewer = !hasValidCheckout;
                 state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
+                clearUndoStacks();
                 autoSaveDirty = false;
                 lastModifiedAt = 0;
                 fitZoom();

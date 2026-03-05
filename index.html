@@ -63,6 +63,7 @@
     .header .header-tools-tight .sidebar-triggers:hover { background: var(--surface2); }
     .header .header-tools-tight .sidebar-triggers.active { background: var(--accent); color: var(--bg); border: none; }
     .header #setScale.scale-set { display: none; }
+    .header #setScale.scale-unset { color: var(--accent); }
     #setScale, #setScaleSidebar { display: inline-flex; align-items: center; gap: 6px; }
     #setScaleSidebar.scale-set { flex-direction: column; }
     .header .hamburger { display: none; }
@@ -2782,9 +2783,11 @@
       const isHeader = btn.id === 'setScale';
       if (scale) {
         btn.classList.add('scale-set');
+        if (isHeader) btn.classList.remove('scale-unset');
         btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Scale<br><span class="scale-value">1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + '</span>';
       } else {
         btn.classList.remove('scale-set');
+        if (isHeader) btn.classList.add('scale-unset');
         btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Set Scale';
       }
     };
@@ -3824,7 +3827,7 @@
     }
     if (state.quickLineStart) {
       state.quickLineStart = null;
-      renderPdf();
+      renderAnnotations();
     }
     state.tool = TOOL.LINE;
     updateUI();
@@ -6340,13 +6343,15 @@
         state.quickLineStart = null;
         markProjectDirty();
       }
-      renderPdf();
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.POLYLINE && state.drawingPolyline) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       pushUndoSnapshot();
       state.drawingPolyline.points.push(pdf);
       markProjectDirty();
       renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       pushUndoSnapshot();
@@ -6356,7 +6361,8 @@
         page.annotations.counterMarkers[state.activeCounterType].push({ x: pdf.x, y: pdf.y, id: uid() });
         markProjectDirty();
       }
-      renderPdf();
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.HIGHLIGHT) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -6371,7 +6377,8 @@
         }
         state.highlightStart = null;
       }
-      renderPdf();
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.NOTE) {
       const tNote = hitTest(pdf);
       if (tNote && (tNote.type === 'note' || tNote.type === 'noteResize' || tNote.type === 'noteFontSize')) {
@@ -6698,7 +6705,7 @@
         state.quickLineStart = null;
         markProjectDirty();
       }
-      renderPdf();
+      renderAnnotations();
       updateUI();
       return;
     }
@@ -6717,7 +6724,7 @@
         }
         state.highlightStart = null;
       }
-      renderPdf();
+      renderAnnotations();
       updateUI();
       return;
     }

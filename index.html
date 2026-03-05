@@ -1823,6 +1823,37 @@
   ];
 
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [] }; }
+
+  function reconcileOrphanedCountersAndLineTypes() {
+    if (!state.pages || !state.pages.length) return;
+    const counterIds = new Set((state.counters || []).map(c => c.id));
+    const lineTypeIds = new Set((state.lineTypes || []).map(lt => lt.id));
+    const orphanCounterIds = new Set();
+    const orphanLineTypeIds = new Set();
+    state.pages.forEach(p => {
+      const ann = p.annotations || makeAnnotations();
+      Object.keys(ann.counterMarkers || {}).forEach(id => { if (!counterIds.has(id)) orphanCounterIds.add(id); });
+      (ann.quickLines || []).forEach(q => { if (q.lineTypeId && !lineTypeIds.has(q.lineTypeId)) orphanLineTypeIds.add(q.lineTypeId); });
+      (ann.polylines || []).forEach(poly => { if (poly.lineTypeId && !lineTypeIds.has(poly.lineTypeId)) orphanLineTypeIds.add(poly.lineTypeId); });
+    });
+    if (orphanCounterIds.size > 0) {
+      state.counters = state.counters || [];
+      orphanCounterIds.forEach(id => {
+        if (!state.counters.some(c => c.id === id)) {
+          state.counters.push({ id, name: 'Unknown', icon: CIRCLE_PATH, color: '#e8c547' });
+        }
+      });
+    }
+    if (orphanLineTypeIds.size > 0) {
+      state.lineTypes = state.lineTypes || [];
+      orphanLineTypeIds.forEach(id => {
+        if (!state.lineTypes.some(lt => lt.id === id)) {
+          state.lineTypes.push({ id, name: 'Unknown', color: '#4a9eff' });
+        }
+      });
+    }
+  }
+
   function getIconName(path) {
     if (state.iconNames && state.iconNames[path]) return state.iconNames[path];
     const ic = ICONS.find(i => i.value === path);
@@ -3664,7 +3695,7 @@
       if (session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
-        if (!state.currentProjectId) {
+        if (!state.currentProjectId && state.pages.length === 0) {
           const airboard = await fetchUserAirboard();
           if (airboard && (airboard.counters?.length || airboard.lineTypes?.length)) {
             state.counters = airboard.counters;
@@ -3673,6 +3704,7 @@
             state.iconOrder = airboard.iconOrder;
           }
         }
+        reconcileOrphanedCountersAndLineTypes();
       } else {
         state.isAdmin = false;
         state.currentProjectId = null;
@@ -3803,6 +3835,7 @@
             page.rotation = p.rotation ?? 0;
           }
         });
+        reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         state.pendingCanvasLoad = null;
         state.currentProjectName = projName;
@@ -3847,6 +3880,7 @@
                   page.rotation = p.rotation ?? 0;
                 }
               });
+              reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.currentProjectId = full.id;
               state.currentProjectName = full.name || 'Untitled';
@@ -4849,6 +4883,7 @@
             page.rotation = p.rotation ?? 0;
           }
         });
+        reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         updateUI();
         renderPdf();
@@ -5823,6 +5858,7 @@
                   page.rotation = p.rotation ?? 0;
                 }
               });
+              reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.pdfStoragePath = proj.pdf_path;
               state.pdfBuffer = null;
@@ -5840,6 +5876,7 @@
             state.lineTypes = d.lineTypes || [];
             if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
             if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+            reconcileOrphanedCountersAndLineTypes();
             clearUndoStacks();
             autoSaveDirty = false;
             lastModifiedAt = 0;
@@ -6996,6 +7033,7 @@
       (data.pageAnnotations || []).forEach((ann, i) => {
         if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
       });
+      reconcileOrphanedCountersAndLineTypes();
       if (data.pageScales) {
         data.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
       } else if (data.scale) {
@@ -7223,6 +7261,7 @@
         page.rotation = p.rotation ?? 0;
       }
     });
+    reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;
     state.currentProjectName = projectData.name || 'Untitled';
     state.pdfStoragePath = null;
@@ -7292,6 +7331,7 @@
                     page.rotation = p.rotation ?? 0;
                   }
                 });
+                reconcileOrphanedCountersAndLineTypes();
                 state.currentProjectId = proj.id;
                 state.currentProjectName = proj.name || 'Untitled';
                 state.pdfStoragePath = proj.pdf_path;

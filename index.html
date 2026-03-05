@@ -531,6 +531,7 @@
           <button id="exportPdf" class="sidebar-btn">Combined PDF</button>
           <button id="specificPages" class="sidebar-btn">Specific Pages</button>
           <button id="forPipeTooling" class="sidebar-btn">Copy to /Tooling</button>
+          <button id="copySummaryText" class="sidebar-btn">Copy Summary (Email/Text)</button>
           <button id="bundleHighlights" class="sidebar-btn">Show Highlights</button>
           <button id="bundleNotes" class="sidebar-btn">Show Notes</button>
         </div>
@@ -3036,6 +3037,8 @@
     const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
     const ptBtn = document.getElementById('forPipeTooling');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
+    const copySummaryBtn = document.getElementById('copySummaryText');
+    if (copySummaryBtn) copySummaryBtn.style.display = hasCountsOrLines ? '' : 'none';
     const printReportBtn = document.getElementById('printReport');
     if (printReportBtn) printReportBtn.style.display = hasCountsOrLines ? '' : 'none';
     const exportPdfBtn = document.getElementById('exportPdf');
@@ -4534,6 +4537,21 @@
 
   document.getElementById('forPipeTooling').onclick = async () => {
     const text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary() : '';
+    if (!text) {
+      alert('No items to summarize. Add counters or line types first.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showModal('pipeToolingCopiedModal');
+      setTimeout(() => hideModal('pipeToolingCopiedModal'), 1500);
+    } catch (err) {
+      alert('Could not copy to clipboard: ' + (err.message || err));
+    }
+  };
+
+  document.getElementById('copySummaryText').onclick = async () => {
+    const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary() : '';
     if (!text) {
       alert('No items to summarize. Add counters or line types first.');
       return;

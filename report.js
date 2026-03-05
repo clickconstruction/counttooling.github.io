@@ -235,6 +235,76 @@
     return lines.join('\n');
   }
 
+  function getEmailTextSummary() {
+    if (!window.state || !state.pages || !state.pages.length) return '';
+    const counterSummary = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.counters || []).forEach(c => {
+        const markers = ann.counterMarkers?.[c.id] || [];
+        if (markers.length > 0) {
+          if (!counterSummary[c.id]) counterSummary[c.id] = { name: c.name, total: 0, pages: [] };
+          counterSummary[c.id].total += markers.length;
+          counterSummary[c.id].pages.push(i + 1);
+        }
+      });
+    });
+    const lineTypeSummary = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.lineTypes || []).forEach(lt => {
+        let runs = 0, len = 0;
+        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          runs++;
+          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+        });
+        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          runs++;
+          len += polylineDistance(poly.points || [], poly.closed);
+        });
+        if (runs > 0) {
+          if (!lineTypeSummary[lt.id]) lineTypeSummary[lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
+          lineTypeSummary[lt.id].runs += runs;
+          lineTypeSummary[lt.id].lengthPdfPts += len;
+          lineTypeSummary[lt.id].pages.push(i + 1);
+        }
+      });
+    });
+    const lines = [];
+    if (Object.keys(counterSummary).length > 0 || Object.keys(lineTypeSummary).length > 0) {
+      lines.push('Takeoff Summary');
+      lines.push('---------------');
+      lines.push('');
+      if (Object.keys(counterSummary).length > 0) {
+        lines.push('Counters:');
+        (state.counters || []).forEach(c => {
+          const r = counterSummary[c.id];
+          if (r) {
+            const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
+            lines.push('• ' + (c.name || 'Counter') + ': ' + r.total + ' (' + pagesStr + ')');
+          }
+        });
+        lines.push('');
+      }
+      if (Object.keys(lineTypeSummary).length > 0) {
+        lines.push('Line Types:');
+        (state.lineTypes || []).forEach(lt => {
+          const r = lineTypeSummary[lt.id];
+          if (r) {
+            const scale = pickScaleForLineType(r.pages);
+            const unit = scale?.unit || 'px';
+            const num = scale
+              ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
+              : String(Math.round(r.lengthPdfPts));
+            const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
+            lines.push('• ' + num + ' ' + unit + ' of ' + (lt.name || 'Line') + ': ' + r.runs + ' run' + (r.runs > 1 ? 's' : '') + ' (' + pagesStr + ')');
+          }
+        });
+      }
+    }
+    return lines.join('\n');
+  }
+
   function printReport() {
     if (!window.state || !state.pages || !state.pages.length) {
       alert('No pages loaded. Upload a PDF first.');
@@ -255,6 +325,7 @@
   window.buildReportHtml = buildReportHtml;
   window.printReport = printReport;
   window.getPipeToolingSummary = getPipeToolingSummary;
+  window.getEmailTextSummary = getEmailTextSummary;
 
   document.getElementById('printReport').addEventListener('click', printReport);
 })();

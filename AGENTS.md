@@ -12,6 +12,7 @@
 - report.js loads after index.html and uses globals: `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`, `renderIconHtml`; exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`
 - jsPDF for Export PDF; html2canvas for report-to-PDF (Combined PDF, Specific Pages)
 - Supabase (optional): Auth, projects table (`pdf_path`, `pdf_hash`, `size_bytes`), `pdfs` storage bucket, RPC `list_users_for_admin`, `list_projects_for_admin`; Edge Functions (`admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`, `invite-to-project`, `get-view-project`); config via `config.js` (see SUPABASE_SETUP.md)
+- **Supabase migrations**: When creating or modifying migrations in `supabase/migrations/`, always apply them via the Supabase MCP `apply_migration` tool (name: filename without .sql, query: file contents)
 
 ## Navigation
 

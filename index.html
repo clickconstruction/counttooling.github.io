@@ -144,6 +144,7 @@
       .zoom-bar #zoomIn { display: none; }
       .polyline-finish-bar button { min-height: 44px; }
       .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
+      .modal-overlay.visible .modal-card.modal-card-fullscreen { max-height: 90vh; height: 90vh; overflow: hidden; }
       #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
     }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
@@ -291,6 +292,18 @@
     .save-project-progress li.done::before { content: "✓ "; }
     .modal-card.modal-card-toast { width: fit-content; max-width: none; }
     .modal-card-large { max-width: 700px; width: 95%; }
+    .modal-card-summary-detail { width: fit-content; max-width: min(95vw, 420px); }
+    .summary-count-detail-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .summary-count-detail-row:last-child { border-bottom: none; }
+    .summary-count-detail-meta { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+    .summary-count-detail-count { font-weight: 700; font-size: 1.1rem; }
+    .summary-count-detail-length { font-size: 0.9rem; color: var(--text2); }
+    .summary-count-detail-page { font-size: 0.85rem; color: var(--text3); }
+    .summary-count-detail-doc { color: var(--text2); font-size: 0.9rem; }
+    .summary-count-detail-preview { display: flex; flex-direction: column; gap: 4px; }
+    .summary-count-detail-row img { max-width: 200px; border-radius: 6px; border: 1px solid var(--border); display: block; }
+    .modal-card-fullscreen { max-width: 95vw; width: 95vw; max-height: 90vh; height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+    .modal-card-fullscreen #loadProjectList { max-height: none; flex: 1; min-height: 200px; overflow-y: auto; }
     .manage-icons-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
     .manage-icons-list .manage-icon-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
     .manage-icons-list .manage-icon-row .icon-svg { flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
@@ -504,8 +517,8 @@
           <button id="addLineType" class="sidebar-btn">+ Add Line Type</button>
           <div id="lineTypesList"></div>
         </div>
-        <div class="sidebar-section" id="linesSection">
-          <h3 id="linesSectionTitle" class="section-settings" title="Click to collapse">Lines <span class="collapse-icon" id="linesCollapseIcon">▼</span></h3>
+        <div class="sidebar-section collapsed" id="linesSection">
+          <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
           <div id="linesList"></div>
         </div>
         <div class="sidebar-section" id="summarySection">
@@ -1160,14 +1173,23 @@
     </div>
   </div>
   <div class="modal-overlay" id="loadProjectModal">
-    <div class="modal-card">
+    <div class="modal-card modal-card-fullscreen">
       <h2>Load Project from Cloud</h2>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
-      <div id="loadProjectList" class="form-group" style="max-height:200px;overflow-y:auto;"></div>
+      <div id="loadProjectList" class="form-group"></div>
       <p id="loadProjectEmpty" class="form-group" style="color:var(--text2);display:none;">No projects yet. Save your first project to get started.</p>
       <div class="actions">
         <button id="loadProjectCancel">Cancel</button>
       </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="summaryCountDetailModal">
+    <div class="modal-card modal-card-summary-detail">
+      <div class="modal-card-header">
+        <h2 id="summaryCountDetailTitle">Count by Page</h2>
+        <button type="button" class="modal-close-btn" id="summaryCountDetailClose" aria-label="Close">×</button>
+      </div>
+      <div id="summaryCountDetailList" class="form-group" style="max-height:60vh;overflow-y:auto;"></div>
     </div>
   </div>
   <div class="modal-overlay" id="shareProjectModal">
@@ -1827,7 +1849,7 @@
     pagesListCollapsed: false,
     countersListCollapsed: false,
     lineTypesListCollapsed: false,
-    linesListCollapsed: false,
+    linesListCollapsed: true,
     summaryListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2 },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
@@ -3158,9 +3180,18 @@
   function renderSummary() {
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     state.counters.forEach(c => {
       const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
-      if (count > 0) el.innerHTML += '<div class="sidebar-item"><span class="name">' + c.name + '</span><span class="badge">' + count + '</span></div>';
+      if (count > 0) {
+        const div = document.createElement('div');
+        div.className = 'sidebar-item summary-item-clickable';
+        div.dataset.type = 'counter';
+        div.dataset.id = c.id;
+        div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">' + count + '</span>';
+        div.onclick = () => openSummaryCountDetailModal('counter', c.id);
+        el.appendChild(div);
+      }
     });
     state.lineTypes.forEach(lt => {
       let runs = 0, len = 0;
@@ -3168,8 +3199,100 @@
         (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
         (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
       });
-      if (runs > 0) el.innerHTML += '<div class="sidebar-item"><span class="name">' + lt.name + '</span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span></div>';
+      if (runs > 0) {
+        const div = document.createElement('div');
+        div.className = 'sidebar-item summary-item-clickable';
+        div.dataset.type = 'lineType';
+        div.dataset.id = lt.id;
+        div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span>';
+        div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
+        el.appendChild(div);
+      }
     });
+  }
+
+  async function openSummaryCountDetailModal(type, id) {
+    const titleEl = document.getElementById('summaryCountDetailTitle');
+    const listEl = document.getElementById('summaryCountDetailList');
+    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
+    const THUMB_WIDTH = 200;
+    let items = [];
+    if (type === 'counter') {
+      const c = state.counters.find(x => x.id === id);
+      if (!c) return;
+      titleEl.textContent = (c.name || 'Counter') + ' — by page';
+      state.pages.forEach((p, pageIdx) => {
+        const markers = p.annotations?.counterMarkers?.[id] || [];
+        if (markers.length > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), count: markers.length, isCounter: true });
+      });
+    } else {
+      const lt = state.lineTypes.find(x => x.id === id);
+      if (!lt) return;
+      titleEl.textContent = (lt.name || 'Line type') + ' — by page';
+      state.pages.forEach((p, pageIdx) => {
+        let runs = 0, len = 0;
+        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+        if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
+      });
+    }
+    if (!items.length) return;
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    listEl.innerHTML = '<p style="color:var(--text2);">Loading…</p>';
+    showModal('summaryCountDetailModal');
+    listEl.innerHTML = '';
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const page = state.pages[it.pageIdx];
+      const fullLabel = it.pageLabel || 'Page ' + (it.pageIdx + 1);
+      let docName = 'document.pdf';
+      let pagePart = 'p' + (it.pageIdx + 1);
+      if (fullLabel.indexOf(' — ') >= 0) {
+        const parts = fullLabel.split(' — ');
+        docName = (parts[0] || 'document.pdf').trim();
+        pagePart = (parts[1] || pagePart).trim();
+      } else if (fullLabel.toLowerCase().endsWith('.pdf')) {
+        docName = fullLabel;
+        pagePart = 'p' + (it.pageIdx + 1);
+      } else {
+        pagePart = fullLabel;
+      }
+      const row = document.createElement('div');
+      row.className = 'summary-count-detail-row';
+      let metaHtml = '<div class="summary-count-detail-meta">';
+      metaHtml += '<span class="summary-count-detail-count">' + esc(it.isCounter ? String(it.count) : String(it.runs)) + '</span>';
+      if (!it.isCounter) metaHtml += '<span class="summary-count-detail-length">' + esc(formatDist(it.length, getPageScale(it.pageIdx))) + '</span>';
+      metaHtml += '<span class="summary-count-detail-page">on ' + esc(pagePart) + '</span></div>';
+      row.innerHTML = metaHtml;
+      if (page.pdfPage) {
+        try {
+          const natView = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+          const scale = THUMB_WIDTH / natView.width;
+          const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
+          const pageW = viewport.width, pageH = viewport.height;
+          const canvas = document.createElement('canvas');
+          canvas.width = pageW;
+          canvas.height = pageH;
+          const ctx = canvas.getContext('2d');
+          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'display' }).promise;
+          renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+          const previewWrap = document.createElement('div');
+          previewWrap.className = 'summary-count-detail-preview';
+          const img = document.createElement('img');
+          img.src = canvas.toDataURL('image/jpeg', 0.9);
+          img.alt = fullLabel;
+          previewWrap.appendChild(img);
+          const docSpan = document.createElement('span');
+          docSpan.className = 'summary-count-detail-doc';
+          docSpan.textContent = docName;
+          previewWrap.appendChild(docSpan);
+          row.appendChild(previewWrap);
+        } catch (e) {
+          console.error('[Summary detail thumbnail]', e);
+        }
+      }
+      listEl.appendChild(row);
+    }
   }
 
   function onDoubleTapOrDblClick(el, handler) {
@@ -3541,12 +3664,14 @@
       if (session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
-        const airboard = await fetchUserAirboard();
-        if (airboard && (airboard.counters?.length || airboard.lineTypes?.length)) {
-          state.counters = airboard.counters;
-          state.lineTypes = airboard.lineTypes;
-          state.iconNames = airboard.iconNames || {};
-          state.iconOrder = airboard.iconOrder;
+        if (!state.currentProjectId) {
+          const airboard = await fetchUserAirboard();
+          if (airboard && (airboard.counters?.length || airboard.lineTypes?.length)) {
+            state.counters = airboard.counters;
+            state.lineTypes = airboard.lineTypes;
+            state.iconNames = airboard.iconNames || {};
+            state.iconOrder = airboard.iconOrder;
+          }
         }
       } else {
         state.isAdmin = false;
@@ -6136,6 +6261,7 @@
     document.getElementById('loadProjectBtn').onclick = () => openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectBtnSidebar').onclick = () => openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
+    document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
     document.getElementById('saveBeforeLoadCancel').onclick = () => hideModal('saveBeforeLoadModal');
     document.getElementById('saveBeforeLoadDiscard').onclick = () => {
       hideModal('saveBeforeLoadModal');
@@ -6825,6 +6951,7 @@
       else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
       else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }
+      else if (document.getElementById('summaryCountDetailModal').classList.contains('visible')) { hideModal('summaryCountDetailModal'); }
       else if (document.getElementById('viewLinkEmailModal').classList.contains('visible')) {
         if (typeof viewLinkEmailResolve === 'function') { viewLinkEmailResolve(null); viewLinkEmailResolve = null; }
         hideModal('viewLinkEmailModal');

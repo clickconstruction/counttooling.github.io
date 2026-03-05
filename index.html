@@ -989,7 +989,7 @@
           <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:stretch;">
             <p id="settingsCheckoutStatus" class="settings-checkout-status" style="margin:0;font-size:0.9rem;color:var(--text2);flex:1;min-width:0;"></p>
             <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;align-self:stretch;width:auto;">Check out Project</button>
-            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Turn In Project</button>
+            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Save and Turn In Project</button>
             <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;align-self:stretch;width:auto;">Force turn-in (admin)</button>
           </div>
         </div>
@@ -2965,7 +2965,7 @@
           btn.type = 'button';
           btn.className = 'header-edit-status-btn';
           btn.dataset.action = 'checkin';
-          btn.textContent = '[Turn In]';
+          btn.textContent = '[Save and Turn In]';
           editBanner.appendChild(btn);
           editBanner.classList.add('edit-status-editing');
         } else if (state.pages.length > 0 && !state.currentProjectId && !state.isViewer) {

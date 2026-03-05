@@ -2164,6 +2164,20 @@
     return ptDist(p, q);
   }
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
+  function pickScaleForLineType(pageIndices) {
+    const preferredUnits = ['ft', 'in', 'm', 'cm', 'yd'];
+    for (const u of preferredUnits) {
+      for (const pi of pageIndices) {
+        const scale = state.pages[pi]?.scale;
+        if (scale && scale.unit === u) return scale;
+      }
+    }
+    for (const pi of pageIndices) {
+      const scale = state.pages[pi]?.scale;
+      if (scale) return scale;
+    }
+    return state.pages[0]?.scale ?? null;
+  }
   function getMarkedPageIndices() {
     return state.pages
       .map((p, i) => ({ p, i }))
@@ -3114,19 +3128,19 @@
     el.innerHTML = '';
     const showEdit = !state.isViewer;
     state.lineTypes.forEach(lt => {
-      const runs = state.pages.reduce((n, p) => {
-        const q = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id).length;
-        const poly = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).length;
-        return n + q + poly;
-      }, 0);
-      let len = 0;
-      state.pages.forEach(p => {
-        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }));
-        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => len += polylineDistance(poly.points || [], poly.closed));
+      let runs = 0, len = 0;
+      const pageIndices = [];
+      state.pages.forEach((p, pi) => {
+        const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+        const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+        if (qLines.length || polys.length) pageIndices.push(pi);
+        qLines.forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+        polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
       });
+      const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + lt.color + '"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + lt.color + '"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
@@ -3240,16 +3254,21 @@
     });
     state.lineTypes.forEach(lt => {
       let runs = 0, len = 0;
-      state.pages.forEach(p => {
-        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
-        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+      const pageIndices = [];
+      state.pages.forEach((p, pi) => {
+        const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+        const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+        if (qLines.length || polys.length) pageIndices.push(pi);
+        qLines.forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+        polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
       });
       if (runs > 0) {
+        const scale = pickScaleForLineType(pageIndices);
         const div = document.createElement('div');
         div.className = 'sidebar-item summary-item-clickable';
         div.dataset.type = 'lineType';
         div.dataset.id = lt.id;
-        div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="badge">' + runs + ' · ' + formatDist(len, null) + '</span>';
+        div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>';
         div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
         el.appendChild(div);
       }
@@ -3840,8 +3859,8 @@
       } else {
         const projName = state.pendingCanvasLoad.name;
         const projectId = state.pendingCanvasLoad.projectId;
-        if (d.counters) state.counters = d.counters;
-        if (d.lineTypes) state.lineTypes = d.lineTypes;
+        state.counters = Array.isArray(d.counters) ? d.counters : [];
+        state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
         if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
         if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
         (d.pages || []).forEach(p => {
@@ -3890,8 +3909,8 @@
             const { data: full } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path').eq('id', proj.id).single();
             if (full && full.data) {
               const d = full.data;
-              if (d.counters) state.counters = d.counters;
-              if (d.lineTypes) state.lineTypes = d.lineTypes;
+              state.counters = Array.isArray(d.counters) ? d.counters : [];
+              state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
               (d.pages || []).forEach(p => {
@@ -4913,8 +4932,8 @@
     r.onload = () => {
       try {
         const data = JSON.parse(r.result);
-        if (data.counters) state.counters = data.counters;
-        if (data.lineTypes) state.lineTypes = data.lineTypes;
+        state.counters = Array.isArray(data.counters) ? data.counters : [];
+        state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         (data.pages || []).forEach(p => {
@@ -5900,8 +5919,8 @@
                   const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
                   state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
                 }
-                if (d.counters) state.counters = d.counters;
-                if (d.lineTypes) state.lineTypes = d.lineTypes;
+                state.counters = Array.isArray(d.counters) ? d.counters : [];
+                state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
                 if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
                 (d.pages || []).forEach(p => {
@@ -5917,6 +5936,7 @@
                 } else if (d.scale) {
                   state.pages.forEach(p => { p.scale = d.scale; });
                 }
+                reconcileOrphanedCountersAndLineTypes();
                 clearUndoStacks();
                 state.pdfStoragePath = proj.pdf_path;
                 state.pdfBuffer = null;
@@ -5935,8 +5955,8 @@
                 const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
                 state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
               }
-              if (d.counters) state.counters = d.counters;
-              if (d.lineTypes) state.lineTypes = d.lineTypes;
+              state.counters = Array.isArray(d.counters) ? d.counters : [];
+              state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
               (d.pages || []).forEach(p => {
                 const page = state.pages[p.index];
                 if (page) {
@@ -5964,8 +5984,8 @@
             state.pdfStoragePath = null;
             state.pdfBuffer = null;
             state.pages = [];
-            state.counters = d.counters || [];
-            state.lineTypes = d.lineTypes || [];
+            state.counters = Array.isArray(d.counters) ? d.counters : [];
+            state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
             if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
             if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
             reconcileOrphanedCountersAndLineTypes();
@@ -7341,8 +7361,8 @@
       const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
       state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
     }
-    if (d.counters) state.counters = d.counters;
-    if (d.lineTypes) state.lineTypes = d.lineTypes;
+    state.counters = Array.isArray(d.counters) ? d.counters : [];
+    state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
     (d.pages || []).forEach(p => {
@@ -7411,8 +7431,8 @@
                   const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
                   state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
                 }
-                if (d.counters) state.counters = d.counters;
-                if (d.lineTypes) state.lineTypes = d.lineTypes;
+                state.counters = Array.isArray(d.counters) ? d.counters : [];
+                state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
                 if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
                 (d.pages || []).forEach(p => {

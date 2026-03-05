@@ -4589,9 +4589,8 @@
       sctx.drawImage(reportCanvas, 0, y, reportCanvas.width, sliceH, 0, 0, reportCanvas.width, sliceH);
       const imgData = sliceCanvas.toDataURL('image/jpeg', 0.92);
       const imgH = sliceH / pxPerMm;
-      const hMm = Math.min(imgH, A4_H);
-      if (pageCount > 0) doc.addPage([A4_W, hMm], 'p');
-      doc.addImage(imgData, 'JPEG', 0, 0, A4_W, hMm);
+      if (pageCount > 0) doc.addPage([A4_W, A4_H], 'p');
+      doc.addImage(imgData, 'JPEG', 0, 0, A4_W, imgH);
       y += sliceH;
       pageCount++;
     }

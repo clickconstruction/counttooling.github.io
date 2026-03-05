@@ -153,6 +153,9 @@
     #pagesSectionTitle:hover, #countersSectionTitle:hover, #lineTypesSectionTitle:hover, #linesSectionTitle:hover, #summarySectionTitle:hover, #exportOptionsSectionTitle:hover { color: var(--accent); }
     .sidebar-section h3.section-settings { cursor: pointer; padding: 2px 0; }
     .sidebar-section h3.section-settings:hover { color: var(--text2); }
+    .sidebar-scale-display { font-size: 0.85rem; font-family: 'DM Mono', monospace; color: var(--text2); }
+    .sidebar-scale-display.has-scale { color: var(--accent); }
+    @media (max-width: 768px) { .scale-display-desktop { display: none; } }
     #pagesSection.collapsed #pagesList { display: none; }
     #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter { display: none; }
     #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType { display: none; }
@@ -505,6 +508,9 @@
             Polyline
           </button>
           <button id="doneEditingSidebar" class="sidebar-btn sidebar-btn-primary" style="display:none;">Done Editing</button>
+        </div>
+        <div class="sidebar-section scale-display-desktop" id="sidebarScaleDisplaySection">
+          <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
         </div>
         <div class="sidebar-section" id="pagesSection">
           <h3 id="pagesSectionTitle" class="section-settings" title="Click to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
@@ -2872,6 +2878,18 @@
     };
     setScaleContent(setScaleBtn);
     if (setScaleSidebarBtn) setScaleContent(setScaleSidebarBtn);
+    const scaleDisplay = document.getElementById('sidebarScaleDisplay');
+    if (scaleDisplay) {
+      if (scale) {
+        scaleDisplay.textContent = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1);
+        scaleDisplay.classList.add('has-scale');
+      } else {
+        scaleDisplay.textContent = '—';
+        scaleDisplay.classList.remove('has-scale');
+      }
+    }
+    const scaleDisplaySection = document.getElementById('sidebarScaleDisplaySection');
+    if (scaleDisplaySection) scaleDisplaySection.style.display = state.pages.length ? '' : 'none';
     document.getElementById('moveBtn').classList.toggle('active', state.tool === TOOL.NONE);
     document.getElementById('quickLine').classList.toggle('active', state.tool === TOOL.LINE);
     document.getElementById('polylineBtn').classList.toggle('active', state.tool === TOOL.POLYLINE);

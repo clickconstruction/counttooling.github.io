@@ -45,7 +45,9 @@
     .header .spacer { flex: 1; }
     .header .header-settings-gear { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 12px; background: none; border: none; border-radius: 0; color: var(--text2); cursor: pointer; font-size: 0.9rem; }
     .header .header-settings-gear:hover { background: none; color: var(--text); }
-    .header #copyViewLinkBtn.copied { color: var(--green); }
+    .header #copyViewLinkBtn.copied,
+    .header #headerShareBtn.copied { color: var(--green); }
+    .header #headerShareBtn { display: none; }
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
     .header-edit-status.edit-status-available { background: transparent; color: #81c784; border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
@@ -61,6 +63,8 @@
     .header .header-tools-tight .sidebar-triggers:hover { background: var(--surface2); }
     .header .header-tools-tight .sidebar-triggers.active { background: var(--accent); color: var(--bg); border: none; }
     .header #setScale.scale-set { display: none; }
+    #setScale, #setScaleSidebar { display: inline-flex; align-items: center; gap: 6px; }
+    #setScaleSidebar.scale-set { flex-direction: column; }
     .header .hamburger { display: none; }
     .sidebar-logo { display: none; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); padding: 16px 12px; border-bottom: 1px solid var(--border); align-items: center; justify-content: space-between; gap: 12px; }
     .sidebar-logo-title { flex: 1; }
@@ -68,6 +72,11 @@
     .sidebar-logo-icon { display: flex; align-items: center; justify-content: center; padding: 6px; background: none; border: none; border-radius: 6px; color: var(--text2); cursor: pointer; }
     .sidebar-logo-icon:hover { background: var(--surface2); color: var(--text); }
     .sidebar-logo-icon svg { width: 20px; height: 20px; }
+    .sidebar-checkout-banner { display: none; align-items: center; justify-content: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-checkout-banner .header-edit-status-btn { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: none; transition: opacity 0.2s ease; }
+    .sidebar-checkout-banner.edit-status-editing .header-edit-status-btn { color: var(--red); }
+    .sidebar-checkout-banner.edit-status-available .header-edit-status-btn { color: #81c784; }
+    .sidebar-checkout-banner.edit-status-viewing { background: var(--surface2); color: var(--text2); }
     .sidebar-header-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-header-buttons .sidebar-btn { flex: 1; min-width: 80px; }
     .sidebar-tool-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
@@ -90,13 +99,14 @@
       .header .divider.sidebar-triggers { display: none; }
       .header #copyViewLinkBtn { display: none; }
       .header #settingsGearBtn { display: none; }
+      .header #headerShareBtn { display: none; }
+      .header #headerShareBtn.in-view-mode { display: inline-flex; }
       .header #headerEditStatusBanner { display: none !important; }
       .header #polylineBtn { display: none; }
       .header #doneEditing { display: none; }
       .header .header-primary-btn { display: none; }
       body:not(.has-pdf) .header #uploadPdf { display: inline-flex; align-items: center; justify-content: center; }
       body:not(.has-pdf) .header #setScale { display: none !important; }
-      body.has-pdf .header #setScale:not(.scale-set) { display: inline-flex; align-items: center; justify-content: center; }
       .header-active-type { display: none; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text2); }
       .header-active-type.visible { display: inline-flex; }
       .header-active-type .header-type-icon { width: 18px; height: 18px; flex-shrink: 0; }
@@ -105,8 +115,13 @@
     @media (min-width: 769px) { .header-active-type { display: none !important; } }
       .header .header-primary-divider { display: none; }
       .sidebar-logo { display: flex; }
+      .sidebar-checkout-banner.supabase-only.edit-status-available,
+      .sidebar-checkout-banner.supabase-only.edit-status-editing,
+      .sidebar-checkout-banner.supabase-only.edit-status-viewing { display: flex; }
+      body.mobile-view-mode .sidebar-tool-buttons #moveBtnSidebar { order: -1; }
       .sidebar-logo-icons.supabase-only { display: flex; }
       .sidebar-header-buttons { display: flex; }
+      .sidebar-header-buttons #setScaleSidebar { display: flex; justify-content: center; align-items: center; }
       .sidebar-tool-buttons { display: flex; }
       .header #clearPage { display: none; }
       .sidebar-clear-page { display: block; }
@@ -124,6 +139,8 @@
       .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
       body.sidebar-open .sidebar-backdrop { display: block; }
       .zoom-bar button { width: 44px; height: 44px; }
+      .zoom-bar #zoomOut { display: none; }
+      .zoom-bar #zoomIn { display: none; }
       .polyline-finish-bar button { min-height: 44px; }
       .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
       #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
@@ -361,8 +378,13 @@
       <button id="uploadPdf" class="header-primary-btn">Upload PDF</button>
       <input type="file" id="pdfInput" accept=".pdf" multiple>
       <span class="divider header-primary-divider"></span>
-      <button id="setScale" class="header-primary-btn">Set Scale</button>
       <span class="header-tools-tight">
+        <button id="setScale" class="sidebar-triggers" title="Set Scale" aria-label="Set Scale">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>
+        </button>
+        <button id="moveBtn" class="sidebar-triggers" title="Move" aria-label="Move">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
+        </button>
         <button id="measureBtn" class="sidebar-triggers" title="Measure distance" aria-label="Measure">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
         </button>
@@ -371,9 +393,6 @@
         </button>
         <button id="noteBtn" class="sidebar-triggers" title="Note" aria-label="Note">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
-        </button>
-        <button id="moveBtn" class="sidebar-triggers" title="Move" aria-label="Move">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
         </button>
         <button id="counterBtn" class="sidebar-triggers" title="Counter" aria-label="Counter">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
@@ -391,6 +410,9 @@
       <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
       <span class="spacer"></span>
       <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
+      <button id="headerShareBtn" class="header-settings-gear sidebar-triggers supabase-only" aria-label="Share" title="Share">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
+      </button>
       <button id="copyViewLinkBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Copy view link" title="Copy view link">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
       </button>
@@ -423,9 +445,10 @@
             </button>
           </div>
         </div>
+        <div id="sidebarCheckoutBanner" class="sidebar-checkout-banner supabase-only"></div>
         <div class="sidebar-section sidebar-header-buttons">
           <button id="uploadPdfSidebar" class="sidebar-btn">Upload PDF</button>
-          <button id="setScaleSidebar" class="sidebar-btn">Set Scale</button>
+          <button id="setScaleSidebar" class="sidebar-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg> Set Scale</button>
           <button id="authBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Sign In</button>
           <button id="settingsSidebarBtn" class="sidebar-btn supabase-only" style="display:none;">Project Settings</button>
           <button id="saveProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Save Project to Cloud</button>
@@ -789,17 +812,12 @@
   </div>
   <div class="modal-overlay" id="setScaleFirstModal">
     <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Set Scale first to use Quick Line.</p>
+      <p id="setScaleFirstText" style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></p>
     </div>
   </div>
   <div class="modal-overlay" id="outOfBoundsModal">
     <div class="modal-card modal-card-toast">
       <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
-    </div>
-  </div>
-  <div class="modal-overlay" id="setScaleFirstPolylineModal">
-    <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Set Scale first to use Polyline.</p>
     </div>
   </div>
   <div class="modal-overlay" id="pipeToolingCopiedModal">
@@ -2680,13 +2698,16 @@
     const setScaleBtn = document.getElementById('setScale');
     const setScaleSidebarBtn = document.getElementById('setScaleSidebar');
     const scale = getPageScale(state.currentPage);
+    const scaleIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>';
+    const scaleIconSvgHeader = scaleIconSvg.replace('width="18" height="18"', 'width="20" height="20"');
     const setScaleContent = (btn) => {
+      const isHeader = btn.id === 'setScale';
       if (scale) {
         btn.classList.add('scale-set');
-        btn.innerHTML = 'Scale<br><span class="scale-value">1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + '</span>';
+        btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Scale<br><span class="scale-value">1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + '</span>';
       } else {
         btn.classList.remove('scale-set');
-        btn.textContent = 'Set Scale';
+        btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Set Scale';
       }
     };
     setScaleContent(setScaleBtn);
@@ -2795,6 +2816,8 @@
       if (!show) {
         editBanner.style.display = 'none';
         editBanner.innerHTML = '';
+        const sb = document.getElementById('sidebarCheckoutBanner');
+        if (sb) { sb.innerHTML = ''; sb.className = 'sidebar-checkout-banner supabase-only'; }
       } else {
         editBanner.style.display = '';
         editBanner.className = 'header-edit-status supabase-only';
@@ -2831,6 +2854,11 @@
           editBanner.appendChild(span);
           editBanner.classList.add('edit-status-viewing');
         }
+        const sidebarBanner = document.getElementById('sidebarCheckoutBanner');
+        if (sidebarBanner) {
+          sidebarBanner.className = 'sidebar-checkout-banner ' + editBanner.className.replace('header-edit-status', '').trim();
+          sidebarBanner.innerHTML = editBanner.innerHTML;
+        }
       }
     }
     document.body.classList.toggle('has-pdf', state.pages.length > 0);
@@ -2843,9 +2871,13 @@
     const settingsShareProject = document.getElementById('settingsShareProject');
     if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user) ? '' : 'none';
     const copyViewLinkBtn = document.getElementById('copyViewLinkBtn');
-    if (copyViewLinkBtn) copyViewLinkBtn.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user) ? '' : 'none';
+    if (copyViewLinkBtn) copyViewLinkBtn.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.isViewer) ? '' : 'none';
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const headerShareBtn = document.getElementById('headerShareBtn');
+    if (headerShareBtn) headerShareBtn.classList.toggle('in-view-mode', !!(isMobile && SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && state.isViewer));
     const sidebarLogoShare = document.getElementById('sidebarLogoShare');
-    if (sidebarLogoShare) sidebarLogoShare.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user) ? '' : 'none';
+    if (sidebarLogoShare) sidebarLogoShare.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !(isMobile && state.isViewer)) ? '' : 'none';
+    document.body.classList.toggle('mobile-view-mode', isMobile && !!state.isViewer);
     const settingsSaveProject = document.getElementById('settingsSaveProject');
     if (settingsSaveProject) settingsSaveProject.style.display = state.isViewer ? 'none' : '';
     const settingsAdvancedSection = document.getElementById('settingsAdvancedSection');
@@ -3280,22 +3312,15 @@
   }
 
   let setScaleFirstToastTimer = null;
-  function showSetScaleFirstToast() {
+  const scaleIconSvgToast = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" style="vertical-align:middle;flex-shrink:0;"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>';
+  function showSetScaleFirstToast(toolName) {
     if (setScaleFirstToastTimer) clearTimeout(setScaleFirstToastTimer);
+    const el = document.getElementById('setScaleFirstText');
+    if (el) el.innerHTML = 'Set Scale ' + scaleIconSvgToast + ' first to use ' + toolName + '.';
     showModal('setScaleFirstModal');
     setScaleFirstToastTimer = setTimeout(() => {
       hideModal('setScaleFirstModal');
       setScaleFirstToastTimer = null;
-    }, 3000);
-  }
-
-  let setScaleFirstPolylineToastTimer = null;
-  function showSetScaleFirstPolylineToast() {
-    if (setScaleFirstPolylineToastTimer) clearTimeout(setScaleFirstPolylineToastTimer);
-    showModal('setScaleFirstPolylineModal');
-    setScaleFirstPolylineToastTimer = setTimeout(() => {
-      hideModal('setScaleFirstPolylineModal');
-      setScaleFirstPolylineToastTimer = null;
     }, 3000);
   }
   let outOfBoundsToastTimer = null;
@@ -3677,6 +3702,10 @@
   document.getElementById('setScale').onclick = setScaleClick;
   document.getElementById('setScaleSidebar').onclick = setScaleClick;
   document.getElementById('measureBtn').onclick = () => {
+    if (!getPageScale(state.currentPage)) {
+      showSetScaleFirstToast('Measure');
+      return;
+    }
     state.tool = TOOL.MEASURE;
     state.scaleMode = SCALE_MODES.POINT_A;
     state.scalePointA = null;
@@ -3695,7 +3724,7 @@
   };
   document.getElementById('quickLine').onclick = () => {
     if (!getPageScale(state.currentPage)) {
-      showSetScaleFirstToast();
+      showSetScaleFirstToast('Quick Line');
       return;
     }
     if (!state.lineTypes.length || !state.activeLineTypeId) {
@@ -3711,7 +3740,7 @@
   };
   document.getElementById('polylineBtn').onclick = () => {
     if (!getPageScale(state.currentPage)) {
-      showSetScaleFirstPolylineToast();
+      showSetScaleFirstToast('Polyline');
       return;
     }
     document.getElementById('polylineLineType').innerHTML = state.lineTypes.map(lt => '<option value="' + lt.id + '">' + lt.name + '</option>').join('') || '<option value="">—</option>';
@@ -4988,6 +5017,8 @@
     };
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); openMySettings(); };
     document.getElementById('sidebarLogoShare').onclick = () => { document.body.classList.remove('sidebar-open'); hideModal('settingsModal'); openShareProjectModal(); };
+    const headerShareBtnEl = document.getElementById('headerShareBtn');
+    if (headerShareBtnEl) headerShareBtnEl.onclick = () => copyOrCreateViewLinkToClipboard(headerShareBtnEl);
     document.getElementById('sidebarLogoGear').onclick = () => {
       const titleEl = document.getElementById('settingsTitle');
       if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
@@ -5021,9 +5052,8 @@
         if (state.isAdmin) forceBtn.style.display = '';
       }
     }
-    document.getElementById('copyViewLinkBtn').onclick = async () => {
+    async function copyOrCreateViewLinkToClipboard(btn) {
       if (!state.currentProjectId || !supabase) return;
-      const btn = document.getElementById('copyViewLinkBtn');
       let token = null;
       try {
         const { data: links, error: linksErr } = await supabase.rpc('list_view_links', { p_project_id: state.currentProjectId });
@@ -5040,12 +5070,15 @@
         const url = base + (base.includes('?') ? '&' : '?') + 't=' + token;
         await navigator.clipboard.writeText(url);
         showToast('View link copied to clipboard');
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1500);
+        if (btn) {
+          btn.classList.add('copied');
+          setTimeout(() => btn.classList.remove('copied'), 1500);
+        }
       } catch (e) {
         showToast(e.message || 'Failed to copy view link');
       }
-    };
+    }
+    document.getElementById('copyViewLinkBtn').onclick = () => copyOrCreateViewLinkToClipboard(document.getElementById('copyViewLinkBtn'));
     document.getElementById('settingsGearBtn').onclick = () => {
       if (state.supabaseSession?.user) {
         const titleEl = document.getElementById('settingsTitle');
@@ -5075,7 +5108,7 @@
       return { ok: false, error: result.error || 'Failed to turn in' };
     }
     const headerEditBanner = document.getElementById('headerEditStatusBanner');
-    if (headerEditBanner) headerEditBanner.addEventListener('click', async (e) => {
+    async function handleEditStatusBannerClick(e) {
       const btn = e.target.closest('.header-edit-status-btn');
       if (!btn || !state.currentProjectId || !supabase) return;
       const action = btn.dataset.action;
@@ -5122,7 +5155,10 @@
           updateUI();
         }
       }
-    });
+    }
+    if (headerEditBanner) headerEditBanner.addEventListener('click', handleEditStatusBannerClick);
+    const sidebarCheckoutBanner = document.getElementById('sidebarCheckoutBanner');
+    if (sidebarCheckoutBanner) sidebarCheckoutBanner.addEventListener('click', handleEditStatusBannerClick);
     document.getElementById('settingsCheckOut').onclick = async () => {
       if (!state.currentProjectId || !supabase) return;
       const btn = document.getElementById('settingsCheckOut');
@@ -5242,6 +5278,8 @@
       userSelect.innerHTML = '<option value="">Select a user...</option>';
       userSelect.value = '';
       showModal('shareProjectModal');
+      const shareViewLinkCreate = document.getElementById('shareViewLinkCreate');
+      if (shareViewLinkCreate) shareViewLinkCreate.style.display = state.isViewer ? 'none' : '';
       let usersResult, sharesResult;
       try {
         [usersResult, sharesResult] = await Promise.all([
@@ -5414,7 +5452,10 @@
     };
     function openLoadProjectModalOrPromptSave() {
       if (!autoSaveDirty) {
-        openLoadProjectModal();
+        openLoadProjectModal().catch(e => {
+          console.error('[Load Project]', e);
+          showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
+        });
         return;
       }
       const msgEl = document.querySelector('#saveBeforeLoadModal p');
@@ -5428,64 +5469,70 @@
       showModal('saveBeforeLoadModal');
     }
     async function openLoadProjectModal() {
-      let user = state.supabaseSession?.user;
-      if (!user && supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        state.supabaseSession = session;
-        user = session?.user;
-        updateUI();
-      }
-      if (!user) {
-        showModal('authModal');
-        return;
-      }
       const listEl = document.getElementById('loadProjectList');
       const emptyEl = document.getElementById('loadProjectEmpty');
       listEl.innerHTML = '';
       emptyEl.style.display = 'none';
-      const { data: projects, error } = await supabase.rpc('list_accessible_projects');
-      if (error) {
-        listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects.</p>';
-        showModal('loadProjectModal');
-        return;
-      }
-      if (!projects || projects.length === 0) {
-        emptyEl.style.display = 'block';
-        showModal('loadProjectModal');
-        return;
-      }
-      const formatSizeMb = function (bytes) {
-        if (bytes == null || bytes < 0) return '';
-        const mb = bytes / (1024 * 1024);
-        return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
-      };
-      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      for (let i = 0; i < projects.length; i++) {
-        const proj = projects[i];
-        let sizeBytes = proj.size_bytes;
-        if (sizeBytes == null && proj.pdf_path) {
-          try {
-            const { data: info } = await supabase.storage.from('pdfs').info(proj.pdf_path);
-            const sz = info && (info.metadata?.size ?? info.size);
-            sizeBytes = (proj.data ? JSON.stringify(proj.data).length : 0) + (typeof sz === 'number' && sz >= 0 ? sz : 0);
-          } catch (_) { sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0; }
-        } else if (sizeBytes == null) {
-          sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0;
+      try {
+        if (!supabase) {
+          listEl.innerHTML = '<p style="color:var(--red);">Cloud not configured.</p>';
+          showModal('loadProjectModal');
+          return;
         }
-        const div = document.createElement('div');
-        div.className = 'load-project-item';
-        const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
-        const sizeStr = formatSizeMb(sizeBytes);
-        const canvasOnlyBadge = !proj.pdf_path ? ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
-        let lockBadge = '';
-        if (proj.can_edit) lockBadge = ' <span class="badge" style="background:var(--green);color:var(--bg);font-size:11px;">You\'re editing</span>';
-        else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>';
-        else if (proj.can_check_out) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Available</span>';
-        const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
-        const metaParts = [date, sizeStr].filter(Boolean);
-        const meta = esc(metaParts.join(' · ')) + canvasOnlyBadge + lockBadge + ownerBadge;
-        div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>';
-        div.onclick = async () => {
+        let user = state.supabaseSession?.user;
+        if (!user) {
+          const { data: { session } } = await supabase.auth.getSession();
+          state.supabaseSession = session;
+          user = session?.user;
+          updateUI();
+        }
+        if (!user) {
+          showModal('authModal');
+          return;
+        }
+        const { data: projects, error } = await supabase.rpc('list_accessible_projects');
+        if (error) {
+          listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects.</p>';
+          showModal('loadProjectModal');
+          return;
+        }
+        if (!projects || projects.length === 0) {
+          emptyEl.style.display = 'block';
+          showModal('loadProjectModal');
+          return;
+        }
+        const formatSizeMb = function (bytes) {
+          if (bytes == null || bytes < 0) return '';
+          const mb = bytes / (1024 * 1024);
+          return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
+        };
+        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        for (let i = 0; i < projects.length; i++) {
+          const proj = projects[i];
+          let sizeBytes = proj.size_bytes;
+          if (sizeBytes == null && proj.pdf_path) {
+            try {
+              const { data: info } = await supabase.storage.from('pdfs').info(proj.pdf_path);
+              const sz = info && (info.metadata?.size ?? info.size);
+              sizeBytes = (proj.data ? JSON.stringify(proj.data).length : 0) + (typeof sz === 'number' && sz >= 0 ? sz : 0);
+            } catch (_) { sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0; }
+          } else if (sizeBytes == null) {
+            sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0;
+          }
+          const div = document.createElement('div');
+          div.className = 'load-project-item';
+          const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
+          const sizeStr = formatSizeMb(sizeBytes);
+          const canvasOnlyBadge = !proj.pdf_path ? ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
+          let lockBadge = '';
+          if (proj.can_edit) lockBadge = ' <span class="badge" style="background:var(--green);color:var(--bg);font-size:11px;">You\'re editing</span>';
+          else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>';
+          else if (proj.can_check_out) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Available</span>';
+          const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
+          const metaParts = [date, sizeStr].filter(Boolean);
+          const meta = esc(metaParts.join(' · ')) + canvasOnlyBadge + lockBadge + ownerBadge;
+          div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>';
+          div.onclick = async () => {
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
           const d = proj.data || {};
           if (proj.pdf_path) {
@@ -5598,9 +5645,15 @@
           fitZoom();
           updateUI();
         };
-        listEl.appendChild(div);
+          listEl.appendChild(div);
+        }
+        showModal('loadProjectModal');
+      } catch (e) {
+        console.error('[Load Project]', e);
+        listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects: ' + (e?.message || 'Unknown error') + '</p>';
+        showModal('loadProjectModal');
+        showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
       }
-      showModal('loadProjectModal');
     }
     document.getElementById('settingsLoadProject').onclick = () => {
       hideModal('settingsModal');
@@ -6581,9 +6634,6 @@
       if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
         hideModal('setScaleFirstModal');
         if (setScaleFirstToastTimer) { clearTimeout(setScaleFirstToastTimer); setScaleFirstToastTimer = null; }
-      } else if (document.getElementById('setScaleFirstPolylineModal').classList.contains('visible')) {
-        hideModal('setScaleFirstPolylineModal');
-        if (setScaleFirstPolylineToastTimer) { clearTimeout(setScaleFirstPolylineToastTimer); setScaleFirstPolylineToastTimer = null; }
       } else if (document.getElementById('outOfBoundsModal').classList.contains('visible')) {
         hideModal('outOfBoundsModal');
         if (outOfBoundsToastTimer) { clearTimeout(outOfBoundsToastTimer); outOfBoundsToastTimer = null; }

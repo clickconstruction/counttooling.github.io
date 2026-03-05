@@ -29,3 +29,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.admin-delete-project]
 verify_jwt = false
+
+[functions.invite-to-project]
+verify_jwt = false

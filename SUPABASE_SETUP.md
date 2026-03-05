@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 007.
+**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 018.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
 
@@ -34,7 +34,31 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **006_pdf_hash.sql** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
 
-**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Used by Save Artboard / Load from Cloud in User Settings. ✓ Applied
+**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Used by Save Artboard / Load from Cloud in User Settings.
+
+**008_auth_profile_trigger.sql** — Auto-creates profile and user_airboard when a new user signs up.
+
+**009_project_shares.sql** — Creates `project_shares` table (project_id, user_id, role, invited_by) for sharing projects. RLS: members can read/add shares; owner, inviter, or admin can remove.
+
+**010_project_checkout.sql** — Adds `checked_out_by`, `checked_out_at` to `projects` for checkout/check-in (one editor at a time).
+
+**011_project_rpcs.sql** — Replaces projects RLS for sharing; adds RPCs: `check_out_project`, `check_in_project`, `force_check_in_project` (admin only), `list_accessible_projects`, `add_project_share`, `remove_project_share`, `list_project_shares`.
+
+**012_storage_shared_read.sql** — Storage policy so shared users can read project PDFs.
+
+**013_storage_shared_read_fix.sql** — Fixes 42P17 error: replaces inline EXISTS with `storage_can_read_shared_pdf()` SECURITY DEFINER helper. Run after 012 if shared users get "database error, code: 42P17" when loading PDFs.
+
+**014_fix_rls_recursion.sql** — Fixes infinite recursion between projects and project_shares RLS. Adds `user_can_access_project()` SECURITY DEFINER helper; both tables use it instead of cross-referencing each other in policies. Run if you get "infinite recursion detected in policy for relation project_shares" when saving.
+
+**015_list_users_for_invite.sql** — Creates `list_users_for_project_invite(project_id)` RPC. Returns all users (except project owner) for project members who can add shares. Used by Share Project modal dropdown.
+
+**Realtime (optional):** Migration 017 adds `projects` for instant checkout notifications. For role promotion updates, add `project_shares` to the Realtime publication. In Dashboard: Database > Replication > Edit publication `supabase_realtime` > add `project_shares`. Without `projects` in the publication, checkout notifications fall back to visibility-based refresh when the user switches tabs.
+
+**016_owner_subject_to_checkout.sql** — Owners must check out to edit (same as shared editors). RLS UPDATE policy: only checkout holder or admin can update. `list_accessible_projects` can_edit: only when user has valid checkout. Auto-checkout trigger on project insert so creator is checked out when creating a new project.
+
+**017_projects_realtime.sql** — Adds `projects` table to `supabase_realtime` publication. Enables instant checkout notifications: when a user checks in, waiting users receive the update immediately and see a toast that the project is available to check out.
+
+**018_inactivity_checkout.sql** — Changes checkout expiry from 12 hours to 30 minutes of inactivity. Adds `refresh_checkout_activity(project_id)` RPC; lock extends on user activity (edits, saves). Lock expires only after 30 minutes with no activity.
 
 ## 3. Deploy Edge Functions
 
@@ -50,9 +74,10 @@ supabase functions deploy admin-create-user
 supabase functions deploy admin-delete-user
 supabase functions deploy admin-delete-project
 supabase functions deploy admin-list-users
+supabase functions deploy invite-to-project
 ```
 
-**401 on admin functions:** The gateway verifies JWT by default and can reject valid tokens. You must deploy with `--no-verify-jwt`:
+**401 on admin functions / CORS on invite-to-project:** The gateway verifies JWT by default and can reject valid tokens (and block CORS preflight). `config.toml` sets `verify_jwt = false` for admin functions and `invite-to-project`. Deploy with:
 
 ```bash
 supabase link --project-ref YOUR_PROJECT_REF   # ref = part before .supabase.co in your URL
@@ -60,6 +85,7 @@ supabase functions deploy admin-list-users --no-verify-jwt
 supabase functions deploy admin-create-user --no-verify-jwt
 supabase functions deploy admin-delete-user --no-verify-jwt
 supabase functions deploy admin-delete-project --no-verify-jwt
+supabase functions deploy invite-to-project --no-verify-jwt
 ```
 
 Each function still validates auth in-code via `getUser()`.
@@ -102,6 +128,7 @@ on conflict (user_id) do update set is_admin = true;
 - **Manage User** (admin only) — In User Settings, open Manage User to list all users and delete accounts (cannot delete yourself).
 - **All Users** (admin only) — In User Settings, view all users with role and last sign-in.
 - **Manage Projects** (admin only) — In Project Settings, open Manage Projects to list all projects across users and delete any project (removes project and stored PDF).
+- **Share** — In Project Settings, open Share to add users by email (viewer or editor). Any project member can add users. Editors can check out to edit; one editor at a time. Turn in releases the lock. 30-minute inactivity expiry (lock extends on edits/saves). System admins can force turn-in any project.
 - **Save Artboard** — In User Settings, save your counters and line types to your account. They are restored when you sign in on any device.
 - **Load from Cloud** — In User Settings, replace your current artboard with the saved version from your account.
 
@@ -112,4 +139,4 @@ on conflict (user_id) do update set is_admin = true;
 | Phase 1: Auth + Project CRUD | Complete |
 | Phase 2: PDF storage | Complete |
 | Phase 3: Auto-save / sync | Not started |
-| Phase 4: Sharing & collaboration | Not started |
+| Phase 4: Sharing & collaboration | Complete (checkout/turn-in, 30min inactivity expiry, admin force turn-in) |

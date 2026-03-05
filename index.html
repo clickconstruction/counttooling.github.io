@@ -1920,6 +1920,14 @@
   const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
   let lastCheckoutRefreshAt = 0;
 
+  const withTimeout = (promise, ms, label) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
+      )
+    ]);
+
   function markProjectDirty() {
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     autoSaveDirty = true;
@@ -5384,10 +5392,18 @@
         if (!saveResult.ok) return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
         autoSaveDirty = false;
       }
-      const { data, error } = await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
-      const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-      if (result.ok) return { ok: true };
-      return { ok: false, error: result.error || 'Failed to turn in' };
+      try {
+        const { data, error } = await withTimeout(
+          supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
+          15000,
+          'Turn in'
+        );
+        const result = data || (error ? { ok: false, error: error.message } : { ok: false });
+        if (result.ok) return { ok: true };
+        return { ok: false, error: result.error || 'Failed to turn in' };
+      } catch (e) {
+        return { ok: false, error: (e && e.message) || 'Failed to turn in' };
+      }
     }
     const headerEditBanner = document.getElementById('headerEditStatusBanner');
     async function handleEditStatusBannerClick(e) {
@@ -7089,14 +7105,14 @@
         let sizeBytes = dataSize;
         if (state.pdfStoragePath) {
           try {
-            const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
+            const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
             const sz = info && (info.metadata?.size ?? info.size);
             if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
           } catch (_) { /* ignore */ }
         }
         const updatePayload = { name, data, size_bytes: sizeBytes, updated_at: new Date().toISOString() };
         if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-        const { error } = await supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId);
+        const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
         if (error) throw error;
       } else {
         let sizeBytes = dataSize;
@@ -7107,7 +7123,7 @@
         }
         const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null };
         if (pdfHash) insertData.pdf_hash = pdfHash;
-        const { data: row, error } = await supabase.from('projects').insert(insertData).select('id').single();
+        const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
         if (error) throw error;
         const projectId = row?.id;
         if (!projectId) throw new Error('Project created but no ID returned');

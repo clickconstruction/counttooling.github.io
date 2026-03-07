@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClickCount — PDF Takeoff Tool</title>
+  <title>CountTooling — PDF Takeoff Tool</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -36,6 +36,8 @@
     .app { display: flex; flex-direction: column; height: 100vh; }
     .header { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 250; }
     .header .logo { font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); margin-right: 8px; }
+    .header .logo.logo-btn { background: none; border: none; cursor: pointer; padding: 0; font: inherit; }
+    .header .logo.logo-btn:hover { opacity: 0.85; }
     .header .divider { width: 1px; height: 24px; background: var(--border); }
     .header button { min-height: 44px; min-width: 44px; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     .header button:hover { background: var(--surface3); }
@@ -55,6 +57,11 @@
     .header-edit-status button.header-edit-status-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: none; transition: opacity 0.2s ease, transform 0.15s ease; }
     .header-edit-status.edit-status-editing button.header-edit-status-btn { color: var(--red); }
     .header-edit-status.edit-status-available button.header-edit-status-btn { color: #81c784; }
+    .header-edit-status button.header-edit-status-btn-save { background: transparent; color: var(--red); padding: 6px 12px; border-radius: 0; font-weight: 600; }
+    .header-edit-status button.header-edit-status-btn-save:hover { background: var(--yellow); color: var(--bg); padding: 6px 14px; border-radius: 6px; }
+    .header-edit-status-btn-save .save-btn-label-hover { display: none; }
+    .header-edit-status-btn-save:hover .save-btn-label-default { display: none; }
+    .header-edit-status-btn-save:hover .save-btn-label-hover { display: inline; }
     .header-edit-status button.header-edit-status-btn:hover { opacity: 0.95; transform: scale(1.02); }
     .header-edit-status button.header-edit-status-btn:active { transform: scale(0.98); }
     .header-edit-status.edit-status-editing:hover { background: transparent; }
@@ -76,6 +83,8 @@
     .sidebar-checkout-banner { display: none; align-items: center; justify-content: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .sidebar-checkout-banner .header-edit-status-btn { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: none; transition: opacity 0.2s ease; }
     .sidebar-checkout-banner.edit-status-editing .header-edit-status-btn { color: var(--red); }
+    .sidebar-checkout-banner .header-edit-status-btn-save { background: transparent; color: var(--red); padding: 6px 12px; border-radius: 0; font-weight: 600; }
+    .sidebar-checkout-banner .header-edit-status-btn-save:hover { background: var(--yellow); color: var(--bg); padding: 6px 14px; border-radius: 6px; }
     .sidebar-checkout-banner.edit-status-available .header-edit-status-btn { color: #81c784; }
     .sidebar-checkout-banner.edit-status-viewing { background: var(--surface2); color: var(--text2); }
     .sidebar-header-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
@@ -88,7 +97,9 @@
     .sidebar-tool-buttons #moveBtnSidebar,
     .sidebar-tool-buttons #polylineBtnSidebar { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; }
     .sidebar-tool-buttons #doneEditingSidebar { flex: 1 1 100%; }
-    .sidebar-header-buttons #setScaleSidebar.scale-set { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set { display: flex; flex-direction: row; align-items: center; gap: 8px; line-height: 1.2; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .set-scale-icon { flex-shrink: 0; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .set-scale-display { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
     .sidebar-header-buttons #setScaleSidebar.scale-set .scale-value,
     .sidebar-header-buttons #setScaleSidebar.scale-set .scale-label,
     .sidebar-header-buttons #setScaleSidebar.scale-set .scale-px { display: block; font-family: 'DM Mono', monospace; }
@@ -131,14 +142,11 @@
       .sidebar-tool-buttons { display: flex; }
       .header #clearPage { display: none; }
       .sidebar-clear-page { display: block; }
-      .status-bar #statusBarMacros { display: none; }
-      .status-bar #statusBarMacros + .status-bar-sep { display: none; }
       .status-bar #statusBarAuth { display: none !important; }
-      .status-bar #statusBarSep2 { display: none !important; }
       .page-info-label { display: none; }
     }
     .main { display: flex; flex: 1; overflow: hidden; }
-    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; transition: transform 0.2s; }
+    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; transition: transform 0.2s, width 0.2s; }
     @media (max-width: 768px) {
       .sidebar { position: fixed; left: 0; top: 52px; bottom: 0; z-index: 100; transform: translateX(-100%); padding-left: env(safe-area-inset-left); }
       body.sidebar-open .sidebar { transform: translateX(0); }
@@ -152,6 +160,9 @@
       .modal-overlay.visible .modal-card.modal-card-fullscreen { max-height: 90vh; height: 90vh; overflow: hidden; }
       #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
     }
+    @media (min-width: 769px) {
+      body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
+    }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
     #pagesSectionTitle, #countersSectionTitle, #lineTypesSectionTitle, #linesSectionTitle, #groupsSectionTitle, #summarySectionTitle, #exportOptionsSectionTitle,
@@ -159,7 +170,9 @@
     .sidebar-section h3.section-settings { cursor: pointer; padding: 2px 0; }
     .sidebar-section h3.section-settings:hover { color: var(--text2); }
     .sidebar-scale-display { font-size: 0.85rem; font-family: 'DM Mono', monospace; color: var(--text2); text-align: center; }
-    .sidebar-scale-display.has-scale { color: var(--accent); }
+    .sidebar-scale-display.has-scale { color: var(--accent); display: flex; flex-direction: row; align-items: center; gap: 8px; cursor: pointer; justify-content: center; }
+    .sidebar-scale-display.has-scale .set-scale-icon { flex-shrink: 0; }
+    .sidebar-scale-display.has-scale .set-scale-display { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
     .sidebar-scale-display .scale-label { font-size: 0.9rem; display: block; }
     .sidebar-scale-display .scale-px { font-size: 0.75rem; color: var(--text2); display: block; }
     .sidebar-tooling-links { display: flex; gap: 12px; margin-top: 6px; margin-bottom: 4px; font-size: 0.75rem; justify-content: center; }
@@ -197,6 +210,10 @@
     .sidebar-btn.sidebar-btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
     .sidebar-btn.danger { color: var(--red); border-color: var(--red); }
     .sidebar-btn.danger:hover { background: rgba(232,84,71,0.2); }
+    .sidebar-section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .sidebar-section-header-row h3 { margin-bottom: 0; }
+    .sidebar-btn-inline { width: auto; padding: 4px 10px; margin: 0; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-family: inherit; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
+    .sidebar-btn-inline:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .sidebar-clear-page { display: none; }
     .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; -webkit-tap-highlight-color: transparent; }
     .canvas-wrapper { flex: 1; overflow: hidden; position: relative; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
@@ -241,6 +258,7 @@
     .header .replaced-by-status-bar { display: none !important; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
+    #lineColorModal { z-index: 260; }
     .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; }
     .modal-card h2 { margin-bottom: 16px; font-size: 1.1rem; }
     .modal-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -284,6 +302,11 @@
     .settings-menu-btn.btn-yellow-outline { border: 2px solid var(--yellow); color: var(--yellow); background: transparent; font-weight: 600; letter-spacing: 0.02em; transition: all 0.2s ease; box-shadow: 0 0 0 0 rgba(255,204,0,0); }
     .settings-menu-btn.btn-yellow-outline:hover { background: rgba(255,204,0,0.12); border-color: var(--yellow); box-shadow: 0 2px 8px rgba(255,204,0,0.2); transform: translateY(-1px); }
     .settings-menu-btn.btn-yellow-outline:active { transform: translateY(0); box-shadow: 0 0 0 0 rgba(255,204,0,0); }
+    .settings-menu-link { display: inline; padding: 12px 16px; color: var(--accent); cursor: pointer; font-size: 1rem; font-family: inherit; background: none; border: none; }
+    .settings-menu-link:hover { text-decoration: underline; }
+    .settings-menu-link.settings-menu-link-danger { color: var(--red); }
+    .settings-menu-link.settings-menu-link-danger:hover { color: var(--red); }
+    .settings-menu-links-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
     .share-project-remove-btn:hover { background: rgba(232,84,71,0.2); }
     .settings-advanced-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; margin-top: 12px; margin-bottom: 4px; font-size: 0.75rem; text-transform: uppercase; color: var(--text3); cursor: pointer; user-select: none; }
     .settings-advanced-header:hover { color: var(--text2); }
@@ -367,6 +390,8 @@
     .settings-users-list .settings-project-row .settings-project-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
     .settings-users-list .settings-project-row .settings-project-name { flex: none; font-size: 1.05rem; font-weight: 500; }
     .settings-users-list .settings-project-row .settings-project-meta { font-size: 0.8rem; color: var(--text3); }
+    .settings-project-row .settings-project-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .settings-project-row .settings-project-badges { margin-bottom: 0; }
     #loadProjectList .load-project-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; }
     #loadProjectList .load-project-item:last-child { margin-bottom: 0; }
     #loadProjectList .load-project-item:hover { background: var(--surface2); }
@@ -412,7 +437,7 @@
   <div class="app">
     <header class="header">
       <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
-      <span class="logo">ClickCount</span>
+      <button type="button" class="logo logo-btn" id="headerLogo" aria-label="Toggle sidebar">CountTooling</button>
       <span class="divider header-primary-divider"></span>
       <button id="uploadPdf" class="header-primary-btn">Upload PDF</button>
       <input type="file" id="pdfInput" accept=".pdf" multiple>
@@ -471,7 +496,7 @@
       <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
       <aside class="sidebar">
         <div class="sidebar-logo">
-          <span class="sidebar-logo-title">ClickCount</span>
+          <span class="sidebar-logo-title">CountTooling</span>
           <div class="sidebar-logo-icons supabase-only">
             <button type="button" class="sidebar-logo-icon" id="sidebarLogoUser" aria-label="User" title="User">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M320 312C386.3 312 440 258.3 440 192C440 125.7 386.3 72 320 72C253.7 72 200 125.7 200 192C200 258.3 253.7 312 320 312zM290.3 368C191.8 368 112 447.8 112 546.3C112 562.7 125.3 576 141.7 576L498.3 576C514.7 576 528 562.7 528 546.3C528 447.8 448.2 368 349.7 368L290.3 368z"/></svg>
@@ -535,18 +560,24 @@
           <div id="pagesList"></div>
         </div>
         <div class="sidebar-section" id="countersSection">
-          <h3 id="countersSectionTitle" class="section-settings" title="Counter settings">Counters <span class="collapse-icon" id="countersCollapseIcon" title="Click to collapse">▼</span></h3>
-          <button id="addCounter" class="sidebar-btn">+ Add Counter</button>
+          <div class="sidebar-section-header-row">
+            <h3 id="countersSectionTitle" class="section-settings" title="Counter settings">Counters <span class="collapse-icon" id="countersCollapseIcon" title="Click to collapse">▼</span></h3>
+            <button id="addCounter" class="sidebar-btn-inline" title="Add counter">+ Add</button>
+          </div>
           <div id="countersList"></div>
         </div>
         <div class="sidebar-section" id="lineTypesSection">
-          <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
-          <button id="addLineType" class="sidebar-btn">+ Add Line Type</button>
+          <div class="sidebar-section-header-row">
+            <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
+            <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
+          </div>
           <div id="lineTypesList"></div>
         </div>
         <div class="sidebar-section" id="groupsSection">
-          <h3 id="groupsSectionTitle" class="section-settings" title="Click to collapse">Groups <span class="collapse-icon" id="groupsCollapseIcon">▼</span></h3>
-          <button id="addGroup" class="sidebar-btn">+ Add Group</button>
+          <div class="sidebar-section-header-row">
+            <h3 id="groupsSectionTitle" class="section-settings" title="Click to collapse">Groups <span class="collapse-icon" id="groupsCollapseIcon">▼</span></h3>
+            <button id="addGroup" class="sidebar-btn-inline" title="Add group">+ Add</button>
+          </div>
           <div id="groupsList"></div>
           <label id="showGroupColorsLabel" class="form-group" style="margin-top:8px;display:flex;align-items:center;gap:8px;cursor:pointer;">
             <input type="checkbox" id="showGroupColorsCheckbox">
@@ -627,10 +658,6 @@
           <span id="statusCoords">—</span>
           <div class="status-bar-actions" id="statusBarActions">
             <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
-            <span class="status-bar-sep supabase-only" id="statusBarSep2">|</span>
-            <span class="status-bar-link" id="statusBarMacros">Macros</span>
-            <span class="status-bar-sep">|</span>
-            <span class="status-bar-link danger" id="statusBarClearPage">Clear Page</span>
           </div>
         </div>
       </div>
@@ -718,6 +745,17 @@
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="lineTypeName" placeholder="e.g. Pipe">
+      </div>
+      <div class="form-group">
+        <label>Display</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="lineTypeCurve" value="straight" checked> Straight
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="lineTypeCurve" value="arc"> Curved
+          </label>
+        </div>
       </div>
       <div class="form-group">
         <label>Color</label>
@@ -926,6 +964,7 @@
         <tr><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
         <tr><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
         <tr><td><kbd>N</kbd></td><td>Note mode</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Toggle sidebar (desktop)</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
         <tr><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
         <tr><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
@@ -952,6 +991,17 @@
         <div class="form-group">
           <label>Name</label>
           <input type="text" id="createLineTypeName" placeholder="e.g. Pipe">
+        </div>
+        <div class="form-group">
+          <label>Display</label>
+          <div style="display:flex;gap:16px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="createLineTypeCurve" value="straight" checked> Straight
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="createLineTypeCurve" value="arc"> Curved
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label>Color</label>
@@ -1000,16 +1050,23 @@
   </div>
   <div class="modal-overlay" id="counterLineTypeDetailsModal">
     <div class="modal-card">
-      <h2 id="counterLineTypeDetailsTitle">Counter / Line</h2>
+      <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 id="counterLineTypeDetailsTitle">Counter / Line</h2>
+        <span id="counterLineTypeDetailsSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
+      </div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="counterLineTypeDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
-      <div class="form-group">
-        <label>Color</label>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span id="counterLineTypeDetailsSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
-          <span id="counterLineTypeDetailsSwatchLabel">Change</span>
+      <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
+        <label>Display</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="counterLineTypeDetailsCurve" value="straight"> Straight
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="counterLineTypeDetailsCurve" value="arc"> Curved
+          </label>
         </div>
       </div>
       <div class="form-group">
@@ -1073,8 +1130,8 @@
         <button type="button" class="modal-close-btn" id="settingsModalClose" aria-label="Close">×</button>
       </div>
       <div class="settings-menu">
-        <button type="button" class="settings-menu-btn" id="settingsSaveProject">Save Project to Cloud</button>
-        <button type="button" class="settings-menu-btn" id="settingsLoadProject">Load Project from Cloud</button>
+        <button type="button" class="settings-menu-btn btn-yellow" id="settingsSaveProject">Save Project to Cloud</button>
+        <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add additional PDF pages</button>
         <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
         <div id="settingsCheckoutSection" class="settings-checkout-section" style="display:none;">
           <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:stretch;">
@@ -1085,8 +1142,12 @@
           </div>
         </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
-        <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add additional PDF pages</button>
+        <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
+        <div class="settings-menu-links-row">
+          <span class="settings-menu-link" id="settingsMacros">Macros</span>
+          <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
+        </div>
         <div class="settings-advanced-section collapsed" id="settingsAdvancedSection">
           <h3 class="settings-advanced-header" id="settingsAdvancedHeader" title="Click to expand">Advanced <span class="collapse-icon" id="settingsAdvancedCollapseIcon">▶</span></h3>
           <div class="settings-advanced-buttons">
@@ -1337,6 +1398,16 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="lastSessionRestoreModal">
+    <div class="modal-card">
+      <h2>Project from Last Session</h2>
+      <p id="lastSessionRestoreMessage" style="margin:0 0 24px 0;color:var(--text2);">You have a project from your last session. What would you like to do?</p>
+      <div class="actions">
+        <button id="lastSessionRestoreKeep">Keep and Open</button>
+        <button id="lastSessionRestoreDiscard" class="danger">Discard</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="loadAnnotationsModal">
     <div class="modal-card">
       <h2>Load Annotations</h2>
@@ -1383,7 +1454,7 @@
   const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8 };
   const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
   const uid = () => Math.random().toString(36).slice(2, 10);
-  const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47'];
+  const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47','#2c3e50','#8b4513','#ff6b6b','#6366f1','#059669','#f59e0b','#0ea5e9','#7c3aed','#e11d48'];
   const SCALE_PRESETS = [
     { label: '1/6" = 1\'', pixelsPerUnit: 12, unit: 'ft' },
     { label: '3/32" = 1\'', pixelsPerUnit: 72 * 3 / 32, unit: 'ft' },
@@ -1940,7 +2011,7 @@
       state.lineTypes = state.lineTypes || [];
       orphanLineTypeIds.forEach(id => {
         if (!state.lineTypes.some(lt => lt.id === id)) {
-          state.lineTypes.push({ id, name: 'Unknown', color: '#4a9eff' });
+          state.lineTypes.push({ id, name: 'Unknown', color: '#4a9eff', curveStyle: 'straight' });
         }
       });
     }
@@ -2016,6 +2087,7 @@
 
   let autoSaveDirty = false;
   let lastModifiedAt = 0;
+  let pendingLastSessionRestore = null;
   let viewLinkEmailResolve = null;
   let saveInProgress = false;
   let savePdfInProgress = false;
@@ -2049,6 +2121,16 @@
   const UNDO_STACK_SIZE = 5;
   let undoStack = [];
   let redoStack = [];
+
+  function getProjectCounts(data) {
+    let counterCount = 0, lineCount = 0;
+    (data?.pages || []).forEach(p => {
+      const ann = p?.annotations || {};
+      Object.values(ann.counterMarkers || {}).forEach(arr => { counterCount += (arr?.length || 0); });
+      lineCount += (ann.quickLines?.length || 0) + (ann.polylines?.length || 0);
+    });
+    return { counter_count: counterCount, line_count: lineCount };
+  }
 
   function getUndoableSnapshot() {
     return {
@@ -2244,6 +2326,104 @@
     } catch (_) { /* ignore */ }
   }
 
+  async function pdfCacheDelete(projectId) {
+    try {
+      const db = await openPdfCacheDb();
+      const tx = db.transaction([PDF_CACHE_STORE, PDF_CACHE_META_STORE], 'readwrite');
+      tx.objectStore(PDF_CACHE_STORE).delete(projectId);
+      tx.objectStore(PDF_CACHE_META_STORE).delete(projectId);
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch (_) { /* ignore */ }
+  }
+
+  async function deleteProjectAsOwner(projectId, pdfPath) {
+    if (!supabase) return;
+    try {
+      if (pdfPath) {
+        try {
+          await supabase.storage.from('pdfs').remove([pdfPath]);
+        } catch (_) { /* continue */ }
+      }
+      const { error } = await supabase.from('projects').delete().eq('id', projectId);
+      if (error) throw error;
+    } catch (e) {
+      console.error('[Delete project]', e);
+      throw e;
+    }
+  }
+
+  async function doRestoreLastProject(proj, cachedBlob) {
+    const d = proj.data;
+    const buf = await cachedBlob.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(buf).promise;
+    state.pages = [];
+    const numPages = pdf.numPages;
+    for (let i = 0; i < numPages; i++) {
+      const pdfPage = await pdf.getPage(i + 1);
+      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+      state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+    }
+    state.counters = Array.isArray(d.counters) ? d.counters : [];
+    state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+    state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+    if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+    if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+    (d.pages || []).forEach(p => {
+      const page = state.pages[p.index];
+      if (page) {
+        if (p.annotations) page.annotations = p.annotations;
+        page.scale = p.scale !== undefined ? p.scale : null;
+        page.rotation = p.rotation ?? 0;
+      }
+    });
+    state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+    try {
+      const backupRaw = localStorage.getItem('takeoff-state');
+      if (backupRaw) {
+        const backup = JSON.parse(backupRaw);
+        const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
+        if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
+          if (Array.isArray(backup.counters)) state.counters = backup.counters;
+          if (Array.isArray(backup.lineTypes)) state.lineTypes = backup.lineTypes;
+          if (Array.isArray(backup.groups)) state.groups = ensureGroupColors(backup.groups);
+          if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
+          if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
+          (backup.pageAnnotations || []).forEach((ann, i) => {
+            if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
+          });
+          if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
+          if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
+        }
+      }
+    } catch (_) {}
+    reconcileOrphanedCountersAndLineTypes();
+    state.currentProjectId = proj.id;
+    state.currentProjectName = proj.name || 'Untitled';
+    state.pdfStoragePath = proj.pdf_path;
+    state.pdfHash = proj.pdf_hash || null;
+    state.pdfBuffer = null;
+    lastSaveIncludedPdf = !!proj.pdf_path;
+    state.lastSavedAt = proj.updated_at || null;
+    state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
+    state.projectOwnerId = proj.user_id || null;
+    state.checkedOutBy = proj.checked_out_by || null;
+    state.checkedOutAt = proj.checked_out_at || null;
+    state.checkedOutEmail = null;
+    const uid = state.supabaseSession?.user?.id;
+    const isOwner = proj.user_id === uid;
+    const lockExpired = !proj.checked_out_at || (Date.now() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
+    const hasValidCheckout = proj.checked_out_by === uid && !lockExpired;
+    state.isViewer = !hasValidCheckout;
+    state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
+    clearUndoStacks();
+    autoSaveDirty = false;
+    lastModifiedAt = 0;
+    fitZoom();
+    renderPdf();
+    refreshProjectPermissions();
+    subscribeToProjectCheckoutChanges(state.currentProjectId);
+  }
+
   <!-- SECTION: Math & Format Helpers -->
   function ptDist(a, b) { return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2); }
   function polylineDistance(pts, closed) {
@@ -2268,6 +2448,46 @@
     const q = { x: a.x + t * dx, y: a.y + t * dy };
     return ptDist(p, q);
   }
+  function getQuadraticBezierControlPoint(a, b, dir) {
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const offset = len * 0.15 * (dir || 1);
+    const perpX = -dy / len, perpY = dx / len;
+    return { x: mid.x + perpX * offset, y: mid.y + perpY * offset };
+  }
+  function quadraticBezierPoint(t, p0, p1, p2) {
+    return { x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x, y: (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y };
+  }
+  function quadraticBezierLength(p0, p1, p2) {
+    let len = 0, prev = p0;
+    for (let t = 0.05; t <= 1; t += 0.05) {
+      const pt = quadraticBezierPoint(t, p0, p1, p2);
+      len += ptDist(prev, pt);
+      prev = pt;
+    }
+    return len;
+  }
+  function distToQuadraticBezier(pos, p0, p1, p2) {
+    let minD = ptDist(pos, p0);
+    let prev = p0;
+    for (let t = 0.05; t <= 1; t += 0.05) {
+      const pt = quadraticBezierPoint(t, p0, p1, p2);
+      minD = Math.min(minD, distToSegment(pos, prev, pt));
+      prev = pt;
+    }
+    return Math.min(minD, ptDist(pos, p2));
+  }
+  function quickLineLength(q) {
+    const lt = (state.lineTypes || []).find(l => l.id === q.lineTypeId);
+    if (lt && lt.curveStyle === 'arc') {
+      const a = { x: q.x1, y: q.y1 }, b = { x: q.x2, y: q.y2 };
+      const ctrl = getQuadraticBezierControlPoint(a, b, 1);
+      return quadraticBezierLength(a, ctrl, b);
+    }
+    return ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+  }
+  window.quickLineLength = quickLineLength;
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
   function pickScaleForLineType(pageIndices) {
     const preferredUnits = ['ft', 'in', 'm', 'cm', 'yd'];
@@ -2450,7 +2670,12 @@
     }
     for (let i = 0; i < (ann.quickLines || []).length; i++) {
       const q = ann.quickLines[i];
-      if (distToSegment(pos, { x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }) <= r) return { type: 'quickLine', index: i };
+      const a = { x: q.x1, y: q.y1 }, b = { x: q.x2, y: q.y2 };
+      const lt = (state.lineTypes || []).find(l => l.id === q.lineTypeId);
+      const d = lt?.curveStyle === 'arc'
+        ? distToQuadraticBezier(pos, a, getQuadraticBezierControlPoint(a, b, 1), b)
+        : distToSegment(pos, a, b);
+      if (d <= r) return { type: 'quickLine', index: i };
     }
     for (let i = 0; i < (ann.polylines || []).length; i++) {
       const poly = ann.polylines[i];
@@ -2667,15 +2892,24 @@
     const lo = lts.opacity != null ? lts.opacity : 1;
     const sel = state.selectedLineId && state.currentPage === state.selectedLinePageIdx;
     (ann.quickLines || []).forEach(q => {
-      const a = toCanvas({ x: q.x1, y: q.y1 }), b = toCanvas({ x: q.x2, y: q.y2 });
+      const aPdf = { x: q.x1, y: q.y1 }, bPdf = { x: q.x2, y: q.y2 };
+      const a = toCanvas(aPdf), b = toCanvas(bPdf);
+      const lt = (state.lineTypes || []).find(l => l.id === q.lineTypeId);
+      const isCurved = lt && lt.curveStyle === 'arc';
+      const ctrlPdf = isCurved ? getQuadraticBezierControlPoint(aPdf, bPdf, 1) : null;
+      const ctrl = ctrlPdf ? toCanvas(ctrlPdf) : null;
       const isSelected = sel && !state.selectedLineIsPoly && state.selectedLineId === q.id;
       ctx.strokeStyle = q.color || '#4a9eff'; ctx.lineWidth = isSelected ? lw * 2 : lw; ctx.globalAlpha = lo;
       if (isSelected) { ctx.shadowBlur = 8; ctx.shadowColor = q.color || '#4a9eff'; }
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(a.x, a.y);
+      if (isCurved && ctrl) ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      else ctx.lineTo(b.x, b.y);
+      ctx.stroke();
       if (isSelected) { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
       ctx.globalAlpha = 1;
       if (state.showGroupColors && (q.group || null)) {
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const midPdf = isCurved && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
+        const mid = toCanvas(midPdf);
         const groupColor = getGroupColor(q.group);
         ctx.fillStyle = groupColor;
         ctx.beginPath();
@@ -2816,9 +3050,16 @@
     });
     if (state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
-      const a = toCanvas(state.quickLineStart), b = toCanvas(state.mousePos);
+      const aPdf = state.quickLineStart, bPdf = state.mousePos;
+      const a = toCanvas(aPdf), b = toCanvas(bPdf);
+      const useArc = lt?.curveStyle === 'arc';
+      const ctrlPdf = useArc ? getQuadraticBezierControlPoint(aPdf, bPdf, 1) : null;
+      const ctrl = ctrlPdf ? toCanvas(ctrlPdf) : null;
       ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y);
+      if (useArc && ctrl) ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      else ctx.lineTo(b.x, b.y);
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     if (state.highlightStart && state.mousePos) {
       const minX = Math.min(state.highlightStart.x, state.mousePos.x), maxX = Math.max(state.highlightStart.x, state.mousePos.x);
@@ -2857,12 +3098,20 @@
     let lw = (lts.lineSize || 2) * scale * lineScale;
     const lo = lts.opacity != null ? lts.opacity : 1;
     (ann.quickLines || []).forEach(q => {
-      const a = tc({ x: q.x1, y: q.y1 }), b = tc({ x: q.x2, y: q.y2 });
+      const aPdf = { x: q.x1, y: q.y1 }, bPdf = { x: q.x2, y: q.y2 };
+      const a = tc(aPdf), b = tc(bPdf);
+      const lt = (state.lineTypes || []).find(l => l.id === q.lineTypeId);
+      const useArc = lt?.curveStyle === 'arc';
+      const ctrlPdf = useArc ? getQuadraticBezierControlPoint(aPdf, bPdf, 1) : null;
+      const ctrl = ctrlPdf ? tc(ctrlPdf) : null;
       ctx.strokeStyle = q.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo;
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(a.x, a.y);
+      if (useArc && ctrl) ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
+      else ctx.lineTo(b.x, b.y);
+      ctx.stroke();
       ctx.globalAlpha = 1;
       if (state.showGroupColors && (q.group || null)) {
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const mid = useArc && ctrlPdf ? tc(quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf)) : { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         const groupColor = getGroupColor(q.group);
         const dotRadius = 4 * scale;
         ctx.fillStyle = groupColor;
@@ -3058,9 +3307,9 @@
         if (isHeader) {
           btn.innerHTML = scaleIconSvgHeader;
         } else if (scale.label) {
-          btn.innerHTML = scaleIconSvg + ' Scale<br><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span>';
+          btn.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
         } else {
-          btn.innerHTML = scaleIconSvg + ' Scale<br><span class="scale-value">' + esc(pxLine) + '</span>';
+          btn.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-value">' + esc(pxLine) + '</span></div>';
         }
       } else {
         btn.classList.remove('scale-set');
@@ -3076,23 +3325,24 @@
         const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px';
         const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         if (scale.label) {
-          scaleDisplay.innerHTML = '<span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span>';
-          scaleDisplay.style.display = 'flex';
-          scaleDisplay.style.flexDirection = 'column';
-          scaleDisplay.style.gap = '2px';
+          scaleDisplay.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
         } else {
-          scaleDisplay.textContent = pxLine;
-          scaleDisplay.style.display = '';
-          scaleDisplay.style.flexDirection = '';
-          scaleDisplay.style.gap = '';
+          scaleDisplay.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-px">' + esc(pxLine) + '</span></div>';
         }
+        scaleDisplay.style.display = 'flex';
+        scaleDisplay.style.flexDirection = 'row';
+        scaleDisplay.style.gap = '8px';
         scaleDisplay.classList.add('has-scale');
+        scaleDisplay.title = 'Click to set scale';
+        scaleDisplay.onclick = () => document.getElementById('setScale').click();
       } else {
         scaleDisplay.textContent = '—';
         scaleDisplay.style.display = '';
         scaleDisplay.style.flexDirection = '';
         scaleDisplay.style.gap = '';
         scaleDisplay.classList.remove('has-scale');
+        scaleDisplay.title = '';
+        scaleDisplay.onclick = null;
       }
     }
     const scaleDisplaySection = document.getElementById('sidebarScaleDisplaySection');
@@ -3220,9 +3470,19 @@
           editBanner.appendChild(btn);
           editBanner.classList.add('edit-status-editing');
         } else if (state.pages.length > 0 && !state.currentProjectId && !state.isViewer) {
-          const span = document.createElement('span');
-          span.textContent = 'Editing (save to create project)';
-          editBanner.appendChild(span);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'header-edit-status-btn header-edit-status-btn-save';
+          btn.dataset.action = 'save';
+          const spanDefault = document.createElement('span');
+          spanDefault.className = 'save-btn-label-default';
+          spanDefault.textContent = 'Unsaved';
+          const spanHover = document.createElement('span');
+          spanHover.className = 'save-btn-label-hover';
+          spanHover.textContent = 'Save';
+          btn.appendChild(spanDefault);
+          btn.appendChild(spanHover);
+          editBanner.appendChild(btn);
           editBanner.classList.add('edit-status-editing');
         } else if (state.canCheckOut) {
           const btn = document.createElement('button');
@@ -3255,6 +3515,9 @@
     const uploadPdfSidebarEl = document.getElementById('uploadPdfSidebar');
     if (uploadPdfEl) uploadPdfEl.style.display = (state.pages.length || state.isViewer) ? 'none' : '';
     if (uploadPdfSidebarEl) uploadPdfSidebarEl.style.display = (state.pages.length || state.isViewer) ? 'none' : '';
+    const dividerEls = document.querySelectorAll('.header-primary-divider');
+    const hidePrimary = !!(state.pages.length || state.isViewer);
+    dividerEls.forEach(el => { el.style.display = hidePrimary ? 'none' : ''; });
     const settingsAddAdditionalPages = document.getElementById('settingsAddAdditionalPages');
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
     const settingsShareProject = document.getElementById('settingsShareProject');
@@ -3268,11 +3531,16 @@
     if (sidebarLogoShare) sidebarLogoShare.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !(isMobile && state.isViewer)) ? '' : 'none';
     document.body.classList.toggle('mobile-view-mode', isMobile && !!state.isViewer);
     const settingsSaveProject = document.getElementById('settingsSaveProject');
-    if (settingsSaveProject) settingsSaveProject.style.display = state.isViewer ? 'none' : '';
+    if (settingsSaveProject) {
+      settingsSaveProject.style.display = state.isViewer ? 'none' : '';
+      settingsSaveProject.textContent = (state.currentProjectId && state.pdfStoragePath)
+        ? 'Save Changes'
+        : 'Save Project to Cloud';
+    }
     const settingsAdvancedSection = document.getElementById('settingsAdvancedSection');
     if (settingsAdvancedSection) settingsAdvancedSection.style.display = state.isViewer ? 'none' : '';
-    const statusBarClearPage = document.getElementById('statusBarClearPage');
-    if (statusBarClearPage) statusBarClearPage.style.display = state.isViewer ? 'none' : '';
+    const settingsClearPageBtn = document.getElementById('settingsClearPage');
+    if (settingsClearPageBtn) settingsClearPageBtn.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
     renderPagesList();
@@ -3360,7 +3628,7 @@
         const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+        qLines.forEach(q => { runs++; len += quickLineLength(q); });
         polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
       });
       const scale = pickScaleForLineType(pageIndices);
@@ -3449,7 +3717,7 @@
         dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatDist(polylineDistance(it.poly.points || [], false), pageScale);
         name = it.poly.name || 'Polyline';
       } else {
-        dist = formatDist(ptDist({ x: it.q.x1, y: it.q.y1 }, { x: it.q.x2, y: it.q.y2 }), pageScale);
+        dist = formatDist(quickLineLength(it.q), pageScale);
         name = it.q.name || 'Quick line';
       }
       const showEdit = !state.isViewer;
@@ -3527,7 +3795,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          lineTypeByGroup[gid][lt.id].len += quickLineLength(q);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
         (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -3608,7 +3876,7 @@
           const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
           const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
           if (qLines.length || polys.length) pageIndices.push(pi);
-          qLines.forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+          qLines.forEach(q => { runs++; len += quickLineLength(q); });
           polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
         });
         if (runs > 0) {
@@ -3645,7 +3913,7 @@
       titleEl.textContent = (lt.name || 'Line type') + ' — by page';
       state.pages.forEach((p, pageIdx) => {
         let runs = 0, len = 0;
-        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += quickLineLength(q); });
         (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
         if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
       });
@@ -3830,10 +4098,17 @@
     const titleEl = document.getElementById('counterLineTypeDetailsTitle');
     const nameEl = document.getElementById('counterLineTypeDetailsName');
     const swatchEl = document.getElementById('counterLineTypeDetailsSwatch');
-    const swatchLabelEl = document.getElementById('counterLineTypeDetailsSwatchLabel');
     const pagesEl = document.getElementById('counterLineTypeDetailsPages');
     const deleteBtn = document.getElementById('counterLineTypeDetailsDelete');
     titleEl.textContent = kind === 'counter' ? 'Counter' : 'Line Type';
+    const curveGroup = document.getElementById('counterLineTypeDetailsCurveGroup');
+    if (curveGroup) {
+      curveGroup.style.display = kind === 'lineType' ? '' : 'none';
+      if (kind === 'lineType') {
+        const curveVal = item.curveStyle || 'straight';
+        document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => { r.checked = r.value === curveVal; });
+      }
+    }
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
@@ -3854,7 +4129,11 @@
         renderPdf();
       });
     };
-    swatchLabelEl.textContent = 'Change';
+    if (kind === 'lineType') {
+      document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => {
+        r.onchange = () => { pushUndoSnapshot(); item.curveStyle = r.value; markProjectDirty(); updateUI(); renderPdf(); };
+      });
+    }
     let totalCount = 0;
     const pages = [];
     if (kind === 'counter') {
@@ -4612,8 +4891,10 @@
     const name = document.getElementById('lineTypeName').value.trim() || 'Line';
     const colorSel = document.querySelector('#lineTypeColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    const curveSel = document.querySelector('input[name="lineTypeCurve"]:checked');
+    const curveStyle = curveSel ? curveSel.value : 'straight';
     pushUndoSnapshot();
-    const newLt = { id: uid(), name, color };
+    const newLt = { id: uid(), name, color, curveStyle };
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
     markProjectDirty();
@@ -4763,8 +5044,10 @@
     const name = document.getElementById('createLineTypeName').value.trim() || 'Line';
     const colorSel = document.querySelector('#createLineTypeColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    const curveSel = document.querySelector('input[name="createLineTypeCurve"]:checked');
+    const curveStyle = curveSel ? curveSel.value : 'straight';
     pushUndoSnapshot();
-    const newLt = { id: uid(), name, color };
+    const newLt = { id: uid(), name, color, curveStyle };
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
     markProjectDirty();
@@ -5515,8 +5798,8 @@
 
   document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
-  document.getElementById('statusBarClearPage').onclick = () => showModal('clearPageConfirmModal');
-  document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
+  document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
+  document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showModal('clearPageConfirmModal'); };
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
   function openNoteModal(mode, initialText, positionOrNote) {
     document.getElementById('noteModalTitle').textContent = mode === 'edit' ? 'Edit Note' : 'Add Note';
@@ -5594,6 +5877,11 @@
 
   document.getElementById('hamburger').onclick = () => document.body.classList.toggle('sidebar-open');
   document.getElementById('sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
+  document.getElementById('headerLogo').onclick = () => {
+    if (window.matchMedia('(min-width: 769px)').matches) {
+      document.body.classList.toggle('sidebar-collapsed');
+    }
+  };
 
   function formatLastSignIn(ts) {
     if (!ts) return 'Never';
@@ -5830,10 +6118,15 @@
         listEl.innerHTML = data.map((p) => {
           const sizeStr = formatSizeMb(p.size_bytes);
           const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';
-          const metaParts = [esc(p.owner_email || '—'), dateStr, sizeStr].filter(Boolean);
-          if (p.checked_out_email) metaParts.push('Checked out by ' + esc(p.checked_out_email));
-          const meta = metaParts.join(' · ');
-          const canvasOnlyBadge = !p.pdf_path ? ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
+          const metaLine1 = [esc(p.owner_email || '—'), dateStr, sizeStr].filter(Boolean).join(' · ');
+          const metaLine2Parts = [];
+          const countStr = (p.counter_count != null || p.line_count != null)
+            ? [p.counter_count != null ? p.counter_count + ' counters' : null, p.line_count != null ? p.line_count + ' lines' : null].filter(Boolean).join(' · ')
+            : '';
+          if (countStr) metaLine2Parts.push(countStr);
+          if (p.checked_out_email) metaLine2Parts.push('Checked out by ' + esc(p.checked_out_email));
+          const metaLine2 = metaLine2Parts.join(' · ');
+          const canvasOnlyBadge = !p.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
           const showForceCheckIn = state.isAdmin && (p.checked_out_by || p.checked_out_email);
           const forceCheckInBtn = showForceCheckIn
             ? '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in (admin)</button>'
@@ -5841,10 +6134,14 @@
           return '<div class="settings-user-row settings-project-row" data-project-id="' + esc(p.id) + '">' +
             '<div class="settings-project-info">' +
             '<span class="settings-project-name" title="' + esc(p.name) + '">' + esc(p.name || 'Untitled') + '</span>' +
-            '<div class="settings-project-meta">' + meta + canvasOnlyBadge + '</div>' +
+            '<div class="settings-project-meta">' + metaLine1 + '</div>' +
+            (metaLine2 ? '<div class="settings-project-meta">' + metaLine2 + '</div>' : '') +
             '</div>' +
+            '<div class="settings-project-actions">' +
+            (canvasOnlyBadge ? '<div class="settings-project-badges">' + canvasOnlyBadge + '</div>' : '') +
             forceCheckInBtn +
             '<button type="button" class="settings-user-delete" data-project-id="' + esc(p.id) + '" data-project-name="' + esc(p.name || 'Untitled') + '">Delete</button>' +
+            '</div>' +
             '</div>';
         }).join('');
         listEl.querySelectorAll('.settings-user-delete').forEach((btn) => {
@@ -6035,8 +6332,13 @@
     const headerEditBanner = document.getElementById('headerEditStatusBanner');
     async function handleEditStatusBannerClick(e) {
       const btn = e.target.closest('.header-edit-status-btn');
-      if (!btn || !state.currentProjectId || !supabase) return;
+      if (!btn) return;
       const action = btn.dataset.action;
+      if (action === 'save') {
+        document.getElementById('saveProjectBtn').click();
+        return;
+      }
+      if (!state.currentProjectId || !supabase) return;
       if (action === 'checkout') {
         btn.disabled = true;
         btn.textContent = 'Checking out...';
@@ -6824,6 +7126,7 @@
         groups: state.groups || [],
         pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
       };
+      const counts = getProjectCounts(data);
       const dataJson = JSON.stringify(data);
       const dataSize = dataJson.length;
       const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
@@ -6850,7 +7153,7 @@
             await tick();
             log('Inserting project...');
             const t0 = Date.now();
-            const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes }).select('id').single(), 60000, 'Save project');
+            const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
             log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
             if (error) throw error;
             projectId = row?.id;
@@ -6882,7 +7185,7 @@
             await tick();
             log('Updating project with pdf_path and pdf_hash...');
             const t2 = Date.now();
-            const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, updated_at: new Date().toISOString() };
+            const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
             if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
             const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
             log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
@@ -6892,7 +7195,7 @@
             await tick();
             log('Updating project data (PDF unchanged)...');
             const t2 = Date.now();
-            const updatePayload = { name, data, size_bytes: sizeBytes, updated_at: new Date().toISOString() };
+            const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
             if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
             const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
             log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
@@ -6911,7 +7214,7 @@
           }
           log('Updating existing project (no PDF)...');
           const t3 = Date.now();
-          const updatePayload = { name, data, size_bytes: sizeBytes, updated_at: new Date().toISOString() };
+          const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
           if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
           const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
           log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
@@ -6921,7 +7224,7 @@
           await tick();
           log('Inserting project (no PDF)...');
           const t4 = Date.now();
-          const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize }).select('id').single(), 60000, 'Save project');
+          const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
           log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
           if (error) throw error;
           const projectId = row?.id;
@@ -7008,6 +7311,39 @@
       }
     };
     document.getElementById('loadAnnotationsSkip').onclick = () => hideModal('loadAnnotationsModal');
+    document.getElementById('lastSessionRestoreKeep').onclick = async () => {
+      const p = pendingLastSessionRestore;
+      if (!p) { hideModal('lastSessionRestoreModal'); return; }
+      pendingLastSessionRestore = null;
+      hideModal('lastSessionRestoreModal');
+      await doRestoreLastProject(p.proj, p.cachedBlob);
+      updateUI();
+    };
+    document.getElementById('lastSessionRestoreDiscard').onclick = async () => {
+      const p = pendingLastSessionRestore;
+      if (!p) { hideModal('lastSessionRestoreModal'); return; }
+      const { proj } = p;
+      pendingLastSessionRestore = null;
+      hideModal('lastSessionRestoreModal');
+      try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+      try {
+        const backupRaw = localStorage.getItem('takeoff-state');
+        if (backupRaw) {
+          const backup = JSON.parse(backupRaw);
+          if (backup.projectId === proj.id) localStorage.removeItem('takeoff-state');
+        }
+      } catch (_) {}
+      await pdfCacheDelete(proj.id);
+      const uid = state.supabaseSession?.user?.id;
+      if (proj.user_id === uid) {
+        try {
+          await deleteProjectAsOwner(proj.id, proj.pdf_path);
+        } catch (e) {
+          showToast('Could not delete project: ' + (e?.message || 'Unknown error'), 4000);
+        }
+      }
+      updateUI();
+    };
     document.getElementById('manageUsersBtn').onclick = () => {
       document.getElementById('adminCreateEmail').value = '';
       document.getElementById('adminCreatePassword').value = '';
@@ -7629,6 +7965,13 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
+    if (e.key === ' ') {
+      if (!e.target.closest('button') && window.matchMedia('(min-width: 769px)').matches) {
+        document.body.classList.toggle('sidebar-collapsed');
+        e.preventDefault();
+      }
+      return;
+    }
     const k = e.key.toLowerCase();
     if (e.ctrlKey || e.metaKey) {
       if (k === 'z') {
@@ -7765,6 +8108,7 @@
       groups: state.groups || [],
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
     };
+    const counts = getProjectCounts(data);
     const dataSize = JSON.stringify(data).length;
     const name = state.currentProjectName || 'Untitled';
     try {
@@ -7777,7 +8121,7 @@
             if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
           } catch (_) { /* ignore */ }
         }
-        const updatePayload = { name, data, size_bytes: sizeBytes, updated_at: new Date().toISOString() };
+        const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
         if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
         const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
         if (error) throw error;
@@ -7788,7 +8132,7 @@
           pdfHash = await sha256Hex(state.pdfBuffer);
           sizeBytes += state.pdfBuffer.byteLength;
         }
-        const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null };
+        const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
         if (pdfHash) insertData.pdf_hash = pdfHash;
         const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
         if (error) throw error;
@@ -8037,75 +8381,10 @@
             if (cachedBlob) {
               const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
               if (!error && proj && proj.data) {
-                const d = proj.data;
-                const buf = await cachedBlob.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(buf).promise;
-                state.pages = [];
-                const numPages = pdf.numPages;
-                for (let i = 0; i < numPages; i++) {
-                  const pdfPage = await pdf.getPage(i + 1);
-                  const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
-                }
-                state.counters = Array.isArray(d.counters) ? d.counters : [];
-                state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-                state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-                if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-                if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-                (d.pages || []).forEach(p => {
-                  const page = state.pages[p.index];
-                  if (page) {
-                    if (p.annotations) page.annotations = p.annotations;
-                    page.scale = p.scale !== undefined ? p.scale : null;
-                    page.rotation = p.rotation ?? 0;
-                  }
-                });
-                state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-                try {
-                  const backupRaw = localStorage.getItem('takeoff-state');
-                  if (backupRaw) {
-                    const backup = JSON.parse(backupRaw);
-                    const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-                    if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
-                      if (Array.isArray(backup.counters)) state.counters = backup.counters;
-                      if (Array.isArray(backup.lineTypes)) state.lineTypes = backup.lineTypes;
-                      if (Array.isArray(backup.groups)) state.groups = ensureGroupColors(backup.groups);
-                      if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
-                      if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
-                      (backup.pageAnnotations || []).forEach((ann, i) => {
-                        if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
-                      });
-                      if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
-                      if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
-                    }
-                  }
-                } catch (_) {}
-                reconcileOrphanedCountersAndLineTypes();
-                state.currentProjectId = proj.id;
-                state.currentProjectName = proj.name || 'Untitled';
-                state.pdfStoragePath = proj.pdf_path;
-                state.pdfHash = proj.pdf_hash || null;
-                state.pdfBuffer = null;
-                lastSaveIncludedPdf = !!proj.pdf_path;
-                state.lastSavedAt = proj.updated_at || null;
-                state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
-                state.projectOwnerId = proj.user_id || null;
-                state.checkedOutBy = proj.checked_out_by || null;
-                state.checkedOutAt = proj.checked_out_at || null;
-                state.checkedOutEmail = null;
-                const uid = state.supabaseSession?.user?.id;
-                const isOwner = proj.user_id === uid;
-                const lockExpired = !proj.checked_out_at || (Date.now() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
-                const hasValidCheckout = proj.checked_out_by === uid && !lockExpired;
-                state.isViewer = !hasValidCheckout;
-                state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
-                clearUndoStacks();
-                autoSaveDirty = false;
-                lastModifiedAt = 0;
-                fitZoom();
-                renderPdf();
-                refreshProjectPermissions();
-                subscribeToProjectCheckoutChanges(state.currentProjectId);
+                pendingLastSessionRestore = { proj, cachedBlob };
+                const msgEl = document.getElementById('lastSessionRestoreMessage');
+                if (msgEl) msgEl.innerHTML = 'You have a project from your last session: <strong>' + (proj.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
+                showModal('lastSessionRestoreModal');
               } else if (error) {
                 localStorage.removeItem('clickcount-last-project');
               }

@@ -45,10 +45,86 @@
       .report-type-cell .report-type-swatch { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       @media print { .report-type-swatch { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
       section { margin-bottom: 2em; }
+      .report-totals { margin-bottom: 1.5em; padding-bottom: 1em; border-bottom: 1px solid #e0e0e0; font-size: 0.9rem; color: #535353; }
+      .report-group-totals { margin: 0.25em 0 0.5em 0; font-size: 0.85rem; color: #535353; }
     `;
 
     let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Takeoff Report</title><style>' + styles + '</style></head><body>';
     html += '<h1 class="report-title">Takeoff Report</h1>';
+
+    const groups = state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
+
+    const counterSummaryByGroup = {};
+    const lineTypeSummaryByGroup = {};
+    state.pages.forEach((page, i) => {
+      const ann = page.annotations || makeAnnotations();
+      (state.counters || []).forEach(c => {
+        const markers = (ann.counterMarkers?.[c.id] || []).filter(m => true);
+        markers.forEach(m => {
+          const gid = m.group || null;
+          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
+          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, icon: c.icon, color: c.color, total: 0, pages: [] };
+          counterSummaryByGroup[gid][c.id].total++;
+          if (!counterSummaryByGroup[gid][c.id].pages.includes(i + 1)) counterSummaryByGroup[gid][c.id].pages.push(i + 1);
+        });
+      });
+      (state.lineTypes || []).forEach(lt => {
+        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          const gid = q.group || null;
+          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].runs++;
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
+        });
+        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          const gid = poly.group || null;
+          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].runs++;
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += polylineDistance(poly.points || [], poly.closed);
+          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
+        });
+      });
+    });
+
+    const allGroupIds = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
+    const orderedGroupIds = allGroupIds.sort((a, b) => {
+      const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
+      if (isUntagged(a)) return 1;
+      if (isUntagged(b)) return -1;
+      const na = getGroupName(a);
+      const nb = getGroupName(b);
+      return na.localeCompare(nb);
+    });
+
+    let totalCounters = 0;
+    let totalLineRuns = 0;
+    let totalLengthPdfPts = 0;
+    const allPagesWithLines = [];
+    orderedGroupIds.forEach(gid => {
+      const counters = counterSummaryByGroup[gid] || {};
+      const lines = lineTypeSummaryByGroup[gid] || {};
+      Object.values(counters).forEach(r => { totalCounters += r.total; });
+      Object.values(lines).forEach(r => {
+        totalLineRuns += r.runs;
+        totalLengthPdfPts += r.lengthPdfPts;
+        r.pages.forEach(p => { if (!allPagesWithLines.includes(p)) allPagesWithLines.push(p); });
+      });
+    });
+    const scale = pickScaleForLineType(allPagesWithLines.length ? allPagesWithLines : state.pages.map((_, i) => i + 1));
+    const totalLengthStr = scale
+      ? (totalLengthPdfPts / scale.pixelsPerUnit).toFixed(2) + ' ' + scale.unit
+      : (totalLengthPdfPts > 0 ? Math.round(totalLengthPdfPts) + ' px' : '0');
+
+    if (totalCounters > 0 || totalLineRuns > 0) {
+      const parts = [];
+      if (totalCounters > 0) parts.push(totalCounters + ' counter' + (totalCounters !== 1 ? 's' : ''));
+      if (totalLineRuns > 0) parts.push(totalLineRuns + ' line run' + (totalLineRuns !== 1 ? 's' : ''));
+      if (totalLineRuns > 0) parts.push(totalLengthStr + ' total length');
+      html += '<p class="report-totals">' + escapeHtml(parts.join(' · ')) + '</p>';
+    }
 
     state.pages.forEach((page, i) => {
       const ann = page.annotations || makeAnnotations();
@@ -112,66 +188,50 @@
       html += '</section>';
     });
 
-    const counterSummary = {};
-    state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
-      (state.counters || []).forEach(c => {
-        const markers = ann.counterMarkers?.[c.id] || [];
-        if (markers.length > 0) {
-          if (!counterSummary[c.id]) counterSummary[c.id] = { name: c.name, icon: c.icon, color: c.color, total: 0, pages: [] };
-          counterSummary[c.id].total += markers.length;
-          counterSummary[c.id].pages.push(i + 1);
-        }
-      });
-    });
-
-    const lineTypeSummary = {};
-    state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
-      (state.lineTypes || []).forEach(lt => {
-        let runs = 0, len = 0;
-        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          runs++;
-          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
-        });
-        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          runs++;
-          len += polylineDistance(poly.points || [], poly.closed);
-        });
-        if (runs > 0) {
-          if (!lineTypeSummary[lt.id]) lineTypeSummary[lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
-          lineTypeSummary[lt.id].runs += runs;
-          lineTypeSummary[lt.id].lengthPdfPts += len;
-          lineTypeSummary[lt.id].pages.push(i + 1);
-        }
-      });
-    });
-
     html += '<section>';
     html += '<h2 class="page-header">Summary</h2>';
-    const hasSummary = Object.keys(counterSummary).length > 0 || Object.keys(lineTypeSummary).length > 0;
+    const hasSummary = orderedGroupIds.length > 0;
     if (hasSummary) {
-      html += '<table class="report-table"><tr><th>Item</th><th>Total</th><th>Pages</th></tr>';
-      (state.counters || []).forEach(c => {
-        const r = counterSummary[c.id];
-        if (r) {
-          const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
-          html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.name) + '</span></td><td>' + r.total + '</td><td>' + r.pages.join(', ') + '</td></tr>';
-        }
+      orderedGroupIds.forEach(gid => {
+        const groupName = getGroupName(gid);
+        const counters = counterSummaryByGroup[gid] || {};
+        const lines = lineTypeSummaryByGroup[gid] || {};
+        const hasItems = Object.keys(counters).length > 0 || Object.keys(lines).length > 0;
+        if (!hasItems) return;
+        html += '<h3 class="section-header">' + escapeHtml(groupName) + '</h3>';
+        const groupTotalCounters = Object.values(counters).reduce((s, r) => s + r.total, 0);
+        const groupTotalRuns = Object.values(lines).reduce((s, r) => s + r.runs, 0);
+        const groupTotalPdfPts = Object.values(lines).reduce((s, r) => s + r.lengthPdfPts, 0);
+        const groupPages = [...new Set([...Object.values(counters).flatMap(r => r.pages), ...Object.values(lines).flatMap(r => r.pages)])];
+        const groupScale = pickScaleForLineType(groupPages);
+        const groupLengthStr = groupScale ? (groupTotalPdfPts / groupScale.pixelsPerUnit).toFixed(2) + ' ' + groupScale.unit : (groupTotalPdfPts > 0 ? Math.round(groupTotalPdfPts) + ' px' : '0');
+        const groupParts = [];
+        if (groupTotalCounters > 0) groupParts.push(groupTotalCounters + ' counter' + (groupTotalCounters !== 1 ? 's' : ''));
+        if (groupTotalRuns > 0) groupParts.push(groupTotalRuns + ' line run' + (groupTotalRuns !== 1 ? 's' : ''));
+        if (groupTotalRuns > 0) groupParts.push(groupLengthStr + ' total length');
+        if (groupParts.length > 0) html += '<p class="report-group-totals">' + escapeHtml(groupParts.join(' · ')) + '</p>';
+        html += '<table class="report-table"><tr><th>Item</th><th>Total</th><th>Pages</th></tr>';
+        (state.counters || []).forEach(c => {
+          const r = counters[c.id];
+          if (r) {
+            const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
+            html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.name) + '</span></td><td>' + r.total + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+          }
+        });
+        (state.lineTypes || []).forEach(lt => {
+          const r = lines[lt.id];
+          if (r) {
+            const scale = pickScaleForLineType(r.pages);
+            const unit = scale?.unit || 'px';
+            const num = scale
+              ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
+              : String(Math.round(r.lengthPdfPts));
+            const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
+            html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+          }
+        });
+        html += '</table>';
       });
-      (state.lineTypes || []).forEach(lt => {
-        const r = lineTypeSummary[lt.id];
-        if (r) {
-          const scale = pickScaleForLineType(r.pages);
-          const unit = scale?.unit || 'px';
-          const num = scale
-            ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
-            : String(Math.round(r.lengthPdfPts));
-          const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
-          html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + r.pages.join(', ') + '</td></tr>';
-        }
-      });
-      html += '</table>';
     } else {
       html += '<p class="section-header">No items to summarize.</p>';
     }
@@ -183,113 +243,128 @@
 
   function getPipeToolingSummary() {
     if (!window.state || !state.pages || !state.pages.length) return '';
-    const counterSummary = {};
+    const groups = state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
+    const counterSummaryByGroup = {};
+    const lineTypeSummaryByGroup = {};
     state.pages.forEach((page, i) => {
       const ann = page.annotations || makeAnnotations();
       (state.counters || []).forEach(c => {
-        const markers = ann.counterMarkers?.[c.id] || [];
-        if (markers.length > 0) {
-          if (!counterSummary[c.id]) counterSummary[c.id] = { name: c.name, total: 0, pages: [] };
-          counterSummary[c.id].total += markers.length;
-          counterSummary[c.id].pages.push(i + 1);
-        }
+        (ann.counterMarkers?.[c.id] || []).forEach(m => {
+          const gid = m.group || null;
+          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
+          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, total: 0, pages: [] };
+          counterSummaryByGroup[gid][c.id].total++;
+          if (!counterSummaryByGroup[gid][c.id].pages.includes(i + 1)) counterSummaryByGroup[gid][c.id].pages.push(i + 1);
+        });
       });
-    });
-    const lineTypeSummary = {};
-    state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
       (state.lineTypes || []).forEach(lt => {
-        let runs = 0, len = 0;
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          runs++;
-          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          const gid = q.group || null;
+          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          runs++;
-          len += polylineDistance(poly.points || [], poly.closed);
+          const gid = poly.group || null;
+          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += polylineDistance(poly.points || [], poly.closed);
+          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
-        if (runs > 0) {
-          if (!lineTypeSummary[lt.id]) lineTypeSummary[lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
-          lineTypeSummary[lt.id].lengthPdfPts += len;
-          lineTypeSummary[lt.id].pages.push(i + 1);
-        }
       });
     });
     const lines = [];
-    (state.counters || []).forEach(c => {
-      const r = counterSummary[c.id];
-      if (r) lines.push([r.name, r.total, r.pages.join(', ')].join('\t'));
-    });
-    (state.lineTypes || []).forEach(lt => {
-      const r = lineTypeSummary[lt.id];
-      if (r) {
-        const scale = pickScaleForLineType(r.pages);
-        const unit = scale?.unit || 'px';
-        const num = scale
-          ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
-          : String(Math.round(r.lengthPdfPts));
-        const fixture = unit + ' of ' + r.name;
-        lines.push([fixture, num, r.pages.join(', ')].join('\t'));
-      }
+    const allGroupIds = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
+    allGroupIds.forEach(gid => {
+      const prefix = getGroupName(gid) ? '[' + getGroupName(gid) + '] ' : '';
+      const counters = counterSummaryByGroup[gid] || {};
+      const lineTypes = lineTypeSummaryByGroup[gid] || {};
+      (state.counters || []).forEach(c => {
+        const r = counters[c.id];
+        if (r) lines.push([prefix + r.name, r.total, r.pages.join(', ')].join('\t'));
+      });
+      (state.lineTypes || []).forEach(lt => {
+        const r = lineTypes[lt.id];
+        if (r) {
+          const scale = pickScaleForLineType(r.pages);
+          const unit = scale?.unit || 'px';
+          const num = scale
+            ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
+            : String(Math.round(r.lengthPdfPts));
+          const fixture = prefix + unit + ' of ' + r.name;
+          lines.push([fixture, num, r.pages.join(', ')].join('\t'));
+        }
+      });
     });
     return lines.join('\n');
   }
 
   function getEmailTextSummary() {
     if (!window.state || !state.pages || !state.pages.length) return '';
-    const counterSummary = {};
+    const groups = state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
+    const counterSummaryByGroup = {};
+    const lineTypeSummaryByGroup = {};
     state.pages.forEach((page, i) => {
       const ann = page.annotations || makeAnnotations();
       (state.counters || []).forEach(c => {
-        const markers = ann.counterMarkers?.[c.id] || [];
-        if (markers.length > 0) {
-          if (!counterSummary[c.id]) counterSummary[c.id] = { name: c.name, total: 0, pages: [] };
-          counterSummary[c.id].total += markers.length;
-          counterSummary[c.id].pages.push(i + 1);
-        }
+        (ann.counterMarkers?.[c.id] || []).forEach(m => {
+          const gid = m.group || null;
+          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
+          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, total: 0, pages: [] };
+          counterSummaryByGroup[gid][c.id].total++;
+          if (!counterSummaryByGroup[gid][c.id].pages.includes(i + 1)) counterSummaryByGroup[gid][c.id].pages.push(i + 1);
+        });
       });
-    });
-    const lineTypeSummary = {};
-    state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
       (state.lineTypes || []).forEach(lt => {
-        let runs = 0, len = 0;
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          runs++;
-          len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          const gid = q.group || null;
+          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].runs++;
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          runs++;
-          len += polylineDistance(poly.points || [], poly.closed);
+          const gid = poly.group || null;
+          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].runs++;
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += polylineDistance(poly.points || [], poly.closed);
+          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
-        if (runs > 0) {
-          if (!lineTypeSummary[lt.id]) lineTypeSummary[lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
-          lineTypeSummary[lt.id].runs += runs;
-          lineTypeSummary[lt.id].lengthPdfPts += len;
-          lineTypeSummary[lt.id].pages.push(i + 1);
-        }
       });
     });
+    const allGroupIds = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
+    const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
+    const orderedGroupIds = allGroupIds.sort((a, b) => {
+      if (isUntagged(a)) return 1;
+      if (isUntagged(b)) return -1;
+      return getGroupName(a).localeCompare(getGroupName(b));
+    });
     const lines = [];
-    if (Object.keys(counterSummary).length > 0 || Object.keys(lineTypeSummary).length > 0) {
+    if (orderedGroupIds.length > 0) {
       lines.push('Takeoff Summary');
       lines.push('---------------');
       lines.push('');
-      if (Object.keys(counterSummary).length > 0) {
-        lines.push('Counters:');
+      orderedGroupIds.forEach(gid => {
+        const groupName = getGroupName(gid);
+        const counters = counterSummaryByGroup[gid] || {};
+        const lineTypes = lineTypeSummaryByGroup[gid] || {};
+        const hasItems = Object.keys(counters).length > 0 || Object.keys(lineTypes).length > 0;
+        if (!hasItems) return;
+        lines.push('--- ' + groupName + ' ---');
         (state.counters || []).forEach(c => {
-          const r = counterSummary[c.id];
+          const r = counters[c.id];
           if (r) {
             const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
-            lines.push('• ' + (c.name || 'Counter') + ': ' + r.total + ' (' + pagesStr + ')');
+            lines.push('• ' + (r.name || 'Counter') + ': ' + r.total + ' (' + pagesStr + ')');
           }
         });
-        lines.push('');
-      }
-      if (Object.keys(lineTypeSummary).length > 0) {
-        lines.push('Line Types:');
         (state.lineTypes || []).forEach(lt => {
-          const r = lineTypeSummary[lt.id];
+          const r = lineTypes[lt.id];
           if (r) {
             const scale = pickScaleForLineType(r.pages);
             const unit = scale?.unit || 'px';
@@ -297,10 +372,11 @@
               ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
               : String(Math.round(r.lengthPdfPts));
             const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
-            lines.push('• ' + num + ' ' + unit + ' of ' + (lt.name || 'Line') + ': ' + r.runs + ' run' + (r.runs > 1 ? 's' : '') + ' (' + pagesStr + ')');
+            lines.push('• ' + num + ' ' + unit + ' of ' + (r.name || 'Line') + ': ' + r.runs + ' run' + (r.runs > 1 ? 's' : '') + ' (' + pagesStr + ')');
           }
         });
-      }
+        lines.push('');
+      });
     }
     return lines.join('\n');
   }

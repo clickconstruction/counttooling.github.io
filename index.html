@@ -154,8 +154,8 @@
     }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
-    #pagesSectionTitle, #countersSectionTitle, #lineTypesSectionTitle, #linesSectionTitle, #summarySectionTitle, #exportOptionsSectionTitle,
-    #pagesSectionTitle:hover, #countersSectionTitle:hover, #lineTypesSectionTitle:hover, #linesSectionTitle:hover, #summarySectionTitle:hover, #exportOptionsSectionTitle:hover { color: var(--accent); }
+    #pagesSectionTitle, #countersSectionTitle, #lineTypesSectionTitle, #linesSectionTitle, #groupsSectionTitle, #summarySectionTitle, #exportOptionsSectionTitle,
+    #pagesSectionTitle:hover, #countersSectionTitle:hover, #lineTypesSectionTitle:hover, #linesSectionTitle:hover, #groupsSectionTitle:hover, #summarySectionTitle:hover, #exportOptionsSectionTitle:hover { color: var(--accent); }
     .sidebar-section h3.section-settings { cursor: pointer; padding: 2px 0; }
     .sidebar-section h3.section-settings:hover { color: var(--text2); }
     .sidebar-scale-display { font-size: 0.85rem; font-family: 'DM Mono', monospace; color: var(--text2); text-align: center; }
@@ -170,6 +170,7 @@
     #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter { display: none; }
     #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType { display: none; }
     #linesSection.collapsed #linesList { display: none; }
+    #groupsSection.collapsed #groupsList, #groupsSection.collapsed #addGroup, #groupsSection.collapsed #showGroupColorsLabel { display: none; }
     #summarySection.collapsed #summaryList { display: none; }
     .collapse-icon { font-size: 0.65rem; margin-left: 4px; opacity: 0.7; }
     .modal-card input[type="range"] { width: 100%; padding: 0; height: 24px; }
@@ -183,6 +184,8 @@
     .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
     .sidebar-item .edit-btn { padding: 4px; cursor: pointer; opacity: 0.7; }
     .sidebar-item .edit-btn:hover { opacity: 1; }
+    .sidebar-item .delete-btn { padding: 4px; cursor: pointer; opacity: 0.7; color: var(--danger, #c44); }
+    .sidebar-item .delete-btn:hover { opacity: 1; }
     .sidebar-item-line-type { flex-direction: column; align-items: stretch; gap: 4px; }
     .sidebar-item-line-type .line-type-name { font-weight: 500; }
     .sidebar-item-line-type .line-type-row { display: flex; align-items: center; gap: 8px; }
@@ -244,6 +247,7 @@
     .modal-card-header h2 { margin: 0; }
     .modal-close-btn { background: none; border: none; color: var(--text2); font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 4px; margin: -4px -4px -4px 8px; border-radius: 4px; }
     .modal-close-btn:hover { color: var(--text); background: var(--surface2); }
+    #groupAssignAddGroup:hover { background: var(--surface2); }
     .modal-card .form-group { margin-bottom: 16px; }
     .modal-card .form-group-center { text-align: center; }
     .modal-card label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: var(--text2); }
@@ -256,6 +260,10 @@
     .modal-card .color-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .modal-card .color-swatch { width: 28px; height: 28px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
     .modal-card .color-swatch.selected { border-color: var(--accent); }
+    .group-assign-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .group-assign-btn { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.95rem; border: 2px solid transparent; min-width: 80px; }
+    .group-assign-btn.none { background: var(--surface2); color: var(--text); border-color: var(--border); }
+    .group-assign-btn.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .modal-card .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; max-height: 200px; overflow-y: auto; margin-top: 8px; }
     .modal-card .icon-cell { width: 36px; height: 36px; padding: 4px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; }
     .modal-card .icon-cell:hover { background: var(--surface3); }
@@ -535,6 +543,15 @@
           <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
           <button id="addLineType" class="sidebar-btn">+ Add Line Type</button>
           <div id="lineTypesList"></div>
+        </div>
+        <div class="sidebar-section" id="groupsSection">
+          <h3 id="groupsSectionTitle" class="section-settings" title="Click to collapse">Groups <span class="collapse-icon" id="groupsCollapseIcon">▼</span></h3>
+          <button id="addGroup" class="sidebar-btn">+ Add Group</button>
+          <div id="groupsList"></div>
+          <label id="showGroupColorsLabel" class="form-group" style="margin-top:8px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="showGroupColorsCheckbox">
+            <span style="color:var(--text2);">Show group colors</span>
+          </label>
         </div>
         <div class="sidebar-section collapsed" id="linesSection">
           <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
@@ -1015,6 +1032,40 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal-card">
+      <h2 id="groupModalTitle">Add Group</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="groupModalName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div id="groupModalColorRow" class="color-row"></div>
+      </div>
+      <div class="actions">
+        <button id="groupModalDelete" class="danger" style="display:none;">Delete</button>
+        <button id="groupModalCancel">Cancel</button>
+        <button id="groupModalDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="groupAssignModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Assign to group</h2>
+        <button type="button" id="groupAssignAddGroup" style="background:none;border:none;color:var(--accent);font-size:0.9rem;cursor:pointer;padding:4px 8px;margin:-4px -4px -4px 8px;border-radius:4px;">+ Add group</button>
+      </div>
+      <div class="form-group">
+        <label>Group</label>
+        <div id="groupAssignButtons" class="group-assign-buttons"></div>
+      </div>
+      <div class="actions">
+        <button id="groupAssignCancel">Cancel</button>
+        <button id="groupAssignDone">Done</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-card">
       <div class="modal-card-header">
@@ -1312,6 +1363,7 @@
   </div>
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
+    <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
     <button class="danger" id="ctxDelete">Delete</button>
   </div>
   <script>
@@ -1921,6 +1973,7 @@
     countersListCollapsed: false,
     lineTypesListCollapsed: false,
     linesListCollapsed: true,
+    groupsListCollapsed: false,
     summaryListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2 },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
@@ -1945,8 +1998,21 @@
     isViewer: false,
     canCheckOut: false,
     projectOwnerId: null,
-    maxZoom: null
+    maxZoom: null,
+    groups: [],
+    activeGroupId: null
   };
+  state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
+
+  function getGroupColor(groupId) {
+    const g = (state.groups || []).find(x => x.id === groupId);
+    return (g && g.color) || COLORS[0];
+  }
+  function ensureGroupColors(groups) {
+    if (!Array.isArray(groups)) return groups;
+    groups.forEach((g, i) => { if (!g.color) g.color = COLORS[i % COLORS.length]; });
+    return groups;
+  }
 
   let autoSaveDirty = false;
   let lastModifiedAt = 0;
@@ -1993,7 +2059,8 @@
         label: p.label
       })),
       counters: JSON.parse(JSON.stringify(state.counters)),
-      lineTypes: JSON.parse(JSON.stringify(state.lineTypes))
+      lineTypes: JSON.parse(JSON.stringify(state.lineTypes)),
+      groups: JSON.parse(JSON.stringify(state.groups || []))
     };
   }
 
@@ -2015,6 +2082,7 @@
     });
     state.counters = snap.counters;
     state.lineTypes = snap.lineTypes;
+    if (Array.isArray(snap.groups)) state.groups = ensureGroupColors(snap.groups);
     state.quickLineStart = null;
     state.highlightStart = null;
     state.drawingPolyline = null;
@@ -2606,6 +2674,17 @@
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       if (isSelected) { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
       ctx.globalAlpha = 1;
+      if (state.showGroupColors && (q.group || null)) {
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const groupColor = getGroupColor(q.group);
+        ctx.fillStyle = groupColor;
+        ctx.beginPath();
+        ctx.arc(mid.x, mid.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     });
     (ann.polylines || []).forEach(poly => {
       const pts = poly.points || [];
@@ -2620,6 +2699,20 @@
       ctx.stroke();
       if (isSelected) { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
       ctx.globalAlpha = 1;
+      if (state.showGroupColors && (poly.group || null)) {
+        const pts = poly.points || [];
+        const idx = Math.floor(pts.length / 2);
+        const midPdf = pts[idx] || pts[0];
+        const mid = toCanvas(midPdf);
+        const groupColor = getGroupColor(poly.group);
+        ctx.fillStyle = groupColor;
+        ctx.beginPath();
+        ctx.arc(mid.x, mid.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -2703,6 +2796,18 @@
         ctx.fill(path);
         ctx.globalAlpha = 1;
         ctx.restore();
+        if (state.showGroupColors && (m.group || null)) {
+          const groupColor = getGroupColor(m.group);
+          const dotRadius = 4;
+          const topLeft = { x: p.x - s / 2 + dotRadius, y: p.y - s / 2 + dotRadius };
+          ctx.fillStyle = groupColor;
+          ctx.beginPath();
+          ctx.arc(topLeft.x, topLeft.y, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
         if (markers.length > 1) {
           const ns = (cs.numberSize || 10);
           ctx.fillStyle = '#000'; ctx.font = ns + 'px DM Sans'; ctx.fillText(String(i + 1), p.x + ns * 0.6, p.y - ns * 0.6);
@@ -2756,6 +2861,18 @@
       ctx.strokeStyle = q.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       ctx.globalAlpha = 1;
+      if (state.showGroupColors && (q.group || null)) {
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const groupColor = getGroupColor(q.group);
+        const dotRadius = 4 * scale;
+        ctx.fillStyle = groupColor;
+        ctx.beginPath();
+        ctx.arc(mid.x, mid.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     });
     (ann.polylines || []).forEach(poly => {
       const pts = poly.points || [];
@@ -2767,6 +2884,21 @@
       if (poly.closed) ctx.closePath();
       ctx.stroke();
       ctx.globalAlpha = 1;
+      if (state.showGroupColors && (poly.group || null)) {
+        const pts = poly.points || [];
+        const idx = Math.floor(pts.length / 2);
+        const midPdf = pts[idx] || pts[0];
+        const mid = tc(midPdf);
+        const groupColor = getGroupColor(poly.group);
+        const dotRadius = 4 * scale;
+        ctx.fillStyle = groupColor;
+        ctx.beginPath();
+        ctx.arc(mid.x, mid.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -2847,6 +2979,18 @@
         ctx.fill(path);
         ctx.globalAlpha = 1;
         ctx.restore();
+        if (state.showGroupColors && (m.group || null)) {
+          const groupColor = getGroupColor(m.group);
+          const dotRadius = 4 * scale;
+          const topLeft = { x: p.x - s / 2 + dotRadius, y: p.y - s / 2 + dotRadius };
+          ctx.fillStyle = groupColor;
+          ctx.beginPath();
+          ctx.arc(topLeft.x, topLeft.y, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
         if (markers.length > 1) {
           const ns = (cs.numberSize || 10) * scale * markerScale;
           ctx.fillStyle = '#000'; ctx.font = ns + 'px DM Sans'; ctx.fillText(String(i + 1), p.x + ns * 0.6, p.y - ns * 0.6);
@@ -2994,7 +3138,7 @@
     const redoBtn = document.getElementById('redoBtn');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'headerActiveCounter', 'headerActiveLineType'];
+    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -3134,6 +3278,7 @@
     renderPagesList();
     renderCountersList();
     renderLineTypesList();
+    renderGroupsList();
     renderLinesList();
     renderSummary();
     const bundleBtn = document.getElementById('bundleHighlights');
@@ -3231,6 +3376,41 @@
     });
   }
 
+  function renderGroupsList() {
+    const el = document.getElementById('groupsList');
+    if (!el) return;
+    el.innerHTML = '';
+    const showEdit = !state.isViewer;
+    const groups = state.groups || [];
+    groups.forEach(g => {
+      const count = countItemsInGroup(g.id);
+      const div = document.createElement('div');
+      div.className = 'sidebar-item sidebar-item-line-type' + (state.activeGroupId === g.id && showEdit ? ' active' : '');
+      div.innerHTML = '<span class="name line-type-name">' + (g.name || 'Group') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      if (showEdit) {
+        div.onclick = (e) => {
+          if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) {
+            state.activeGroupId = state.activeGroupId === g.id ? null : g.id;
+            updateUI();
+          }
+        };
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderPdf(); }); });
+        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openGroupModal(g); });
+      }
+      el.appendChild(div);
+    });
+  }
+
+  function countItemsInGroup(groupId) {
+    let n = 0;
+    state.pages.forEach(p => {
+      Object.values(p.annotations?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) n++; }));
+      (p.annotations?.quickLines || []).forEach(q => { if ((q.group || null) === groupId) n++; });
+      (p.annotations?.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) n++; });
+    });
+    return n;
+  }
+
   function renderLinesList() {
     const el = document.getElementById('linesList');
     el.innerHTML = '';
@@ -3321,39 +3501,128 @@
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
     const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    state.counters.forEach(c => {
-      const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
-      if (count > 0) {
-        const div = document.createElement('div');
-        div.className = 'sidebar-item summary-item-clickable';
-        div.dataset.type = 'counter';
-        div.dataset.id = c.id;
-        div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">' + count + '</span>';
-        div.onclick = () => openSummaryCountDetailModal('counter', c.id);
-        el.appendChild(div);
-      }
+    const groups = state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
+    let hasAnyGroups = false;
+    state.pages.forEach(p => {
+      Object.values(p.annotations?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
+      (p.annotations?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
+      (p.annotations?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
     });
-    state.lineTypes.forEach(lt => {
-      let runs = 0, len = 0;
-      const pageIndices = [];
-      state.pages.forEach((p, pi) => {
-        const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-        const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-        if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
-        polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+    const counterByGroup = {};
+    const lineTypeByGroup = {};
+    state.pages.forEach((p, pi) => {
+      (state.counters || []).forEach(c => {
+        (p.annotations?.counterMarkers?.[c.id] || []).forEach(m => {
+          const gid = m.group || null;
+          if (!counterByGroup[gid]) counterByGroup[gid] = {};
+          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, pageIndices: [] };
+          counterByGroup[gid][c.id].total++;
+          if (!counterByGroup[gid][c.id].pageIndices.includes(pi)) counterByGroup[gid][c.id].pageIndices.push(pi);
+        });
       });
-      if (runs > 0) {
-        const scale = pickScaleForLineType(pageIndices);
-        const div = document.createElement('div');
-        div.className = 'sidebar-item summary-item-clickable';
-        div.dataset.type = 'lineType';
-        div.dataset.id = lt.id;
-        div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>';
-        div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
-        el.appendChild(div);
-      }
+      (state.lineTypes || []).forEach(lt => {
+        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          const gid = q.group || null;
+          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
+          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
+          lineTypeByGroup[gid][lt.id].runs++;
+          lineTypeByGroup[gid][lt.id].len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
+        });
+        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          const gid = poly.group || null;
+          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
+          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
+          lineTypeByGroup[gid][lt.id].runs++;
+          lineTypeByGroup[gid][lt.id].len += polylineDistance(poly.points || [], poly.closed);
+          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
+        });
+      });
     });
+    const allGroupIds = [...new Set([...Object.keys(counterByGroup), ...Object.keys(lineTypeByGroup)])];
+    const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
+    const orderedGroupIds = hasAnyGroups ? allGroupIds.sort((a, b) => {
+      if (isUntagged(a)) return 1;
+      if (isUntagged(b)) return -1;
+      return getGroupName(a).localeCompare(getGroupName(b));
+    }) : [];
+    const renderItems = (gid) => {
+      const counters = counterByGroup[gid] || {};
+      const lineTypes = lineTypeByGroup[gid] || {};
+      (state.counters || []).forEach(c => {
+        const r = counters[c.id];
+        if (r && r.total > 0) {
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable';
+          div.dataset.type = 'counter';
+          div.dataset.id = c.id;
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">' + r.total + '</span>';
+          div.onclick = () => openSummaryCountDetailModal('counter', c.id);
+          el.appendChild(div);
+        }
+      });
+      (state.lineTypes || []).forEach(lt => {
+        const r = lineTypes[lt.id];
+        if (r && r.runs > 0) {
+          const scale = pickScaleForLineType(r.pageIndices);
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable';
+          div.dataset.type = 'lineType';
+          div.dataset.id = lt.id;
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">' + r.runs + ' · ' + formatDist(r.len, scale) + '</span>';
+          div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
+          el.appendChild(div);
+        }
+      });
+    };
+    if (hasAnyGroups && orderedGroupIds.length > 0) {
+      orderedGroupIds.forEach(gid => {
+        const groupName = getGroupName(gid);
+        const hasItems = Object.keys(counterByGroup[gid] || {}).some(cid => (counterByGroup[gid][cid]?.total || 0) > 0) ||
+          Object.keys(lineTypeByGroup[gid] || {}).some(lid => (lineTypeByGroup[gid][lid]?.runs || 0) > 0);
+        if (!hasItems) return;
+        const h = document.createElement('h3');
+        h.style.cssText = 'font-size:0.7rem;color:var(--text3);margin:8px 0 4px 0;';
+        h.textContent = 'Group: ' + groupName;
+        el.appendChild(h);
+        renderItems(gid);
+      });
+    } else {
+      state.counters.forEach(c => {
+        const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
+        if (count > 0) {
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable';
+          div.dataset.type = 'counter';
+          div.dataset.id = c.id;
+          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">' + count + '</span>';
+          div.onclick = () => openSummaryCountDetailModal('counter', c.id);
+          el.appendChild(div);
+        }
+      });
+      state.lineTypes.forEach(lt => {
+        let runs = 0, len = 0;
+        const pageIndices = [];
+        state.pages.forEach((p, pi) => {
+          const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+          const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+          if (qLines.length || polys.length) pageIndices.push(pi);
+          qLines.forEach(q => { runs++; len += ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }); });
+          polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+        });
+        if (runs > 0) {
+          const scale = pickScaleForLineType(pageIndices);
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable';
+          div.dataset.type = 'lineType';
+          div.dataset.id = lt.id;
+          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>';
+          div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
+          el.appendChild(div);
+        }
+      });
+    }
   }
 
   async function openSummaryCountDetailModal(type, id) {
@@ -3661,6 +3930,45 @@
     renderPdf();
   }
 
+  let pendingGroupEdit = null;
+  function openGroupModal(g) {
+    pendingGroupEdit = g;
+    const titleEl = document.getElementById('groupModalTitle');
+    const nameEl = document.getElementById('groupModalName');
+    const colorRow = document.getElementById('groupModalColorRow');
+    const deleteBtn = document.getElementById('groupModalDelete');
+    titleEl.textContent = g ? 'Edit Group' : 'Add Group';
+    nameEl.value = g ? (g.name || '') : '';
+    const groups = state.groups || [];
+    const defaultColor = g ? (g.color || COLORS[0]) : (COLORS[groups.length % COLORS.length]);
+    colorRow.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (c === defaultColor ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
+    colorRow.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => {
+      colorRow.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+    });
+    if (deleteBtn) deleteBtn.style.display = g ? '' : 'none';
+    nameEl.focus();
+    showModal('groupModal');
+  }
+  function deleteGroup(groupId) {
+    const g = (state.groups || []).find(x => x.id === groupId);
+    if (!g) return false;
+    const count = countItemsInGroup(groupId);
+    if (count > 0 && !confirm('This group has ' + count + ' item(s). Remove group and clear assignment from those items?')) return false;
+    pushUndoSnapshot();
+    state.groups = (state.groups || []).filter(x => x.id !== groupId);
+    if (state.activeGroupId === groupId) state.activeGroupId = null;
+    state.pages.forEach(p => {
+      Object.values(p.annotations?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
+      (p.annotations?.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
+      (p.annotations?.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
+    });
+    markProjectDirty();
+    updateUI();
+    renderPdf();
+    return true;
+  }
+
   let airboardToastTimer = null;
   function showToast(msg, durationMs) {
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
@@ -3943,6 +4251,7 @@
         const projectId = state.pendingCanvasLoad.projectId;
         state.counters = Array.isArray(d.counters) ? d.counters : [];
         state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+        state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
         if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
         if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
         (d.pages || []).forEach(p => {
@@ -3994,6 +4303,7 @@
               const d = full.data;
               state.counters = Array.isArray(d.counters) ? d.counters : [];
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+              state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
               (d.pages || []).forEach(p => {
@@ -4311,6 +4621,135 @@
     updateUI();
   };
 
+  document.getElementById('addGroup').onclick = () => openGroupModal(null);
+  const showGroupColorsCheckbox = document.getElementById('showGroupColorsCheckbox');
+  if (showGroupColorsCheckbox) {
+    showGroupColorsCheckbox.checked = !!state.showGroupColors;
+    showGroupColorsCheckbox.onchange = () => {
+      state.showGroupColors = showGroupColorsCheckbox.checked;
+      try { localStorage.setItem('groupColorDisplay', state.showGroupColors ? '1' : '0'); } catch (_) {}
+      renderPdf();
+    };
+  }
+  document.getElementById('groupModalCancel').onclick = () => {
+    if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
+    pendingGroupEdit = null;
+    hideModal('groupModal');
+  };
+  document.getElementById('groupModalDelete').onclick = () => {
+    if (pendingGroupEdit && deleteGroup(pendingGroupEdit.id)) {
+      pendingGroupEdit = null;
+      hideModal('groupModal');
+      updateUI();
+      renderPdf();
+    }
+  };
+  document.getElementById('groupModalDone').onclick = () => {
+    const name = document.getElementById('groupModalName').value.trim() || 'Group';
+    const colorSel = document.querySelector('#groupModalColorRow .color-swatch.selected');
+    const color = colorSel ? colorSel.dataset.color : COLORS[0];
+    if (pendingGroupEdit) {
+      pushUndoSnapshot();
+      pendingGroupEdit.name = name;
+      pendingGroupEdit.color = color;
+      markProjectDirty();
+    } else {
+      pushUndoSnapshot();
+      const newGroup = { id: uid(), name, color };
+      if (!state.groups) state.groups = [];
+      state.groups.push(newGroup);
+      state.activeGroupId = newGroup.id;
+      markProjectDirty();
+    }
+    if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
+    pendingGroupEdit = null;
+    hideModal('groupModal');
+    updateUI();
+    renderPdf();
+  };
+  let pendingGroupAssignTarget = null;
+  let openedGroupModalFromAssign = false;
+  function refreshGroupAssignButtons() {
+    if (!pendingGroupAssignTarget) return;
+    const container = document.getElementById('groupAssignButtons');
+    if (!container) return;
+    const groups = state.groups || [];
+    const item = pendingGroupAssignTarget.item;
+    const targetGroupId = (item.group || null) || '';
+    container.innerHTML = '';
+    const noneBtn = document.createElement('button');
+    noneBtn.type = 'button';
+    noneBtn.className = 'group-assign-btn none' + (targetGroupId === '' ? ' selected' : '');
+    noneBtn.dataset.groupId = '';
+    noneBtn.textContent = 'None';
+    noneBtn.onclick = () => { container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected')); noneBtn.classList.add('selected'); };
+    container.appendChild(noneBtn);
+    groups.forEach(g => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'group-assign-btn' + (targetGroupId === g.id ? ' selected' : '');
+      btn.dataset.groupId = g.id;
+      btn.style.background = (g.color || COLORS[0]);
+      btn.style.color = '#fff';
+      btn.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
+      btn.textContent = g.name || 'Group';
+      btn.onclick = () => { container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
+      container.appendChild(btn);
+    });
+  }
+  function openGroupAssignModal(item) {
+    pendingGroupAssignTarget = { item };
+    const container = document.getElementById('groupAssignButtons');
+    const groups = state.groups || [];
+    const currentGroupId = (item.group || null) || '';
+    container.innerHTML = '';
+    const noneBtn = document.createElement('button');
+    noneBtn.type = 'button';
+    noneBtn.className = 'group-assign-btn none' + (currentGroupId === '' ? ' selected' : '');
+    noneBtn.dataset.groupId = '';
+    noneBtn.textContent = 'None';
+    noneBtn.onclick = () => {
+      container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected'));
+      noneBtn.classList.add('selected');
+    };
+    container.appendChild(noneBtn);
+    groups.forEach(g => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'group-assign-btn' + (currentGroupId === g.id ? ' selected' : '');
+      btn.dataset.groupId = g.id;
+      btn.style.background = (g.color || COLORS[0]);
+      btn.style.color = '#fff';
+      btn.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
+      btn.textContent = g.name || 'Group';
+      btn.onclick = () => {
+        container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+      container.appendChild(btn);
+    });
+    showModal('groupAssignModal');
+  }
+  document.getElementById('groupAssignAddGroup').onclick = () => {
+    openedGroupModalFromAssign = true;
+    openGroupModal(null);
+  };
+  document.getElementById('groupAssignCancel').onclick = () => { pendingGroupAssignTarget = null; hideModal('groupAssignModal'); };
+  document.getElementById('groupAssignDone').onclick = () => {
+    if (pendingGroupAssignTarget && pendingGroupAssignTarget.item) {
+      const container = document.getElementById('groupAssignButtons');
+      const sel = container.querySelector('.group-assign-btn.selected');
+      const groupId = sel ? (sel.dataset.groupId || null) : null;
+      pushUndoSnapshot();
+      pendingGroupAssignTarget.item.group = groupId;
+      markProjectDirty();
+      updateUI();
+      renderPdf();
+    }
+    pendingGroupAssignTarget = null;
+    hideModal('groupAssignModal');
+  };
+
   document.getElementById('lineTypeSettingsClose').onclick = () => hideModal('lineTypeSettingsModal');
   document.getElementById('lineColorCancel').onclick = () => { state.pendingLineColorApply = null; hideModal('lineColorModal'); };
   document.querySelectorAll('.line-type-tab').forEach(t => t.onclick = () => showLineTypeTab(t.dataset.tab));
@@ -4366,6 +4805,11 @@
     state.linesListCollapsed = !state.linesListCollapsed;
     document.getElementById('linesSection').classList.toggle('collapsed', state.linesListCollapsed);
     document.getElementById('linesCollapseIcon').textContent = state.linesListCollapsed ? '▶' : '▼';
+  };
+  document.getElementById('groupsSectionTitle').onclick = () => {
+    state.groupsListCollapsed = !state.groupsListCollapsed;
+    document.getElementById('groupsSection').classList.toggle('collapsed', state.groupsListCollapsed);
+    document.getElementById('groupsCollapseIcon').textContent = state.groupsListCollapsed ? '▶' : '▼';
   };
   document.getElementById('summarySectionTitle').onclick = () => {
     state.summaryListCollapsed = !state.summaryListCollapsed;
@@ -4470,7 +4914,7 @@
     const name = document.getElementById('polylineName').value.trim() || 'Polyline';
     const colorSel = document.querySelector('#polylineColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
-    state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId: lineTypeId || null };
+    state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId: lineTypeId || null, group: state.activeGroupId || null };
     state.tool = TOOL.POLYLINE;
     hideModal('polylineModal');
     updateUI();
@@ -4511,7 +4955,7 @@
   };
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, maxZoom: state.maxZoom ?? 8, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, maxZoom: state.maxZoom ?? 8, groups: state.groups || [], pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -5043,6 +5487,7 @@
         const data = JSON.parse(r.result);
         state.counters = Array.isArray(data.counters) ? data.counters : [];
         state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
+        state.groups = ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         (data.pages || []).forEach(p => {
@@ -6032,6 +6477,7 @@
                 }
                 state.counters = Array.isArray(d.counters) ? d.counters : [];
                 state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+                state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
                 if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
                 (d.pages || []).forEach(p => {
@@ -6069,6 +6515,7 @@
               }
               state.counters = Array.isArray(d.counters) ? d.counters : [];
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+              state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
               (d.pages || []).forEach(p => {
                 const page = state.pages[p.index];
                 if (page) {
@@ -6099,6 +6546,7 @@
             state.pages = [];
             state.counters = Array.isArray(d.counters) ? d.counters : [];
             state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+            state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
             if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
             if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
             reconcileOrphanedCountersAndLineTypes();
@@ -6170,6 +6618,7 @@
       state.lastSavedAt = null;
       lastSaveIncludedPdf = false;
       state.pendingCanvasLoad = null;
+      state.groups = [];
       state.maxZoom = null;
       state.checkedOutBy = null;
       state.checkedOutAt = null;
@@ -6368,6 +6817,7 @@
         iconNames: state.iconNames || {},
         iconOrder: state.iconOrder || null,
         maxZoom: state.maxZoom ?? 8,
+        groups: state.groups || [],
         pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
       };
       const dataJson = JSON.stringify(data);
@@ -6638,6 +7088,20 @@
       openNoteModal('edit', note.text, note);
     }
   };
+  document.getElementById('ctxAssignGroup').onclick = () => {
+    const t = state.ctxTarget;
+    if (!t || (t.type !== 'marker' && t.type !== 'quickLine' && t.type !== 'polyline')) return;
+    const page = state.pages[state.currentPage];
+    const ann = page?.annotations;
+    if (!ann) return;
+    let item = null;
+    if (t.type === 'marker') item = ann.counterMarkers?.[t.typeId]?.[t.index];
+    else if (t.type === 'quickLine') item = ann.quickLines?.[t.index];
+    else if (t.type === 'polyline') item = ann.polylines?.[t.index];
+    if (!item) return;
+    document.getElementById('contextMenu').classList.remove('visible');
+    openGroupAssignModal(item);
+  };
   document.getElementById('ctxDelete').onclick = () => {
     const t = state.ctxTarget;
     if (!t) return;
@@ -6679,7 +7143,10 @@
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
+    const assignGroupBtn = document.getElementById('ctxAssignGroup');
     editBtn.style.display = (state.ctxTarget?.type === 'note' || state.ctxTarget?.type === 'noteResize' || state.ctxTarget?.type === 'noteFontSize') ? 'block' : 'none';
+    const canAssignGroup = !state.isViewer && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
+    assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
     menu.classList.add('visible');
@@ -6728,7 +7195,7 @@
       else {
         pushUndoSnapshot();
         const page = state.pages[state.currentPage];
-        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId });
+        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null });
         state.quickLineStart = null;
         markProjectDirty();
       }
@@ -6747,7 +7214,7 @@
       const page = state.pages[state.currentPage];
       if (page && page.annotations) {
         if (!page.annotations.counterMarkers[state.activeCounterType]) page.annotations.counterMarkers[state.activeCounterType] = [];
-        page.annotations.counterMarkers[state.activeCounterType].push({ x: pdf.x, y: pdf.y, id: uid() });
+        page.annotations.counterMarkers[state.activeCounterType].push({ x: pdf.x, y: pdf.y, id: uid(), group: state.activeGroupId || null });
         markProjectDirty();
       }
       renderAnnotations();
@@ -7090,7 +7557,7 @@
       } else {
         pushUndoSnapshot();
         const page = state.pages[state.currentPage];
-        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId });
+        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2: pdf.x, y2: pdf.y, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null });
         state.quickLineStart = null;
         markProjectDirty();
       }
@@ -7251,6 +7718,7 @@
       const data = JSON.parse(stored);
       if (data.counters) state.counters = data.counters || [];
       if (data.lineTypes) state.lineTypes = data.lineTypes || [];
+      if (Array.isArray(data.groups)) state.groups = ensureGroupColors(data.groups);
       if (data.counterSettings) state.counterSettings = { ...state.counterSettings, ...data.counterSettings };
       if (data.lineTypeSettings) state.lineTypeSettings = { ...state.lineTypeSettings, ...data.lineTypeSettings };
       if (data.exportSettings) state.exportSettings = { ...state.exportSettings, ...data.exportSettings };
@@ -7290,6 +7758,7 @@
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
       maxZoom: state.maxZoom ?? 8,
+      groups: state.groups || [],
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
     };
     const dataSize = JSON.stringify(data).length;
@@ -7352,6 +7821,7 @@
       const backup = {
         counters: state.counters,
         lineTypes: state.lineTypes,
+        groups: state.groups || [],
         counterSettings: state.counterSettings,
         lineTypeSettings: state.lineTypeSettings,
         exportSettings: state.exportSettings,
@@ -7503,6 +7973,7 @@
     }
     state.counters = Array.isArray(d.counters) ? d.counters : [];
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+    state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
     (d.pages || []).forEach(p => {
@@ -7574,6 +8045,7 @@
                 }
                 state.counters = Array.isArray(d.counters) ? d.counters : [];
                 state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+                state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
                 if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
                 (d.pages || []).forEach(p => {
@@ -7593,6 +8065,7 @@
                     if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
                       if (Array.isArray(backup.counters)) state.counters = backup.counters;
                       if (Array.isArray(backup.lineTypes)) state.lineTypes = backup.lineTypes;
+                      if (Array.isArray(backup.groups)) state.groups = ensureGroupColors(backup.groups);
                       if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
                       if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
                       (backup.pageAnnotations || []).forEach((ann, i) => {

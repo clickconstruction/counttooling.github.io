@@ -3748,7 +3748,8 @@
         state.isAdmin = !!profile?.is_admin;
         if (!state.currentProjectId && state.pages.length === 0) {
           const airboard = await fetchUserAirboard();
-          if (airboard && (airboard.counters?.length || airboard.lineTypes?.length)) {
+          if (airboard && (airboard.counters?.length || airboard.lineTypes?.length) &&
+              !state.currentProjectId && state.pages.length === 0) {
             state.counters = airboard.counters;
             state.lineTypes = airboard.lineTypes;
             state.iconNames = airboard.iconNames || {};

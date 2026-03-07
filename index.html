@@ -5473,6 +5473,7 @@
     }
     async function doTurnIn() {
       if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
+      writeTakeoffStateBackup();
       if (autoSaveDirty) {
         const saveResult = await performAutoSave();
         if (!saveResult.ok) return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
@@ -7249,16 +7250,40 @@
     }
   }
 
-  setInterval(() => {
-    if (state.pages.length || state.counters.length || state.lineTypes.length) localStorage.setItem('takeoff-state', JSON.stringify({ counters: state.counters, lineTypes: state.lineTypes, counterSettings: state.counterSettings, lineTypeSettings: state.lineTypeSettings, exportSettings: state.exportSettings, recentLineColors: state.recentLineColors, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pageAnnotations: state.pages.map(p => p.annotations), pageScales: state.pages.map(p => p.scale), pageRotations: state.pages.map(p => p.rotation ?? 0) }));
-  }, 5000);
+  function writeTakeoffStateBackup() {
+    if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    try {
+      const backup = {
+        counters: state.counters,
+        lineTypes: state.lineTypes,
+        counterSettings: state.counterSettings,
+        lineTypeSettings: state.lineTypeSettings,
+        exportSettings: state.exportSettings,
+        recentLineColors: state.recentLineColors,
+        iconNames: state.iconNames || {},
+        iconOrder: state.iconOrder || null,
+        pageAnnotations: state.pages.map(p => p.annotations),
+        pageScales: state.pages.map(p => p.scale),
+        pageRotations: state.pages.map(p => p.rotation ?? 0)
+      };
+      if (state.currentProjectId) {
+        backup.projectId = state.currentProjectId;
+        backup.lastModifiedAt = lastModifiedAt || Date.now();
+      }
+      localStorage.setItem('takeoff-state', JSON.stringify(backup));
+    } catch (_) {}
+  }
+  setInterval(() => { writeTakeoffStateBackup(); }, 5000);
 
   setInterval(async () => {
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
     if (!autoSaveDirty) return;
     autoSaveDirty = false;
     const result = await performAutoSave();
-    if (!result.ok && result.error) window.lastSaveError = result.error;
+    if (!result.ok) {
+      autoSaveDirty = true;
+      if (result.error) window.lastSaveError = result.error;
+    }
   }, AUTO_SAVE_INTERVAL_MS);
 
   window.state = state;
@@ -7462,6 +7487,24 @@
                     page.rotation = p.rotation ?? 0;
                   }
                 });
+                try {
+                  const backupRaw = localStorage.getItem('takeoff-state');
+                  if (backupRaw) {
+                    const backup = JSON.parse(backupRaw);
+                    const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
+                    if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
+                      if (Array.isArray(backup.counters)) state.counters = backup.counters;
+                      if (Array.isArray(backup.lineTypes)) state.lineTypes = backup.lineTypes;
+                      if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
+                      if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
+                      (backup.pageAnnotations || []).forEach((ann, i) => {
+                        if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
+                      });
+                      if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
+                      if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
+                    }
+                  }
+                } catch (_) {}
                 reconcileOrphanedCountersAndLineTypes();
                 state.currentProjectId = proj.id;
                 state.currentProjectName = proj.name || 'Untitled';

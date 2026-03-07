@@ -89,7 +89,12 @@
     .sidebar-tool-buttons #polylineBtnSidebar { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; }
     .sidebar-tool-buttons #doneEditingSidebar { flex: 1 1 100%; }
     .sidebar-header-buttons #setScaleSidebar.scale-set { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
-    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-value { font-size: 0.7rem; font-family: 'DM Mono', monospace; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-value,
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-label,
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-px { display: block; font-family: 'DM Mono', monospace; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-value { font-size: 0.7rem; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-label { font-size: 0.8rem; }
+    .sidebar-header-buttons #setScaleSidebar.scale-set .scale-px { font-size: 0.65rem; color: var(--text2); }
     .quick-line-mobile { display: none; }
     .quick-line-desktop { display: inline; }
     @media (max-width: 768px) { .quick-line-desktop { display: none; } .quick-line-mobile { display: inline; } }
@@ -153,8 +158,13 @@
     #pagesSectionTitle:hover, #countersSectionTitle:hover, #lineTypesSectionTitle:hover, #linesSectionTitle:hover, #summarySectionTitle:hover, #exportOptionsSectionTitle:hover { color: var(--accent); }
     .sidebar-section h3.section-settings { cursor: pointer; padding: 2px 0; }
     .sidebar-section h3.section-settings:hover { color: var(--text2); }
-    .sidebar-scale-display { font-size: 0.85rem; font-family: 'DM Mono', monospace; color: var(--text2); }
+    .sidebar-scale-display { font-size: 0.85rem; font-family: 'DM Mono', monospace; color: var(--text2); text-align: center; }
     .sidebar-scale-display.has-scale { color: var(--accent); }
+    .sidebar-scale-display .scale-label { font-size: 0.9rem; display: block; }
+    .sidebar-scale-display .scale-px { font-size: 0.75rem; color: var(--text2); display: block; }
+    .sidebar-tooling-links { display: flex; gap: 12px; margin-top: 6px; margin-bottom: 4px; font-size: 0.75rem; }
+    .sidebar-tooling-links a { color: var(--text2); text-decoration: none; }
+    .sidebar-tooling-links a:hover { color: var(--accent); text-decoration: underline; }
     @media (max-width: 768px) { .scale-display-desktop { display: none; } }
     #pagesSection.collapsed #pagesList { display: none; }
     #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter { display: none; }
@@ -197,7 +207,7 @@
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; }
     .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
-    .zoom-bar .zoom-pct { font-family: 'DM Mono', monospace; min-width: 48px; text-align: center; font-size: 0.85rem; }
+    .zoom-bar .zoom-pct { font-family: 'DM Mono', monospace; min-width: 48px; text-align: center; font-size: 0.85rem; cursor: pointer; }
     .page-nav { display: flex; align-items: center; gap: 8px; padding: 8px; }
     .page-nav-inner { display: flex; align-items: center; gap: 8px; }
     .page-nav button { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; }
@@ -540,6 +550,10 @@
           <button id="exportPdf" class="sidebar-btn">Combined PDF</button>
           <button id="specificPages" class="sidebar-btn">Specific Pages</button>
           <button id="forPipeTooling" class="sidebar-btn">Copy to /Tooling</button>
+          <div class="sidebar-tooling-links">
+            <a href="http://pipetooling.com/bids?tab=counts" target="_blank" rel="noopener noreferrer">PipeTooling</a>
+            <a href="https://takeofftooling.com/" target="_blank" rel="noopener noreferrer">TakeoffTooling</a>
+          </div>
           <button id="copySummaryText" class="sidebar-btn">Copy Summary (Email/Text)</button>
           <button id="bundleHighlights" class="sidebar-btn">Show Highlights</button>
           <button id="bundleNotes" class="sidebar-btn">Show Notes</button>
@@ -567,7 +581,7 @@
           </div>
           <div class="zoom-bar">
             <button id="zoomOut">−</button>
-            <span class="zoom-pct" id="zoomPct">100%</span>
+            <span class="zoom-pct" id="zoomPct" title="Click to adjust zoom settings">100%</span>
             <button id="zoomIn">+</button>
             <button id="zoomFit" title="Fit">⊡</button>
             <button id="rotatePage" title="Rotate 90° right">↻</button>
@@ -757,6 +771,22 @@
       </div>
       <div class="actions">
         <button id="counterSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="zoomModal">
+    <div class="modal-card">
+      <h2>Zoom Settings</h2>
+      <div class="form-group">
+        <label>Maximum zoom for this project: <span id="zoomMaxVal">800</span>%</label>
+        <input type="range" id="zoomMax" min="100" max="800" value="800" step="50">
+      </div>
+      <div class="form-group">
+        <label>Mousewheel zoom speed (all projects): <span id="zoomSpeedVal">1.0</span>x</label>
+        <input type="range" id="zoomSpeed" min="50" max="200" value="100" step="10">
+      </div>
+      <div class="actions">
+        <button id="zoomModalClose">Done</button>
       </div>
     </div>
   </div>
@@ -1914,7 +1944,8 @@
     checkedOutEmail: null,
     isViewer: false,
     canCheckOut: false,
-    projectOwnerId: null
+    projectOwnerId: null,
+    maxZoom: null
   };
 
   let autoSaveDirty = false;
@@ -2824,6 +2855,15 @@
     });
   }
 
+  function getMaxZoom() { return state.maxZoom ?? 8; }
+  function getWheelZoomSpeed() {
+    try {
+      const s = localStorage.getItem('zoomSettings');
+      if (s) { const j = JSON.parse(s); return (j && typeof j.wheelZoomSpeed === 'number') ? j.wheelZoomSpeed : 1; }
+    } catch (_) {}
+    return 1;
+  }
+
   function getPageSize() {
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) return { w: 0, h: 0 };
@@ -2839,7 +2879,7 @@
     const r = wrap.getBoundingClientRect();
     const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
     const scaleX = r.width / vp.width, scaleY = r.height / vp.height;
-    state.zoom = Math.max(0.2, Math.min(8, Math.min(scaleX, scaleY)));
+    state.zoom = Math.max(0.2, Math.min(getMaxZoom(), Math.min(scaleX, scaleY)));
     state.pan = { x: 0, y: 0 };
     renderPdf();
     updateUI();
@@ -2866,10 +2906,18 @@
     const scaleIconSvgHeader = scaleIconSvg.replace('width="18" height="18"', 'width="20" height="20"');
     const setScaleContent = (btn) => {
       const isHeader = btn.id === 'setScale';
+      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       if (scale) {
         btn.classList.add('scale-set');
         if (isHeader) btn.classList.remove('scale-unset');
-        btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Scale<br><span class="scale-value">1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + '</span>';
+        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px';
+        if (isHeader) {
+          btn.innerHTML = scaleIconSvgHeader;
+        } else if (scale.label) {
+          btn.innerHTML = scaleIconSvg + ' Scale<br><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span>';
+        } else {
+          btn.innerHTML = scaleIconSvg + ' Scale<br><span class="scale-value">' + esc(pxLine) + '</span>';
+        }
       } else {
         btn.classList.remove('scale-set');
         if (isHeader) btn.classList.add('scale-unset');
@@ -2881,10 +2929,25 @@
     const scaleDisplay = document.getElementById('sidebarScaleDisplay');
     if (scaleDisplay) {
       if (scale) {
-        scaleDisplay.textContent = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1);
+        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px';
+        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        if (scale.label) {
+          scaleDisplay.innerHTML = '<span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span>';
+          scaleDisplay.style.display = 'flex';
+          scaleDisplay.style.flexDirection = 'column';
+          scaleDisplay.style.gap = '2px';
+        } else {
+          scaleDisplay.textContent = pxLine;
+          scaleDisplay.style.display = '';
+          scaleDisplay.style.flexDirection = '';
+          scaleDisplay.style.gap = '';
+        }
         scaleDisplay.classList.add('has-scale');
       } else {
         scaleDisplay.textContent = '—';
+        scaleDisplay.style.display = '';
+        scaleDisplay.style.flexDirection = '';
+        scaleDisplay.style.gap = '';
         scaleDisplay.classList.remove('has-scale');
       }
     }
@@ -3895,6 +3958,7 @@
         } else if (d.scale) {
           state.pages.forEach(p => { p.scale = d.scale; });
         }
+        state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         state.pendingCanvasLoad = null;
@@ -3945,6 +4009,7 @@
               } else if (d.scale) {
                 state.pages.forEach(p => { p.scale = d.scale; });
               }
+              state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.currentProjectId = full.id;
@@ -4000,7 +4065,7 @@
         btn.onclick = () => {
           pushUndoSnapshot();
           const page = state.pages[state.currentPage];
-          if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit };
+          if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
           markProjectDirty();
           hideModal('scaleModal');
           updateUI();
@@ -4159,7 +4224,7 @@
     if (!val || !state.scalePointA || !state.scalePointB) return;
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    if (page) page.scale = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit };
+    if (page) page.scale = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit, label: null };
     markProjectDirty();
     state.tool = TOOL.NONE;
     state.scaleMode = SCALE_MODES.NONE;
@@ -4335,6 +4400,30 @@
     showModal('lineTypeSettingsModal');
   };
   document.getElementById('counterSettingsClose').onclick = () => hideModal('counterSettingsModal');
+  function showZoomModal() {
+    const maxVal = Math.round((state.maxZoom ?? 8) * 100);
+    document.getElementById('zoomMax').value = maxVal;
+    document.getElementById('zoomMaxVal').textContent = maxVal;
+    const speed = getWheelZoomSpeed();
+    const speedPct = Math.round(speed * 100);
+    document.getElementById('zoomSpeed').value = speedPct;
+    document.getElementById('zoomSpeedVal').textContent = speed.toFixed(1);
+    showModal('zoomModal');
+  }
+  document.getElementById('zoomModalClose').onclick = () => {
+    const maxPct = parseInt(document.getElementById('zoomMax').value, 10);
+    state.maxZoom = maxPct / 100;
+    const speedPct = parseInt(document.getElementById('zoomSpeed').value, 10);
+    const speed = speedPct / 100;
+    try { localStorage.setItem('zoomSettings', JSON.stringify({ wheelZoomSpeed: speed })); } catch (_) {}
+    document.getElementById('zoomSpeedVal').textContent = speed.toFixed(1);
+    if (state.zoom > getMaxZoom()) { state.zoom = getMaxZoom(); renderPdf(); }
+    markProjectDirty();
+    hideModal('zoomModal');
+    updateUI();
+  };
+  document.getElementById('zoomMax').oninput = () => { document.getElementById('zoomMaxVal').textContent = document.getElementById('zoomMax').value; };
+  document.getElementById('zoomSpeed').oninput = () => { document.getElementById('zoomSpeedVal').textContent = (parseInt(document.getElementById('zoomSpeed').value, 10) / 100).toFixed(1); };
   document.getElementById('counterSize').oninput = () => {
     state.counterSettings.size = parseInt(document.getElementById('counterSize').value, 10);
     document.getElementById('counterSizeVal').textContent = state.counterSettings.size;
@@ -4404,9 +4493,10 @@
   }
 
   document.getElementById('zoomOut').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); };
-  document.getElementById('zoomIn').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(8, state.zoom + 0.1); renderPdf(); updateUI(); };
+  document.getElementById('zoomIn').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); updateUI(); };
   document.getElementById('rotatePage').onclick = () => rotatePage90();
   document.getElementById('zoomFit').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } fitZoom(); };
+  document.getElementById('zoomPct').onclick = () => { if (state.pages.length) showZoomModal(); };
   document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } };
   document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } };
   document.getElementById('prevMarkedPage').onclick = () => {
@@ -4421,7 +4511,7 @@
   };
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, maxZoom: state.maxZoom ?? 8, pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -4963,6 +5053,7 @@
             page.rotation = p.rotation ?? 0;
           }
         });
+        if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         updateUI();
@@ -5956,6 +6047,7 @@
                 } else if (d.scale) {
                   state.pages.forEach(p => { p.scale = d.scale; });
                 }
+                state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
                 reconcileOrphanedCountersAndLineTypes();
                 clearUndoStacks();
                 state.pdfStoragePath = proj.pdf_path;
@@ -5990,6 +6082,7 @@
               } else if (d.scale) {
                 state.pages.forEach(p => { p.scale = d.scale; });
               }
+              state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.pdfStoragePath = proj.pdf_path;
@@ -6077,6 +6170,7 @@
       state.lastSavedAt = null;
       lastSaveIncludedPdf = false;
       state.pendingCanvasLoad = null;
+      state.maxZoom = null;
       state.checkedOutBy = null;
       state.checkedOutAt = null;
       state.checkedOutEmail = null;
@@ -6273,6 +6367,7 @@
         lineTypes: state.lineTypes,
         iconNames: state.iconNames || {},
         iconOrder: state.iconOrder || null,
+        maxZoom: state.maxZoom ?? 8,
         pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
       };
       const dataJson = JSON.stringify(data);
@@ -6916,8 +7011,8 @@
         const delta = wheelZoomAccum;
         wheelZoomAccum = 0;
         if (delta === 0 || !wheelZoomCursor) return;
-        const factor = 1 - delta * 0.001;
-        const newZoom = Math.max(0.2, Math.min(8, state.zoom * factor));
+        const factor = 1 - delta * 0.001 * getWheelZoomSpeed();
+        const newZoom = Math.max(0.2, Math.min(getMaxZoom(), state.zoom * factor));
         if (newZoom === state.zoom) return;
         const pt = wheelZoomCursor;
         const pdfX = (pt.x - state.pan.x) / state.zoom;
@@ -6954,7 +7049,7 @@
       e.preventDefault();
       const d = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       const scale = d / state.pinchStartDistance;
-      state.zoom = Math.max(0.2, Math.min(8, state.pinchStartZoom * scale));
+      state.zoom = Math.max(0.2, Math.min(getMaxZoom(), state.pinchStartZoom * scale));
       renderPdf();
       updateUI();
     } else if (e.touches.length === 1 && state.touchPanStart) {
@@ -7194,6 +7289,7 @@
       lineTypes: state.lineTypes,
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
+      maxZoom: state.maxZoom ?? 8,
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
     };
     const dataSize = JSON.stringify(data).length;
@@ -7417,6 +7513,7 @@
         page.rotation = p.rotation ?? 0;
       }
     });
+    state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;
     state.currentProjectName = projectData.name || 'Untitled';
@@ -7487,6 +7584,7 @@
                     page.rotation = p.rotation ?? 0;
                   }
                 });
+                state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
                 try {
                   const backupRaw = localStorage.getItem('takeoff-state');
                   if (backupRaw) {

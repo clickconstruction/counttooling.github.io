@@ -3820,7 +3820,10 @@
   }
 
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
-  function hideModal(id) { document.getElementById(id).classList.remove('visible'); }
+  function hideModal(id) {
+    if (id === 'groupModal') openedGroupModalFromAssign = false;
+    document.getElementById(id).classList.remove('visible');
+  }
 
   let pendingDeleteCounterLineType = null;
   function openCounterLineTypeDetailsModal(kind, item) {
@@ -4638,6 +4641,7 @@
   };
   document.getElementById('groupModalDelete').onclick = () => {
     if (pendingGroupEdit && deleteGroup(pendingGroupEdit.id)) {
+      if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
       pendingGroupEdit = null;
       hideModal('groupModal');
       updateUI();

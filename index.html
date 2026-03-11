@@ -182,7 +182,11 @@
     #pagesSection.collapsed #pagesList { display: none; }
     #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter { display: none; }
     #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType { display: none; }
+    #lineTypesSection.collapsed #linesSection { display: none; }
     #linesSection.collapsed #linesList { display: none; }
+    #linesSection.collapsed { border-bottom: none; padding-bottom: 0; }
+    .sidebar-subsection { margin-top: 8px; margin-left: 8px; }
+    #showGroupColorsLabel { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 8px; }
     #groupsSection.collapsed #groupsList, #groupsSection.collapsed #addGroup, #groupsSection.collapsed #showGroupColorsLabel { display: none; }
     #summarySection.collapsed #summaryList { display: none; }
     .collapse-icon { font-size: 0.65rem; margin-left: 4px; opacity: 0.7; }
@@ -572,6 +576,10 @@
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
           </div>
           <div id="lineTypesList"></div>
+          <div class="sidebar-section collapsed sidebar-subsection" id="linesSection">
+            <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
+            <div id="linesList"></div>
+          </div>
         </div>
         <div class="sidebar-section" id="groupsSection">
           <div class="sidebar-section-header-row">
@@ -579,14 +587,10 @@
             <button id="addGroup" class="sidebar-btn-inline" title="Add group">+ Add</button>
           </div>
           <div id="groupsList"></div>
-          <label id="showGroupColorsLabel" class="form-group" style="margin-top:8px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <label id="showGroupColorsLabel" class="form-group">
             <input type="checkbox" id="showGroupColorsCheckbox">
             <span style="color:var(--text2);">Show group colors</span>
           </label>
-        </div>
-        <div class="sidebar-section collapsed" id="linesSection">
-          <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
-          <div id="linesList"></div>
         </div>
         <div class="sidebar-section" id="summarySection">
           <h3 id="summarySectionTitle" class="section-settings" title="Click to collapse">Summary <span class="collapse-icon" id="summaryCollapseIcon">▼</span></h3>
@@ -1057,6 +1061,10 @@
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="counterLineTypeDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group" id="counterLineTypeDetailsIconGroup" style="display:none;">
+        <label>Icon</label>
+        <div class="icon-grid" id="counterLineTypeDetailsIconGrid"></div>
       </div>
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
@@ -2691,11 +2699,11 @@
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'highlight', index: i };
     }
-    const rot = (page.rotation ?? 0) * Math.PI / 180;
-    const cosR = Math.cos(rot), sinR = Math.sin(rot);
-    const localToViewport = (note, lx, ly) => ({ x: note.x + cosR * lx - sinR * ly, y: note.y + sinR * lx + cosR * ly });
     for (let i = 0; i < (ann.notes || []).length; i++) {
       const n = ann.notes[i];
+      const noteRot = getNoteRotationRad(n, page);
+      const cosR = Math.cos(noteRot), sinR = Math.sin(noteRot);
+      const localToViewport = (note, lx, ly) => ({ x: note.x + cosR * lx - sinR * ly, y: note.y + sinR * lx + cosR * ly });
       const w = n.width || 150;
       const fontSizeHandle = localToViewport(n, -8, 8);
       const widthHandle = localToViewport(n, w, 8);
@@ -2711,6 +2719,14 @@
       if (lx >= 0 && lx <= w && ly >= 0 && ly <= heightPdf) return { type: 'note', index: i };
     }
     return null;
+  }
+
+  function getNoteRotationRad(n, page) {
+    if (n.placementRotation == null) n.placementRotation = page.rotation ?? 0;
+    let diff = (n.placementRotation - (page.rotation ?? 0)) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return -diff * Math.PI / 180;
   }
 
   function renderIconHtml(iconValue, color) {
@@ -2965,7 +2981,7 @@
       const lineHeight = fontSize * scale;
       const { lines } = wrapNoteText(n.text, w * scale, font, lineHeight);
       const p = toCanvas({ x: n.x, y: n.y });
-      const rot = (page.rotation ?? 0) * Math.PI / 180;
+      const rot = getNoteRotationRad(n, page);
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(rot);
@@ -3166,7 +3182,7 @@
       const lh = fontSize * scale;
       const { lines } = wrapNoteText(n.text, maxW, font, lh);
       const p = tc({ x: n.x, y: n.y });
-      const rot = (page.rotation ?? 0) * Math.PI / 180;
+      const rot = getNoteRotationRad(n, page);
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(rot);
@@ -4108,6 +4124,28 @@
         const curveVal = item.curveStyle || 'straight';
         document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => { r.checked = r.value === curveVal; });
       }
+    }
+    const iconGroup = document.getElementById('counterLineTypeDetailsIconGroup');
+    if (iconGroup) iconGroup.style.display = kind === 'counter' ? '' : 'none';
+    if (kind === 'counter' && iconGroup) {
+      const grid = document.getElementById('counterLineTypeDetailsIconGrid');
+      const icons = getOrderedIcons();
+      const currentIcon = item.icon && icons.some(ic => ic.value === item.icon) ? item.icon : (icons[0]?.value || '');
+      grid.innerHTML = icons.map((ic) => {
+        const sel = ic.value === currentIcon ? ' selected' : '';
+        return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
+      }).join('');
+      grid.querySelectorAll('.icon-cell').forEach(c => {
+        c.onclick = () => {
+          grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+          c.classList.add('selected');
+          pushUndoSnapshot();
+          item.icon = c.dataset.path;
+          markProjectDirty();
+          updateUI();
+          renderPdf();
+        };
+      });
     }
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
@@ -5828,7 +5866,7 @@
         const page = state.pages[state.currentPage];
         if (page && page.annotations) {
           if (!page.annotations.notes) page.annotations.notes = [];
-          page.annotations.notes.push({ x: state.pendingNote.x, y: state.pendingNote.y, text, id: uid(), width: 150, fontSize: 14 });
+          page.annotations.notes.push({ x: state.pendingNote.x, y: state.pendingNote.y, text, id: uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0 });
         }
       }
       state.pendingNote = null;
@@ -7681,7 +7719,7 @@
         state.resizingNoteFontSizeIdx = t.index;
         state.resizingNoteFontSizePageIdx = state.currentPage;
         state.resizingNoteFontSizeStartY = state.mousePos.y;
-        const rot = (page.rotation ?? 0) * Math.PI / 180;
+        const rot = getNoteRotationRad(note, page);
         state.resizingNoteFontSizeStartLocalY = -Math.sin(rot) * (state.mousePos.x - note.x) + Math.cos(rot) * (state.mousePos.y - note.y);
         state.resizingNoteFontSizeStartVal = note.fontSize || 14;
       }
@@ -7720,7 +7758,7 @@
       const page = state.pages[state.resizingNotePageIdx];
       const note = page?.annotations?.notes?.[state.resizingNoteIdx];
       if (note) {
-        const rot = (page.rotation ?? 0) * Math.PI / 180;
+        const rot = getNoteRotationRad(note, page);
         const localX = Math.cos(rot) * (pdf.x - note.x) + Math.sin(rot) * (pdf.y - note.y);
         note.width = Math.max(50, Math.min(400, localX));
         renderAnnotations();
@@ -7729,7 +7767,7 @@
       const page = state.pages[state.resizingNoteFontSizePageIdx];
       const note = page?.annotations?.notes?.[state.resizingNoteFontSizeIdx];
       if (note) {
-        const rot = (page.rotation ?? 0) * Math.PI / 180;
+        const rot = getNoteRotationRad(note, page);
         const currentLocalY = -Math.sin(rot) * (pdf.x - note.x) + Math.cos(rot) * (pdf.y - note.y);
         const dy = state.resizingNoteFontSizeStartLocalY - currentLocalY;
         note.fontSize = Math.round(Math.max(8, Math.min(48, state.resizingNoteFontSizeStartVal + dy / 3)));

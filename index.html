@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CountTooling — PDF Takeoff Tool</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -4676,8 +4677,9 @@
         return;
       }
       const buf = await f.arrayBuffer();
-      if (!firstBuf) firstBuf = buf;
-      if (SUPABASE_ENABLED && state.supabaseSession?.user) buffersForMerge.push(buf);
+      const bufCopy = buf.slice(0);
+      if (!firstBuf) firstBuf = bufCopy;
+      if (SUPABASE_ENABLED && state.supabaseSession?.user) buffersForMerge.push(bufCopy);
       const pdf = await pdfjsLib.getDocument(buf).promise;
       const numPages = pdf.numPages;
       for (let i = 0; i < numPages; i++) {
@@ -4734,8 +4736,10 @@
       state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
     }
     state.currentPage = startPageIdx;
-    fitZoom();
     updateUI();
+    requestAnimationFrame(() => {
+      fitZoom();
+    });
     e.target.value = '';
 
     const hashBufForMatch = state.pdfBuffer || firstBuf;
@@ -4786,6 +4790,7 @@
             hideModal('loadAnnotationsModal');
             fitZoom();
             updateUI();
+            renderPdf();
           };
           listEl.appendChild(div);
         });
@@ -7626,7 +7631,10 @@
         cancelBtn.disabled = false;
       }
     };
-    document.getElementById('loadAnnotationsSkip').onclick = () => hideModal('loadAnnotationsModal');
+    document.getElementById('loadAnnotationsSkip').onclick = () => {
+      hideModal('loadAnnotationsModal');
+      renderPdf();
+    };
     document.getElementById('lastSessionRestoreKeep').onclick = async () => {
       const p = pendingLastSessionRestore;
       if (!p) { hideModal('lastSessionRestoreModal'); return; }

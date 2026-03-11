@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <script src="config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -4648,13 +4649,26 @@
     const s = String(name).replace(/\.pdf$/i, '').trim();
     return s || 'Untitled';
   }
+  async function mergePdfBuffers(buffers) {
+    if (!buffers.length) return null;
+    if (buffers.length === 1) return buffers[0].slice(0);
+    if (typeof PDFLib === 'undefined') return buffers[0].slice(0);
+    const merged = await PDFLib.PDFDocument.create();
+    for (const buf of buffers) {
+      const doc = await PDFLib.PDFDocument.load(buf);
+      const indices = doc.getPageIndices();
+      const copied = await merged.copyPages(doc, indices);
+      copied.forEach(p => merged.addPage(p));
+    }
+    return await merged.save();
+  }
   document.getElementById('pdfInput').onchange = async (e) => {
     const files = e.target.files;
     if (!files?.length) return;
-    const useFirstOnly = SUPABASE_ENABLED && state.supabaseSession?.user;
-    const filesToProcess = useFirstOnly ? [files[0]] : Array.from(files);
+    const filesToProcess = Array.from(files);
     const startPageIdx = state.pages.length;
     let firstBuf = null;
+    const buffersForMerge = [];
     for (const f of filesToProcess) {
       if (SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
         alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
@@ -4663,10 +4677,7 @@
       }
       const buf = await f.arrayBuffer();
       if (!firstBuf) firstBuf = buf;
-      if (useFirstOnly) {
-        state.pdfBuffer = buf.slice(0);
-        state.pdfStoragePath = null;
-      }
+      if (SUPABASE_ENABLED && state.supabaseSession?.user) buffersForMerge.push(buf);
       const pdf = await pdfjsLib.getDocument(buf).promise;
       const numPages = pdf.numPages;
       for (let i = 0; i < numPages; i++) {
@@ -4675,9 +4686,14 @@
         state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
       }
     }
+    if (SUPABASE_ENABLED && state.supabaseSession?.user && buffersForMerge.length > 0) {
+      state.pdfBuffer = await mergePdfBuffers(buffersForMerge);
+      state.pdfStoragePath = null;
+    }
     if (state.pendingCanvasLoad && firstBuf) {
       const d = state.pendingCanvasLoad.data;
-      const uploadHash = await sha256Hex(firstBuf);
+      const hashBuf = state.pdfBuffer || firstBuf;
+      const uploadHash = await sha256Hex(hashBuf);
       const hashMatches = !state.pendingCanvasLoad.pdf_hash || state.pendingCanvasLoad.pdf_hash === uploadHash;
       if (!hashMatches && !confirm('This PDF doesn\'t match the project. Annotations may not align. Load anyway?')) {
         state.pendingCanvasLoad = null;
@@ -4722,8 +4738,9 @@
     updateUI();
     e.target.value = '';
 
-    if (!state.pendingCanvasLoad && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && firstBuf) {
-      const uploadHash = await sha256Hex(firstBuf);
+    const hashBufForMatch = state.pdfBuffer || firstBuf;
+    if (!state.pendingCanvasLoad && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && hashBufForMatch) {
+      const uploadHash = await sha256Hex(hashBufForMatch);
       const user = state.supabaseSession.user;
       const { data: matches } = await supabase.from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
       if (matches && matches.length > 0) {

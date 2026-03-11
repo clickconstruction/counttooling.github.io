@@ -196,6 +196,12 @@
     .sidebar-item .swatch { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
     .sidebar-item .icon-svg { width: 20px; height: 20px; flex-shrink: 0; }
     .sidebar-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    #pagesList.pages-titles-truncated .sidebar-item { min-height: 60px; align-items: flex-start; }
+    #pagesList.pages-titles-truncated .sidebar-item .badge { align-self: flex-start; margin-top: 2px; }
+    #pagesList.pages-titles-truncated .sidebar-item .name { display: flex; flex-direction: column; gap: 2px; overflow: hidden; min-height: 2.6em; }
+    #pagesList.pages-titles-truncated .sidebar-item .name .name-line { display: block; overflow: hidden; white-space: nowrap; line-height: 1.25; }
+    #pagesList.pages-titles-truncated .sidebar-item .name .name-line-start { text-overflow: ellipsis; }
+    #pagesList.pages-titles-truncated .sidebar-item .name .name-line-end { text-overflow: clip; }
     .sidebar-item .badge { background: var(--surface3); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-family: 'DM Mono', monospace; }
     .sidebar-item .badge.badge-scale-set { color: var(--accent); }
     .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
@@ -272,6 +278,22 @@
     #groupAssignAddGroup:hover { background: var(--surface2); }
     .modal-card .form-group { margin-bottom: 16px; }
     .modal-card .form-group-center { text-align: center; }
+    .save-contents-label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text2); }
+    .save-contents-list { background: var(--surface2); border-radius: 6px; overflow: hidden; font-size: 1rem; }
+    .save-contents-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; }
+    .save-contents-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+    .save-contents-name { font-size: 1rem; font-weight: inherit; color: var(--text); }
+    .save-contents-fixed { cursor: default; }
+    .save-contents-toggle { display: flex; align-items: center; gap: 8px; margin: 0; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; padding: 0; border: none; border-radius: 11px; background: var(--surface3); cursor: pointer; flex-shrink: 0; transition: background 0.2s ease; }
+    .toggle-switch[aria-pressed="true"] { background: var(--accent); }
+    .toggle-switch:hover { opacity: 0.9; }
+    .toggle-switch-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s ease; }
+    .toggle-switch[aria-pressed="true"] .toggle-switch-knob { transform: translateX(18px); }
+    .toggle-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+    .save-contents-badge { font-size: 0.75rem; color: var(--text3); }
+    .save-contents-toggle.save-contents-omitted .save-contents-name { color: var(--text3); }
+    .save-contents-no-pdf { font-size: 0.9rem; color: var(--text2); margin: 0; }
     .modal-card label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: var(--text2); }
     .modal-card input, .modal-card select { width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 1rem; }
     #noteModal .form-group { margin-bottom: 20px; }
@@ -560,7 +582,7 @@
           <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
         </div>
         <div class="sidebar-section" id="pagesSection">
-          <h3 id="pagesSectionTitle" class="section-settings" title="Click to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
+          <h3 id="pagesSectionTitle" class="section-settings" title="Click to toggle compact titles; click arrow to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
           <div id="pagesList"></div>
         </div>
         <div class="sidebar-section" id="countersSection">
@@ -587,10 +609,13 @@
             <button id="addGroup" class="sidebar-btn-inline" title="Add group">+ Add</button>
           </div>
           <div id="groupsList"></div>
-          <label id="showGroupColorsLabel" class="form-group">
-            <input type="checkbox" id="showGroupColorsCheckbox">
+          <div id="showGroupColorsLabel" class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
             <span style="color:var(--text2);">Show group colors</span>
-          </label>
+            <button type="button" class="toggle-switch" id="showGroupColorsBtn" aria-pressed="false" title="Show group colors">
+              <span class="toggle-switch-knob"></span>
+            </button>
+            <input type="checkbox" id="showGroupColorsCheckbox" hidden>
+          </div>
         </div>
         <div class="sidebar-section" id="summarySection">
           <h3 id="summarySectionTitle" class="section-settings" title="Click to collapse">Summary <span class="collapse-icon" id="summaryCollapseIcon">▼</span></h3>
@@ -812,8 +837,12 @@
         <label>Number size: <span id="counterNumberSizeVal">10</span>px</label>
         <input type="range" id="counterNumberSize" min="8" max="32" value="10" step="1">
       </div>
-      <div class="form-group form-group-center">
-        <label><input type="checkbox" id="counterShowRings"> Show ring around counters</label>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Show ring around counters</span>
+        <button type="button" class="toggle-switch" id="counterShowRingsBtn" aria-pressed="false" title="Show ring around counters">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="counterShowRings" hidden>
       </div>
       <div id="counterRingSection">
         <div class="form-group counter-ring-options">
@@ -824,8 +853,12 @@
           <label>Ring opacity: <span id="counterRingOpacityVal">100</span>%</label>
           <input type="range" id="counterRingOpacity" min="20" max="100" value="100" step="5">
         </div>
-        <div class="form-group form-group-center counter-ring-options">
-          <label><input type="checkbox" id="counterRingSolid"> Solid ring</label>
+        <div class="form-group counter-ring-options" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <span>Solid ring</span>
+          <button type="button" class="toggle-switch" id="counterRingSolidBtn" aria-pressed="false" title="Solid ring">
+            <span class="toggle-switch-knob"></span>
+          </button>
+          <input type="checkbox" id="counterRingSolid" hidden>
         </div>
       </div>
       <div class="actions">
@@ -877,11 +910,19 @@
         <label>Line width: <span id="exportLineScaleVal">75</span>%</label>
         <input type="range" id="exportLineScale" min="25" max="150" value="75" step="5">
       </div>
-      <div class="form-group form-group-center">
-        <label><input type="checkbox" id="exportBundleHighlights" checked> Bundle highlights to PDF</label>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Bundle highlights to PDF</span>
+        <button type="button" class="toggle-switch" id="exportBundleHighlightsBtn" aria-pressed="true" title="Bundle highlights to PDF">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="exportBundleHighlights" checked hidden>
       </div>
-      <div class="form-group form-group-center">
-        <label><input type="checkbox" id="exportBundleNotes" checked> Bundle notes to PDF</label>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Bundle notes to PDF</span>
+        <button type="button" class="toggle-switch" id="exportBundleNotesBtn" aria-pressed="true" title="Bundle notes to PDF">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="exportBundleNotes" checked hidden>
       </div>
       <div class="actions">
         <button id="exportPdfCancel">Cancel</button>
@@ -893,14 +934,26 @@
     <div class="modal-card modal-card-large">
       <h2>Specific Pages</h2>
       <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
-      <div class="form-group form-group-center" style="margin-bottom:12px;">
-        <label><input type="checkbox" id="specificPagesIncludeReport" checked> Include takeoff report<span id="specificPagesIncludeReportNone" class="specific-pages-none-msg"></span></label>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <span>Include takeoff report<span id="specificPagesIncludeReportNone" class="specific-pages-none-msg"></span></span>
+        <button type="button" class="toggle-switch" id="specificPagesIncludeReportBtn" aria-pressed="true" title="Include takeoff report">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="specificPagesIncludeReport" checked hidden>
       </div>
-      <div class="form-group form-group-center" style="margin-bottom:12px;">
-        <label><input type="checkbox" id="specificPagesBundleHighlights" checked> Bundle highlights to PDF<span id="specificPagesBundleHighlightsNone" class="specific-pages-none-msg"></span></label>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <span>Bundle highlights to PDF<span id="specificPagesBundleHighlightsNone" class="specific-pages-none-msg"></span></span>
+        <button type="button" class="toggle-switch" id="specificPagesBundleHighlightsBtn" aria-pressed="true" title="Bundle highlights to PDF">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="specificPagesBundleHighlights" checked hidden>
       </div>
-      <div class="form-group form-group-center" style="margin-bottom:12px;">
-        <label><input type="checkbox" id="specificPagesBundleNotes" checked> Bundle notes to PDF<span id="specificPagesBundleNotesNone" class="specific-pages-none-msg"></span></label>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <span>Bundle notes to PDF<span id="specificPagesBundleNotesNone" class="specific-pages-none-msg"></span></span>
+        <button type="button" class="toggle-switch" id="specificPagesBundleNotesBtn" aria-pressed="true" title="Bundle notes to PDF">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="specificPagesBundleNotes" checked hidden>
       </div>
       <div class="specific-pages-bulk-actions">
         <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
@@ -1316,11 +1369,21 @@
         <input type="text" id="saveProjectName" placeholder="Untitled">
       </div>
       <div class="form-group" id="saveProjectWhatWillBeSaved">
-        <p id="saveProjectSaveSummary" style="font-size:0.9rem;color:var(--text2);margin:0 0 8px 0;"></p>
-        <label style="display:none;align-items:center;gap:8px;cursor:pointer;" id="saveProjectIncludePdfLabel">
-          <input type="checkbox" id="saveProjectIncludePdf" checked>
-          <span>Include PDF in this save</span>
-        </label>
+        <label class="save-contents-label" id="saveProjectContentsLabel">Contents</label>
+        <div class="save-contents-list" id="saveProjectContentsList">
+          <div class="save-contents-row save-contents-fixed">
+            <span class="save-contents-name">Canvas</span>
+            <span class="save-contents-badge">included</span>
+          </div>
+          <div class="save-contents-row save-contents-toggle" id="saveProjectIncludePdfLabel">
+            <span class="save-contents-name">PDF (<span id="saveProjectPdfSize">0.00</span> MB)</span>
+            <button type="button" class="toggle-switch" id="saveProjectIncludePdfBtn" aria-pressed="true" title="Include PDF in save">
+              <span class="toggle-switch-knob"></span>
+            </button>
+            <input type="checkbox" id="saveProjectIncludePdf" checked hidden>
+          </div>
+        </div>
+        <p id="saveProjectNoPdfMessage" class="save-contents-no-pdf">Canvas only. Upload a PDF first to include it in saves.</p>
       </div>
       <p id="saveProjectError" class="form-group" style="color:var(--red);display:none;"></p>
       <div id="saveProjectProgress" class="save-project-progress" style="display:none;">
@@ -1403,6 +1466,17 @@
         <button id="saveBeforeLoadCancel">Cancel</button>
         <button id="saveBeforeLoadDiscard">Don't Save</button>
         <button id="saveBeforeLoadSave">Save now</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="saveBeforeTurnInModal">
+    <div class="modal-card">
+      <h2>Save before Turn In</h2>
+      <p style="margin:0 0 24px 0;color:var(--text2);">Your project has a PDF that hasn't been uploaded. Save now to include it, or turn in without the PDF?</p>
+      <div class="actions">
+        <button id="saveBeforeTurnInCancel">Cancel</button>
+        <button id="saveBeforeTurnInWithoutPdf">Turn In without PDF</button>
+        <button id="saveBeforeTurnInSave" class="btn-yellow">Save and Turn In</button>
       </div>
     </div>
   </div>
@@ -1739,6 +1813,7 @@
   const CHECKBOX_SLOT_PATH = 'M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z';
   const CHESSBOARD_PATH = 'M160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96zM224 160L224 224L288 224L288 160L352 160L352 224L416 224L416 160L480 160L480 224L416 224L416 288L480 288L480 352L416 352L416 416L480 416L480 480L416 480L416 416L352 416L352 480L288 480L288 416L224 416L224 480L160 480L160 416L224 416L224 352L160 352L160 288L224 288L224 224L160 224L160 160L224 160zM288 288L352 288L352 224L288 224L288 288zM288 352L288 288L224 288L224 352L288 352zM352 352L288 352L288 416L352 416L352 352zM352 352L416 352L416 288L352 288L352 352z';
   const VB_384_512_PATHS = [RULER_PATH];
+  const COUNTER_BTN_DEFAULT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
 
   const ICONS = [
     { value: WC_PATH, terms: ['water','closet','wc','toilet','bathroom'], name: 'Water Closet' },
@@ -2049,6 +2124,7 @@
     iconNames: {},
     iconOrder: null,
     pagesListCollapsed: false,
+    pagesTitlesTruncated: true,
     countersListCollapsed: false,
     lineTypesListCollapsed: false,
     linesListCollapsed: true,
@@ -2082,6 +2158,7 @@
     activeGroupId: null
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
+  state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
 
   function getGroupColor(groupId) {
     const g = (state.groups || []).find(x => x.id === groupId);
@@ -3369,10 +3446,36 @@
     document.getElementById('highlightBtn').classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
+    const counterBtn = document.getElementById('counterBtn');
+    if (counterBtn) {
+      const counter = state.tool === TOOL.COUNTER && state.activeCounterType
+        ? state.counters.find(c => c.id === state.activeCounterType)
+        : null;
+      if (counter) {
+        counterBtn.innerHTML = '<svg viewBox="' + iconVbFor(counter.icon) + '" width="20" height="20"><path fill="' + (counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + counter.icon + '"/></svg>';
+        counterBtn.title = counter.name || 'Counter';
+      } else {
+        counterBtn.innerHTML = COUNTER_BTN_DEFAULT_SVG;
+        counterBtn.title = 'Counter';
+      }
+    }
     const moveBtnSidebar = document.getElementById('moveBtnSidebar');
     const counterBtnSidebar = document.getElementById('counterBtnSidebar');
     const quickLineSidebar = document.getElementById('quickLineSidebar');
     const polylineBtnSidebar = document.getElementById('polylineBtnSidebar');
+    if (counterBtnSidebar) {
+      const counter = state.tool === TOOL.COUNTER && state.activeCounterType
+        ? state.counters.find(c => c.id === state.activeCounterType)
+        : null;
+      const svgEl = counterBtnSidebar.querySelector('svg');
+      if (counter && svgEl) {
+        svgEl.outerHTML = '<svg viewBox="' + iconVbFor(counter.icon) + '" width="18" height="18"><path fill="' + (counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + counter.icon + '"/></svg>';
+        counterBtnSidebar.title = counter.name || 'Counter';
+      } else if (svgEl) {
+        svgEl.outerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
+        counterBtnSidebar.title = 'Counter';
+      }
+    }
     if (moveBtnSidebar) moveBtnSidebar.classList.toggle('active', state.tool === TOOL.NONE);
     if (counterBtnSidebar) counterBtnSidebar.classList.toggle('active', state.tool === TOOL.COUNTER);
     if (quickLineSidebar) quickLineSidebar.classList.toggle('active', state.tool === TOOL.LINE);
@@ -3425,14 +3528,8 @@
       }
     }
     if (activeCounterEl) {
-      const counter = state.tool === TOOL.COUNTER && state.activeCounterType ? state.counters.find(c => c.id === state.activeCounterType) : null;
-      if (counter) {
-        activeCounterEl.innerHTML = '<span class="header-type-icon"><svg viewBox="' + iconVbFor(counter.icon) + '" width="18" height="18"><path fill="' + (counter.color || '#e8c547') + '" d="' + counter.icon + '"/></svg></span>';
-        activeCounterEl.classList.add('visible');
-      } else {
-        activeCounterEl.innerHTML = '';
-        activeCounterEl.classList.remove('visible');
-      }
+      activeCounterEl.innerHTML = '';
+      activeCounterEl.classList.remove('visible');
     }
     if (SUPABASE_ENABLED) {
       const authBtn = document.getElementById('authBtn');
@@ -3581,16 +3678,36 @@
     updateStatus();
   }
 
+  function formatPageTitleStartEnd(label, truncated) {
+    if (!truncated || !label || label.length <= 28) return label;
+    const half = Math.floor((label.length - 6) / 2);
+    const nFirst = Math.min(24, half);
+    const nLast = Math.min(14, half);
+    if (nFirst <= 0 && nLast <= 0) return label.slice(0, 37) + '...';
+    return { first: label.slice(0, nFirst), last: label.slice(-nLast) };
+  }
+
   function renderPagesList() {
     const el = document.getElementById('pagesList');
+    el.classList.toggle('pages-titles-truncated', !!state.pagesTitlesTruncated);
     el.innerHTML = '';
     const showEdit = !state.isViewer;
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     state.pages.forEach((p, i) => {
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
       const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length) || (p.annotations?.highlights?.length) || (p.annotations?.notes?.length);
       const hasScale = !!p.scale;
-      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + '">' + (i + 1) + '</span><span class="name">' + (p.label || 'Page ' + (i + 1)) + '</span>' + (showEdit ? '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>' : '');
+      const rawLabel = p.label || 'Page ' + (i + 1);
+      const formatted = formatPageTitleStartEnd(rawLabel, state.pagesTitlesTruncated);
+      let nameHtml;
+      const nameTitle = typeof formatted === 'object' ? rawLabel : '';
+      if (typeof formatted === 'object') {
+        nameHtml = '<span class="name-line name-line-start">' + esc(formatted.first) + '...</span><span class="name-line name-line-end">...' + esc(formatted.last) + '</span>';
+      } else {
+        nameHtml = esc(formatted);
+      }
+      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + '">' + (i + 1) + '</span><span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>' + (showEdit ? '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>' : '');
       div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
       if (showEdit) {
         const deletePage = () => {
@@ -4945,8 +5062,15 @@
 
   document.getElementById('addGroup').onclick = () => openGroupModal(null);
   const showGroupColorsCheckbox = document.getElementById('showGroupColorsCheckbox');
-  if (showGroupColorsCheckbox) {
+  const showGroupColorsBtn = document.getElementById('showGroupColorsBtn');
+  if (showGroupColorsCheckbox && showGroupColorsBtn) {
     showGroupColorsCheckbox.checked = !!state.showGroupColors;
+    showGroupColorsBtn.setAttribute('aria-pressed', state.showGroupColors);
+    showGroupColorsBtn.onclick = () => {
+      showGroupColorsCheckbox.checked = !showGroupColorsCheckbox.checked;
+      showGroupColorsBtn.setAttribute('aria-pressed', showGroupColorsCheckbox.checked);
+      showGroupColorsCheckbox.dispatchEvent(new Event('change'));
+    };
     showGroupColorsCheckbox.onchange = () => {
       state.showGroupColors = showGroupColorsCheckbox.checked;
       try { localStorage.setItem('groupColorDisplay', state.showGroupColors ? '1' : '0'); } catch (_) {}
@@ -5109,10 +5233,17 @@
     renderAnnotations();
   };
 
-  document.getElementById('pagesSectionTitle').onclick = () => {
+  document.getElementById('pagesCollapseIcon').onclick = (e) => {
+    e.stopPropagation();
     state.pagesListCollapsed = !state.pagesListCollapsed;
     document.getElementById('pagesSection').classList.toggle('collapsed', state.pagesListCollapsed);
     document.getElementById('pagesCollapseIcon').textContent = state.pagesListCollapsed ? '▶' : '▼';
+  };
+  document.getElementById('pagesSectionTitle').onclick = () => {
+    state.pagesTitlesTruncated = !state.pagesTitlesTruncated;
+    try { localStorage.setItem('pagesTitlesTruncated', state.pagesTitlesTruncated ? '1' : '0'); } catch (_) {}
+    renderPagesList();
+    updateUI();
   };
   document.getElementById('countersCollapseIcon').onclick = (e) => {
     e.stopPropagation();
@@ -5149,7 +5280,10 @@
     document.getElementById('counterOpacityVal').textContent = Math.round(state.counterSettings.opacity * 100);
     document.getElementById('counterOutline').value = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
     document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
-    document.getElementById('counterShowRings').checked = state.counterSettings.showRings;
+    const counterShowRingsCb = document.getElementById('counterShowRings');
+    const counterShowRingsBtn = document.getElementById('counterShowRingsBtn');
+    counterShowRingsCb.checked = state.counterSettings.showRings;
+    counterShowRingsBtn.setAttribute('aria-pressed', state.counterSettings.showRings);
     document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
     document.getElementById('counterNumberSize').value = state.counterSettings.numberSize || 10;
     document.getElementById('counterNumberSizeVal').textContent = state.counterSettings.numberSize || 10;
@@ -5157,7 +5291,10 @@
     document.getElementById('counterRingSizeVal').textContent = state.counterSettings.ringSize != null ? state.counterSettings.ringSize : 100;
     document.getElementById('counterRingOpacity').value = Math.round((state.counterSettings.ringOpacity != null ? state.counterSettings.ringOpacity : 1) * 100);
     document.getElementById('counterRingOpacityVal').textContent = Math.round((state.counterSettings.ringOpacity != null ? state.counterSettings.ringOpacity : 1) * 100);
-    document.getElementById('counterRingSolid').checked = !!state.counterSettings.ringSolid;
+    const counterRingSolidCb = document.getElementById('counterRingSolid');
+    const counterRingSolidBtn = document.getElementById('counterRingSolidBtn');
+    counterRingSolidCb.checked = !!state.counterSettings.ringSolid;
+    counterRingSolidBtn.setAttribute('aria-pressed', !!state.counterSettings.ringSolid);
     showModal('counterSettingsModal');
   };
   document.getElementById('lineTypesSectionTitle').onclick = (e) => {
@@ -5208,6 +5345,12 @@
     document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize;
     renderAnnotations();
   };
+  document.getElementById('counterShowRingsBtn').onclick = () => {
+    const cb = document.getElementById('counterShowRings');
+    cb.checked = !cb.checked;
+    document.getElementById('counterShowRingsBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
   document.getElementById('counterShowRings').onchange = () => {
     state.counterSettings.showRings = document.getElementById('counterShowRings').checked;
     document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
@@ -5227,6 +5370,12 @@
     state.counterSettings.ringOpacity = parseInt(document.getElementById('counterRingOpacity').value, 10) / 100;
     document.getElementById('counterRingOpacityVal').textContent = Math.round(state.counterSettings.ringOpacity * 100);
     renderAnnotations();
+  };
+  document.getElementById('counterRingSolidBtn').onclick = () => {
+    const cb = document.getElementById('counterRingSolid');
+    cb.checked = !cb.checked;
+    document.getElementById('counterRingSolidBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
   };
   document.getElementById('counterRingSolid').onchange = () => {
     state.counterSettings.ringSolid = document.getElementById('counterRingSolid').checked;
@@ -5298,6 +5447,8 @@
     document.getElementById('exportLineScaleVal').textContent = document.getElementById('exportLineScale').value;
     document.getElementById('exportBundleHighlights').checked = state.exportSettings.bundleHighlightsToPdf !== false;
     document.getElementById('exportBundleNotes').checked = state.exportSettings.bundleNotesToPdf !== false;
+    document.getElementById('exportBundleHighlightsBtn').setAttribute('aria-pressed', document.getElementById('exportBundleHighlights').checked);
+    document.getElementById('exportBundleNotesBtn').setAttribute('aria-pressed', document.getElementById('exportBundleNotes').checked);
     showModal('exportPdfModal');
   };
 
@@ -5309,6 +5460,19 @@
   };
 
   document.getElementById('exportPdfCancel').onclick = () => hideModal('exportPdfModal');
+
+  document.getElementById('exportBundleHighlightsBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('exportBundleHighlights');
+    cb.checked = !cb.checked;
+    document.getElementById('exportBundleHighlightsBtn').setAttribute('aria-pressed', cb.checked);
+  };
+  document.getElementById('exportBundleNotesBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('exportBundleNotes');
+    cb.checked = !cb.checked;
+    document.getElementById('exportBundleNotesBtn').setAttribute('aria-pressed', cb.checked);
+  };
 
   let specificPagesSelections = {};
   function openSpecificPagesModal() {
@@ -5325,14 +5489,20 @@
     document.getElementById('specificPagesBundleNotes').checked = state.exportSettings.bundleNotesToPdf !== false;
     const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
     const incReport = document.getElementById('specificPagesIncludeReport');
+    const incReportBtn = document.getElementById('specificPagesIncludeReportBtn');
     const incReportNone = document.getElementById('specificPagesIncludeReportNone');
-    if (hasCountsOrLines) { incReportNone.textContent = ''; incReport.disabled = false; } else { incReportNone.textContent = ' — none to show'; incReport.disabled = true; incReport.checked = false; }
+    if (hasCountsOrLines) { incReportNone.textContent = ''; incReportBtn.disabled = false; } else { incReportNone.textContent = ' — none to show'; incReportBtn.disabled = true; incReport.checked = false; }
+    incReportBtn.setAttribute('aria-pressed', incReport.checked);
     const bundleHigh = document.getElementById('specificPagesBundleHighlights');
+    const bundleHighBtn = document.getElementById('specificPagesBundleHighlightsBtn');
     const bundleHighNone = document.getElementById('specificPagesBundleHighlightsNone');
-    if (hasAnyHighlights()) { bundleHighNone.textContent = ''; bundleHigh.disabled = false; } else { bundleHighNone.textContent = ' — none to show'; bundleHigh.disabled = true; bundleHigh.checked = false; }
+    if (hasAnyHighlights()) { bundleHighNone.textContent = ''; bundleHighBtn.disabled = false; } else { bundleHighNone.textContent = ' — none to show'; bundleHighBtn.disabled = true; bundleHigh.checked = false; }
+    bundleHighBtn.setAttribute('aria-pressed', bundleHigh.checked);
     const bundleNotes = document.getElementById('specificPagesBundleNotes');
+    const bundleNotesBtn = document.getElementById('specificPagesBundleNotesBtn');
     const bundleNotesNone = document.getElementById('specificPagesBundleNotesNone');
-    if (hasAnyNotes()) { bundleNotesNone.textContent = ''; bundleNotes.disabled = false; } else { bundleNotesNone.textContent = ' — none to show'; bundleNotes.disabled = true; bundleNotes.checked = false; }
+    if (hasAnyNotes()) { bundleNotesNone.textContent = ''; bundleNotesBtn.disabled = false; } else { bundleNotesNone.textContent = ' — none to show'; bundleNotesBtn.disabled = true; bundleNotes.checked = false; }
+    bundleNotesBtn.setAttribute('aria-pressed', bundleNotes.checked);
     const grid = document.getElementById('specificPagesGrid');
     grid.innerHTML = '';
     state.pages.forEach((page, i) => {
@@ -5454,6 +5624,29 @@
   document.getElementById('specificPagesAllExclude').onclick = () => setAllSpecificPagesTo('exclude');
   document.getElementById('specificPagesIncludeReport').onchange = () => {
     try { localStorage.setItem('specificPagesIncludeReport', document.getElementById('specificPagesIncludeReport').checked ? '1' : '0'); } catch (_) {}
+  };
+
+  document.getElementById('specificPagesIncludeReportBtn').onclick = (e) => {
+    e.preventDefault();
+    if (e.currentTarget.disabled) return;
+    const cb = document.getElementById('specificPagesIncludeReport');
+    cb.checked = !cb.checked;
+    document.getElementById('specificPagesIncludeReportBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('specificPagesBundleHighlightsBtn').onclick = (e) => {
+    e.preventDefault();
+    if (e.currentTarget.disabled) return;
+    const cb = document.getElementById('specificPagesBundleHighlights');
+    cb.checked = !cb.checked;
+    document.getElementById('specificPagesBundleHighlightsBtn').setAttribute('aria-pressed', cb.checked);
+  };
+  document.getElementById('specificPagesBundleNotesBtn').onclick = (e) => {
+    e.preventDefault();
+    if (e.currentTarget.disabled) return;
+    const cb = document.getElementById('specificPagesBundleNotes');
+    cb.checked = !cb.checked;
+    document.getElementById('specificPagesBundleNotesBtn').setAttribute('aria-pressed', cb.checked);
   };
 
   document.getElementById('forPipeTooling').onclick = async () => {
@@ -6367,6 +6560,32 @@
         return { ok: false, error: (e && e.message) || 'Failed to turn in' };
       }
     }
+    let saveModalForTurnIn = false;
+    let saveModalTurnInOpts = null;
+    let saveBeforeTurnInOpts = null;
+    async function doTurnInAndHandleResult(opts) {
+      opts = opts || {};
+      const result = await doTurnIn();
+      if (result.ok) {
+        await refreshProjectPermissions();
+        updateSettingsCheckoutSection();
+        if (opts.hideSettings) hideModal('settingsModal');
+        showToast('Project turned in.');
+        updateUI();
+      } else {
+        showToast(result.error || 'Failed to turn in', 3000);
+      }
+      return result;
+    }
+    async function tryTurnIn(opts) {
+      opts = opts || {};
+      if (state.pdfBuffer && !state.pdfStoragePath) {
+        saveBeforeTurnInOpts = opts;
+        showModal('saveBeforeTurnInModal');
+        return { showedModal: true };
+      }
+      return doTurnInAndHandleResult(opts);
+    }
     const headerEditBanner = document.getElementById('headerEditStatusBanner');
     async function handleEditStatusBannerClick(e) {
       const btn = e.target.closest('.header-edit-status-btn');
@@ -6406,15 +6625,8 @@
         btn.disabled = true;
         btn.textContent = 'Turning in...';
         try {
-          const result = await doTurnIn();
-          if (result.ok) {
-            await refreshProjectPermissions();
-            updateSettingsCheckoutSection();
-            showToast('Project turned in.');
-            updateUI();
-          } else {
-            showToast(result.error || 'Failed to turn in', 3000);
-          }
+          const result = await tryTurnIn({});
+          if (result?.showedModal) return;
         } finally {
           btn.disabled = false;
           updateUI();
@@ -6462,15 +6674,8 @@
       btn.disabled = true;
       btn.textContent = 'Turning in...';
       try {
-        const result = await doTurnIn();
-        if (result.ok) {
-          await refreshProjectPermissions();
-          updateSettingsCheckoutSection();
-          hideModal('settingsModal');
-          showToast('Project turned in.');
-        } else {
-          showToast(result.error || 'Failed to turn in', 3000);
-        }
+        const result = await tryTurnIn({ hideSettings: true });
+        if (result?.showedModal) return;
       } finally {
         btn.disabled = false;
         btn.textContent = origText;
@@ -7077,32 +7282,48 @@
       document.getElementById('saveProjectName').value = state.currentProjectName || 'Untitled';
       document.getElementById('saveProjectError').style.display = 'none';
       document.getElementById('saveProjectDo').disabled = false;
-      document.getElementById('saveProjectDo').textContent = 'Save';
+      document.getElementById('saveProjectDo').textContent = saveModalForTurnIn ? 'Save and Turn In' : 'Save';
       document.getElementById('saveProjectProgress').style.display = 'none';
       document.getElementById('saveProjectChecklist').innerHTML = '';
-      const summaryEl = document.getElementById('saveProjectSaveSummary');
-      const labelEl = document.getElementById('saveProjectIncludePdfLabel');
+      const contentsList = document.getElementById('saveProjectContentsList');
+      const contentsLabel = document.getElementById('saveProjectContentsLabel');
+      const noPdfMessage = document.getElementById('saveProjectNoPdfMessage');
+      const pdfSizeEl = document.getElementById('saveProjectPdfSize');
       const checkboxEl = document.getElementById('saveProjectIncludePdf');
       if (state.pdfBuffer) {
-        labelEl.style.display = 'flex';
+        contentsList.style.display = '';
+        contentsLabel.style.display = 'block';
+        noPdfMessage.style.display = 'none';
+        pdfSizeEl.textContent = (state.pdfBuffer.byteLength / 1024 / 1024).toFixed(2);
         checkboxEl.checked = true;
-        summaryEl.textContent = 'This save will include: Canvas + PDF (' + (state.pdfBuffer.byteLength / 1024 / 1024).toFixed(2) + ' MB)';
+        document.getElementById('saveProjectIncludePdfLabel').classList.remove('save-contents-omitted');
+        const includeBtn = document.getElementById('saveProjectIncludePdfBtn');
+        if (includeBtn) includeBtn.setAttribute('aria-pressed', 'true');
       } else {
-        labelEl.style.display = 'none';
-        summaryEl.textContent = 'This save will include: Canvas only (no PDF). Upload a PDF first to include it.';
+        contentsList.style.display = 'none';
+        contentsLabel.style.display = 'none';
+        noPdfMessage.style.display = 'block';
       }
       showModal('saveProjectModal');
     };
     document.getElementById('saveProjectBtnSidebar').onclick = () => document.getElementById('saveProjectBtn').click();
-    document.getElementById('saveProjectCancel').onclick = () => hideModal('saveProjectModal');
+    document.getElementById('saveProjectCancel').onclick = () => {
+      saveModalForTurnIn = false;
+      saveModalTurnInOpts = null;
+      hideModal('saveProjectModal');
+    };
     document.getElementById('saveProjectIncludePdf').onchange = () => {
-      const summaryEl = document.getElementById('saveProjectSaveSummary');
+      const label = document.getElementById('saveProjectIncludePdfLabel');
       const checkboxEl = document.getElementById('saveProjectIncludePdf');
-      if (state.pdfBuffer && checkboxEl.checked) {
-        summaryEl.textContent = 'This save will include: Canvas + PDF (' + (state.pdfBuffer.byteLength / 1024 / 1024).toFixed(2) + ' MB)';
-      } else {
-        summaryEl.textContent = 'This save will include: Canvas only';
-      }
+      const btn = document.getElementById('saveProjectIncludePdfBtn');
+      if (label) label.classList.toggle('save-contents-omitted', !checkboxEl.checked);
+      if (btn) btn.setAttribute('aria-pressed', checkboxEl.checked);
+    };
+    document.getElementById('saveProjectIncludePdfBtn').onclick = (e) => {
+      e.preventDefault();
+      const checkboxEl = document.getElementById('saveProjectIncludePdf');
+      checkboxEl.checked = !checkboxEl.checked;
+      checkboxEl.dispatchEvent(new Event('change'));
     };
     document.getElementById('saveProjectDo').onclick = async () => {
       const name = document.getElementById('saveProjectName').value.trim() || 'Untitled';
@@ -7299,10 +7520,26 @@
         log('Save complete');
         saveProgressMessage = '';
         updateUI();
+        if (saveModalForTurnIn) {
+          saveModalForTurnIn = false;
+          const opts = saveModalTurnInOpts || {};
+          saveModalTurnInOpts = null;
+          const turnInResult = await doTurnIn();
+          if (turnInResult.ok) {
+            await refreshProjectPermissions();
+            updateSettingsCheckoutSection();
+            showToast('Project turned in.');
+            if (opts.hideSettings) hideModal('settingsModal');
+            updateUI();
+          } else {
+            showToast(turnInResult.error || 'Failed to turn in', 3000);
+          }
+        }
       } catch (e) {
         console.error('[Save] Failed:', e);
         log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
         window.lastSaveError = e;
+        if (saveModalForTurnIn) { saveModalForTurnIn = false; saveModalTurnInOpts = null; }
         try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
         const errMsg = (e?.message) || (e?.details) || (e?.hint) || String(e) || 'Save failed';
         showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
@@ -7321,6 +7558,22 @@
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
     document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
     document.getElementById('saveBeforeLoadCancel').onclick = () => hideModal('saveBeforeLoadModal');
+    document.getElementById('saveBeforeTurnInCancel').onclick = () => hideModal('saveBeforeTurnInModal');
+    document.getElementById('saveBeforeTurnInWithoutPdf').onclick = async () => {
+      hideModal('saveBeforeTurnInModal');
+      const opts = saveBeforeTurnInOpts || {};
+      saveBeforeTurnInOpts = null;
+      await doTurnInAndHandleResult(opts);
+    };
+    document.getElementById('saveBeforeTurnInSave').onclick = () => {
+      hideModal('saveBeforeTurnInModal');
+      const opts = saveBeforeTurnInOpts || {};
+      saveBeforeTurnInOpts = null;
+      if (opts.hideSettings) hideModal('settingsModal');
+      saveModalForTurnIn = true;
+      saveModalTurnInOpts = opts;
+      document.getElementById('saveProjectBtn').click();
+    };
     document.getElementById('saveBeforeLoadDiscard').onclick = () => {
       hideModal('saveBeforeLoadModal');
       openLoadProjectModal();

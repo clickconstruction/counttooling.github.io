@@ -7290,15 +7290,23 @@
       const noPdfMessage = document.getElementById('saveProjectNoPdfMessage');
       const pdfSizeEl = document.getElementById('saveProjectPdfSize');
       const checkboxEl = document.getElementById('saveProjectIncludePdf');
-      if (state.pdfBuffer) {
+      const includePdfLabel = document.getElementById('saveProjectIncludePdfLabel');
+      const includePdfBtn = document.getElementById('saveProjectIncludePdfBtn');
+      if (state.pdfBuffer || state.pdfStoragePath) {
         contentsList.style.display = '';
         contentsLabel.style.display = 'block';
         noPdfMessage.style.display = 'none';
-        pdfSizeEl.textContent = (state.pdfBuffer.byteLength / 1024 / 1024).toFixed(2);
-        checkboxEl.checked = true;
-        document.getElementById('saveProjectIncludePdfLabel').classList.remove('save-contents-omitted');
-        const includeBtn = document.getElementById('saveProjectIncludePdfBtn');
-        if (includeBtn) includeBtn.setAttribute('aria-pressed', 'true');
+        const nameEl = includePdfLabel?.querySelector('.save-contents-name');
+        if (state.pdfBuffer) {
+          if (nameEl) nameEl.innerHTML = 'PDF (<span id="saveProjectPdfSize">' + (state.pdfBuffer.byteLength / 1024 / 1024).toFixed(2) + '</span> MB)';
+          if (includePdfLabel) includePdfLabel.classList.remove('save-contents-omitted');
+          if (includePdfBtn) { includePdfBtn.style.display = ''; includePdfBtn.setAttribute('aria-pressed', 'true'); }
+          checkboxEl.checked = true;
+        } else {
+          if (nameEl) nameEl.textContent = 'PDF (in project)';
+          if (includePdfBtn) includePdfBtn.style.display = 'none';
+          checkboxEl.checked = true;
+        }
       } else {
         contentsList.style.display = 'none';
         contentsLabel.style.display = 'none';

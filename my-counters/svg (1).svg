@@ -1,0 +1,16 @@
+<svg width="259" height="271" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>Layer 1</title>
+  <line fill="none" stroke="#000" x1="55.11111" y1="2" x2="55.11111" y2="264.49762" id="svg_1" stroke-linejoin="undefined" stroke-linecap="undefined"/>
+  <line fill="none" stroke="#000" x1="129.11111" y1="0" x2="129.11111" y2="267.02996" id="svg_2" stroke-linejoin="undefined" stroke-linecap="undefined"/>
+  <ellipse fill="#fff" stroke="#000" cx="91" cy="136.66667" id="svg_3" rx="91" ry="91"/>
+  <line fill="none" stroke="#000" x1="55.11111" y1="2" x2="55.11111" y2="264.49762" id="svg_5" stroke-linejoin="undefined" stroke-linecap="undefined"/>
+  <line fill="none" stroke="#000" x1="129.11111" y1="0" x2="129.11111" y2="267.02996" id="svg_6" stroke-linejoin="undefined" stroke-linecap="undefined"/>
+  <rect id="svg_4" height="267.693" width="26.15391" y="3.07771" x="115.38595" stroke="#000" fill="#fff"/>
+  <ellipse id="svg_8" cy="77.69328" cx="60.77042" stroke="#000" fill="#fff"/>
+  <path id="svg_9" d="m257.94132,168.20336l0.56913,0l0.17587,-0.54067l0.17587,0.54067l0.56913,0l-0.46044,0.33415l0.17588,0.54067l-0.46044,-0.33416l-0.46044,0.33416l0.17588,-0.54067l-0.46044,-0.33415z" stroke="#000" fill="#fff"/>
+  <path id="svg_11" d="m86.49471,136.72078l55.53252,0l17.15998,-47.89291l17.15999,47.89291l55.53251,0l-44.92667,29.59911l17.16086,47.89291l-44.92669,-29.59992l-44.92668,29.59992l17.16087,-47.89291l-44.92669,-29.59911z" stroke="#000" fill="#fff"/>
+  <path id="svg_12" d="m240.33741,33.49531l0.56913,0l0.17587,-0.54067l0.17587,0.54067l0.56913,0l-0.46044,0.33415l0.17588,0.54067l-0.46044,-0.33416l-0.46044,0.33416l0.17588,-0.54067l-0.46044,-0.33415z" stroke="#000" fill="#fff"/>
+ </g>
+
+</svg>

@@ -209,6 +209,18 @@
     .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
     .sidebar-item .edit-btn { padding: 4px; cursor: pointer; opacity: 0.7; }
     .sidebar-item .edit-btn:hover { opacity: 1; }
+    .counter-drag-handle { cursor: pointer; }
+    body.sidebar-reorder-mode-active .counter-drag-handle { cursor: grab; }
+    body.sidebar-reorder-mode-active .counter-drag-handle:active { cursor: grabbing; }
+    .sidebar-item.counter-dragging { opacity: 0.5; }
+    .sidebar-reorder-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--accent); border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--bg); flex-shrink: 0; }
+    .sidebar-reorder-banner span { flex: 1; }
+    .sidebar-reorder-banner .sidebar-reorder-finish-btn { background: var(--bg); color: var(--text); border-color: var(--bg); }
+    .sidebar-reorder-banner .sidebar-reorder-finish-btn:hover { background: var(--surface); border-color: var(--surface); }
+    .line-type-drag-handle { cursor: pointer; }
+    body.sidebar-reorder-mode-active .line-type-drag-handle { cursor: grab; }
+    body.sidebar-reorder-mode-active .line-type-drag-handle:active { cursor: grabbing; }
+    .sidebar-item-line-type.line-type-dragging { opacity: 0.5; }
     .sidebar-item .delete-btn { padding: 4px; cursor: pointer; opacity: 0.7; color: var(--danger, #c44); }
     .sidebar-item .delete-btn:hover { opacity: 1; }
     .sidebar-item-line-type { flex-direction: column; align-items: stretch; gap: 4px; }
@@ -520,6 +532,10 @@
       <input type="file" id="importInput" accept=".json">
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
     </header>
+    <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
+      <span>Drag by their left colors to re-order.</span>
+      <button type="button" id="sidebarReorderFinish" class="sidebar-btn-inline sidebar-reorder-finish-btn">Finish reordering</button>
+    </div>
     <div class="main">
       <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
       <aside class="sidebar">
@@ -863,6 +879,9 @@
           <input type="checkbox" id="counterRingSolid" hidden>
         </div>
       </div>
+      <div class="form-group">
+        <span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">Reorder counters</span>
+      </div>
       <div class="actions">
         <button id="counterSettingsClose">Done</button>
       </div>
@@ -894,6 +913,9 @@
       <div class="form-group">
         <label>Opacity: <span id="lineTypeOpacityVal">100</span>%</label>
         <input type="range" id="lineTypeOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="form-group">
+        <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">Reorder line types</span>
       </div>
       <div class="actions">
         <button id="lineTypeSettingsClose">Done</button>
@@ -2128,6 +2150,7 @@
     pagesListCollapsed: false,
     pagesTitlesTruncated: true,
     countersListCollapsed: false,
+    sidebarReorderModeActive: false,
     lineTypesListCollapsed: false,
     linesListCollapsed: true,
     groupsListCollapsed: false,
@@ -3660,6 +3683,10 @@
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
     renderPagesList();
     renderCountersList();
+    const sidebarReorderBanner = document.getElementById('sidebarReorderBanner');
+    const canReorder = state.counters.length >= 2 || state.lineTypes.length >= 2;
+    if (sidebarReorderBanner) sidebarReorderBanner.style.display = (state.sidebarReorderModeActive && !state.isViewer && canReorder) ? 'flex' : 'none';
+    document.body.classList.toggle('sidebar-reorder-mode-active', state.sidebarReorderModeActive);
     renderLineTypesList();
     renderGroupsList();
     renderLinesList();
@@ -3742,9 +3769,36 @@
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
       const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
-        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
+        div.dataset.counterId = c.id;
+        const handle = div.querySelector('.counter-drag-handle');
+        if (handle) {
+          handle.draggable = state.sidebarReorderModeActive && state.counters.length >= 2;
+          handle.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', c.id);
+            e.dataTransfer.effectAllowed = 'move';
+            div.classList.add('counter-dragging');
+          };
+          handle.ondragend = () => div.classList.remove('counter-dragging');
+        }
+        div.ondragover = (e) => { if (!state.sidebarReorderModeActive) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+        div.ondrop = (e) => {
+          e.preventDefault();
+          if (!state.sidebarReorderModeActive) return;
+          const fromId = e.dataTransfer.getData('text/plain');
+          const toId = div.dataset.counterId;
+          if (fromId === toId) return;
+          const fromIdx = state.counters.findIndex(x => x.id === fromId);
+          const toIdx = state.counters.findIndex(x => x.id === toId);
+          if (fromIdx < 0 || toIdx < 0) return;
+          const [moved] = state.counters.splice(fromIdx, 1);
+          state.counters.splice(toIdx, 0, moved);
+          pushUndoSnapshot();
+          markProjectDirty();
+          updateUI();
+        };
+        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !(state.sidebarReorderModeActive && e.target.closest('.counter-drag-handle'))) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('counter', c); });
       }
@@ -3769,9 +3823,36 @@
       const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + lt.color + '"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
-        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
+        div.dataset.lineTypeId = lt.id;
+        const handle = div.querySelector('.line-type-drag-handle');
+        if (handle) {
+          handle.draggable = state.sidebarReorderModeActive && state.lineTypes.length >= 2;
+          handle.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', lt.id);
+            e.dataTransfer.effectAllowed = 'move';
+            div.classList.add('line-type-dragging');
+          };
+          handle.ondragend = () => div.classList.remove('line-type-dragging');
+        }
+        div.ondragover = (e) => { if (!state.sidebarReorderModeActive) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+        div.ondrop = (e) => {
+          e.preventDefault();
+          if (!state.sidebarReorderModeActive) return;
+          const fromId = e.dataTransfer.getData('text/plain');
+          const toId = div.dataset.lineTypeId;
+          if (fromId === toId) return;
+          const fromIdx = state.lineTypes.findIndex(x => x.id === fromId);
+          const toIdx = state.lineTypes.findIndex(x => x.id === toId);
+          if (fromIdx < 0 || toIdx < 0) return;
+          const [moved] = state.lineTypes.splice(fromIdx, 1);
+          state.lineTypes.splice(toIdx, 0, moved);
+          pushUndoSnapshot();
+          markProjectDirty();
+          updateUI();
+        };
+        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !e.target.closest('.line-type-drag-handle')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('lineType', lt); });
       }
@@ -4787,6 +4868,7 @@
               autoSaveDirty = false;
               lastModifiedAt = 0;
             }
+            state.sidebarReorderModeActive = false;
             hideModal('loadAnnotationsModal');
             fitZoom();
             updateUI();
@@ -5317,6 +5399,7 @@
     const counterRingSolidBtn = document.getElementById('counterRingSolidBtn');
     counterRingSolidCb.checked = !!state.counterSettings.ringSolid;
     counterRingSolidBtn.setAttribute('aria-pressed', !!state.counterSettings.ringSolid);
+    document.getElementById('counterSettingsReorder').style.display = state.counters.length < 2 ? 'none' : '';
     showModal('counterSettingsModal');
   };
   document.getElementById('lineTypesSectionTitle').onclick = (e) => {
@@ -5325,9 +5408,40 @@
     document.getElementById('lineTypeSizeVal').textContent = state.lineTypeSettings.lineSize ?? 2;
     document.getElementById('lineTypeOpacity').value = Math.round((state.lineTypeSettings.opacity ?? 1) * 100);
     document.getElementById('lineTypeOpacityVal').textContent = Math.round((state.lineTypeSettings.opacity ?? 1) * 100);
+    document.getElementById('lineTypeSettingsReorder').style.display = state.lineTypes.length < 2 ? 'none' : '';
     showModal('lineTypeSettingsModal');
   };
   document.getElementById('counterSettingsClose').onclick = () => hideModal('counterSettingsModal');
+  document.getElementById('lineTypeSettingsReorder').onclick = () => {
+    hideModal('lineTypeSettingsModal');
+    state.countersListCollapsed = false;
+    state.lineTypesListCollapsed = false;
+    document.getElementById('countersSection').classList.remove('collapsed');
+    document.getElementById('countersCollapseIcon').textContent = '▼';
+    document.getElementById('lineTypesSection').classList.remove('collapsed');
+    document.getElementById('lineTypesCollapseIcon').textContent = '▼';
+    state.sidebarReorderModeActive = true;
+    document.getElementById('lineTypesList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateUI();
+    showToast('Drag by their left colors to re-order.', 2000);
+  };
+  document.getElementById('sidebarReorderFinish').onclick = () => {
+    state.sidebarReorderModeActive = false;
+    updateUI();
+  };
+  document.getElementById('counterSettingsReorder').onclick = () => {
+    hideModal('counterSettingsModal');
+    state.countersListCollapsed = false;
+    state.lineTypesListCollapsed = false;
+    document.getElementById('countersSection').classList.remove('collapsed');
+    document.getElementById('countersCollapseIcon').textContent = '▼';
+    document.getElementById('lineTypesSection').classList.remove('collapsed');
+    document.getElementById('lineTypesCollapseIcon').textContent = '▼';
+    state.sidebarReorderModeActive = true;
+    document.getElementById('countersList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateUI();
+    showToast('Drag by their left colors to re-order.', 2000);
+  };
   function showZoomModal() {
     const maxVal = Math.round((state.maxZoom ?? 8) * 100);
     document.getElementById('zoomMax').value = maxVal;
@@ -7152,6 +7266,7 @@
             } catch (_) {}
           }
           hideModal('loadProjectModal');
+          state.sidebarReorderModeActive = false;
           if (!proj.pdf_path) {
             showToast('This project has no PDF stored. Upload the PDF to load the annotations.', 5000);
             document.getElementById('pdfInput').click();
@@ -7199,6 +7314,7 @@
       state.projectOwnerId = null;
       try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
       state.pagesListCollapsed = true;
+      state.sidebarReorderModeActive = false;
       document.getElementById('pagesSection').classList.add('collapsed');
       document.getElementById('pagesCollapseIcon').textContent = '▶';
       updateUI();

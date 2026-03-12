@@ -38,7 +38,7 @@
     .app { display: flex; flex-direction: column; height: 100vh; }
     .header { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 250; }
     .header .logo { font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); margin-right: 8px; }
-    .header .logo.logo-btn { background: none; border: none; cursor: pointer; padding: 0; font: inherit; }
+    .header .logo.logo-btn { background: none; border: none; cursor: pointer; padding: 0; font: inherit; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); }
     .header .logo.logo-btn:hover { opacity: 0.85; }
     .header .divider { width: 1px; height: 24px; background: var(--border); }
     .header button { min-height: 44px; min-width: 44px; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
@@ -173,12 +173,12 @@
     #pagesSectionTitle:hover, #countersSectionTitle:hover, #lineTypesSectionTitle:hover, #linesSectionTitle:hover, #groupsSectionTitle:hover, #summarySectionTitle:hover, #exportOptionsSectionTitle:hover { color: var(--accent); }
     .sidebar-section h3.section-settings { cursor: pointer; padding: 2px 0; }
     .sidebar-section h3.section-settings:hover { color: var(--text2); }
-    .sidebar-scale-display { font-size: 0.85rem; font-family: 'DM Mono', monospace; color: var(--text2); text-align: center; }
-    .sidebar-scale-display.has-scale { color: var(--accent); display: flex; flex-direction: row; align-items: center; gap: 8px; cursor: pointer; justify-content: center; }
+    .sidebar-scale-display { font-size: 0.65rem; font-family: 'DM Mono', monospace; color: var(--text2); text-align: center; }
+    .sidebar-scale-display.has-scale { color: var(--accent); display: flex; flex-direction: row; align-items: center; gap: 6px; cursor: pointer; justify-content: center; }
     .sidebar-scale-display.has-scale .set-scale-icon { flex-shrink: 0; }
-    .sidebar-scale-display.has-scale .set-scale-display { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+    .sidebar-scale-display.has-scale .set-scale-display { display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; }
     .sidebar-scale-display .scale-label { font-size: 0.9rem; display: block; }
-    .sidebar-scale-display .scale-px { font-size: 0.75rem; color: var(--text2); display: block; }
+    .sidebar-scale-display .scale-px { font-size: 0.65rem; color: var(--text2); display: block; }
     .sidebar-tooling-links { display: flex; gap: 12px; margin-top: 6px; margin-bottom: 4px; font-size: 0.75rem; justify-content: center; }
     .sidebar-tooling-links a { color: var(--text2); text-decoration: none; }
     .sidebar-tooling-links a:hover { color: var(--accent); text-decoration: underline; }
@@ -228,6 +228,9 @@
     .sidebar-item-line-type { flex-direction: column; align-items: stretch; gap: 4px; }
     .sidebar-item-line-type .line-type-name { font-weight: 500; }
     .sidebar-item-line-type .line-type-row { display: flex; align-items: center; gap: 8px; }
+    .sidebar-item-line-type .line-drops { font-size: 0.8rem; color: var(--accent); font-family: 'DM Mono', monospace; margin-top: 4px; margin-left: 24px; padding: 4px 8px; background: rgba(232, 197, 71, 0.12); border-radius: 4px; border-left: 3px solid var(--accent); display: inline-block; }
+    .load-annotations-item { flex-direction: column; align-items: stretch; gap: 2px; }
+    .load-annotations-item .load-annotations-date { font-size: 0.8rem; color: var(--text2); }
     .sidebar-btn { width: 100%; padding: 10px 16px; margin-bottom: 8px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-family: inherit; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
     .sidebar-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .sidebar-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
@@ -329,6 +332,7 @@
     .modal-card .icon-cell:hover { background: var(--surface3); }
     .modal-card .icon-cell.selected { background: var(--surface3); border-color: var(--accent); }
     .modal-card .icon-cell svg { width: 24px; height: 24px; }
+    .modal-card .icon-grid-drop { grid-template-columns: repeat(5, 1fr); max-height: none; }
     .modal-card .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
     .modal-card .actions button { padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; border: none; font-family: inherit; min-height: 44px; }
     .modal-card .actions button:first-child { background: transparent; color: var(--text2); border: 1px solid var(--border); }
@@ -345,6 +349,13 @@
     .settings-menu-btn.btn-yellow-outline { border: 2px solid var(--yellow); color: var(--yellow); background: transparent; font-weight: 600; letter-spacing: 0.02em; transition: all 0.2s ease; box-shadow: 0 0 0 0 rgba(255,204,0,0); }
     .settings-menu-btn.btn-yellow-outline:hover { background: rgba(255,204,0,0.12); border-color: var(--yellow); box-shadow: 0 2px 8px rgba(255,204,0,0.2); transform: translateY(-1px); }
     .settings-menu-btn.btn-yellow-outline:active { transform: translateY(0); box-shadow: 0 0 0 0 rgba(255,204,0,0); }
+    .line-drop-adj-btn { padding: 6px 12px; font-size: 0.85rem; font-weight: 600; font-family: 'DM Mono', monospace; border-radius: 6px; border: 1px solid; cursor: pointer; transition: all 0.15s ease; }
+    .line-drop-adj-btn--plus { background: rgba(71,200,142,0.15); border-color: var(--green); color: var(--green); }
+    .line-drop-adj-btn--plus:hover { background: rgba(71,200,142,0.25); }
+    .line-drop-adj-btn--minus { background: rgba(232,84,71,0.1); border-color: var(--red); color: var(--red); }
+    .line-drop-adj-btn--minus:hover { background: rgba(232,84,71,0.2); }
+    .line-drop-adj-btn--clear { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+    .line-drop-adj-btn--clear:hover { background: var(--surface3); color: var(--text); }
     .settings-menu-link { display: inline; padding: 12px 16px; color: var(--accent); cursor: pointer; font-size: 1rem; font-family: inherit; background: none; border: none; }
     .settings-menu-link:hover { text-decoration: underline; }
     .settings-menu-link.settings-menu-link-danger { color: var(--red); }
@@ -918,6 +929,14 @@
         <input type="range" id="lineTypeOpacity" min="20" max="100" value="100" step="5">
       </div>
       <div class="form-group">
+        <label>Drop X size: <span id="lineTypeDropXSizeVal">10</span>px</label>
+        <input type="range" id="lineTypeDropXSize" min="4" max="24" value="10" step="1">
+      </div>
+      <div class="form-group">
+        <label>Drop icon</label>
+        <div class="icon-grid icon-grid-drop" id="lineTypeDropIconGrid"></div>
+      </div>
+      <div class="form-group">
         <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">Reorder line types</span>
       </div>
       <div class="actions">
@@ -1109,6 +1128,46 @@
       <div class="actions">
         <button id="noteModalCancel">Cancel</button>
         <button id="noteModalDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="linePropertiesModal">
+    <div class="modal-card">
+      <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Line Properties</h2>
+        <span id="linePropertiesSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
+      </div>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="linePropertiesName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group">
+        <label>Start drop</label>
+        <input type="number" id="linePropertiesStartDrop" min="0" step="1" placeholder="0" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" id="linePropertiesStartDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
+          <button type="button" id="linePropertiesStartDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
+          <button type="button" id="linePropertiesStartDropMinus10" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 10">-10</button>
+          <button type="button" id="linePropertiesStartDropMinus1" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 1">-1</button>
+          <button type="button" id="linePropertiesClearStartDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear start drop">Clear</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>End drop</label>
+        <input type="number" id="linePropertiesEndDrop" min="0" step="1" placeholder="0" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" id="linePropertiesEndDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
+          <button type="button" id="linePropertiesEndDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
+          <button type="button" id="linePropertiesEndDropMinus10" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 10">-10</button>
+          <button type="button" id="linePropertiesEndDropMinus1" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 1">-1</button>
+          <button type="button" id="linePropertiesClearEndDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear end drop">Clear</button>
+        </div>
+      </div>
+      <div class="form-group" id="linePropertiesEditVerticesGroup" style="display:none;">
+        <button type="button" id="linePropertiesEditVertices" class="settings-menu-btn">Edit vertices</button>
+      </div>
+      <div class="actions">
+        <button id="linePropertiesClose">Close</button>
       </div>
     </div>
   </div>
@@ -1545,6 +1604,7 @@
   </div>
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
+    <button id="ctxLineProperties" style="display:none;">Line Properties</button>
     <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
     <button class="danger" id="ctxDelete">Delete</button>
   </div>
@@ -1843,6 +1903,13 @@
   const CHESSBOARD_PATH = 'M160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96zM224 160L224 224L288 224L288 160L352 160L352 224L416 224L416 160L480 160L480 224L416 224L416 288L480 288L480 352L416 352L416 416L480 416L480 480L416 480L416 416L352 416L352 480L288 480L288 416L224 416L224 480L160 480L160 416L224 416L224 352L160 352L160 288L224 288L224 224L160 224L160 160L224 160zM288 288L352 288L352 224L288 224L288 288zM288 352L288 288L224 288L224 352L288 352zM352 352L288 352L288 416L352 416L352 352zM352 352L416 352L416 288L352 288L352 352z';
   const VB_384_512_PATHS = [RULER_PATH];
   const COUNTER_BTN_DEFAULT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
+  const DROP_ICON_STYLES = [
+    { id: 'circle', name: 'Circle', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>' },
+    { id: 'x', name: 'X', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><path stroke="currentColor" stroke-width="2" fill="none" d="M6 6 L18 18 M18 6 L6 18"/></svg>' },
+    { id: 'plus', name: 'Plus', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><path stroke="currentColor" stroke-width="2" fill="none" d="M12 4 L12 20 M4 12 L20 12"/></svg>' },
+    { id: 'diamond', name: 'Diamond', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><path stroke="currentColor" stroke-width="2" fill="none" d="M12 4 L20 12 L12 20 L4 12 Z"/></svg>' },
+    { id: 'triangle', name: 'Triangle', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><path stroke="currentColor" stroke-width="2" fill="none" d="M12 4 L20 20 L4 20 Z"/></svg>' },
+  ];
 
   const ICONS = [
     { value: WC_PATH, terms: ['water','closet','wc','toilet','bathroom'], name: 'Water Closet' },
@@ -2176,7 +2243,7 @@
     linesListCollapsed: true,
     groupsListCollapsed: false,
     summaryListCollapsed: false,
-    lineTypeSettings: { opacity: 1, lineSize: 2 },
+    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
@@ -2616,6 +2683,19 @@
     return ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
   }
   window.quickLineLength = quickLineLength;
+  function getLineLengthPdfPts(line, pageIdx, isPoly) {
+    const page = state.pages[pageIdx];
+    const scale = page?.scale;
+    const base = isPoly
+      ? polylineDistance(line.points || [], line.closed)
+      : quickLineLength(line);
+    if (!scale || ((line.startDrop || 0) === 0 && (line.endDrop || 0) === 0))
+      return base;
+    const ppu = scale.pixelsPerUnit;
+    const dropPts = ((line.startDrop || 0) + (line.endDrop || 0)) * ppu;
+    return base + dropPts;
+  }
+  window.getLineLengthPdfPts = getLineLengthPdfPts;
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
   function pickScaleForLineType(pageIndices) {
     const preferredUnits = ['ft', 'in', 'm', 'cm', 'yd'];
@@ -2998,6 +3078,57 @@
     });
   }
 
+  function drawDropMarker(ctx, p, s, color, style) {
+    const lwOut = Math.max(2, Math.round(s * 0.4));
+    const lwIn = Math.max(1, Math.round(s * 0.2));
+    ctx.save();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = lwOut;
+    ctx.fillStyle = color || '#4a9eff';
+    ctx.beginPath();
+    switch (style || 'circle') {
+      case 'circle':
+        ctx.arc(p.x, p.y, s * 0.8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = color || '#4a9eff';
+        ctx.lineWidth = lwIn;
+        ctx.stroke();
+        break;
+      case 'plus':
+        ctx.moveTo(p.x - s, p.y); ctx.lineTo(p.x + s, p.y);
+        ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x, p.y + s);
+        ctx.stroke();
+        ctx.strokeStyle = color || '#4a9eff';
+        ctx.lineWidth = lwIn;
+        ctx.stroke();
+        break;
+      case 'diamond':
+        ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s, p.y);
+        ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x - s, p.y); ctx.closePath();
+        ctx.stroke();
+        ctx.strokeStyle = color || '#4a9eff';
+        ctx.lineWidth = lwIn;
+        ctx.stroke();
+        break;
+      case 'triangle':
+        ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s, p.y + s);
+        ctx.lineTo(p.x - s, p.y + s); ctx.closePath();
+        ctx.stroke();
+        ctx.strokeStyle = color || '#4a9eff';
+        ctx.lineWidth = lwIn;
+        ctx.stroke();
+        break;
+      default:
+        ctx.moveTo(p.x - s, p.y - s); ctx.lineTo(p.x + s, p.y + s);
+        ctx.moveTo(p.x - s, p.y + s); ctx.lineTo(p.x + s, p.y - s);
+        ctx.stroke();
+        ctx.strokeStyle = color || '#4a9eff';
+        ctx.lineWidth = lwIn;
+        ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function renderAnnotations() {
     const page = state.pages[state.currentPage];
     if (!page) return;
@@ -3023,9 +3154,11 @@
         ctx.restore();
       });
     }
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2 };
+    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle' };
     const lw = lts.lineSize || 2;
     const lo = lts.opacity != null ? lts.opacity : 1;
+    const dropS = lts.dropXSize ?? 10;
+    const dropStyle = lts.dropIconStyle ?? 'circle';
     const sel = state.selectedLineId && state.currentPage === state.selectedLinePageIdx;
     (ann.quickLines || []).forEach(q => {
       const aPdf = { x: q.x1, y: q.y1 }, bPdf = { x: q.x2, y: q.y2 };
@@ -3055,6 +3188,9 @@
         ctx.lineWidth = 1;
         ctx.stroke();
       }
+      const drawDrop = (p) => drawDropMarker(ctx, p, dropS, q.color || '#4a9eff', dropStyle);
+      if ((q.startDrop || 0) > 0) drawDrop(a);
+      if ((q.endDrop || 0) > 0) drawDrop(b);
     });
     (ann.polylines || []).forEach(poly => {
       const pts = poly.points || [];
@@ -3083,6 +3219,9 @@
         ctx.lineWidth = 1;
         ctx.stroke();
       }
+      const drawDrop = (p) => drawDropMarker(ctx, p, dropS, poly.color || '#4a9eff', dropStyle);
+      if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(toCanvas(pts[0]));
+      if ((poly.endDrop || 0) > 0 && pts.length > 0) drawDrop(toCanvas(pts[pts.length - 1]));
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -3228,7 +3367,9 @@
   function renderAnnotationsToContext(ctx, page, scale, exportOverrides) {
     const tc = (p) => ({ x: p.x * scale, y: p.y * scale });
     const ann = page.annotations || makeAnnotations();
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2 };
+    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle' };
+    const dropS = (lts.dropXSize ?? 10) * scale;
+    const dropStyle = lts.dropIconStyle ?? 'circle';
     const lineScale = exportOverrides?.lineScale ?? 1;
     const markerScale = exportOverrides?.markerScale ?? 1;
     let lw = (lts.lineSize || 2) * scale * lineScale;
@@ -3258,6 +3399,9 @@
         ctx.lineWidth = 1;
         ctx.stroke();
       }
+      const drawDrop = (p) => drawDropMarker(ctx, p, dropS, q.color || '#4a9eff', dropStyle);
+      if ((q.startDrop || 0) > 0) drawDrop(a);
+      if ((q.endDrop || 0) > 0) drawDrop(b);
     });
     (ann.polylines || []).forEach(poly => {
       const pts = poly.points || [];
@@ -3284,6 +3428,9 @@
         ctx.lineWidth = 1;
         ctx.stroke();
       }
+      const drawDrop = (p) => drawDropMarker(ctx, p, dropS, poly.color || '#4a9eff', dropStyle);
+      if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[0]));
+      if ((poly.endDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[pts.length - 1]));
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -3836,8 +3983,8 @@
         const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += quickLineLength(q); });
-        polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+        qLines.forEach(q => { runs++; len += getLineLengthPdfPts(q, pi, false); });
+        polys.forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pi, true); });
       });
       const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
@@ -3949,14 +4096,24 @@
       const pageScale = state.pages[it.pageIdx]?.scale;
       let dist, name;
       if (it.type === 'poly') {
-        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatDist(polylineDistance(it.poly.points || [], false), pageScale);
+        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatDist(getLineLengthPdfPts(it.poly, it.pageIdx, true), pageScale);
         name = it.poly.name || 'Polyline';
       } else {
-        dist = formatDist(quickLineLength(it.q), pageScale);
+        dist = formatDist(getLineLengthPdfPts(it.q, it.pageIdx, false), pageScale);
         name = it.q.name || 'Quick line';
       }
+      const line = it.type === 'poly' ? it.poly : it.q;
+      const sd = line.startDrop || 0, ed = line.endDrop || 0;
+      const unit = pageScale?.unit || 'ft';
+      let dropsHtml = '';
+      if (sd > 0 || ed > 0) {
+        const parts = [];
+        if (sd > 0) parts.push('↧ ' + sd);
+        if (ed > 0) parts.push('↧ ' + ed);
+        dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
+      }
       const showEdit = !state.isViewer;
-      div.innerHTML = '<span class="name line-type-name">' + name + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + name + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
       div.onclick = (e) => {
         if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;
         if (isSelected) {
@@ -3988,12 +4145,8 @@
           );
         });
         const editBtn = div.querySelector('.edit-btn');
-        if (it.type === 'poly') editBtn.onclick = (e) => { e.stopPropagation(); enterEditMode(it.poly.id, it.pageIdx); };
-        else editBtn.onclick = (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); it.q.name = v; markProjectDirty(); updateUI(); }); };
-        onDoubleTapOrDblClick(div.querySelector('.name'), () => {
-          if (it.type === 'poly') startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); it.poly.name = v; markProjectDirty(); updateUI(); });
-          else startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); it.q.name = v; markProjectDirty(); updateUI(); });
-        });
+        if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); openLinePropertiesModal(it); };
+        onDoubleTapOrDblClick(div.querySelector('.name'), () => openLinePropertiesModal(it));
       }
       el.appendChild(div);
     });
@@ -4030,7 +4183,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += quickLineLength(q);
+          lineTypeByGroup[gid][lt.id].len += getLineLengthPdfPts(q, pi, false);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
         (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -4038,7 +4191,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += polylineDistance(poly.points || [], poly.closed);
+          lineTypeByGroup[gid][lt.id].len += getLineLengthPdfPts(poly, pi, true);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
       });
@@ -4111,8 +4264,8 @@
           const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
           const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
           if (qLines.length || polys.length) pageIndices.push(pi);
-          qLines.forEach(q => { runs++; len += quickLineLength(q); });
-          polys.forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+          qLines.forEach(q => { runs++; len += getLineLengthPdfPts(q, pi, false); });
+          polys.forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pi, true); });
         });
         if (runs > 0) {
           const scale = pickScaleForLineType(pageIndices);
@@ -4148,8 +4301,8 @@
       titleEl.textContent = (lt.name || 'Line type') + ' — by page';
       state.pages.forEach((p, pageIdx) => {
         let runs = 0, len = 0;
-        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += quickLineLength(q); });
-        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += polylineDistance(poly.points || [], poly.closed); });
+        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthPdfPts(q, pageIdx, false); });
+        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pageIdx, true); });
         if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
       });
     }
@@ -4465,6 +4618,111 @@
       }
     }
     markProjectDirty();
+    updateUI();
+    renderPdf();
+  }
+
+  let pendingLineProperties = null;
+  function openLinePropertiesModal(it) {
+    pendingLineProperties = it;
+    const line = it.type === 'poly' ? it.poly : it.q;
+    const lt = state.lineTypes.find(l => l.id === line.lineTypeId);
+    const color = line.color || (lt?.color || '#4a9eff');
+    const nameEl = document.getElementById('linePropertiesName');
+    const swatchEl = document.getElementById('linePropertiesSwatch');
+    const startDropEl = document.getElementById('linePropertiesStartDrop');
+    const endDropEl = document.getElementById('linePropertiesEndDrop');
+    const editVerticesGroup = document.getElementById('linePropertiesEditVerticesGroup');
+    const editVerticesBtn = document.getElementById('linePropertiesEditVertices');
+    nameEl.value = line.name || (it.type === 'poly' ? 'Polyline' : 'Quick line');
+    startDropEl.value = String(line.startDrop ?? '');
+    endDropEl.value = String(line.endDrop ?? '');
+    swatchEl.style.background = color;
+    editVerticesGroup.style.display = it.type === 'poly' ? '' : 'none';
+    nameEl.onblur = () => {
+      const v = nameEl.value.trim();
+      pushUndoSnapshot();
+      line.name = v || (it.type === 'poly' ? 'Polyline' : 'Quick line');
+      markProjectDirty();
+      updateUI();
+    };
+    swatchEl.onclick = () => {
+      showLineColorModal(color, (newColor) => {
+        pushUndoSnapshot();
+        line.color = newColor;
+        swatchEl.style.background = newColor;
+        markProjectDirty();
+        updateUI();
+        renderPdf();
+      });
+    };
+    const applyDrops = () => {
+      const sd = parseInt(startDropEl.value, 10);
+      const ed = parseInt(endDropEl.value, 10);
+      line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
+      line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
+    };
+    startDropEl.onblur = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); };
+    endDropEl.onblur = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); };
+    const adjustDrop = (el, prop, delta) => {
+      const v = parseInt(el.value, 10);
+      const cur = isNaN(v) || v < 0 ? 0 : v;
+      const next = Math.max(0, cur + delta);
+      pushUndoSnapshot();
+      line[prop] = next;
+      el.value = next || '';
+      markProjectDirty();
+      updateUI();
+      renderPdf();
+    };
+    document.getElementById('linePropertiesStartDropPlus1').onclick = () => adjustDrop(startDropEl, 'startDrop', 1);
+    document.getElementById('linePropertiesStartDropPlus10').onclick = () => adjustDrop(startDropEl, 'startDrop', 10);
+    document.getElementById('linePropertiesStartDropMinus1').onclick = () => adjustDrop(startDropEl, 'startDrop', -1);
+    document.getElementById('linePropertiesStartDropMinus10').onclick = () => adjustDrop(startDropEl, 'startDrop', -10);
+    document.getElementById('linePropertiesClearStartDrop').onclick = () => {
+      pushUndoSnapshot();
+      line.startDrop = 0;
+      startDropEl.value = '';
+      markProjectDirty();
+      updateUI();
+      renderPdf();
+    };
+    document.getElementById('linePropertiesEndDropPlus1').onclick = () => adjustDrop(endDropEl, 'endDrop', 1);
+    document.getElementById('linePropertiesEndDropPlus10').onclick = () => adjustDrop(endDropEl, 'endDrop', 10);
+    document.getElementById('linePropertiesEndDropMinus1').onclick = () => adjustDrop(endDropEl, 'endDrop', -1);
+    document.getElementById('linePropertiesEndDropMinus10').onclick = () => adjustDrop(endDropEl, 'endDrop', -10);
+    document.getElementById('linePropertiesClearEndDrop').onclick = () => {
+      pushUndoSnapshot();
+      line.endDrop = 0;
+      endDropEl.value = '';
+      markProjectDirty();
+      updateUI();
+      renderPdf();
+    };
+    if (editVerticesBtn) {
+      editVerticesBtn.onclick = () => {
+        hideModal('linePropertiesModal');
+        pendingLineProperties = null;
+        enterEditMode(it.poly.id, it.pageIdx);
+      };
+    }
+    showModal('linePropertiesModal');
+  }
+  function closeLinePropertiesModal() {
+    if (!pendingLineProperties) return;
+    const line = pendingLineProperties.type === 'poly' ? pendingLineProperties.poly : pendingLineProperties.q;
+    const startDropEl = document.getElementById('linePropertiesStartDrop');
+    const endDropEl = document.getElementById('linePropertiesEndDrop');
+    if (startDropEl && endDropEl) {
+      const sd = parseInt(startDropEl.value, 10);
+      const ed = parseInt(endDropEl.value, 10);
+      line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
+      line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
+    }
+    pushUndoSnapshot();
+    markProjectDirty();
+    hideModal('linePropertiesModal');
+    pendingLineProperties = null;
     updateUI();
     renderPdf();
   }
@@ -4857,9 +5115,9 @@
         listEl.innerHTML = '';
         matches.forEach(proj => {
           const div = document.createElement('div');
-          div.className = 'sidebar-item';
           const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
-          div.innerHTML = '<span class="name">' + (proj.name || 'Untitled') + '</span><span class="badge">' + date + '</span>';
+          div.className = 'sidebar-item load-annotations-item';
+          div.innerHTML = '<span class="name">' + (proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + date + '</span>';
           div.onclick = async () => {
             const { data: full } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path').eq('id', proj.id).single();
             if (full && full.data) {
@@ -5355,6 +5613,11 @@
     document.getElementById('lineTypeOpacityVal').textContent = Math.round(state.lineTypeSettings.opacity * 100);
     renderAnnotations();
   };
+  document.getElementById('lineTypeDropXSize').oninput = () => {
+    state.lineTypeSettings.dropXSize = parseInt(document.getElementById('lineTypeDropXSize').value, 10);
+    document.getElementById('lineTypeDropXSizeVal').textContent = state.lineTypeSettings.dropXSize;
+    renderAnnotations();
+  };
 
   document.getElementById('pagesCollapseIcon').onclick = (e) => {
     e.stopPropagation();
@@ -5427,6 +5690,21 @@
     document.getElementById('lineTypeSizeVal').textContent = state.lineTypeSettings.lineSize ?? 2;
     document.getElementById('lineTypeOpacity').value = Math.round((state.lineTypeSettings.opacity ?? 1) * 100);
     document.getElementById('lineTypeOpacityVal').textContent = Math.round((state.lineTypeSettings.opacity ?? 1) * 100);
+    document.getElementById('lineTypeDropXSize').value = state.lineTypeSettings.dropXSize ?? 10;
+    document.getElementById('lineTypeDropXSizeVal').textContent = state.lineTypeSettings.dropXSize ?? 10;
+    const dropIconGrid = document.getElementById('lineTypeDropIconGrid');
+    const currentStyle = state.lineTypeSettings.dropIconStyle ?? 'circle';
+    dropIconGrid.innerHTML = DROP_ICON_STYLES.map(st =>
+      '<div class="icon-cell' + (st.id === currentStyle ? ' selected' : '') + '" data-style="' + st.id + '" title="' + st.name + '">' + st.svg + '</div>'
+    ).join('');
+    dropIconGrid.querySelectorAll('.icon-cell').forEach(c => {
+      c.onclick = () => {
+        dropIconGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+        state.lineTypeSettings.dropIconStyle = c.dataset.style;
+        renderAnnotations();
+      };
+    });
     document.getElementById('lineTypeSettingsReorder').style.display = state.lineTypes.length < 2 ? 'none' : '';
     showModal('lineTypeSettingsModal');
   };
@@ -6231,6 +6509,7 @@
     if (pending?.onDelete) pending.onDelete();
   };
   document.getElementById('counterLineTypeDetailsClose').onclick = () => hideModal('counterLineTypeDetailsModal');
+  document.getElementById('linePropertiesClose').onclick = () => closeLinePropertiesModal();
   document.getElementById('deleteCounterLineTypeCancel').onclick = () => { hideModal('deleteCounterLineTypeConfirmModal'); pendingDeleteCounterLineType = null; };
   document.getElementById('deleteCounterLineTypeConfirm').onclick = () => {
     hideModal('deleteCounterLineTypeConfirmModal');
@@ -7874,6 +8153,19 @@
       openNoteModal('edit', note.text, note);
     }
   };
+  document.getElementById('ctxLineProperties').onclick = () => {
+    const t = state.ctxTarget;
+    if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
+    const page = state.pages[state.currentPage];
+    const ann = page?.annotations;
+    if (!ann) return;
+    let it = null;
+    if (t.type === 'quickLine') it = { type: 'quick', q: ann.quickLines[t.index], pageIdx: state.currentPage };
+    else if (t.type === 'polyline') it = { type: 'poly', poly: ann.polylines[t.index], pageIdx: state.currentPage };
+    if (!it) return;
+    document.getElementById('contextMenu').classList.remove('visible');
+    openLinePropertiesModal(it);
+  };
   document.getElementById('ctxAssignGroup').onclick = () => {
     const t = state.ctxTarget;
     if (!t || (t.type !== 'marker' && t.type !== 'quickLine' && t.type !== 'polyline')) return;
@@ -7929,8 +8221,11 @@
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
+    const linePropsBtn = document.getElementById('ctxLineProperties');
     const assignGroupBtn = document.getElementById('ctxAssignGroup');
     editBtn.style.display = (state.ctxTarget?.type === 'note' || state.ctxTarget?.type === 'noteResize' || state.ctxTarget?.type === 'noteFontSize') ? 'block' : 'none';
+    const canLineProps = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
+    linePropsBtn.style.display = canLineProps ? 'block' : 'none';
     const canAssignGroup = !state.isViewer && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
     menu.style.left = x + 'px';
@@ -8459,6 +8754,7 @@
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; }
+      else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { closeLinePropertiesModal(); }
       else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }

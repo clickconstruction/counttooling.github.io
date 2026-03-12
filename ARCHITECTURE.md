@@ -9,7 +9,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | index.html | 1–1050 | HTML structure (head, body, modals) |
 | index.html | 15–260 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
 | index.html | 1051–7466 | JavaScript (IIFE) |
-| report.js | 1–261 | Print report, Summary (Item/Total/Pages; line types as `[unit] of [name]`, total numeric; `pickScaleForLineType` prefers ft), getPipeToolingSummary, escapeHtml; uses globals from index.html |
+| report.js | 1–261 | Print report, Summary (Item/Total/Pages; line types as `[unit] of [name]`, total numeric; `pickScaleForLineType` prefers ft; line totals use `getLineLengthPdfPts` for drops), getPipeToolingSummary, escapeHtml; uses globals from index.html |
 
 ## index.html Section Map
 
@@ -19,11 +19,11 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | State & makeAnnotations | 1608–1750 | state object (counterSettings, lineTypeSettings, exportSettings, recentLineColors, pagesListCollapsed, pagesTitlesTruncated, touchPanStart, touchPanning, pendingCanvasLoad, isPanning, panStart), makeAnnotations(), undoStack, redoStack, pushUndoSnapshot, clearUndoStacks |
 | Math & Format Helpers | 1728–1977 | ptDist, polylineDistance, polygonArea, distToSegment, getPageScale, formatDist, formatArea |
 | Coordinate Helpers | 1978–1989 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
-| PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight), getPageSize, fitZoom |
+| PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight, X markers for drops), getPageSize, fitZoom |
 | UI Render Functions | 2341–2939 | updateUI (scale-set, counterBtn/counterBtnSidebar dynamic icon, headerActiveLineType; headerActiveCounter cleared), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 2940–5100 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares, View links: create, copy URL, access log, revoke), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects, Force turn-in per row), saveProjectModal (Include PDF toggle), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, saveBeforeTurnInModal (when local PDF not uploaded and user clicks Save and Turn In), lastSessionRestoreModal (Keep/Discard on boot), summaryCountDetailModal (— by page), settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
+| Modals & Handlers | 2940–5100 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, exportPdfModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), setScaleFirst toasts, chooseLineTypeModal, clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, linePropertiesModal (Line Properties: Name, Color, Start/End drop, +1/+10/-10/-1/Clear, Edit vertices for polylines), authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares, View links: create, copy URL, access log, revoke), mySettingsModal (User Settings), adminPanelModal, manageUserModal (list/delete users), manageProjectsModal (list/delete projects, Force turn-in per row), saveProjectModal (Include PDF toggle), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, saveBeforeTurnInModal (when local PDF not uploaded and user clicks Save and Turn In), lastSessionRestoreModal (Keep/Discard on boot), summaryCountDetailModal (— by page), settingsAdvancedSection, macrosModal (Keyboard Shortcuts) |
 | Canvas Event Handlers | 5088–5220 | handleCanvasClick, handleCanvasDblClick, handleContextMenu |
-| Event Binding | 5221–5749 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P/D/H/N when not in input/textarea) |
+| Event Binding | 5221–5749 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows, Enter; hotkeys M/S/C/L/P/D/H/N/R when not in input/textarea; Ctrl+R Refresh) |
 | Init & Persistence | 5221–6948 | initSupabaseAuth, localStorage restore, save interval (5s backup), performAutoSave (5s when dirty), markProjectDirty, autoSaveDirty, lastSaveIncludedPdf, savePdfInProgress, pdfCachePut/Get, sha256Hex, clickcount-last-project restore (prompts Keep/Discard via lastSessionRestoreModal before restore), initViewOnlyMode, viewCacheGet/viewCachePut, window globals |
 
 ## Search Hints (grep patterns)
@@ -95,11 +95,12 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Show Highlights / Show Notes | `bundleHighlights` or `bundleNotes` or `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
 | Note modal | `noteModal` — Add/Edit Note (textarea, Cancel/Done); double-click or context Edit to edit |
 | Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose Line Type / Create Line Type (like Counter modal) |
-| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/P/D/H/N/Esc/arrows/Enter/Ctrl+Z/Ctrl+Shift+Z shortcuts |
+| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/P/D/H/N/R/Esc/arrows/Enter/Ctrl+Z/Ctrl+Shift+Z/Ctrl+R shortcuts |
+| Line drops / Line Properties | `startDrop`, `endDrop` on quick lines and polylines; `getLineLengthPdfPts`; `linePropertiesModal` or `openLinePropertiesModal`; `ctxLineProperties` in context menu; X markers when drop > 0 |
 
 ## Key Globals (used by report.js)
 
-These must remain on `window`: `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`, `renderIconHtml`. Report.js also exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`.
+These must remain on `window`: `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`, `renderIconHtml`, `getLineLengthPdfPts`. Report.js also exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`.
 
 ## Data Flow
 
@@ -137,7 +138,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
 - **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report / Bundle highlights / Bundle notes toggle switches with "— none to show" and disabled when no data); Copy to PipeTooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Show Highlights, Show Notes (open in new tab; hidden when no data); Combined PDF and Specific Pages modals have Bundle highlights/notes toggles and marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`, `highlights-summary_[project name].pdf`, `notes-summary_[project name].pdf`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid); Show ring and Solid ring use toggle switches; Ring section only visible when "Show ring around counters" on; solid ring default true; all persisted
-- **Line Type Settings** — Click "Line Types" heading: opacity, line size
+- **Line Type Settings** — Click "Line Types" heading: opacity, line size, drop X size (4–24px), drop icon (Circle default, X, Plus, Diamond, Triangle)
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
 - **Quick line color** — Lines sidebar: click swatch to change color; quick lines and polylines support per-line color
 - **Quick line preview** — Line renders from first click to second while placing
@@ -145,12 +146,12 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Line selection highlight** — Click line in Lines sidebar: `selectedLineId`, `selectedLinePageIdx`; selected line drawn thicker with glow on canvas
 - **Rename** — Edit buttons on pages, lines; Escape cancels (reverts); arrow keys move cursor in input; counters and line types: edit pen opens counterLineTypeDetailsModal with Name field
 - **Line type layout** — Two-row: name on top, swatch + runs/length + edit on bottom
-- **Lines layout** — Name on top, length below, swatch + edit on bottom; click to select/highlight on canvas
+- **Lines layout** — Name on top, length below (with drops e.g. "5 + 3 ft" when present), swatch + edit on bottom; click to select/highlight on canvas; edit pen or double-click opens Line Properties modal
 - **Selection highlight** — `.sidebar-item.active` for selected counter, line type, line, and current page in Pages list
 - **Toggle switches** — `.toggle-switch` with `.toggle-switch-knob`; used for Show group colors (Groups section), Counter Settings (Show ring, Solid ring), Save Project Include PDF, Combined PDF and Specific Pages (Bundle highlights, Bundle notes, Include report); button toggles hidden checkbox, syncs `aria-pressed`
 - **Highlight annotation** — Two-click low-opacity rectangular highlight on PDF; H hotkey; context Delete; Bundle Highlights PDF; `page.annotations.highlights`
 - **Page annotation notes** — Note tool (N hotkey); click to place, modal for text; red text; fixed-size on screen; resizable width (draggable handle) with text wrap; square size slider (left side) for font size; moveable after placement; anchor dot slightly left of text; double-click or context Edit to edit; context Delete; Notes section in Print Report; Bundle Notes PDF
-- **Hotkeys** — M (Move), S (Set Scale), C (Counter), L (Quick Line), P (Polyline), D (Measure), H (Highlight), N (Note); ignored when focus is in input/textarea/contenteditable (Escape still closes modals)
+- **Hotkeys** — M (Move), S (Set Scale), C (Counter), L (Quick Line), P (Polyline), D (Measure), H (Highlight), N (Note), R (Rotate page); Ctrl+R / Cmd+R (Refresh); ignored when focus is in input/textarea/contenteditable (Escape still closes modals)
 - **Tool switching on click** — Clicking a line type switches to Quick Line mode; clicking a counter switches to Counter mode
 - **New counter/line type selected by default** — Newly created counter or line type becomes active immediately
 - **Macros** — Status bar "Macros" link opens Keyboard Shortcuts modal (M/S/C/L/P/D/H/N/Esc/arrows/Enter)
@@ -173,6 +174,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Artboard** — In User Settings (Supabase): Save Artboard, Load from Cloud, Export Artboard; saves counters and line types to user profile; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard`
 - **Page rotation** — Per-page `page.rotation` (0/90/180/270); rotate button (↻) in zoom bar next to zoom controls; `rotatePage90()`, `rotateAnnotations()`, `rotatePoint90CW()`; annotations transform on rotate; notes text rotates with page; persisted in save/load
 - **Counter/Line Type details modal** — Edit pen (✎) on counter or line type row opens `counterLineTypeDetailsModal`; Name (editable), Color (swatch), On pages (clickable jump), Delete (count=0 immediate; count>0 confirm + remove markers/lines); row click selects for placing; `openCounterLineTypeDetailsModal`, `performDeleteCounterLineType`
+- **Line drops** — Per-line `startDrop` and `endDrop` (page scale units) for vertical runs; X markers at endpoints when drop > 0; total length via `getLineLengthPdfPts`; Line Properties modal (edit pen or context menu "Line Properties"): Name, Color, Start drop, End drop, +1/+10/-10/-1/Clear buttons, Edit vertices for polylines; sidebar Lines list shows drops below length; persisted in save/load and export/import
 - **Mobile sidebar redundancy** — User and Project Settings buttons hidden on mobile (`#authBtnSidebar`, `#settingsSidebarBtn`); icons in sidebar logo provide same access
 - **Manage Projects Force turn-in** — Admin can force turn-in from Manage Projects modal per checked-out row; `list_projects_for_admin` returns `checked_out_by`, `checked_out_at`, `checked_out_email` (migration 025)
 - **Realtime force turn-in notification** — When admin force turns in, user with project open gets toast "Project was turned in. You can check out to edit again." and UI switches to view mode via `refreshProjectPermissions`; `subscribeToProjectCheckoutChanges` on projects table

@@ -1,6 +1,6 @@
 /**
  * ClickCount Print Report
- * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml
+ * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts
  */
 (function() {
   function escapeHtml(s) {
@@ -75,7 +75,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += quickLineLength(q);
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(q, i, false);
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -83,7 +83,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += polylineDistance(poly.points || [], poly.closed);
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(poly, i, true);
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -155,11 +155,11 @@
         let len = 0;
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           runs++;
-          len += quickLineLength(q);
+          len += getLineLengthPdfPts(q, i, false);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           runs++;
-          len += polylineDistance(poly.points || [], poly.closed);
+          len += getLineLengthPdfPts(poly, i, true);
         });
         if (runs > 0) {
           lineTypeRows.push({ type: lt.name, runs, length: formatDist(len, page.scale), color: lt.color });
@@ -263,14 +263,14 @@
           const gid = q.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += quickLineLength(q);
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(q, i, false);
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           const gid = poly.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += polylineDistance(poly.points || [], poly.closed);
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(poly, i, true);
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -324,7 +324,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += quickLineLength(q);
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(q, i, false);
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -332,7 +332,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += polylineDistance(poly.points || [], poly.closed);
+          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(poly, i, true);
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });

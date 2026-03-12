@@ -164,8 +164,6 @@
     }
     @media (min-width: 769px) {
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
-      body.supabase-enabled .sidebar-logo { display: flex; }
-      body.supabase-enabled .sidebar-logo-icons.supabase-only { display: flex; }
       body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
     }
@@ -337,6 +335,7 @@
     .modal-card .actions button:first-child:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .modal-card .actions button:last-child { background: var(--accent); color: var(--bg); }
     .settings-menu { display: flex; flex-direction: column; gap: 8px; }
+    .settings-close-checkout-row .settings-menu-btn { width: auto; flex: 1; min-width: 0; }
     .settings-menu-btn { width: 100%; padding: 12px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 1rem; cursor: pointer; transition: all 0.15s ease; }
     .settings-menu-btn:hover { background: var(--surface3); border-color: var(--border2); }
     .settings-menu-btn.danger { color: var(--red); border-color: var(--red); }
@@ -1041,12 +1040,14 @@
         <tr><th>Key</th><th>Action</th></tr>
         <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
         <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Refresh</td></tr>
         <tr><td><kbd>M</kbd></td><td>Move mode</td></tr>
         <tr><td><kbd>S</kbd></td><td>Set Scale</td></tr>
         <tr><td><kbd>C</kbd></td><td>Counter mode</td></tr>
         <tr><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
         <tr><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
         <tr><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Rotate page</td></tr>
         <tr><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
         <tr><td><kbd>N</kbd></td><td>Note mode</td></tr>
         <tr><td><kbd>Space</kbd></td><td>Toggle sidebar (desktop)</td></tr>
@@ -1221,13 +1222,15 @@
       <div class="settings-menu">
         <button type="button" class="settings-menu-btn btn-yellow" id="settingsSaveProject">Save Project to Cloud</button>
         <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add additional PDF pages</button>
-        <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
+        <div class="settings-close-checkout-row" style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;">
+          <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
+          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;align-self:stretch;">Check out Project</button>
+          <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;align-self:stretch;">Force turn-in (admin)</button>
+        </div>
         <div id="settingsCheckoutSection" class="settings-checkout-section" style="display:none;">
           <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:stretch;">
             <p id="settingsCheckoutStatus" class="settings-checkout-status" style="margin:0;font-size:0.9rem;color:var(--text2);flex:1;min-width:0;"></p>
-            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;align-self:stretch;width:auto;">Check out Project</button>
             <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Save and Turn In Project</button>
-            <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;align-self:stretch;width:auto;">Force turn-in (admin)</button>
           </div>
         </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
@@ -1451,21 +1454,8 @@
       </div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Add users by email. Viewers can view only; editors can check out to edit.</p>
       <div id="shareProjectList" class="form-group" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
-      <div class="form-group" id="shareViewLinksSection" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px;" id="shareViewLinksHeader">
-          <h3 style="font-size:1rem;margin:0;">View links</h3>
-          <span id="shareViewLinksCollapseIcon">▼</span>
-        </div>
-        <div id="shareViewLinksContent">
-          <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (clickplumbing.com) to view.</p>
-          <button type="button" class="settings-menu-btn btn-yellow" id="shareViewLinkCreate" style="margin-bottom:12px;">Create view link</button>
-          <div id="shareViewLinksList" style="max-height:160px;overflow-y:auto;"></div>
-        </div>
-      </div>
       <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="shareProjectEmail" placeholder="user@example.com" style="width:100%;min-width:240px;padding:8px 12px;font-size:1rem;box-sizing:border-box;margin-bottom:12px;">
-        <label style="margin-top:8px;">Or select from list</label>
+        <label>Select user</label>
         <select id="shareProjectUserSelect" style="width:100%;padding:8px 12px;font-size:1rem;box-sizing:border-box;margin-bottom:12px;">
           <option value="">Select a user...</option>
         </select>
@@ -1481,6 +1471,17 @@
             <label style="visibility:hidden;pointer-events:none;">Add</label>
             <button type="button" class="settings-menu-btn btn-yellow" id="shareProjectAdd" style="min-width:0;text-align:center;padding:8px 12px;">Add</button>
           </div>
+        </div>
+      </div>
+      <div class="form-group" id="shareViewLinksSection" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px;" id="shareViewLinksHeader">
+          <h3 style="font-size:1rem;margin:0;">View links</h3>
+          <span id="shareViewLinksCollapseIcon">▶</span>
+        </div>
+        <div id="shareViewLinksContent" class="collapsed">
+          <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (clickplumbing.com) to view.</p>
+          <button type="button" class="settings-menu-btn btn-yellow" id="shareViewLinkCreate" style="margin-bottom:12px;">Create view link</button>
+          <div id="shareViewLinksList" style="max-height:160px;overflow-y:auto;"></div>
         </div>
       </div>
       <p id="shareProjectError" class="form-group" style="color:var(--red);display:none;"></p>
@@ -2196,6 +2197,7 @@
     checkedOutAt: null,
     checkedOutEmail: null,
     isViewer: false,
+    loadedViaViewLink: false,
     canCheckOut: false,
     projectOwnerId: null,
     maxZoom: null,
@@ -2538,6 +2540,7 @@
     const isOwner = proj.user_id === uid;
     const lockExpired = !proj.checked_out_at || (Date.now() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
     const hasValidCheckout = proj.checked_out_by === uid && !lockExpired;
+    state.loadedViaViewLink = false;
     state.isViewer = !hasValidCheckout;
     state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
     clearUndoStacks();
@@ -3675,14 +3678,14 @@
     const settingsAddAdditionalPages = document.getElementById('settingsAddAdditionalPages');
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
     const settingsShareProject = document.getElementById('settingsShareProject');
-    if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user) ? '' : 'none';
+    if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink) ? '' : 'none';
     const copyViewLinkBtn = document.getElementById('copyViewLinkBtn');
-    if (copyViewLinkBtn) copyViewLinkBtn.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.isViewer) ? '' : 'none';
+    if (copyViewLinkBtn) copyViewLinkBtn.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink) ? '' : 'none';
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
     const headerShareBtn = document.getElementById('headerShareBtn');
     if (headerShareBtn) headerShareBtn.classList.toggle('in-view-mode', !!(isMobile && SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && state.isViewer));
     const sidebarLogoShare = document.getElementById('sidebarLogoShare');
-    if (sidebarLogoShare) sidebarLogoShare.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !(isMobile && state.isViewer)) ? '' : 'none';
+    if (sidebarLogoShare) sidebarLogoShare.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink && !(isMobile && state.isViewer)) ? '' : 'none';
     document.body.classList.toggle('mobile-view-mode', isMobile && !!state.isViewer);
     const settingsSaveProject = document.getElementById('settingsSaveProject');
     if (settingsSaveProject) {
@@ -4685,6 +4688,7 @@
         state.checkedOutAt = null;
         state.checkedOutEmail = null;
         state.isViewer = false;
+        state.loadedViaViewLink = false;
         state.canCheckOut = false;
         state.projectOwnerId = null;
         try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
@@ -4727,6 +4731,7 @@
     state.checkedOutBy = proj.checked_out_by || null;
     state.checkedOutAt = proj.checked_out_at || null;
     state.checkedOutEmail = proj.checked_out_email || null;
+    state.loadedViaViewLink = false;
     state.isViewer = !proj.can_edit;
     state.canCheckOut = proj.can_check_out || false;
     updateUI();
@@ -6886,16 +6891,16 @@
       if (!state.currentProjectId || !supabase) return;
       const listEl = document.getElementById('shareProjectList');
       const errEl = document.getElementById('shareProjectError');
-      const emailInp = document.getElementById('shareProjectEmail');
       const userSelect = document.getElementById('shareProjectUserSelect');
       errEl.style.display = 'none';
-      emailInp.value = '';
       listEl.innerHTML = '<p style="color:var(--text3);font-size:0.9rem;">Loading...</p>';
       userSelect.innerHTML = '<option value="">Select a user...</option>';
       userSelect.value = '';
       showModal('shareProjectModal');
+      const shareViewLinksSection = document.getElementById('shareViewLinksSection');
+      if (shareViewLinksSection) shareViewLinksSection.style.display = state.loadedViaViewLink ? 'none' : '';
       const shareViewLinkCreate = document.getElementById('shareViewLinkCreate');
-      if (shareViewLinkCreate) shareViewLinkCreate.style.display = state.isViewer ? 'none' : '';
+      if (shareViewLinkCreate) shareViewLinkCreate.style.display = state.loadedViaViewLink ? 'none' : '';
       let usersResult, sharesResult;
       try {
         [usersResult, sharesResult] = await Promise.all([
@@ -6927,20 +6932,24 @@
         const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 640"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
         shares.forEach(function(s) {
           const div = document.createElement('div');
-          div.className = 'share-project-row';
+          div.className = 'share-project-row' + (s.role === 'owner' ? ' share-project-owner-row' : '');
           div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);';
-          div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;">' + esc(s.email || s.user_id) + '</span><select class="share-project-role-select" style="padding:4px 8px;font-size:0.85rem;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);" data-user-id="' + s.user_id + '"><option value="viewer"' + (s.role === 'viewer' ? ' selected' : '') + '>Viewer</option><option value="editor"' + (s.role === 'editor' ? ' selected' : '') + '>Editor</option></select></div><button type="button" class="danger share-project-remove-btn" style="padding:6px;border-radius:4px;cursor:pointer;border:none;background:transparent;color:var(--red);" aria-label="Remove" data-user-id="' + s.user_id + '">' + trashSvg + '</button>';
-          div.querySelector('.share-project-remove-btn').onclick = async () => {
-            const { data: res } = await supabase.rpc('remove_project_share', { p_project_id: state.currentProjectId, p_target_user_id: s.user_id });
-            if (res && res.ok) openShareProjectModal();
-            else showToast((res && res.error) || 'Failed to remove');
-          };
-          div.querySelector('.share-project-role-select').onchange = async function() {
-            const newRole = this.value;
-            const { data: res } = await supabase.rpc('add_project_share', { p_project_id: state.currentProjectId, p_target_user_id: s.user_id, p_role: newRole });
-            if (res && res.ok) openShareProjectModal();
-            else showToast((res && res.error) || 'Failed to update role');
-          };
+          if (s.role === 'owner') {
+            div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;color:var(--text2);">Owner: ' + esc(s.email || s.user_id) + '</span></div>';
+          } else {
+            div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;">' + esc(s.email || s.user_id) + '</span><select class="share-project-role-select" style="padding:4px 8px;font-size:0.85rem;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);" data-user-id="' + s.user_id + '"><option value="viewer"' + (s.role === 'viewer' ? ' selected' : '') + '>Viewer</option><option value="editor"' + (s.role === 'editor' ? ' selected' : '') + '>Editor</option></select></div><button type="button" class="danger share-project-remove-btn" style="padding:6px;border-radius:4px;cursor:pointer;border:none;background:transparent;color:var(--red);" aria-label="Remove" data-user-id="' + s.user_id + '">' + trashSvg + '</button>';
+            div.querySelector('.share-project-remove-btn').onclick = async () => {
+              const { data: res } = await supabase.rpc('remove_project_share', { p_project_id: state.currentProjectId, p_target_user_id: s.user_id });
+              if (res && res.ok) openShareProjectModal();
+              else showToast((res && res.error) || 'Failed to remove');
+            };
+            div.querySelector('.share-project-role-select').onchange = async function() {
+              const newRole = this.value;
+              const { data: res } = await supabase.rpc('add_project_share', { p_project_id: state.currentProjectId, p_target_user_id: s.user_id, p_role: newRole });
+              if (res && res.ok) openShareProjectModal();
+              else showToast((res && res.error) || 'Failed to update role');
+            };
+          }
           listEl.appendChild(div);
         });
       } else {
@@ -7030,18 +7039,13 @@
       }
     };
     document.getElementById('shareProjectModalClose').onclick = () => hideModal('shareProjectModal');
-    document.getElementById('shareProjectUserSelect').onchange = function() {
-      const sel = document.getElementById('shareProjectUserSelect');
-      const emailInp = document.getElementById('shareProjectEmail');
-      emailInp.value = (sel.value || '').trim();
-    };
     document.getElementById('shareProjectAdd').onclick = async () => {
-      const emailInp = document.getElementById('shareProjectEmail');
+      const userSelect = document.getElementById('shareProjectUserSelect');
       const roleSel = document.getElementById('shareProjectRole');
       const errEl = document.getElementById('shareProjectError');
-      const email = (emailInp.value || '').trim().toLowerCase();
+      const email = (userSelect.value || '').trim().toLowerCase();
       if (!email) {
-        errEl.textContent = 'Enter an email address';
+        errEl.textContent = 'Select a user';
         errEl.style.display = 'block';
         return;
       }
@@ -7054,7 +7058,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-          emailInp.value = '';
+          userSelect.value = '';
           openShareProjectModal();
           showToast('Added ' + (data.email || email));
         } else {
@@ -7256,6 +7260,7 @@
           state.checkedOutBy = proj.checked_out_by || null;
           state.checkedOutAt = proj.checked_out_at || null;
           state.checkedOutEmail = proj.checked_out_email || null;
+          state.loadedViaViewLink = false;
           state.isViewer = !proj.can_edit;
           state.canCheckOut = proj.can_check_out || false;
           state.projectOwnerId = proj.user_id || null;
@@ -7316,6 +7321,7 @@
       state.checkedOutAt = null;
       state.checkedOutEmail = null;
       state.isViewer = false;
+      state.loadedViaViewLink = false;
       state.canCheckOut = false;
       state.projectOwnerId = null;
       try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
@@ -7572,6 +7578,7 @@
             state.currentProjectId = projectId;
             subscribeToProjectCheckoutChanges(projectId);
             state.projectOwnerId = user.id;
+            state.loadedViaViewLink = false;
             state.isViewer = false;
             state.canCheckOut = true;
             state.checkedOutBy = null;
@@ -7643,6 +7650,7 @@
           state.currentProjectId = projectId;
           subscribeToProjectCheckoutChanges(projectId);
           state.projectOwnerId = user.id;
+          state.loadedViaViewLink = false;
           state.isViewer = false;
           state.canCheckOut = true;
           state.checkedOutBy = null;
@@ -8421,6 +8429,7 @@
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
       if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
       else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
+      else if (k === 'r') { rotatePage90(); e.preventDefault(); }
       else if (!state.isViewer) {
         if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
         else if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
@@ -8773,6 +8782,7 @@
     state.pdfBuffer = null;
     state.pdfHash = projectData.pdfHash || null;
     clearUndoStacks();
+    state.loadedViaViewLink = true;
     state.isViewer = true;
     state.canCheckOut = false;
     state.checkedOutBy = null;

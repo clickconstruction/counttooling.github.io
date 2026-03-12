@@ -164,6 +164,10 @@
     }
     @media (min-width: 769px) {
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
+      body.supabase-enabled .sidebar-logo { display: flex; }
+      body.supabase-enabled .sidebar-logo-icons.supabase-only { display: flex; }
+      body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
+      body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
     }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
@@ -3567,6 +3571,7 @@
       activeCounterEl.innerHTML = '';
       activeCounterEl.classList.remove('visible');
     }
+    document.body.classList.toggle('supabase-enabled', !!SUPABASE_ENABLED);
     if (SUPABASE_ENABLED) {
       const authBtn = document.getElementById('authBtn');
       const authBtnSidebar = document.getElementById('authBtnSidebar');
@@ -4632,7 +4637,15 @@
 
   async function initSupabaseAuth() {
     if (!supabase) return;
-    const { data: { session } } = await supabase.auth.getSession();
+    let session = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      session = data?.session;
+    } catch (e) {
+      if (e?.name === 'AuthApiError' || (e?.message && (e.message.includes('Refresh Token') || e.message.includes('refresh_token')))) {
+        await supabase.auth.signOut();
+      }
+    }
     state.supabaseSession = session;
     if (session?.user) {
       const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
@@ -7084,9 +7097,16 @@
         }
         let user = state.supabaseSession?.user;
         if (!user) {
-          const { data: { session } } = await supabase.auth.getSession();
-          state.supabaseSession = session;
-          user = session?.user;
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            state.supabaseSession = session;
+            user = session?.user;
+          } catch (e) {
+            if (e?.name === 'AuthApiError' || (e?.message && (e.message.includes('Refresh Token') || e.message.includes('refresh_token')))) {
+              await supabase.auth.signOut();
+              state.supabaseSession = null;
+            }
+          }
           updateUI();
         }
         if (!user) {
@@ -7138,9 +7158,6 @@
           div.onclick = async () => {
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
           const d = proj.data || {};
-          // #region agent log
-          fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:loadProject',message:'Load Project data received',data:{isOwner:proj.is_owner,canEdit:proj.can_edit,pagesLen:(d.pages||[]).length,pageAnns:(d.pages||[]).map((p,i)=>({idx:p.index,ql:(p.annotations?.quickLines||[]).length,pl:(p.annotations?.polylines||[]).length})),timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           if (proj.pdf_path) {
             try {
               let buf;
@@ -7167,9 +7184,6 @@
                 (d.pages || []).forEach(p => {
                   applyPageAnnotationsFromData(state.pages[p.index], p);
                 });
-                // #region agent log
-                fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:loadProject:fetch',message:'After apply annotations (fetch path)',data:{stateQL:state.pages.map(p=>(p.annotations?.quickLines||[]).length),statePL:state.pages.map(p=>(p.annotations?.polylines||[]).length),timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 if (d.pageScales) {
                   d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
                 } else if (d.scale) {
@@ -7201,9 +7215,6 @@
               (d.pages || []).forEach(p => {
                 applyPageAnnotationsFromData(state.pages[p.index], p);
               });
-              // #region agent log
-              fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:loadProject:cached',message:'After apply annotations (cached path)',data:{stateQL:state.pages.map(p=>(p.annotations?.quickLines||[]).length),statePL:state.pages.map(p=>(p.annotations?.polylines||[]).length),timestamp:Date.now()})}).catch(()=>{});
-              // #endregion
               if (d.pageScales) {
                 d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
               } else if (d.scale) {
@@ -8725,9 +8736,6 @@
     }
 
     const d = projectData.data || {};
-    // #region agent log
-    fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:viewLink',message:'View link data received',data:{isCached:!!(cachedBlob&&cachedMeta),pagesLen:(d.pages||[]).length,pageAnns:(d.pages||[]).map((p,i)=>({idx:p.index,ql:(p.annotations?.quickLines||[]).length,pl:(p.annotations?.polylines||[]).length})),timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     let buf = null;
     if (cachedBlob && cachedMeta && projectData.projectId === cachedMeta.projectId) {
       buf = await cachedBlob.arrayBuffer();
@@ -8757,9 +8765,6 @@
     (d.pages || []).forEach(p => {
       applyPageAnnotationsFromData(state.pages[p.index], p);
     });
-    // #region agent log
-    fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:viewLink:apply',message:'View link after apply annotations',data:{stateQL:state.pages.map(p=>(p.annotations?.quickLines||[]).length),statePL:state.pages.map(p=>(p.annotations?.polylines||[]).length),timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;

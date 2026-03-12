@@ -2094,6 +2094,22 @@
 
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [] }; }
 
+  function applyPageAnnotationsFromData(page, p, scaleFallback) {
+    if (!page) return;
+    if (p.annotations) {
+      const a = p.annotations;
+      page.annotations = {
+        counterMarkers: a.counterMarkers && typeof a.counterMarkers === 'object' ? a.counterMarkers : {},
+        polylines: Array.isArray(a.polylines) ? a.polylines : [],
+        quickLines: Array.isArray(a.quickLines) ? a.quickLines : [],
+        highlights: Array.isArray(a.highlights) ? a.highlights : [],
+        notes: Array.isArray(a.notes) ? a.notes : []
+      };
+    }
+    page.scale = p.scale !== undefined ? p.scale : (scaleFallback ?? null);
+    page.rotation = p.rotation ?? 0;
+  }
+
   function reconcileOrphanedCountersAndLineTypes() {
     if (!state.pages || !state.pages.length) return;
     const counterIds = new Set((state.counters || []).map(c => c.id));
@@ -2479,12 +2495,7 @@
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
     (d.pages || []).forEach(p => {
-      const page = state.pages[p.index];
-      if (page) {
-        if (p.annotations) page.annotations = p.annotations;
-        page.scale = p.scale !== undefined ? p.scale : null;
-        page.rotation = p.rotation ?? 0;
-      }
+      applyPageAnnotationsFromData(state.pages[p.index], p);
     });
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     try {
@@ -4791,12 +4802,7 @@
         if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
         if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
         (d.pages || []).forEach(p => {
-          const page = state.pages[p.index];
-          if (page) {
-            if (p.annotations) page.annotations = p.annotations;
-            page.scale = p.scale !== undefined ? p.scale : null;
-            page.rotation = p.rotation ?? 0;
-          }
+          applyPageAnnotationsFromData(state.pages[p.index], p);
         });
         if (d.pageScales) {
           d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
@@ -4846,12 +4852,7 @@
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
               (d.pages || []).forEach(p => {
-                const page = state.pages[p.index];
-                if (page) {
-                  if (p.annotations) page.annotations = p.annotations;
-                  page.scale = p.scale !== undefined ? p.scale : null;
-                  page.rotation = p.rotation ?? 0;
-                }
+                applyPageAnnotationsFromData(state.pages[p.index], p);
               });
               if (d.pageScales) {
                 d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
@@ -6145,12 +6146,7 @@
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         (data.pages || []).forEach(p => {
-          const page = state.pages[p.index];
-          if (page) {
-            if (p.annotations) page.annotations = p.annotations;
-            page.scale = p.scale !== undefined ? p.scale : (data.scale || null);
-            page.rotation = p.rotation ?? 0;
-          }
+          applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
         });
         if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
         reconcileOrphanedCountersAndLineTypes();
@@ -7142,6 +7138,9 @@
           div.onclick = async () => {
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
           const d = proj.data || {};
+          // #region agent log
+          fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:loadProject',message:'Load Project data received',data:{isOwner:proj.is_owner,canEdit:proj.can_edit,pagesLen:(d.pages||[]).length,pageAnns:(d.pages||[]).map((p,i)=>({idx:p.index,ql:(p.annotations?.quickLines||[]).length,pl:(p.annotations?.polylines||[]).length})),timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           if (proj.pdf_path) {
             try {
               let buf;
@@ -7166,13 +7165,11 @@
                 if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
                 (d.pages || []).forEach(p => {
-                  const page = state.pages[p.index];
-                  if (page) {
-                    if (p.annotations) page.annotations = p.annotations;
-                    page.scale = p.scale !== undefined ? p.scale : null;
-                    page.rotation = p.rotation ?? 0;
-                  }
+                  applyPageAnnotationsFromData(state.pages[p.index], p);
                 });
+                // #region agent log
+                fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:loadProject:fetch',message:'After apply annotations (fetch path)',data:{stateQL:state.pages.map(p=>(p.annotations?.quickLines||[]).length),statePL:state.pages.map(p=>(p.annotations?.polylines||[]).length),timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
                 if (d.pageScales) {
                   d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
                 } else if (d.scale) {
@@ -7202,13 +7199,11 @@
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
               state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
               (d.pages || []).forEach(p => {
-                const page = state.pages[p.index];
-                if (page) {
-                  if (p.annotations) page.annotations = p.annotations;
-                  page.scale = p.scale !== undefined ? p.scale : null;
-                  page.rotation = p.rotation ?? 0;
-                }
+                applyPageAnnotationsFromData(state.pages[p.index], p);
               });
+              // #region agent log
+              fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:loadProject:cached',message:'After apply annotations (cached path)',data:{stateQL:state.pages.map(p=>(p.annotations?.quickLines||[]).length),statePL:state.pages.map(p=>(p.annotations?.polylines||[]).length),timestamp:Date.now()})}).catch(()=>{});
+              // #endregion
               if (d.pageScales) {
                 d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
               } else if (d.scale) {
@@ -8730,6 +8725,9 @@
     }
 
     const d = projectData.data || {};
+    // #region agent log
+    fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:viewLink',message:'View link data received',data:{isCached:!!(cachedBlob&&cachedMeta),pagesLen:(d.pages||[]).length,pageAnns:(d.pages||[]).map((p,i)=>({idx:p.index,ql:(p.annotations?.quickLines||[]).length,pl:(p.annotations?.polylines||[]).length})),timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     let buf = null;
     if (cachedBlob && cachedMeta && projectData.projectId === cachedMeta.projectId) {
       buf = await cachedBlob.arrayBuffer();
@@ -8757,13 +8755,11 @@
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
     (d.pages || []).forEach(p => {
-      const page = state.pages[p.index];
-      if (page) {
-        if (p.annotations) page.annotations = p.annotations;
-        page.scale = p.scale !== undefined ? p.scale : null;
-        page.rotation = p.rotation ?? 0;
-      }
+      applyPageAnnotationsFromData(state.pages[p.index], p);
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8f0af5'},body:JSON.stringify({sessionId:'8f0af5',location:'index.html:viewLink:apply',message:'View link after apply annotations',data:{stateQL:state.pages.map(p=>(p.annotations?.quickLines||[]).length),statePL:state.pages.map(p=>(p.annotations?.polylines||[]).length),timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;

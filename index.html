@@ -7774,14 +7774,6 @@
         }
       } catch (_) {}
       await pdfCacheDelete(proj.id);
-      const uid = state.supabaseSession?.user?.id;
-      if (proj.user_id === uid) {
-        try {
-          await deleteProjectAsOwner(proj.id, proj.pdf_path);
-        } catch (e) {
-          showToast('Could not delete project: ' + (e?.message || 'Unknown error'), 4000);
-        }
-      }
       updateUI();
     };
     document.getElementById('manageUsersBtn').onclick = () => {

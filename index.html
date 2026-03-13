@@ -1611,6 +1611,7 @@
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
     <button id="ctxLineProperties" style="display:none;">Line Properties</button>
+    <button id="ctxShowLength" style="display:none;">Show Length</button>
     <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
     <button class="danger" id="ctxDelete">Delete</button>
   </div>
@@ -3209,6 +3210,47 @@
       const drawDrop = (p) => drawDropMarker(ctx, p, dropS, q.color || '#4a9eff', dropStyle);
       if ((q.startDrop || 0) > 0) drawDrop(a);
       if ((q.endDrop || 0) > 0) drawDrop(b);
+      if (q.showLength) {
+        const tickLen = 10;
+        const drawPerpTick = (endPdf, tangentPdf) => {
+          const dx = tangentPdf.x, dy = tangentPdf.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const perpX = -dy / len, perpY = dx / len;
+          const half = tickLen / 2;
+          const p1 = toCanvas({ x: endPdf.x - perpX * half, y: endPdf.y - perpY * half });
+          const p2 = toCanvas({ x: endPdf.x + perpX * half, y: endPdf.y + perpY * half });
+          ctx.strokeStyle = q.color || '#4a9eff';
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        };
+        if (isCurved && ctrlPdf) {
+          drawPerpTick(aPdf, { x: ctrlPdf.x - aPdf.x, y: ctrlPdf.y - aPdf.y });
+          drawPerpTick(bPdf, { x: bPdf.x - ctrlPdf.x, y: bPdf.y - ctrlPdf.y });
+        } else {
+          drawPerpTick(aPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y });
+          drawPerpTick(bPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y });
+        }
+        const midPdf = isCurved && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
+        const mid = toCanvas(midPdf);
+        const pageScale = getPageScale(state.currentPage);
+        const lenPdf = getLineLengthPdfPts(q, state.currentPage, false);
+        const label = formatDistFeetInches(lenPdf, pageScale);
+        const fontSize = 12 * z * dpr();
+        ctx.font = fontSize + 'px DM Sans';
+        const tw = ctx.measureText(label).width;
+        const pad = 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, mid.x, mid.y);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
     });
     (ann.polylines || []).forEach(poly => {
       const pts = poly.points || [];
@@ -3240,6 +3282,61 @@
       const drawDrop = (p) => drawDropMarker(ctx, p, dropS, poly.color || '#4a9eff', dropStyle);
       if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(toCanvas(pts[0]));
       if ((poly.endDrop || 0) > 0 && pts.length > 0) drawDrop(toCanvas(pts[pts.length - 1]));
+      if (poly.showLength && pts.length >= 2) {
+        const tickLen = 10;
+        const drawPerpTick = (endPdf, tangentPdf) => {
+          const dx = tangentPdf.x, dy = tangentPdf.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const perpX = -dy / len, perpY = dx / len;
+          const half = tickLen / 2;
+          const p1 = toCanvas({ x: endPdf.x - perpX * half, y: endPdf.y - perpY * half });
+          const p2 = toCanvas({ x: endPdf.x + perpX * half, y: endPdf.y + perpY * half });
+          ctx.strokeStyle = poly.color || '#4a9eff';
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        };
+        drawPerpTick(pts[0], { x: pts[1].x - pts[0].x, y: pts[1].y - pts[0].y });
+        if (pts.length > 2) drawPerpTick(pts[pts.length - 1], { x: pts[pts.length - 1].x - pts[pts.length - 2].x, y: pts[pts.length - 1].y - pts[pts.length - 2].y });
+        const totalLen = polylineDistance(pts, poly.closed);
+        let acc = 0;
+        let midPdf = pts[0];
+        const halfLen = totalLen / 2;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const segLen = ptDist(pts[i], pts[i + 1]);
+          if (acc + segLen >= halfLen) {
+            const t = (halfLen - acc) / segLen;
+            midPdf = { x: pts[i].x + t * (pts[i + 1].x - pts[i].x), y: pts[i].y + t * (pts[i + 1].y - pts[i].y) };
+            break;
+          }
+          acc += segLen;
+        }
+        if (poly.closed && pts.length >= 3) {
+          const segLen = ptDist(pts[pts.length - 1], pts[0]);
+          if (acc + segLen >= halfLen) {
+            const t = (halfLen - acc) / segLen;
+            midPdf = { x: pts[pts.length - 1].x + t * (pts[0].x - pts[pts.length - 1].x), y: pts[pts.length - 1].y + t * (pts[0].y - pts[pts.length - 1].y) };
+          }
+        }
+        const mid = toCanvas(midPdf);
+        const pageScale = getPageScale(state.currentPage);
+        const lenPdf = getLineLengthPdfPts(poly, state.currentPage, true);
+        const label = formatDistFeetInches(lenPdf, pageScale);
+        const fontSize = 12 * z * dpr();
+        ctx.font = fontSize + 'px DM Sans';
+        const tw = ctx.measureText(label).width;
+        const pad = 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, mid.x, mid.y);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -3385,6 +3482,7 @@
   function renderAnnotationsToContext(ctx, page, scale, exportOverrides) {
     const tc = (p) => ({ x: p.x * scale, y: p.y * scale });
     const ann = page.annotations || makeAnnotations();
+    const pageIdx = state.pages.indexOf(page);
     const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle' };
     const dropS = (lts.dropXSize ?? 10) * scale;
     const dropStyle = lts.dropIconStyle ?? 'circle';
@@ -3420,6 +3518,47 @@
       const drawDrop = (p) => drawDropMarker(ctx, p, dropS, q.color || '#4a9eff', dropStyle);
       if ((q.startDrop || 0) > 0) drawDrop(a);
       if ((q.endDrop || 0) > 0) drawDrop(b);
+      if (q.showLength) {
+        const tickLen = 10;
+        const drawPerpTick = (endPdf, tangentPdf) => {
+          const dx = tangentPdf.x, dy = tangentPdf.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const perpX = -dy / len, perpY = dx / len;
+          const half = tickLen / 2;
+          const p1 = tc({ x: endPdf.x - perpX * half, y: endPdf.y - perpY * half });
+          const p2 = tc({ x: endPdf.x + perpX * half, y: endPdf.y + perpY * half });
+          ctx.strokeStyle = q.color || '#4a9eff';
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        };
+        if (useArc && ctrlPdf) {
+          drawPerpTick(aPdf, { x: ctrlPdf.x - aPdf.x, y: ctrlPdf.y - aPdf.y });
+          drawPerpTick(bPdf, { x: bPdf.x - ctrlPdf.x, y: bPdf.y - ctrlPdf.y });
+        } else {
+          drawPerpTick(aPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y });
+          drawPerpTick(bPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y });
+        }
+        const midPdf = useArc && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
+        const mid = tc(midPdf);
+        const pageScale = page?.scale ?? getPageScale(pageIdx >= 0 ? pageIdx : 0);
+        const lenPdf = getLineLengthPdfPts(q, pageIdx >= 0 ? pageIdx : 0, false);
+        const label = formatDistFeetInches(lenPdf, pageScale);
+        const fontSize = 12 * scale;
+        ctx.font = fontSize + 'px sans-serif';
+        const tw = ctx.measureText(label).width;
+        const pad = 4 * scale;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, mid.x, mid.y);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
     });
     (ann.polylines || []).forEach(poly => {
       const pts = poly.points || [];
@@ -3449,6 +3588,61 @@
       const drawDrop = (p) => drawDropMarker(ctx, p, dropS, poly.color || '#4a9eff', dropStyle);
       if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[0]));
       if ((poly.endDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[pts.length - 1]));
+      if (poly.showLength && pts.length >= 2) {
+        const tickLen = 10;
+        const drawPerpTick = (endPdf, tangentPdf) => {
+          const dx = tangentPdf.x, dy = tangentPdf.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const perpX = -dy / len, perpY = dx / len;
+          const half = tickLen / 2;
+          const p1 = tc({ x: endPdf.x - perpX * half, y: endPdf.y - perpY * half });
+          const p2 = tc({ x: endPdf.x + perpX * half, y: endPdf.y + perpY * half });
+          ctx.strokeStyle = poly.color || '#4a9eff';
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        };
+        drawPerpTick(pts[0], { x: pts[1].x - pts[0].x, y: pts[1].y - pts[0].y });
+        if (pts.length > 2) drawPerpTick(pts[pts.length - 1], { x: pts[pts.length - 1].x - pts[pts.length - 2].x, y: pts[pts.length - 1].y - pts[pts.length - 2].y });
+        const totalLen = polylineDistance(pts, poly.closed);
+        let acc = 0;
+        let midPdf = pts[0];
+        const halfLen = totalLen / 2;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const segLen = ptDist(pts[i], pts[i + 1]);
+          if (acc + segLen >= halfLen) {
+            const t = (halfLen - acc) / segLen;
+            midPdf = { x: pts[i].x + t * (pts[i + 1].x - pts[i].x), y: pts[i].y + t * (pts[i + 1].y - pts[i].y) };
+            break;
+          }
+          acc += segLen;
+        }
+        if (poly.closed && pts.length >= 3) {
+          const segLen = ptDist(pts[pts.length - 1], pts[0]);
+          if (acc + segLen >= halfLen) {
+            const t = (halfLen - acc) / segLen;
+            midPdf = { x: pts[pts.length - 1].x + t * (pts[0].x - pts[pts.length - 1].x), y: pts[pts.length - 1].y + t * (pts[0].y - pts[pts.length - 1].y) };
+          }
+        }
+        const mid = tc(midPdf);
+        const pageScale = page?.scale ?? getPageScale(pageIdx >= 0 ? pageIdx : 0);
+        const lenPdf = getLineLengthPdfPts(poly, pageIdx >= 0 ? pageIdx : 0, true);
+        const label = formatDistFeetInches(lenPdf, pageScale);
+        const fontSize = 12 * scale;
+        ctx.font = fontSize + 'px sans-serif';
+        const tw = ctx.measureText(label).width;
+        const pad = 4 * scale;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, mid.x, mid.y);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -8215,6 +8409,22 @@
     document.getElementById('contextMenu').classList.remove('visible');
     openLinePropertiesModal(it);
   };
+  document.getElementById('ctxShowLength').onclick = () => {
+    const t = state.ctxTarget;
+    if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
+    const page = state.pages[state.currentPage];
+    const ann = page?.annotations;
+    if (!ann) return;
+    const line = t.type === 'quickLine' ? ann.quickLines[t.index] : ann.polylines[t.index];
+    if (!line) return;
+    pushUndoSnapshot();
+    line.showLength = !line.showLength;
+    markProjectDirty();
+    document.getElementById('contextMenu').classList.remove('visible');
+    state.ctxTarget = null;
+    renderPdf();
+    updateUI();
+  };
   document.getElementById('ctxAssignGroup').onclick = () => {
     const t = state.ctxTarget;
     if (!t || (t.type !== 'marker' && t.type !== 'quickLine' && t.type !== 'polyline')) return;
@@ -8271,10 +8481,19 @@
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
     const linePropsBtn = document.getElementById('ctxLineProperties');
+    const showLengthBtn = document.getElementById('ctxShowLength');
     const assignGroupBtn = document.getElementById('ctxAssignGroup');
     editBtn.style.display = (state.ctxTarget?.type === 'note' || state.ctxTarget?.type === 'noteResize' || state.ctxTarget?.type === 'noteFontSize') ? 'block' : 'none';
     const canLineProps = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     linePropsBtn.style.display = canLineProps ? 'block' : 'none';
+    const canShowLength = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
+    showLengthBtn.style.display = canShowLength ? 'block' : 'none';
+    if (canShowLength) {
+      const page = state.pages[state.currentPage];
+      const ann = page?.annotations;
+      const line = state.ctxTarget?.type === 'quickLine' ? ann?.quickLines?.[state.ctxTarget.index] : ann?.polylines?.[state.ctxTarget.index];
+      showLengthBtn.textContent = line?.showLength ? 'Hide Length' : 'Show Length';
+    }
     const canAssignGroup = !state.isViewer && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
     menu.style.left = x + 'px';

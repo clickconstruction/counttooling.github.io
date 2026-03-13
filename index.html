@@ -166,6 +166,8 @@
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
       body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
+      .status-bar #statusBarMacros.status-bar-desktop-only { display: inline !important; }
+      body.supabase-enabled .status-bar #statusBarMacrosSep.status-bar-desktop-only { display: inline !important; }
     }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
@@ -282,6 +284,7 @@
     .status-bar .status-bar-link.danger { color: var(--red); }
     .status-bar .status-bar-link.danger:hover { color: var(--red); }
     .status-bar .status-bar-sep { color: var(--text2); opacity: 0.6; user-select: none; }
+    .status-bar .status-bar-desktop-only { display: none; }
     .status-bar .status-indicator-group { display: inline-flex; align-items: center; gap: 4px; }
     .status-bar .status-indicator-label { white-space: nowrap; }
     .header .replaced-by-status-bar { display: none !important; }
@@ -384,6 +387,17 @@
     .macros-table th, .macros-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
     .macros-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }
     .macros-table kbd { display: inline-block; padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 0.9rem; }
+    .macros-table .macros-icon-cell { width: 28px; text-align: center; vertical-align: middle; color: var(--text2); }
+    .macros-table .macros-icon { display: inline-block; width: 18px; height: 18px; vertical-align: middle; }
+    .macros-table .macros-icon-cell span.macros-icon { line-height: 18px; text-align: center; }
+    .macros-modal-body { margin-top: 8px; max-height: 60vh; overflow-y: auto; position: relative; }
+    .macros-scroll-hint-wrap { position: sticky; bottom: 0; margin-top: -1px; padding: 32px 0 8px 0; background: linear-gradient(to bottom, transparent, var(--surface)); pointer-events: none; text-align: center; }
+    .macros-scroll-hint { font-size: 0.85rem; color: var(--text2); margin: 0; padding: 0; }
+    .macros-modal-card { max-width: 400px; }
+    .canvas-repair-table { width: 100%; border-collapse: collapse; }
+    .canvas-repair-table th, .canvas-repair-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    .canvas-repair-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }
+    .canvas-repair-table select { padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.9rem; }
     .save-project-progress { margin: 12px 0; font-size: 0.9rem; color: var(--text2); }
     .save-project-progress ul { margin: 0; padding-left: 20px; list-style: none; }
     .save-project-progress li { margin: 4px 0; }
@@ -504,6 +518,8 @@
     #loadProjectList .load-project-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; }
     #loadProjectList .load-project-item:last-child { margin-bottom: 0; }
     #loadProjectList .load-project-item:hover { background: var(--surface2); }
+    #loadProjectList .load-project-item.loading { pointer-events: none; opacity: 0.7; cursor: wait; }
+    #loadProjectList.loading .load-project-item { pointer-events: none; }
     #loadProjectList .load-project-name { font-size: 1.05rem; font-weight: 500; }
     #loadProjectList .load-project-meta { font-size: 0.8rem; color: var(--text3); }
     .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
@@ -774,6 +790,8 @@
           <span id="statusMode">Ready</span>
           <span id="statusCoords">—</span>
           <div class="status-bar-actions" id="statusBarActions">
+            <span class="status-bar-link status-bar-desktop-only" id="statusBarMacros">macros</span>
+            <span class="status-bar-sep supabase-only status-bar-desktop-only" id="statusBarMacrosSep">|</span>
             <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
           </div>
         </div>
@@ -792,7 +810,7 @@
         <div id="scaleLengthInputGroup" style="display:none;">
           <div class="form-group">
             <label>Real-world length</label>
-            <input type="number" id="scaleValue" step="0.01" min="0.01" placeholder="e.g. 10">
+            <input type="text" id="scaleValue" placeholder="e.g. 5'9&quot; or 5.75">
           </div>
           <div class="form-group">
             <label>Unit</label>
@@ -998,6 +1016,13 @@
         <label>Drop icon</label>
         <div class="icon-grid icon-grid-drop" id="lineTypeDropIconGrid"></div>
       </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Orient length with line</span>
+        <button type="button" class="toggle-switch" id="lineTypeOrientLengthBtn" aria-pressed="true" title="Rotate length label to align with line">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="lineTypeOrientLength" checked hidden>
+      </div>
       <div class="form-group">
         <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">Reorder line types</span>
       </div>
@@ -1112,31 +1137,36 @@
     </div>
   </div>
   <div class="modal-overlay" id="macrosModal">
-    <div class="modal-card">
+    <div class="modal-card macros-modal-card">
       <div class="modal-card-header">
         <h2>Keyboard Shortcuts</h2>
         <button type="button" class="modal-close-btn" id="macrosModalClose" aria-label="Close">×</button>
       </div>
-      <table class="macros-table">
-        <tr><th>Key</th><th>Action</th></tr>
-        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
-        <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
-        <tr><td><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Refresh</td></tr>
-        <tr><td><kbd>M</kbd></td><td>Move mode</td></tr>
-        <tr><td><kbd>S</kbd></td><td>Set Scale</td></tr>
-        <tr><td><kbd>C</kbd></td><td>Counter mode</td></tr>
-        <tr><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
-        <tr><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
-        <tr><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
-        <tr><td><kbd>R</kbd></td><td>Rotate page</td></tr>
-        <tr><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
-        <tr><td><kbd>N</kbd></td><td>Note mode</td></tr>
-        <tr><td><kbd>Space</kbd></td><td>Toggle sidebar (desktop)</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
-        <tr><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
-        <tr><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
-        <tr><td><kbd>Enter</kbd></td><td>Finish polyline / Exit edit mode</td></tr>
-      </table>
+      <div class="macros-modal-body">
+        <table class="macros-table">
+          <tr><th></th><th>Key</th><th>Action</th></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg></td><td><kbd>M</kbd></td><td>Move mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg></td><td><kbd>S</kbd></td><td>Set Scale</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg></td><td><kbd>C</kbd></td><td>Counter mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg></td><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg></td><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg></td><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↻</span></td><td><kbd>R</kbd></td><td>Rotate page</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg></td><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg></td><td><kbd>N</kbd></td><td>Note mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320zM451.3 331.3L347.3 435.3C342.7 439.9 335.8 441.2 329.9 438.8C324 436.4 320 430.5 320 424L320 368L224 368C206.3 368 192 353.7 192 336L192 304C192 286.3 206.3 272 224 272L320 272L320 216C320 209.5 323.9 203.7 329.9 201.2C335.9 198.7 342.8 200.1 347.3 204.7L451.3 308.7C457.5 314.9 457.5 325.1 451.3 331.3z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Refresh</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Space</kbd></td><td>Toggle sidebar (desktop)</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Enter</kbd></td><td>Finish polyline / Exit edit mode</td></tr>
+        </table>
+        <div class="macros-scroll-hint-wrap">
+          <p class="macros-scroll-hint">Scroll for more</p>
+        </div>
+      </div>
     </div>
   </div>
   <div class="modal-overlay" id="customIconTipsModal">
@@ -1378,7 +1408,7 @@
         <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
         <div class="settings-menu-links-row">
-          <span class="settings-menu-link" id="settingsMacros">Macros</span>
+          <span class="settings-menu-link" id="settingsMacros">macros</span>
           <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
         </div>
         <div class="settings-advanced-section collapsed" id="settingsAdvancedSection">
@@ -1387,8 +1417,33 @@
             <button type="button" class="settings-menu-btn" id="settingsManageIcons">Manage Icons</button>
             <button type="button" class="settings-menu-btn" id="settingsExport">Export Canvas</button>
             <button type="button" class="settings-menu-btn" id="settingsImport">Import Canvas</button>
+            <button type="button" class="settings-menu-btn" id="settingsCanvasRepair" style="display:none;">Canvas Repair</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="canvasRepairModal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-card-header">
+        <h2>Canvas Repair</h2>
+        <button type="button" class="modal-close-btn" id="canvasRepairModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Reassign annotations to PDF pages and fix rotation when the canvas is on the wrong page or rotated incorrectly.</p>
+      <div class="form-group" style="max-height:50vh;overflow-y:auto;">
+        <table class="canvas-repair-table" id="canvasRepairTable">
+          <thead>
+            <tr><th>PDF Page</th><th>Annotations from</th><th>Rotation</th></tr>
+          </thead>
+          <tbody id="canvasRepairBody"></tbody>
+        </table>
+      </div>
+      <div class="form-group">
+        <button type="button" class="settings-menu-btn" id="canvasRepairResetRotations">Reset all rotations to 0°</button>
+      </div>
+      <div class="actions">
+        <button type="button" id="canvasRepairCancel">Cancel</button>
+        <button type="button" id="canvasRepairApply">Apply</button>
       </div>
     </div>
   </div>
@@ -2412,7 +2467,7 @@
     linesListCollapsed: true,
     groupsListCollapsed: false,
     summaryListCollapsed: false,
-    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle' },
+    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
@@ -2922,6 +2977,21 @@
     }
     return (val).toFixed(2) + ' ' + scale.unit;
   }
+  function parseRealWorldLength(str, unit) {
+    const s = String(str || '').trim();
+    if (!s) return null;
+    if (unit === 'ft' || unit === 'in') {
+      const m = s.match(/^(-?\d+(?:\.\d+)?)\s*[''-]?\s*(?:(\d+)\s*[""]?)?$/);
+      if (m) {
+        const ft = parseFloat(m[1]);
+        const inPart = m[2] ? parseInt(m[2], 10) : 0;
+        if (unit === 'ft') return ft + inPart / 12;
+        return ft * 12 + inPart;
+      }
+    }
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
   function formatArea(sqPdfPts, scale) {
     scale = scale ?? getPageScale(state.currentPage);
     if (!scale) return Math.round(sqPdfPts) + ' px²';
@@ -2955,6 +3025,21 @@
       const p = r({ x: n.x, y: n.y });
       n.x = p.x; n.y = p.y;
     });
+  }
+  function applyRotationDeltaToAnnotations(page, deltaDegrees) {
+    if (!page?.pdfPage || deltaDegrees % 90 !== 0) return;
+    const steps = Math.round((((deltaDegrees % 360) + 360) % 360) / 90);
+    if (steps === 0) return;
+    let rot = page.rotation ?? 0;
+    for (let i = 0; i < steps; i++) {
+      const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
+      rotateAnnotations(page, vp.width, vp.height);
+      rot = (rot + 90) % 360;
+    }
+  }
+  function deepCopyAnnotations(ann) {
+    if (!ann) return makeAnnotations();
+    return JSON.parse(JSON.stringify(ann));
   }
   function rotatePage90() {
     const page = state.pages[state.currentPage];
@@ -3392,12 +3477,25 @@
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
+        const orient = lts.orientLengthWithLine !== false;
+        let angle = Math.atan2(bPdf.y - aPdf.y, bPdf.x - aPdf.x);
+        if (orient && (angle > Math.PI / 2 || angle < -Math.PI / 2)) angle += Math.PI;
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
-        ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, mid.x, mid.y);
+        if (orient) {
+          ctx.save();
+          ctx.translate(mid.x, mid.y);
+          ctx.rotate(angle);
+          ctx.fillRect(-tw / 2 - pad, -fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, mid.x, mid.y);
+        }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -3453,12 +3551,14 @@
         const totalLen = polylineDistance(pts, poly.closed);
         let acc = 0;
         let midPdf = pts[0];
+        let segAngle = 0;
         const halfLen = totalLen / 2;
         for (let i = 0; i < pts.length - 1; i++) {
           const segLen = ptDist(pts[i], pts[i + 1]);
           if (acc + segLen >= halfLen) {
             const t = (halfLen - acc) / segLen;
             midPdf = { x: pts[i].x + t * (pts[i + 1].x - pts[i].x), y: pts[i].y + t * (pts[i + 1].y - pts[i].y) };
+            segAngle = Math.atan2(pts[i + 1].y - pts[i].y, pts[i + 1].x - pts[i].x);
             break;
           }
           acc += segLen;
@@ -3468,6 +3568,7 @@
           if (acc + segLen >= halfLen) {
             const t = (halfLen - acc) / segLen;
             midPdf = { x: pts[pts.length - 1].x + t * (pts[0].x - pts[pts.length - 1].x), y: pts[pts.length - 1].y + t * (pts[0].y - pts[pts.length - 1].y) };
+            segAngle = Math.atan2(pts[0].y - pts[pts.length - 1].y, pts[0].x - pts[pts.length - 1].x);
           }
         }
         const mid = toCanvas(midPdf);
@@ -3478,12 +3579,25 @@
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
+        const orient = lts.orientLengthWithLine !== false;
+        let angle = segAngle;
+        if (orient && (angle > Math.PI / 2 || angle < -Math.PI / 2)) angle += Math.PI;
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
-        ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, mid.x, mid.y);
+        if (orient) {
+          ctx.save();
+          ctx.translate(mid.x, mid.y);
+          ctx.rotate(angle);
+          ctx.fillRect(-tw / 2 - pad, -fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, mid.x, mid.y);
+        }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -3700,12 +3814,25 @@
         ctx.font = fontSize + 'px sans-serif';
         const tw = ctx.measureText(label).width;
         const pad = 4 * scale;
+        const orient = lts.orientLengthWithLine !== false;
+        let angle = Math.atan2(bPdf.y - aPdf.y, bPdf.x - aPdf.x);
+        if (orient && (angle > Math.PI / 2 || angle < -Math.PI / 2)) angle += Math.PI;
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
-        ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, mid.x, mid.y);
+        if (orient) {
+          ctx.save();
+          ctx.translate(mid.x, mid.y);
+          ctx.rotate(angle);
+          ctx.fillRect(-tw / 2 - pad, -fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, mid.x, mid.y);
+        }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -3759,12 +3886,14 @@
         const totalLen = polylineDistance(pts, poly.closed);
         let acc = 0;
         let midPdf = pts[0];
+        let segAngle = 0;
         const halfLen = totalLen / 2;
         for (let i = 0; i < pts.length - 1; i++) {
           const segLen = ptDist(pts[i], pts[i + 1]);
           if (acc + segLen >= halfLen) {
             const t = (halfLen - acc) / segLen;
             midPdf = { x: pts[i].x + t * (pts[i + 1].x - pts[i].x), y: pts[i].y + t * (pts[i + 1].y - pts[i].y) };
+            segAngle = Math.atan2(pts[i + 1].y - pts[i].y, pts[i + 1].x - pts[i].x);
             break;
           }
           acc += segLen;
@@ -3774,6 +3903,7 @@
           if (acc + segLen >= halfLen) {
             const t = (halfLen - acc) / segLen;
             midPdf = { x: pts[pts.length - 1].x + t * (pts[0].x - pts[pts.length - 1].x), y: pts[pts.length - 1].y + t * (pts[0].y - pts[pts.length - 1].y) };
+            segAngle = Math.atan2(pts[0].y - pts[pts.length - 1].y, pts[0].x - pts[pts.length - 1].x);
           }
         }
         const mid = tc(midPdf);
@@ -3784,12 +3914,25 @@
         ctx.font = fontSize + 'px sans-serif';
         const tw = ctx.measureText(label).width;
         const pad = 4 * scale;
+        const orient = lts.orientLengthWithLine !== false;
+        let angle = segAngle;
+        if (orient && (angle > Math.PI / 2 || angle < -Math.PI / 2)) angle += Math.PI;
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
-        ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, mid.x, mid.y);
+        if (orient) {
+          ctx.save();
+          ctx.translate(mid.x, mid.y);
+          ctx.rotate(angle);
+          ctx.fillRect(-tw / 2 - pad, -fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillRect(mid.x - tw / 2 - pad, mid.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = '#000';
+          ctx.fillText(label, mid.x, mid.y);
+        }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -4207,6 +4350,8 @@
     if (settingsAdvancedSection) settingsAdvancedSection.style.display = state.isViewer ? 'none' : '';
     const settingsClearPageBtn = document.getElementById('settingsClearPage');
     if (settingsClearPageBtn) settingsClearPageBtn.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
+    const settingsCanvasRepair = document.getElementById('settingsCanvasRepair');
+    if (settingsCanvasRepair) settingsCanvasRepair.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
     renderPagesList();
@@ -5551,6 +5696,14 @@
     }
   };
 
+  function updateScalePlaceholder() {
+    const unit = document.getElementById('scaleUnit')?.value || 'ft';
+    const inp = document.getElementById('scaleValue');
+    if (!inp) return;
+    if (unit === 'ft') inp.placeholder = "e.g. 5'9\" or 5.75";
+    else if (unit === 'in') inp.placeholder = "e.g. 5'9\" or 69";
+    else inp.placeholder = 'e.g. 10';
+  }
   function openScaleModal() {
     const finishingTwoPoints = state.scalePointA && state.scalePointB;
     const tabsEl = document.getElementById('scaleModalTabs');
@@ -5566,6 +5719,7 @@
       selectOnPdfGroup.style.display = 'none';
       if (lengthInputGroup) lengthInputGroup.style.display = '';
       scaleInfo.textContent = 'You selected a line spanning ' + Math.round(ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
+      updateScalePlaceholder();
     } else {
       tabsEl.style.display = '';
       selectOnPdfGroup.style.display = '';
@@ -5583,6 +5737,7 @@
       const hasTwoPoints = state.scalePointA && state.scalePointB;
       const lengthInputGroup = document.getElementById('scaleLengthInputGroup');
       if (lengthInputGroup) lengthInputGroup.style.display = hasTwoPoints ? '' : 'none';
+      if (hasTwoPoints) updateScalePlaceholder();
     }
     if (tab === 'presets') {
       const list = document.getElementById('scalePresetsList');
@@ -5728,6 +5883,7 @@
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
   document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
+  document.getElementById('scaleUnit').onchange = updateScalePlaceholder;
   document.getElementById('scaleSelectOnPdf').onclick = () => {
     hideModal('scaleModal');
     state.tool = TOOL.SCALE;
@@ -5748,9 +5904,13 @@
     updateUI();
   };
   document.getElementById('scaleSet').onclick = () => {
-    const val = parseFloat(document.getElementById('scaleValue').value);
     const unit = document.getElementById('scaleUnit').value;
-    if (!val || !state.scalePointA || !state.scalePointB) return;
+    const val = parseRealWorldLength(document.getElementById('scaleValue').value, unit);
+    if (!val || val <= 0 || !state.scalePointA || !state.scalePointB) {
+      if (!state.scalePointA || !state.scalePointB) return;
+      showToast('Enter a valid length');
+      return;
+    }
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
     if (page) page.scale = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit, label: null };
@@ -6041,6 +6201,16 @@
     document.getElementById('lineTypeDropXSizeVal').textContent = state.lineTypeSettings.dropXSize;
     renderAnnotations();
   };
+  document.getElementById('lineTypeOrientLengthBtn').onclick = () => {
+    const cb = document.getElementById('lineTypeOrientLength');
+    cb.checked = !cb.checked;
+    document.getElementById('lineTypeOrientLengthBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('lineTypeOrientLength').onchange = () => {
+    state.lineTypeSettings.orientLengthWithLine = document.getElementById('lineTypeOrientLength').checked;
+    renderAnnotations();
+  };
 
   document.getElementById('pagesCollapseIcon').onclick = (e) => {
     e.stopPropagation();
@@ -6128,6 +6298,10 @@
         renderAnnotations();
       };
     });
+    const orientCb = document.getElementById('lineTypeOrientLength');
+    const orientBtn = document.getElementById('lineTypeOrientLengthBtn');
+    orientCb.checked = state.lineTypeSettings.orientLengthWithLine !== false;
+    orientBtn.setAttribute('aria-pressed', orientCb.checked);
     document.getElementById('lineTypeSettingsReorder').style.display = state.lineTypes.length < 2 ? 'none' : '';
     showModal('lineTypeSettingsModal');
   };
@@ -6961,6 +7135,7 @@
   document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
+  document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
   document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showModal('clearPageConfirmModal'); };
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
@@ -7211,6 +7386,70 @@
       btnEl.disabled = false;
       btnEl.textContent = 'Delete';
     }
+  }
+
+  function openCanvasRepairModal() {
+    if (!state.pages || !state.pages.length) return;
+    const tbody = document.getElementById('canvasRepairBody');
+    tbody.innerHTML = '';
+    const ROT_OPTS = [0, 90, 180, 270];
+    state.pages.forEach((page, i) => {
+      const tr = document.createElement('tr');
+      tr.dataset.pageIndex = String(i);
+      const sourceSelect = document.createElement('select');
+      sourceSelect.dataset.field = 'source';
+      for (let j = 0; j < state.pages.length; j++) {
+        const opt = document.createElement('option');
+        opt.value = String(j);
+        opt.textContent = 'Page ' + (j + 1);
+        if (j === i) opt.selected = true;
+        sourceSelect.appendChild(opt);
+      }
+      const rotSelect = document.createElement('select');
+      rotSelect.dataset.field = 'rotation';
+      ROT_OPTS.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = String(r);
+        opt.textContent = r + '°';
+        if (r === (page.rotation ?? 0)) opt.selected = true;
+        rotSelect.appendChild(opt);
+      });
+      tr.innerHTML = '<td>Page ' + (i + 1) + '</td><td></td><td></td>';
+      tr.querySelector('td:nth-child(2)').appendChild(sourceSelect);
+      tr.querySelector('td:nth-child(3)').appendChild(rotSelect);
+      tbody.appendChild(tr);
+    });
+    document.getElementById('canvasRepairResetRotations').onclick = () => {
+      tbody.querySelectorAll('select[data-field="rotation"]').forEach(s => { s.value = '0'; });
+    };
+    showModal('canvasRepairModal');
+  }
+  function applyCanvasRepair() {
+    const tbody = document.getElementById('canvasRepairBody');
+    if (!tbody || !state.pages.length) return;
+    const rows = tbody.querySelectorAll('tr[data-page-index]');
+    const newPages = state.pages.map((page, i) => ({ ...page, pdfPage: page.pdfPage, label: page.label }));
+    const sourceAnnotations = state.pages.map(p => deepCopyAnnotations(p.annotations));
+    rows.forEach((tr, i) => {
+      const srcIdx = parseInt(tr.querySelector('select[data-field="source"]').value, 10);
+      const targetRot = parseInt(tr.querySelector('select[data-field="rotation"]').value, 10);
+      const srcPage = state.pages[srcIdx];
+      const ann = sourceAnnotations[srcIdx];
+      newPages[i].annotations = ann;
+      newPages[i].scale = srcPage?.scale ?? null;
+      const srcRot = srcPage?.rotation ?? 0;
+      newPages[i].rotation = srcRot;
+      const delta = ((targetRot - srcRot) + 360) % 360;
+      if (delta !== 0) applyRotationDeltaToAnnotations(newPages[i], delta);
+      newPages[i].rotation = targetRot;
+    });
+    pushUndoSnapshot();
+    state.pages = newPages;
+    reconcileOrphanedCountersAndLineTypes();
+    markProjectDirty();
+    hideModal('canvasRepairModal');
+    renderPdf();
+    updateUI();
   }
 
   function openManageIconsModal() {
@@ -8007,6 +8246,7 @@
           return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
         };
         const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        let loadProjectInProgress = false;
         for (let i = 0; i < projects.length; i++) {
           const proj = projects[i];
           let sizeBytes = proj.size_bytes;
@@ -8033,6 +8273,17 @@
           const meta = esc(metaParts.join(' · ')) + canvasOnlyBadge + lockBadge + ownerBadge;
           div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>';
           div.onclick = async () => {
+          // #region agent log
+          if (loadProjectInProgress) { fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2be41b'},body:JSON.stringify({sessionId:'2be41b',location:'index.html:loadProjectClick',message:'Load project guard blocked (double-click ignored)',data:{projectName:proj.name},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{}); return; }
+          fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2be41b'},body:JSON.stringify({sessionId:'2be41b',location:'index.html:loadProjectClick',message:'Load project started',data:{projectName:proj.name},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          loadProjectInProgress = true;
+          div.classList.add('loading');
+          listEl.classList.add('loading');
+          const metaEl = div.querySelector('.load-project-meta');
+          const origMeta = metaEl ? metaEl.textContent : '';
+          if (metaEl) metaEl.textContent = 'Loading…';
+          try {
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
           const d = proj.data || {};
           if (proj.pdf_path) {
@@ -8159,6 +8410,15 @@
           }
           fitZoom();
           updateUI();
+          } finally {
+            // #region agent log
+            fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2be41b'},body:JSON.stringify({sessionId:'2be41b',location:'index.html:loadProjectFinally',message:'Load project finished (loading state cleared)',data:{projectName:proj.name},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            loadProjectInProgress = false;
+            div.classList.remove('loading');
+            listEl.classList.remove('loading');
+            if (metaEl) metaEl.textContent = origMeta;
+          }
         };
           listEl.appendChild(div);
         }
@@ -8210,6 +8470,7 @@
     document.getElementById('settingsManageIcons').onclick = () => { hideModal('settingsModal'); openManageIconsModal(); };
     document.getElementById('settingsExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
     document.getElementById('settingsImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
+    document.getElementById('settingsCanvasRepair').onclick = () => { hideModal('settingsModal'); openCanvasRepairModal(); };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); openShareProjectModal(); };
     document.getElementById('mySettingsSignOut').onclick = async () => { hideModal('mySettingsModal'); await checkInCurrentProjectIfHeld(); supabase.auth.signOut(); updateUI(); };
@@ -8645,6 +8906,9 @@
     document.getElementById('manageProjectsModalClose').onclick = () => hideModal('manageProjectsModal');
     document.getElementById('manageIconsModalClose').onclick = () => hideModal('manageIconsModal');
     document.getElementById('manageIconsCancel').onclick = () => hideModal('manageIconsModal');
+    document.getElementById('canvasRepairModalClose').onclick = () => hideModal('canvasRepairModal');
+    document.getElementById('canvasRepairCancel').onclick = () => hideModal('canvasRepairModal');
+    document.getElementById('canvasRepairApply').onclick = applyCanvasRepair;
     document.getElementById('manageIconsSave').onclick = () => {
       const listEl = document.getElementById('manageIconsList');
       const rows = listEl.querySelectorAll('.manage-icon-row');
@@ -9354,6 +9618,7 @@
       else if (document.getElementById('allUsersModal').classList.contains('visible')) { hideModal('allUsersModal'); }
       else if (document.getElementById('manageProjectsModal').classList.contains('visible')) { hideModal('manageProjectsModal'); }
       else if (document.getElementById('manageIconsModal').classList.contains('visible')) { hideModal('manageIconsModal'); }
+      else if (document.getElementById('canvasRepairModal').classList.contains('visible')) { hideModal('canvasRepairModal'); }
       else if (document.getElementById('saveProjectModal').classList.contains('visible')) { hideModal('saveProjectModal'); }
       else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }

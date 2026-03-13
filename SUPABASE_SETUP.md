@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 020.
+**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 029.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
 
@@ -64,7 +64,23 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **020_view_link_rpcs.sql** — Creates `create_view_link`, `list_view_links`, `revoke_view_link`, `get_view_link_access_log` RPCs.
 
+**021_view_link_owner_editor_only.sql** — Restricts `create_view_link` to owners and editors only (not viewers).
+
+**022_admin_see_all_projects.sql** — Admins see all projects in Load Project from Cloud. `list_accessible_projects` includes admin in `can_check_out` and in the WHERE clause so admins can load any project.
+
+**023_storage_admin_read.sql** — Storage policy so admins can read any project PDF.
+
+**024_admin_access_project.sql** — Updates `user_can_access_project()` to include admins. Fixes 406 when restoring last project or loading non-owned project as admin.
+
 **025_admin_list_projects_checkout.sql** — Extends `list_projects_for_admin()` to return `checked_out_by`, `checked_out_at`, `checked_out_email`. Used by Manage Projects modal for Force turn-in (admin) button on checked-out projects.
+
+**026_project_counts.sql** — Adds `counter_count` and `line_count` to projects; computed on save, displayed in Manage Projects.
+
+**027_view_link_allow_viewers_admins.sql** — Allows project share viewers and admins to create view links. Updates `create_view_link` to use `user_can_access_project()`.
+
+**028_list_project_shares_include_owner.sql** — Extends `list_project_shares` to include the project owner in the returned list.
+
+**029_admin_check_out_project.sql** — Allows admins to check out any project. Updates `check_out_project` RPC to include admin permission (aligns with `list_accessible_projects`).
 
 ## 3. Deploy Edge Functions
 

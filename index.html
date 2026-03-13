@@ -332,6 +332,8 @@
     .modal-card .icon-cell:hover { background: var(--surface3); }
     .modal-card .icon-cell.selected { background: var(--surface3); border-color: var(--accent); }
     .modal-card .icon-cell svg { width: 24px; height: 24px; }
+    .modal-card .icon-cell.icon-cell-upload { border: 2px dashed var(--border2); color: var(--text2); font-size: 1.2rem; }
+    .modal-card .icon-cell.icon-cell-upload:hover { background: var(--surface3); color: var(--accent); border-color: var(--accent); }
     .modal-card .icon-grid-drop { grid-template-columns: repeat(5, 1fr); max-height: none; }
     .modal-card .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
     .modal-card .actions button { padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; border: none; font-family: inherit; min-height: 44px; }
@@ -544,6 +546,7 @@
       <button id="exportBtn" class="header-primary-btn replaced-by-status-bar">Export</button>
       <button id="importBtn" class="header-primary-btn replaced-by-status-bar">Import</button>
       <input type="file" id="importInput" accept=".json">
+      <input type="file" id="customIconUploadInput" accept=".svg,image/svg+xml">
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
     </header>
     <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
@@ -785,7 +788,7 @@
           <div class="icon-grid" id="counterIconGrid"></div>
         </div>
         <div class="form-group" id="counterCustomIconsGroup">
-          <label>Custom Icons</label>
+          <label id="counterCustomIconsLabel" style="cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
           <div class="icon-grid" id="counterIconGridCustom"></div>
         </div>
         <div class="form-group">
@@ -1083,6 +1086,22 @@
       </table>
     </div>
   </div>
+  <div class="modal-overlay" id="customIconTipsModal">
+    <div class="modal-card" style="max-width:420px;">
+      <h2>Custom Icon Tips</h2>
+      <p style="color:var(--text2);font-size:0.95rem;line-height:1.5;margin:0 0 16px 0;">What makes a great icon for upload:</p>
+      <ul style="margin:0 0 16px 0;padding-left:20px;color:var(--text2);font-size:0.9rem;line-height:1.6;">
+        <li><strong>Simple shapes</strong> — Icons are shown small; clear outlines work best</li>
+        <li><strong>Single color</strong> — Your icon is tinted by the counter color</li>
+        <li><strong>Path-based SVG</strong> — Use path, rect, circle, ellipse, or line elements</li>
+        <li><strong>Avoid transforms</strong> — Rotate or scale in your editor before export</li>
+        <li><strong>Square viewBox</strong> — e.g. 0 0 24 24 or 0 0 64 64</li>
+      </ul>
+      <div class="actions">
+        <button id="customIconTipsClose">Got it</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="chooseLineTypeModal">
     <div class="modal-card">
       <div class="line-type-modal-tabs">
@@ -1212,8 +1231,10 @@
       <div class="form-group" id="counterLineTypeDetailsIconGroup" style="display:none;">
         <label>Icon</label>
         <div class="icon-grid" id="counterLineTypeDetailsIconGrid"></div>
-        <label style="display:block;margin-top:12px;">Custom Icons</label>
-        <div class="icon-grid" id="counterLineTypeDetailsIconGridCustom"></div>
+        <div id="counterLineTypeDetailsCustomIconsGroup">
+          <label id="counterLineTypeDetailsCustomIconsLabel" style="display:block;margin-top:12px;cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
+          <div class="icon-grid" id="counterLineTypeDetailsIconGridCustom"></div>
+        </div>
       </div>
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
@@ -1911,18 +1932,87 @@
   const CHECKBOX_SLOT_PATH = 'M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z';
   const CHESSBOARD_PATH = 'M160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96zM224 160L224 224L288 224L288 160L352 160L352 224L416 224L416 160L480 160L480 224L416 224L416 288L480 288L480 352L416 352L416 416L480 416L480 480L416 480L416 416L352 416L352 480L288 480L288 416L224 416L224 480L160 480L160 416L224 416L224 352L160 352L160 288L224 288L224 224L160 224L160 160L224 160zM288 288L352 288L352 224L288 224L288 288zM288 352L288 288L224 288L224 352L288 352zM352 352L288 352L288 416L352 416L352 352zM352 352L416 352L416 288L352 288L352 352z';
   const VB_384_512_PATHS = [RULER_PATH];
-  const TEST_DRAWING_PATH = 'M 54.1 2 L 56.1 2 L 56.1 264.5 L 54.1 264.5 Z M 128.1 0 L 130.1 0 L 130.1 267 L 128.1 267 Z M 91 45.66667 A 91 91 0 0 1 182 136.66667 A 91 91 0 0 1 91 227.66667 A 91 91 0 0 1 0 136.66667 A 91 91 0 0 1 91 45.66667';
-  const URINAL_PATH = 'M 143.14 64.19 L 71.64 267.19 L 0.14 267.19 L 0.14 64.19 Z M 108.25 87.89 L 32.25 87.89 L 32.25 163.39 L 70.25 238.89 L 108.25 163.39 Z M 47.26 46.41 L 91.03 46.41 L 91.03 63.40 L 47.26 63.40 Z M 59.34 13.96 L 79.71 13.96 L 79.71 46.04 L 59.34 46.04 Z M 59.08 0 L 80.59 0 L 80.59 9.81 L 59.08 9.81 Z M 48.77 8.68 L 92.17 8.68 L 92.17 14.34 L 48.77 14.34 Z M 92.54 5.48 L 106.51 5.48 L 106.51 17.18 L 92.54 17.18 Z';
-  const CUSTOM_ICONS = [
-    { value: TEST_DRAWING_PATH, name: 'Test Drawing', viewBox: '0 0 182 267' },
-    { value: URINAL_PATH, name: 'Urinal', viewBox: '0 0 143 267' }
-  ];
+  const CUSTOM_ICONS = [];
   const CUSTOM_ICON_VIEWBOXES = Object.fromEntries(CUSTOM_ICONS.map(ic => [ic.value, ic.viewBox]));
   const CUSTOM_ICON_META = Object.fromEntries(CUSTOM_ICONS.map(ic => {
     const parts = ic.viewBox.split(/\s+/);
     const w = Number(parts[2]) || 640, h = Number(parts[3]) || 640;
     return [ic.value, { center: { x: w / 2, y: h / 2 }, vb: Math.max(w, h) }];
   }));
+
+  function getUserCustomIcons() {
+    try {
+      const raw = localStorage.getItem('customIconPaths');
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+  }
+  function saveUserCustomIcons(arr) {
+    localStorage.setItem('customIconPaths', JSON.stringify(Array.isArray(arr) ? arr : []));
+  }
+  function getEffectiveCustomIcons() {
+    return [...CUSTOM_ICONS, ...getUserCustomIcons()];
+  }
+  function getCustomIconViewBox(path) {
+    const ic = getEffectiveCustomIcons().find(i => i.value === path);
+    return ic ? ic.viewBox : null;
+  }
+  function getCustomIconMeta(path) {
+    if (CUSTOM_ICON_META[path]) return CUSTOM_ICON_META[path];
+    const ic = getEffectiveCustomIcons().find(i => i.value === path);
+    if (!ic) return null;
+    const parts = (ic.viewBox || '0 0 24 24').split(/\s+/);
+    const minX = Number(parts[0]) || 0, minY = Number(parts[1]) || 0, w = Number(parts[2]) || 24, h = Number(parts[3]) || 24;
+    return { center: { x: minX + w / 2, y: minY + h / 2 }, vb: Math.max(w, h) };
+  }
+
+  function parseUploadedSvg(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const doc = new DOMParser().parseFromString(r.result, 'image/svg+xml');
+          const svg = doc.querySelector('svg');
+          if (!svg) { reject(new Error('Invalid SVG')); return; }
+          const vb = svg.getAttribute('viewBox') || svg.getAttribute('viewbox') || '0 0 24 24';
+          const paths = [];
+          function toPath(el) {
+            const tag = (el.tagName || '').toLowerCase();
+            if (tag === 'path' && el.getAttribute('d')) return el.getAttribute('d');
+            if (tag === 'rect') {
+              const x = Number(el.getAttribute('x')) || 0, y = Number(el.getAttribute('y')) || 0, w = Number(el.getAttribute('width')) || 0, h = Number(el.getAttribute('height')) || 0;
+              return 'M' + x + ' ' + y + ' L' + (x + w) + ' ' + y + ' L' + (x + w) + ' ' + (y + h) + ' L' + x + ' ' + (y + h) + ' Z';
+            }
+            if (tag === 'circle') {
+              const cx = Number(el.getAttribute('cx')) || 0, cy = Number(el.getAttribute('cy')) || 0, r = Number(el.getAttribute('r')) || 0;
+              return 'M' + cx + ' ' + cy + ' m -' + r + ' 0 a ' + r + ' ' + r + ' 0 1 1 0 ' + (2 * r) + ' a ' + r + ' ' + r + ' 0 1 1 0 -' + (2 * r);
+            }
+            if (tag === 'ellipse') {
+              const cx = Number(el.getAttribute('cx')) || 0, cy = Number(el.getAttribute('cy')) || 0, rx = Number(el.getAttribute('rx')) || 0, ry = Number(el.getAttribute('ry')) || 0;
+              return 'M' + cx + ' ' + cy + ' m -' + rx + ' 0 a ' + rx + ' ' + ry + ' 0 1 1 0 ' + (2 * ry) + ' a ' + rx + ' ' + ry + ' 0 1 1 0 -' + (2 * ry);
+            }
+            if (tag === 'line') {
+              const x1 = Number(el.getAttribute('x1')) || 0, y1 = Number(el.getAttribute('y1')) || 0, x2 = Number(el.getAttribute('x2')) || 0, y2 = Number(el.getAttribute('y2')) || 0;
+              return 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2;
+            }
+            return null;
+          }
+          doc.querySelectorAll('path, rect, circle, ellipse, line').forEach(el => {
+            const d = toPath(el);
+            if (d) paths.push(d);
+          });
+          const value = paths.join(' ');
+          if (!value.trim()) { reject(new Error('SVG must contain at least one path, rect, circle, ellipse, or line.')); return; }
+          const name = (file.name || 'icon').replace(/\.svg$/i, '') || 'Icon';
+          resolve({ value, name, viewBox: vb });
+        } catch (e) { reject(e); }
+      };
+      r.onerror = () => reject(new Error('Failed to read file'));
+      r.readAsText(file);
+    });
+  }
+
   const COUNTER_BTN_DEFAULT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
   const DROP_ICON_STYLES = [
     { id: 'circle', name: 'Circle', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>' },
@@ -2235,7 +2325,7 @@
 
   function getIconName(path) {
     if (state.iconNames && state.iconNames[path]) return state.iconNames[path];
-    const custom = CUSTOM_ICONS.find(i => i.value === path);
+    const custom = getEffectiveCustomIcons().find(i => i.value === path);
     if (custom) return custom.name;
     const ic = ICONS.find(i => i.value === path);
     return ic ? ic.name : 'Icon';
@@ -2590,6 +2680,7 @@
     state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+    if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
     (d.pages || []).forEach(p => {
       applyPageAnnotationsFromData(state.pages[p.index], p);
     });
@@ -2605,6 +2696,7 @@
           if (Array.isArray(backup.groups)) state.groups = ensureGroupColors(backup.groups);
           if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
           if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
+          if (Array.isArray(backup.customIconPaths)) saveUserCustomIcons(backup.customIconPaths);
           (backup.pageAnnotations || []).forEach((ann, i) => {
             if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
           });
@@ -2953,7 +3045,7 @@
   }
 
   function renderIconHtml(iconValue, color) {
-    const vb = CUSTOM_ICON_VIEWBOXES[iconValue] || (VB_384_512_PATHS.includes(iconValue) ? '0 0 384 512' : [LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH, BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH].includes(iconValue) ? '0 0 512 512' : '0 0 640 640');
+    const vb = getCustomIconViewBox(iconValue) || (VB_384_512_PATHS.includes(iconValue) ? '0 0 384 512' : [LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH, BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH].includes(iconValue) ? '0 0 512 512' : '0 0 640 640');
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
   }
 
@@ -3375,8 +3467,8 @@
     const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
     const s = cs.size;
     const opacity = cs.opacity;
-    const iconCenter = (path) => CUSTOM_ICON_META[path]?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
-    const iconVb = (path) => CUSTOM_ICON_META[path]?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
+    const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
+    const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
       const def = state.counters.find(c => c.id === typeId);
       const iconPath = def ? def.icon : CIRCLE_PATH;
@@ -3678,8 +3770,8 @@
     const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
     const s = (cs.size || 20) * scale * markerScale;
     const opacity = cs.opacity;
-    const iconCenter = (path) => CUSTOM_ICON_META[path]?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
-    const iconVb = (path) => CUSTOM_ICON_META[path]?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
+    const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
+    const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
       const def = state.counters.find(c => c.id === typeId);
       const iconPath = def ? def.icon : CIRCLE_PATH;
@@ -4692,11 +4784,14 @@
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) {
     if (id === 'groupModal') openedGroupModalFromAssign = false;
+    if (id === 'counterLineTypeDetailsModal') counterLineTypeDetailsItem = null;
     document.getElementById(id).classList.remove('visible');
   }
 
   let pendingDeleteCounterLineType = null;
+  let counterLineTypeDetailsItem = null;
   function openCounterLineTypeDetailsModal(kind, item) {
+    counterLineTypeDetailsItem = kind === 'counter' ? item : null;
     const titleEl = document.getElementById('counterLineTypeDetailsTitle');
     const nameEl = document.getElementById('counterLineTypeDetailsName');
     const swatchEl = document.getElementById('counterLineTypeDetailsSwatch');
@@ -4716,14 +4811,17 @@
     if (kind === 'counter' && iconGroup) {
       const grid = document.getElementById('counterLineTypeDetailsIconGrid');
       const customGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
+      const customIconsGroup = document.getElementById('counterLineTypeDetailsCustomIconsGroup');
+      if (customIconsGroup) customIconsGroup.style.display = '';
       const icons = getOrderedIcons();
-      const allIcons = [...icons, ...CUSTOM_ICONS];
+      const effectiveCustom = getEffectiveCustomIcons();
+      const allIcons = [...icons, ...effectiveCustom];
       const currentIcon = item.icon && allIcons.some(ic => ic.value === item.icon) ? item.icon : (icons[0]?.value || '');
       grid.innerHTML = icons.map((ic) => {
         const sel = ic.value === currentIcon ? ' selected' : '';
         return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
       }).join('');
-      customGrid.innerHTML = CUSTOM_ICONS.map((ic) => {
+      customGrid.innerHTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>' + effectiveCustom.map((ic) => {
         const sel = ic.value === currentIcon ? ' selected' : '';
         return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
       }).join('');
@@ -4744,6 +4842,10 @@
       });
       customGrid.querySelectorAll('.icon-cell').forEach(c => {
         c.onclick = () => {
+          if (c.dataset.upload) {
+            document.getElementById('customIconUploadInput').click();
+            return;
+          }
           grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
           customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
           c.classList.add('selected');
@@ -5162,6 +5264,7 @@
             state.lineTypes = airboard.lineTypes;
             state.iconNames = airboard.iconNames || {};
             state.iconOrder = airboard.iconOrder;
+            if (Array.isArray(airboard.customIconPaths)) saveUserCustomIcons(airboard.customIconPaths);
           }
         }
         reconcileOrphanedCountersAndLineTypes();
@@ -5309,6 +5412,7 @@
         state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
         if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
         if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+        if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
         (d.pages || []).forEach(p => {
           applyPageAnnotationsFromData(state.pages[p.index], p);
         });
@@ -5359,6 +5463,7 @@
               state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+              if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
               (d.pages || []).forEach(p => {
                 applyPageAnnotationsFromData(state.pages[p.index], p);
               });
@@ -5603,7 +5708,7 @@
     renderPdf();
   };
 
-  const iconVbFor = (p) => CUSTOM_ICON_VIEWBOXES[p] || (VB_384_512_PATHS.includes(p) ? '0 0 384 512' : [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH].includes(p) ? '0 0 512 512' : '0 0 640 640');
+  const iconVbFor = (p) => getCustomIconViewBox(p) || (VB_384_512_PATHS.includes(p) ? '0 0 384 512' : [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH].includes(p) ? '0 0 512 512' : '0 0 640 640');
   document.getElementById('addCounter').onclick = () => {
     showCounterTab('create');
     const icons = getOrderedIcons();
@@ -5611,8 +5716,11 @@
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
+    const customIconsGroup = document.getElementById('counterCustomIconsGroup');
+    if (customIconsGroup) customIconsGroup.style.display = '';
     grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    customGrid.innerHTML = CUSTOM_ICONS.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+    const effectiveCustom = getEffectiveCustomIcons();
+    customGrid.innerHTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>' + effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
@@ -5620,12 +5728,18 @@
       const path = c.dataset.path;
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
     });
-    customGrid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected');
-      const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
+    customGrid.querySelectorAll('.icon-cell').forEach(c => {
+      c.onclick = () => {
+        if (c.dataset.upload) {
+          document.getElementById('customIconUploadInput').click();
+          return;
+        }
+        grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+        const path = c.dataset.path;
+        if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
+      };
     });
     const cr = document.getElementById('counterColorRow');
     cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
@@ -6115,7 +6229,7 @@
   };
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, maxZoom: state.maxZoom ?? 8, groups: state.groups || [], pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: state.maxZoom ?? 8, groups: state.groups || [], pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -6694,6 +6808,7 @@
         state.groups = ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
+        if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
         (data.pages || []).forEach(p => {
           applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
         });
@@ -6708,11 +6823,93 @@
     e.target.value = '';
   };
 
+  document.getElementById('customIconUploadInput').onchange = (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    parseUploadedSvg(f).then((icon) => {
+      const userIcons = getUserCustomIcons();
+      userIcons.push(icon);
+      saveUserCustomIcons(userIcons);
+      const customGrid = document.getElementById('counterIconGridCustom');
+      const detailsCustomGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
+      const effectiveCustom = getEffectiveCustomIcons();
+      const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
+      const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+      if (customGrid) {
+        customGrid.innerHTML = uploadCell + iconCells;
+        customGrid.querySelectorAll('.icon-cell').forEach(c => {
+          c.onclick = () => {
+            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
+            document.querySelectorAll('#counterIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
+            customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+            c.classList.add('selected');
+            const path = c.dataset.path;
+            if (path) {
+              const nameEl = document.getElementById('counterName');
+              if (!nameEl.value.trim()) nameEl.value = getIconName(path);
+            }
+          };
+        });
+        const newIconCell = Array.from(customGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
+        if (newIconCell) {
+          document.querySelectorAll('#counterIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
+          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+          newIconCell.classList.add('selected');
+          const nameEl = document.getElementById('counterName');
+          if (!nameEl.value.trim()) nameEl.value = icon.name;
+        }
+      }
+      if (detailsCustomGrid) {
+        const grid = document.getElementById('counterLineTypeDetailsIconGrid');
+        const item = counterLineTypeDetailsItem;
+        const currentIcon = item?.icon || '';
+        const iconCellsDetails = effectiveCustom.map((ic) => {
+          const sel = ic.value === currentIcon ? ' selected' : '';
+          return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
+        }).join('');
+        detailsCustomGrid.innerHTML = uploadCell + iconCellsDetails;
+        detailsCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
+          c.onclick = () => {
+            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
+            if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+            detailsCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+            c.classList.add('selected');
+            if (item) {
+              pushUndoSnapshot();
+              item.icon = c.dataset.path;
+              markProjectDirty();
+              updateUI();
+              renderPdf();
+            }
+          };
+        });
+        const newIconCellDetails = Array.from(detailsCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
+        if (newIconCellDetails && item) {
+          if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+          detailsCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+          newIconCellDetails.classList.add('selected');
+          pushUndoSnapshot();
+          item.icon = icon.value;
+          markProjectDirty();
+          updateUI();
+          renderPdf();
+        }
+      }
+      updateUI();
+    }).catch((err) => {
+      alert(err && err.message ? err.message : 'Invalid SVG. SVG must contain at least one path, rect, circle, ellipse, or line.');
+    });
+  };
+
   document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
   document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
   document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showModal('clearPageConfirmModal'); };
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
+  document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
+  document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
+  document.getElementById('customIconTipsClose').onclick = () => hideModal('customIconTipsModal');
   function openNoteModal(mode, initialText, positionOrNote) {
     document.getElementById('noteModalTitle').textContent = mode === 'edit' ? 'Edit Note' : 'Add Note';
     document.getElementById('noteModalText').value = initialText || '';
@@ -6761,7 +6958,7 @@
     state.pendingDeletePage = null;
     if (pending?.onDelete) pending.onDelete();
   };
-  document.getElementById('counterLineTypeDetailsClose').onclick = () => hideModal('counterLineTypeDetailsModal');
+  document.getElementById('counterLineTypeDetailsClose').onclick = () => { counterLineTypeDetailsItem = null; hideModal('counterLineTypeDetailsModal'); };
   document.getElementById('linePropertiesClose').onclick = () => closeLinePropertiesModal();
   document.getElementById('deleteCounterLineTypeCancel').onclick = () => { hideModal('deleteCounterLineTypeConfirmModal'); pendingDeleteCounterLineType = null; };
   document.getElementById('deleteCounterLineTypeConfirm').onclick = () => {
@@ -7717,6 +7914,7 @@
                 state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
                 if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                 if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+                if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
                 (d.pages || []).forEach(p => {
                   applyPageAnnotationsFromData(state.pages[p.index], p);
                 });
@@ -7776,6 +7974,7 @@
             state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
             if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
             if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+            if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
             reconcileOrphanedCountersAndLineTypes();
             clearUndoStacks();
             autoSaveDirty = false;
@@ -7894,12 +8093,13 @@
       state.lineTypes = data.lineTypes;
       state.iconNames = data.iconNames;
       state.iconOrder = data.iconOrder;
+      if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
       updateUI();
       renderPdf();
       showToast('Artboard loaded from cloud');
     };
     document.getElementById('mySettingsExportAirboard').onclick = () => {
-      const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null };
+      const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons() };
       const a = document.createElement('a');
       a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
       a.download = 'artboard-backup.json';
@@ -8071,6 +8271,7 @@
         lineTypes: state.lineTypes,
         iconNames: state.iconNames || {},
         iconOrder: state.iconOrder || null,
+        customIconPaths: getUserCustomIcons(),
         maxZoom: state.maxZoom ?? 8,
         groups: state.groups || [],
         pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
@@ -9093,6 +9294,7 @@
       if (data.recentLineColors) state.recentLineColors = data.recentLineColors;
       if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
       if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
+      if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
       (data.pageAnnotations || []).forEach((ann, i) => {
         if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
       });
@@ -9125,6 +9327,7 @@
       lineTypes: state.lineTypes,
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
+      customIconPaths: getUserCustomIcons(),
       maxZoom: state.maxZoom ?? 8,
       groups: state.groups || [],
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
@@ -9197,6 +9400,7 @@
         recentLineColors: state.recentLineColors,
         iconNames: state.iconNames || {},
         iconOrder: state.iconOrder || null,
+        customIconPaths: getUserCustomIcons(),
         pageAnnotations: state.pages.map(p => p.annotations),
         pageScales: state.pages.map(p => p.scale),
         pageRotations: state.pages.map(p => p.rotation ?? 0)
@@ -9345,6 +9549,7 @@
     state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+    if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
     (d.pages || []).forEach(p => {
       applyPageAnnotationsFromData(state.pages[p.index], p);
     });

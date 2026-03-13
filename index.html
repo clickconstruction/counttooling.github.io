@@ -733,19 +733,21 @@
       </div>
       <div id="scalePointsPanel" class="counter-tab-panel" style="display:none;">
         <p id="scaleInfo" class="form-group">You selected a line spanning 0 pdf-pts.</p>
-        <div class="form-group">
-          <label>Real-world length</label>
-          <input type="number" id="scaleValue" step="0.01" min="0.01" placeholder="e.g. 10">
-        </div>
-        <div class="form-group">
-          <label>Unit</label>
-          <select id="scaleUnit">
-            <option value="ft">ft</option>
-            <option value="in">in</option>
-            <option value="m">m</option>
-            <option value="cm">cm</option>
-            <option value="yd">yd</option>
-          </select>
+        <div id="scaleLengthInputGroup" style="display:none;">
+          <div class="form-group">
+            <label>Real-world length</label>
+            <input type="number" id="scaleValue" step="0.01" min="0.01" placeholder="e.g. 10">
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <select id="scaleUnit">
+              <option value="ft">ft</option>
+              <option value="in">in</option>
+              <option value="m">m</option>
+              <option value="cm">cm</option>
+              <option value="yd">yd</option>
+            </select>
+          </div>
         </div>
         <div class="form-group" id="scaleSelectOnPdfGroup">
           <button type="button" class="settings-menu-btn" id="scaleSelectOnPdf">Select on PDF</button>
@@ -5395,15 +5397,18 @@
     const presetsPanel = document.getElementById('scalePresetsPanel');
     const selectOnPdfGroup = document.getElementById('scaleSelectOnPdfGroup');
     const scaleInfo = document.getElementById('scaleInfo');
+    const lengthInputGroup = document.getElementById('scaleLengthInputGroup');
     if (finishingTwoPoints) {
       tabsEl.style.display = 'none';
       presetsPanel.style.display = 'none';
       pointsPanel.style.display = '';
       selectOnPdfGroup.style.display = 'none';
+      if (lengthInputGroup) lengthInputGroup.style.display = '';
       scaleInfo.textContent = 'You selected a line spanning ' + Math.round(ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
     } else {
       tabsEl.style.display = '';
       selectOnPdfGroup.style.display = '';
+      if (lengthInputGroup) lengthInputGroup.style.display = 'none';
       scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
       showScaleTab('presets');
     }
@@ -5413,6 +5418,11 @@
     document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('scalePointsPanel').style.display = tab === 'points' ? '' : 'none';
     document.getElementById('scalePresetsPanel').style.display = tab === 'presets' ? '' : 'none';
+    if (tab === 'points') {
+      const hasTwoPoints = state.scalePointA && state.scalePointB;
+      const lengthInputGroup = document.getElementById('scaleLengthInputGroup');
+      if (lengthInputGroup) lengthInputGroup.style.display = hasTwoPoints ? '' : 'none';
+    }
     if (tab === 'presets') {
       const list = document.getElementById('scalePresetsList');
       list.innerHTML = '';

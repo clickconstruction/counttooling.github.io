@@ -413,6 +413,59 @@
     .manage-icons-list .manage-icon-row .icon-move-btns button { width: 28px; height: 28px; padding: 0; font-size: 0.85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .manage-icons-list .manage-icon-row .icon-move-btns button:hover { background: var(--surface2); color: var(--text); }
     .manage-icons-list .manage-icon-row .icon-move-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .manage-icons-custom-section { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .manage-icons-custom-section h3 { font-size: 1rem; margin-bottom: 12px; color: var(--text2); }
+    .manage-icons-custom-actions { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .manage-icons-custom-actions .manage-icons-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid;
+    }
+    .manage-icons-custom-actions .manage-icons-btn-edit {
+      background: transparent;
+      border-color: var(--border2);
+      color: var(--text2);
+    }
+    .manage-icons-custom-actions .manage-icons-btn-edit:hover {
+      background: var(--surface2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .manage-icons-custom-actions .manage-icons-btn-edit.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(232,197,71,0.08);
+    }
+    .manage-icons-custom-actions .manage-icons-btn-delete {
+      background: transparent;
+      border-color: var(--red);
+      color: var(--red);
+    }
+    .manage-icons-custom-actions .manage-icons-btn-delete:hover:not(:disabled) {
+      background: rgba(232,84,71,0.15);
+      box-shadow: 0 2px 8px rgba(232,84,71,0.2);
+    }
+    .manage-icons-custom-actions .manage-icons-btn-delete:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .manage-icons-custom-actions .manage-icons-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+    .manage-icons-list .manage-icon-row.selected { border-color: var(--accent); background: rgba(232,197,71,0.1); }
+    .manage-icons-list .manage-icon-row.manage-icon-row-custom { cursor: pointer; }
+    .manage-icons-list .manage-icon-row .icon-select-cb { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; }
+    .manage-icons-list .manage-icon-row .manage-icon-custom-name { flex: 1; min-width: 0; padding: 8px 0; color: var(--text2); font-size: 0.95rem; }
     #manageProjectsList { max-height: 50vh; }
     .specific-pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; max-height: 50vh; overflow-y: auto; margin-bottom: 16px; }
     .specific-page-card { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
@@ -1318,7 +1371,7 @@
         <div id="settingsCheckoutSection" class="settings-checkout-section" style="display:none;">
           <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:stretch;">
             <p id="settingsCheckoutStatus" class="settings-checkout-status" style="margin:0;font-size:0.9rem;color:var(--text2);flex:1;min-width:0;"></p>
-            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Save and Turn In Project</button>
+            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Turn In Project</button>
           </div>
         </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
@@ -1347,6 +1400,20 @@
       </div>
       <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Edit display names for each icon. These names appear in reports and when creating counters.</p>
       <div id="manageIconsList" class="manage-icons-list"></div>
+      <div id="manageIconsCustomSection" class="manage-icons-custom-section" style="display:none;">
+        <h3>Custom icons (uploaded)</h3>
+        <div id="manageIconsCustomList" class="manage-icons-list"></div>
+        <div class="manage-icons-custom-actions">
+          <button type="button" id="manageIconsEditToggle" class="manage-icons-btn manage-icons-btn-edit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="currentColor" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7z"/></svg>
+            <span>Edit</span>
+          </button>
+          <button type="button" id="manageIconsDeleteSelected" class="manage-icons-btn manage-icons-btn-delete danger" style="display:none;" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>
+            <span>Delete selected</span>
+          </button>
+        </div>
+      </div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="manageIconsCancel">Cancel</button>
         <button type="button" id="manageIconsSave">Save</button>
@@ -1583,17 +1650,6 @@
         <button id="saveBeforeLoadCancel">Cancel</button>
         <button id="saveBeforeLoadDiscard">Don't Save</button>
         <button id="saveBeforeLoadSave">Save now</button>
-      </div>
-    </div>
-  </div>
-  <div class="modal-overlay" id="saveBeforeTurnInModal">
-    <div class="modal-card">
-      <h2>Save before Turn In</h2>
-      <p style="margin:0 0 24px 0;color:var(--text2);">Your project has a PDF that hasn't been uploaded. Save now to include it, or turn in without the PDF?</p>
-      <div class="actions">
-        <button id="saveBeforeTurnInCancel">Cancel</button>
-        <button id="saveBeforeTurnInWithoutPdf">Turn In without PDF</button>
-        <button id="saveBeforeTurnInSave" class="btn-yellow">Save and Turn In</button>
       </div>
     </div>
   </div>
@@ -4076,7 +4132,7 @@
           btn.type = 'button';
           btn.className = 'header-edit-status-btn';
           btn.dataset.action = 'checkin';
-          btn.textContent = '[Save and Turn In]';
+          btn.textContent = '[Turn In]';
           editBanner.appendChild(btn);
           editBanner.classList.add('edit-status-editing');
         } else if (state.pages.length > 0 && !state.currentProjectId && !state.isViewer) {
@@ -7159,6 +7215,10 @@
 
   function openManageIconsModal() {
     const listEl = document.getElementById('manageIconsList');
+    const customSection = document.getElementById('manageIconsCustomSection');
+    const customListEl = document.getElementById('manageIconsCustomList');
+    const editToggleBtn = document.getElementById('manageIconsEditToggle');
+    const deleteSelectedBtn = document.getElementById('manageIconsDeleteSelected');
     listEl.innerHTML = '';
     const ordered = getOrderedIcons();
     const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -7167,10 +7227,12 @@
         const rows = listEl.querySelectorAll('.manage-icon-row');
         const n = rows.length;
         const btns = row.querySelectorAll('.icon-move-btns button');
-        btns[0].disabled = i === 0;
-        btns[1].disabled = i === n - 1;
-        btns[2].disabled = i === 0;
-        btns[3].disabled = i === n - 1;
+        if (btns.length >= 4) {
+          btns[0].disabled = i === 0;
+          btns[1].disabled = i === n - 1;
+          btns[2].disabled = i === 0;
+          btns[3].disabled = i === n - 1;
+        }
       });
     }
     ordered.forEach((ic, i) => {
@@ -7196,6 +7258,95 @@
       });
     });
     updateMoveButtons();
+
+    let customEditMode = false;
+    const selectedPaths = new Set();
+    function renderCustomIcons() {
+      const customIcons = getUserCustomIcons();
+      if (customIcons.length === 0) {
+        customSection.style.display = 'none';
+        return;
+      }
+      customSection.style.display = '';
+      customListEl.innerHTML = '';
+      customIcons.forEach((ic) => {
+        const row = document.createElement('div');
+        row.className = 'manage-icon-row manage-icon-row-custom';
+        row.dataset.iconPath = ic.value;
+        row.dataset.custom = '1';
+        const vb = ic.viewBox || '0 0 24 24';
+        const name = (state.iconNames && state.iconNames[ic.value]) || ic.name || 'Custom icon';
+        const cbHtml = customEditMode ? '<input type="checkbox" class="icon-select-cb" aria-label="Select">' : '';
+        row.innerHTML = cbHtml + '<span class="icon-svg"><svg viewBox="' + esc(vb) + '" width="24" height="24"><path fill="var(--accent)" d="' + esc(ic.value) + '"/></svg></span><span class="manage-icon-custom-name">' + esc(name) + '</span>';
+        customListEl.appendChild(row);
+        if (customEditMode) {
+          const cb = row.querySelector('.icon-select-cb');
+          row.onclick = (e) => {
+            if (e.target === cb) return;
+            const path = row.dataset.iconPath;
+            if (selectedPaths.has(path)) {
+              selectedPaths.delete(path);
+              row.classList.remove('selected');
+              if (cb) cb.checked = false;
+            } else {
+              selectedPaths.add(path);
+              row.classList.add('selected');
+              if (cb) cb.checked = true;
+            }
+            deleteSelectedBtn.disabled = selectedPaths.size === 0;
+          };
+          if (cb) {
+            cb.onclick = (e) => e.stopPropagation();
+            cb.onchange = () => {
+              if (cb.checked) {
+                selectedPaths.add(ic.value);
+                row.classList.add('selected');
+              } else {
+                selectedPaths.delete(ic.value);
+                row.classList.remove('selected');
+              }
+              deleteSelectedBtn.disabled = selectedPaths.size === 0;
+            };
+          }
+        } else {
+          row.onclick = null;
+        }
+      });
+      deleteSelectedBtn.disabled = selectedPaths.size === 0;
+    }
+    function toggleEditMode() {
+      customEditMode = !customEditMode;
+      selectedPaths.clear();
+      const span = editToggleBtn.querySelector('span');
+      if (span) span.textContent = customEditMode ? 'Done' : 'Edit';
+      editToggleBtn.classList.toggle('active', customEditMode);
+      deleteSelectedBtn.style.display = customEditMode ? '' : 'none';
+      renderCustomIcons();
+    }
+    editToggleBtn.onclick = toggleEditMode;
+    deleteSelectedBtn.onclick = () => {
+      const toRemove = Array.from(selectedPaths);
+      if (toRemove.length === 0) return;
+      const updated = getUserCustomIcons().filter((ic) => !toRemove.includes(ic.value));
+      saveUserCustomIcons(updated);
+      selectedPaths.clear();
+      customEditMode = false;
+      const span = editToggleBtn.querySelector('span');
+      if (span) span.textContent = 'Edit';
+      editToggleBtn.classList.remove('active');
+      deleteSelectedBtn.style.display = 'none';
+      deleteSelectedBtn.disabled = true;
+      renderCustomIcons();
+      showToast('Removed ' + toRemove.length + ' custom icon(s).');
+      updateUI();
+    };
+    renderCustomIcons();
+    const initSpan = editToggleBtn.querySelector('span');
+    if (initSpan) initSpan.textContent = 'Edit';
+    editToggleBtn.classList.remove('active');
+    deleteSelectedBtn.style.display = 'none';
+    deleteSelectedBtn.disabled = true;
+
     showModal('manageIconsModal');
   }
 
@@ -7439,9 +7590,6 @@
         return { ok: false, error: (e && e.message) || 'Failed to turn in' };
       }
     }
-    let saveModalForTurnIn = false;
-    let saveModalTurnInOpts = null;
-    let saveBeforeTurnInOpts = null;
     async function doTurnInAndHandleResult(opts) {
       opts = opts || {};
       const result = await doTurnIn();
@@ -7450,6 +7598,9 @@
         updateSettingsCheckoutSection();
         if (opts.hideSettings) hideModal('settingsModal');
         showToast('Project turned in.');
+        if (state.pdfBuffer && !state.pdfStoragePath) {
+          showToast('PDF saved locally—use Save Project to add it to the project.', 3000);
+        }
         updateUI();
       } else {
         showToast(result.error || 'Failed to turn in', 3000);
@@ -7458,11 +7609,6 @@
     }
     async function tryTurnIn(opts) {
       opts = opts || {};
-      if (state.pdfBuffer && !state.pdfStoragePath) {
-        saveBeforeTurnInOpts = opts;
-        showModal('saveBeforeTurnInModal');
-        return { showedModal: true };
-      }
       return doTurnInAndHandleResult(opts);
     }
     const headerEditBanner = document.getElementById('headerEditStatusBanner');
@@ -7504,8 +7650,7 @@
         btn.disabled = true;
         btn.textContent = 'Turning in...';
         try {
-          const result = await tryTurnIn({});
-          if (result?.showedModal) return;
+          await tryTurnIn({});
         } finally {
           btn.disabled = false;
           updateUI();
@@ -7553,8 +7698,7 @@
       btn.disabled = true;
       btn.textContent = 'Turning in...';
       try {
-        const result = await tryTurnIn({ hideSettings: true });
-        if (result?.showedModal) return;
+        await tryTurnIn({ hideSettings: true });
       } finally {
         btn.disabled = false;
         btn.textContent = origText;
@@ -8164,7 +8308,7 @@
       document.getElementById('saveProjectName').value = state.currentProjectName || 'Untitled';
       document.getElementById('saveProjectError').style.display = 'none';
       document.getElementById('saveProjectDo').disabled = false;
-      document.getElementById('saveProjectDo').textContent = saveModalForTurnIn ? 'Save and Turn In' : 'Save';
+      document.getElementById('saveProjectDo').textContent = 'Save';
       document.getElementById('saveProjectProgress').style.display = 'none';
       document.getElementById('saveProjectChecklist').innerHTML = '';
       const contentsList = document.getElementById('saveProjectContentsList');
@@ -8197,11 +8341,7 @@
       showModal('saveProjectModal');
     };
     document.getElementById('saveProjectBtnSidebar').onclick = () => document.getElementById('saveProjectBtn').click();
-    document.getElementById('saveProjectCancel').onclick = () => {
-      saveModalForTurnIn = false;
-      saveModalTurnInOpts = null;
-      hideModal('saveProjectModal');
-    };
+    document.getElementById('saveProjectCancel').onclick = () => hideModal('saveProjectModal');
     document.getElementById('saveProjectIncludePdf').onchange = () => {
       const label = document.getElementById('saveProjectIncludePdfLabel');
       const checkboxEl = document.getElementById('saveProjectIncludePdf');
@@ -8413,26 +8553,10 @@
         log('Save complete');
         saveProgressMessage = '';
         updateUI();
-        if (saveModalForTurnIn) {
-          saveModalForTurnIn = false;
-          const opts = saveModalTurnInOpts || {};
-          saveModalTurnInOpts = null;
-          const turnInResult = await doTurnIn();
-          if (turnInResult.ok) {
-            await refreshProjectPermissions();
-            updateSettingsCheckoutSection();
-            showToast('Project turned in.');
-            if (opts.hideSettings) hideModal('settingsModal');
-            updateUI();
-          } else {
-            showToast(turnInResult.error || 'Failed to turn in', 3000);
-          }
-        }
       } catch (e) {
         console.error('[Save] Failed:', e);
         log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
         window.lastSaveError = e;
-        if (saveModalForTurnIn) { saveModalForTurnIn = false; saveModalTurnInOpts = null; }
         try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
         const errMsg = (e?.message) || (e?.details) || (e?.hint) || String(e) || 'Save failed';
         showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
@@ -8451,22 +8575,6 @@
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
     document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
     document.getElementById('saveBeforeLoadCancel').onclick = () => hideModal('saveBeforeLoadModal');
-    document.getElementById('saveBeforeTurnInCancel').onclick = () => hideModal('saveBeforeTurnInModal');
-    document.getElementById('saveBeforeTurnInWithoutPdf').onclick = async () => {
-      hideModal('saveBeforeTurnInModal');
-      const opts = saveBeforeTurnInOpts || {};
-      saveBeforeTurnInOpts = null;
-      await doTurnInAndHandleResult(opts);
-    };
-    document.getElementById('saveBeforeTurnInSave').onclick = () => {
-      hideModal('saveBeforeTurnInModal');
-      const opts = saveBeforeTurnInOpts || {};
-      saveBeforeTurnInOpts = null;
-      if (opts.hideSettings) hideModal('settingsModal');
-      saveModalForTurnIn = true;
-      saveModalTurnInOpts = opts;
-      document.getElementById('saveProjectBtn').click();
-    };
     document.getElementById('saveBeforeLoadDiscard').onclick = () => {
       hideModal('saveBeforeLoadModal');
       openLoadProjectModal();

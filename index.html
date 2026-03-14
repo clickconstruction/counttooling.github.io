@@ -9874,7 +9874,15 @@
       e.preventDefault();
       const d = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       const scale = d / state.pinchStartDistance;
-      state.zoom = Math.max(0.2, Math.min(getMaxZoom(), state.pinchStartZoom * scale));
+      const newZoom = Math.max(0.2, Math.min(getMaxZoom(), state.pinchStartZoom * scale));
+      const rect = (document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper'))?.getBoundingClientRect() || { left: 0, top: 0 };
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      const pdfX = (cx - state.pan.x) / state.zoom;
+      const pdfY = (cy - state.pan.y) / state.zoom;
+      state.pan.x = cx - pdfX * newZoom;
+      state.pan.y = cy - pdfY * newZoom;
+      state.zoom = newZoom;
       if (!pinchZoomPending) {
         pinchZoomPending = true;
         requestAnimationFrame(() => {

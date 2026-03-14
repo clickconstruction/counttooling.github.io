@@ -4252,7 +4252,7 @@
     const pageInfo = document.getElementById('pageInfo');
     const current = state.pages.length ? state.currentPage + 1 : 0;
     const total = state.pages.length || 0;
-    pageInfo.innerHTML = '<span class="page-info-label">Page </span>' + current + ' of ' + total;
+    pageInfo.innerHTML = '<span class="page-info-label">Page </span>' + current + '/' + total;
     document.getElementById('prevPage').disabled = state.currentPage <= 0;
     document.getElementById('nextPage').disabled = state.currentPage >= state.pages.length - 1;
     const marked = getMarkedPageIndices();

@@ -124,7 +124,7 @@
       .header #polylineBtn { display: none; }
       .header #doneEditing { display: none; }
       .header .header-primary-btn { display: none; }
-      body:not(.has-pdf) .header #uploadPdf { display: inline-flex; align-items: center; justify-content: center; }
+      body:not(.has-pdf) .header #uploadPdf { display: inline-flex; align-items: center; justify-content: center; background: transparent; border: none; }
       body:not(.has-pdf) .header #setScale { display: none !important; }
       .header-active-type { display: none; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text2); }
       .header-active-type.visible { display: inline-flex; }
@@ -157,7 +157,6 @@
       .zoom-bar button { width: 44px; height: 44px; }
       .zoom-bar #zoomOut { display: none; }
       .zoom-bar #zoomIn { display: none; }
-      body.mobile-view-mode .zoom-bar #zoomOut, body.mobile-view-mode .zoom-bar #zoomIn { display: flex !important; }
       .canvas-layers-mobile-only { display: flex !important; }
       #canvasSwitcher .canvas-pills, #canvasSwitcher #addCanvasBtn { display: none !important; }
       #canvasSwitcher { border-left: none; }
@@ -201,6 +200,7 @@
     #groupsSection.collapsed #groupsList, #groupsSection.collapsed #addGroup, #groupsSection.collapsed #showGroupColorsLabel { display: none; }
     #summarySection.collapsed #summaryList { display: none; }
     .collapse-icon { font-size: 0.65rem; margin-left: 4px; opacity: 0.7; }
+    .sidebar-section .collapse-icon, .sidebar-section-header-row .collapse-icon { display: inline-block; padding: 8px 12px; margin: -8px -12px -8px 4px; cursor: pointer; }
     .modal-card input[type="range"] { width: 100%; padding: 0; height: 24px; }
     .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; min-height: 44px; }
     .sidebar-item.active { background: var(--surface2); border-radius: 6px; margin: 2px -4px; padding: 4px 12px 4px 8px; border-left: 3px solid var(--accent); }
@@ -217,6 +217,8 @@
     .sidebar-item .badge.badge-scale-set { color: var(--accent); }
     .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
     .sidebar-item .badge.badge-canvas-count { background: var(--surface2); color: var(--text2); font-size: 0.7rem; margin-left: 2px; }
+    .sidebar-item.summary-line-item { flex-direction: column; align-items: stretch; gap: 2px; }
+    .sidebar-item.summary-line-item .summary-line-meta { font-size: 0.8rem; color: var(--text2); }
     .sidebar-item .edit-btn { padding: 4px; cursor: pointer; opacity: 0.7; }
     .sidebar-item .edit-btn:hover { opacity: 1; }
     .counter-drag-handle { cursor: pointer; }
@@ -649,6 +651,9 @@
       <input type="file" id="importInput" accept=".json">
       <input type="file" id="customIconUploadInput" accept=".svg,image/svg+xml">
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
+      <button id="downloadCurrentPageBtn" class="header-settings-gear sidebar-triggers" style="display:none;" aria-label="Download current page" title="Download current page as marked PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
+      </button>
     </header>
     <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
       <span>Drag by their left colors to re-order.</span>
@@ -4252,7 +4257,7 @@
     const pageInfo = document.getElementById('pageInfo');
     const current = state.pages.length ? state.currentPage + 1 : 0;
     const total = state.pages.length || 0;
-    pageInfo.innerHTML = '<span class="page-info-label">Page </span>' + current + '/' + total;
+    pageInfo.innerHTML = current + '/' + total;
     document.getElementById('prevPage').disabled = state.currentPage <= 0;
     document.getElementById('nextPage').disabled = state.currentPage >= state.pages.length - 1;
     const marked = getMarkedPageIndices();
@@ -4560,6 +4565,8 @@
     if (printReportBtn) printReportBtn.style.display = hasCountsOrLines ? '' : 'none';
     const exportPdfBtn = document.getElementById('exportPdf');
     if (exportPdfBtn) exportPdfBtn.style.display = hasCountsOrLines ? '' : 'none';
+    const downloadCurrentPageBtn = document.getElementById('downloadCurrentPageBtn');
+    if (downloadCurrentPageBtn) downloadCurrentPageBtn.style.display = state.pages.length > 0 ? '' : 'none';
     updateStatus();
   }
 
@@ -4986,10 +4993,10 @@
         if (r && r.runs > 0) {
           const scale = pickScaleForLineType(r.pageIndices);
           const div = document.createElement('div');
-          div.className = 'sidebar-item summary-item-clickable';
+          div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">' + r.runs + ' · ' + formatDist(r.len, scale) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + formatDist(r.len, scale) + '</span>';
           div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -5034,10 +5041,10 @@
         if (runs > 0) {
           const scale = pickScaleForLineType(pageIndices);
           const div = document.createElement('div');
-          div.className = 'sidebar-item summary-item-clickable';
+          div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + formatDist(len, scale) + '</span>';
           div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -7519,6 +7526,40 @@
   }
   document.getElementById('clearPage').onclick = () => showClearPageModal();
   document.getElementById('clearPageSidebar').onclick = () => showClearPageModal();
+  async function downloadCurrentPageAsPdf() {
+    const page = state.pages[state.currentPage];
+    if (!page?.pdfPage) return;
+    const jsPDFLib = window.jspdf;
+    if (!jsPDFLib?.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
+    const EXPORT_SCALE = 4;
+    const PT_TO_MM = 25.4 / 72;
+    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
+    const btn = document.getElementById('downloadCurrentPageBtn');
+    const origText = btn?.title || '';
+    if (btn) { btn.disabled = true; btn.title = 'Downloading…'; }
+    try {
+      const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+      renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+      const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+      doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+      const baseName = sanitizeForFilename(state.currentProjectName);
+      const pageNum = state.currentPage + 1;
+      doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
+    } catch (err) {
+      console.error(err);
+      alert('Download failed: ' + (err?.message || err));
+    }
+    if (btn) { btn.disabled = false; btn.title = origText; }
+  }
+  document.getElementById('downloadCurrentPageBtn').onclick = () => downloadCurrentPageAsPdf();
   document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
   document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
   document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showClearPageModal(); };

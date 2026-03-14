@@ -157,6 +157,11 @@
       .zoom-bar button { width: 44px; height: 44px; }
       .zoom-bar #zoomOut { display: none; }
       .zoom-bar #zoomIn { display: none; }
+      body.mobile-view-mode .zoom-bar #zoomOut, body.mobile-view-mode .zoom-bar #zoomIn { display: flex !important; }
+      .canvas-layers-mobile-only { display: flex !important; }
+      #canvasSwitcher .canvas-pills, #canvasSwitcher #addCanvasBtn { display: none !important; }
+      #canvasSwitcher { border-left: none; }
+      .canvas-layers-btn { width: 44px; height: 44px; }
       .polyline-finish-bar button { min-height: 44px; }
       .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
       .modal-overlay.visible .modal-card.modal-card-fullscreen { max-height: 90vh; height: 90vh; overflow: hidden; }
@@ -192,7 +197,7 @@
     #linesSection.collapsed #linesList { display: none; }
     #linesSection.collapsed { border-bottom: none; padding-bottom: 0; }
     .sidebar-subsection { margin-top: 8px; margin-left: 8px; }
-    #showGroupColorsLabel { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 8px; }
+    #showGroupColorsLabel { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; margin-top: 8px; }
     #groupsSection.collapsed #groupsList, #groupsSection.collapsed #addGroup, #groupsSection.collapsed #showGroupColorsLabel { display: none; }
     #summarySection.collapsed #summaryList { display: none; }
     .collapse-icon { font-size: 0.65rem; margin-left: 4px; opacity: 0.7; }
@@ -211,6 +216,7 @@
     .sidebar-item .badge { background: var(--surface3); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-family: 'DM Mono', monospace; }
     .sidebar-item .badge.badge-scale-set { color: var(--accent); }
     .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
+    .sidebar-item .badge.badge-canvas-count { background: var(--surface2); color: var(--text2); font-size: 0.7rem; margin-left: 2px; }
     .sidebar-item .edit-btn { padding: 4px; cursor: pointer; opacity: 0.7; }
     .sidebar-item .edit-btn:hover { opacity: 1; }
     .counter-drag-handle { cursor: pointer; }
@@ -259,6 +265,14 @@
     .canvas-container .ann-canvas.interactive { pointer-events: auto; }
     .page-zoom-row { display: flex; align-items: center; gap: 0; background: var(--surface); border-top: 1px solid var(--border); }
     .page-zoom-row .page-nav { flex: 1; }
+    .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-left: 1px solid var(--border); }
+    body:not(.has-pdf) .canvas-switcher { display: none; }
+    .canvas-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; max-width: 140px; }
+    .canvas-pill { padding: 4px 10px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s ease; }
+    .canvas-pill:hover { background: var(--surface); color: var(--text); border-color: var(--border2); }
+    .canvas-pill.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .canvas-layers-mobile-only { display: none; }
+    .canvas-layers-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; }
     .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
@@ -561,6 +575,18 @@
     .context-menu button.danger { color: var(--red); }
     .context-menu { display: none; }
     .context-menu.visible { display: block; }
+    .canvas-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 140px; max-height: 50vh; overflow-y: auto; display: none; }
+    .canvas-menu.visible { display: block; }
+    #canvasMenuList { display: flex; flex-direction: column; }
+    #canvasMenuList button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
+    #canvasMenuList button:hover { background: var(--surface2); }
+    #canvasMenuList button.active { background: var(--accent); color: #000; }
+    .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; border-top: 1px solid var(--border); color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; }
+    .canvas-menu-add:hover { background: var(--surface2); }
+    .zoom-overlay { position: fixed; display: none; flex-direction: row; align-items: center; gap: 8px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .zoom-overlay.visible { display: flex; }
+    .zoom-overlay-btn { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1.25rem; }
+    .zoom-overlay-btn:hover { background: var(--surface3); }
     input[type="file"] { display: none; }
   </style>
 </head>
@@ -724,7 +750,7 @@
             <button id="addGroup" class="sidebar-btn-inline" title="Add group">+ Add</button>
           </div>
           <div id="groupsList"></div>
-          <div id="showGroupColorsLabel" class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div id="showGroupColorsLabel" class="form-group">
             <span style="color:var(--text2);">Show group colors</span>
             <button type="button" class="toggle-switch" id="showGroupColorsBtn" aria-pressed="false" title="Show group colors">
               <span class="toggle-switch-knob"></span>
@@ -770,6 +796,13 @@
               <button id="nextPage">›</button>
             </span>
             <button id="nextMarkedPage" class="page-nav-marked-btn" title="Next marked page">››</button>
+          </div>
+          <div id="canvasSwitcher" class="canvas-switcher">
+            <button id="canvasLayersBtn" class="canvas-layers-btn canvas-layers-mobile-only" title="Canvases" aria-label="Canvases">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg>
+            </button>
+            <div id="canvasPills" class="canvas-pills"></div>
+            <button id="addCanvasBtn" class="sidebar-btn-inline" title="Add canvas">+</button>
           </div>
           <div class="zoom-bar">
             <button id="zoomOut">−</button>
@@ -1315,7 +1348,7 @@
   <div class="modal-overlay" id="clearPageConfirmModal">
     <div class="modal-card">
       <h2>Clear Page</h2>
-      <p style="margin:0 0 24px 0;color:var(--text2);">Are you sure?</p>
+      <p id="clearPageConfirmMessage" style="margin:0 0 24px 0;color:var(--text2);">Are you sure?</p>
       <div class="actions">
         <button id="clearPageCancel">Cancel</button>
         <button id="clearPageConfirm" class="danger">Clear Page</button>
@@ -1774,6 +1807,14 @@
         <button type="button" id="viewLinkEmailSubmit" class="btn-yellow">Continue</button>
       </div>
     </div>
+  </div>
+  <div class="canvas-menu" id="canvasMenu">
+    <div id="canvasMenuList"></div>
+    <button type="button" id="canvasMenuAdd" class="canvas-menu-add">+ Add canvas</button>
+  </div>
+  <div class="zoom-overlay" id="zoomOverlay">
+    <button type="button" id="zoomOverlayMinus" class="zoom-overlay-btn" title="Zoom out" aria-label="Zoom out">−</button>
+    <button type="button" id="zoomOverlayPlus" class="zoom-overlay-btn" title="Zoom in" aria-label="Zoom in">+</button>
   </div>
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
@@ -2421,17 +2462,72 @@
 
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [] }; }
 
+  function getPageCanvases(page) { return page?.canvases ?? []; }
+  function getActiveCanvas(page) {
+    if (!page) return null;
+    const canvases = getPageCanvases(page);
+    if (!canvases.length) return null;
+    const pageIdx = state.pages?.indexOf(page);
+    const activeId = pageIdx >= 0 ? state.activeCanvasIdByPage?.[pageIdx] : null;
+    const found = activeId ? canvases.find(c => c.id === activeId) : null;
+    return found || canvases[0];
+  }
+  function getActiveAnnotations(page) {
+    const canvas = getActiveCanvas(page);
+    return canvas?.annotations ?? makeAnnotations();
+  }
+  function ensureActiveCanvas(page) {
+    migratePageToCanvases(page);
+    let canvas = getActiveCanvas(page);
+    if (!canvas) {
+      const id = uid();
+      page.canvases = [{ id, name: 'Main', annotations: makeAnnotations() }];
+      const pi = state.pages?.indexOf(page);
+      if (pi >= 0) state.activeCanvasIdByPage[pi] = id;
+      canvas = page.canvases[0];
+    }
+    return canvas;
+  }
+  function migratePageToCanvases(page) {
+    if (!page) return;
+    if (page.canvases && page.canvases.length) return;
+    const ann = page.annotations || makeAnnotations();
+    page.canvases = [{ id: uid(), name: 'Main', annotations: ann }];
+    delete page.annotations;
+  }
+  function pageHasAnyAnnotations(p) {
+    return getPageCanvases(p).some(c => {
+      const ann = c.annotations || makeAnnotations();
+      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length);
+    });
+  }
+
   function applyPageAnnotationsFromData(page, p, scaleFallback) {
     if (!page) return;
-    if (p.annotations) {
+    if (p.canvases && Array.isArray(p.canvases) && p.canvases.length) {
+      page.canvases = p.canvases.map(c => ({
+        id: c.id || uid(),
+        name: c.name || 'Main',
+        annotations: c.annotations ? {
+          counterMarkers: c.annotations.counterMarkers && typeof c.annotations.counterMarkers === 'object' ? c.annotations.counterMarkers : {},
+          polylines: Array.isArray(c.annotations.polylines) ? c.annotations.polylines : [],
+          quickLines: Array.isArray(c.annotations.quickLines) ? c.annotations.quickLines : [],
+          highlights: Array.isArray(c.annotations.highlights) ? c.annotations.highlights : [],
+          notes: Array.isArray(c.annotations.notes) ? c.annotations.notes : []
+        } : makeAnnotations()
+      }));
+      delete page.annotations;
+    } else if (p.annotations) {
       const a = p.annotations;
-      page.annotations = {
+      const ann = {
         counterMarkers: a.counterMarkers && typeof a.counterMarkers === 'object' ? a.counterMarkers : {},
         polylines: Array.isArray(a.polylines) ? a.polylines : [],
         quickLines: Array.isArray(a.quickLines) ? a.quickLines : [],
         highlights: Array.isArray(a.highlights) ? a.highlights : [],
         notes: Array.isArray(a.notes) ? a.notes : []
       };
+      page.canvases = [{ id: uid(), name: 'Main', annotations: ann }];
+      delete page.annotations;
     }
     page.scale = p.scale !== undefined ? p.scale : (scaleFallback ?? null);
     page.rotation = p.rotation ?? 0;
@@ -2439,15 +2535,18 @@
 
   function reconcileOrphanedCountersAndLineTypes() {
     if (!state.pages || !state.pages.length) return;
+    state.pages.forEach(migratePageToCanvases);
     const counterIds = new Set((state.counters || []).map(c => c.id));
     const lineTypeIds = new Set((state.lineTypes || []).map(lt => lt.id));
     const orphanCounterIds = new Set();
     const orphanLineTypeIds = new Set();
     state.pages.forEach(p => {
-      const ann = p.annotations || makeAnnotations();
-      Object.keys(ann.counterMarkers || {}).forEach(id => { if (!counterIds.has(id)) orphanCounterIds.add(id); });
-      (ann.quickLines || []).forEach(q => { if (q.lineTypeId && !lineTypeIds.has(q.lineTypeId)) orphanLineTypeIds.add(q.lineTypeId); });
-      (ann.polylines || []).forEach(poly => { if (poly.lineTypeId && !lineTypeIds.has(poly.lineTypeId)) orphanLineTypeIds.add(poly.lineTypeId); });
+      getPageCanvases(p).forEach(c => {
+        const ann = c.annotations || makeAnnotations();
+        Object.keys(ann.counterMarkers || {}).forEach(id => { if (!counterIds.has(id)) orphanCounterIds.add(id); });
+        (ann.quickLines || []).forEach(q => { if (q.lineTypeId && !lineTypeIds.has(q.lineTypeId)) orphanLineTypeIds.add(q.lineTypeId); });
+        (ann.polylines || []).forEach(poly => { if (poly.lineTypeId && !lineTypeIds.has(poly.lineTypeId)) orphanLineTypeIds.add(poly.lineTypeId); });
+      });
     });
     if (orphanCounterIds.size > 0) {
       state.counters = state.counters || [];
@@ -2526,7 +2625,8 @@
     projectOwnerId: null,
     maxZoom: null,
     groups: [],
-    activeGroupId: null
+    activeGroupId: null,
+    activeCanvasIdByPage: {}
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
@@ -2581,9 +2681,12 @@
   function getProjectCounts(data) {
     let counterCount = 0, lineCount = 0;
     (data?.pages || []).forEach(p => {
-      const ann = p?.annotations || {};
-      Object.values(ann.counterMarkers || {}).forEach(arr => { counterCount += (arr?.length || 0); });
-      lineCount += (ann.quickLines?.length || 0) + (ann.polylines?.length || 0);
+      const canvases = p?.canvases || (p?.annotations ? [{ annotations: p.annotations }] : []);
+      canvases.forEach(c => {
+        const ann = c?.annotations || {};
+        Object.values(ann.counterMarkers || {}).forEach(arr => { counterCount += (arr?.length || 0); });
+        lineCount += (ann.quickLines?.length || 0) + (ann.polylines?.length || 0);
+      });
     });
     return { counter_count: counterCount, line_count: lineCount };
   }
@@ -2591,7 +2694,7 @@
   function getUndoableSnapshot() {
     return {
       pages: state.pages.map(p => ({
-        annotations: JSON.parse(JSON.stringify(p.annotations || {})),
+        canvases: JSON.parse(JSON.stringify(p.canvases || [])),
         scale: p.scale ? { ...p.scale } : null,
         rotation: p.rotation ?? 0,
         label: p.label
@@ -2612,7 +2715,8 @@
   function applySnapshot(snap) {
     state.pages.forEach((p, i) => {
       if (snap.pages[i]) {
-        p.annotations = snap.pages[i].annotations;
+        if (Array.isArray(snap.pages[i].canvases)) p.canvases = snap.pages[i].canvases;
+        else if (snap.pages[i].annotations) { p.canvases = [{ id: uid(), name: 'Main', annotations: snap.pages[i].annotations }]; }
         p.scale = snap.pages[i].scale;
         p.rotation = snap.pages[i].rotation ?? 0;
         if (snap.pages[i].label != null) p.label = snap.pages[i].label;
@@ -2817,7 +2921,9 @@
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
       const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-      state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+      const canvasId = uid();
+      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+      state.activeCanvasIdByPage[i] = canvasId;
     }
     state.counters = Array.isArray(d.counters) ? d.counters : [];
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -2828,6 +2934,7 @@
     (d.pages || []).forEach(p => {
       applyPageAnnotationsFromData(state.pages[p.index], p);
     });
+    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     try {
       const backupRaw = localStorage.getItem('takeoff-state');
@@ -2841,9 +2948,19 @@
           if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
           if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
           if (Array.isArray(backup.customIconPaths)) saveUserCustomIcons(backup.customIconPaths);
-          (backup.pageAnnotations || []).forEach((ann, i) => {
-            if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
-          });
+          if (backup.activeCanvasIdByPage && typeof backup.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = backup.activeCanvasIdByPage;
+          if (backup.pageCanvases && Array.isArray(backup.pageCanvases)) {
+            backup.pageCanvases.forEach((canvases, i) => {
+              if (state.pages[i] && Array.isArray(canvases) && canvases.length) state.pages[i].canvases = canvases;
+            });
+          } else if (backup.pageAnnotations && Array.isArray(backup.pageAnnotations)) {
+            backup.pageAnnotations.forEach((ann, i) => {
+              if (state.pages[i]) {
+                state.pages[i].canvases = [{ id: uid(), name: 'Main', annotations: ann }];
+                delete state.pages[i].annotations;
+              }
+            });
+          }
           if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
           if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
         }
@@ -2982,7 +3099,7 @@
   function getMarkedPageIndices() {
     return state.pages
       .map((p, i) => ({ p, i }))
-      .filter(({ p }) => (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length) || (p.annotations?.highlights?.length) || (p.annotations?.notes?.length))
+      .filter(({ p }) => pageHasAnyAnnotations(p))
       .map(({ i }) => i);
   }
   function formatDist(pdfPts, scale) {
@@ -3044,7 +3161,7 @@
   function rotatePoint90CW(p, w, h) { return { x: h - p.y, y: p.x }; }
   function rotateAnnotations(page, w, h) {
     const r = (pt) => rotatePoint90CW(pt, w, h);
-    const ann = page.annotations || makeAnnotations();
+    const rotateAnn = (ann) => {
     if (ann.counterMarkers) {
       const next = {};
       for (const [cid, arr] of Object.entries(ann.counterMarkers)) {
@@ -3067,6 +3184,10 @@
       const p = r({ x: n.x, y: n.y });
       n.x = p.x; n.y = p.y;
     });
+    };
+    const canvases = getPageCanvases(page);
+    if (canvases.length) canvases.forEach(c => { if (c.annotations) rotateAnn(c.annotations); });
+    else rotateAnn(getActiveAnnotations(page));
   }
   function applyRotationDeltaToAnnotations(page, deltaDegrees) {
     if (!page?.pdfPage || deltaDegrees % 90 !== 0) return;
@@ -3176,7 +3297,7 @@
     const r = radius / state.zoom;
     const page = state.pages[state.currentPage];
     if (!page) return null;
-    const ann = page.annotations;
+    const ann = getActiveAnnotations(page);
     for (const [typeId, markers] of Object.entries(ann.counterMarkers || {})) {
       for (let i = 0; i < markers.length; i++) {
         if (ptDist(pos, markers[i]) <= r) return { type: 'marker', typeId, index: i };
@@ -3443,7 +3564,7 @@
     const ctx = annCanvas.getContext('2d');
     const z = state.zoom;
     ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
-    const ann = page.annotations;
+    const ann = getActiveAnnotations(page);
     if (state.scalePointA) {
       const a = toCanvas(state.scalePointA), b = toCanvas(state.scalePointB || state.scalePointA);
       ctx.strokeStyle = '#e8c547'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -3804,7 +3925,7 @@
 
   function renderAnnotationsToContext(ctx, page, scale, exportOverrides) {
     const tc = (p) => ({ x: p.x * scale, y: p.y * scale });
-    const ann = page.annotations || makeAnnotations();
+    const ann = getActiveAnnotations(page);
     const pageIdx = state.pages.indexOf(page);
     const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false };
     const dropS = (lts.dropXSize ?? 10) * scale;
@@ -4416,6 +4537,7 @@
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
     renderPagesList();
+    renderCanvasSwitcher();
     renderCountersList();
     const sidebarReorderBanner = document.getElementById('sidebarReorderBanner');
     const canReorder = state.counters.length >= 2 || state.lineTypes.length >= 2;
@@ -4441,6 +4563,68 @@
     updateStatus();
   }
 
+  function renderCanvasSwitcher() {
+    const switcher = document.getElementById('canvasSwitcher');
+    const pillsEl = document.getElementById('canvasPills');
+    const addBtn = document.getElementById('addCanvasBtn');
+    const layersBtn = document.getElementById('canvasLayersBtn');
+    const menuList = document.getElementById('canvasMenuList');
+    const canvasMenu = document.getElementById('canvasMenu');
+    if (!switcher || !pillsEl || !addBtn) return;
+    const page = state.pages[state.currentPage];
+    const canvases = page ? getPageCanvases(page) : [];
+    const activeId = page ? (state.activeCanvasIdByPage[state.currentPage] || (canvases[0]?.id)) : null;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    pillsEl.innerHTML = '';
+    if (canvases.length === 0) {
+      pillsEl.style.display = 'none';
+      addBtn.style.display = state.pages.length > 0 && !state.isViewer ? '' : 'none';
+    } else {
+      pillsEl.style.display = 'flex';
+      addBtn.style.display = state.isViewer ? 'none' : '';
+      canvases.forEach(c => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'canvas-pill' + (c.id === activeId ? ' active' : '');
+        pill.textContent = c.name || 'Main';
+        pill.title = c.name || 'Main';
+        pill.dataset.canvasId = c.id;
+        pill.onclick = (e) => {
+          e.stopPropagation();
+          if (state.isViewer) return;
+          state.activeCanvasIdByPage[state.currentPage] = c.id;
+          markProjectDirty();
+          renderPdf();
+          updateUI();
+        };
+        pillsEl.appendChild(pill);
+      });
+    }
+    if (isMobile && layersBtn && menuList && canvasMenu) {
+      layersBtn.style.display = state.pages.length > 0 && !state.isViewer ? '' : 'none';
+      menuList.innerHTML = '';
+      canvases.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = c.id === activeId ? 'active' : '';
+        btn.textContent = c.name || 'Main';
+        btn.dataset.canvasId = c.id;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          if (state.isViewer) return;
+          state.activeCanvasIdByPage[state.currentPage] = c.id;
+          markProjectDirty();
+          renderPdf();
+          updateUI();
+          canvasMenu.classList.remove('visible');
+        };
+        menuList.appendChild(btn);
+      });
+    } else if (layersBtn) {
+      layersBtn.style.display = 'none';
+    }
+  }
+
   function formatPageTitleStartEnd(label, truncated) {
     if (!truncated || !label || label.length <= 28) return label;
     const half = Math.floor((label.length - 6) / 2);
@@ -4459,7 +4643,7 @@
     state.pages.forEach((p, i) => {
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
-      const hasAnn = (p.annotations?.counterMarkers && Object.keys(p.annotations.counterMarkers).length) || (p.annotations?.quickLines?.length) || (p.annotations?.polylines?.length) || (p.annotations?.highlights?.length) || (p.annotations?.notes?.length);
+      const hasAnn = pageHasAnyAnnotations(p);
       const hasScale = !!p.scale;
       const rawLabel = p.label || 'Page ' + (i + 1);
       const formatted = formatPageTitleStartEnd(rawLabel, state.pagesTitlesTruncated);
@@ -4470,7 +4654,9 @@
       } else {
         nameHtml = esc(formatted);
       }
-      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + '">' + (i + 1) + '</span><span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>' + (showEdit ? '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>' : '');
+      const canvasCount = getPageCanvases(p).length;
+      const canvasBadge = canvasCount > 1 ? '<span class="badge badge-canvas-count" title="' + canvasCount + ' canvases">' + canvasCount + '</span>' : '';
+      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + '">' + (i + 1) + '</span>' + canvasBadge + '<span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>' + (showEdit ? '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>' : '');
       div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
       if (showEdit) {
         const deletePage = () => {
@@ -4484,6 +4670,8 @@
           if (state.editingPolyline && state.editingPolyIndex === i) exitEditMode(false);
           else if (state.editingPolyline && state.editingPolyIndex > i) state.editingPolyIndex--;
           markProjectDirty();
+          updateUI();
+          renderPdf();
           fitZoom();
         };
         const pageName = p.label || 'Page ' + (i + 1);
@@ -4502,7 +4690,7 @@
     state.counters.forEach(c => {
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
+      const count = state.pages.reduce((n, p) => n + ((getActiveAnnotations(p)?.counterMarkers?.[c.id] || []).length), 0);
       div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
@@ -4548,8 +4736,9 @@
       let runs = 0, len = 0;
       const pageIndices = [];
       state.pages.forEach((p, pi) => {
-        const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-        const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+        const ann = getActiveAnnotations(p);
+        const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+        const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
         qLines.forEach(q => { runs++; len += getLineLengthPdfPts(q, pi, false); });
         polys.forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pi, true); });
@@ -4622,9 +4811,12 @@
   function countItemsInGroup(groupId) {
     let n = 0;
     state.pages.forEach(p => {
-      Object.values(p.annotations?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) n++; }));
-      (p.annotations?.quickLines || []).forEach(q => { if ((q.group || null) === groupId) n++; });
-      (p.annotations?.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) n++; });
+      getPageCanvases(p).forEach(c => {
+        const ann = c.annotations || makeAnnotations();
+        Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) n++; }));
+        (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) n++; });
+        (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) n++; });
+      });
     });
     return n;
   }
@@ -4634,12 +4826,13 @@
     el.innerHTML = '';
     const byType = {};
     state.pages.forEach((p, pi) => {
-      (p.annotations?.polylines || []).forEach(poly => {
+      const ann = getActiveAnnotations(p);
+      (ann?.polylines || []).forEach(poly => {
         const tid = poly.lineTypeId || '_none';
         if (!byType[tid]) byType[tid] = [];
         byType[tid].push({ type: 'poly', poly, pageIdx: pi });
       });
-      (p.annotations?.quickLines || []).forEach(q => {
+      (ann?.quickLines || []).forEach(q => {
         const tid = q.lineTypeId || '_none';
         if (!byType[tid]) byType[tid] = [];
         byType[tid].push({ type: 'quick', q, pageIdx: pi });
@@ -4729,15 +4922,17 @@
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
     state.pages.forEach(p => {
-      Object.values(p.annotations?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
-      (p.annotations?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
-      (p.annotations?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
+      const ann = getActiveAnnotations(p);
+      Object.values(ann?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
+      (ann?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
+      (ann?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
     });
     const counterByGroup = {};
     const lineTypeByGroup = {};
     state.pages.forEach((p, pi) => {
+      const ann = getActiveAnnotations(p);
       (state.counters || []).forEach(c => {
-        (p.annotations?.counterMarkers?.[c.id] || []).forEach(m => {
+        (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
           if (!counterByGroup[gid]) counterByGroup[gid] = {};
           if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, pageIndices: [] };
@@ -4746,7 +4941,7 @@
         });
       });
       (state.lineTypes || []).forEach(lt => {
-        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+        (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           const gid = q.group || null;
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
@@ -4754,7 +4949,7 @@
           lineTypeByGroup[gid][lt.id].len += getLineLengthPdfPts(q, pi, false);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
-        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+        (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           const gid = poly.group || null;
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
@@ -4814,7 +5009,7 @@
       });
     } else {
       state.counters.forEach(c => {
-        const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
+        const count = state.pages.reduce((n, p) => n + ((getActiveAnnotations(p)?.counterMarkers?.[c.id] || []).length), 0);
         if (count > 0) {
           const div = document.createElement('div');
           div.className = 'sidebar-item summary-item-clickable';
@@ -4829,8 +5024,9 @@
         let runs = 0, len = 0;
         const pageIndices = [];
         state.pages.forEach((p, pi) => {
-          const qLines = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-          const polys = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+          const ann = getActiveAnnotations(p);
+          const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+          const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
           if (qLines.length || polys.length) pageIndices.push(pi);
           qLines.forEach(q => { runs++; len += getLineLengthPdfPts(q, pi, false); });
           polys.forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pi, true); });
@@ -4860,7 +5056,8 @@
       if (!c) return;
       titleEl.textContent = (c.name || 'Counter') + ' — by page';
       state.pages.forEach((p, pageIdx) => {
-        const markers = p.annotations?.counterMarkers?.[id] || [];
+        const ann = getActiveAnnotations(p);
+        const markers = ann?.counterMarkers?.[id] || [];
         if (markers.length > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), count: markers.length, isCounter: true });
       });
     } else {
@@ -4868,9 +5065,10 @@
       if (!lt) return;
       titleEl.textContent = (lt.name || 'Line type') + ' — by page';
       state.pages.forEach((p, pageIdx) => {
+        const ann = getActiveAnnotations(p);
         let runs = 0, len = 0;
-        (p.annotations?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthPdfPts(q, pageIdx, false); });
-        (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pageIdx, true); });
+        (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthPdfPts(q, pageIdx, false); });
+        (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pageIdx, true); });
         if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
       });
     }
@@ -5011,9 +5209,11 @@
 
   function enterEditMode(polyId, pageIdx) {
     const page = state.pages[pageIdx];
-    const idx = (page.annotations?.polylines || []).findIndex(p => p.id === polyId);
+    const canvas = getActiveCanvas(page);
+    if (!canvas) return;
+    const idx = (canvas.annotations?.polylines || []).findIndex(p => p.id === polyId);
     if (idx < 0) return;
-    state.editingPolyline = page.annotations.polylines.splice(idx, 1)[0];
+    state.editingPolyline = canvas.annotations.polylines.splice(idx, 1)[0];
     state.editingPolyIndex = pageIdx;
     state.tool = TOOL.EDIT_POLY;
     state.activePolylineId = polyId;
@@ -5030,7 +5230,8 @@
     if (save && (state.editingPolyline.points || []).length >= 2) {
       pushUndoSnapshot();
       const page = state.pages[state.editingPolyIndex];
-      if (page && page.annotations) page.annotations.polylines.push(state.editingPolyline);
+      const canvas = page && getActiveCanvas(page);
+      if (canvas) { if (!canvas.annotations.polylines) canvas.annotations.polylines = []; canvas.annotations.polylines.push(state.editingPolyline); }
       markProjectDirty();
     }
     state.editingPolyline = null;
@@ -5144,14 +5345,18 @@
     const pages = [];
     if (kind === 'counter') {
       state.pages.forEach((p, pi) => {
-        const n = (p.annotations?.counterMarkers?.[item.id] || []).length;
+        let n = 0;
+        getPageCanvases(p).forEach(c => { n += (c.annotations?.counterMarkers?.[item.id] || []).length; });
         if (n > 0) { pages.push({ pageIdx: pi, count: n, label: p.label || 'Page ' + (pi + 1) }); totalCount += n; }
       });
     } else {
       state.pages.forEach((p, pi) => {
-        const q = (p.annotations?.quickLines || []).filter(q => q.lineTypeId === item.id).length;
-        const poly = (p.annotations?.polylines || []).filter(poly => poly.lineTypeId === item.id).length;
-        const runs = q + poly;
+        let runs = 0;
+        getPageCanvases(p).forEach(c => {
+          const ann = c.annotations || makeAnnotations();
+          runs += (ann.quickLines || []).filter(q => q.lineTypeId === item.id).length;
+          runs += (ann.polylines || []).filter(poly => poly.lineTypeId === item.id).length;
+        });
         if (runs > 0) { pages.push({ pageIdx: pi, count: runs, label: p.label || 'Page ' + (pi + 1) }); totalCount += runs; }
       });
     }
@@ -5192,23 +5397,26 @@
       const idx = state.counters.findIndex(c => c.id === item.id);
       if (idx >= 0) state.counters.splice(idx, 1);
       state.pages.forEach(p => {
-        if (p.annotations?.counterMarkers) delete p.annotations.counterMarkers[item.id];
+        getPageCanvases(p).forEach(c => { if (c.annotations?.counterMarkers) delete c.annotations.counterMarkers[item.id]; });
       });
       if (state.activeCounterType === item.id) { state.activeCounterType = null; state.tool = TOOL.NONE; }
     } else {
       const idx = state.lineTypes.findIndex(lt => lt.id === item.id);
       if (idx >= 0) state.lineTypes.splice(idx, 1);
       state.pages.forEach(p => {
-        const ann = p.annotations;
-        if (ann) {
-          if (ann.quickLines) ann.quickLines = ann.quickLines.filter(q => q.lineTypeId !== item.id);
-          if (ann.polylines) ann.polylines = ann.polylines.filter(poly => poly.lineTypeId !== item.id);
-        }
+        getPageCanvases(p).forEach(c => {
+          const ann = c.annotations;
+          if (ann) {
+            if (ann.quickLines) ann.quickLines = ann.quickLines.filter(q => q.lineTypeId !== item.id);
+            if (ann.polylines) ann.polylines = ann.polylines.filter(poly => poly.lineTypeId !== item.id);
+          }
+        });
       });
       if (state.activeLineTypeId === item.id) { state.activeLineTypeId = null; state.tool = TOOL.NONE; }
       const selPage = state.pages[state.selectedLinePageIdx];
-      const selPoly = (selPage?.annotations?.polylines || []).find(p => p.id === state.selectedLineId);
-      const selQuick = (selPage?.annotations?.quickLines || []).find(q => q.id === state.selectedLineId);
+      const selAnn = selPage ? getActiveAnnotations(selPage) : null;
+      const selPoly = (selAnn?.polylines || []).find(p => p.id === state.selectedLineId);
+      const selQuick = (selAnn?.quickLines || []).find(q => q.id === state.selectedLineId);
       if ((selPoly && selPoly.lineTypeId === item.id) || (selQuick && selQuick.lineTypeId === item.id)) {
         state.selectedLineId = null; state.selectedLineIsPoly = false; state.selectedLinePageIdx = null;
       }
@@ -5352,9 +5560,12 @@
     state.groups = (state.groups || []).filter(x => x.id !== groupId);
     if (state.activeGroupId === groupId) state.activeGroupId = null;
     state.pages.forEach(p => {
-      Object.values(p.annotations?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
-      (p.annotations?.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
-      (p.annotations?.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
+      getPageCanvases(p).forEach(c => {
+        const ann = c.annotations || makeAnnotations();
+        Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
+        (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
+        (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
+      });
     });
     markProjectDirty();
     updateUI();
@@ -5650,7 +5861,10 @@
       for (let i = 0; i < numPages; i++) {
         const pdfPage = await pdf.getPage(i + 1);
         const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-        state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+        const canvasId = uid();
+        const idx = state.pages.length;
+        state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+        state.activeCanvasIdByPage[idx] = canvasId;
       }
     }
     if (SUPABASE_ENABLED && state.supabaseSession?.user && buffersForMerge.length > 0) {
@@ -5729,6 +5943,7 @@
               (d.pages || []).forEach(p => {
                 applyPageAnnotationsFromData(state.pages[p.index], p);
               });
+              if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
               if (d.pageScales) {
                 d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
               } else if (d.scale) {
@@ -6532,7 +6747,8 @@
     if (closed && state.drawingPolyline.points.length >= 3) state.drawingPolyline.closed = true;
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    if (page && page.annotations) page.annotations.polylines.push(state.drawingPolyline);
+    const canvas = page && ensureActiveCanvas(page);
+    if (canvas) { if (!canvas.annotations.polylines) canvas.annotations.polylines = []; canvas.annotations.polylines.push(state.drawingPolyline); }
     state.drawingPolyline = null;
     state.tool = TOOL.NONE;
     markProjectDirty();
@@ -6540,11 +6756,29 @@
     renderPdf();
   }
 
-  document.getElementById('zoomOut').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); };
-  document.getElementById('zoomIn').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); updateUI(); };
+  function doZoomOut() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); }
+  function doZoomIn() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); updateUI(); }
+  document.getElementById('zoomOut').onclick = () => doZoomOut();
+  document.getElementById('zoomIn').onclick = () => doZoomIn();
   document.getElementById('rotatePage').onclick = () => rotatePage90();
   document.getElementById('zoomFit').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } fitZoom(); };
-  document.getElementById('zoomPct').onclick = () => { if (state.pages.length) showZoomModal(); };
+  const zoomPct = document.getElementById('zoomPct');
+  const zoomOverlay = document.getElementById('zoomOverlay');
+  zoomPct.onclick = () => {
+    if (!state.pages.length) return;
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      zoomOverlay.classList.add('visible');
+      const rect = zoomPct.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - zoomOverlay.offsetWidth / 2;
+      left = Math.max(8, Math.min(window.innerWidth - zoomOverlay.offsetWidth - 8, left));
+      zoomOverlay.style.left = left + 'px';
+      zoomOverlay.style.top = Math.max(8, rect.top - zoomOverlay.offsetHeight - 8) + 'px';
+    } else {
+      showZoomModal();
+    }
+  };
+  document.getElementById('zoomOverlayMinus').onclick = (e) => { e.stopPropagation(); doZoomOut(); };
+  document.getElementById('zoomOverlayPlus').onclick = (e) => { e.stopPropagation(); doZoomIn(); };
   document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } };
   document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } };
   document.getElementById('prevMarkedPage').onclick = () => {
@@ -6558,8 +6792,51 @@
     if (next !== undefined) { state.currentPage = next; fitZoom(); }
   };
 
+  function doAddCanvas() {
+    if (!state.pages.length || state.isViewer) return;
+    const page = state.pages[state.currentPage];
+    const canvases = getPageCanvases(page);
+    const n = canvases.length + 1;
+    const name = prompt('Canvas name', 'Layer ' + n) || ('Layer ' + n);
+    if (!name.trim()) return;
+    pushUndoSnapshot();
+    const newCanvas = { id: uid(), name: name.trim(), annotations: makeAnnotations() };
+    if (!page.canvases) page.canvases = [];
+    page.canvases.push(newCanvas);
+    state.activeCanvasIdByPage[state.currentPage] = newCanvas.id;
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
+  document.getElementById('addCanvasBtn').onclick = () => doAddCanvas();
+
+  const canvasLayersBtn = document.getElementById('canvasLayersBtn');
+  const canvasMenu = document.getElementById('canvasMenu');
+  const canvasMenuAdd = document.getElementById('canvasMenuAdd');
+  if (canvasLayersBtn && canvasMenu) {
+    canvasLayersBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (canvasMenu.classList.contains('visible')) {
+        canvasMenu.classList.remove('visible');
+        return;
+      }
+      canvasMenu.style.left = '-9999px';
+      canvasMenu.classList.add('visible');
+      const btnRect = canvasLayersBtn.getBoundingClientRect();
+      canvasMenu.style.left = btnRect.left + 'px';
+      canvasMenu.style.top = Math.max(8, btnRect.top - canvasMenu.offsetHeight - 4) + 'px';
+    });
+  }
+  if (canvasMenuAdd && canvasMenu) {
+    canvasMenuAdd.addEventListener('click', (e) => {
+      e.stopPropagation();
+      doAddCanvas();
+      canvasMenu.classList.remove('visible');
+    });
+  }
+
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: state.maxZoom ?? 8, groups: state.groups || [], pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 })) };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: state.maxZoom ?? 8, groups: state.groups || [], pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -6894,11 +7171,11 @@
   }
 
   function hasAnyHighlights() {
-    return state.pages.some(p => (p.annotations?.highlights?.length || 0) > 0);
+    return state.pages.some(p => getPageCanvases(p).some(c => (c.annotations?.highlights?.length || 0) > 0));
   }
 
   function hasAnyNotes() {
-    return state.pages.some(p => (p.annotations?.notes?.length || 0) > 0);
+    return state.pages.some(p => getPageCanvases(p).some(c => (c.annotations?.notes?.length || 0) > 0));
   }
 
   async function addNotesToPdf(doc, options = {}) {
@@ -6910,7 +7187,7 @@
     const items = [];
     state.pages.forEach((page, pageIdx) => {
       if (!pageFilter(pageIdx)) return;
-      const notes = page.annotations?.notes || [];
+      const notes = getActiveAnnotations(page)?.notes || [];
       notes.forEach(n => {
         if (n.text) items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), note: n });
       });
@@ -6996,7 +7273,7 @@
     const items = [];
     state.pages.forEach((page, pageIdx) => {
       if (!pageFilter(pageIdx)) return;
-      const highlights = page.annotations?.highlights || [];
+      const highlights = getActiveAnnotations(page)?.highlights || [];
       highlights.forEach(h => {
         items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), highlight: h });
       });
@@ -7232,11 +7509,19 @@
     });
   };
 
-  document.getElementById('clearPage').onclick = () => showModal('clearPageConfirmModal');
-  document.getElementById('clearPageSidebar').onclick = () => showModal('clearPageConfirmModal');
+  function showClearPageModal() {
+    const page = state.pages[state.currentPage];
+    const canvas = page ? getActiveCanvas(page) : null;
+    const name = canvas?.name || 'Main';
+    const msg = document.getElementById('clearPageConfirmMessage');
+    if (msg) msg.textContent = 'Clear current canvas (' + name + ')?';
+    showModal('clearPageConfirmModal');
+  }
+  document.getElementById('clearPage').onclick = () => showClearPageModal();
+  document.getElementById('clearPageSidebar').onclick = () => showClearPageModal();
   document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
   document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
-  document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showModal('clearPageConfirmModal'); };
+  document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showClearPageModal(); };
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
@@ -7266,9 +7551,10 @@
       if (text) {
         pushUndoSnapshot();
         const page = state.pages[state.currentPage];
-        if (page && page.annotations) {
-          if (!page.annotations.notes) page.annotations.notes = [];
-          page.annotations.notes.push({ x: state.pendingNote.x, y: state.pendingNote.y, text, id: uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0 });
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) {
+          if (!canvas.annotations.notes) canvas.annotations.notes = [];
+          canvas.annotations.notes.push({ x: state.pendingNote.x, y: state.pendingNote.y, text, id: uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0 });
         }
       }
       state.pendingNote = null;
@@ -7305,7 +7591,8 @@
     hideModal('clearPageConfirmModal');
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    if (page) page.annotations = makeAnnotations();
+    const canvas = page && getActiveCanvas(page);
+    if (canvas) canvas.annotations = makeAnnotations();
     if (state.selectedLinePageIdx === state.currentPage) {
       state.selectedLineId = null;
       state.selectedLineIsPoly = false;
@@ -7529,13 +7816,13 @@
     if (!tbody || !state.pages.length) return;
     const rows = tbody.querySelectorAll('tr[data-page-index]');
     const newPages = state.pages.map((page, i) => ({ ...page, pdfPage: page.pdfPage, label: page.label }));
-    const sourceAnnotations = state.pages.map(p => deepCopyAnnotations(p.annotations));
+    const sourceCanvases = state.pages.map(p => JSON.parse(JSON.stringify(p.canvases || [])));
     rows.forEach((tr, i) => {
       const srcIdx = parseInt(tr.querySelector('select[data-field="source"]').value, 10);
       const targetRot = parseInt(tr.querySelector('select[data-field="rotation"]').value, 10);
       const srcPage = state.pages[srcIdx];
-      const ann = sourceAnnotations[srcIdx];
-      newPages[i].annotations = ann;
+      newPages[i].canvases = sourceCanvases[srcIdx].length ? sourceCanvases[srcIdx] : [{ id: uid(), name: 'Main', annotations: makeAnnotations() }];
+      delete newPages[i].annotations;
       newPages[i].scale = srcPage?.scale ?? null;
       const srcRot = srcPage?.rotation ?? 0;
       newPages[i].rotation = srcRot;
@@ -8402,7 +8689,9 @@
                 for (let i = 0; i < numPages; i++) {
                   const pdfPage = await pdf.getPage(i + 1);
                   const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                  state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+                  const canvasId = uid();
+                  state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+                  state.activeCanvasIdByPage[i] = canvasId;
                 }
                 state.counters = Array.isArray(d.counters) ? d.counters : [];
                 state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -8413,6 +8702,7 @@
                 (d.pages || []).forEach(p => {
                   applyPageAnnotationsFromData(state.pages[p.index], p);
                 });
+                if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
                 if (d.pageScales) {
                   d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
                 } else if (d.scale) {
@@ -8436,7 +8726,9 @@
               for (let i = 0; i < numPages; i++) {
                 const pdfPage = await pdf.getPage(i + 1);
                 const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+                const canvasId = uid();
+                state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+                state.activeCanvasIdByPage[i] = canvasId;
               }
               state.counters = Array.isArray(d.counters) ? d.counters : [];
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -8444,6 +8736,7 @@
               (d.pages || []).forEach(p => {
                 applyPageAnnotationsFromData(state.pages[p.index], p);
               });
+              if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
               if (d.pageScales) {
                 d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
               } else if (d.scale) {
@@ -8775,7 +9068,8 @@
         customIconPaths: getUserCustomIcons(),
         maxZoom: state.maxZoom ?? 8,
         groups: state.groups || [],
-        pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
+        pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
+        activeCanvasIdByPage: state.activeCanvasIdByPage || {}
       };
       const counts = getProjectCounts(data);
       const dataJson = JSON.stringify(data);
@@ -9071,7 +9365,7 @@
     const t = state.ctxTarget;
     if (!t || (t.type !== 'note' && t.type !== 'noteResize' && t.type !== 'noteFontSize')) return;
     const page = state.pages[state.currentPage];
-    const ann = page?.annotations;
+    const ann = page ? getActiveAnnotations(page) : null;
     const note = ann?.notes?.[t.index];
     if (note) {
       document.getElementById('contextMenu').classList.remove('visible');
@@ -9083,7 +9377,7 @@
     const t = state.ctxTarget;
     if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
     const page = state.pages[state.currentPage];
-    const ann = page?.annotations;
+    const ann = page ? getActiveAnnotations(page) : null;
     if (!ann) return;
     let it = null;
     if (t.type === 'quickLine') it = { type: 'quick', q: ann.quickLines[t.index], pageIdx: state.currentPage };
@@ -9096,7 +9390,7 @@
     const t = state.ctxTarget;
     if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
     const page = state.pages[state.currentPage];
-    const ann = page?.annotations;
+    const ann = page ? getActiveAnnotations(page) : null;
     if (!ann) return;
     const line = t.type === 'quickLine' ? ann.quickLines[t.index] : ann.polylines[t.index];
     if (!line) return;
@@ -9112,7 +9406,7 @@
     const t = state.ctxTarget;
     if (!t || (t.type !== 'marker' && t.type !== 'quickLine' && t.type !== 'polyline')) return;
     const page = state.pages[state.currentPage];
-    const ann = page?.annotations;
+    const ann = page ? getActiveAnnotations(page) : null;
     if (!ann) return;
     let item = null;
     if (t.type === 'marker') item = ann.counterMarkers?.[t.typeId]?.[t.index];
@@ -9127,7 +9421,8 @@
     if (!t) return;
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    const ann = page?.annotations;
+    const canvas = page ? getActiveCanvas(page) : null;
+    const ann = canvas?.annotations;
     if (!ann) return;
     if (t.type === 'marker') {
       const arr = ann.counterMarkers[t.typeId];
@@ -9173,7 +9468,7 @@
     showLengthBtn.style.display = canShowLength ? 'block' : 'none';
     if (canShowLength) {
       const page = state.pages[state.currentPage];
-      const ann = page?.annotations;
+      const ann = page ? getActiveAnnotations(page) : null;
       const line = state.ctxTarget?.type === 'quickLine' ? ann?.quickLines?.[state.ctxTarget.index] : ann?.polylines?.[state.ctxTarget.index];
       showLengthBtn.textContent = line?.showLength ? 'Hide Length' : 'Show Length';
     }
@@ -9239,7 +9534,8 @@
         }
         pushUndoSnapshot();
         const page = state.pages[state.currentPage];
-        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null });
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
         state.quickLineStart = null;
         markProjectDirty();
       }
@@ -9263,9 +9559,10 @@
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       pushUndoSnapshot();
       const page = state.pages[state.currentPage];
-      if (page && page.annotations) {
-        if (!page.annotations.counterMarkers[state.activeCounterType]) page.annotations.counterMarkers[state.activeCounterType] = [];
-        page.annotations.counterMarkers[state.activeCounterType].push({ x: pdf.x, y: pdf.y, id: uid(), group: state.activeGroupId || null });
+      const canvas = page && ensureActiveCanvas(page);
+      if (canvas) {
+        if (!canvas.annotations.counterMarkers[state.activeCounterType]) canvas.annotations.counterMarkers[state.activeCounterType] = [];
+        canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pdf.x, y: pdf.y, id: uid(), group: state.activeGroupId || null });
         markProjectDirty();
       }
       renderAnnotations();
@@ -9275,11 +9572,12 @@
       const page = state.pages[state.currentPage];
       if (!state.highlightStart) state.highlightStart = pdf;
       else {
-        if (page && page.annotations) {
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) {
           pushUndoSnapshot();
-          if (!page.annotations.highlights) page.annotations.highlights = [];
+          if (!canvas.annotations.highlights) canvas.annotations.highlights = [];
           const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
-          page.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
+          canvas.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
           markProjectDirty();
         }
         state.highlightStart = null;
@@ -9290,7 +9588,8 @@
       const tNote = hitTest(pdf);
       if (tNote && (tNote.type === 'note' || tNote.type === 'noteResize' || tNote.type === 'noteFontSize')) {
         const page = state.pages[state.currentPage];
-        const note = page?.annotations?.notes?.[tNote.index];
+        const ann = page ? getActiveAnnotations(page) : null;
+        const note = ann?.notes?.[tNote.index];
         if (note) { openNoteModal('edit', note.text, note); return; }
       }
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
@@ -9316,7 +9615,7 @@
       const t = hitTest(pdf);
       if (t && (t.type === 'note' || t.type === 'noteResize' || t.type === 'noteFontSize')) {
         const page = state.pages[state.currentPage];
-        const ann = page?.annotations;
+        const ann = page ? getActiveAnnotations(page) : null;
         const note = ann?.notes?.[t.index];
         if (note) openNoteModal('edit', note.text, note);
       }
@@ -9352,6 +9651,14 @@
   const cWrapper = document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper');
   let lastRenderedZoom = 1.0;
   let wheelZoomCommitTimer = null;
+  let pinchZoomPending = false;
+  function commitPinchZoom() {
+    if (Math.abs(state.zoom - lastRenderedZoom) > 0.001) {
+      lastRenderedZoom = state.zoom;
+      renderPdf();
+    }
+    updateUI();
+  }
   function updateContainerTransform() {
     const scale = state.zoom / lastRenderedZoom;
     canvasContainer.style.transform = 'translate3d(' + state.pan.x + 'px, ' + state.pan.y + 'px, 0) scale(' + scale + ')';
@@ -9386,7 +9693,7 @@
       state.resizingNotePageIdx = state.currentPage;
     } else if (t && t.type === 'noteFontSize') {
       const page = state.pages[state.currentPage];
-      const note = page?.annotations?.notes?.[t.index];
+      const note = page ? getActiveAnnotations(page)?.notes?.[t.index] : null;
       if (note) {
         pushUndoSnapshot();
         state.resizingNoteFontSizeIdx = t.index;
@@ -9398,7 +9705,7 @@
       }
     } else if (t && t.type === 'note') {
       const page = state.pages[state.currentPage];
-      const note = page?.annotations?.notes?.[t.index];
+      const note = page ? getActiveAnnotations(page)?.notes?.[t.index] : null;
       if (note) {
         pushUndoSnapshot();
         state.draggingNoteIdx = t.index;
@@ -9429,7 +9736,7 @@
       renderAnnotations();
     } else if (state.resizingNoteIdx !== null && state.resizingNotePageIdx !== null) {
       const page = state.pages[state.resizingNotePageIdx];
-      const note = page?.annotations?.notes?.[state.resizingNoteIdx];
+      const note = page ? getActiveAnnotations(page)?.notes?.[state.resizingNoteIdx] : null;
       if (note) {
         const rot = getNoteRotationRad(note, page);
         const localX = Math.cos(rot) * (pdf.x - note.x) + Math.sin(rot) * (pdf.y - note.y);
@@ -9438,7 +9745,7 @@
       }
     } else if (state.resizingNoteFontSizeIdx !== null && state.resizingNoteFontSizePageIdx !== null && state.resizingNoteFontSizeStartLocalY != null && state.resizingNoteFontSizeStartVal != null) {
       const page = state.pages[state.resizingNoteFontSizePageIdx];
-      const note = page?.annotations?.notes?.[state.resizingNoteFontSizeIdx];
+      const note = page ? getActiveAnnotations(page)?.notes?.[state.resizingNoteFontSizeIdx] : null;
       if (note) {
         const rot = getNoteRotationRad(note, page);
         const currentLocalY = -Math.sin(rot) * (pdf.x - note.x) + Math.cos(rot) * (pdf.y - note.y);
@@ -9448,7 +9755,7 @@
       }
     } else if (state.draggingNoteIdx !== null && state.draggingNotePageIdx !== null && state.draggingNoteOffset) {
       const page = state.pages[state.draggingNotePageIdx];
-      const note = page?.annotations?.notes?.[state.draggingNoteIdx];
+      const note = page ? getActiveAnnotations(page)?.notes?.[state.draggingNoteIdx] : null;
       if (note) {
         note.x = pdf.x - state.draggingNoteOffset.x;
         note.y = pdf.y - state.draggingNoteOffset.y;
@@ -9568,8 +9875,15 @@
       const d = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       const scale = d / state.pinchStartDistance;
       state.zoom = Math.max(0.2, Math.min(getMaxZoom(), state.pinchStartZoom * scale));
-      renderPdf();
-      updateUI();
+      if (!pinchZoomPending) {
+        pinchZoomPending = true;
+        requestAnimationFrame(() => {
+          pinchZoomPending = false;
+          updateContainerTransform();
+          const zp = document.getElementById('zoomPct');
+          if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
+        });
+      }
     } else if (e.touches.length === 1 && state.touchPanStart) {
       const c = getClientCoords(e);
       const moved = ptDist(state.touchPanStart, c) > 10;
@@ -9619,7 +9933,8 @@
         }
         pushUndoSnapshot();
         const page = state.pages[state.currentPage];
-        if (page && page.annotations) page.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null });
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
         state.quickLineStart = null;
         markProjectDirty();
       }
@@ -9633,11 +9948,12 @@
       if (!state.highlightStart) {
         state.highlightStart = pdf;
       } else {
-        if (page && page.annotations) {
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) {
           pushUndoSnapshot();
-          if (!page.annotations.highlights) page.annotations.highlights = [];
+          if (!canvas.annotations.highlights) canvas.annotations.highlights = [];
           const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
-          page.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
+          canvas.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
           markProjectDirty();
         }
         state.highlightStart = null;
@@ -9657,7 +9973,10 @@
   }
 
   (cWrapper || pdfCanvas).addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) state.pinchStartDistance = null;
+    if (e.touches.length < 2) {
+      if (state.pinchStartDistance != null) commitPinchZoom();
+      state.pinchStartDistance = null;
+    }
     if (state.touchPanning) {
       state.touchPanning = false;
       state.touchPanStart = null;
@@ -9683,6 +10002,10 @@
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.context-menu') && !e.target.closest('#contextMenu')) document.getElementById('contextMenu').classList.remove('visible');
+    const cm = document.getElementById('canvasMenu');
+    if (cm && !e.target.closest('#canvasMenu') && !e.target.closest('#canvasLayersBtn')) cm.classList.remove('visible');
+    const zo = document.getElementById('zoomOverlay');
+    if (zo && zo.classList.contains('visible') && !e.target.closest('#zoomOverlay') && !e.target.closest('#zoomPct')) zo.classList.remove('visible');
   });
 
   document.addEventListener('keydown', (e) => {
@@ -9808,9 +10131,20 @@
       if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
       if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
       if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
-      (data.pageAnnotations || []).forEach((ann, i) => {
-        if (state.pages[i] && state.pages[i].annotations) state.pages[i].annotations = ann;
-      });
+      if (data.activeCanvasIdByPage && typeof data.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = data.activeCanvasIdByPage;
+      if (data.pageCanvases && Array.isArray(data.pageCanvases)) {
+        data.pageCanvases.forEach((canvases, i) => {
+          if (state.pages[i] && Array.isArray(canvases) && canvases.length) state.pages[i].canvases = canvases;
+        });
+      } else if (data.pageAnnotations && Array.isArray(data.pageAnnotations)) {
+        data.pageAnnotations.forEach((ann, i) => {
+          if (state.pages[i]) {
+            state.pages[i].canvases = [{ id: uid(), name: 'Main', annotations: ann }];
+            delete state.pages[i].annotations;
+          }
+        });
+      }
+      state.pages.forEach(migratePageToCanvases);
       reconcileOrphanedCountersAndLineTypes();
       if (data.pageScales) {
         data.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
@@ -9843,7 +10177,8 @@
       customIconPaths: getUserCustomIcons(),
       maxZoom: state.maxZoom ?? 8,
       groups: state.groups || [],
-      pages: state.pages.map((p, i) => ({ index: i, label: p.label, annotations: p.annotations, scale: p.scale, rotation: p.rotation ?? 0 }))
+      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
+      activeCanvasIdByPage: state.activeCanvasIdByPage || {}
     };
     const counts = getProjectCounts(data);
     const dataSize = JSON.stringify(data).length;
@@ -9914,7 +10249,8 @@
         iconNames: state.iconNames || {},
         iconOrder: state.iconOrder || null,
         customIconPaths: getUserCustomIcons(),
-        pageAnnotations: state.pages.map(p => p.annotations),
+        pageCanvases: state.pages.map(p => p.canvases),
+        activeCanvasIdByPage: state.activeCanvasIdByPage || {},
         pageScales: state.pages.map(p => p.scale),
         pageRotations: state.pages.map(p => p.rotation ?? 0)
       };
@@ -9940,6 +10276,7 @@
 
   window.state = state;
   window.makeAnnotations = makeAnnotations;
+  window.getAnnotationsForReport = (page) => getActiveAnnotations(page);
   window.ptDist = ptDist;
   window.polylineDistance = polylineDistance;
   window.formatDist = formatDist;
@@ -10055,7 +10392,9 @@
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
       const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-      state.pages.push({ pdfPage, label, annotations: makeAnnotations(), scale: null, rotation: 0 });
+      const canvasId = uid();
+      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+      state.activeCanvasIdByPage[i] = canvasId;
     }
     state.counters = Array.isArray(d.counters) ? d.counters : [];
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -10066,6 +10405,7 @@
     (d.pages || []).forEach(p => {
       applyPageAnnotationsFromData(state.pages[p.index], p);
     });
+    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;

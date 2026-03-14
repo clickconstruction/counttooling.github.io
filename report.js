@@ -58,7 +58,7 @@
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
     state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
+      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
       (state.counters || []).forEach(c => {
         const markers = (ann.counterMarkers?.[c.id] || []).filter(m => true);
         markers.forEach(m => {
@@ -127,7 +127,7 @@
     }
 
     state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
+      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
       const label = escapeHtml(page.label || 'Page ' + (i + 1));
       html += '<section>';
       html += '<h2 class="page-header">Page ' + (i + 1) + ': ' + label + '</h2>';
@@ -248,7 +248,7 @@
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
     state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
+      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
       (state.counters || []).forEach(c => {
         (ann.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -308,7 +308,7 @@
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
     state.pages.forEach((page, i) => {
-      const ann = page.annotations || makeAnnotations();
+      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
       (state.counters || []).forEach(c => {
         (ann.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;

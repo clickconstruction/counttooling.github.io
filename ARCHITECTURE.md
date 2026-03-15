@@ -52,6 +52,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Coordinate conversion | `canvasToPdf` or `toCanvas` |
 | Rename | `startRename` |
 | Pages collapse | `pagesListCollapsed` or `pagesSection` |
+| Download current page | `downloadCurrentPageBtn` or `downloadCurrentPageAsPdf` |
 | Mobile sidebar tools | `sidebar-tool-buttons` or `moveBtnSidebar` |
 | Mobile header tools | `sidebar-triggers` (Move, Counter, Line visible; Polyline hidden); `has-pdf` (body class; Upload PDF vs Set Scale slot) |
 | Header active type | `headerActiveLineType`; counter icon on `counterBtn`/`counterBtnSidebar` when counter selected; `headerActiveCounter` cleared |
@@ -115,8 +116,8 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 
 ## Layout
 
-- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, Counter, Line, Polyline) on left; spacer; Copy view link button (left of gear) and settings gear (Project Settings) in top right when Supabase enabled; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
-- **Mobile header** (max-width: 768px): Hamburger, Upload PDF (when no PDF) or Set Scale (when PDF and no scale), Measure, Highlight, Note, Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); `body.has-pdf` toggled in updateUI; Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250; settings gear hidden (access via sidebar logo)
+- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, Counter, Line, Polyline) on left; spacer; Copy view link button (left of gear) and settings gear (Project Settings) in top right when Supabase enabled; Download current page (yellow cloud icon, far right) when PDF loaded; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
+- **Mobile header** (max-width: 768px): Hamburger, Upload PDF (when no PDF, transparent/text-only) or Set Scale (when PDF and no scale), Measure, Highlight, Note, Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); `body.has-pdf` toggled in updateUI; Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250; settings gear hidden (access via sidebar logo)
 - **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile; User and Project Settings buttons hidden on mobile as redundant), Upload PDF / Set Scale (button shows "Scale 1 ft = X" when set), Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Combined PDF, Specific Pages, Copy to PipeTooling, Copy Summary (Email/Text), Show Highlights, Show Notes (when data exists), Clear Page
 - **Bottom bar** (page/zoom row): Page nav, zoom controls, rotate, Undo, Redo
 - **Status bar**: Dual indicators (circle=canvas, square=PDF), project/sync status, Sign In (when Supabase), Macros (keyboard shortcuts modal), Clear Page
@@ -139,6 +140,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Add line type first** — Shown in Choose Line Type modal when no line types exist
 - **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
 - **Export PDF** — Show Report (opens report in new window), Combined PDF (report + annotated pages), Specific Pages (modal: thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report / Bundle highlights / Bundle notes toggle switches with "— none to show" and disabled when no data); Copy to PipeTooling (copies tab-delimited summary to clipboard: fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Show Highlights, Show Notes (open in new tab; hidden when no data); Combined PDF and Specific Pages modals have Bundle highlights/notes toggles and marker/line sliders (25–150%); uses jsPDF; original page dimensions preserved; filenames: `takeoff-with-marks_[project name].pdf`, `takeoff-specific-pages_[project name].pdf`, `highlights-summary_[project name].pdf`, `notes-summary_[project name].pdf`
+- **Download current page** — `#downloadCurrentPageBtn` in header (far right); yellow cloud-download icon; one-click download of current page as marked PDF; visible in edit and view mode when PDF loaded; `downloadCurrentPageAsPdf()`; uses `renderAnnotationsToContext`, jsPDF; filename `takeoff-page{N}_{projectName}.pdf`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid); Show ring and Solid ring use toggle switches; Ring section only visible when "Show ring around counters" on; solid ring default true; all persisted
 - **Line Type Settings** — Click "Line Types" heading: opacity, line size, drop X size (4–24px), drop icon (Circle default, X, Plus, Diamond, Triangle), Orient length with line direction toggle, Parallel ends (4–64px), Length label size (8–24px), Snap to horizontal/vertical toggle; snap icon in Line Types header (before + Add) and J hotkey toggle same setting
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
@@ -159,6 +161,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Macros** — Status bar "Macros" link opens Keyboard Shortcuts modal (M/S/C/L/J/P/D/H/N/R/Esc/arrows/Enter)
 - **Scale badge** — Page number in Pages: `.badge-scale-set` = yellow number when scale set; `.badge-has-ann` = yellow outline when page has counts, lines, notes, or highlights
 - **Pages collapse** — Click "Pages" heading toggles `pagesListCollapsed`; `#pagesSection.collapsed` hides list; Pages section auto-collapses when user selects a counter or line type
+- **Sidebar collapse hit area** — Clicking the collapse icon (▼/▶) or the black space next to it minimizes the section; `.collapse-icon` in sidebar has expanded padding for larger hit area
 - **Pages title truncation** — Long page titles show start (ending in `...`) on line 1 and end (starting with `...`) on line 2; `formatPageTitleStartEnd`, `pagesTitlesTruncated` (default true); click "Pages" heading toggles truncation; persisted in localStorage
 - **Page edit/delete** — Edit (yellow icon) and delete (red icon) per page; delete shows confirmation modal with page name; edit icon hidden while editing
 - **Default project title** — On PDF upload, `state.currentProjectName` set from filename minus `.pdf`

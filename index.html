@@ -431,10 +431,10 @@
     .prepare-pdf-controls .prepare-pdf-nav button:hover:not(:disabled) { background: rgba(232,184,74,0.15); border-color: var(--accent); color: var(--accent); }
     #preparePdfModal .actions.prepare-pdf-actions { justify-content: space-between; }
     #preparePdfModal .prepare-pdf-actions-left { display: flex; gap: 12px; }
-    .prepare-pdf-page-name-section .prepare-pdf-page-name-header { display: flex; align-items: center; padding: 8px 0; margin: 0 0 4px 0; font-size: 0.85rem; color: var(--text2); cursor: pointer; user-select: none; }
-    .prepare-pdf-page-name-section .prepare-pdf-page-name-header:hover { color: var(--text); }
-    .prepare-pdf-page-name-section .prepare-pdf-page-name-header .collapse-icon { font-size: 0.7rem; transition: transform 0.2s; }
-    .prepare-pdf-page-name-section.collapsed .prepare-pdf-page-name-content { display: none !important; }
+    .prepare-pdf-name-tabs { display: flex; gap: 16px; margin-bottom: 8px; }
+    .prepare-pdf-name-tab { font-size: 0.9rem; color: var(--text2); cursor: pointer; user-select: none; padding: 2px 0; }
+    .prepare-pdf-name-tab:hover { color: var(--text); }
+    .prepare-pdf-name-tab.active { color: var(--accent); font-weight: 600; }
     #preparePdfModal .actions #preparePdfSaveAndOpen { background: var(--accent); color: var(--bg); }
     #preparePdfModal .actions #preparePdfSaveAndOpen:hover { background: var(--accent2); }
     #preparePdfModal .actions #preparePdfCancel { background: transparent; color: var(--text2); border: 1px solid var(--border); }
@@ -1843,15 +1843,12 @@
     <div class="modal-card" style="max-width:520px;">
       <h2>Prepare PDF for Cloud</h2>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
-      <div class="form-group">
-        <label>Project name</label>
-        <input type="text" id="preparePdfName" placeholder="Untitled" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
-      </div>
-      <div class="form-group prepare-pdf-page-name-section collapsed" id="preparePdfPageNameSection">
-        <h3 class="prepare-pdf-page-name-header" id="preparePdfPageNameHeader" title="Click to expand">Page name <span class="collapse-icon" id="preparePdfPageNameCollapseIcon">▶</span></h3>
-        <div class="prepare-pdf-page-name-content">
-          <input type="text" id="preparePdfPageName" placeholder="Page 1" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      <div class="form-group prepare-pdf-name-row">
+        <div class="prepare-pdf-name-tabs">
+          <span class="prepare-pdf-name-tab active" id="preparePdfProjectTab" data-mode="project">Project name</span>
+          <span class="prepare-pdf-name-tab" id="preparePdfPageTab" data-mode="page">&gt; Page Name</span>
         </div>
+        <input type="text" id="preparePdfName" placeholder="Untitled" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="form-group">
         <label id="preparePdfPageLabel">Page 1 of 1</label>
@@ -5975,6 +5972,8 @@
   let preparePdfUndoStack = [];
   let preparePdfCurrentIdx = 0;
   let preparePdfDefaultName = 'Untitled';
+  let preparePdfEditMode = 'project';
+  let preparePdfProjectName = 'Untitled';
   function renderPreparePdfPreview() {
     const canvas = document.getElementById('preparePdfCanvas');
     const labelEl = document.getElementById('preparePdfPageLabel');
@@ -6003,8 +6002,8 @@
     canvas.style.height = 'auto';
     labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length;
     page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport });
-    const pageNameEl = document.getElementById('preparePdfPageName');
-    if (pageNameEl) pageNameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
+    const nameEl = document.getElementById('preparePdfName');
+    if (nameEl && preparePdfEditMode === 'page') nameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
   }
   function saveCurrentPageName() {
     const kept = preparePdfKeptIndices;
@@ -6012,8 +6011,8 @@
     const origIdx = kept[preparePdfCurrentIdx];
     const page = preparePdfPages[origIdx];
     if (!page) return;
-    const pageNameEl = document.getElementById('preparePdfPageName');
-    if (pageNameEl) page.label = (pageNameEl.value || '').trim() || ('Page ' + (preparePdfCurrentIdx + 1));
+    const nameEl = document.getElementById('preparePdfName');
+    if (nameEl && preparePdfEditMode === 'page') page.label = (nameEl.value || '').trim() || ('Page ' + (preparePdfCurrentIdx + 1));
   }
   function updatePreparePdfControls() {
     const kept = preparePdfKeptIndices;
@@ -6032,7 +6031,11 @@
     preparePdfUndoStack = [];
     preparePdfCurrentIdx = 0;
     preparePdfDefaultName = defaultName || 'Untitled';
-    document.getElementById('preparePdfName').value = preparePdfDefaultName;
+    preparePdfProjectName = preparePdfDefaultName;
+    preparePdfEditMode = 'project';
+    document.getElementById('preparePdfName').value = preparePdfProjectName;
+    document.getElementById('preparePdfProjectTab').classList.add('active');
+    document.getElementById('preparePdfPageTab').classList.remove('active');
     renderPreparePdfPreview();
     updatePreparePdfControls();
     showModal('preparePdfModal');
@@ -6046,17 +6049,35 @@
   };
   document.getElementById('preparePdfCancel').onclick = () => closePreparePdfModal();
   (function() {
-    const section = document.getElementById('preparePdfPageNameSection');
-    const header = document.getElementById('preparePdfPageNameHeader');
-    const icon = document.getElementById('preparePdfPageNameCollapseIcon');
-    if (section && header && icon) {
-      header.onclick = () => {
-        section.classList.toggle('collapsed');
-        icon.textContent = section.classList.contains('collapsed') ? '▶' : '▼';
-      };
+    const projectTab = document.getElementById('preparePdfProjectTab');
+    const pageTab = document.getElementById('preparePdfPageTab');
+    const nameInput = document.getElementById('preparePdfName');
+    function switchToProject() {
+      saveCurrentPageName();
+      preparePdfEditMode = 'project';
+      nameInput.value = preparePdfProjectName;
+      nameInput.placeholder = 'Untitled';
+      projectTab.classList.add('active');
+      pageTab.classList.remove('active');
     }
+    function switchToPage() {
+      preparePdfProjectName = (nameInput.value || '').trim() || preparePdfDefaultName;
+      preparePdfEditMode = 'page';
+      const kept = preparePdfKeptIndices;
+      const origIdx = kept.length && preparePdfCurrentIdx < kept.length ? kept[preparePdfCurrentIdx] : 0;
+      const page = preparePdfPages[origIdx];
+      nameInput.value = page?.label || ('Page ' + (preparePdfCurrentIdx + 1));
+      nameInput.placeholder = 'Page 1';
+      projectTab.classList.remove('active');
+      pageTab.classList.add('active');
+    }
+    projectTab.onclick = () => { if (preparePdfEditMode !== 'project') switchToProject(); };
+    pageTab.onclick = () => { if (preparePdfEditMode !== 'page') switchToPage(); };
+    nameInput.onblur = () => {
+      if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput.value || '').trim() || preparePdfDefaultName;
+      else saveCurrentPageName();
+    };
   })();
-  document.getElementById('preparePdfPageName').onblur = () => saveCurrentPageName();
   document.getElementById('preparePdfUndo').onclick = () => {
     if (preparePdfUndoStack.length === 0) return;
     saveCurrentPageName();
@@ -6095,10 +6116,12 @@
     }
   };
   async function commitPreparePdfToState() {
-    saveCurrentPageName();
+    const nameInput = document.getElementById('preparePdfName');
+    if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput?.value || '').trim() || preparePdfDefaultName;
+    else saveCurrentPageName();
     const kept = preparePdfKeptIndices;
     if (!kept.length || !preparePdfBuffer) return { ok: false };
-    const name = (document.getElementById('preparePdfName').value || '').trim() || preparePdfDefaultName;
+    const name = preparePdfProjectName || preparePdfDefaultName;
     const trimmedBuf = kept.length === preparePdfPages.length
       ? preparePdfBuffer
       : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
@@ -6117,7 +6140,7 @@
     }
     state.pdfBuffer = trimmedBuf;
     state.pdfStoragePath = null;
-    state.currentProjectName = name;
+    state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
     state.currentPage = 0;
     preparePdfPages = [];
     preparePdfBuffer = null;

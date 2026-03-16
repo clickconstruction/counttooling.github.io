@@ -169,6 +169,8 @@
       #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
     }
     @media (min-width: 769px) {
+      #canvasSwitcher .canvas-pills, #canvasSwitcher #addCanvasBtn { display: none !important; }
+      .canvas-switcher.canvas-layers-desktop-visible .canvas-layers-btn { display: flex !important; }
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
       body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
@@ -286,6 +288,7 @@
     .canvas-pill.active { background: var(--accent); color: #000; border-color: var(--accent); }
     .canvas-layers-mobile-only { display: none; }
     .canvas-layers-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    .canvas-layers-btn.canvas-layers-multi { color: var(--yellow); }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; flex: 1; justify-content: flex-end; }
     .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
@@ -627,6 +630,11 @@
     #canvasMenuList button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     #canvasMenuList button:hover { background: var(--surface2); }
     #canvasMenuList button.active { background: var(--accent); color: #000; }
+    .canvas-menu-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; font-family: inherit; font-size: 0.9rem; color: var(--text); }
+    .canvas-menu-item:hover { background: var(--surface2); }
+    .canvas-menu-item.active { background: var(--accent); color: #000; }
+    .canvas-menu-item-edit { padding: 4px; cursor: pointer; opacity: 0.7; background: none; border: none; font-size: 0.9rem; color: inherit; }
+    .canvas-menu-item-edit:hover { opacity: 1; }
     .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; border-top: 1px solid var(--border); color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; }
     .canvas-menu-add:hover { background: var(--surface2); }
     .zoom-overlay { position: fixed; display: none; flex-direction: row; align-items: center; gap: 8px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -1911,6 +1919,29 @@
       <div class="actions">
         <button type="button" id="addCanvasModalCancel">Cancel</button>
         <button type="button" id="addCanvasModalCreate" class="btn-yellow">Create</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="canvasDetailsModal">
+    <div class="modal-card">
+      <h2>Edit Layer</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="canvasDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="actions">
+        <button type="button" id="canvasDetailsDelete" class="danger">Delete</button>
+        <button type="button" id="canvasDetailsClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deleteCanvasConfirmModal">
+    <div class="modal-card">
+      <h2>Delete <span id="deleteCanvasName"></span>?</h2>
+      <p id="deleteCanvasMessage" style="margin:0 0 24px 0;color:var(--text2);">This canvas and its annotations will be removed. This cannot be undone.</p>
+      <div class="actions">
+        <button id="deleteCanvasCancel">Cancel</button>
+        <button id="deleteCanvasConfirm" class="danger">Delete</button>
       </div>
     </div>
   </div>
@@ -4719,16 +4750,33 @@
         pillsEl.appendChild(pill);
       });
     }
-    if (isMobile && layersBtn && menuList && canvasMenu) {
-      layersBtn.style.display = state.pages.length > 0 && !state.isViewer ? '' : 'none';
+    if (layersBtn && menuList && canvasMenu) {
+      const showLayersDropdown = (isMobile || (!isMobile && canvases.length >= 1)) && state.pages.length > 0 && !state.isViewer;
+      layersBtn.style.display = showLayersDropdown ? '' : 'none';
+      layersBtn.classList.toggle('canvas-layers-multi', canvases.length > 1);
+      switcher?.classList.toggle('canvas-layers-desktop-visible', !isMobile && canvases.length >= 1);
       menuList.innerHTML = '';
       canvases.forEach(c => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = c.id === activeId ? 'active' : '';
-        btn.textContent = c.name || 'Main';
-        btn.dataset.canvasId = c.id;
-        btn.onclick = (e) => {
+        const row = document.createElement('div');
+        row.className = 'canvas-menu-item' + (c.id === activeId ? ' active' : '');
+        row.dataset.canvasId = c.id;
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = c.name || 'Main';
+        nameSpan.style.flex = '1';
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'canvas-menu-item-edit';
+        editBtn.textContent = '✎';
+        editBtn.title = 'Edit';
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (state.isViewer) return;
+          openCanvasDetailsModal(c);
+        };
+        row.appendChild(nameSpan);
+        row.appendChild(editBtn);
+        row.onclick = (e) => {
+          if (e.target.closest('.canvas-menu-item-edit')) return;
           e.stopPropagation();
           if (state.isViewer) return;
           state.activeCanvasIdByPage[state.currentPage] = c.id;
@@ -4737,10 +4785,8 @@
           updateUI();
           canvasMenu.classList.remove('visible');
         };
-        menuList.appendChild(btn);
+        menuList.appendChild(row);
       });
-    } else if (layersBtn) {
-      layersBtn.style.display = 'none';
     }
   }
 
@@ -5369,6 +5415,8 @@
   function hideModal(id) {
     if (id === 'groupModal') openedGroupModalFromAssign = false;
     if (id === 'counterLineTypeDetailsModal') counterLineTypeDetailsItem = null;
+    if (id === 'canvasDetailsModal') pendingCanvasEdit = null;
+    if (id === 'deleteCanvasConfirmModal') pendingDeleteCanvas = null;
     document.getElementById(id).classList.remove('visible');
   }
 
@@ -7192,6 +7240,42 @@
     updateUI();
   }
 
+  let pendingCanvasEdit = null;
+  let pendingDeleteCanvas = null;
+
+  function openCanvasDetailsModal(canvas) {
+    if (!state.pages.length || state.isViewer) return;
+    const page = state.pages[state.currentPage];
+    const canvases = getPageCanvases(page);
+    if (!canvases.includes(canvas)) return;
+    document.getElementById('canvasMenu')?.classList.remove('visible');
+    pendingCanvasEdit = canvas;
+    const nameInput = document.getElementById('canvasDetailsName');
+    const deleteBtn = document.getElementById('canvasDetailsDelete');
+    if (nameInput) nameInput.value = canvas.name || 'Main';
+    if (deleteBtn) deleteBtn.style.display = canvases.length <= 1 ? 'none' : '';
+    showModal('canvasDetailsModal');
+    nameInput?.focus();
+  }
+
+  function performDeleteCanvas(canvas) {
+    if (!state.pages.length || state.isViewer) return;
+    const page = state.pages[state.currentPage];
+    const canvases = getPageCanvases(page);
+    if (canvases.length <= 1) return;
+    const idx = canvases.indexOf(canvas);
+    if (idx < 0) return;
+    pushUndoSnapshot();
+    page.canvases.splice(idx, 1);
+    if (state.activeCanvasIdByPage[state.currentPage] === canvas.id) {
+      const remaining = getPageCanvases(page);
+      state.activeCanvasIdByPage[state.currentPage] = remaining[0]?.id ?? null;
+    }
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
+
   document.getElementById('addCanvasBtn').onclick = () => openAddCanvasModal();
 
   const addCanvasModalNew = document.getElementById('addCanvasModalNew');
@@ -7228,6 +7312,45 @@
       if (e.key === 'Enter') addCanvasModalCreate?.click();
     };
   }
+
+  document.getElementById('canvasDetailsClose').onclick = () => {
+    const canvas = pendingCanvasEdit;
+    const nameInput = document.getElementById('canvasDetailsName');
+    if (canvas && nameInput) {
+      canvas.name = (nameInput.value || '').trim() || 'Main';
+      markProjectDirty();
+      updateUI();
+    }
+    pendingCanvasEdit = null;
+    hideModal('canvasDetailsModal');
+  };
+  document.getElementById('canvasDetailsDelete').onclick = () => {
+    const canvas = pendingCanvasEdit;
+    if (!canvas) return;
+    const page = state.pages[state.currentPage];
+    const canvases = getPageCanvases(page);
+    if (canvases.length <= 1) return;
+    pendingDeleteCanvas = canvas;
+    document.getElementById('deleteCanvasName').textContent = canvas.name || 'Main';
+    hideModal('canvasDetailsModal');
+    showModal('deleteCanvasConfirmModal');
+  };
+  document.getElementById('canvasDetailsName').onkeydown = (e) => {
+    if (e.key === 'Enter') document.getElementById('canvasDetailsClose').click();
+  };
+
+  document.getElementById('deleteCanvasCancel').onclick = () => {
+    pendingDeleteCanvas = null;
+    hideModal('deleteCanvasConfirmModal');
+  };
+  document.getElementById('deleteCanvasConfirm').onclick = () => {
+    const canvas = pendingDeleteCanvas;
+    pendingDeleteCanvas = null;
+    hideModal('deleteCanvasConfirmModal');
+    if (canvas) {
+      performDeleteCanvas(canvas);
+    }
+  };
 
   const canvasLayersBtn = document.getElementById('canvasLayersBtn');
   const canvasMenu = document.getElementById('canvasMenu');
@@ -10389,6 +10512,14 @@
         hideModal('viewLinkEmailModal');
       }
       else if (document.getElementById('addCanvasModal').classList.contains('visible')) { hideModal('addCanvasModal'); }
+      else if (document.getElementById('deleteCanvasConfirmModal').classList.contains('visible')) { pendingDeleteCanvas = null; hideModal('deleteCanvasConfirmModal'); }
+      else if (document.getElementById('canvasDetailsModal').classList.contains('visible')) {
+        const canvas = pendingCanvasEdit;
+        const nameInput = document.getElementById('canvasDetailsName');
+        if (canvas && nameInput) { canvas.name = (nameInput.value || '').trim() || 'Main'; markProjectDirty(); updateUI(); }
+        pendingCanvasEdit = null;
+        hideModal('canvasDetailsModal');
+      }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       else if (state.tool === TOOL.LINE) {

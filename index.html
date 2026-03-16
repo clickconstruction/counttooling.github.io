@@ -276,8 +276,12 @@
     .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; flex-shrink: 0; }
     .canvas-pills.canvas-pills-multi { border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding-left: 10px; padding-right: 10px; margin: 0 2px; }
     body:not(.has-pdf) .canvas-switcher { display: none; }
-    .canvas-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; max-width: 140px; }
-    .canvas-pill { padding: 4px 10px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s ease; }
+    .canvas-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; overflow-y: hidden; max-width: 280px; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    .canvas-pills::-webkit-scrollbar { height: 6px; }
+    .canvas-pills::-webkit-scrollbar-track { background: var(--surface2); border-radius: 3px; }
+    .canvas-pills::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    .canvas-pills::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+    .canvas-pill { padding: 4px 10px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s ease; flex-shrink: 0; }
     .canvas-pill:hover { background: var(--surface); color: var(--text); border-color: var(--border2); }
     .canvas-pill.active { background: var(--accent); color: #000; border-color: var(--accent); }
     .canvas-layers-mobile-only { display: none; }

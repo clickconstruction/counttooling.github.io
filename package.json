@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
-    "test:delete-page": "playwright test delete-page.spec.js"
+    "test:delete-page": "playwright test delete-page.spec.js",
+    "test:load-project-delete": "playwright test load-project-delete.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0"

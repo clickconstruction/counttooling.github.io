@@ -289,6 +289,7 @@
     .canvas-layers-mobile-only { display: none; }
     .canvas-layers-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .canvas-layers-btn.canvas-layers-multi { color: var(--yellow); }
+    .canvas-current-name { font-size: 0.85rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; flex: 1; justify-content: flex-end; }
     .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
@@ -583,13 +584,16 @@
     .settings-users-list .settings-project-row .settings-project-meta { font-size: 0.8rem; color: var(--text3); }
     .settings-project-row .settings-project-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
     .settings-project-row .settings-project-badges { margin-bottom: 0; }
-    #loadProjectList .load-project-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; }
+    #loadProjectList .load-project-item { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; }
     #loadProjectList .load-project-item:last-child { margin-bottom: 0; }
     #loadProjectList .load-project-item:hover { background: var(--surface2); }
     #loadProjectList .load-project-item.loading { pointer-events: none; opacity: 0.7; cursor: wait; }
     #loadProjectList.loading .load-project-item { pointer-events: none; }
+    #loadProjectList .load-project-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
     #loadProjectList .load-project-name { font-size: 1.05rem; font-weight: 500; }
     #loadProjectList .load-project-meta { font-size: 0.8rem; color: var(--text3); }
+    .load-project-delete { flex-shrink: 0; padding: 4px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+    .load-project-delete:hover { color: var(--red); }
     .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
     .counter-tab { flex: 1; padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
     .counter-tab:hover { color: var(--text); }
@@ -624,18 +628,20 @@
     .context-menu button.danger { color: var(--red); }
     .context-menu { display: none; }
     .context-menu.visible { display: block; }
-    .canvas-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 140px; max-height: 50vh; overflow-y: auto; display: none; }
-    .canvas-menu.visible { display: block; }
+    .canvas-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 140px; max-height: 50vh; overflow-y: auto; display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .canvas-menu.visible { display: block; animation: canvasMenuIn 0.2s ease; }
+    @keyframes canvasMenuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     #canvasMenuList { display: flex; flex-direction: column; }
-    #canvasMenuList button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
+    #canvasMenuList button:not(.canvas-menu-item-edit) { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     #canvasMenuList button:hover { background: var(--surface2); }
     #canvasMenuList button.active { background: var(--accent); color: #000; }
-    .canvas-menu-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; font-family: inherit; font-size: 0.9rem; color: var(--text); }
+    .canvas-menu-item { display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 8px 12px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; font-family: inherit; font-size: 0.9rem; color: var(--text); border-radius: 4px; transition: background 0.15s ease; }
     .canvas-menu-item:hover { background: var(--surface2); }
     .canvas-menu-item.active { background: var(--accent); color: #000; }
-    .canvas-menu-item-edit { padding: 4px; cursor: pointer; opacity: 0.7; background: none; border: none; font-size: 0.9rem; color: inherit; }
-    .canvas-menu-item-edit:hover { opacity: 1; }
-    .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; border-top: 1px solid var(--border); color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; }
+    .canvas-menu-item-edit { width: 24px; height: 24px; min-width: 24px; min-height: 24px; padding: 0; cursor: pointer; background: none; border: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--yellow); border-radius: 4px; transition: opacity 0.15s ease; }
+    .canvas-menu-item-edit:hover { opacity: 0.9; }
+    .canvas-menu-item.active .canvas-menu-item-edit { color: #000; }
+    .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: 1px solid var(--yellow); border-radius: 4px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; transition: background 0.15s ease; }
     .canvas-menu-add:hover { background: var(--surface2); }
     .zoom-overlay { position: fixed; display: none; flex-direction: row; align-items: center; gap: 8px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .zoom-overlay.visible { display: flex; }
@@ -855,6 +861,7 @@
             <button id="nextMarkedPage" class="page-nav-marked-btn" title="Next marked page">››</button>
           </div>
           <div id="canvasSwitcher" class="canvas-switcher">
+            <span id="canvasCurrentName" class="canvas-current-name"></span>
             <button id="canvasLayersBtn" class="canvas-layers-btn canvas-layers-mobile-only" title="Canvases" aria-label="Canvases">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg>
             </button>
@@ -3060,8 +3067,34 @@
 
   async function doRestoreLastProject(proj, cachedBlob) {
     const d = proj.data;
-    const buf = await cachedBlob.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument(buf).promise;
+    let pdf;
+    if (cachedBlob) {
+      try {
+        const buf = await cachedBlob.arrayBuffer();
+        pdf = await pdfjsLib.getDocument(buf).promise;
+      } catch (e) {
+        if (!proj.pdf_path) throw e;
+        const { data: signed, error: urlErr } = await supabase.storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
+        if (urlErr) throw urlErr;
+        pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
+        if (proj.pdf_hash) {
+          supabase.storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
+            if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
+          });
+        }
+      }
+    } else if (proj.pdf_path) {
+      const { data: signed, error: urlErr } = await supabase.storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
+      if (urlErr) throw urlErr;
+      pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
+      if (proj.pdf_hash) {
+        supabase.storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
+          if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
+        });
+      }
+    } else {
+      throw new Error('No PDF available for this project');
+    }
     state.pages = [];
     const numPages = pdf.numPages;
     for (let i = 0; i < numPages; i++) {
@@ -4723,6 +4756,12 @@
     const canvases = page ? getPageCanvases(page) : [];
     const activeId = page ? (state.activeCanvasIdByPage[state.currentPage] || (canvases[0]?.id)) : null;
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const canvasNameEl = document.getElementById('canvasCurrentName');
+    if (canvasNameEl) {
+      const activeCanvas = activeId ? canvases.find(c => c.id === activeId) : canvases[0];
+      canvasNameEl.textContent = activeCanvas?.name || 'Main';
+      canvasNameEl.style.display = state.pages.length > 0 ? '' : 'none';
+    }
     pillsEl.innerHTML = '';
     if (canvases.length === 0) {
       pillsEl.style.display = 'none';
@@ -4763,18 +4802,22 @@
         const nameSpan = document.createElement('span');
         nameSpan.textContent = c.name || 'Main';
         nameSpan.style.flex = '1';
+        nameSpan.style.minWidth = '0';
+        nameSpan.style.overflow = 'hidden';
+        nameSpan.style.textOverflow = 'ellipsis';
+        nameSpan.style.whiteSpace = 'nowrap';
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'canvas-menu-item-edit';
-        editBtn.textContent = '✎';
         editBtn.title = 'Edit';
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="currentColor" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg>';
         editBtn.onclick = (e) => {
           e.stopPropagation();
           if (state.isViewer) return;
           openCanvasDetailsModal(c);
         };
-        row.appendChild(nameSpan);
         row.appendChild(editBtn);
+        row.appendChild(nameSpan);
         row.onclick = (e) => {
           if (e.target.closest('.canvas-menu-item-edit')) return;
           e.stopPropagation();
@@ -9240,12 +9283,46 @@
           const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
           const metaParts = [date, sizeStr].filter(Boolean);
           const meta = esc(metaParts.join(' · ')) + canvasOnlyBadge + lockBadge + ownerBadge;
-          div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>';
+          const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 640"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
+          const deleteBtnHtml = proj.is_owner ? '<button type="button" class="load-project-delete" title="Delete from cloud" aria-label="Delete">' + trashSvg + '</button>' : '';
+          div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' + deleteBtnHtml;
+          const deleteBtn = div.querySelector('.load-project-delete');
+          if (deleteBtn) {
+            deleteBtn.onclick = async (e) => {
+              e.stopPropagation();
+              if (!confirm('Delete "' + (proj.name || 'Untitled') + '" from cloud? This cannot be undone.')) return;
+              try {
+                await deleteProjectAsOwner(proj.id, proj.pdf_path);
+                div.remove();
+                if (!listEl.querySelector('.load-project-item')) {
+                  listEl.innerHTML = '';
+                  emptyEl.style.display = 'block';
+                }
+                if (state.currentProjectId === proj.id) {
+                  clearUndoStacks();
+                  state.pages = [];
+                  state.currentProjectId = null;
+                  subscribeToProjectCheckoutChanges(null);
+                  state.currentProjectName = null;
+                  state.pdfBuffer = null;
+                  state.pdfStoragePath = null;
+                  state.pdfHash = null;
+                  state.projectOwnerId = null;
+                  state.checkedOutBy = null;
+                  state.checkedOutAt = null;
+                  state.checkedOutEmail = null;
+                  state.isViewer = false;
+                  state.canCheckOut = false;
+                  try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+                  updateUI();
+                }
+              } catch (err) {
+                showToast(err?.message || 'Failed to delete project', 4000);
+              }
+            };
+          }
           div.onclick = async () => {
-          // #region agent log
-          if (loadProjectInProgress) { fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2be41b'},body:JSON.stringify({sessionId:'2be41b',location:'index.html:loadProjectClick',message:'Load project guard blocked (double-click ignored)',data:{projectName:proj.name},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{}); return; }
-          fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2be41b'},body:JSON.stringify({sessionId:'2be41b',location:'index.html:loadProjectClick',message:'Load project started',data:{projectName:proj.name},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
+          if (loadProjectInProgress) return;
           loadProjectInProgress = true;
           div.classList.add('loading');
           listEl.classList.add('loading');
@@ -9259,13 +9336,24 @@
             try {
               let buf;
               const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
-              if (cachedBlob) {
+              const useCache = cachedBlob && cachedBlob.size > 0;
+              if (useCache) {
                 buf = await cachedBlob.arrayBuffer();
-              } else {
-                const { data: signed, error: urlErr } = await supabase.storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
-                if (urlErr) throw urlErr;
-                buf = null;
-                const pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
+              }
+              if (cachedBlob && (!buf || buf.byteLength === 0)) {
+                pdfCacheDelete(proj.id);
+              }
+              if (buf === undefined || !buf || buf.byteLength === 0) {
+                const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
+                if (dlErr) throw dlErr;
+                if (!blob || blob.size === 0) {
+                  throw new Error('The PDF in cloud storage is empty (0 bytes). The file may not have uploaded correctly. Try re-uploading via Project Settings > Add additional PDF pages.');
+                }
+                buf = await blob.arrayBuffer();
+                if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
+              }
+              if (buf && buf.byteLength > 0) {
+                const pdf = await pdfjsLib.getDocument(buf).promise;
                 state.pages = [];
                 const numPages = pdf.numPages;
                 for (let i = 0; i < numPages; i++) {
@@ -9295,40 +9383,6 @@
                 clearUndoStacks();
                 state.pdfStoragePath = proj.pdf_path;
                 state.pdfBuffer = null;
-                if (proj.pdf_hash) {
-                  supabase.storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
-                    if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
-                  });
-                }
-              }
-              if (buf !== null) {
-              const pdf = await pdfjsLib.getDocument(buf).promise;
-              state.pages = [];
-              const numPages = pdf.numPages;
-              for (let i = 0; i < numPages; i++) {
-                const pdfPage = await pdf.getPage(i + 1);
-                const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                const canvasId = uid();
-                state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-                state.activeCanvasIdByPage[i] = canvasId;
-              }
-              state.counters = Array.isArray(d.counters) ? d.counters : [];
-              state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-              state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-              (d.pages || []).forEach(p => {
-                applyPageAnnotationsFromData(state.pages[p.index], p);
-              });
-              if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-              if (d.pageScales) {
-                d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-              } else if (d.scale) {
-                state.pages.forEach(p => { p.scale = d.scale; });
-              }
-              state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-              reconcileOrphanedCountersAndLineTypes();
-              clearUndoStacks();
-              state.pdfStoragePath = proj.pdf_path;
-              state.pdfBuffer = null;
               }
             } catch (e) {
               listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
@@ -9386,9 +9440,6 @@
           fitZoom();
           updateUI();
           } finally {
-            // #region agent log
-            fetch('http://127.0.0.1:7270/ingest/1aa34032-a0c9-44cd-93a8-8d2cffd694b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2be41b'},body:JSON.stringify({sessionId:'2be41b',location:'index.html:loadProjectFinally',message:'Load project finished (loading state cleared)',data:{projectName:proj.name},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             loadProjectInProgress = false;
             div.classList.remove('loading');
             listEl.classList.remove('loading');
@@ -9677,8 +9728,12 @@
       if (!p) { hideModal('lastSessionRestoreModal'); return; }
       pendingLastSessionRestore = null;
       hideModal('lastSessionRestoreModal');
-      await doRestoreLastProject(p.proj, p.cachedBlob);
-      updateUI();
+      try {
+        await doRestoreLastProject(p.proj, p.cachedBlob);
+        updateUI();
+      } catch (err) {
+        showToast('Failed to restore project: ' + (err?.message || 'Unknown error'), 5000);
+      }
     };
     document.getElementById('lastSessionRestoreDiscard').onclick = async () => {
       const p = pendingLastSessionRestore;
@@ -11077,17 +11132,17 @@
         if (stored) {
           const last = JSON.parse(stored);
           if (last && last.userId === state.supabaseSession.user.id && last.projectId && last.pdfHash) {
-            const cachedBlob = await pdfCacheGet(last.projectId, last.pdfHash);
-            if (cachedBlob) {
-              const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
-              if (!error && proj && proj.data) {
-                pendingLastSessionRestore = { proj, cachedBlob };
+            const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
+            if (!error && proj && proj.data) {
+              const cachedBlob = proj.pdf_hash ? await pdfCacheGet(last.projectId, last.pdfHash) : null;
+              if (cachedBlob || proj.pdf_path) {
+                pendingLastSessionRestore = { proj, cachedBlob: cachedBlob || null };
                 const msgEl = document.getElementById('lastSessionRestoreMessage');
                 if (msgEl) msgEl.innerHTML = 'You have a project from your last session: <strong>' + (proj.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
                 showModal('lastSessionRestoreModal');
-              } else if (error) {
-                localStorage.removeItem('clickcount-last-project');
               }
+            } else if (error) {
+              localStorage.removeItem('clickcount-last-project');
             }
           }
         }

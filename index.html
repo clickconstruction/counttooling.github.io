@@ -9347,9 +9347,9 @@
               }
               if (buf === undefined || !buf || buf.byteLength === 0) {
                 const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
-                if (dlErr) throw dlErr;
-                if (!blob || blob.size === 0) {
-                  /* PDF in storage is empty – treat as canvas-only and offer upload */
+                const emptyOrMissing = dlErr || !blob || blob.size === 0;
+                if (emptyOrMissing) {
+                  /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
                   state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
                   state.pdfStoragePath = null;
                   state.pdfBuffer = null;

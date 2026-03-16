@@ -46,6 +46,8 @@
     .header button.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .header button.danger { color: var(--red); border-color: var(--red); }
     .header button.danger:hover { background: rgba(232,84,71,0.2); }
+    body:not(.has-pdf) .header #uploadPdf { background: transparent; border: none; }
+    body:not(.has-pdf) .header #uploadPdf:hover { background: transparent; }
     .header .spacer { flex: 1; }
     .header .header-settings-gear { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 12px; background: none; border: none; border-radius: 0; color: var(--text2); cursor: pointer; font-size: 0.9rem; }
     .header .header-settings-gear:hover { background: none; color: var(--text); }
@@ -208,15 +210,19 @@
     .sidebar-item .icon-svg { width: 20px; height: 20px; flex-shrink: 0; }
     .sidebar-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
     #pagesList.pages-titles-truncated .sidebar-item { min-height: 60px; align-items: flex-start; }
-    #pagesList.pages-titles-truncated .sidebar-item .badge { align-self: flex-start; margin-top: 2px; }
+    #pagesList.pages-titles-truncated .sidebar-item .badge,
+    #pagesList.pages-titles-truncated .sidebar-item .page-num-badge-wrap { align-self: flex-start; margin-top: 2px; }
     #pagesList.pages-titles-truncated .sidebar-item .name { display: flex; flex-direction: column; gap: 2px; overflow: hidden; min-height: 2.6em; }
     #pagesList.pages-titles-truncated .sidebar-item .name .name-line { display: block; overflow: hidden; white-space: nowrap; line-height: 1.25; }
     #pagesList.pages-titles-truncated .sidebar-item .name .name-line-start { text-overflow: ellipsis; }
     #pagesList.pages-titles-truncated .sidebar-item .name .name-line-end { text-overflow: clip; }
     .sidebar-item .badge { background: var(--surface3); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-family: 'DM Mono', monospace; }
+    .sidebar-item .page-num-badge-editable { cursor: pointer; }
     .sidebar-item .badge.badge-scale-set { color: var(--accent); }
     .sidebar-item .badge.badge-has-ann { background: transparent; border: 2px solid var(--accent); }
-    .sidebar-item .badge.badge-canvas-count { background: var(--surface2); color: var(--text2); font-size: 0.7rem; margin-left: 2px; }
+    .sidebar-item .page-num-badge-wrap { display: flex; flex-direction: column; align-items: stretch; gap: 0; line-height: 1.1; flex-shrink: 0; width: min-content; }
+    .sidebar-item .page-num-badge-wrap .badge { text-align: center; }
+    .sidebar-item .badge.badge-canvas-count { background: var(--surface2); color: var(--text2); font-size: 0.65rem; margin-top: 0; margin-left: 0; width: 100%; box-sizing: border-box; }
     .sidebar-item.summary-line-item { flex-direction: column; align-items: stretch; gap: 2px; }
     .sidebar-item.summary-line-item .summary-line-meta { font-size: 0.8rem; color: var(--text2); }
     .sidebar-item .edit-btn { padding: 4px; cursor: pointer; opacity: 0.7; }
@@ -267,7 +273,8 @@
     .canvas-container .ann-canvas.interactive { pointer-events: auto; }
     .page-zoom-row { display: flex; align-items: center; gap: 0; background: var(--surface); border-top: 1px solid var(--border); }
     .page-zoom-row .page-nav { flex: 1; }
-    .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-left: 1px solid var(--border); }
+    .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; flex-shrink: 0; }
+    .canvas-pills.canvas-pills-multi { border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding-left: 10px; padding-right: 10px; margin: 0 2px; }
     body:not(.has-pdf) .canvas-switcher { display: none; }
     .canvas-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; max-width: 140px; }
     .canvas-pill { padding: 4px 10px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s ease; }
@@ -275,7 +282,7 @@
     .canvas-pill.active { background: var(--accent); color: #000; border-color: var(--accent); }
     .canvas-layers-mobile-only { display: none; }
     .canvas-layers-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
-    .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; }
+    .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; flex: 1; justify-content: flex-end; }
     .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
     .zoom-bar .zoom-pct { font-family: 'DM Mono', monospace; min-width: 48px; text-align: center; font-size: 0.85rem; cursor: pointer; }
@@ -350,6 +357,9 @@
     .group-assign-btn { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.95rem; border: 2px solid transparent; min-width: 80px; }
     .group-assign-btn.none { background: var(--surface2); color: var(--text); border-color: var(--border); }
     .group-assign-btn.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .add-canvas-mode-btn { background: var(--surface2); color: var(--text2); border: 2px solid var(--border); }
+    .add-canvas-mode-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border2); }
+    .add-canvas-mode-btn.selected { background: var(--accent); color: var(--bg); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .modal-card .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; max-height: 200px; overflow-y: auto; margin-top: 8px; }
     .modal-card .icon-cell { width: 36px; height: 36px; padding: 4px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; }
     .modal-card .icon-cell:hover { background: var(--surface3); }
@@ -402,6 +412,35 @@
     .modal-card .actions button:last-child:hover { background: var(--accent2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
+    .prepare-pdf-controls { display: flex; flex-direction: column; gap: 10px; align-items: stretch; width: 100%; }
+    .prepare-pdf-controls .prepare-pdf-actions-row { display: flex; gap: 10px; justify-content: center; }
+    .prepare-pdf-controls button {
+      padding: 10px 18px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; font-family: inherit; cursor: pointer;
+      background: var(--surface2); border: 2px solid var(--border); color: var(--text);
+      transition: all 0.2s ease; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .prepare-pdf-controls button:hover:not(:disabled) { background: var(--surface3); border-color: var(--border2); transform: translateY(-1px); }
+    .prepare-pdf-controls button:active:not(:disabled) { transform: translateY(0); }
+    .prepare-pdf-controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .prepare-pdf-controls button.prepare-pdf-delete { background: rgba(232,84,71,0.15); border-color: var(--red); color: var(--red); }
+    .prepare-pdf-controls button.prepare-pdf-delete:hover:not(:disabled) { background: rgba(232,84,71,0.25); border-color: var(--red); }
+    .prepare-pdf-controls button.prepare-pdf-undo { background: transparent; border-color: var(--border); color: var(--text2); }
+    .prepare-pdf-controls button.prepare-pdf-undo:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+    .prepare-pdf-controls .prepare-pdf-nav { display: flex; gap: 4px; }
+    .prepare-pdf-controls .prepare-pdf-nav button { flex: 1; padding: 10px 14px; min-width: 44px; }
+    .prepare-pdf-controls .prepare-pdf-nav button:hover:not(:disabled) { background: rgba(232,184,74,0.15); border-color: var(--accent); color: var(--accent); }
+    #preparePdfModal .actions.prepare-pdf-actions { justify-content: space-between; }
+    #preparePdfModal .prepare-pdf-actions-left { display: flex; gap: 12px; }
+    .prepare-pdf-page-name-section .prepare-pdf-page-name-header { display: flex; align-items: center; padding: 8px 0; margin: 0 0 4px 0; font-size: 0.85rem; color: var(--text2); cursor: pointer; user-select: none; }
+    .prepare-pdf-page-name-section .prepare-pdf-page-name-header:hover { color: var(--text); }
+    .prepare-pdf-page-name-section .prepare-pdf-page-name-header .collapse-icon { font-size: 0.7rem; transition: transform 0.2s; }
+    .prepare-pdf-page-name-section.collapsed .prepare-pdf-page-name-content { display: none !important; }
+    #preparePdfModal .actions #preparePdfSaveAndOpen { background: var(--accent); color: var(--bg); }
+    #preparePdfModal .actions #preparePdfSaveAndOpen:hover { background: var(--accent2); }
+    #preparePdfModal .actions #preparePdfCancel { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+    #preparePdfModal .actions #preparePdfCancel:hover { background: var(--surface2); color: var(--text); }
+    #preparePdfModal .actions #preparePdfDone { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    #preparePdfModal .actions #preparePdfDone:hover { background: var(--surface3); }
     .counter-line-type-pages-list { max-height: 200px; overflow-y: auto; }
     .counter-line-type-pages-list .page-item { padding: 6px 8px; cursor: pointer; border-radius: 4px; }
     .counter-line-type-pages-list .page-item:hover { background: var(--surface2); }
@@ -573,6 +612,7 @@
     .settings-users-list .settings-project-force-checkin:disabled { opacity: 0.5; cursor: not-allowed; }
     .context-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 120px; }
     .context-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
+    .context-menu-subtitle { display: block; font-size: 0.75rem; color: var(--text2); font-weight: normal; margin-top: 2px; }
     .context-menu button:hover { background: var(--surface2); }
     .context-menu button.danger { color: var(--red); }
     .context-menu { display: none; }
@@ -656,7 +696,7 @@
       </button>
     </header>
     <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
-      <span>Drag by their left colors to re-order.</span>
+      <span>Drag Counters and Lines by their left colors to re-order.</span>
       <button type="button" id="sidebarReorderFinish" class="sidebar-btn-inline sidebar-reorder-finish-btn">Finish reordering</button>
     </div>
     <div class="main">
@@ -983,7 +1023,7 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>Counter Settings</h2>
-        <span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">reorder</span>
+        <span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">Reorder Artboard</span>
       </div>
       <div class="form-group">
         <label>Icon size: <span id="counterSizeVal">20</span>px</label>
@@ -1050,7 +1090,14 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>Line Type Settings</h2>
-        <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">reorder</span>
+        <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">reorder artboard</span>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Snap to horizontal/vertical</span>
+        <button type="button" class="toggle-switch" id="lineTypeSnapToHVBtn" aria-pressed="false" title="Constrain lines to horizontal or vertical when placing">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="lineTypeSnapToHV" hidden>
       </div>
       <div class="form-group">
         <label>Line width: <span id="lineTypeSizeVal">2</span>px</label>
@@ -1087,13 +1134,6 @@
         <div class="form-group">
           <label>Length label size: <span id="lineTypeLengthLabelVal">12</span>px</label>
           <input type="range" id="lineTypeLengthLabel" min="8" max="24" value="12" step="1">
-        </div>
-        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <span>Snap to horizontal/vertical</span>
-          <button type="button" class="toggle-switch" id="lineTypeSnapToHVBtn" aria-pressed="false" title="Constrain lines to horizontal or vertical when placing">
-            <span class="toggle-switch-knob"></span>
-          </button>
-          <input type="checkbox" id="lineTypeSnapToHV" hidden>
         </div>
       </div>
       <div class="actions">
@@ -1799,6 +1839,48 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="preparePdfModal">
+    <div class="modal-card" style="max-width:520px;">
+      <h2>Prepare PDF for Cloud</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
+      <div class="form-group">
+        <label>Project name</label>
+        <input type="text" id="preparePdfName" placeholder="Untitled" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group prepare-pdf-page-name-section collapsed" id="preparePdfPageNameSection">
+        <h3 class="prepare-pdf-page-name-header" id="preparePdfPageNameHeader" title="Click to expand">Page name <span class="collapse-icon" id="preparePdfPageNameCollapseIcon">▶</span></h3>
+        <div class="prepare-pdf-page-name-content">
+          <input type="text" id="preparePdfPageName" placeholder="Page 1" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        </div>
+      </div>
+      <div class="form-group">
+        <label id="preparePdfPageLabel">Page 1 of 1</label>
+        <div id="preparePdfPreviewWrap" style="max-height:400px;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;min-height:200px;">
+          <canvas id="preparePdfCanvas"></canvas>
+        </div>
+      </div>
+      <div class="form-group prepare-pdf-controls">
+        <div class="prepare-pdf-nav">
+          <button type="button" id="preparePdfPrev">‹ Prev</button>
+          <button type="button" id="preparePdfNext">Next ›</button>
+        </div>
+        <div class="prepare-pdf-actions-row">
+          <button type="button" id="preparePdfDelete" class="prepare-pdf-delete">Delete</button>
+          <button type="button" id="preparePdfUndo" class="prepare-pdf-undo" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M88 256L232 256C241.7 256 250.5 250.2 254.2 241.2C257.9 232.2 255.9 221.9 249 215L202.3 168.3C277.6 109.7 386.6 115 455.8 184.2C530.8 259.2 530.8 380.7 455.8 455.7C380.8 530.7 259.3 530.7 184.3 455.7C174.1 445.5 165.3 434.4 157.9 422.7C148.4 407.8 128.6 403.4 113.7 412.9C98.8 422.4 94.4 442.2 103.9 457.1C113.7 472.7 125.4 487.5 139 501C239 601 401 601 501 501C601 401 601 239 501 139C406.8 44.7 257.3 39.3 156.7 122.8L105 71C98.1 64.2 87.8 62.1 78.8 65.8C69.8 69.5 64 78.3 64 88L64 232C64 245.3 74.7 256 88 256z"/></svg>
+            Undo
+          </button>
+        </div>
+      </div>
+      <div class="actions prepare-pdf-actions">
+        <div class="prepare-pdf-actions-left">
+          <button type="button" id="preparePdfCancel">Cancel</button>
+          <button type="button" id="preparePdfDone">Open</button>
+        </div>
+        <button type="button" id="preparePdfSaveAndOpen" class="btn-yellow">Save and Open</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="viewLinkEmailModal">
     <div class="modal-card">
       <h2>View Plans</h2>
@@ -1813,6 +1895,24 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="addCanvasModal">
+    <div class="modal-card">
+      <h2>Add Canvas</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Choose the type of canvas to add.</p>
+      <div class="form-group" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <button type="button" id="addCanvasModalNew" class="group-assign-btn add-canvas-mode-btn">New empty layer</button>
+        <button type="button" id="addCanvasModalDuplicate" class="group-assign-btn add-canvas-mode-btn">Duplicate current layer</button>
+      </div>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="addCanvasModalName" placeholder="Layer 2">
+      </div>
+      <div class="actions">
+        <button type="button" id="addCanvasModalCancel">Cancel</button>
+        <button type="button" id="addCanvasModalCreate" class="btn-yellow">Create</button>
+      </div>
+    </div>
+  </div>
   <div class="canvas-menu" id="canvasMenu">
     <div id="canvasMenuList"></div>
     <button type="button" id="canvasMenuAdd" class="canvas-menu-add">+ Add canvas</button>
@@ -1823,7 +1923,7 @@
   </div>
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
-    <button id="ctxLineProperties" style="display:none;">Line Properties</button>
+    <button id="ctxLineProperties" style="display:none;">Line Properties<span class="context-menu-subtitle">[color, name, drops]</span></button>
     <button id="ctxShowLength" style="display:none;">Show Length</button>
     <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
     <button class="danger" id="ctxDelete">Delete</button>
@@ -2667,6 +2767,12 @@
       )
     ]);
 
+  function perfLog(label, durationMs, extra) {
+    const msg = '[Perf] ' + label + ': ' + durationMs + 'ms';
+    if (extra && Object.keys(extra).length) console.log(msg, extra);
+    else console.log(msg);
+  }
+
   function markProjectDirty() {
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     autoSaveDirty = true;
@@ -2773,8 +2879,11 @@
   }
 
   async function sha256Hex(buffer) {
+    const t0 = Date.now();
     const hash = await crypto.subtle.digest('SHA-256', buffer);
-    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    perfLog('sha256Hex', Date.now() - t0, { bytes: buffer.byteLength });
+    return hex;
   }
 
   const PDF_CACHE_DB = 'clickcount-pdf-cache';
@@ -4586,9 +4695,11 @@
     if (canvases.length === 0) {
       pillsEl.style.display = 'none';
       addBtn.style.display = state.pages.length > 0 && !state.isViewer ? '' : 'none';
+      if (pillsEl && !isMobile) pillsEl.classList.remove('canvas-pills-multi');
     } else {
       pillsEl.style.display = 'flex';
       addBtn.style.display = state.isViewer ? 'none' : '';
+      if (pillsEl && !isMobile) pillsEl.classList.toggle('canvas-pills-multi', canvases.length >= 3);
       canvases.forEach(c => {
         const pill = document.createElement('button');
         pill.type = 'button';
@@ -4663,8 +4774,9 @@
       }
       const canvasCount = getPageCanvases(p).length;
       const canvasBadge = canvasCount > 1 ? '<span class="badge badge-canvas-count" title="' + canvasCount + ' canvases">' + canvasCount + '</span>' : '';
-      div.innerHTML = '<span class="badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + '">' + (i + 1) + '</span>' + canvasBadge + '<span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>' + (showEdit ? '<span class="edit-btn" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="#e8c547" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg></span>' : '');
-      div.onclick = (e) => { if (!e.target.closest('.edit-btn') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
+      const pageNumBadgeClass = 'badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + (showEdit ? ' page-num-badge-editable' : '');
+      div.innerHTML = '<span class="page-num-badge-wrap"><span class="' + pageNumBadgeClass + '" title="' + (showEdit ? 'Click to rename or delete' : '') + '">' + (i + 1) + '</span>' + canvasBadge + '</span><span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>';
+      div.onclick = (e) => { if (!e.target.closest('.page-num-badge-wrap') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
       if (showEdit) {
         const deletePage = () => {
           if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
@@ -4682,9 +4794,10 @@
           fitZoom();
         };
         const pageName = p.label || 'Page ' + (i + 1);
-        const editBtn = div.querySelector('.edit-btn');
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
-        onDoubleTapOrDblClick(div.querySelector('.name'), () => { startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName, editBtn }); });
+        const openRename = () => startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName });
+        const pageNumBadge = div.querySelector('.page-num-badge-editable');
+        if (pageNumBadge) pageNumBadge.addEventListener('click', (e) => { e.stopPropagation(); openRename(); });
+        onDoubleTapOrDblClick(div.querySelector('.name'), openRename);
       }
       el.appendChild(div);
     });
@@ -5846,6 +5959,193 @@
     }
     return await merged.save();
   }
+  async function buildTrimmedPdfBuffer(sourceBuffer, keptIndices) {
+    if (!keptIndices.length) return null;
+    if (typeof PDFLib === 'undefined') return sourceBuffer;
+    const srcDoc = await PDFLib.PDFDocument.load(sourceBuffer);
+    const out = await PDFLib.PDFDocument.create();
+    const indices = keptIndices.map(i => i).sort((a, b) => a - b);
+    const copied = await out.copyPages(srcDoc, indices);
+    copied.forEach(p => out.addPage(p));
+    return await out.save();
+  }
+  let preparePdfPages = [];
+  let preparePdfBuffer = null;
+  let preparePdfKeptIndices = [];
+  let preparePdfUndoStack = [];
+  let preparePdfCurrentIdx = 0;
+  let preparePdfDefaultName = 'Untitled';
+  function renderPreparePdfPreview() {
+    const canvas = document.getElementById('preparePdfCanvas');
+    const labelEl = document.getElementById('preparePdfPageLabel');
+    const kept = preparePdfKeptIndices;
+    if (!kept.length || !preparePdfPages.length) {
+      canvas.width = 0;
+      canvas.height = 0;
+      labelEl.textContent = 'No pages';
+      return;
+    }
+    const origIdx = kept[preparePdfCurrentIdx];
+    const page = preparePdfPages[origIdx];
+    if (!page || !page.pdfPage) {
+      canvas.width = 0;
+      canvas.height = 0;
+      labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length;
+      return;
+    }
+    const maxH = 400;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: 0 });
+    const scale = Math.min(1, maxH / vp.height);
+    const viewport = page.pdfPage.getViewport({ scale, rotation: 0 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.style.maxWidth = '100%';
+    canvas.style.height = 'auto';
+    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length;
+    page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport });
+    const pageNameEl = document.getElementById('preparePdfPageName');
+    if (pageNameEl) pageNameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
+  }
+  function saveCurrentPageName() {
+    const kept = preparePdfKeptIndices;
+    if (!kept.length || preparePdfCurrentIdx >= kept.length) return;
+    const origIdx = kept[preparePdfCurrentIdx];
+    const page = preparePdfPages[origIdx];
+    if (!page) return;
+    const pageNameEl = document.getElementById('preparePdfPageName');
+    if (pageNameEl) page.label = (pageNameEl.value || '').trim() || ('Page ' + (preparePdfCurrentIdx + 1));
+  }
+  function updatePreparePdfControls() {
+    const kept = preparePdfKeptIndices;
+    document.getElementById('preparePdfUndo').disabled = preparePdfUndoStack.length === 0;
+    document.getElementById('preparePdfDelete').disabled = kept.length <= 1;
+    document.getElementById('preparePdfPrev').disabled = preparePdfCurrentIdx <= 0;
+    document.getElementById('preparePdfNext').disabled = preparePdfCurrentIdx >= kept.length - 1;
+    document.getElementById('preparePdfDone').disabled = kept.length === 0;
+    const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');
+    if (saveAndOpenEl) saveAndOpenEl.disabled = kept.length === 0;
+  }
+  function openPreparePdfModal(pages, buffer, defaultName) {
+    preparePdfPages = pages.map(p => ({ pdfPage: p.pdfPage, label: p.label }));
+    preparePdfBuffer = buffer;
+    preparePdfKeptIndices = pages.map((_, i) => i);
+    preparePdfUndoStack = [];
+    preparePdfCurrentIdx = 0;
+    preparePdfDefaultName = defaultName || 'Untitled';
+    document.getElementById('preparePdfName').value = preparePdfDefaultName;
+    renderPreparePdfPreview();
+    updatePreparePdfControls();
+    showModal('preparePdfModal');
+  }
+  window.closePreparePdfModal = function closePreparePdfModal() {
+    preparePdfPages = [];
+    preparePdfBuffer = null;
+    preparePdfKeptIndices = [];
+    preparePdfUndoStack = [];
+    hideModal('preparePdfModal');
+  };
+  document.getElementById('preparePdfCancel').onclick = () => closePreparePdfModal();
+  (function() {
+    const section = document.getElementById('preparePdfPageNameSection');
+    const header = document.getElementById('preparePdfPageNameHeader');
+    const icon = document.getElementById('preparePdfPageNameCollapseIcon');
+    if (section && header && icon) {
+      header.onclick = () => {
+        section.classList.toggle('collapsed');
+        icon.textContent = section.classList.contains('collapsed') ? '▶' : '▼';
+      };
+    }
+  })();
+  document.getElementById('preparePdfPageName').onblur = () => saveCurrentPageName();
+  document.getElementById('preparePdfUndo').onclick = () => {
+    if (preparePdfUndoStack.length === 0) return;
+    saveCurrentPageName();
+    const { index } = preparePdfUndoStack.pop();
+    preparePdfKeptIndices.push(index);
+    preparePdfKeptIndices.sort((a, b) => a - b);
+    const idxInKept = preparePdfKeptIndices.indexOf(index);
+    if (idxInKept >= 0 && idxInKept <= preparePdfCurrentIdx) preparePdfCurrentIdx = Math.min(preparePdfCurrentIdx + 1, preparePdfKeptIndices.length - 1);
+    renderPreparePdfPreview();
+    updatePreparePdfControls();
+  };
+  document.getElementById('preparePdfDelete').onclick = () => {
+    const kept = preparePdfKeptIndices;
+    if (kept.length <= 1) return;
+    saveCurrentPageName();
+    const removed = kept.splice(preparePdfCurrentIdx, 1)[0];
+    preparePdfUndoStack.push({ index: removed });
+    if (preparePdfCurrentIdx >= kept.length) preparePdfCurrentIdx = Math.max(0, kept.length - 1);
+    renderPreparePdfPreview();
+    updatePreparePdfControls();
+  };
+  document.getElementById('preparePdfPrev').onclick = () => {
+    if (preparePdfCurrentIdx > 0) {
+      saveCurrentPageName();
+      preparePdfCurrentIdx--;
+      renderPreparePdfPreview();
+      updatePreparePdfControls();
+    }
+  };
+  document.getElementById('preparePdfNext').onclick = () => {
+    if (preparePdfCurrentIdx < preparePdfKeptIndices.length - 1) {
+      saveCurrentPageName();
+      preparePdfCurrentIdx++;
+      renderPreparePdfPreview();
+      updatePreparePdfControls();
+    }
+  };
+  async function commitPreparePdfToState() {
+    saveCurrentPageName();
+    const kept = preparePdfKeptIndices;
+    if (!kept.length || !preparePdfBuffer) return { ok: false };
+    const name = (document.getElementById('preparePdfName').value || '').trim() || preparePdfDefaultName;
+    const trimmedBuf = kept.length === preparePdfPages.length
+      ? preparePdfBuffer
+      : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
+    if (!trimmedBuf) return { ok: false };
+    const pdf = await pdfjsLib.getDocument(trimmedBuf).promise;
+    const numPages = pdf.numPages;
+    state.pages = [];
+    state.activeCanvasIdByPage = {};
+    for (let i = 0; i < numPages; i++) {
+      const pdfPage = await pdf.getPage(i + 1);
+      const origIdx = kept[i];
+      const label = preparePdfPages[origIdx]?.label || ('Page ' + (i + 1));
+      const canvasId = uid();
+      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+      state.activeCanvasIdByPage[i] = canvasId;
+    }
+    state.pdfBuffer = trimmedBuf;
+    state.pdfStoragePath = null;
+    state.currentProjectName = name;
+    state.currentPage = 0;
+    preparePdfPages = [];
+    preparePdfBuffer = null;
+    preparePdfKeptIndices = [];
+    preparePdfUndoStack = [];
+    return { ok: true, name };
+  }
+  document.getElementById('preparePdfDone').onclick = async () => {
+    const r = await commitPreparePdfToState();
+    if (!r.ok) { alert('Failed to build PDF.'); return; }
+    hideModal('preparePdfModal');
+    updateUI();
+    requestAnimationFrame(() => { fitZoom(); renderPdf(); });
+  };
+  document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
+    const r = await commitPreparePdfToState();
+    if (!r.ok) { alert('Failed to build PDF.'); return; }
+    hideModal('preparePdfModal');
+    updateUI();
+    requestAnimationFrame(() => { fitZoom(); renderPdf(); });
+    const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true });
+    if (!saveResult.ok) {
+      const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
+      showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
+    } else {
+      autoSaveDirty = false;
+    }
+  };
   document.getElementById('pdfInput').onchange = async (e) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -5975,6 +6275,15 @@
           listEl.appendChild(div);
         });
         showModal('loadAnnotationsModal');
+      } else if (startPageIdx === 0) {
+        openPreparePdfModal(state.pages, state.pdfBuffer, state.currentProjectName);
+        state.pages = [];
+        state.activeCanvasIdByPage = {};
+        state.pdfBuffer = null;
+        state.currentProjectName = 'Untitled';
+        state.currentPage = 0;
+        updateUI();
+        renderPdf();
       }
     }
   };
@@ -6639,7 +6948,7 @@
     state.sidebarReorderModeActive = true;
     document.getElementById('lineTypesList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     updateUI();
-    showToast('Drag by their left colors to re-order.', 2000);
+    showToast('Drag Counters and Lines by their left colors to re-order.', 3200);
   };
   document.getElementById('sidebarReorderFinish').onclick = () => {
     state.sidebarReorderModeActive = false;
@@ -6656,7 +6965,7 @@
     state.sidebarReorderModeActive = true;
     document.getElementById('countersList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     updateUI();
-    showToast('Drag by their left colors to re-order.', 2000);
+    showToast('Drag Counters and Lines by their left colors to re-order.', 3200);
   };
   function showZoomModal() {
     const maxVal = Math.round((state.maxZoom ?? 8) * 100);
@@ -6799,15 +7108,55 @@
     if (next !== undefined) { state.currentPage = next; fitZoom(); }
   };
 
-  function doAddCanvas() {
+  let pendingAddCanvasMode = 'new';
+
+  function openAddCanvasModal() {
+    if (!state.pages.length || state.isViewer) return;
+    const page = state.pages[state.currentPage];
+    const canvases = getPageCanvases(page);
+    const currentCanvas = getActiveCanvas(page);
+    const n = canvases.length + 1;
+    pendingAddCanvasMode = 'new';
+    const newBtn = document.getElementById('addCanvasModalNew');
+    const dupBtn = document.getElementById('addCanvasModalDuplicate');
+    const nameInput = document.getElementById('addCanvasModalName');
+    if (newBtn) newBtn.classList.add('selected');
+    if (dupBtn) dupBtn.classList.remove('selected');
+    nameInput.placeholder = 'Layer ' + n;
+    nameInput.value = '';
+    showModal('addCanvasModal');
+    nameInput.focus();
+  }
+
+  function updateAddCanvasModalForMode() {
+    const page = state.pages[state.currentPage];
+    const canvases = getPageCanvases(page);
+    const currentCanvas = getActiveCanvas(page);
+    const n = canvases.length + 1;
+    const nameInput = document.getElementById('addCanvasModalName');
+    if (pendingAddCanvasMode === 'duplicate') {
+      const baseName = currentCanvas?.name || 'Main';
+      nameInput.placeholder = 'Copy of ' + baseName;
+      nameInput.value = 'Copy of ' + baseName;
+    } else {
+      nameInput.placeholder = 'Layer ' + n;
+      nameInput.value = '';
+    }
+  }
+
+  function doAddCanvas(mode, name) {
     if (!state.pages.length || state.isViewer) return;
     const page = state.pages[state.currentPage];
     const canvases = getPageCanvases(page);
     const n = canvases.length + 1;
-    const name = prompt('Canvas name', 'Layer ' + n) || ('Layer ' + n);
-    if (!name.trim()) return;
+    const defaultNew = 'Layer ' + n;
+    const currentCanvas = getActiveCanvas(page);
+    const defaultDup = 'Copy of ' + (currentCanvas?.name || 'Main');
+    const finalName = (name || '').trim() || (mode === 'duplicate' ? defaultDup : defaultNew);
+    if (!finalName) return;
     pushUndoSnapshot();
-    const newCanvas = { id: uid(), name: name.trim(), annotations: makeAnnotations() };
+    const annotations = mode === 'duplicate' ? deepCopyAnnotations(getActiveAnnotations(page)) : makeAnnotations();
+    const newCanvas = { id: uid(), name: finalName, annotations };
     if (!page.canvases) page.canvases = [];
     page.canvases.push(newCanvas);
     state.activeCanvasIdByPage[state.currentPage] = newCanvas.id;
@@ -6815,7 +7164,43 @@
     renderPdf();
     updateUI();
   }
-  document.getElementById('addCanvasBtn').onclick = () => doAddCanvas();
+
+  document.getElementById('addCanvasBtn').onclick = () => openAddCanvasModal();
+
+  const addCanvasModalNew = document.getElementById('addCanvasModalNew');
+  const addCanvasModalDuplicate = document.getElementById('addCanvasModalDuplicate');
+  const addCanvasModalName = document.getElementById('addCanvasModalName');
+  const addCanvasModalCancel = document.getElementById('addCanvasModalCancel');
+  const addCanvasModalCreate = document.getElementById('addCanvasModalCreate');
+  if (addCanvasModalNew) {
+    addCanvasModalNew.onclick = () => {
+      pendingAddCanvasMode = 'new';
+      addCanvasModalNew.classList.add('selected');
+      if (addCanvasModalDuplicate) addCanvasModalDuplicate.classList.remove('selected');
+      updateAddCanvasModalForMode();
+    };
+  }
+  if (addCanvasModalDuplicate) {
+    addCanvasModalDuplicate.onclick = () => {
+      pendingAddCanvasMode = 'duplicate';
+      addCanvasModalDuplicate.classList.add('selected');
+      if (addCanvasModalNew) addCanvasModalNew.classList.remove('selected');
+      updateAddCanvasModalForMode();
+    };
+  }
+  if (addCanvasModalCancel) addCanvasModalCancel.onclick = () => hideModal('addCanvasModal');
+  if (addCanvasModalCreate) {
+    addCanvasModalCreate.onclick = () => {
+      const name = addCanvasModalName?.value?.trim() || addCanvasModalName?.placeholder || '';
+      hideModal('addCanvasModal');
+      doAddCanvas(pendingAddCanvasMode, name);
+    };
+  }
+  if (addCanvasModalName) {
+    addCanvasModalName.onkeydown = (e) => {
+      if (e.key === 'Enter') addCanvasModalCreate?.click();
+    };
+  }
 
   const canvasLayersBtn = document.getElementById('canvasLayersBtn');
   const canvasMenu = document.getElementById('canvasMenu');
@@ -6837,8 +7222,8 @@
   if (canvasMenuAdd && canvasMenu) {
     canvasMenuAdd.addEventListener('click', (e) => {
       e.stopPropagation();
-      doAddCanvas();
       canvasMenu.classList.remove('visible');
+      openAddCanvasModal();
     });
   }
 
@@ -8237,23 +8622,29 @@
       await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
     }
     async function doTurnIn() {
+      const tTurnIn = Date.now();
       if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
       writeTakeoffStateBackup();
+      const hadAutoSave = autoSaveDirty;
       if (autoSaveDirty) {
         const saveResult = await performAutoSave();
         if (!saveResult.ok) return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
         autoSaveDirty = false;
       }
       try {
+        const tCheckIn = Date.now();
         const { data, error } = await withTimeout(
           supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
           15000,
           'Turn in'
         );
+        perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId });
         const result = data || (error ? { ok: false, error: error.message } : { ok: false });
+        perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
         if (result.ok) return { ok: true };
         return { ok: false, error: result.error || 'Failed to turn in' };
       } catch (e) {
+        perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
         return { ok: false, error: (e && e.message) || 'Failed to turn in' };
       }
     }
@@ -9082,189 +9473,18 @@
           return;
         }
       }
-      saveInProgress = true;
       const origText = saveBtn.textContent;
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving…';
       hideModal('saveProjectModal');
       const includePdf = document.getElementById('saveProjectIncludePdf').checked;
-      const willUploadPdf = state.pdfBuffer && includePdf;
-      savePdfInProgress = willUploadPdf;
-      updateStatus();
-      const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
-      const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
-      const withTimeout = (promise, ms, label) =>
-        Promise.race([
-          promise,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
-          )
-        ]);
-      const data = {
-        version: 1,
-        counters: state.counters,
-        lineTypes: state.lineTypes,
-        iconNames: state.iconNames || {},
-        iconOrder: state.iconOrder || null,
-        customIconPaths: getUserCustomIcons(),
-        maxZoom: state.maxZoom ?? 8,
-        groups: state.groups || [],
-        pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
-        activeCanvasIdByPage: state.activeCanvasIdByPage || {}
-      };
-      const counts = getProjectCounts(data);
-      const dataJson = JSON.stringify(data);
-      const dataSize = dataJson.length;
-      const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
-      log('Starting save', { userId: user.id, name, hasPdfBuffer: !!state.pdfBuffer, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
-      try {
-        let pdfPath = state.pdfStoragePath;
-        let cachePdfHash = null;
-        if (willUploadPdf) {
-          let projectId = state.currentProjectId;
-          const pdfSize = state.pdfBuffer.byteLength;
-          const sizeBytes = dataSize + pdfSize;
-          let skipUpload = false;
-          if (projectId) {
-            const { data: row } = await supabase.from('projects').select('pdf_hash').eq('id', projectId).single();
-            const newHash = await sha256Hex(state.pdfBuffer);
-            if (row?.pdf_hash === newHash) {
-              skipUpload = true;
-              cachePdfHash = newHash;
-              log('PDF unchanged (hash match), skipping upload');
-            }
-          }
-          if (!projectId) {
-            setProgress('Uploading project...');
-            await tick();
-            log('Inserting project...');
-            const t0 = Date.now();
-            const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
-            log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
-            if (error) throw error;
-            projectId = row?.id;
-            if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-            state.currentProjectId = projectId;
-            subscribeToProjectCheckoutChanges(projectId);
-            state.projectOwnerId = user.id;
-            state.loadedViaViewLink = false;
-            state.isViewer = false;
-            state.canCheckOut = true;
-            state.checkedOutBy = null;
-            state.checkedOutAt = null;
-            state.checkedOutEmail = null;
-            await tick();
-          }
-          if (!skipUpload) {
-            setProgress('Uploading project...');
-            await tick();
-            const storagePath = user.id + '/' + projectId + '/document.pdf';
-            log('Uploading PDF...', { path: storagePath, size: state.pdfBuffer.byteLength });
-            const t1 = Date.now();
-            const { error: uploadErr } = await withTimeout(supabase.storage.from('pdfs').upload(storagePath, state.pdfBuffer, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
-            log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
-            if (uploadErr) throw uploadErr;
-            pdfPath = storagePath;
-            await tick();
-            const newHash = await sha256Hex(state.pdfBuffer);
-            cachePdfHash = newHash;
-            setProgress('Uploading project...');
-            await tick();
-            log('Updating project with pdf_path and pdf_hash...');
-            const t2 = Date.now();
-            const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-            if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
-            log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
-            if (updateErr) throw updateErr;
-          } else {
-            setProgress('Uploading project...');
-            await tick();
-            log('Updating project data (PDF unchanged)...');
-            const t2 = Date.now();
-            const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-            if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
-            log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
-            if (updateErr) throw updateErr;
-          }
-        } else if (state.currentProjectId) {
-          setProgress('Uploading project...');
-          await tick();
-          let sizeBytes = dataSize;
-          if (state.pdfStoragePath) {
-            try {
-              const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
-              const sz = info && (info.metadata?.size ?? info.size);
-              if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-            } catch (_) { /* ignore */ }
-          }
-          log('Updating existing project (no PDF)...');
-          const t3 = Date.now();
-          const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-          if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-          const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
-          log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
-          if (error) throw error;
-        } else {
-          setProgress('Uploading project...');
-          await tick();
-          log('Inserting project (no PDF)...');
-          const t4 = Date.now();
-          const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
-          log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
-          if (error) throw error;
-          const projectId = row?.id;
-          if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-          state.currentProjectId = projectId;
-          subscribeToProjectCheckoutChanges(projectId);
-          state.projectOwnerId = user.id;
-          state.loadedViaViewLink = false;
-          state.isViewer = false;
-          state.canCheckOut = true;
-          state.checkedOutBy = null;
-          state.checkedOutAt = null;
-          state.checkedOutEmail = null;
-        }
-        state.currentProjectName = name;
-        if (willUploadPdf && state.pdfBuffer && state.currentProjectId && cachePdfHash) {
-          pdfCachePut(state.currentProjectId, new Blob([state.pdfBuffer]), cachePdfHash);
-        }
-        state.pdfBuffer = null;
-        if (pdfPath) state.pdfStoragePath = pdfPath;
-        if (cachePdfHash) state.pdfHash = cachePdfHash;
-        lastSaveIncludedPdf = willUploadPdf;
-        state.lastSavedAt = new Date().toISOString();
-        if (SUPABASE_ENABLED && state.currentProjectId && user) {
-          try {
-            localStorage.setItem('clickcount-last-project', JSON.stringify({
-              projectId: state.currentProjectId,
-              projectName: state.currentProjectName || 'Untitled',
-              pdfStoragePath: state.pdfStoragePath || null,
-              pdfHash: state.pdfHash || null,
-              userId: user.id
-            }));
-          } catch (_) {}
-        }
-        log('Save complete');
-        saveProgressMessage = '';
-        updateUI();
-      } catch (e) {
-        console.error('[Save] Failed:', e);
-        log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
-        window.lastSaveError = e;
-        try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
-        const errMsg = (e?.message) || (e?.details) || (e?.hint) || String(e) || 'Save failed';
+      const result = await performSaveProjectToCloud({ name, includePdf });
+      if (!result.ok) {
+        const errMsg = (result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error) || 'Save failed';
         showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
-        saveProgressMessage = '';
-        updateUI();
-      } finally {
-        saveInProgress = false;
-        savePdfInProgress = false;
-        saveProgressMessage = '';
-        saveBtn.disabled = false;
-        saveBtn.textContent = origText;
       }
+      saveBtn.disabled = false;
+      saveBtn.textContent = origText;
     };
     document.getElementById('loadProjectBtn').onclick = () => openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectBtnSidebar').onclick = () => openLoadProjectModalOrPromptSave();
@@ -10135,11 +10355,13 @@
       else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
       else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }
+      else if (document.getElementById('preparePdfModal').classList.contains('visible')) { if (typeof closePreparePdfModal === 'function') closePreparePdfModal(); }
       else if (document.getElementById('summaryCountDetailModal').classList.contains('visible')) { hideModal('summaryCountDetailModal'); }
       else if (document.getElementById('viewLinkEmailModal').classList.contains('visible')) {
         if (typeof viewLinkEmailResolve === 'function') { viewLinkEmailResolve(null); viewLinkEmailResolve = null; }
         hideModal('viewLinkEmailModal');
       }
+      else if (document.getElementById('addCanvasModal').classList.contains('visible')) { hideModal('addCanvasModal'); }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       else if (state.tool === TOOL.LINE) {
@@ -10207,6 +10429,192 @@
     } catch (_) {}
   }
 
+  async function performSaveProjectToCloud(opts) {
+    const { name, includePdf } = opts;
+    const user = state.supabaseSession?.user;
+    if (!user || !supabase) return { ok: false, error: new Error('Not signed in') };
+    const willUploadPdf = state.pdfBuffer && includePdf;
+    saveInProgress = true;
+    savePdfInProgress = willUploadPdf;
+    updateStatus();
+    const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
+    const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+    const saveWithTimeout = (promise, ms, label) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
+        )
+      ]);
+    const data = {
+      version: 1,
+      counters: state.counters,
+      lineTypes: state.lineTypes,
+      iconNames: state.iconNames || {},
+      iconOrder: state.iconOrder || null,
+      customIconPaths: getUserCustomIcons(),
+      maxZoom: state.maxZoom ?? 8,
+      groups: state.groups || [],
+      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
+      activeCanvasIdByPage: state.activeCanvasIdByPage || {}
+    };
+    const counts = getProjectCounts(data);
+    const tJson = Date.now();
+    const dataJson = JSON.stringify(data);
+    perfLog('Save JSON.stringify', Date.now() - tJson, { size: dataJson.length });
+    const dataSize = dataJson.length;
+    const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
+    log('Starting save', { userId: user.id, name, hasPdfBuffer: !!state.pdfBuffer, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
+    try {
+      let pdfPath = state.pdfStoragePath;
+      let cachePdfHash = null;
+      if (willUploadPdf) {
+        let projectId = state.currentProjectId;
+        const pdfSize = state.pdfBuffer.byteLength;
+        const sizeBytes = dataSize + pdfSize;
+        let skipUpload = false;
+        if (projectId) {
+          const tSelect = Date.now();
+          const { data: row } = await supabase.from('projects').select('pdf_hash').eq('id', projectId).single();
+          perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
+          const newHash = await sha256Hex(state.pdfBuffer);
+          if (row?.pdf_hash === newHash) {
+            skipUpload = true;
+            cachePdfHash = newHash;
+            log('PDF unchanged (hash match), skipping upload');
+          }
+        }
+        if (!projectId) {
+          setProgress('Uploading project...');
+          await tick();
+          log('Inserting project...');
+          const t0 = Date.now();
+          const { data: row, error } = await saveWithTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+          log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
+          if (error) throw error;
+          projectId = row?.id;
+          if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
+          state.currentProjectId = projectId;
+          subscribeToProjectCheckoutChanges(projectId);
+          state.projectOwnerId = user.id;
+          state.loadedViaViewLink = false;
+          state.isViewer = false;
+          state.canCheckOut = true;
+          state.checkedOutBy = null;
+          state.checkedOutAt = null;
+          state.checkedOutEmail = null;
+          await tick();
+        }
+        if (!skipUpload) {
+          setProgress('Uploading project...');
+          await tick();
+          const storagePath = user.id + '/' + projectId + '/document.pdf';
+          log('Uploading PDF...', { path: storagePath, size: state.pdfBuffer.byteLength });
+          const t1 = Date.now();
+          const { error: uploadErr } = await saveWithTimeout(supabase.storage.from('pdfs').upload(storagePath, state.pdfBuffer, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
+          log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
+          if (uploadErr) throw uploadErr;
+          pdfPath = storagePath;
+          await tick();
+          const newHash = await sha256Hex(state.pdfBuffer);
+          cachePdfHash = newHash;
+          setProgress('Uploading project...');
+          await tick();
+          log('Updating project with pdf_path and pdf_hash...');
+          const t2 = Date.now();
+          const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+          if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+          const { error: updateErr } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+          log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
+          if (updateErr) throw updateErr;
+        } else {
+          setProgress('Uploading project...');
+          await tick();
+          log('Updating project data (PDF unchanged)...');
+          const t2 = Date.now();
+          const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+          if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+          const { error: updateErr } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+          log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
+          if (updateErr) throw updateErr;
+        }
+      } else if (state.currentProjectId) {
+        setProgress('Uploading project...');
+        await tick();
+        let sizeBytes = dataSize;
+        if (state.pdfStoragePath) {
+          try {
+            const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
+            const sz = info && (info.metadata?.size ?? info.size);
+            if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
+          } catch (_) { /* ignore */ }
+        }
+        log('Updating existing project (no PDF)...');
+        const t3 = Date.now();
+        const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+        if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+        const { error } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+        log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
+        if (error) throw error;
+      } else {
+        setProgress('Uploading project...');
+        await tick();
+        log('Inserting project (no PDF)...');
+        const t4 = Date.now();
+        const { data: row, error } = await saveWithTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+        log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
+        if (error) throw error;
+        const projectId = row?.id;
+        if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
+        state.currentProjectId = projectId;
+        subscribeToProjectCheckoutChanges(projectId);
+        state.projectOwnerId = user.id;
+        state.loadedViaViewLink = false;
+        state.isViewer = false;
+        state.canCheckOut = true;
+        state.checkedOutBy = null;
+        state.checkedOutAt = null;
+        state.checkedOutEmail = null;
+      }
+      state.currentProjectName = name;
+      if (willUploadPdf && state.pdfBuffer && state.currentProjectId && cachePdfHash) {
+        pdfCachePut(state.currentProjectId, new Blob([state.pdfBuffer]), cachePdfHash);
+      }
+      state.pdfBuffer = null;
+      if (pdfPath) state.pdfStoragePath = pdfPath;
+      if (cachePdfHash) state.pdfHash = cachePdfHash;
+      lastSaveIncludedPdf = willUploadPdf;
+      state.lastSavedAt = new Date().toISOString();
+      if (SUPABASE_ENABLED && state.currentProjectId && user) {
+        try {
+          localStorage.setItem('clickcount-last-project', JSON.stringify({
+            projectId: state.currentProjectId,
+            projectName: state.currentProjectName || 'Untitled',
+            pdfStoragePath: state.pdfStoragePath || null,
+            pdfHash: state.pdfHash || null,
+            userId: user.id
+          }));
+        } catch (_) {}
+      }
+      log('Save complete');
+      saveProgressMessage = '';
+      updateUI();
+      return { ok: true };
+    } catch (e) {
+      console.error('[Save] Failed:', e);
+      log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
+      window.lastSaveError = e;
+      try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
+      saveProgressMessage = '';
+      updateUI();
+      return { ok: false, error: e };
+    } finally {
+      saveInProgress = false;
+      savePdfInProgress = false;
+      saveProgressMessage = '';
+    }
+  }
+
   async function performAutoSave() {
     if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return { ok: false, error: null };
     if (saveInProgress) return { ok: false, error: null };
@@ -10217,6 +10625,7 @@
       const checkedAt = new Date(state.checkedOutAt).getTime();
       if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) return { ok: false, error: null };
     }
+    const t0 = Date.now();
     const data = {
       version: 1,
       counters: state.counters,
@@ -10231,20 +10640,26 @@
     };
     const counts = getProjectCounts(data);
     const dataSize = JSON.stringify(data).length;
+    perfLog('performAutoSave JSON.stringify', Date.now() - t0, { dataSize, pages: state.pages.length });
     const name = state.currentProjectName || 'Untitled';
+    const tTotal = Date.now();
     try {
       if (state.currentProjectId) {
         let sizeBytes = dataSize;
         if (state.pdfStoragePath) {
           try {
+            const t1 = Date.now();
             const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
+            perfLog('performAutoSave storage.info', Date.now() - t1, { path: state.pdfStoragePath });
             const sz = info && (info.metadata?.size ?? info.size);
             if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
           } catch (_) { /* ignore */ }
         }
         const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
         if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+        const t3 = Date.now();
         const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+        perfLog('performAutoSave projects.update', Date.now() - t3, { projectId: state.currentProjectId });
         if (error) throw error;
       } else {
         let sizeBytes = dataSize;
@@ -10255,7 +10670,9 @@
         }
         const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
         if (pdfHash) insertData.pdf_hash = pdfHash;
+        const t4 = Date.now();
         const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
+        perfLog('performAutoSave projects.insert', Date.now() - t4, { dataSize });
         if (error) throw error;
         const projectId = row?.id;
         if (!projectId) throw new Error('Project created but no ID returned');
@@ -10276,6 +10693,7 @@
         } catch (_) {}
       }
       updateUI();
+      perfLog('performAutoSave total', Date.now() - tTotal);
       return { ok: true };
     } catch (e) {
       console.error('[Auto-save] Failed:', e);

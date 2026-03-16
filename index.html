@@ -3575,14 +3575,16 @@
         mode = '';
       }
       if (squareEl) {
+        const pdfSynced = lastSaveIncludedPdf || !!state.pdfStoragePath;
         if (savePdfInProgress) { squareEl.className = 'square square-yellow'; squareEl.title = 'PDF sync: Uploading PDF...'; }
-        else if (lastSaveIncludedPdf) { squareEl.className = 'square square-green'; squareEl.title = 'PDF sync: Synced with Cloud'; }
+        else if (pdfSynced) { squareEl.className = 'square square-green'; squareEl.title = 'PDF sync: Synced with Cloud'; }
         else if (!state.pdfBuffer || !state.pages.length) { squareEl.className = 'square square-grey'; squareEl.title = 'PDF sync: No PDF in project'; }
         else { squareEl.className = 'square square-red'; squareEl.title = 'PDF sync: PDF not saved to cloud'; }
       }
       if (pdfLabelEl) {
+        const pdfSyncedLabel = lastSaveIncludedPdf || !!state.pdfStoragePath;
         if (savePdfInProgress) pdfLabelEl.textContent = 'PDF Uploading...';
-        else if (lastSaveIncludedPdf) pdfLabelEl.textContent = 'PDF Synced with Cloud';
+        else if (pdfSyncedLabel) pdfLabelEl.textContent = 'PDF Synced with Cloud';
         else if (!state.pdfBuffer || !state.pages.length) pdfLabelEl.textContent = 'PDF - Upload PDF to start a project';
         else pdfLabelEl.textContent = 'PDF: Not saved to cloud';
       }
@@ -9347,7 +9349,40 @@
                 const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
                 if (dlErr) throw dlErr;
                 if (!blob || blob.size === 0) {
-                  throw new Error('The PDF in cloud storage is empty (0 bytes). The file may not have uploaded correctly. Try re-uploading via Project Settings > Add additional PDF pages.');
+                  /* PDF in storage is empty – treat as canvas-only and offer upload */
+                  state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
+                  state.pdfStoragePath = null;
+                  state.pdfBuffer = null;
+                  state.pages = [];
+                  state.counters = Array.isArray(d.counters) ? d.counters : [];
+                  state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+                  state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+                  if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+                  if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+                  if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+                  reconcileOrphanedCountersAndLineTypes();
+                  clearUndoStacks();
+                  state.currentProjectId = proj.id;
+                  state.currentProjectName = proj.name || 'Untitled';
+                  state.pdfHash = null;
+                  lastSaveIncludedPdf = false;
+                  state.lastSavedAt = proj.updated_at || null;
+                  state.currentPage = 0;
+                  autoSaveDirty = false;
+                  lastModifiedAt = 0;
+                  state.checkedOutBy = proj.checked_out_by || null;
+                  state.checkedOutAt = proj.checked_out_at || null;
+                  state.checkedOutEmail = proj.checked_out_email || null;
+                  state.loadedViaViewLink = false;
+                  state.isViewer = !proj.can_edit;
+                  state.canCheckOut = proj.can_check_out || false;
+                  state.projectOwnerId = proj.user_id || null;
+                  subscribeToProjectCheckoutChanges(proj.id);
+                  hideModal('loadProjectModal');
+                  state.sidebarReorderModeActive = false;
+                  showToast('This project\'s PDF is empty or missing. Upload your PDF to load the annotations.', 5000);
+                  document.getElementById('pdfInput').click();
+                  return;
                 }
                 buf = await blob.arrayBuffer();
                 if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);

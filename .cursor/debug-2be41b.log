@@ -1,0 +1,8 @@
+{"sessionId":"2be41b","location":"index.html:loadTestPdf","message":"buf after arrayBuffer","data":{"byteLength":1016315},"hypothesisId":"A","timestamp":1773693590888}
+{"sessionId":"2be41b","location":"index.html:loadTestPdf","message":"buf after getDocument","data":{"byteLength":0},"hypothesisId":"A","timestamp":1773693590937}
+{"sessionId":"2be41b","location":"index.html:openPreparePdfModal","message":"buffer received","data":{"byteLength":1016315},"hypothesisId":"B","timestamp":1773693590938}
+{"sessionId":"2be41b","location":"index.html:renderPreparePdfPreview","message":"preparePdfBuffer bytes","data":{"bytes":1016315},"hypothesisId":"C","timestamp":1773693590938}
+{"sessionId":"2be41b","location":"index.html:loadTestPdf","message":"buf after arrayBuffer","data":{"byteLength":1016315},"hypothesisId":"A","timestamp":1773693598370}
+{"sessionId":"2be41b","location":"index.html:loadTestPdf","message":"buf after getDocument","data":{"byteLength":0},"hypothesisId":"A","timestamp":1773693598420}
+{"sessionId":"2be41b","location":"index.html:openPreparePdfModal","message":"buffer received","data":{"byteLength":1016315},"hypothesisId":"B","timestamp":1773693598421}
+{"sessionId":"2be41b","location":"index.html:renderPreparePdfPreview","message":"preparePdfBuffer bytes","data":{"bytes":1016315},"hypothesisId":"C","timestamp":1773693598422}

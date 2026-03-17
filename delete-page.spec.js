@@ -4,10 +4,9 @@ const path = require('path');
 
 test.describe('PDF page delete', () => {
   test('deleting a page updates sidebar and PDF view', async ({ page }) => {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3456';
     const pdfPath = path.join(__dirname, 'test-2pages.pdf');
 
-    await page.goto(baseUrl);
+    await page.goto('/');
 
     // Upload PDF via file input
     const fileInput = page.locator('#pdfInput');

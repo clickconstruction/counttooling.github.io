@@ -1,10 +1,23 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { ensureSignedInWithProject } = require('./cloud-test-helpers');
+
+let cloudSetup = { ok: false, skipReason: '' };
 
 test.describe('Load Project with empty PDF in storage', () => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    cloudSetup = await ensureSignedInWithProject(page);
+    await page.close();
+  });
+
   test('empty PDF triggers upload prompt instead of error', async ({ page }) => {
+    if (!cloudSetup.ok) {
+      test.skip(true, cloudSetup.skipReason);
+      return;
+    }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
+    await page.goto('/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     // Intercept Supabase storage downloads and return 0-byte response
@@ -29,7 +42,7 @@ test.describe('Load Project with empty PDF in storage', () => {
     ]);
 
     if (await authModal.isVisible()) {
-      test.skip(true, 'User not signed in - sign in to test empty PDF flow');
+      test.skip(true, 'Dev auth not configured or failed; set DEV_AUTH_EMAIL and DEV_AUTH_PASSWORD in config');
       return;
     }
 
@@ -38,7 +51,7 @@ test.describe('Load Project with empty PDF in storage', () => {
     const projectRows = page.locator('#loadProjectList .load-project-item');
     const count = await projectRows.count();
     if (count === 0) {
-      test.skip(true, 'No projects to test - create a project first');
+      test.skip(true, 'No projects to test; run test:cloud after creating a project via Load test PDF + Save');
       return;
     }
 

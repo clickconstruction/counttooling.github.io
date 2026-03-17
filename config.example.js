@@ -6,3 +6,6 @@ window.SUPABASE_URL = 'https://your-project.supabase.co';
 window.SUPABASE_ANON_KEY = 'your-anon-key';
 // Optional: allowed domains for view links (default: clickplumbing.com); Edge Function env overrides
 // window.VIEW_LINK_ALLOWED_DOMAINS = 'clickplumbing.com';
+// Optional: dev-only auth bypass (localhost only); create a test user in Supabase first
+// window.DEV_AUTH_EMAIL = 'test@clickplumbing.com';
+// window.DEV_AUTH_PASSWORD = 'your-test-password';

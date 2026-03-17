@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
+    "precloudtest": "node scripts/generate-config.js",
+    "test:cloud": "npm run precloudtest && playwright test load-project-delete.spec.js load-project-empty-pdf.spec.js",
     "test:delete-page": "playwright test delete-page.spec.js",
     "test:load-project-delete": "playwright test load-project-delete.spec.js",
-    "test:load-project-empty-pdf": "playwright test load-project-empty-pdf.spec.js"
+    "test:load-project-empty-pdf": "playwright test load-project-empty-pdf.spec.js",
+    "test:upload-then-save": "playwright test upload-then-save.spec.js",
+    "test:indexeddb-backup": "playwright test indexeddb-backup.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0"

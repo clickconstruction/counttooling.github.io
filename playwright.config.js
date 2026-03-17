@@ -9,7 +9,7 @@ module.exports = defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3456',
+    baseURL: process.env.BASE_URL || 'http://localhost:3456',
     trace: 'on-first-retry',
   },
   projects: [

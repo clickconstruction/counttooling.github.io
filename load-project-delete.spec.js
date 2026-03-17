@@ -1,10 +1,23 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { ensureSignedInWithProject } = require('./cloud-test-helpers');
+
+let cloudSetup = { ok: false, skipReason: '' };
 
 test.describe('Load Project delete own projects', () => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    cloudSetup = await ensureSignedInWithProject(page);
+    await page.close();
+  });
+
   test('delete button appears on owned projects in Load Project modal', async ({ page }) => {
+    if (!cloudSetup.ok) {
+      test.skip(true, cloudSetup.skipReason);
+      return;
+    }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
+    await page.goto('/?devAuth=1');
 
     // Wait for app to load
     await page.waitForLoadState('networkidle');
@@ -30,7 +43,7 @@ test.describe('Load Project delete own projects', () => {
     ]);
 
     if (await authModal.isVisible()) {
-      test.skip(true, 'User not signed in - sign in to test Load Project delete');
+      test.skip(true, 'Dev auth not configured or failed; set DEV_AUTH_EMAIL and DEV_AUTH_PASSWORD in config');
       return;
     }
 
@@ -41,7 +54,7 @@ test.describe('Load Project delete own projects', () => {
     const count = await projectRows.count();
 
     if (count === 0) {
-      test.skip(true, 'No projects to test - create a project first');
+      test.skip(true, 'No projects to test; run test:cloud after creating a project via Load test PDF + Save');
       return;
     }
 

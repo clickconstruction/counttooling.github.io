@@ -29,8 +29,12 @@
     return state.pages[0]?.scale ?? null;
   }
 
-  function buildReportHtml() {
+  function buildReportHtml(options = {}) {
     if (!window.state || !state.pages || !state.pages.length) return '';
+
+    const pageIndices = options.pageIndices ?? state.pages.map((_, i) => i);
+    const getAnn = options.getAnnotations ?? ((page) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations());
 
     const styles = `
       body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; color: #000; margin: 2em; }
@@ -57,8 +61,10 @@
 
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
-    state.pages.forEach((page, i) => {
-      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
+    pageIndices.forEach((idx) => {
+      const page = state.pages[idx];
+      const i = idx;
+      const ann = getAnn(page, i);
       (state.counters || []).forEach(c => {
         const markers = (ann.counterMarkers?.[c.id] || []).filter(m => true);
         markers.forEach(m => {
@@ -113,7 +119,7 @@
         r.pages.forEach(p => { if (!allPagesWithLines.includes(p)) allPagesWithLines.push(p); });
       });
     });
-    const scale = pickScaleForLineType(allPagesWithLines.length ? allPagesWithLines : state.pages.map((_, i) => i + 1));
+    const scale = pickScaleForLineType(allPagesWithLines.length ? allPagesWithLines : pageIndices.map(i => i + 1));
     const totalLengthStr = scale
       ? (totalLengthPdfPts / scale.pixelsPerUnit).toFixed(2) + ' ' + scale.unit
       : (totalLengthPdfPts > 0 ? Math.round(totalLengthPdfPts) + ' px' : '0');
@@ -126,8 +132,10 @@
       html += '<p class="report-totals">' + escapeHtml(parts.join(' · ')) + '</p>';
     }
 
-    state.pages.forEach((page, i) => {
-      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
+    pageIndices.forEach((idx) => {
+      const page = state.pages[idx];
+      const i = idx;
+      const ann = getAnn(page, i);
       const label = escapeHtml(page.label || 'Page ' + (i + 1));
       html += '<section>';
       html += '<h2 class="page-header">Page ' + (i + 1) + ': ' + label + '</h2>';
@@ -241,14 +249,19 @@
     return html;
   }
 
-  function getPipeToolingSummary() {
+  function getPipeToolingSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
+    const opts = options || {};
+    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
+    const getAnn = opts.getAnnotations ?? ((page) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations());
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
-    state.pages.forEach((page, i) => {
-      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
+    pageIndices.forEach((i) => {
+      const page = state.pages[i];
+      const ann = getAnn(page);
       (state.counters || []).forEach(c => {
         (ann.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -301,14 +314,19 @@
     return lines.join('\n');
   }
 
-  function getEmailTextSummary() {
+  function getEmailTextSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
+    const opts = options || {};
+    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
+    const getAnn = opts.getAnnotations ?? ((page) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations());
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
-    state.pages.forEach((page, i) => {
-      const ann = (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations();
+    pageIndices.forEach((i) => {
+      const page = state.pages[i];
+      const ann = getAnn(page);
       (state.counters || []).forEach(c => {
         (ann.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -381,12 +399,28 @@
     return lines.join('\n');
   }
 
-  function printReport() {
+  function printReport(mode) {
     if (!window.state || !state.pages || !state.pages.length) {
       alert('No pages loaded. Upload a PDF first.');
       return;
     }
-    const html = buildReportHtml();
+    const defaultGetAnn = undefined;
+    const mergedGetAnn = typeof window.getMergedAnnotationsForPage === 'function'
+      ? (page) => window.getMergedAnnotationsForPage(page)
+      : defaultGetAnn;
+    let options = {};
+    if (mode === 'this-canvas') {
+      options = { pageIndices: [state.currentPage], getAnnotations: defaultGetAnn };
+    } else if (mode === 'all-canvases-on-page') {
+      options = { pageIndices: [state.currentPage], getAnnotations: mergedGetAnn };
+    } else if (mode === 'all-pages-current-canvas') {
+      options = {};
+    } else if (mode === 'all-pages-canvases') {
+      options = { getAnnotations: mergedGetAnn };
+    } else {
+      options = {};
+    }
+    const html = buildReportHtml(options);
     const w = window.open('', '_blank');
     if (!w) {
       alert('Popup blocked. Please allow popups for this site.');
@@ -402,6 +436,4 @@
   window.printReport = printReport;
   window.getPipeToolingSummary = getPipeToolingSummary;
   window.getEmailTextSummary = getEmailTextSummary;
-
-  document.getElementById('printReport').addEventListener('click', printReport);
 })();

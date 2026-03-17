@@ -82,6 +82,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **029_admin_check_out_project.sql** — Allows admins to check out any project. Updates `check_out_project` RPC to include admin permission (aligns with `list_accessible_projects`).
 
+**030_list_accessible_projects_counts.sql** — Extends `list_accessible_projects` to return `counter_count` and `line_count`. Used by Load Project modal for counts badge (X cnt · Y ln).
+
 ## 3. Deploy Edge Functions
 
 Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gateway does not reject requests; each function validates auth in-code via `getUser()`.
@@ -131,7 +133,7 @@ on conflict (user_id) do update set is_admin = true;
 
 ## 5. Configure the App
 
-1. Create `config.js` from `config.js.example` (or create it with `window.SUPABASE_URL` and `window.SUPABASE_ANON_KEY`)
+1. Create `config.js` from `config.example.js` (or create it with `window.SUPABASE_URL` and `window.SUPABASE_ANON_KEY`)
 2. Add your Supabase URL and anon key
 3. Ensure `<script src="config.js"></script>` is in `index.html` head, before the pdf.js script
 
@@ -158,6 +160,29 @@ on conflict (user_id) do update set is_admin = true;
 - **View links** — In Share modal, view links section: Create view link (copy URL), list links, Access log (email, timestamp), Revoke. Recipients open the link, enter email (clickplumbing.com domain required), view plans. No sign-in. Cached in IndexedDB for repeat mobile visits.
 - **Save Artboard** — In User Settings, save your counters and line types to your account. They are restored when you sign in on any device.
 - **Load from Cloud** — In User Settings, replace your current artboard with the saved version from your account.
+- **Download PDF** — Project Settings "Download PDF" downloads the current project's PDF as-is. Prepare PDF modal "Download" downloads the edited PDF (with page deletions applied).
+
+## Dev / Testing (localhost only)
+
+- **Load test PDF** — In Project Settings > Advanced, a "Load test PDF" button fetches a sample PDF and opens the Prepare PDF modal. Visible only when served on localhost or 127.0.0.1.
+- **Dev auth bypass** — For automated testing: add `DEV_AUTH_EMAIL` and `DEV_AUTH_PASSWORD` to `config.js` (create a test user in Supabase first). Then either:
+  - Navigate to `http://localhost:PORT?devAuth=1` to auto sign-in on load, or
+  - Open Sign In and click "Sign in as test user".
+
+## CI / Automated Testing
+
+Cloud tests (Load Project delete, empty PDF flow) require Supabase and a test user. To run them:
+
+1. **Create a test user** in Supabase Dashboard > Authentication > Users (or via Add User as admin).
+2. **Set environment variables** as secrets in your CI:
+   - `SUPABASE_URL` — Your Supabase project URL
+   - `SUPABASE_ANON_KEY` — Your anon key
+   - `DEV_AUTH_EMAIL` — Test user email
+   - `DEV_AUTH_PASSWORD` — Test user password
+3. **Run** `npm run test:cloud` — This runs `precloudtest` (generates `config.js` from env) then the load-project specs.
+4. **Optional:** `BASE_URL` — Defaults to `http://localhost:3456`; override if your dev server uses a different URL.
+
+Tests skip gracefully when Supabase or dev auth is not configured.
 
 ## Phase Status
 

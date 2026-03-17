@@ -290,6 +290,7 @@
     .canvas-layers-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .canvas-layers-btn.canvas-layers-multi { color: var(--yellow); }
     .canvas-current-name { font-size: 0.85rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+    .canvas-index-display { font-size: 0.8rem; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; flex: 1; justify-content: flex-end; }
     .zoom-bar button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
     .zoom-bar button:disabled { opacity: 0.5; cursor: default; }
@@ -434,11 +435,16 @@
     .prepare-pdf-controls button.prepare-pdf-delete:hover:not(:disabled) { background: rgba(232,84,71,0.25); border-color: var(--red); }
     .prepare-pdf-controls button.prepare-pdf-undo { background: transparent; border-color: var(--border); color: var(--text2); }
     .prepare-pdf-controls button.prepare-pdf-undo:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+    .prepare-pdf-controls button.prepare-pdf-rotate { background: transparent; border-color: var(--border); color: var(--text2); }
+    .prepare-pdf-controls button.prepare-pdf-rotate:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
     .prepare-pdf-controls .prepare-pdf-nav { display: flex; gap: 4px; }
     .prepare-pdf-controls .prepare-pdf-nav button { flex: 1; padding: 10px 14px; min-width: 44px; }
     .prepare-pdf-controls .prepare-pdf-nav button:hover:not(:disabled) { background: rgba(232,184,74,0.15); border-color: var(--accent); color: var(--accent); }
     #preparePdfModal .actions.prepare-pdf-actions { justify-content: space-between; }
     #preparePdfModal .prepare-pdf-actions-left { display: flex; gap: 12px; }
+    #preparePdfModal .prepare-pdf-actions-right { display: flex; gap: 12px; }
+    #preparePdfModal .actions #preparePdfDownload { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    #preparePdfModal .actions #preparePdfDownload:hover { background: var(--surface3); }
     .prepare-pdf-name-tabs { display: flex; gap: 16px; margin-bottom: 8px; }
     .prepare-pdf-name-tab { font-size: 0.9rem; color: var(--text2); cursor: pointer; user-select: none; padding: 2px 0; }
     .prepare-pdf-name-tab:hover { color: var(--text); }
@@ -457,6 +463,7 @@
     .macros-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }
     .macros-table kbd { display: inline-block; padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 0.9rem; }
     .macros-table .macros-icon-cell { width: 28px; text-align: center; vertical-align: middle; color: var(--text2); }
+    .macros-table .macros-section-header { padding-top: 12px; padding-bottom: 4px; font-size: 0.8rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
     .macros-table .macros-icon { display: inline-block; width: 18px; height: 18px; vertical-align: middle; }
     .macros-table .macros-icon-cell span.macros-icon { line-height: 18px; text-align: center; }
     .macros-modal-body { margin-top: 8px; max-height: 60vh; overflow-y: auto; position: relative; }
@@ -550,12 +557,24 @@
     .manage-icons-list .manage-icon-row .icon-select-cb { flex-shrink: 0; width: 20px; height: 20px; cursor: pointer; }
     .manage-icons-list .manage-icon-row .manage-icon-custom-name { flex: 1; min-width: 0; padding: 8px 0; color: var(--text2); font-size: 0.95rem; }
     #manageProjectsList { max-height: 50vh; }
-    .specific-pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; max-height: 50vh; overflow-y: auto; margin-bottom: 16px; }
-    .specific-page-card { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
+    .specific-pages-carousel { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .specific-pages-nav { flex-shrink: 0; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; line-height: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+    .specific-pages-nav:hover { background: var(--surface3); border-color: var(--border2); }
+    .specific-pages-nav:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+    .specific-pages-grid { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 16px; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; flex: 1; min-width: 0; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--border2) var(--surface2); }
+    .specific-pages-grid::-webkit-scrollbar { height: 8px; }
+    .specific-pages-grid::-webkit-scrollbar-track { background: var(--surface2); border-radius: 4px; }
+    .specific-pages-grid::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+    .specific-page-card { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; flex: 0 0 auto; width: 140px; scroll-snap-align: start; }
     .specific-page-thumb { width: 100%; height: 120px; object-fit: contain; background: #fff; border-radius: 4px; border: 1px solid var(--border); }
     .specific-page-card select { width: 100%; padding: 6px 8px; font-size: 0.85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text); }
+    .specific-page-canvas-mode { font-size: 0.8rem; }
     .specific-page-label { font-size: 0.85rem; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .specific-pages-none-msg { color: var(--text2); }
+    #specificPagesModal .modal-card h2 { margin-bottom: 8px; }
+    #specificPagesModal .specific-pages-intro { margin-bottom: 6px; }
+    .specific-pages-scale-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 8px; }
+    .specific-pages-scale-row .form-group { flex: 1; min-width: 140px; }
     .specific-pages-bulk-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
     .specific-pages-bulk-actions button {
       padding: 10px 16px;
@@ -577,6 +596,7 @@
     .specific-pages-bulk-actions button.bulk-marked:hover { border-color: var(--green); background: rgba(71,200,142,0.15); }
     .specific-pages-bulk-actions button.bulk-unmarked:hover { border-color: var(--blue); background: rgba(74,158,255,0.15); }
     .specific-pages-bulk-actions button.bulk-exclude:hover { border-color: var(--red); background: rgba(232,84,71,0.15); }
+    .specific-pages-bulk-actions button.bulk-all-canvases:hover { border-color: var(--accent); background: rgba(232,197,71,0.15); }
     .settings-users-list .settings-project-name { flex: 1; font-size: 1.05rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
     .settings-users-list .settings-project-row { align-items: flex-start; flex-wrap: wrap; }
     .settings-users-list .settings-project-row .settings-project-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -594,6 +614,7 @@
     #loadProjectList .load-project-meta { font-size: 0.8rem; color: var(--text3); }
     .load-project-delete { flex-shrink: 0; padding: 4px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
     .load-project-delete:hover { color: var(--red); }
+    #loadProjectList .load-project-actions { display: flex; flex-direction: row; align-items: center; gap: 8px; flex-shrink: 0; }
     .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
     .counter-tab { flex: 1; padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
     .counter-tab:hover { color: var(--text); }
@@ -643,6 +664,20 @@
     .canvas-menu-item.active .canvas-menu-item-edit { color: #000; }
     .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: 1px solid var(--yellow); border-radius: 4px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; transition: background 0.15s ease; }
     .canvas-menu-add:hover { background: var(--surface2); }
+    .download-page-dropdown { display: inline-flex; }
+    .download-page-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 300px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .download-page-menu.visible { display: block !important; }
+    .download-page-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
+    .download-page-option:hover { background: var(--surface2); }
+    .show-report-dropdown { display: inline-block; position: relative; width: 100%; }
+    .show-report-menu { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .show-report-menu.visible { display: block !important; }
+    .show-report-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
+    .show-report-option:hover { background: var(--surface2); }
+    .pipe-tooling-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
+    .pipe-tooling-option:hover { background: var(--surface2); }
+    .copy-summary-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
+    .copy-summary-option:hover { background: var(--surface2); }
     .zoom-overlay { position: fixed; display: none; flex-direction: row; align-items: center; gap: 8px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .zoom-overlay.visible { display: flex; }
     .zoom-overlay-btn { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1.25rem; }
@@ -701,7 +736,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
       </button>
       <button id="authBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Sign In</button>
-      <button id="saveProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Save Project to Cloud</button>
+      <button id="saveProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Name / Upload / Save Project to Cloud</button>
       <button id="loadProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Load Project from Cloud</button>
       <button id="manageUsersBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Manage Users</button>
       <button id="exportBtn" class="header-primary-btn replaced-by-status-bar">Export</button>
@@ -709,9 +744,17 @@
       <input type="file" id="importInput" accept=".json">
       <input type="file" id="customIconUploadInput" accept=".svg,image/svg+xml">
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
-      <button id="downloadCurrentPageBtn" class="header-settings-gear sidebar-triggers" style="display:none;" aria-label="Download current page" title="Download current page as marked PDF">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
-      </button>
+      <div class="download-page-dropdown" id="downloadCurrentPageDropdown" style="position:relative;display:none;">
+        <button id="downloadCurrentPageBtn" class="header-settings-gear sidebar-triggers" aria-label="Download current page" title="Download current page as marked PDF">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
+        </button>
+        <div class="download-page-menu" id="downloadCurrentPageMenu" style="display:none;">
+          <button type="button" class="download-page-option" data-mode="this-canvas">Print This Canvas Only</button>
+          <button type="button" class="download-page-option" data-mode="all-canvases">Print All Canvases on Page</button>
+          <button type="button" class="download-page-option" data-mode="all-pages">Print All Plan Pages and their Current Canvas</button>
+          <button type="button" class="download-page-option" data-mode="all-pages-canvases">Print All Pages & Canvases</button>
+        </div>
+      </div>
     </header>
     <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
       <span>Drag Counters and Lines by their left colors to re-order.</span>
@@ -740,7 +783,7 @@
           <button id="setScaleSidebar" class="sidebar-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg> Set Scale</button>
           <button id="authBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Sign In</button>
           <button id="settingsSidebarBtn" class="sidebar-btn supabase-only" style="display:none;">Project Settings</button>
-          <button id="saveProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Save Project to Cloud</button>
+          <button id="saveProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Name / Upload / Save Project to Cloud</button>
           <button id="loadProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Load Project from Cloud</button>
           <button id="manageUsersBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Manage Users</button>
           <button id="exportBtnSidebar" class="sidebar-btn">Export</button>
@@ -781,7 +824,7 @@
           <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
         </div>
         <div class="sidebar-section" id="pagesSection">
-          <h3 id="pagesSectionTitle" class="section-settings" title="Click to toggle compact titles; click arrow to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
+          <h3 id="pagesSectionTitle" class="section-settings" title="Page settings; click arrow to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
           <div id="pagesList"></div>
         </div>
         <div class="sidebar-section" id="countersSection">
@@ -827,15 +870,36 @@
         </div>
         <div class="sidebar-section">
           <h3 id="exportOptionsSectionTitle" class="section-settings">Export Options</h3>
-          <button id="printReport" class="sidebar-btn sidebar-btn-primary">Show Report</button>
-          <button id="exportPdf" class="sidebar-btn">Combined PDF</button>
-          <button id="specificPages" class="sidebar-btn">Specific Pages</button>
-          <button id="forPipeTooling" class="sidebar-btn">Copy to /Tooling</button>
+          <div class="show-report-dropdown" id="showReportDropdown" style="position:relative;">
+            <button id="printReport" class="sidebar-btn">Show Report</button>
+            <div class="show-report-menu" id="showReportMenu" style="display:none;">
+              <button type="button" class="show-report-option" data-mode="this-canvas">Takeoff Report for this Canvas Only</button>
+              <button type="button" class="show-report-option" data-mode="all-canvases-on-page">Takeoff Report for all Canvases on Page</button>
+              <button type="button" class="show-report-option" data-mode="all-pages-current-canvas">Takeoff Report for all Plan Pages and their Current Canvas</button>
+              <button type="button" class="show-report-option" data-mode="all-pages-canvases">Takeoff Report for all Pages and Canvases</button>
+            </div>
+          </div>
+          <button id="specificPages" class="sidebar-btn">Export PDFs</button>
+          <div class="show-report-dropdown" id="forPipeToolingDropdown" style="position:relative;">
+            <button id="forPipeTooling" class="sidebar-btn sidebar-btn-primary">Copy to /Tooling</button>
+            <div class="show-report-menu" id="forPipeToolingMenu" style="display:none;">
+              <button type="button" class="pipe-tooling-option" data-mode="this-canvas">This Canvas Only</button>
+              <button type="button" class="pipe-tooling-option" data-mode="visible">All Visible Canvases</button>
+              <button type="button" class="pipe-tooling-option" data-mode="all">All Canvases</button>
+            </div>
+          </div>
           <div class="sidebar-tooling-links">
             <a href="http://pipetooling.com/bids?tab=counts" target="_blank" rel="noopener noreferrer">PipeTooling</a>
             <a href="https://takeofftooling.com/" target="_blank" rel="noopener noreferrer">TakeoffTooling</a>
           </div>
-          <button id="copySummaryText" class="sidebar-btn">Copy Summary (Email/Text)</button>
+          <div class="show-report-dropdown" id="copySummaryTextDropdown" style="position:relative;">
+            <button id="copySummaryText" class="sidebar-btn">Copy Summary (Email/Text)</button>
+            <div class="show-report-menu" id="copySummaryTextMenu" style="display:none;">
+              <button type="button" class="copy-summary-option" data-mode="this-canvas">This Canvas Only</button>
+              <button type="button" class="copy-summary-option" data-mode="visible">All Visible Canvases</button>
+              <button type="button" class="copy-summary-option" data-mode="all">All Canvases</button>
+            </div>
+          </div>
           <button id="bundleHighlights" class="sidebar-btn">Show Highlights</button>
           <button id="bundleNotes" class="sidebar-btn">Show Notes</button>
         </div>
@@ -865,6 +929,7 @@
             <button id="canvasLayersBtn" class="canvas-layers-btn canvas-layers-mobile-only" title="Canvases" aria-label="Canvases">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg>
             </button>
+            <span id="canvasIndexDisplay" class="canvas-index-display"></span>
             <div id="canvasPills" class="canvas-pills"></div>
             <button id="addCanvasBtn" class="sidebar-btn-inline" title="Add canvas">+</button>
           </div>
@@ -1044,6 +1109,13 @@
         <h2>Counter Settings</h2>
         <span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">Reorder Artboard</span>
       </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Only counters with markers on the current page appear in the sidebar">Show only counters on current page</span>
+        <button type="button" class="toggle-switch" id="counterShowOnlyOnPageBtn" aria-pressed="false" title="Show only counters on current page">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="counterShowOnlyOnPage" hidden>
+      </div>
       <div class="form-group">
         <label>Icon size: <span id="counterSizeVal">20</span>px</label>
         <input type="range" id="counterSize" min="12" max="96" value="20" step="2">
@@ -1089,6 +1161,28 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="pageSettingsModal">
+    <div class="modal-card">
+      <h2>Page Settings</h2>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Truncate long titles</span>
+        <button type="button" class="toggle-switch" id="pageSettingsTruncateBtn" aria-pressed="true" title="Truncate long page titles">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="pageSettingsTruncate" checked hidden>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Unmarked pages remain accessible via arrow keys">Hide unmarked pages from sidebar</span>
+        <button type="button" class="toggle-switch" id="pageSettingsHideUnmarkedBtn" aria-pressed="false" title="Hide unmarked pages from sidebar">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="pageSettingsHideUnmarked" hidden>
+      </div>
+      <div class="actions">
+        <button id="pageSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="zoomModal">
     <div class="modal-card">
       <h2>Zoom Settings</h2>
@@ -1110,6 +1204,13 @@
       <div class="modal-card-header">
         <h2>Line Type Settings</h2>
         <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">reorder artboard</span>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Only line types with lines on the current page appear in the sidebar">Show only line types on current page</span>
+        <button type="button" class="toggle-switch" id="lineTypeShowOnlyOnPageBtn" aria-pressed="false" title="Show only line types on current page">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="lineTypeShowOnlyOnPage" hidden>
       </div>
       <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <span>Snap to horizontal/vertical</span>
@@ -1160,42 +1261,20 @@
       </div>
     </div>
   </div>
-  <div class="modal-overlay" id="exportPdfModal">
-    <div class="modal-card">
-      <h2>Combined PDF</h2>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
-      <div class="form-group">
-        <label>Marker size: <span id="exportMarkerScaleVal">75</span>%</label>
-        <input type="range" id="exportMarkerScale" min="25" max="150" value="75" step="5">
-      </div>
-      <div class="form-group">
-        <label>Line width: <span id="exportLineScaleVal">75</span>%</label>
-        <input type="range" id="exportLineScale" min="25" max="150" value="75" step="5">
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Bundle highlights to PDF</span>
-        <button type="button" class="toggle-switch" id="exportBundleHighlightsBtn" aria-pressed="true" title="Bundle highlights to PDF">
-          <span class="toggle-switch-knob"></span>
-        </button>
-        <input type="checkbox" id="exportBundleHighlights" checked hidden>
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Bundle notes to PDF</span>
-        <button type="button" class="toggle-switch" id="exportBundleNotesBtn" aria-pressed="true" title="Bundle notes to PDF">
-          <span class="toggle-switch-knob"></span>
-        </button>
-        <input type="checkbox" id="exportBundleNotes" checked hidden>
-      </div>
-      <div class="actions">
-        <button id="exportPdfCancel">Cancel</button>
-        <button id="exportPdfDo">Export</button>
-      </div>
-    </div>
-  </div>
   <div class="modal-overlay" id="specificPagesModal">
     <div class="modal-card modal-card-large">
-      <h2>Specific Pages</h2>
-      <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
+      <h2>Export PDFs</h2>
+      <p class="form-group specific-pages-intro" style="color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
+      <div class="specific-pages-scale-row">
+        <div class="form-group">
+          <label>Marker size: <span id="specificPagesMarkerScaleVal">75</span>%</label>
+          <input type="range" id="specificPagesMarkerScale" min="25" max="150" value="75" step="5">
+        </div>
+        <div class="form-group">
+          <label>Line width: <span id="specificPagesLineScaleVal">75</span>%</label>
+          <input type="range" id="specificPagesLineScale" min="25" max="150" value="75" step="5">
+        </div>
+      </div>
       <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
         <span>Include takeoff report<span id="specificPagesIncludeReportNone" class="specific-pages-none-msg"></span></span>
         <button type="button" class="toggle-switch" id="specificPagesIncludeReportBtn" aria-pressed="true" title="Include takeoff report">
@@ -1217,12 +1296,18 @@
         </button>
         <input type="checkbox" id="specificPagesBundleNotes" checked hidden>
       </div>
+      <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
       <div class="specific-pages-bulk-actions">
         <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
         <button type="button" id="specificPagesAllUnmarked" class="bulk-unmarked">All Not Marked Up</button>
         <button type="button" id="specificPagesAllExclude" class="bulk-exclude">Exclude All</button>
+        <button type="button" id="specificPagesAllCanvases" class="bulk-all-canvases">All Canvases with Marks</button>
       </div>
-      <div id="specificPagesGrid" class="specific-pages-grid"></div>
+      <div class="specific-pages-carousel">
+        <button type="button" class="specific-pages-nav specific-pages-nav-prev" aria-label="Previous pages" title="Previous pages">‹</button>
+        <div id="specificPagesGrid" class="specific-pages-grid"></div>
+        <button type="button" class="specific-pages-nav specific-pages-nav-next" aria-label="Next pages" title="Next pages">›</button>
+      </div>
       <div class="actions">
         <button id="specificPagesCancel">Cancel</button>
         <button id="specificPagesDownload">Download</button>
@@ -1274,6 +1359,13 @@
       <div class="macros-modal-body">
         <table class="macros-table">
           <tr><th></th><th>Key</th><th>Action</th></tr>
+          <tr><td colspan="3" class="macros-section-header">Navigation</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">◀</span></td><td><kbd title="Left arrow">←</kbd></td><td>Previous page</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">▶</span></td><td><kbd title="Right arrow">→</kbd></td><td>Next page</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↕</span></td><td><kbd title="Up arrow">↑</kbd> <kbd title="Down arrow">↓</kbd></td><td>Switch canvas (when multiple canvases)</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">◀</span></td><td><kbd>Shift</kbd>+<kbd>←</kbd></td><td>Previous marked page</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">▶</span></td><td><kbd>Shift</kbd>+<kbd>→</kbd></td><td>Next marked page</td></tr>
+          <tr><td colspan="3" class="macros-section-header">Tools</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg></td><td><kbd>M</kbd></td><td>Move mode</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg></td><td><kbd>S</kbd></td><td>Set Scale</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg></td><td><kbd>C</kbd></td><td>Counter mode</td></tr>
@@ -1289,8 +1381,6 @@
           <tr><td class="macros-icon-cell"></td><td><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Refresh</td></tr>
           <tr><td class="macros-icon-cell"></td><td><kbd>Space</kbd></td><td>Toggle sidebar (desktop)</td></tr>
           <tr><td class="macros-icon-cell"></td><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
-          <tr><td class="macros-icon-cell"></td><td><kbd>←</kbd> <kbd>↑</kbd></td><td>Previous page</td></tr>
-          <tr><td class="macros-icon-cell"></td><td><kbd>→</kbd> <kbd>↓</kbd></td><td>Next page</td></tr>
           <tr><td class="macros-icon-cell"></td><td><kbd>Enter</kbd></td><td>Finish polyline / Exit edit mode</td></tr>
         </table>
         <div class="macros-scroll-hint-wrap">
@@ -1521,8 +1611,9 @@
         <button type="button" class="modal-close-btn" id="settingsModalClose" aria-label="Close">×</button>
       </div>
       <div class="settings-menu">
-        <button type="button" class="settings-menu-btn btn-yellow" id="settingsSaveProject">Save Project to Cloud</button>
+        <button type="button" class="settings-menu-btn btn-yellow" id="settingsSaveProject">Name / Upload / Save Project to Cloud</button>
         <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add additional PDF pages</button>
+        <button type="button" class="settings-menu-btn" id="settingsDownloadPdf" style="display:none;">Download PDF</button>
         <div class="settings-close-checkout-row" style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;">
           <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
           <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;align-self:stretch;">Check out Project</button>
@@ -1544,6 +1635,7 @@
         <div class="settings-advanced-section collapsed" id="settingsAdvancedSection">
           <h3 class="settings-advanced-header" id="settingsAdvancedHeader" title="Click to expand">Advanced <span class="collapse-icon" id="settingsAdvancedCollapseIcon">▶</span></h3>
           <div class="settings-advanced-buttons">
+            <button type="button" class="settings-menu-btn" id="settingsLoadTestPdf" style="display:none;">Load test PDF</button>
             <button type="button" class="settings-menu-btn" id="settingsManageIcons">Manage Icons</button>
             <button type="button" class="settings-menu-btn" id="settingsExport">Export Canvas</button>
             <button type="button" class="settings-menu-btn" id="settingsImport">Import Canvas</button>
@@ -1677,6 +1769,9 @@
           <button type="button" id="authCancel">Cancel</button>
           <button type="submit" id="authSignIn">Sign In</button>
         </div>
+        <p id="authDevBypassWrap" class="form-group" style="display:none;margin-top:12px;">
+          <button type="button" id="authDevBypass" class="settings-menu-link" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:0.9rem;">Sign in as test user</button>
+        </p>
       </form>
     </div>
   </div>
@@ -1734,7 +1829,7 @@
   </div>
   <div class="modal-overlay" id="saveProjectModal">
     <div class="modal-card">
-      <h2>Save Project to Cloud</h2>
+      <h2>Name / Upload / Save Project to Cloud</h2>
       <div class="form-group">
         <label>Project name</label>
         <input type="text" id="saveProjectName" placeholder="Untitled">
@@ -1882,6 +1977,10 @@
         </div>
         <div class="prepare-pdf-actions-row">
           <button type="button" id="preparePdfDelete" class="prepare-pdf-delete">Delete</button>
+          <button type="button" id="preparePdfRotate" class="prepare-pdf-rotate" title="Rotate 90°">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M545.7 304.1C528.1 302.9 512.8 316.1 511.5 333.8C508.2 380.8 487.9 423.2 456.7 454.8L425 423C418.1 416.1 407.8 414.1 398.8 417.8C389.8 421.5 384 430.3 384 440L384 552C384 565.3 394.7 576 408 576L520 576C529.7 576 538.5 570.2 542.2 561.2C545.9 552.2 543.9 541.9 537 535L502 500C543.7 457.8 570.9 401.2 575.4 338.2C576.6 320.6 563.4 305.3 545.7 304zM103 105L138 140C96.3 182.2 69.1 238.8 64.6 301.8C63.4 319.4 76.6 334.7 94.3 336C112 337.3 127.2 324 128.5 306.3C131.8 259.3 152.1 216.9 183.3 185.3L215 217C221.9 223.9 232.2 225.9 241.2 222.2C250.2 218.5 256 209.7 256 200L256 88C256 74.7 245.3 64 232 64L120 64C110.3 64 101.5 69.8 97.8 78.8C94.1 87.8 96.2 98.1 103 105zM304 94.3C302.8 111.9 316 127.2 333.7 128.5C380.7 131.8 423.1 152.1 454.7 183.3L423 215C416.1 221.9 414.1 232.2 417.8 241.2C421.5 250.2 430.3 256 440 256L552 256C565.3 256 576 245.3 576 232L576 120C576 110.3 570.2 101.5 561.2 97.8C552.2 94.1 541.9 96.2 535 103L500 138C457.8 96.3 401.2 69.1 338.2 64.6C320.6 63.4 305.3 76.6 304 94.3zM105 537L140 502C182.2 543.7 238.8 570.9 301.8 575.4C319.4 576.6 334.7 563.4 336 545.7C337.3 528 324 512.8 306.3 511.5C259.3 508.2 216.9 487.9 185.3 456.7L217 425C223.9 418.1 225.9 407.8 222.2 398.8C218.5 389.8 209.7 384 200 384L88 384C74.7 384 64 394.7 64 408L64 520C64 529.7 69.8 538.5 78.8 542.2C87.8 545.9 98.1 543.8 105 537z"/></svg>
+            Rotate
+          </button>
           <button type="button" id="preparePdfUndo" class="prepare-pdf-undo" disabled>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M88 256L232 256C241.7 256 250.5 250.2 254.2 241.2C257.9 232.2 255.9 221.9 249 215L202.3 168.3C277.6 109.7 386.6 115 455.8 184.2C530.8 259.2 530.8 380.7 455.8 455.7C380.8 530.7 259.3 530.7 184.3 455.7C174.1 445.5 165.3 434.4 157.9 422.7C148.4 407.8 128.6 403.4 113.7 412.9C98.8 422.4 94.4 442.2 103.9 457.1C113.7 472.7 125.4 487.5 139 501C239 601 401 601 501 501C601 401 601 239 501 139C406.8 44.7 257.3 39.3 156.7 122.8L105 71C98.1 64.2 87.8 62.1 78.8 65.8C69.8 69.5 64 78.3 64 88L64 232C64 245.3 74.7 256 88 256z"/></svg>
             Undo
@@ -1893,7 +1992,10 @@
           <button type="button" id="preparePdfCancel">Cancel</button>
           <button type="button" id="preparePdfDone">Open</button>
         </div>
-        <button type="button" id="preparePdfSaveAndOpen" class="btn-yellow">Save and Open</button>
+        <div class="prepare-pdf-actions-right">
+          <button type="button" id="preparePdfDownload">Download Trimmed PDF</button>
+          <button type="button" id="preparePdfSaveAndOpen" class="btn-yellow">Save and Open</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2620,6 +2722,27 @@
     const canvas = getActiveCanvas(page);
     return canvas?.annotations ?? makeAnnotations();
   }
+  function mergeAnnotations(...anns) {
+    const out = makeAnnotations();
+    anns.forEach(ann => {
+      if (!ann) return;
+      Object.entries(ann.counterMarkers || {}).forEach(([id, arr]) => {
+        if (!out.counterMarkers) out.counterMarkers = {};
+        if (!out.counterMarkers[id]) out.counterMarkers[id] = [];
+        out.counterMarkers[id].push(...arr);
+      });
+      (ann.quickLines || []).forEach(q => { (out.quickLines = out.quickLines || []).push(q); });
+      (ann.polylines || []).forEach(p => { (out.polylines = out.polylines || []).push(p); });
+      (ann.notes || []).forEach(n => { (out.notes = out.notes || []).push(n); });
+      (ann.highlights || []).forEach(h => { (out.highlights = out.highlights || []).push(h); });
+    });
+    return out;
+  }
+  function getMergedAnnotationsForPage(page) {
+    const canvases = getPageCanvases(page);
+    const anns = canvases.map(c => c.annotations || makeAnnotations());
+    return mergeAnnotations(...anns);
+  }
   function ensureActiveCanvas(page) {
     migratePageToCanvases(page);
     let canvas = getActiveCanvas(page);
@@ -2644,6 +2767,47 @@
       const ann = c.annotations || makeAnnotations();
       return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length);
     });
+  }
+
+  function backupDataToProjFormat(data) {
+    if (!data || (data.pages && Array.isArray(data.pages))) return data;
+    if (data.pageCanvases && Array.isArray(data.pageCanvases)) {
+      return {
+        ...data,
+        pages: data.pageCanvases.map((canvases, i) => ({
+          index: i,
+          canvases,
+          scale: data.pageScales?.[i],
+          rotation: (data.pageRotations?.[i] ?? 0)
+        }))
+      };
+    }
+    return data;
+  }
+
+  function applyTakeoffBackupToState(backup) {
+    if (!backup) return;
+    if (Array.isArray(backup.counters)) state.counters = backup.counters;
+    if (Array.isArray(backup.lineTypes)) state.lineTypes = backup.lineTypes;
+    if (Array.isArray(backup.groups)) state.groups = ensureGroupColors(backup.groups);
+    if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
+    if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
+    if (Array.isArray(backup.customIconPaths)) saveUserCustomIcons(backup.customIconPaths);
+    if (backup.activeCanvasIdByPage && typeof backup.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = backup.activeCanvasIdByPage;
+    if (backup.pageCanvases && Array.isArray(backup.pageCanvases)) {
+      backup.pageCanvases.forEach((canvases, i) => {
+        if (state.pages[i] && Array.isArray(canvases) && canvases.length) state.pages[i].canvases = canvases;
+      });
+    } else if (backup.pageAnnotations && Array.isArray(backup.pageAnnotations)) {
+      backup.pageAnnotations.forEach((ann, i) => {
+        if (state.pages[i]) {
+          state.pages[i].canvases = [{ id: uid(), name: 'Main', annotations: ann }];
+          delete state.pages[i].annotations;
+        }
+      });
+    }
+    if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
+    if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
   }
 
   function applyPageAnnotationsFromData(page, p, scaleFallback) {
@@ -2732,7 +2896,7 @@
     scalePointA: null, scalePointB: null, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
-    counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 },
+    counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
     pagesListCollapsed: false,
@@ -2743,7 +2907,7 @@
     linesListCollapsed: true,
     groupsListCollapsed: false,
     summaryListCollapsed: false,
-    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false },
+    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
@@ -2756,6 +2920,7 @@
     pendingDeletePage: null,
     supabaseSession: null,
     pdfBuffer: null,
+    pdfBufferSize: 0,
     pdfStoragePath: null,
     pdfHash: null,
     lastSavedAt: null,
@@ -2774,6 +2939,7 @@
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
+  state.hideUnmarkedPagesFromSidebar = localStorage.getItem('hideUnmarkedPagesFromSidebar') === '1';
 
   function getGroupColor(groupId) {
     const g = (state.groups || []).find(x => x.id === groupId);
@@ -2812,10 +2978,13 @@
     else console.log(msg);
   }
 
+  let backupDebounceTimer = null;
   function markProjectDirty() {
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     autoSaveDirty = true;
     lastModifiedAt = Date.now();
+    if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
+    backupDebounceTimer = setTimeout(() => { backupDebounceTimer = null; writeTakeoffStateBackup(); }, 1000);
     if (state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - lastCheckoutRefreshAt >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
       lastCheckoutRefreshAt = Date.now();
       if (supabase) supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }).then(({ data }) => {
@@ -2930,12 +3099,17 @@
   const PDF_CACHE_META_STORE = 'meta';
   const VIEW_PDFS_STORE = 'view_pdfs';
   const VIEW_PDFS_META_STORE = 'view_pdfs_meta';
+  const TAKEOFF_BACKUP_STORE = 'takeoff_backup';
+  const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
   const PDF_CACHE_MAX_ENTRIES = 10;
   const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
+  const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
+  const TAKEOFF_BACKUP_MAX_BYTES = 200 * 1024 * 1024;
+  const BACKUP_PDF_TO_INDEXEDDB = (typeof window.BACKUP_PDF_TO_INDEXEDDB !== 'undefined' ? window.BACKUP_PDF_TO_INDEXEDDB : true);
 
   function openPdfCacheDb() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(PDF_CACHE_DB, 2);
+      const req = indexedDB.open(PDF_CACHE_DB, 3);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (e) => {
@@ -2951,6 +3125,12 @@
         }
         if (!db.objectStoreNames.contains(VIEW_PDFS_META_STORE)) {
           db.createObjectStore(VIEW_PDFS_META_STORE, { keyPath: 'token' });
+        }
+        if (!db.objectStoreNames.contains(TAKEOFF_BACKUP_STORE)) {
+          db.createObjectStore(TAKEOFF_BACKUP_STORE, { keyPath: 'projectId' });
+        }
+        if (!db.objectStoreNames.contains(TAKEOFF_BACKUP_META_STORE)) {
+          db.createObjectStore(TAKEOFF_BACKUP_META_STORE, { keyPath: 'projectId' });
         }
       };
     });
@@ -3049,6 +3229,64 @@
     } catch (_) { /* ignore */ }
   }
 
+  async function takeoffBackupGet(projectId) {
+    if (!BACKUP_PDF_TO_INDEXEDDB) return null;
+    try {
+      const db = await openPdfCacheDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction([TAKEOFF_BACKUP_STORE], 'readonly');
+        const req = tx.objectStore(TAKEOFF_BACKUP_STORE).get(projectId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    } catch (_) { return null; }
+  }
+
+  async function takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAt, projectName, userId) {
+    if (!BACKUP_PDF_TO_INDEXEDDB) return;
+    try {
+      const db = await openPdfCacheDb();
+      const dataSize = JSON.stringify(data).length;
+      const pdfSize = pdfBlob ? pdfBlob.size : 0;
+      const size = dataSize + pdfSize;
+      const lastUsed = Date.now();
+      const tx = db.transaction([TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE], 'readwrite');
+      const store = tx.objectStore(TAKEOFF_BACKUP_STORE);
+      const metaStore = tx.objectStore(TAKEOFF_BACKUP_META_STORE);
+      const entries = await new Promise((resolve, reject) => {
+        const req = metaStore.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      let totalBytes = entries.reduce((s, e) => s + (e.size || 0), 0);
+      const byLastUsed = [...entries].sort((a, b) => (a.lastUsed || 0) - (b.lastUsed || 0));
+      for (const evict of byLastUsed) {
+        if (entries.length < TAKEOFF_BACKUP_MAX_ENTRIES && totalBytes + size <= TAKEOFF_BACKUP_MAX_BYTES) break;
+        if (evict.projectId === projectId) break;
+        store.delete(evict.projectId);
+        metaStore.delete(evict.projectId);
+        totalBytes -= evict.size || 0;
+        entries.splice(entries.findIndex(e => e.projectId === evict.projectId), 1);
+      }
+      const entry = { projectId, data, pdfHash: pdfHash || null, lastModifiedAt, projectName: projectName || null, userId: userId || null };
+      if (pdfBlob) entry.pdfBlob = pdfBlob;
+      store.put(entry);
+      metaStore.put({ projectId, lastUsed, size });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch (_) { /* ignore */ }
+  }
+
+  async function takeoffBackupDelete(projectId) {
+    if (!BACKUP_PDF_TO_INDEXEDDB) return;
+    try {
+      const db = await openPdfCacheDb();
+      const tx = db.transaction([TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE], 'readwrite');
+      tx.objectStore(TAKEOFF_BACKUP_STORE).delete(projectId);
+      tx.objectStore(TAKEOFF_BACKUP_META_STORE).delete(projectId);
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch (_) { /* ignore */ }
+  }
+
   async function deleteProjectAsOwner(projectId, pdfPath) {
     if (!supabase) return;
     try {
@@ -3059,6 +3297,8 @@
       }
       const { error } = await supabase.from('projects').delete().eq('id', projectId);
       if (error) throw error;
+      await pdfCacheDelete(projectId);
+      await takeoffBackupDelete(projectId);
     } catch (e) {
       console.error('[Delete project]', e);
       throw e;
@@ -3067,8 +3307,20 @@
 
   async function doRestoreLastProject(proj, cachedBlob) {
     const d = proj.data;
+    const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
+    const idbBackup = await takeoffBackupGet(proj.id);
+    const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
     let pdf;
-    if (cachedBlob) {
+    const idbPdfBlob = useIdbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0 ? idbBackup.pdfBlob : null;
+    if (idbPdfBlob) {
+      try {
+        const buf = await idbPdfBlob.arrayBuffer();
+        pdf = await pdfjsLib.getDocument(buf).promise;
+      } catch (e) {
+        if (!cachedBlob && !proj.pdf_path) throw e;
+      }
+    }
+    if (!pdf && cachedBlob && cachedBlob.size > 0) {
       try {
         const buf = await cachedBlob.arrayBuffer();
         pdf = await pdfjsLib.getDocument(buf).promise;
@@ -3083,18 +3335,15 @@
           });
         }
       }
-    } else if (proj.pdf_path) {
-      const { data: signed, error: urlErr } = await supabase.storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
-      if (urlErr) throw urlErr;
-      pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
-      if (proj.pdf_hash) {
-        supabase.storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
-          if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
-        });
-      }
-    } else {
-      throw new Error('No PDF available for this project');
     }
+    if (!pdf && proj.pdf_path) {
+      const { data: blob, error: urlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
+      if (urlErr) throw urlErr;
+      if (!blob || blob.size === 0) throw new Error('The PDF file in cloud storage is empty');
+      pdf = await pdfjsLib.getDocument(blob).promise;
+      if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
+    }
+    if (!pdf) throw new Error('No PDF available for this project');
     state.pages = [];
     const numPages = pdf.numPages;
     for (let i = 0; i < numPages; i++) {
@@ -3104,53 +3353,37 @@
       state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       state.activeCanvasIdByPage[i] = canvasId;
     }
-    state.counters = Array.isArray(d.counters) ? d.counters : [];
-    state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-    state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-    if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-    if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-    if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-    (d.pages || []).forEach(p => {
-      applyPageAnnotationsFromData(state.pages[p.index], p);
-    });
-    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-    state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-    try {
-      const backupRaw = localStorage.getItem('takeoff-state');
-      if (backupRaw) {
-        const backup = JSON.parse(backupRaw);
-        const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-        if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
-          if (Array.isArray(backup.counters)) state.counters = backup.counters;
-          if (Array.isArray(backup.lineTypes)) state.lineTypes = backup.lineTypes;
-          if (Array.isArray(backup.groups)) state.groups = ensureGroupColors(backup.groups);
-          if (backup.iconNames && typeof backup.iconNames === 'object') state.iconNames = backup.iconNames;
-          if (Array.isArray(backup.iconOrder)) state.iconOrder = backup.iconOrder;
-          if (Array.isArray(backup.customIconPaths)) saveUserCustomIcons(backup.customIconPaths);
-          if (backup.activeCanvasIdByPage && typeof backup.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = backup.activeCanvasIdByPage;
-          if (backup.pageCanvases && Array.isArray(backup.pageCanvases)) {
-            backup.pageCanvases.forEach((canvases, i) => {
-              if (state.pages[i] && Array.isArray(canvases) && canvases.length) state.pages[i].canvases = canvases;
-            });
-          } else if (backup.pageAnnotations && Array.isArray(backup.pageAnnotations)) {
-            backup.pageAnnotations.forEach((ann, i) => {
-              if (state.pages[i]) {
-                state.pages[i].canvases = [{ id: uid(), name: 'Main', annotations: ann }];
-                delete state.pages[i].annotations;
-              }
-            });
+    if (useIdbBackup && idbBackup.data) {
+      applyTakeoffBackupToState(idbBackup.data);
+    } else {
+      state.counters = Array.isArray(d.counters) ? d.counters : [];
+      state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+      state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+      if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+      if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+      if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+      (d.pages || []).forEach(p => {
+        applyPageAnnotationsFromData(state.pages[p.index], p);
+      });
+      if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+      state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+      try {
+        const backupRaw = localStorage.getItem('takeoff-state');
+        if (backupRaw) {
+          const backup = JSON.parse(backupRaw);
+          if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
+            applyTakeoffBackupToState(backup);
           }
-          if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
-          if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
     reconcileOrphanedCountersAndLineTypes();
-    state.currentProjectId = proj.id;
+    state.currentProjectId = proj.id === 'local' ? null : proj.id;
     state.currentProjectName = proj.name || 'Untitled';
     state.pdfStoragePath = proj.pdf_path;
     state.pdfHash = proj.pdf_hash || null;
     state.pdfBuffer = null;
+    state.pdfBufferSize = 0;
     lastSaveIncludedPdf = !!proj.pdf_path;
     state.lastSavedAt = proj.updated_at || null;
     state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
@@ -3158,10 +3391,10 @@
     state.checkedOutBy = proj.checked_out_by || null;
     state.checkedOutAt = proj.checked_out_at || null;
     state.checkedOutEmail = null;
-    const uid = state.supabaseSession?.user?.id;
-    const isOwner = proj.user_id === uid;
+    const userId = state.supabaseSession?.user?.id;
+    const isOwner = proj.user_id === userId;
     const lockExpired = !proj.checked_out_at || (Date.now() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
-    const hasValidCheckout = proj.checked_out_by === uid && !lockExpired;
+    const hasValidCheckout = proj.checked_out_by === userId && !lockExpired;
     state.loadedViaViewLink = false;
     state.isViewer = !hasValidCheckout;
     state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
@@ -3760,7 +3993,7 @@
         ctx.restore();
       });
     }
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false };
+    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
     const lw = lts.lineSize || 2;
     const lo = lts.opacity != null ? lts.opacity : 1;
     const dropS = lts.dropXSize ?? 10;
@@ -3986,7 +4219,7 @@
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
-    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
+    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const s = cs.size;
     const opacity = cs.opacity;
     const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
@@ -4104,11 +4337,11 @@
     }
   }
 
-  function renderAnnotationsToContext(ctx, page, scale, exportOverrides) {
+  function renderAnnotationsToContext(ctx, page, scale, exportOverrides, annotationsOverride) {
     const tc = (p) => ({ x: p.x * scale, y: p.y * scale });
-    const ann = getActiveAnnotations(page);
+    const ann = annotationsOverride ?? getActiveAnnotations(page);
     const pageIdx = state.pages.indexOf(page);
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false };
+    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
     const dropS = (lts.dropXSize ?? 10) * scale;
     const dropStyle = lts.dropIconStyle ?? 'circle';
     const lineScale = exportOverrides?.lineScale ?? 1;
@@ -4327,7 +4560,7 @@
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
-    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0 };
+    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const s = (cs.size || 20) * scale * markerScale;
     const opacity = cs.opacity;
     const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
@@ -4692,6 +4925,10 @@
     dividerEls.forEach(el => { el.style.display = hidePrimary ? 'none' : ''; });
     const settingsAddAdditionalPages = document.getElementById('settingsAddAdditionalPages');
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
+    const settingsDownloadPdf = document.getElementById('settingsDownloadPdf');
+    if (settingsDownloadPdf) settingsDownloadPdf.style.display = (state.pages.length && !state.isViewer && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
+    const settingsLoadTestPdf = document.getElementById('settingsLoadTestPdf');
+    if (settingsLoadTestPdf) settingsLoadTestPdf.style.display = (IS_DEV_HOST && !state.isViewer) ? '' : 'none';
     const settingsShareProject = document.getElementById('settingsShareProject');
     if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink) ? '' : 'none';
     const copyViewLinkBtn = document.getElementById('copyViewLinkBtn');
@@ -4707,7 +4944,7 @@
       settingsSaveProject.style.display = state.isViewer ? 'none' : '';
       settingsSaveProject.textContent = (state.currentProjectId && state.pdfStoragePath)
         ? 'Save Changes'
-        : 'Save Project to Cloud';
+        : 'Name / Upload / Save Project to Cloud';
     }
     const settingsAdvancedSection = document.getElementById('settingsAdvancedSection');
     if (settingsAdvancedSection) settingsAdvancedSection.style.display = state.isViewer ? 'none' : '';
@@ -4733,16 +4970,35 @@
     const bundleNotesBtn = document.getElementById('bundleNotes');
     if (bundleNotesBtn) bundleNotesBtn.style.display = hasAnyNotes() ? '' : 'none';
     const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
-    const ptBtn = document.getElementById('forPipeTooling');
+    const ptBtn = document.getElementById('forPipeToolingDropdown');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
-    const copySummaryBtn = document.getElementById('copySummaryText');
+    const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
     if (copySummaryBtn) copySummaryBtn.style.display = hasCountsOrLines ? '' : 'none';
-    const printReportBtn = document.getElementById('printReport');
-    if (printReportBtn) printReportBtn.style.display = hasCountsOrLines ? '' : 'none';
-    const exportPdfBtn = document.getElementById('exportPdf');
-    if (exportPdfBtn) exportPdfBtn.style.display = hasCountsOrLines ? '' : 'none';
-    const downloadCurrentPageBtn = document.getElementById('downloadCurrentPageBtn');
-    if (downloadCurrentPageBtn) downloadCurrentPageBtn.style.display = state.pages.length > 0 ? '' : 'none';
+    const showReportDropdown = document.getElementById('showReportDropdown');
+    if (showReportDropdown) showReportDropdown.style.display = hasCountsOrLines ? '' : 'none';
+    const specificPagesBtn = document.getElementById('specificPages');
+    if (specificPagesBtn) specificPagesBtn.style.display = hasCountsOrLines ? '' : 'none';
+    const allCanvasesOnPageOpt = document.querySelector('.show-report-option[data-mode="all-canvases-on-page"]');
+    if (allCanvasesOnPageOpt) {
+      const page = state.pages[state.currentPage];
+      const canvases = page ? getPageCanvases(page) : [];
+      allCanvasesOnPageOpt.style.display = canvases.length > 1 ? '' : 'none';
+    }
+    const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
+    if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
+    const allCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-canvases"]');
+    if (allCanvasesOpt) {
+      const page = state.pages[state.currentPage];
+      const canvases = page ? getPageCanvases(page) : [];
+      allCanvasesOpt.style.display = canvases.length > 1 ? '' : 'none';
+    }
+    const allPagesOpt = document.querySelector('.download-page-option[data-mode="all-pages"]');
+    const allPagesCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-pages-canvases"]');
+    if (allPagesOpt) allPagesOpt.style.display = state.pages.length > 1 ? '' : 'none';
+    if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = state.pages.length > 1 ? '' : 'none';
+    document.querySelectorAll('.pipe-tooling-option[data-mode="this-canvas"], .copy-summary-option[data-mode="this-canvas"]').forEach(el => {
+      el.style.display = state.pages.length <= 1 ? 'none' : '';
+    });
     updateStatus();
   }
 
@@ -4764,6 +5020,18 @@
       canvasNameEl.textContent = activeCanvas?.name || 'Main';
       canvasNameEl.style.display = state.pages.length > 0 ? '' : 'none';
     }
+    const indexEl = document.getElementById('canvasIndexDisplay');
+    if (indexEl) {
+      if (canvases.length > 0 && activeId) {
+        const idx = canvases.findIndex(c => c.id === activeId);
+        const oneBased = idx >= 0 ? idx + 1 : 1;
+        indexEl.textContent = '(' + oneBased + '/' + canvases.length + ')';
+        indexEl.style.display = '';
+      } else {
+        indexEl.textContent = '';
+        indexEl.style.display = 'none';
+      }
+    }
     pillsEl.innerHTML = '';
     if (canvases.length === 0) {
       pillsEl.style.display = 'none';
@@ -4782,9 +5050,8 @@
         pill.dataset.canvasId = c.id;
         pill.onclick = (e) => {
           e.stopPropagation();
-          if (state.isViewer) return;
           state.activeCanvasIdByPage[state.currentPage] = c.id;
-          markProjectDirty();
+          if (!state.isViewer) markProjectDirty();
           renderPdf();
           updateUI();
         };
@@ -4792,9 +5059,11 @@
       });
     }
     if (layersBtn && menuList && canvasMenu) {
-      const showLayersDropdown = (isMobile || (!isMobile && canvases.length >= 1)) && state.pages.length > 0 && !state.isViewer;
+      const showLayersDropdown = (isMobile || (!isMobile && canvases.length >= 1)) && state.pages.length > 0;
       layersBtn.style.display = showLayersDropdown ? '' : 'none';
       layersBtn.classList.toggle('canvas-layers-multi', canvases.length > 1);
+      const canvasMenuAdd = document.getElementById('canvasMenuAdd');
+      if (canvasMenuAdd) canvasMenuAdd.style.display = state.isViewer ? 'none' : '';
       switcher?.classList.toggle('canvas-layers-desktop-visible', !isMobile && canvases.length >= 1);
       menuList.innerHTML = '';
       canvases.forEach(c => {
@@ -4823,9 +5092,8 @@
         row.onclick = (e) => {
           if (e.target.closest('.canvas-menu-item-edit')) return;
           e.stopPropagation();
-          if (state.isViewer) return;
           state.activeCanvasIdByPage[state.currentPage] = c.id;
-          markProjectDirty();
+          if (!state.isViewer) markProjectDirty();
           renderPdf();
           updateUI();
           canvasMenu.classList.remove('visible');
@@ -4851,6 +5119,7 @@
     const showEdit = !state.isViewer;
     const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     state.pages.forEach((p, i) => {
+      if (state.hideUnmarkedPagesFromSidebar && !pageHasAnyAnnotations(p)) return;
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
       const hasAnn = pageHasAnyAnnotations(p);
@@ -4900,6 +5169,12 @@
     el.innerHTML = '';
     const showEdit = !state.isViewer;
     state.counters.forEach(c => {
+      if (state.counterSettings?.showOnlyCountersOnCurrentPage && state.pages.length > 0) {
+        const page = state.pages[state.currentPage];
+        const ann = getActiveAnnotations(page);
+        const markers = (ann?.counterMarkers?.[c.id] || []);
+        if (markers.length === 0) return;
+      }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
       const count = state.pages.reduce((n, p) => n + ((getActiveAnnotations(p)?.counterMarkers?.[c.id] || []).length), 0);
@@ -4945,6 +5220,13 @@
     el.innerHTML = '';
     const showEdit = !state.isViewer;
     state.lineTypes.forEach(lt => {
+      if (state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage && state.pages.length > 0) {
+        const page = state.pages[state.currentPage];
+        const ann = getActiveAnnotations(page);
+        const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+        const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+        if (qLines.length === 0 && polys.length === 0) return;
+      }
       let runs = 0, len = 0;
       const pageIndices = [];
       state.pages.forEach((p, pi) => {
@@ -5961,6 +6243,7 @@
         subscribeToProjectCheckoutChanges(null);
         state.currentProjectName = null;
         state.pdfBuffer = null;
+        state.pdfBufferSize = 0;
         state.pdfStoragePath = null;
         state.pdfHash = null;
         state.lastSavedAt = null;
@@ -5976,6 +6259,24 @@
       updateUI();
       renderPdf();
     });
+  }
+
+  function canUseDevAuth() {
+    return IS_DEV_HOST && typeof window.DEV_AUTH_EMAIL === 'string' && window.DEV_AUTH_EMAIL &&
+      typeof window.DEV_AUTH_PASSWORD === 'string' && window.DEV_AUTH_PASSWORD;
+  }
+  async function devAuthSignIn() {
+    if (!canUseDevAuth() || !supabase) return false;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: window.DEV_AUTH_EMAIL,
+      password: window.DEV_AUTH_PASSWORD
+    });
+    if (error) {
+      console.error('[Dev auth]', error);
+      return false;
+    }
+    state.supabaseSession = data.session;
+    return true;
   }
 
   let projectsCheckoutChannel = null;
@@ -6035,6 +6336,8 @@
   document.getElementById('uploadPdf').onclick = () => document.getElementById('pdfInput').click();
   document.getElementById('uploadPdfSidebar').onclick = () => document.getElementById('pdfInput').click();
   const PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase storage limit)
+  const IS_DEV_HOST = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const LOAD_TEST_PDF_URL = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf';
   function titleFromPdfFilename(name) {
     if (!name) return 'Untitled';
     const s = String(name).replace(/\.pdf$/i, '').trim();
@@ -6055,7 +6358,7 @@
   }
   async function buildTrimmedPdfBuffer(sourceBuffer, keptIndices) {
     if (!keptIndices.length) return null;
-    if (typeof PDFLib === 'undefined') return sourceBuffer;
+    if (typeof PDFLib === 'undefined') return null;
     const srcDoc = await PDFLib.PDFDocument.load(sourceBuffer);
     const out = await PDFLib.PDFDocument.create();
     const indices = keptIndices.map(i => i).sort((a, b) => a - b);
@@ -6065,6 +6368,7 @@
   }
   let preparePdfPages = [];
   let preparePdfBuffer = null;
+  let preparePdfPageBytes = {};
   let preparePdfKeptIndices = [];
   let preparePdfUndoStack = [];
   let preparePdfCurrentIdx = 0;
@@ -6090,14 +6394,28 @@
       return;
     }
     const maxH = 400;
-    const vp = page.pdfPage.getViewport({ scale: 1, rotation: 0 });
+    const rot = page.rotation ?? 0;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
     const scale = Math.min(1, maxH / vp.height);
-    const viewport = page.pdfPage.getViewport({ scale, rotation: 0 });
+    const viewport = page.pdfPage.getViewport({ scale, rotation: rot });
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     canvas.style.maxWidth = '100%';
     canvas.style.height = 'auto';
-    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length;
+    const wIn = (vp.width / 72).toFixed(1);
+    const hIn = (vp.height / 72).toFixed(1);
+    const fmt = (b) => (b / (1024 * 1024)) < 0.01 ? (b / 1024).toFixed(2) + ' KB' : (b / (1024 * 1024)).toFixed(2) + ' MB';
+    let sizeStr = '';
+    if (preparePdfBuffer) {
+      const totalBytes = preparePdfBuffer.byteLength;
+      const pageBytes = preparePdfPageBytes[origIdx];
+      if (pageBytes != null) {
+        sizeStr = ' — This page: ' + fmt(pageBytes) + ' — Total: ' + fmt(totalBytes);
+      } else {
+        sizeStr = ' — Total: ' + fmt(totalBytes);
+      }
+    }
+    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length + ' — ' + wIn + ' × ' + hIn + ' in' + sizeStr;
     page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport });
     const nameEl = document.getElementById('preparePdfName');
     if (nameEl && preparePdfEditMode === 'page') nameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
@@ -6115,15 +6433,19 @@
     const kept = preparePdfKeptIndices;
     document.getElementById('preparePdfUndo').disabled = preparePdfUndoStack.length === 0;
     document.getElementById('preparePdfDelete').disabled = kept.length <= 1;
+    document.getElementById('preparePdfRotate').disabled = kept.length === 0;
     document.getElementById('preparePdfPrev').disabled = preparePdfCurrentIdx <= 0;
     document.getElementById('preparePdfNext').disabled = preparePdfCurrentIdx >= kept.length - 1;
     document.getElementById('preparePdfDone').disabled = kept.length === 0;
+    const downloadEl = document.getElementById('preparePdfDownload');
+    if (downloadEl) downloadEl.disabled = kept.length === 0;
     const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');
     if (saveAndOpenEl) saveAndOpenEl.disabled = kept.length === 0;
   }
   function openPreparePdfModal(pages, buffer, defaultName) {
-    preparePdfPages = pages.map(p => ({ pdfPage: p.pdfPage, label: p.label }));
+    preparePdfPages = pages.map(p => ({ pdfPage: p.pdfPage, label: p.label, rotation: p.rotation ?? 0 }));
     preparePdfBuffer = buffer;
+    preparePdfPageBytes = {};
     preparePdfKeptIndices = pages.map((_, i) => i);
     preparePdfUndoStack = [];
     preparePdfCurrentIdx = 0;
@@ -6136,10 +6458,25 @@
     renderPreparePdfPreview();
     updatePreparePdfControls();
     showModal('preparePdfModal');
+    (async function computePageSizes() {
+      if (typeof PDFLib === 'undefined' || !preparePdfBuffer) return;
+      const indices = [...preparePdfKeptIndices].sort((a, b) => a - b);
+      for (const i of indices) {
+        if (!preparePdfBuffer) return;
+        try {
+          const buf = await buildTrimmedPdfBuffer(preparePdfBuffer, [i]);
+          if (buf) preparePdfPageBytes[i] = buf.byteLength;
+        } catch (_) {}
+        if (document.getElementById('preparePdfModal')?.classList.contains('visible')) {
+          renderPreparePdfPreview();
+        }
+      }
+    })();
   }
   window.closePreparePdfModal = function closePreparePdfModal() {
     preparePdfPages = [];
     preparePdfBuffer = null;
+    preparePdfPageBytes = {};
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
     hideModal('preparePdfModal');
@@ -6212,7 +6549,18 @@
       updatePreparePdfControls();
     }
   };
+  function preparePdfRotatePage90() {
+    const kept = preparePdfKeptIndices;
+    if (!kept.length) return;
+    const origIdx = kept[preparePdfCurrentIdx];
+    const page = preparePdfPages[origIdx];
+    if (!page || !page.pdfPage) return;
+    page.rotation = ((page.rotation ?? 0) + 90) % 360;
+    renderPreparePdfPreview();
+  }
+  document.getElementById('preparePdfRotate').onclick = preparePdfRotatePage90;
   async function commitPreparePdfToState() {
+    try {
     const nameInput = document.getElementById('preparePdfName');
     if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput?.value || '').trim() || preparePdfDefaultName;
     else saveCurrentPageName();
@@ -6223,7 +6571,8 @@
       ? preparePdfBuffer
       : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
     if (!trimmedBuf) return { ok: false };
-    const pdf = await pdfjsLib.getDocument(trimmedBuf).promise;
+    const sizeBeforePdfJs = trimmedBuf.byteLength ?? trimmedBuf.length ?? trimmedBuf.size ?? 0;
+    const pdf = await pdfjsLib.getDocument(trimmedBuf.slice(0)).promise;
     const numPages = pdf.numPages;
     state.pages = [];
     state.activeCanvasIdByPage = {};
@@ -6231,11 +6580,13 @@
       const pdfPage = await pdf.getPage(i + 1);
       const origIdx = kept[i];
       const label = preparePdfPages[origIdx]?.label || ('Page ' + (i + 1));
+      const rotation = preparePdfPages[origIdx]?.rotation ?? 0;
       const canvasId = uid();
-      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation });
       state.activeCanvasIdByPage[i] = canvasId;
     }
     state.pdfBuffer = trimmedBuf;
+    state.pdfBufferSize = sizeBeforePdfJs;
     state.pdfStoragePath = null;
     state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
     state.currentPage = 0;
@@ -6243,7 +6594,11 @@
     preparePdfBuffer = null;
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
-    return { ok: true, name };
+    return { ok: true, name, pdfBuffer: trimmedBuf };
+    } catch (e) {
+      console.error('[Prepare PDF]', e);
+      return { ok: false };
+    }
   }
   document.getElementById('preparePdfDone').onclick = async () => {
     const r = await commitPreparePdfToState();
@@ -6251,6 +6606,17 @@
     hideModal('preparePdfModal');
     updateUI();
     requestAnimationFrame(() => { fitZoom(); renderPdf(); });
+    await writeTakeoffStateBackup();
+  };
+  document.getElementById('preparePdfDownload').onclick = async () => {
+    const kept = preparePdfKeptIndices;
+    if (!kept.length || !preparePdfBuffer) return;
+    const trimmedBuf = kept.length === preparePdfPages.length
+      ? preparePdfBuffer
+      : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
+    if (!trimmedBuf) { alert('Failed to build PDF.'); return; }
+    const name = preparePdfProjectName || preparePdfDefaultName;
+    downloadPdfBuffer(trimmedBuf, sanitizeForFilename(name) + '.pdf');
   };
   document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
     const r = await commitPreparePdfToState();
@@ -6258,7 +6624,7 @@
     hideModal('preparePdfModal');
     updateUI();
     requestAnimationFrame(() => { fitZoom(); renderPdf(); });
-    const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true });
+    const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
     if (!saveResult.ok) {
       const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
       showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
@@ -6266,6 +6632,35 @@
       autoSaveDirty = false;
     }
   };
+  async function loadTestPdf() {
+    try {
+      const res = await fetch(LOAD_TEST_PDF_URL);
+      if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+      const buf = await res.arrayBuffer();
+      const bufForDisplay = buf.slice(0);
+      const pdf = await pdfjsLib.getDocument(buf).promise;
+      const numPages = pdf.numPages;
+      const pages = [];
+      for (let i = 0; i < numPages; i++) {
+        const pdfPage = await pdf.getPage(i + 1);
+        const label = numPages > 1 ? ('Test PDF — p' + (i + 1)) : 'Test PDF';
+        const canvasId = uid();
+        pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+      }
+      openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
+      state.pages = [];
+      state.activeCanvasIdByPage = {};
+      state.pdfBuffer = null;
+      state.pdfBufferSize = 0;
+      state.currentProjectName = 'Untitled';
+      state.currentPage = 0;
+      updateUI();
+      requestAnimationFrame(() => { fitZoom(); renderPdf(); });
+    } catch (e) {
+      console.error('[Load test PDF]', e);
+      showToast('Failed to load test PDF: ' + (e?.message || 'Unknown error'), 4000);
+    }
+  }
   document.getElementById('pdfInput').onchange = async (e) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -6282,7 +6677,7 @@
       const buf = await f.arrayBuffer();
       const bufCopy = buf.slice(0);
       if (!firstBuf) firstBuf = bufCopy;
-      if (SUPABASE_ENABLED && state.supabaseSession?.user) buffersForMerge.push(bufCopy);
+      buffersForMerge.push(bufCopy);
       const pdf = await pdfjsLib.getDocument(buf).promise;
       const numPages = pdf.numPages;
       for (let i = 0; i < numPages; i++) {
@@ -6294,8 +6689,10 @@
         state.activeCanvasIdByPage[idx] = canvasId;
       }
     }
-    if (SUPABASE_ENABLED && state.supabaseSession?.user && buffersForMerge.length > 0) {
-      state.pdfBuffer = await mergePdfBuffers(buffersForMerge);
+    if (buffersForMerge.length > 0) {
+      const merged = await mergePdfBuffers(buffersForMerge);
+      state.pdfBuffer = merged;
+      state.pdfBufferSize = merged ? (merged.byteLength ?? merged.length ?? merged.size ?? 0) : 0;
       state.pdfStoragePath = null;
     }
     if (state.pendingCanvasLoad && firstBuf) {
@@ -6400,6 +6797,7 @@
         state.pages = [];
         state.activeCanvasIdByPage = {};
         state.pdfBuffer = null;
+        state.pdfBufferSize = 0;
         state.currentProjectName = 'Untitled';
         state.currentPage = 0;
         updateUI();
@@ -6944,6 +7342,17 @@
     renderAnnotations();
     updateUI();
   };
+  document.getElementById('lineTypeShowOnlyOnPageBtn').onclick = () => {
+    const cb = document.getElementById('lineTypeShowOnlyOnPage');
+    cb.checked = !cb.checked;
+    document.getElementById('lineTypeShowOnlyOnPageBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('lineTypeShowOnlyOnPage').onchange = () => {
+    state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = document.getElementById('lineTypeShowOnlyOnPage').checked;
+    renderLineTypesList();
+    updateUI();
+  };
   document.getElementById('lineTypeSnapToHVHeaderBtn').onclick = (e) => {
     e.stopPropagation();
     state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
@@ -6961,11 +7370,21 @@
     document.getElementById('pagesSection').classList.toggle('collapsed', state.pagesListCollapsed);
     document.getElementById('pagesCollapseIcon').textContent = state.pagesListCollapsed ? '▶' : '▼';
   };
-  document.getElementById('pagesSectionTitle').onclick = () => {
-    state.pagesTitlesTruncated = !state.pagesTitlesTruncated;
-    try { localStorage.setItem('pagesTitlesTruncated', state.pagesTitlesTruncated ? '1' : '0'); } catch (_) {}
-    renderPagesList();
-    updateUI();
+  document.getElementById('pagesSectionTitle').onclick = (e) => {
+    if (e.target.closest('#pagesCollapseIcon')) return;
+    const pageSettingsTruncate = document.getElementById('pageSettingsTruncate');
+    const pageSettingsTruncateBtn = document.getElementById('pageSettingsTruncateBtn');
+    if (pageSettingsTruncate && pageSettingsTruncateBtn) {
+      pageSettingsTruncate.checked = !!state.pagesTitlesTruncated;
+      pageSettingsTruncateBtn.setAttribute('aria-pressed', state.pagesTitlesTruncated);
+    }
+    const pageSettingsHideUnmarked = document.getElementById('pageSettingsHideUnmarked');
+    const pageSettingsHideUnmarkedBtn = document.getElementById('pageSettingsHideUnmarkedBtn');
+    if (pageSettingsHideUnmarked && pageSettingsHideUnmarkedBtn) {
+      pageSettingsHideUnmarked.checked = !!state.hideUnmarkedPagesFromSidebar;
+      pageSettingsHideUnmarkedBtn.setAttribute('aria-pressed', state.hideUnmarkedPagesFromSidebar);
+    }
+    showModal('pageSettingsModal');
   };
   document.getElementById('countersCollapseIcon').onclick = (e) => {
     e.stopPropagation();
@@ -7017,6 +7436,12 @@
     const counterRingSolidBtn = document.getElementById('counterRingSolidBtn');
     counterRingSolidCb.checked = !!state.counterSettings.ringSolid;
     counterRingSolidBtn.setAttribute('aria-pressed', !!state.counterSettings.ringSolid);
+    const counterShowOnlyOnPageCb = document.getElementById('counterShowOnlyOnPage');
+    const counterShowOnlyOnPageBtn = document.getElementById('counterShowOnlyOnPageBtn');
+    if (counterShowOnlyOnPageCb && counterShowOnlyOnPageBtn) {
+      counterShowOnlyOnPageCb.checked = !!state.counterSettings.showOnlyCountersOnCurrentPage;
+      counterShowOnlyOnPageBtn.setAttribute('aria-pressed', state.counterSettings.showOnlyCountersOnCurrentPage);
+    }
     document.getElementById('counterSettingsReorder').style.display = state.counters.length < 2 ? 'none' : '';
     showModal('counterSettingsModal');
   };
@@ -7053,10 +7478,47 @@
     const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
     snapCb.checked = !!state.lineTypeSettings.snapToHorizontalVertical;
     snapBtn.setAttribute('aria-pressed', snapCb.checked);
+    const lineTypeShowOnlyOnPageCb = document.getElementById('lineTypeShowOnlyOnPage');
+    const lineTypeShowOnlyOnPageBtn = document.getElementById('lineTypeShowOnlyOnPageBtn');
+    if (lineTypeShowOnlyOnPageCb && lineTypeShowOnlyOnPageBtn) {
+      lineTypeShowOnlyOnPageCb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
+      lineTypeShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
+    }
     document.getElementById('lineTypeSettingsReorder').style.display = state.lineTypes.length < 2 ? 'none' : '';
     showModal('lineTypeSettingsModal');
   };
   document.getElementById('counterSettingsClose').onclick = () => hideModal('counterSettingsModal');
+  const pageSettingsTruncateCb = document.getElementById('pageSettingsTruncate');
+  const pageSettingsTruncateBtn = document.getElementById('pageSettingsTruncateBtn');
+  if (pageSettingsTruncateCb && pageSettingsTruncateBtn) {
+    pageSettingsTruncateBtn.onclick = () => {
+      pageSettingsTruncateCb.checked = !pageSettingsTruncateCb.checked;
+      pageSettingsTruncateBtn.setAttribute('aria-pressed', pageSettingsTruncateCb.checked);
+      pageSettingsTruncateCb.dispatchEvent(new Event('change'));
+    };
+    pageSettingsTruncateCb.onchange = () => {
+      state.pagesTitlesTruncated = pageSettingsTruncateCb.checked;
+      try { localStorage.setItem('pagesTitlesTruncated', state.pagesTitlesTruncated ? '1' : '0'); } catch (_) {}
+      renderPagesList();
+      updateUI();
+    };
+  }
+  const pageSettingsHideUnmarkedCb = document.getElementById('pageSettingsHideUnmarked');
+  const pageSettingsHideUnmarkedBtn = document.getElementById('pageSettingsHideUnmarkedBtn');
+  if (pageSettingsHideUnmarkedCb && pageSettingsHideUnmarkedBtn) {
+    pageSettingsHideUnmarkedBtn.onclick = () => {
+      pageSettingsHideUnmarkedCb.checked = !pageSettingsHideUnmarkedCb.checked;
+      pageSettingsHideUnmarkedBtn.setAttribute('aria-pressed', pageSettingsHideUnmarkedCb.checked);
+      pageSettingsHideUnmarkedCb.dispatchEvent(new Event('change'));
+    };
+    pageSettingsHideUnmarkedCb.onchange = () => {
+      state.hideUnmarkedPagesFromSidebar = pageSettingsHideUnmarkedCb.checked;
+      try { localStorage.setItem('hideUnmarkedPagesFromSidebar', state.hideUnmarkedPagesFromSidebar ? '1' : '0'); } catch (_) {}
+      renderPagesList();
+      updateUI();
+    };
+  }
+  document.getElementById('pageSettingsClose').onclick = () => hideModal('pageSettingsModal');
   document.getElementById('lineTypeSettingsReorder').onclick = () => {
     hideModal('lineTypeSettingsModal');
     state.countersListCollapsed = false;
@@ -7161,6 +7623,17 @@
   document.getElementById('counterRingSolid').onchange = () => {
     state.counterSettings.ringSolid = document.getElementById('counterRingSolid').checked;
     renderAnnotations();
+  };
+  document.getElementById('counterShowOnlyOnPageBtn').onclick = () => {
+    const cb = document.getElementById('counterShowOnlyOnPage');
+    cb.checked = !cb.checked;
+    document.getElementById('counterShowOnlyOnPageBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('counterShowOnlyOnPage').onchange = () => {
+    state.counterSettings.showOnlyCountersOnCurrentPage = document.getElementById('counterShowOnlyOnPage').checked;
+    renderCountersList();
+    updateUI();
   };
 
   document.getElementById('polylineCancel').onclick = () => hideModal('polylineModal');
@@ -7431,50 +7904,15 @@
   };
   document.getElementById('exportBtnSidebar').onclick = () => document.getElementById('exportBtn').click();
 
-  document.getElementById('exportPdf').onclick = () => {
-    if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
-    const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Combined PDF requires jsPDF. Please refresh the page.'); return; }
-    document.getElementById('exportMarkerScale').value = Math.round((state.exportSettings.markerScale ?? 0.75) * 100);
-    document.getElementById('exportMarkerScaleVal').textContent = document.getElementById('exportMarkerScale').value;
-    document.getElementById('exportLineScale').value = Math.round((state.exportSettings.lineScale ?? 0.75) * 100);
-    document.getElementById('exportLineScaleVal').textContent = document.getElementById('exportLineScale').value;
-    document.getElementById('exportBundleHighlights').checked = state.exportSettings.bundleHighlightsToPdf !== false;
-    document.getElementById('exportBundleNotes').checked = state.exportSettings.bundleNotesToPdf !== false;
-    document.getElementById('exportBundleHighlightsBtn').setAttribute('aria-pressed', document.getElementById('exportBundleHighlights').checked);
-    document.getElementById('exportBundleNotesBtn').setAttribute('aria-pressed', document.getElementById('exportBundleNotes').checked);
-    showModal('exportPdfModal');
-  };
-
-  document.getElementById('exportMarkerScale').oninput = () => {
-    document.getElementById('exportMarkerScaleVal').textContent = document.getElementById('exportMarkerScale').value;
-  };
-  document.getElementById('exportLineScale').oninput = () => {
-    document.getElementById('exportLineScaleVal').textContent = document.getElementById('exportLineScale').value;
-  };
-
-  document.getElementById('exportPdfCancel').onclick = () => hideModal('exportPdfModal');
-
-  document.getElementById('exportBundleHighlightsBtn').onclick = (e) => {
-    e.preventDefault();
-    const cb = document.getElementById('exportBundleHighlights');
-    cb.checked = !cb.checked;
-    document.getElementById('exportBundleHighlightsBtn').setAttribute('aria-pressed', cb.checked);
-  };
-  document.getElementById('exportBundleNotesBtn').onclick = (e) => {
-    e.preventDefault();
-    const cb = document.getElementById('exportBundleNotes');
-    cb.checked = !cb.checked;
-    document.getElementById('exportBundleNotesBtn').setAttribute('aria-pressed', cb.checked);
-  };
-
   let specificPagesSelections = {};
+  let specificPagesCanvasMode = {};
   function openSpecificPagesModal() {
     if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Specific Pages requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Export PDFs requires jsPDF. Please refresh the page.'); return; }
     specificPagesSelections = {};
-    state.pages.forEach((_, i) => { specificPagesSelections[i] = 'marked'; });
+    specificPagesCanvasMode = {};
+    state.pages.forEach((_, i) => { specificPagesSelections[i] = 'marked'; specificPagesCanvasMode[i] = 'current'; });
     try {
       const stored = localStorage.getItem('specificPagesIncludeReport');
       document.getElementById('specificPagesIncludeReport').checked = stored !== '0';
@@ -7513,10 +7951,19 @@
       const select = document.createElement('select');
       select.innerHTML = '<option value="marked">Marked up</option><option value="unmarked">Not marked up</option><option value="exclude">Exclude</option>';
       select.value = 'marked';
-      select.onchange = () => { specificPagesSelections[i] = select.value; updateSpecificPagesDownloadState(); };
+      select.onchange = () => { specificPagesSelections[i] = select.value; updateSpecificPagesCanvasModeVisibility(); updateSpecificPagesDownloadState(); };
       card.appendChild(img);
       card.appendChild(label);
       card.appendChild(select);
+      const canvases = getPageCanvases(page);
+      const canvasModeSelect = document.createElement('select');
+      canvasModeSelect.className = 'specific-page-canvas-mode';
+      canvasModeSelect.dataset.pageIndex = String(i);
+      canvasModeSelect.innerHTML = '<option value="current">Current canvas</option><option value="all">All canvases</option>';
+      canvasModeSelect.value = specificPagesCanvasMode[i] || 'current';
+      canvasModeSelect.style.display = (canvases.length > 1 && specificPagesSelections[i] === 'marked') ? '' : 'none';
+      canvasModeSelect.onchange = () => { specificPagesCanvasMode[i] = canvasModeSelect.value; };
+      card.appendChild(canvasModeSelect);
       grid.appendChild(card);
       (async () => {
         const THUMB_SCALE = 0.4;
@@ -7529,7 +7976,12 @@
         img.src = canvas.toDataURL('image/jpeg', 0.8);
       })();
     });
+    document.getElementById('specificPagesMarkerScale').value = Math.round((state.exportSettings.markerScale ?? 0.75) * 100);
+    document.getElementById('specificPagesMarkerScaleVal').textContent = document.getElementById('specificPagesMarkerScale').value;
+    document.getElementById('specificPagesLineScale').value = Math.round((state.exportSettings.lineScale ?? 0.75) * 100);
+    document.getElementById('specificPagesLineScaleVal').textContent = document.getElementById('specificPagesLineScale').value;
     updateSpecificPagesDownloadState();
+    updateSpecificPagesNavState();
     showModal('specificPagesModal');
   }
   function sanitizeForFilename(s) {
@@ -7537,20 +7989,111 @@
     const cleaned = raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, '_').trim();
     return cleaned || 'Untitled';
   }
+  function downloadPdfBuffer(buffer, filename) {
+    const blob = new Blob([buffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.pdf') ? filename : filename + '.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  async function downloadProjectPdf() {
+    let buf = null;
+    if (state.pdfBuffer && state.pdfBuffer.byteLength > 0) {
+      buf = state.pdfBuffer;
+    } else if (state.pdfStoragePath && SUPABASE_ENABLED && supabase) {
+      try {
+        const cachedBlob = state.currentProjectId && state.pdfHash ? await pdfCacheGet(state.currentProjectId, state.pdfHash) : null;
+        if (cachedBlob && cachedBlob.size > 0) {
+          buf = await cachedBlob.arrayBuffer();
+        }
+        if (!buf || buf.byteLength === 0) {
+          const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(state.pdfStoragePath);
+          if (dlErr || !blob || blob.size === 0) {
+            showToast('Failed to download PDF: ' + (dlErr?.message || 'PDF not found'), 4000);
+            return;
+          }
+          buf = await blob.arrayBuffer();
+        }
+      } catch (e) {
+        console.error('[Download PDF]', e);
+        showToast('Failed to download PDF: ' + (e?.message || 'Unknown error'), 4000);
+        return;
+      }
+    }
+    if (!buf || buf.byteLength === 0) {
+      showToast('No PDF available to download.', 3000);
+      return;
+    }
+    downloadPdfBuffer(buf, sanitizeForFilename(state.currentProjectName) + '.pdf');
+  }
+  function updateSpecificPagesCanvasModeVisibility() {
+    document.querySelectorAll('.specific-page-canvas-mode').forEach(sel => {
+      const i = parseInt(sel.dataset.pageIndex, 10);
+      const page = state.pages[i];
+      const canvases = page ? getPageCanvases(page) : [];
+      const show = canvases.length > 1 && specificPagesSelections[i] === 'marked';
+      sel.style.display = show ? '' : 'none';
+    });
+  }
   function updateSpecificPagesDownloadState() {
     const hasIncluded = Object.values(specificPagesSelections).some(v => v !== 'exclude');
     document.getElementById('specificPagesDownload').disabled = !hasIncluded;
   }
+  function updateSpecificPagesNavState() {
+    const grid = document.getElementById('specificPagesGrid');
+    const prev = document.querySelector('.specific-pages-nav-prev');
+    const next = document.querySelector('.specific-pages-nav-next');
+    if (!grid || !prev || !next) return;
+    const { scrollLeft, scrollWidth, clientWidth } = grid;
+    const atEnd = scrollWidth <= clientWidth || scrollLeft >= scrollWidth - clientWidth - 1;
+    prev.disabled = scrollLeft <= 0;
+    next.disabled = atEnd;
+  }
   function setAllSpecificPagesTo(value) {
-    state.pages.forEach((_, i) => { specificPagesSelections[i] = value; });
-    document.querySelectorAll('#specificPagesGrid select').forEach((sel, i) => {
-      if (specificPagesSelections[i] !== undefined) sel.value = specificPagesSelections[i];
+    state.pages.forEach((_, i) => {
+      specificPagesSelections[i] = value;
+      if (value === 'marked') specificPagesCanvasMode[i] = 'current';
     });
+    const grid = document.getElementById('specificPagesGrid');
+    state.pages.forEach((_, i) => {
+      const card = grid?.children[i];
+      if (card) {
+        const mainSelect = card.querySelector('select:not(.specific-page-canvas-mode)');
+        const modeSelect = card.querySelector('.specific-page-canvas-mode');
+        if (mainSelect) mainSelect.value = specificPagesSelections[i];
+        if (modeSelect) modeSelect.value = specificPagesCanvasMode[i] || 'current';
+      }
+    });
+    updateSpecificPagesCanvasModeVisibility();
+    updateSpecificPagesDownloadState();
+  }
+  function setAllSpecificPagesToMarkedWithAllCanvases() {
+    state.pages.forEach((_, i) => {
+      specificPagesSelections[i] = 'marked';
+      specificPagesCanvasMode[i] = 'all';
+    });
+    const grid = document.getElementById('specificPagesGrid');
+    state.pages.forEach((_, i) => {
+      const card = grid?.children[i];
+      if (card) {
+        const mainSelect = card.querySelector('select:not(.specific-page-canvas-mode)');
+        const modeSelect = card.querySelector('.specific-page-canvas-mode');
+        if (mainSelect) mainSelect.value = specificPagesSelections[i];
+        if (modeSelect) modeSelect.value = specificPagesCanvasMode[i] || 'all';
+      }
+    });
+    updateSpecificPagesCanvasModeVisibility();
     updateSpecificPagesDownloadState();
   }
   async function downloadSpecificPages() {
     const included = state.pages.map((_, i) => i).filter(i => specificPagesSelections[i] !== 'exclude');
     if (!included.length) return;
+    const markerScale = parseInt(document.getElementById('specificPagesMarkerScale').value, 10) / 100;
+    const lineScale = parseInt(document.getElementById('specificPagesLineScale').value, 10) / 100;
+    state.exportSettings.markerScale = markerScale;
+    state.exportSettings.lineScale = lineScale;
     hideModal('specificPagesModal');
     const jsPDFLib = window.jspdf;
     if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
@@ -7562,7 +8105,7 @@
     try { localStorage.setItem('specificPagesIncludeReport', includeReport ? '1' : '0'); } catch (_) {}
     const EXPORT_SCALE = 4;
     const PT_TO_MM = 25.4 / 72;
-    const exportOverrides = { markerScale: state.exportSettings.markerScale ?? 0.75, lineScale: state.exportSettings.lineScale ?? 0.75 };
+    const exportOverrides = { markerScale, lineScale };
     const btn = document.getElementById('specificPages');
     const origText = btn.textContent;
     btn.textContent = 'Downloading…';
@@ -7576,20 +8119,64 @@
       for (let idx = 0; idx < included.length; idx++) {
         const i = included[idx];
         const page = state.pages[i];
-        btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        if (specificPagesSelections[i] === 'marked') renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-        else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+        const canvases = getPageCanvases(page);
+        const canvasMode = specificPagesCanvasMode[i] || 'current';
+        const useAllCanvases = specificPagesSelections[i] === 'marked' && canvasMode === 'all' && canvases.length > 1;
+        if (specificPagesSelections[i] === 'unmarked') {
+          btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
+          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+          if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
+          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+        } else if (useAllCanvases) {
+          for (let ci = 0; ci < canvases.length; ci++) {
+            btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
+            const c = canvases[ci];
+            const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+            renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || makeAnnotations());
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+            const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+            const caption = c.name || 'Main';
+            const captionTop = 10;
+            const imageTop = 14;
+            const pdfPageW = Math.max(210, wMm + 28);
+            const pdfPageH = imageTop + hMm + 14 + 20;
+            if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
+            else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
+            doc.setFontSize(9);
+            doc.text(caption, 14, captionTop);
+            doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
+          }
+        } else {
+          btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
+          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+          renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+          if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
+          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+        }
       }
       if (doc && bundleHighlights && hasAnyHighlights()) {
         btn.textContent = 'Exporting highlights…';
@@ -7616,6 +8203,7 @@
   document.getElementById('specificPagesAllMarked').onclick = () => setAllSpecificPagesTo('marked');
   document.getElementById('specificPagesAllUnmarked').onclick = () => setAllSpecificPagesTo('unmarked');
   document.getElementById('specificPagesAllExclude').onclick = () => setAllSpecificPagesTo('exclude');
+  document.getElementById('specificPagesAllCanvases').onclick = setAllSpecificPagesToMarkedWithAllCanvases;
   document.getElementById('specificPagesIncludeReport').onchange = () => {
     try { localStorage.setItem('specificPagesIncludeReport', document.getElementById('specificPagesIncludeReport').checked ? '1' : '0'); } catch (_) {}
   };
@@ -7642,9 +8230,60 @@
     cb.checked = !cb.checked;
     document.getElementById('specificPagesBundleNotesBtn').setAttribute('aria-pressed', cb.checked);
   };
+  document.getElementById('specificPagesMarkerScale').oninput = () => {
+    document.getElementById('specificPagesMarkerScaleVal').textContent = document.getElementById('specificPagesMarkerScale').value;
+  };
+  document.getElementById('specificPagesLineScale').oninput = () => {
+    document.getElementById('specificPagesLineScaleVal').textContent = document.getElementById('specificPagesLineScale').value;
+  };
+  const specificPagesGrid = document.getElementById('specificPagesGrid');
+  if (specificPagesGrid) {
+    specificPagesGrid.addEventListener('scroll', updateSpecificPagesNavState);
+    specificPagesGrid.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        specificPagesGrid.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
+  document.querySelector('.specific-pages-nav-prev')?.addEventListener('click', () => {
+    const grid = document.getElementById('specificPagesGrid');
+    if (grid) { grid.scrollBy({ left: -156, behavior: 'smooth' }); }
+  });
+  document.querySelector('.specific-pages-nav-next')?.addEventListener('click', () => {
+    const grid = document.getElementById('specificPagesGrid');
+    if (grid) { grid.scrollBy({ left: 156, behavior: 'smooth' }); }
+  });
 
-  document.getElementById('forPipeTooling').onclick = async () => {
-    const text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary() : '';
+  const forPipeToolingBtn = document.getElementById('forPipeTooling');
+  const forPipeToolingMenu = document.getElementById('forPipeToolingMenu');
+  const forPipeToolingDropdown = document.getElementById('forPipeToolingDropdown');
+  if (forPipeToolingBtn && forPipeToolingMenu) {
+    forPipeToolingBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (forPipeToolingMenu.classList.contains('visible')) {
+        forPipeToolingMenu.classList.remove('visible');
+        if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
+      } else {
+        forPipeToolingMenu.style.left = '';
+        forPipeToolingMenu.style.right = '';
+        forPipeToolingMenu.classList.add('visible');
+        const btnRect = forPipeToolingBtn.getBoundingClientRect();
+        forPipeToolingMenu.style.position = 'fixed';
+        forPipeToolingMenu.style.left = btnRect.left + 'px';
+        const menuHeight = 120;
+        forPipeToolingMenu.style.top = Math.max(8, btnRect.top - menuHeight - 4) + 'px';
+        forPipeToolingMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (isMobile && forPipeToolingMenu.parentElement !== document.body) document.body.appendChild(forPipeToolingMenu);
+      }
+    };
+  }
+  async function doCopyPipeTooling(getAnnFn, pageIndices) {
+    const opts = {};
+    if (getAnnFn) opts.getAnnotations = getAnnFn;
+    if (pageIndices != null) opts.pageIndices = pageIndices;
+    const text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
     if (!text) {
       alert('No items to summarize. Add counters or line types first.');
       return;
@@ -7656,10 +8295,54 @@
     } catch (err) {
       alert('Could not copy to clipboard: ' + (err.message || err));
     }
-  };
+  }
+  document.querySelectorAll('.pipe-tooling-option').forEach(opt => {
+    opt.onclick = async (e) => {
+      e.stopPropagation();
+      const mode = opt.dataset.mode;
+      if (forPipeToolingMenu) {
+        forPipeToolingMenu.classList.remove('visible');
+        if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
+      }
+      if (mode === 'this-canvas') await doCopyPipeTooling(null, [state.currentPage]);
+      else if (mode === 'visible') await doCopyPipeTooling(null);
+      else if (mode === 'all') await doCopyPipeTooling(getMergedAnnotationsForPage);
+    };
+  });
 
-  document.getElementById('copySummaryText').onclick = async () => {
-    const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary() : '';
+  const copySummaryTextBtn = document.getElementById('copySummaryText');
+  const copySummaryTextMenu = document.getElementById('copySummaryTextMenu');
+  const copySummaryTextDropdown = document.getElementById('copySummaryTextDropdown');
+  if (copySummaryTextBtn && copySummaryTextMenu) {
+    copySummaryTextBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (copySummaryTextMenu.classList.contains('visible')) {
+        copySummaryTextMenu.classList.remove('visible');
+        if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
+      } else {
+        copySummaryTextMenu.style.left = '';
+        copySummaryTextMenu.style.right = '';
+        copySummaryTextMenu.classList.add('visible');
+        const btnRect = copySummaryTextBtn.getBoundingClientRect();
+        copySummaryTextMenu.style.position = 'fixed';
+        copySummaryTextMenu.style.left = btnRect.left + 'px';
+        const menuHeight = 120;
+        const spaceBelow = window.innerHeight - (btnRect.bottom + 4);
+        const top = spaceBelow < menuHeight
+          ? Math.max(8, btnRect.top - menuHeight - 4)
+          : (btnRect.bottom + 4);
+        copySummaryTextMenu.style.top = top + 'px';
+        copySummaryTextMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (isMobile && copySummaryTextMenu.parentElement !== document.body) document.body.appendChild(copySummaryTextMenu);
+      }
+    };
+  }
+  async function doCopyEmailSummary(getAnnFn, pageIndices) {
+    const opts = {};
+    if (getAnnFn) opts.getAnnotations = getAnnFn;
+    if (pageIndices != null) opts.pageIndices = pageIndices;
+    const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary(opts) : '';
     if (!text) {
       alert('No items to summarize. Add counters or line types first.');
       return;
@@ -7671,7 +8354,20 @@
     } catch (err) {
       alert('Could not copy to clipboard: ' + (err.message || err));
     }
-  };
+  }
+  document.querySelectorAll('.copy-summary-option').forEach(opt => {
+    opt.onclick = async (e) => {
+      e.stopPropagation();
+      const mode = opt.dataset.mode;
+      if (copySummaryTextMenu) {
+        copySummaryTextMenu.classList.remove('visible');
+        if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
+      }
+      if (mode === 'this-canvas') await doCopyEmailSummary(null, [state.currentPage]);
+      else if (mode === 'visible') await doCopyEmailSummary(null);
+      else if (mode === 'all') await doCopyEmailSummary(getMergedAnnotationsForPage);
+    };
+  });
 
   document.getElementById('bundleHighlights').onclick = async () => {
     if (!hasAnyHighlights()) return;
@@ -7933,61 +8629,6 @@
     return pageCount;
   }
 
-  document.getElementById('exportPdfDo').onclick = async () => {
-    const markerScale = parseInt(document.getElementById('exportMarkerScale').value, 10) / 100;
-    const lineScale = parseInt(document.getElementById('exportLineScale').value, 10) / 100;
-    state.exportSettings.markerScale = markerScale;
-    state.exportSettings.lineScale = lineScale;
-    state.exportSettings.bundleHighlightsToPdf = document.getElementById('exportBundleHighlights').checked;
-    state.exportSettings.bundleNotesToPdf = document.getElementById('exportBundleNotes').checked;
-    hideModal('exportPdfModal');
-    const jsPDFLib = window.jspdf;
-    const EXPORT_SCALE = 4;
-    const PT_TO_MM = 25.4 / 72;
-    const btn = document.getElementById('exportPdf');
-    const origText = btn.textContent;
-    const exportOverrides = { markerScale, lineScale };
-    try {
-      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-      btn.textContent = 'Exporting report…';
-      await addReportPagesToPdf(doc);
-      const firstViewport = state.pages[0].pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: state.pages[0].rotation ?? 0 });
-      const firstW = (firstViewport.width / EXPORT_SCALE) * PT_TO_MM;
-      const firstH = (firstViewport.height / EXPORT_SCALE) * PT_TO_MM;
-      doc.addPage([firstW, firstH], firstW > firstH ? 'l' : 'p');
-      for (let i = 0; i < state.pages.length; i++) {
-        btn.textContent = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
-        const page = state.pages[i];
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        if (i > 0) doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-      }
-      if (state.exportSettings.bundleHighlightsToPdf !== false && hasAnyHighlights()) {
-        btn.textContent = 'Exporting highlights…';
-        await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
-      }
-      if (state.exportSettings.bundleNotesToPdf !== false && hasAnyNotes()) {
-        btn.textContent = 'Exporting notes…';
-        await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
-      }
-      const baseName = sanitizeForFilename(state.currentProjectName);
-      doc.save('takeoff-with-marks_' + baseName + '.pdf');
-    } catch (err) {
-      console.error(err);
-      alert('Export failed: ' + (err.message || err));
-    }
-    btn.textContent = origText;
-  };
-
   document.getElementById('importBtn').onclick = () => document.getElementById('importInput').click();
   document.getElementById('importBtnSidebar').onclick = () => document.getElementById('importInput').click();
   document.getElementById('importInput').onchange = (e) => {
@@ -8106,9 +8747,11 @@
   }
   document.getElementById('clearPage').onclick = () => showClearPageModal();
   document.getElementById('clearPageSidebar').onclick = () => showClearPageModal();
-  async function downloadCurrentPageAsPdf() {
+  async function downloadCurrentPageAsPdf(mode) {
     const page = state.pages[state.currentPage];
-    if (!page?.pdfPage) return;
+    const isAllPages = mode === 'all-pages' || mode === 'all-pages-canvases';
+    if (!isAllPages && !page?.pdfPage) return;
+    if (!isAllPages) ensureActiveCanvas(page);
     const jsPDFLib = window.jspdf;
     if (!jsPDFLib?.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
     const EXPORT_SCALE = 4;
@@ -8117,29 +8760,188 @@
     const btn = document.getElementById('downloadCurrentPageBtn');
     const origText = btn?.title || '';
     if (btn) { btn.disabled = true; btn.title = 'Downloading…'; }
+    const baseName = sanitizeForFilename(state.currentProjectName);
+    const pageNum = state.currentPage + 1;
     try {
-      const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-      await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-      renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-      const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-      doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-      const baseName = sanitizeForFilename(state.currentProjectName);
-      const pageNum = state.currentPage + 1;
-      doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
+      if (mode === 'all-canvases') {
+        const canvases = getPageCanvases(page);
+        if (canvases.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
+        let doc = null;
+        for (let i = 0; i < canvases.length; i++) {
+          const c = canvases[i];
+          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+          renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || makeAnnotations());
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+          const caption = c.name || 'Main';
+          const captionTop = 10;
+          const imageTop = 14;
+          const pdfPageW = Math.max(210, wMm + 28);
+          const pdfPageH = imageTop + hMm + 14 + 20;
+          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
+          else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
+          doc.setFontSize(9);
+          doc.text(caption, 14, captionTop);
+          doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
+        }
+        if (doc) doc.save('takeoff-page' + pageNum + '_all-canvases_' + baseName + '.pdf');
+      } else if (mode === 'all-pages') {
+        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
+        let doc = null;
+        for (let i = 0; i < state.pages.length; i++) {
+          if (btn) btn.title = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
+          const p = state.pages[i];
+          ensureActiveCanvas(p);
+          const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+          renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides);
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
+          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+        }
+        if (doc) doc.save('takeoff-all-pages_' + baseName + '.pdf');
+      } else if (mode === 'all-pages-canvases') {
+        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
+        let doc = null;
+        for (let pageIdx = 0; pageIdx < state.pages.length; pageIdx++) {
+          const p = state.pages[pageIdx];
+          ensureActiveCanvas(p);
+          const canvases = getPageCanvases(p);
+          if (canvases.length === 0) continue;
+          for (let ci = 0; ci < canvases.length; ci++) {
+            if (btn) btn.title = 'Exporting page ' + (pageIdx + 1) + '/' + state.pages.length + '…';
+            const c = canvases[ci];
+            const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+            renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides, c.annotations || makeAnnotations());
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+            const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+            if (canvases.length === 1) {
+              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+              else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
+              doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+            } else {
+              const caption = c.name || 'Main';
+              const captionTop = 10;
+              const imageTop = 14;
+              const pdfPageW = Math.max(210, wMm + 28);
+              const pdfPageH = imageTop + hMm + 14 + 20;
+              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
+              else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
+              doc.setFontSize(9);
+              doc.text(caption, 14, captionTop);
+              doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
+            }
+          }
+        }
+        if (doc) doc.save('takeoff-all-pages-canvases_' + baseName + '.pdf');
+      } else {
+        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+        renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
+        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
+        const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+        doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
+      }
     } catch (err) {
       console.error(err);
       alert('Download failed: ' + (err?.message || err));
     }
     if (btn) { btn.disabled = false; btn.title = origText; }
   }
-  document.getElementById('downloadCurrentPageBtn').onclick = () => downloadCurrentPageAsPdf();
+  const downloadCurrentPageBtn = document.getElementById('downloadCurrentPageBtn');
+  const downloadCurrentPageMenu = document.getElementById('downloadCurrentPageMenu');
+  const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
+  if (downloadCurrentPageBtn) {
+    downloadCurrentPageBtn.onclick = (e) => {
+      e.stopPropagation();
+      const page = state.pages[state.currentPage];
+      const canvases = page ? getPageCanvases(page) : [];
+      const multiPage = state.pages.length > 1;
+      if (!multiPage && canvases.length <= 1) {
+        downloadCurrentPageAsPdf('this-canvas');
+      } else if (downloadCurrentPageMenu) {
+        if (downloadCurrentPageMenu.classList.contains('visible')) {
+          downloadCurrentPageMenu.classList.remove('visible');
+        } else {
+          downloadCurrentPageMenu.style.left = '';
+          downloadCurrentPageMenu.style.right = '';
+          downloadCurrentPageMenu.classList.add('visible');
+          const btnRect = downloadCurrentPageBtn.getBoundingClientRect();
+          downloadCurrentPageMenu.style.position = 'fixed';
+          downloadCurrentPageMenu.style.left = (btnRect.right - 300) + 'px';
+          downloadCurrentPageMenu.style.top = (btnRect.bottom + 4) + 'px';
+        }
+      }
+    };
+  }
+  document.querySelectorAll('.download-page-option').forEach(opt => {
+    opt.onclick = (e) => {
+      e.stopPropagation();
+      const mode = opt.dataset.mode;
+      if (downloadCurrentPageMenu) downloadCurrentPageMenu.classList.remove('visible');
+      if (mode) downloadCurrentPageAsPdf(mode);
+    };
+  });
+  const printReportBtn = document.getElementById('printReport');
+  const showReportMenu = document.getElementById('showReportMenu');
+  const showReportDropdown = document.getElementById('showReportDropdown');
+  if (printReportBtn && showReportMenu) {
+    printReportBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (showReportMenu.classList.contains('visible')) {
+        showReportMenu.classList.remove('visible');
+        if (showReportDropdown && showReportMenu.parentElement !== showReportDropdown) showReportDropdown.appendChild(showReportMenu);
+      } else {
+        showReportMenu.style.left = '';
+        showReportMenu.style.right = '';
+        showReportMenu.classList.add('visible');
+        const btnRect = printReportBtn.getBoundingClientRect();
+        showReportMenu.style.position = 'fixed';
+        showReportMenu.style.left = btnRect.left + 'px';
+        showReportMenu.style.top = (btnRect.bottom + 4) + 'px';
+        showReportMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (isMobile && showReportMenu.parentElement !== document.body) document.body.appendChild(showReportMenu);
+      }
+    };
+  }
+  document.querySelectorAll('.show-report-option').forEach(opt => {
+    opt.onclick = (e) => {
+      e.stopPropagation();
+      const mode = opt.dataset.mode;
+      if (showReportMenu) {
+        showReportMenu.classList.remove('visible');
+        if (showReportDropdown && showReportMenu.parentElement !== showReportDropdown) showReportDropdown.appendChild(showReportMenu);
+      }
+      if (mode && typeof window.printReport === 'function') window.printReport(mode);
+    };
+  });
   document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
   document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
   document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showClearPageModal(); };
@@ -8725,6 +9527,8 @@
         document.getElementById('authError').textContent = '';
         document.getElementById('authEmail').value = '';
         document.getElementById('authPassword').value = '';
+        const authDevBypassWrap = document.getElementById('authDevBypassWrap');
+        if (authDevBypassWrap) authDevBypassWrap.style.display = canUseDevAuth() ? 'block' : 'none';
         showModal('authModal');
       }
       updateUI();
@@ -8811,6 +9615,23 @@
       }
     };
     document.getElementById('authCancel').onclick = () => hideModal('authModal');
+    const authDevBypassWrap = document.getElementById('authDevBypassWrap');
+    const authDevBypass = document.getElementById('authDevBypass');
+    if (authDevBypassWrap) authDevBypassWrap.style.display = canUseDevAuth() ? 'block' : 'none';
+    if (authDevBypass) {
+      authDevBypass.onclick = async () => {
+        const errEl = document.getElementById('authError');
+        errEl.style.display = 'none';
+        const ok = await devAuthSignIn();
+        if (ok) {
+          hideModal('authModal');
+          updateUI();
+        } else {
+          errEl.textContent = 'Dev sign-in failed. Check config.';
+          errEl.style.display = 'block';
+        }
+      };
+    }
     document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
@@ -8852,7 +9673,7 @@
         if (opts.hideSettings) hideModal('settingsModal');
         showToast('Project turned in.');
         if (state.pdfBuffer && !state.pdfStoragePath) {
-          showToast('PDF saved locally—use Save Project to add it to the project.', 3000);
+          showToast('PDF saved locally—use Name / Upload / Save Project to add it to the project.', 3000);
         }
         updateUI();
       } else {
@@ -8979,6 +9800,8 @@
     };
     document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
     document.getElementById('settingsAddAdditionalPages').onclick = () => { hideModal('settingsModal'); document.getElementById('pdfInput').click(); };
+    document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await downloadProjectPdf(); };
+    document.getElementById('settingsLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await loadTestPdf(); };
     (function() {
       const section = document.getElementById('settingsAdvancedSection');
       const header = document.getElementById('settingsAdvancedHeader');
@@ -9240,6 +10063,8 @@
           updateUI();
         }
         if (!user) {
+          const authDevBypassWrapEl = document.getElementById('authDevBypassWrap');
+          if (authDevBypassWrapEl) authDevBypassWrapEl.style.display = canUseDevAuth() ? 'block' : 'none';
           showModal('authModal');
           return;
         }
@@ -9277,17 +10102,21 @@
           div.className = 'load-project-item';
           const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
           const sizeStr = formatSizeMb(sizeBytes);
-          const canvasOnlyBadge = !proj.pdf_path ? ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
+          const canvasOnlyBadge = !proj.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
+          const countsBadge = (proj.counter_count != null || proj.line_count != null) && (proj.counter_count > 0 || proj.line_count > 0)
+            ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">' + [proj.counter_count > 0 ? (proj.counter_count + ' cnt') : null, proj.line_count > 0 ? (proj.line_count + ' ln') : null].filter(Boolean).join(' · ') + '</span>'
+            : '';
           let lockBadge = '';
           if (proj.can_edit) lockBadge = ' <span class="badge" style="background:var(--green);color:var(--bg);font-size:11px;">You\'re editing</span>';
           else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>';
           else if (proj.can_check_out) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Available</span>';
           const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
           const metaParts = [date, sizeStr].filter(Boolean);
-          const meta = esc(metaParts.join(' · ')) + canvasOnlyBadge + lockBadge + ownerBadge;
+          const meta = esc(metaParts.join(' · ')) + lockBadge + ownerBadge;
           const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 640"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
           const deleteBtnHtml = proj.is_owner ? '<button type="button" class="load-project-delete" title="Delete from cloud" aria-label="Delete">' + trashSvg + '</button>' : '';
-          div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' + deleteBtnHtml;
+          const actionsHtml = (countsBadge || canvasOnlyBadge || deleteBtnHtml) ? '<div class="load-project-actions">' + countsBadge + canvasOnlyBadge + deleteBtnHtml + '</div>' : '';
+          div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' + actionsHtml;
           const deleteBtn = div.querySelector('.load-project-delete');
           if (deleteBtn) {
             deleteBtn.onclick = async (e) => {
@@ -9307,6 +10136,7 @@
                   subscribeToProjectCheckoutChanges(null);
                   state.currentProjectName = null;
                   state.pdfBuffer = null;
+                  state.pdfBufferSize = 0;
                   state.pdfStoragePath = null;
                   state.pdfHash = null;
                   state.projectOwnerId = null;
@@ -9334,16 +10164,24 @@
           try {
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
           const d = proj.data || {};
+          const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
+          const idbBackup = await takeoffBackupGet(proj.id);
+          const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
           if (proj.pdf_path) {
             try {
               let buf;
-              const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
-              const useCache = cachedBlob && cachedBlob.size > 0;
-              if (useCache) {
-                buf = await cachedBlob.arrayBuffer();
+              if (useIdbBackup && idbBackup.pdfBlob) {
+                buf = await idbBackup.pdfBlob.arrayBuffer();
               }
-              if (cachedBlob && (!buf || buf.byteLength === 0)) {
-                pdfCacheDelete(proj.id);
+              if (buf === undefined || !buf || buf.byteLength === 0) {
+                const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
+                const useCache = cachedBlob && cachedBlob.size > 0;
+                if (useCache) {
+                  buf = await cachedBlob.arrayBuffer();
+                }
+                if (cachedBlob && (!buf || buf.byteLength === 0)) {
+                  pdfCacheDelete(proj.id);
+                }
               }
               if (buf === undefined || !buf || buf.byteLength === 0) {
                 const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
@@ -9353,6 +10191,7 @@
                   state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
                   state.pdfStoragePath = null;
                   state.pdfBuffer = null;
+                  state.pdfBufferSize = 0;
                   state.pages = [];
                   state.counters = Array.isArray(d.counters) ? d.counters : [];
                   state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -9398,42 +10237,58 @@
                   state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
                   state.activeCanvasIdByPage[i] = canvasId;
                 }
-                state.counters = Array.isArray(d.counters) ? d.counters : [];
-                state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-                state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-                if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-                if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-                if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-                (d.pages || []).forEach(p => {
-                  applyPageAnnotationsFromData(state.pages[p.index], p);
-                });
-                if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-                if (d.pageScales) {
-                  d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-                } else if (d.scale) {
-                  state.pages.forEach(p => { p.scale = d.scale; });
+                if (useIdbBackup && idbBackup.data) {
+                  applyTakeoffBackupToState(idbBackup.data);
+                } else {
+                  state.counters = Array.isArray(d.counters) ? d.counters : [];
+                  state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+                  state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+                  if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+                  if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+                  if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+                  (d.pages || []).forEach(p => {
+                    applyPageAnnotationsFromData(state.pages[p.index], p);
+                  });
+                  if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+                  if (d.pageScales) {
+                    d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+                  } else if (d.scale) {
+                    state.pages.forEach(p => { p.scale = d.scale; });
+                  }
+                  state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+                  try {
+                    const backupRaw = localStorage.getItem('takeoff-state');
+                    if (backupRaw) {
+                      const backup = JSON.parse(backupRaw);
+                      if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
+                        applyTakeoffBackupToState(backup);
+                      }
+                    }
+                  } catch (_) {}
                 }
-                state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
                 reconcileOrphanedCountersAndLineTypes();
                 clearUndoStacks();
                 state.pdfStoragePath = proj.pdf_path;
                 state.pdfBuffer = null;
+                state.pdfBufferSize = 0;
               }
             } catch (e) {
               listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
               return;
             }
           } else {
-            state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: proj.pdf_hash || null };
+            state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: backupDataToProjFormat(useIdbBackup && idbBackup.data ? idbBackup.data : d), pdf_hash: proj.pdf_hash || null };
             state.pdfStoragePath = null;
             state.pdfBuffer = null;
+            state.pdfBufferSize = 0;
             state.pages = [];
-            state.counters = Array.isArray(d.counters) ? d.counters : [];
-            state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-            state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-            if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-            if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-            if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+            const canvasData = useIdbBackup && idbBackup.data ? idbBackup.data : d;
+            state.counters = Array.isArray(canvasData.counters) ? canvasData.counters : [];
+            state.lineTypes = Array.isArray(canvasData.lineTypes) ? canvasData.lineTypes : [];
+            state.groups = ensureGroupColors(Array.isArray(canvasData.groups) ? canvasData.groups : []);
+            if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
+            if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
+            if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
             reconcileOrphanedCountersAndLineTypes();
             clearUndoStacks();
             autoSaveDirty = false;
@@ -9506,6 +10361,7 @@
       subscribeToProjectCheckoutChanges(null);
       state.currentProjectName = null;
       state.pdfBuffer = null;
+      state.pdfBufferSize = 0;
       state.pdfStoragePath = null;
       state.pdfHash = null;
       state.lastSavedAt = null;
@@ -9626,7 +10482,7 @@
       updateUI();
     };
 
-    document.getElementById('saveProjectBtn').onclick = () => {
+    document.getElementById('saveProjectBtn').onclick = async () => {
       document.getElementById('saveProjectName').value = state.currentProjectName || 'Untitled';
       document.getElementById('saveProjectError').style.display = 'none';
       document.getElementById('saveProjectDo').disabled = false;
@@ -9636,17 +10492,42 @@
       const contentsList = document.getElementById('saveProjectContentsList');
       const contentsLabel = document.getElementById('saveProjectContentsLabel');
       const noPdfMessage = document.getElementById('saveProjectNoPdfMessage');
-      const pdfSizeEl = document.getElementById('saveProjectPdfSize');
       const checkboxEl = document.getElementById('saveProjectIncludePdf');
       const includePdfLabel = document.getElementById('saveProjectIncludePdfLabel');
       const includePdfBtn = document.getElementById('saveProjectIncludePdfBtn');
-      if (state.pdfBuffer || state.pdfStoragePath) {
+      let pdfBufLen = state.pdfBufferSize > 0 ? state.pdfBufferSize : 0;
+      if (pdfBufLen === 0 && state.pdfBuffer) {
+        const b = state.pdfBuffer;
+        pdfBufLen = (typeof b.byteLength === 'number' ? b.byteLength : 0) || (typeof b.length === 'number' ? b.length : 0) || (typeof b.size === 'number' ? b.size : 0);
+        if (pdfBufLen === 0 && b) {
+          try { pdfBufLen = new Blob([b]).size; } catch (_) {}
+          if (pdfBufLen > 0) state.pdfBufferSize = pdfBufLen;
+        }
+      }
+      const hasValidPdfBuffer = pdfBufLen > 0;
+      let pdfSizeBytes = hasValidPdfBuffer ? pdfBufLen : 0;
+      if (!hasValidPdfBuffer && state.pdfStoragePath) {
+        if (state.currentProjectId && state.pdfHash) {
+          try {
+            const cached = await pdfCacheGet(state.currentProjectId, state.pdfHash);
+            if (cached && cached.size > 0) pdfSizeBytes = cached.size;
+          } catch (_) {}
+        }
+        if (pdfSizeBytes === 0 && SUPABASE_ENABLED && supabase) {
+          try {
+            const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
+            const sz = info?.metadata?.size ?? info?.size ?? info?.metadata?.contentLength;
+            pdfSizeBytes = typeof sz === 'number' ? sz : (typeof sz === 'string' ? parseInt(sz, 10) : 0);
+          } catch (_) {}
+        }
+      }
+      if (state.pdfBuffer || state.pdfStoragePath || state.pages.length > 0) {
         contentsList.style.display = '';
         contentsLabel.style.display = 'block';
         noPdfMessage.style.display = 'none';
         const nameEl = includePdfLabel?.querySelector('.save-contents-name');
-        if (state.pdfBuffer) {
-          if (nameEl) nameEl.innerHTML = 'PDF (<span id="saveProjectPdfSize">' + (state.pdfBuffer.byteLength / 1024 / 1024).toFixed(2) + '</span> MB)';
+        if (hasValidPdfBuffer || pdfSizeBytes > 0) {
+          if (nameEl) nameEl.innerHTML = 'PDF (<span id="saveProjectPdfSize">' + (Math.max(pdfBufLen, pdfSizeBytes) / 1024 / 1024).toFixed(2) + '</span> MB)';
           if (includePdfLabel) includePdfLabel.classList.remove('save-contents-omitted');
           if (includePdfBtn) { includePdfBtn.style.display = ''; includePdfBtn.setAttribute('aria-pressed', 'true'); }
           checkboxEl.checked = true;
@@ -9785,6 +10666,7 @@
         }
       } catch (_) {}
       await pdfCacheDelete(proj.id);
+      await takeoffBackupDelete(proj.id);
       updateUI();
     };
     document.getElementById('manageUsersBtn').onclick = () => {
@@ -10513,6 +11395,26 @@
     if (!e.target.closest('.context-menu') && !e.target.closest('#contextMenu')) document.getElementById('contextMenu').classList.remove('visible');
     const cm = document.getElementById('canvasMenu');
     if (cm && !e.target.closest('#canvasMenu') && !e.target.closest('#canvasLayersBtn')) cm.classList.remove('visible');
+    const dpm = document.getElementById('downloadCurrentPageMenu');
+    if (dpm && !e.target.closest('#downloadCurrentPageDropdown')) dpm.classList.remove('visible');
+    const srm = document.getElementById('showReportMenu');
+    const srd = document.getElementById('showReportDropdown');
+    if (srm && !e.target.closest('#showReportDropdown') && !e.target.closest('.show-report-menu')) {
+      srm.classList.remove('visible');
+      if (srd && srm.parentElement !== srd) srd.appendChild(srm);
+    }
+    const ptm = document.getElementById('forPipeToolingMenu');
+    const ptd = document.getElementById('forPipeToolingDropdown');
+    if (ptm && !e.target.closest('#forPipeToolingDropdown') && !e.target.closest('.show-report-menu')) {
+      ptm.classList.remove('visible');
+      if (ptd && ptm.parentElement !== ptd) ptd.appendChild(ptm);
+    }
+    const csm = document.getElementById('copySummaryTextMenu');
+    const csd = document.getElementById('copySummaryTextDropdown');
+    if (csm && !e.target.closest('#copySummaryTextDropdown') && !e.target.closest('.show-report-menu')) {
+      csm.classList.remove('visible');
+      if (csd && csm.parentElement !== csd) csd.appendChild(csm);
+    }
     const zo = document.getElementById('zoomOverlay');
     if (zo && zo.classList.contains('visible') && !e.target.closest('#zoomOverlay') && !e.target.closest('#zoomPct')) zo.classList.remove('visible');
   });
@@ -10573,13 +11475,13 @@
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
         hideModal('counterModal');
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
-      else if (document.getElementById('exportPdfModal').classList.contains('visible')) { hideModal('exportPdfModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; }
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { closeLinePropertiesModal(); }
       else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
+      else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
       else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
@@ -10630,8 +11532,40 @@
         updateUI();
       } else state.tool = TOOL.NONE;
     }
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } }
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } }
+    if (e.key === 'ArrowLeft') {
+      if (e.shiftKey) {
+        const marked = getMarkedPageIndices();
+        const prev = marked.filter(i => i < state.currentPage).pop();
+        if (prev !== undefined) { state.currentPage = prev; fitZoom(); }
+      } else if (state.currentPage > 0) { state.currentPage--; fitZoom(); }
+    }
+    if (e.key === 'ArrowRight') {
+      if (e.shiftKey) {
+        const marked = getMarkedPageIndices();
+        const next = marked.find(i => i > state.currentPage);
+        if (next !== undefined) { state.currentPage = next; fitZoom(); }
+      } else if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); }
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      const page = state.pages[state.currentPage];
+      const canvases = getPageCanvases(page);
+      if (canvases.length > 1) {
+        const activeId = state.activeCanvasIdByPage?.[state.currentPage] || canvases[0]?.id;
+        let idx = canvases.findIndex(c => c.id === activeId);
+        if (idx < 0) idx = 0;
+        if (e.key === 'ArrowUp' && idx > 0) {
+          state.activeCanvasIdByPage[state.currentPage] = canvases[idx - 1].id;
+          if (!state.isViewer) markProjectDirty();
+          renderPdf();
+          updateUI();
+        } else if (e.key === 'ArrowDown' && idx < canvases.length - 1) {
+          state.activeCanvasIdByPage[state.currentPage] = canvases[idx + 1].id;
+          if (!state.isViewer) markProjectDirty();
+          renderPdf();
+          updateUI();
+        }
+      }
+    }
     if (e.key === 'Enter' && state.drawingPolyline && state.drawingPolyline.points.length >= 2) finishPolyline(false);
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
   });
@@ -10678,10 +11612,12 @@
   }
 
   async function performSaveProjectToCloud(opts) {
-    const { name, includePdf } = opts;
+    const { name, includePdf, pdfBuffer: optsPdfBuffer } = opts;
     const user = state.supabaseSession?.user;
     if (!user || !supabase) return { ok: false, error: new Error('Not signed in') };
-    const willUploadPdf = state.pdfBuffer && includePdf;
+    const rawPdf = optsPdfBuffer ?? state.pdfBuffer;
+    const pdfToUpload = rawPdf && (rawPdf.byteLength || rawPdf.length || 0) > 0 ? rawPdf : null;
+    const willUploadPdf = pdfToUpload && includePdf;
     saveInProgress = true;
     savePdfInProgress = willUploadPdf;
     updateStatus();
@@ -10712,20 +11648,20 @@
     perfLog('Save JSON.stringify', Date.now() - tJson, { size: dataJson.length });
     const dataSize = dataJson.length;
     const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
-    log('Starting save', { userId: user.id, name, hasPdfBuffer: !!state.pdfBuffer, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
+    log('Starting save', { userId: user.id, name, hasPdfBuffer: !!pdfToUpload, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
     try {
       let pdfPath = state.pdfStoragePath;
       let cachePdfHash = null;
       if (willUploadPdf) {
         let projectId = state.currentProjectId;
-        const pdfSize = state.pdfBuffer.byteLength;
+        const pdfSize = pdfToUpload.byteLength;
         const sizeBytes = dataSize + pdfSize;
         let skipUpload = false;
         if (projectId) {
           const tSelect = Date.now();
           const { data: row } = await supabase.from('projects').select('pdf_hash').eq('id', projectId).single();
           perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
-          const newHash = await sha256Hex(state.pdfBuffer);
+          const newHash = await sha256Hex(pdfToUpload);
           if (row?.pdf_hash === newHash) {
             skipUpload = true;
             cachePdfHash = newHash;
@@ -10757,14 +11693,14 @@
           setProgress('Uploading project...');
           await tick();
           const storagePath = user.id + '/' + projectId + '/document.pdf';
-          log('Uploading PDF...', { path: storagePath, size: state.pdfBuffer.byteLength });
+          log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
           const t1 = Date.now();
-          const { error: uploadErr } = await saveWithTimeout(supabase.storage.from('pdfs').upload(storagePath, state.pdfBuffer, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
+          const { error: uploadErr } = await saveWithTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
           log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
           if (uploadErr) throw uploadErr;
           pdfPath = storagePath;
           await tick();
-          const newHash = await sha256Hex(state.pdfBuffer);
+          const newHash = await sha256Hex(pdfToUpload);
           cachePdfHash = newHash;
           setProgress('Uploading project...');
           await tick();
@@ -10825,10 +11761,11 @@
         state.checkedOutEmail = null;
       }
       state.currentProjectName = name;
-      if (willUploadPdf && state.pdfBuffer && state.currentProjectId && cachePdfHash) {
-        pdfCachePut(state.currentProjectId, new Blob([state.pdfBuffer]), cachePdfHash);
+      if (willUploadPdf && pdfToUpload && state.currentProjectId && cachePdfHash) {
+        pdfCachePut(state.currentProjectId, new Blob([pdfToUpload]), cachePdfHash);
       }
       state.pdfBuffer = null;
+      state.pdfBufferSize = 0;
       if (pdfPath) state.pdfStoragePath = pdfPath;
       if (cachePdfHash) state.pdfHash = cachePdfHash;
       lastSaveIncludedPdf = willUploadPdf;
@@ -10852,6 +11789,7 @@
       console.error('[Save] Failed:', e);
       log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
       window.lastSaveError = e;
+      writeTakeoffBackupToIndexedDB();
       try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
       saveProgressMessage = '';
       updateUI();
@@ -10946,11 +11884,12 @@
     } catch (e) {
       console.error('[Auto-save] Failed:', e);
       window.lastSaveError = e;
+      writeTakeoffBackupToIndexedDB();
       return { ok: false, error: e };
     }
   }
 
-  function writeTakeoffStateBackup() {
+  async function writeTakeoffStateBackup() {
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
     try {
       const backup = {
@@ -10974,9 +11913,72 @@
         backup.lastModifiedAt = lastModifiedAt || Date.now();
       }
       localStorage.setItem('takeoff-state', JSON.stringify(backup));
+      await writeTakeoffBackupToIndexedDB();
     } catch (_) {}
   }
+
+  async function writeTakeoffBackupToIndexedDB() {
+    if (!BACKUP_PDF_TO_INDEXEDDB) return;
+    if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    let projectId = state.currentProjectId || 'local';
+    let pdfBlob = state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length || 0) > 0
+      ? new Blob([state.pdfBuffer], { type: 'application/pdf' }) : null;
+    if (!pdfBlob) {
+      let cacheProjectId = state.currentProjectId;
+      let cachePdfHash = state.pdfHash;
+      if (!cacheProjectId || !cachePdfHash) {
+        try {
+          const last = JSON.parse(localStorage.getItem('clickcount-last-project') || 'null');
+          if (last && last.userId === state.supabaseSession?.user?.id) {
+            if (!cacheProjectId) cacheProjectId = last.projectId;
+            if (!cachePdfHash) cachePdfHash = last.pdfHash;
+            if (!cachePdfHash && cacheProjectId && SUPABASE_ENABLED && supabase) {
+              const { data: proj } = await supabase.from('projects').select('pdf_hash').eq('id', cacheProjectId).single();
+              if (proj?.pdf_hash) cachePdfHash = proj.pdf_hash;
+            }
+          }
+        } catch (_) {}
+      }
+      if (cacheProjectId && cachePdfHash) {
+        try {
+          const cached = await pdfCacheGet(cacheProjectId, cachePdfHash);
+          if (cached && cached.size > 0) {
+            pdfBlob = cached;
+            if (projectId === 'local') projectId = cacheProjectId;
+          }
+        } catch (_) {}
+      }
+    }
+    const data = {
+      counters: state.counters,
+      lineTypes: state.lineTypes,
+      groups: state.groups || [],
+      counterSettings: state.counterSettings,
+      lineTypeSettings: state.lineTypeSettings,
+      exportSettings: state.exportSettings,
+      recentLineColors: state.recentLineColors,
+      iconNames: state.iconNames || {},
+      iconOrder: state.iconOrder || null,
+      customIconPaths: getUserCustomIcons(),
+      pageCanvases: state.pages.map(p => p.canvases),
+      activeCanvasIdByPage: state.activeCanvasIdByPage || {},
+      pageScales: state.pages.map(p => p.scale),
+      pageRotations: state.pages.map(p => p.rotation ?? 0)
+    };
+    const lastMod = (state.currentProjectId && lastModifiedAt) ? lastModifiedAt : Date.now();
+    const pdfHash = state.pdfHash || null;
+    const projectName = state.currentProjectName || null;
+    const userId = state.supabaseSession?.user?.id || null;
+    takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastMod, projectName, userId);
+  }
+
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
+
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') writeTakeoffStateBackup();
+    });
+  }
 
   setInterval(async () => {
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
@@ -10992,10 +11994,14 @@
   window.state = state;
   window.makeAnnotations = makeAnnotations;
   window.getAnnotationsForReport = (page) => getActiveAnnotations(page);
+  window.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
   window.ptDist = ptDist;
   window.polylineDistance = polylineDistance;
   window.formatDist = formatDist;
   window.renderIconHtml = renderIconHtml;
+  if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.__takeoffBackupGetForTest = takeoffBackupGet;
+  }
 
   async function initViewOnlyMode(viewToken) {
     const allowedEmail = localStorage.getItem('view:allowed:' + viewToken);
@@ -11127,6 +12133,7 @@
     state.currentProjectName = projectData.name || 'Untitled';
     state.pdfStoragePath = null;
     state.pdfBuffer = null;
+    state.pdfBufferSize = 0;
     state.pdfHash = projectData.pdfHash || null;
     clearUndoStacks();
     state.loadedViaViewLink = true;
@@ -11157,27 +12164,56 @@
       return;
     }
     await initSupabaseAuth();
+    if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
+      const ok = await devAuthSignIn();
+      if (ok && window.history?.replaceState) {
+        const u = new URL(window.location.href);
+        u.searchParams.delete('devAuth');
+        window.history.replaceState({}, '', u.toString());
+      }
+      if (ok) {
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', state.supabaseSession.user.id).maybeSingle();
+        state.isAdmin = !!profile?.is_admin;
+      }
+    }
     if (SUPABASE_ENABLED && supabase && state.supabaseSession?.user) {
       const uid = state.supabaseSession.user.id;
       supabase.channel('project-shares-changes').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_shares', filter: 'user_id=eq.' + uid }, function() {
         if (state.currentProjectId) refreshProjectPermissions();
       }).subscribe();
       try {
-        const stored = localStorage.getItem('clickcount-last-project');
-        if (stored) {
-          const last = JSON.parse(stored);
-          if (last && last.userId === state.supabaseSession.user.id && last.projectId && last.pdfHash) {
-            const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
-            if (!error && proj && proj.data) {
-              const cachedBlob = proj.pdf_hash ? await pdfCacheGet(last.projectId, last.pdfHash) : null;
-              if (cachedBlob || proj.pdf_path) {
-                pendingLastSessionRestore = { proj, cachedBlob: cachedBlob || null };
-                const msgEl = document.getElementById('lastSessionRestoreMessage');
-                if (msgEl) msgEl.innerHTML = 'You have a project from your last session: <strong>' + (proj.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
-                showModal('lastSessionRestoreModal');
+        let offeredRestore = false;
+        const localBackup = await takeoffBackupGet('local');
+        const hasLocalPdf = localBackup && localBackup.pdfBlob && localBackup.pdfBlob.size > 0;
+        if (hasLocalPdf && localBackup.data) {
+          const projForRestore = { id: 'local', name: localBackup.projectName || 'Untitled', data: backupDataToProjFormat(localBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: localBackup.pdfHash, user_id: uid, checked_out_by: null, checked_out_at: null };
+          pendingLastSessionRestore = { proj: projForRestore, cachedBlob: localBackup.pdfBlob };
+          const msgEl = document.getElementById('lastSessionRestoreMessage');
+          if (msgEl) msgEl.innerHTML = 'You have a local session from your last visit: <strong>' + (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
+          showModal('lastSessionRestoreModal');
+          offeredRestore = true;
+        }
+        if (!offeredRestore) {
+          const stored = localStorage.getItem('clickcount-last-project');
+          if (stored) {
+            const last = JSON.parse(stored);
+            if (last && last.userId === state.supabaseSession.user.id && last.projectId) {
+              const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
+              const idbBackup = await takeoffBackupGet(last.projectId);
+              const hasIdbPdf = idbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0;
+              if ((!error && proj && proj.data) || hasIdbPdf) {
+                const projForRestore = proj || (idbBackup ? { id: last.projectId, name: idbBackup.projectName || 'Untitled', data: backupDataToProjFormat(idbBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: idbBackup.pdfHash, user_id: last.userId, checked_out_by: null, checked_out_at: null } : null);
+                const pdfHashForCache = proj?.pdf_hash || last.pdfHash;
+                const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;
+                if (cachedBlob || proj?.pdf_path || hasIdbPdf) {
+                  pendingLastSessionRestore = { proj: projForRestore, cachedBlob: cachedBlob || null };
+                  const msgEl = document.getElementById('lastSessionRestoreMessage');
+                  if (msgEl) msgEl.innerHTML = 'You have a project from your last session: <strong>' + (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
+                  showModal('lastSessionRestoreModal');
+                }
+              } else if (error) {
+                localStorage.removeItem('clickcount-last-project');
               }
-            } else if (error) {
-              localStorage.removeItem('clickcount-last-project');
             }
           }
         }

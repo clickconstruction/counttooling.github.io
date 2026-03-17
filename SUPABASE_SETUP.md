@@ -150,7 +150,7 @@ on conflict (user_id) do update set is_admin = true;
 ## Usage
 
 - **Sign In** — Click "Sign In", enter credentials (provided by admin). If you have a saved artboard, it is restored automatically.
-- **Save Project** — When logged in, click "Save Project", enter name. The PDF is uploaded to Storage when you save (if you uploaded one).
+- **Name / Upload / Save Project to Cloud** — When logged in, click "Name / Upload / Save Project to Cloud", enter name. The PDF is uploaded to Storage when you save (if you uploaded one).
 - **Load Project** — When logged in, click "Load Project", select from list. Projects with stored PDFs load the PDF automatically. Legacy projects (no PDF): upload your PDF first, then load.
 - **Add User** (admin only) — In User Settings, create new users with email + password; share password with user. Admin-created users are auto-confirmed and can sign in immediately. If an existing user sees "Email not confirmed", confirm them in Dashboard > Authentication > Users (or run `update auth.users set email_confirmed_at = now() where email = 'user@example.com';` in SQL Editor).
 - **Manage User** (admin only) — In User Settings, open Manage User to list all users and delete accounts (cannot delete yourself).

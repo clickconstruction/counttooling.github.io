@@ -2419,6 +2419,7 @@
   const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47','#2c3e50','#8b4513','#ff6b6b','#6366f1','#059669','#f59e0b','#0ea5e9','#7c3aed','#e11d48'];
   const SCALE_PRESETS = [
     { label: '1/6" = 1\'', pixelsPerUnit: 12, unit: 'ft' },
+    { label: '1/16" = 1\'', pixelsPerUnit: 72 / 16, unit: 'ft' },
     { label: '3/32" = 1\'', pixelsPerUnit: 72 * 3 / 32, unit: 'ft' },
     { label: '1/8" = 1\'', pixelsPerUnit: 72 / 8, unit: 'ft' },
     { label: '3/16" = 1\'', pixelsPerUnit: 72 * 3 / 16, unit: 'ft' },
@@ -8056,12 +8057,13 @@
 
   function populatePlumModal() {
     const mods = getPlumbingModifiers();
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const sizeSel = document.getElementById('plumSize');
     const typeSel = document.getElementById('plumType');
     const materialSel = document.getElementById('plumMaterial');
-    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + s + '">' + s + '</option>').join('');
-    typeSel.innerHTML = mods.types.map(t => '<option value="' + t + '">' + t + '</option>').join('');
-    materialSel.innerHTML = mods.materials.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
+    typeSel.innerHTML = mods.types.map(t => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
+    materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
     const icons = getOrderedIcons();
     const grid = document.getElementById('plumIconGrid');
     grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
@@ -8351,12 +8353,13 @@
   }
   function populateCounterQuickCountPanel() {
     const mods = getPlumbingModifiers();
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const sizeSel = document.getElementById('counterQuickCountSize');
     const typeSel = document.getElementById('counterQuickCountType');
     const materialSel = document.getElementById('counterQuickCountMaterial');
-    if (sizeSel) sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + s + '">' + s + '</option>').join('');
-    if (typeSel) typeSel.innerHTML = mods.types.map(t => '<option value="' + t + '">' + t + '</option>').join('');
-    if (materialSel) materialSel.innerHTML = mods.materials.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    if (sizeSel) sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
+    if (typeSel) typeSel.innerHTML = mods.types.map(t => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
+    if (materialSel) materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
     const icons = getOrderedIcons();
     const grid = document.getElementById('counterQuickCountIconGrid');
     if (grid) {
@@ -8496,10 +8499,11 @@
 
   function populateQuickLineModal() {
     const mods = getLineModifiers();
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const sizeSel = document.getElementById('quickLineSize');
     const materialSel = document.getElementById('quickLineMaterial');
-    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + s + '">' + s + '</option>').join('');
-    materialSel.innerHTML = mods.materials.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
+    materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
     updateQuickLineNamePreview();
     const swatchEl = document.getElementById('quickLineSwatch');
     if (swatchEl) {

@@ -195,17 +195,25 @@
     .sidebar-tooling-links a:hover { color: var(--accent); text-decoration: underline; }
     @media (max-width: 768px) { .scale-display-desktop { display: none; } }
     #pagesSection.collapsed #pagesList { display: none; }
-    #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter, #countersSection.collapsed #counterSearchInput { display: none; }
-    #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType, #lineTypesSection.collapsed #lineTypeSearchInput { display: none; }
+    #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter, #countersSection.collapsed .sidebar-search-row { display: none; }
+    #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType, #lineTypesSection.collapsed > .sidebar-search-row { display: none; }
     #lineTypesSection.collapsed #linesSection { display: none; }
-    #linesSection.collapsed #linesList, #linesSection.collapsed #linesSearchInput { display: none; }
+    #linesSection.collapsed #linesList, #linesSection.collapsed .sidebar-search-row { display: none; }
     .sidebar-search-input { width: 100%; padding: 6px 8px; margin-bottom: 6px; font-size: 0.85rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); box-sizing: border-box; }
+    .sidebar-search-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .sidebar-search-row .sidebar-search-input { flex: 1; margin-bottom: 0; }
+    .sidebar-search-filter-btn { padding: 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .sidebar-search-filter-btn:hover { color: var(--text2); }
+    .sidebar-search-filter-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+    .sidebar-search-filter-btn svg { width: 16px; height: 16px; }
     .lines-type-group { margin-bottom: 4px; }
     .lines-type-header { display: flex; align-items: center; gap: 6px; padding: 6px 0; cursor: pointer; font-size: 0.7rem; color: var(--text3); user-select: none; }
     .lines-type-header:hover { color: var(--text2); }
-    .lines-type-header .lines-type-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-    .lines-type-header .lines-type-summary { flex-shrink: 0; font-size: 0.65rem; opacity: 0.9; }
+    .lines-type-header .lines-type-name { flex: 1; overflow: hidden; text-overflow: ellipsis; color: var(--accent); }
+    .lines-type-header:hover .lines-type-name { color: var(--accent); }
+    .lines-type-header .lines-type-summary { flex-shrink: 0; font-size: 0.65rem; color: var(--text2); opacity: 1; }
     .lines-type-items { padding-left: 4px; }
+    #linesList .sidebar-item .name { color: var(--text); }
     .lines-type-group.collapsed .lines-type-items { display: none; }
     #linesSection.collapsed { border-bottom: none; padding-bottom: 0; }
     .sidebar-subsection { margin-top: 8px; margin-left: 8px; }
@@ -851,7 +859,10 @@
             <h3 id="countersSectionTitle" class="section-settings" title="Counter settings">Counters <span class="collapse-icon" id="countersCollapseIcon" title="Click to collapse">▼</span></h3>
             <button id="addCounter" class="sidebar-btn-inline" title="Add counter">+ Add</button>
           </div>
-          <input type="text" id="counterSearchInput" placeholder="Search counters..." class="sidebar-search-input">
+          <div class="sidebar-search-row">
+            <input type="text" id="counterSearchInput" placeholder="Search counters..." class="sidebar-search-input">
+            <button type="button" class="sidebar-search-filter-btn" id="counterShowOnlyOnPageInlineBtn" aria-pressed="false" title="Show only counters on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M73.4 73.4C85.9 60.9 106.1 60.9 118.6 73.4L192 146.7L192 128C192 110.3 206.3 96 224 96C241.7 96 256 110.3 256 128L256 224C256 241.7 241.7 256 224 256L128 256C110.3 256 96 241.7 96 224C96 206.3 110.3 192 128 192L146.7 192L73.3 118.6C60.9 106.1 60.9 85.9 73.4 73.4zM264 320C264 289.1 289.1 264 320 264C350.9 264 376 289.1 376 320C376 350.9 350.9 376 320 376C289.1 376 264 350.9 264 320zM566.6 118.6L493.3 192L512 192C529.7 192 544 206.3 544 224C544 241.7 529.7 256 512 256L416 256C398.3 256 384 241.7 384 224L384 128C384 110.3 398.3 96 416 96C433.7 96 448 110.3 448 128L448 146.7L521.4 73.3C533.9 60.8 554.2 60.8 566.7 73.3C579.2 85.8 579.2 106.1 566.7 118.6zM521.3 566.6L448 493.3L448 512C448 529.7 433.7 544 416 544C398.3 544 384 529.7 384 512L384 416C384 398.3 398.3 384 416 384L512 384C529.7 384 544 398.3 544 416C544 433.7 529.7 448 512 448L493.3 448L566.7 521.4C579.2 533.9 579.2 554.2 566.7 566.7C554.2 579.2 533.9 579.2 521.4 566.7zM73.4 521.4L146.7 448L128 448C110.3 448 96 433.7 96 416C96 398.3 110.3 384 128 384L224 384C241.7 384 256 398.3 256 416L256 512C256 529.7 241.7 544 224 544C206.3 544 192 529.7 192 512L192 493.3L118.6 566.7C106.1 579.2 85.8 579.2 73.3 566.7C60.8 554.2 60.8 533.9 73.3 521.4z"/></svg></button>
+          </div>
           <div id="countersList"></div>
         </div>
         <div class="sidebar-section" id="lineTypesSection">
@@ -859,11 +870,17 @@
             <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
           </div>
-          <input type="text" id="lineTypeSearchInput" placeholder="Search line types..." class="sidebar-search-input">
+          <div class="sidebar-search-row">
+            <input type="text" id="lineTypeSearchInput" placeholder="Search line types..." class="sidebar-search-input">
+            <button type="button" class="sidebar-search-filter-btn" id="lineTypeShowOnlyOnPageInlineBtn" aria-pressed="false" title="Show only line types on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M73.4 73.4C85.9 60.9 106.1 60.9 118.6 73.4L192 146.7L192 128C192 110.3 206.3 96 224 96C241.7 96 256 110.3 256 128L256 224C256 241.7 241.7 256 224 256L128 256C110.3 256 96 241.7 96 224C96 206.3 110.3 192 128 192L146.7 192L73.3 118.6C60.9 106.1 60.9 85.9 73.4 73.4zM264 320C264 289.1 289.1 264 320 264C350.9 264 376 289.1 376 320C376 350.9 350.9 376 320 376C289.1 376 264 350.9 264 320zM566.6 118.6L493.3 192L512 192C529.7 192 544 206.3 544 224C544 241.7 529.7 256 512 256L416 256C398.3 256 384 241.7 384 224L384 128C384 110.3 398.3 96 416 96C433.7 96 448 110.3 448 128L448 146.7L521.4 73.3C533.9 60.8 554.2 60.8 566.7 73.3C579.2 85.8 579.2 106.1 566.7 118.6zM521.3 566.6L448 493.3L448 512C448 529.7 433.7 544 416 544C398.3 544 384 529.7 384 512L384 416C384 398.3 398.3 384 416 384L512 384C529.7 384 544 398.3 544 416C544 433.7 529.7 448 512 448L493.3 448L566.7 521.4C579.2 533.9 579.2 554.2 566.7 566.7C554.2 579.2 533.9 579.2 521.4 566.7zM73.4 521.4L146.7 448L128 448C110.3 448 96 433.7 96 416C96 398.3 110.3 384 128 384L224 384C241.7 384 256 398.3 256 416L256 512C256 529.7 241.7 544 224 544C206.3 544 192 529.7 192 512L192 493.3L118.6 566.7C106.1 579.2 85.8 579.2 73.3 566.7C60.8 554.2 60.8 533.9 73.3 521.4z"/></svg></button>
+          </div>
           <div id="lineTypesList"></div>
           <div class="sidebar-section collapsed sidebar-subsection" id="linesSection">
             <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
-            <input type="text" id="linesSearchInput" placeholder="Search lines..." class="sidebar-search-input">
+            <div class="sidebar-search-row">
+              <input type="text" id="linesSearchInput" placeholder="Search lines..." class="sidebar-search-input">
+              <button type="button" class="sidebar-search-filter-btn" id="linesShowOnlyOnPageBtn" aria-pressed="false" title="Show only lines on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M73.4 73.4C85.9 60.9 106.1 60.9 118.6 73.4L192 146.7L192 128C192 110.3 206.3 96 224 96C241.7 96 256 110.3 256 128L256 224C256 241.7 241.7 256 224 256L128 256C110.3 256 96 241.7 96 224C96 206.3 110.3 192 128 192L146.7 192L73.3 118.6C60.9 106.1 60.9 85.9 73.4 73.4zM264 320C264 289.1 289.1 264 320 264C350.9 264 376 289.1 376 320C376 350.9 350.9 376 320 376C289.1 376 264 350.9 264 320zM566.6 118.6L493.3 192L512 192C529.7 192 544 206.3 544 224C544 241.7 529.7 256 512 256L416 256C398.3 256 384 241.7 384 224L384 128C384 110.3 398.3 96 416 96C433.7 96 448 110.3 448 128L448 146.7L521.4 73.3C533.9 60.8 554.2 60.8 566.7 73.3C579.2 85.8 579.2 106.1 566.7 118.6zM521.3 566.6L448 493.3L448 512C448 529.7 433.7 544 416 544C398.3 544 384 529.7 384 512L384 416C384 398.3 398.3 384 416 384L512 384C529.7 384 544 398.3 544 416C544 433.7 529.7 448 512 448L493.3 448L566.7 521.4C579.2 533.9 579.2 554.2 566.7 566.7C554.2 579.2 533.9 579.2 521.4 566.7zM73.4 521.4L146.7 448L128 448C110.3 448 96 433.7 96 416C96 398.3 110.3 384 128 384L224 384C241.7 384 256 398.3 256 416L256 512C256 529.7 241.7 544 224 544C206.3 544 192 529.7 192 512L192 493.3L118.6 566.7C106.1 579.2 85.8 579.2 73.3 566.7C60.8 554.2 60.8 533.9 73.3 521.4z"/></svg></button>
+            </div>
             <div id="linesList"></div>
           </div>
         </div>
@@ -2978,7 +2995,7 @@
     linesTypeExpanded: {},
     groupsListCollapsed: true,
     summaryListCollapsed: false,
-    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false },
+    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false, showOnlyLinesOnCurrentPage: false },
     legendSettings: { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
@@ -3723,7 +3740,26 @@
     const ctx = _measureCanvas.getContext('2d');
     ctx.font = font || '14px DM Sans';
     const lh = lineHeight != null ? lineHeight : 14;
-    const words = (text || '').split(/\s+/).filter(Boolean);
+    const rawWords = (text || '').split(/\s+/).filter(Boolean);
+    const words = [];
+    for (const w of rawWords) {
+      const parts = w.split(/([-_])/);
+      if (parts.length === 1) {
+        words.push(w);
+      } else {
+        let buf = '';
+        for (let i = 0; i < parts.length; i++) {
+          if (parts[i] === '-' || parts[i] === '_') {
+            buf += parts[i];
+            words.push(buf);
+            buf = '';
+          } else if (parts[i]) {
+            buf = parts[i];
+          }
+        }
+        if (buf) words.push(buf);
+      }
+    }
     const lines = [];
     let current = '';
     for (const w of words) {
@@ -5035,6 +5071,12 @@
       snapHvHeaderBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
       snapHvHeaderBtn.style.display = (!state.isViewer && (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE)) ? '' : 'none';
     }
+    const counterShowOnlyInline = document.getElementById('counterShowOnlyOnPageInlineBtn');
+    const lineTypeShowOnlyInline = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
+    const linesShowOnlyBtn = document.getElementById('linesShowOnlyOnPageBtn');
+    if (counterShowOnlyInline) counterShowOnlyInline.setAttribute('aria-pressed', !!state.counterSettings?.showOnlyCountersOnCurrentPage);
+    if (lineTypeShowOnlyInline) lineTypeShowOnlyInline.setAttribute('aria-pressed', !!state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage);
+    if (linesShowOnlyBtn) linesShowOnlyBtn.setAttribute('aria-pressed', !!state.lineTypeSettings?.showOnlyLinesOnCurrentPage);
     const highlightBtnSidebar = document.getElementById('highlightBtnSidebar');
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
@@ -5599,6 +5641,7 @@
     el.innerHTML = '';
     const byType = {};
     state.pages.forEach((p, pi) => {
+      if (state.lineTypeSettings?.showOnlyLinesOnCurrentPage && state.pages.length > 0 && pi !== state.currentPage) return;
       const ann = getActiveAnnotations(p);
       (ann?.polylines || []).forEach(poly => {
         const tid = poly.lineTypeId || '_none';
@@ -6983,6 +7026,9 @@
     const startPageIdx = state.pages.length;
     let firstBuf = null;
     const buffersForMerge = [];
+    if (startPageIdx > 0 && state.pdfBuffer) {
+      buffersForMerge.push(state.pdfBuffer.slice ? state.pdfBuffer.slice(0) : state.pdfBuffer);
+    }
     for (const f of filesToProcess) {
       if (SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
         alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
@@ -7009,6 +7055,11 @@
       state.pdfBuffer = merged;
       state.pdfBufferSize = merged ? (merged.byteLength ?? merged.length ?? merged.size ?? 0) : 0;
       state.pdfStoragePath = null;
+      const mergedPdf = await pdfjsLib.getDocument(merged.slice ? merged.slice(0) : merged).promise;
+      const numPages = mergedPdf.numPages;
+      for (let i = 0; i < numPages && i < state.pages.length; i++) {
+        state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
+      }
     }
     if (state.pendingCanvasLoad && firstBuf) {
       const d = state.pendingCanvasLoad.data;
@@ -7809,6 +7860,40 @@
       state.linesSearch = linesSearchInput.value;
       localStorage.setItem('linesSearch', state.linesSearch);
       renderLinesList();
+    };
+  }
+  const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
+  if (counterShowOnlyOnPageInlineBtn) {
+    counterShowOnlyOnPageInlineBtn.onclick = () => {
+      state.counterSettings.showOnlyCountersOnCurrentPage = !state.counterSettings.showOnlyCountersOnCurrentPage;
+      const cb = document.getElementById('counterShowOnlyOnPage');
+      const modalBtn = document.getElementById('counterShowOnlyOnPageBtn');
+      if (cb) cb.checked = !!state.counterSettings.showOnlyCountersOnCurrentPage;
+      if (modalBtn) modalBtn.setAttribute('aria-pressed', state.counterSettings.showOnlyCountersOnCurrentPage);
+      renderCountersList();
+      updateUI();
+    };
+  }
+  const lineTypeShowOnlyOnPageInlineBtn = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
+  if (lineTypeShowOnlyOnPageInlineBtn) {
+    lineTypeShowOnlyOnPageInlineBtn.onclick = () => {
+      state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = !state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
+      const cb = document.getElementById('lineTypeShowOnlyOnPage');
+      const modalBtn = document.getElementById('lineTypeShowOnlyOnPageBtn');
+      if (cb) cb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
+      if (modalBtn) modalBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
+      renderLineTypesList();
+      renderLinesList();
+      updateUI();
+    };
+  }
+  const linesShowOnlyOnPageBtn = document.getElementById('linesShowOnlyOnPageBtn');
+  if (linesShowOnlyOnPageBtn) {
+    linesShowOnlyOnPageBtn.onclick = () => {
+      state.lineTypeSettings.showOnlyLinesOnCurrentPage = !state.lineTypeSettings.showOnlyLinesOnCurrentPage;
+      linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
+      renderLinesList();
+      updateUI();
     };
   }
   document.getElementById('lineTypesCollapseIcon').onclick = (e) => {
@@ -12734,7 +12819,10 @@
           const projForRestore = { id: 'local', name: localBackup.projectName || 'Untitled', data: backupDataToProjFormat(localBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: localBackup.pdfHash, user_id: uid, checked_out_by: null, checked_out_at: null };
           pendingLastSessionRestore = { proj: projForRestore, cachedBlob: localBackup.pdfBlob };
           const msgEl = document.getElementById('lastSessionRestoreMessage');
-          if (msgEl) msgEl.innerHTML = 'You have a local session from your last visit: <strong>' + (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
+          if (msgEl) {
+            const n = (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([-_])/g, '$1\u200B');
+            msgEl.innerHTML = 'You have a local session from your last visit: <strong>' + n + '</strong>. What would you like to do?';
+          }
           showModal('lastSessionRestoreModal');
           offeredRestore = true;
         }
@@ -12753,7 +12841,10 @@
                 if (cachedBlob || proj?.pdf_path || hasIdbPdf) {
                   pendingLastSessionRestore = { proj: projForRestore, cachedBlob: cachedBlob || null };
                   const msgEl = document.getElementById('lastSessionRestoreMessage');
-                  if (msgEl) msgEl.innerHTML = 'You have a project from your last session: <strong>' + (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>. What would you like to do?';
+                  if (msgEl) {
+                    const n = (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([-_])/g, '$1\u200B');
+                    msgEl.innerHTML = 'You have a project from your last session: <strong>' + n + '</strong>. What would you like to do?';
+                  }
                   showModal('lastSessionRestoreModal');
                 }
               } else if (error) {

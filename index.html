@@ -195,10 +195,18 @@
     .sidebar-tooling-links a:hover { color: var(--accent); text-decoration: underline; }
     @media (max-width: 768px) { .scale-display-desktop { display: none; } }
     #pagesSection.collapsed #pagesList { display: none; }
-    #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter { display: none; }
-    #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType { display: none; }
+    #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter, #countersSection.collapsed #counterSearchInput { display: none; }
+    #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType, #lineTypesSection.collapsed #lineTypeSearchInput { display: none; }
     #lineTypesSection.collapsed #linesSection { display: none; }
-    #linesSection.collapsed #linesList { display: none; }
+    #linesSection.collapsed #linesList, #linesSection.collapsed #linesSearchInput { display: none; }
+    .sidebar-search-input { width: 100%; padding: 6px 8px; margin-bottom: 6px; font-size: 0.85rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); box-sizing: border-box; }
+    .lines-type-group { margin-bottom: 4px; }
+    .lines-type-header { display: flex; align-items: center; gap: 6px; padding: 6px 0; cursor: pointer; font-size: 0.7rem; color: var(--text3); user-select: none; }
+    .lines-type-header:hover { color: var(--text2); }
+    .lines-type-header .lines-type-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .lines-type-header .lines-type-summary { flex-shrink: 0; font-size: 0.65rem; opacity: 0.9; }
+    .lines-type-items { padding-left: 4px; }
+    .lines-type-group.collapsed .lines-type-items { display: none; }
     #linesSection.collapsed { border-bottom: none; padding-bottom: 0; }
     .sidebar-subsection { margin-top: 8px; margin-left: 8px; }
     #showGroupColorsLabel { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; margin-top: 8px; }
@@ -843,6 +851,7 @@
             <h3 id="countersSectionTitle" class="section-settings" title="Counter settings">Counters <span class="collapse-icon" id="countersCollapseIcon" title="Click to collapse">▼</span></h3>
             <button id="addCounter" class="sidebar-btn-inline" title="Add counter">+ Add</button>
           </div>
+          <input type="text" id="counterSearchInput" placeholder="Search counters..." class="sidebar-search-input">
           <div id="countersList"></div>
         </div>
         <div class="sidebar-section" id="lineTypesSection">
@@ -850,9 +859,11 @@
             <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
           </div>
+          <input type="text" id="lineTypeSearchInput" placeholder="Search line types..." class="sidebar-search-input">
           <div id="lineTypesList"></div>
           <div class="sidebar-section collapsed sidebar-subsection" id="linesSection">
             <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
+            <input type="text" id="linesSearchInput" placeholder="Search lines..." class="sidebar-search-input">
             <div id="linesList"></div>
           </div>
         </div>
@@ -2961,6 +2972,10 @@
     sidebarReorderModeActive: false,
     lineTypesListCollapsed: false,
     linesListCollapsed: true,
+    counterSearch: '',
+    lineTypeSearch: '',
+    linesSearch: '',
+    linesTypeExpanded: {},
     groupsListCollapsed: true,
     summaryListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false },
@@ -2998,6 +3013,13 @@
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
   state.hideUnmarkedPagesFromSidebar = localStorage.getItem('hideUnmarkedPagesFromSidebar') === '1';
+  try {
+    state.counterSearch = localStorage.getItem('counterSearch') || '';
+    state.lineTypeSearch = localStorage.getItem('lineTypeSearch') || '';
+    state.linesSearch = localStorage.getItem('linesSearch') || '';
+    const le = localStorage.getItem('linesTypeExpanded');
+    state.linesTypeExpanded = le ? JSON.parse(le) : {};
+  } catch (_) {}
 
   function getGroupColor(groupId) {
     const g = (state.groups || []).find(x => x.id === groupId);
@@ -5421,7 +5443,9 @@
     const el = document.getElementById('countersList');
     el.innerHTML = '';
     const showEdit = !state.isViewer;
-    state.counters.forEach(c => {
+    const q = (state.counterSearch || '').trim().toLowerCase();
+    const filtered = q ? state.counters.filter(c => (c.name || 'Counter').toLowerCase().includes(q)) : state.counters;
+    filtered.forEach(c => {
       if (state.counterSettings?.showOnlyCountersOnCurrentPage && state.pages.length > 0) {
         const page = state.pages[state.currentPage];
         const ann = getActiveAnnotations(page);
@@ -5472,7 +5496,9 @@
     const el = document.getElementById('lineTypesList');
     el.innerHTML = '';
     const showEdit = !state.isViewer;
-    state.lineTypes.forEach(lt => {
+    const q = (state.lineTypeSearch || '').trim().toLowerCase();
+    const filtered = q ? state.lineTypes.filter(lt => (lt.name || 'Line').toLowerCase().includes(q)) : state.lineTypes;
+    filtered.forEach(lt => {
       if (state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage && state.pages.length > 0) {
         const page = state.pages[state.currentPage];
         const ann = getActiveAnnotations(page);
@@ -5585,22 +5611,47 @@
         byType[tid].push({ type: 'quick', q, pageIdx: pi });
       });
     });
+    const linesQ = (state.linesSearch || '').trim().toLowerCase();
+    const filterItem = (it) => {
+      if (!linesQ) return true;
+      const name = it.type === 'poly' ? (it.poly.name || 'Polyline') : (it.q.name || 'Quick line');
+      return name.toLowerCase().includes(linesQ);
+    };
+    const showEdit = !state.isViewer;
     Object.entries(byType).forEach(([tid, items]) => {
+      const filteredItems = linesQ ? items.filter(filterItem) : items;
+      if (linesQ && filteredItems.length === 0) return;
       const lt = tid === '_none' ? null : state.lineTypes.find(l => l.id === tid);
-      if (lt) {
-        const h = document.createElement('div');
-        h.className = 'sidebar-section';
-        h.style.padding = '4px 0';
-        h.innerHTML = '<h3 style="font-size:0.7rem;color:var(--text3);">' + (lt.name || 'Line') + '</h3>';
-        el.appendChild(h);
-      }
-      items.forEach(it => {
+      const typeName = lt ? (lt.name || 'Line') : 'Unassigned';
+      const pageIndices = [...new Set(filteredItems.map(it => it.pageIdx))];
+      let totalLen = 0;
+      filteredItems.forEach(it => {
+        totalLen += it.type === 'poly' ? getLineLengthPdfPts(it.poly, it.pageIdx, true) : getLineLengthPdfPts(it.q, it.pageIdx, false);
+      });
+      const scale = pickScaleForLineType(pageIndices);
+      const summary = filteredItems.length + ' lines · ' + formatDist(totalLen, scale);
+      const expanded = !!state.linesTypeExpanded[tid];
+      const groupWrapper = document.createElement('div');
+      groupWrapper.className = 'lines-type-group' + (expanded ? '' : ' collapsed');
+      const header = document.createElement('div');
+      header.className = 'lines-type-header';
+      header.innerHTML = '<span class="lines-type-name">' + typeName + '</span><span class="lines-type-summary">' + summary + '</span><span class="collapse-icon lines-type-collapse-icon">' + (expanded ? '▼' : '▶') + '</span>';
+      header.onclick = () => {
+        state.linesTypeExpanded[tid] = !state.linesTypeExpanded[tid];
+        try { localStorage.setItem('linesTypeExpanded', JSON.stringify(state.linesTypeExpanded)); } catch (_) {}
+        groupWrapper.classList.toggle('collapsed', !state.linesTypeExpanded[tid]);
+        header.querySelector('.lines-type-collapse-icon').textContent = state.linesTypeExpanded[tid] ? '▼' : '▶';
+      };
+      groupWrapper.appendChild(header);
+      const itemsContainer = document.createElement('div');
+      itemsContainer.className = 'lines-type-items';
+      filteredItems.forEach(it => {
       const lineId = it.type === 'poly' ? it.poly.id : it.q.id;
       const isSelected = state.selectedLineId === lineId && state.selectedLinePageIdx === it.pageIdx;
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (isSelected ? ' active' : '');
-      const lt = state.lineTypes.find(l => l.id === (it.type === 'poly' ? it.poly.lineTypeId : it.q.lineTypeId));
-      const color = (it.type === 'poly' ? it.poly.color : it.q.color) || (lt?.color || '#4a9eff');
+      const ltItem = state.lineTypes.find(l => l.id === (it.type === 'poly' ? it.poly.lineTypeId : it.q.lineTypeId));
+      const color = (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff');
       const pageScale = state.pages[it.pageIdx]?.scale;
       let dist, name;
       if (it.type === 'poly') {
@@ -5612,7 +5663,6 @@
       }
       const line = it.type === 'poly' ? it.poly : it.q;
       const sd = line.startDrop || 0, ed = line.endDrop || 0;
-      const unit = pageScale?.unit || 'ft';
       let dropsHtml = '';
       if (sd > 0 || ed > 0) {
         const parts = [];
@@ -5620,7 +5670,6 @@
         if (ed > 0) parts.push('↧ ' + ed);
         dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
       }
-      const showEdit = !state.isViewer;
       div.innerHTML = '<span class="name line-type-name">' + name + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
       div.onclick = (e) => {
         if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;
@@ -5643,7 +5692,7 @@
         if (swatch) swatch.addEventListener('click', (e) => {
           e.stopPropagation();
           showLineColorModal(
-            (it.type === 'poly' ? it.poly.color : it.q.color) || (lt?.color || '#4a9eff'),
+            (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff'),
             (color) => {
               pushUndoSnapshot();
               if (it.type === 'poly') it.poly.color = color;
@@ -5656,8 +5705,10 @@
         if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); openLinePropertiesModal(it); };
         onDoubleTapOrDblClick(div.querySelector('.name'), () => openLinePropertiesModal(it));
       }
-      el.appendChild(div);
+      itemsContainer.appendChild(div);
     });
+      groupWrapper.appendChild(itemsContainer);
+      el.appendChild(groupWrapper);
     });
   }
 
@@ -7732,6 +7783,34 @@
     document.getElementById('countersSection').classList.toggle('collapsed', state.countersListCollapsed);
     document.getElementById('countersCollapseIcon').textContent = state.countersListCollapsed ? '▶' : '▼';
   };
+  const counterSearchInput = document.getElementById('counterSearchInput');
+  if (counterSearchInput) {
+    counterSearchInput.value = state.counterSearch || '';
+    counterSearchInput.oninput = () => {
+      state.counterSearch = counterSearchInput.value;
+      localStorage.setItem('counterSearch', state.counterSearch);
+      renderCountersList();
+    };
+  }
+  const lineTypeSearchInput = document.getElementById('lineTypeSearchInput');
+  if (lineTypeSearchInput) {
+    lineTypeSearchInput.value = state.lineTypeSearch || '';
+    lineTypeSearchInput.oninput = () => {
+      state.lineTypeSearch = lineTypeSearchInput.value;
+      localStorage.setItem('lineTypeSearch', state.lineTypeSearch);
+      renderLineTypesList();
+      renderLinesList();
+    };
+  }
+  const linesSearchInput = document.getElementById('linesSearchInput');
+  if (linesSearchInput) {
+    linesSearchInput.value = state.linesSearch || '';
+    linesSearchInput.oninput = () => {
+      state.linesSearch = linesSearchInput.value;
+      localStorage.setItem('linesSearch', state.linesSearch);
+      renderLinesList();
+    };
+  }
   document.getElementById('lineTypesCollapseIcon').onclick = (e) => {
     e.stopPropagation();
     state.lineTypesListCollapsed = !state.lineTypesListCollapsed;

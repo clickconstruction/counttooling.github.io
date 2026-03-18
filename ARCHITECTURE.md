@@ -102,6 +102,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/J/P/D/H/N/R/Esc/arrows (Left/Right page, Up/Down canvas when multiple)/Enter/Ctrl+Z/Ctrl+Shift+Z/Ctrl+R shortcuts |
 | Custom icon upload | `customIconUploadInput`, `customIconTipsModal`, `getUserCustomIcons`, `saveUserCustomIcons`, `parseUploadedSvg`; Custom Icons grid has + Upload cell; Manage Icons Custom icons section: Edit/Delete selected; click "Custom Icons" label for tips |
 | Line drops / Line Properties | `startDrop`, `endDrop` on quick lines and polylines; `getLineLengthPdfPts`; `linePropertiesModal` or `openLinePropertiesModal`; `ctxLineProperties` in context menu; X markers when drop > 0 |
+| Snap to H/V header button | `lineTypeSnapToHVHeaderBtn` — in header right of Polyline; visible when Line or Polyline tool selected; J hotkey |
 
 ## Key Globals (used by report.js)
 
@@ -119,7 +120,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 
 ## Layout
 
-- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, Counter, Line, Polyline) on left; spacer; Copy view link button (left of gear) and settings gear (Project Settings) in top right when Supabase enabled; Download current page (yellow cloud icon, far right) when PDF loaded; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
+- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, Counter, Line, Polyline, Snap to H/V when Line or Polyline selected) on left; spacer; Copy view link button (left of gear) and settings gear (Project Settings) in top right when Supabase enabled; Download current page (yellow cloud icon, far right) when PDF loaded; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
 - **Mobile header** (max-width: 768px): Hamburger, Upload PDF (when no PDF, transparent/text-only) or Set Scale (when PDF and no scale), Measure, Highlight, Note, Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); `body.has-pdf` toggled in updateUI; Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250; settings gear hidden (access via sidebar logo)
 - **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile; User and Project Settings buttons hidden on mobile as redundant), Upload PDF / Set Scale (button shows "Scale 1 ft = X" when set), Name / Upload / Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Export PDFs, Copy to PipeTooling, Copy Summary (Email/Text), Show Highlights, Show Notes (when data exists), Clear Page
 - **Bottom bar** (page/zoom row): Page nav, zoom controls, rotate, Undo, Redo
@@ -146,7 +147,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Download current page** — `#downloadCurrentPageBtn` in header (far right); yellow cloud-download icon; one-click download of current page as marked PDF; visible in edit and view mode when PDF loaded; `downloadCurrentPageAsPdf()`; uses `renderAnnotationsToContext`, jsPDF; filename `takeoff-page{N}_{projectName}.pdf`
 - **Download PDF** — Project Settings "Download PDF" button downloads the current project's PDF as-is (from `state.pdfBuffer` or Supabase storage); Prepare PDF modal "Download Trimmed PDF" (right side) downloads the trimmed PDF (kept pages only; rotation stored in state on commit); `downloadProjectPdf()`, `downloadPdfBuffer()`
 - **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid); Show ring and Solid ring use toggle switches; Ring section only visible when "Show ring around counters" on; solid ring default true; all persisted
-- **Line Type Settings** — Click "Line Types" heading: opacity, line size, drop X size (4–24px), drop icon (Circle default, X, Plus, Diamond, Triangle), Orient length with line direction toggle, Parallel ends (4–64px), Length label size (8–24px), Snap to horizontal/vertical toggle; snap icon in Line Types header (before + Add) and J hotkey toggle same setting
+- **Line Type Settings** — Click "Line Types" heading: opacity, line size, drop X size (4–24px), drop icon (Circle default, X, Plus, Diamond, Triangle), Orient length with line direction toggle, Parallel ends (4–64px), Length label size (8–24px), Snap to horizontal/vertical toggle; snap icon in header (right of Polyline button; visible when Line or Polyline selected) and J hotkey toggle same setting
 - **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
 - **Quick line color** — Lines sidebar: click swatch to change color; quick lines and polylines support per-line color
 - **Quick line preview** — Line renders from first click to second while placing
@@ -165,7 +166,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Macros** — Status bar "Macros" link opens Keyboard Shortcuts modal (M/S/C/L/J/P/D/H/N/R/Esc/arrows: Left/Right page, Up/Down canvas/Enter)
 - **Scale badge** — Page number in Pages: `.badge-scale-set` = yellow number when scale set; `.badge-has-ann` = yellow outline when page has counts, lines, notes, or highlights
 - **Pages collapse** — Click "Pages" heading toggles `pagesListCollapsed`; `#pagesSection.collapsed` hides list; Pages section auto-collapses when user selects a counter or line type
-- **Sidebar collapse hit area** — Clicking the collapse icon (▼/▶) or the black space next to it minimizes the section; `.collapse-icon` in sidebar has expanded padding for larger hit area
+- **Sidebar collapse hit area** — Clicking the collapse icon (▼/▶) or the black space next to it minimizes the section; `.collapse-icon` in sidebar has expanded padding for larger hit area; Groups and Lines sections start minimized by default
 - **Pages title truncation** — Long page titles show start (ending in `...`) on line 1 and end (starting with `...`) on line 2; `formatPageTitleStartEnd`, `pagesTitlesTruncated` (default true); click "Pages" heading toggles truncation; persisted in localStorage
 - **Page edit/delete** — Edit (yellow icon) and delete (red icon) per page; delete shows confirmation modal with page name; edit icon hidden while editing
 - **Default project title** — On PDF upload, `state.currentProjectName` set from filename minus `.pdf`

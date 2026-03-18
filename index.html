@@ -196,7 +196,7 @@
     @media (max-width: 768px) { .scale-display-desktop { display: none; } }
     #pagesSection.collapsed #pagesList { display: none; }
     #countersSection.collapsed #countersList, #countersSection.collapsed #addCounter, #countersSection.collapsed .sidebar-search-row, #countersSection.collapsed .sidebar-plum-row { display: none; }
-    #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType, #lineTypesSection.collapsed > .sidebar-search-row { display: none; }
+    #lineTypesSection.collapsed #lineTypesList, #lineTypesSection.collapsed #addLineType, #lineTypesSection.collapsed .sidebar-plum-row, #lineTypesSection.collapsed > .sidebar-search-row { display: none; }
     #lineTypesSection.collapsed #linesSection { display: none; }
     #linesSection.collapsed #linesList, #linesSection.collapsed .sidebar-search-row { display: none; }
     .sidebar-search-input { width: 100%; padding: 6px 8px; margin-bottom: 6px; font-size: 0.85rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); box-sizing: border-box; }
@@ -206,7 +206,7 @@
     .plum-modifier-row { display: flex; flex-direction: column; gap: 4px; }
     .plum-select-btn-row { display: flex; align-items: stretch; gap: 6px; }
     .plum-select-btn-row select { flex: 1; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 1rem; }
-    .plum-add-btn { flex-shrink: 0; width: 44px; padding: 0; font-size: 1.25rem; font-weight: 600; background: var(--accent); color: var(--bg); border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+    .plum-add-btn { flex-shrink: 0; width: 24px; min-width: 24px; padding: 0; font-size: 1.1rem; font-weight: 600; background: var(--accent); color: var(--bg); border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
     .plum-add-btn:hover { background: var(--accent2); }
     .plum-type-icon-box { flex-shrink: 0; width: 44px; height: 44px; min-width: 44px; border: 1px dashed var(--border); border-radius: 4px; background: var(--surface2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .plum-type-icon-box:hover { border-color: var(--accent); background: var(--surface); }
@@ -214,7 +214,12 @@
     .plum-type-icon-box svg { width: 24px; height: 24px; }
     .plum-type-icon-box .plum-type-icon-placeholder { font-size: 1rem; color: var(--text3); }
     #plumModal .plum-icon-grid { max-height: 148px; }
-    .plum-name-preview { background: var(--surface2); color: var(--text2); cursor: default; }
+    .plum-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 4px 0; }
+    .plum-name-row .icon-svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .plum-name-row .plum-name-input { flex: 0 1 auto; min-width: 0; max-width: 180px; padding: 6px 10px; background: transparent; border: none; border-radius: 0; color: var(--text); font-size: 1rem; font-family: inherit; }
+    .plum-name-row .plum-name-input:focus { outline: none; }
+    .plum-name-row .swatch { width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; }
+    .plum-name-row .swatch:hover { border-color: var(--accent); }
     .plum-header-add-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; font-family: inherit; background: var(--accent); color: var(--bg); }
     .plum-header-add-btn:hover { background: var(--accent2); }
     .sidebar-search-filter-btn { padding: 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -881,7 +886,7 @@
             <button id="addCounter" class="sidebar-btn-inline" title="Add counter">+ Add</button>
           </div>
           <div class="sidebar-plum-row">
-            <button id="plumBtn" class="sidebar-btn-inline" title="Quick add plumbing counter">PLUM</button>
+            <button id="plumBtn" class="sidebar-btn-inline" title="Quick add counter">PLUM</button>
           </div>
           <div class="sidebar-search-row">
             <input type="text" id="counterSearchInput" placeholder="Search counters..." class="sidebar-search-input">
@@ -893,6 +898,9 @@
           <div class="sidebar-section-header-row">
             <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
+          </div>
+          <div class="sidebar-plum-row">
+            <button id="plumLineBtn" class="sidebar-btn-inline" title="Quick add line type">PLUM</button>
           </div>
           <div class="sidebar-search-row">
             <input type="text" id="lineTypeSearchInput" placeholder="Search line types..." class="sidebar-search-input">
@@ -1119,12 +1127,15 @@
   <div class="modal-overlay" id="plumModal">
     <div class="modal-card">
       <div class="modal-card-header">
-        <h2>Quick Plumbing</h2>
+        <h2>Quick Count</h2>
         <button type="button" id="plumAdd" class="plum-header-add-btn">Add Counter</button>
       </div>
       <div class="form-group">
-        <label>Name</label>
-        <input type="text" id="plumNamePreview" readonly class="plum-name-preview" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:1rem;">
+        <div class="plum-name-row sidebar-item">
+          <span id="plumNameRowIcon" class="icon-svg" aria-hidden="true"></span>
+          <input type="text" id="plumNamePreview" class="plum-name-input" placeholder="e.g. 1/2&quot; Copper Pipe">
+          <span id="plumNameRowSwatch" class="swatch" role="button" tabindex="0" title="Change color"></span>
+        </div>
       </div>
       <div class="form-group plum-modifier-row">
         <label>Size</label>
@@ -1149,7 +1160,6 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Icon</label>
         <div class="counter-icon-tabs">
           <button class="counter-icon-tab active" data-plum-icon-tab="icon">Icon</button>
           <button class="counter-icon-tab" data-plum-icon-tab="custom">Custom Icons</button>
@@ -1164,6 +1174,48 @@
       </div>
       <div class="actions">
         <button id="plumCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="quickLineModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Quick Line</h2>
+        <button type="button" id="quickLineAdd" class="plum-header-add-btn">Add Line Type</button>
+      </div>
+      <div class="form-group">
+        <div class="plum-name-row sidebar-item">
+          <input type="text" id="quickLineName" class="plum-name-input" placeholder="e.g. 1/2&quot; PEX">
+          <span id="quickLineSwatch" class="swatch" role="button" tabindex="0" title="Change color"></span>
+        </div>
+      </div>
+      <div class="form-group plum-modifier-row">
+        <label>Size</label>
+        <div class="plum-select-btn-row">
+          <select id="quickLineSize"></select>
+          <button type="button" id="quickLineAddSize" class="plum-add-btn" title="Add size">+</button>
+        </div>
+      </div>
+      <div class="form-group plum-modifier-row">
+        <label>Material</label>
+        <div class="plum-select-btn-row">
+          <select id="quickLineMaterial"></select>
+          <button type="button" id="quickLineAddMaterial" class="plum-add-btn" title="Add material">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Display</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="quickLineCurve" value="straight" checked> Straight
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="quickLineCurve" value="arc"> Curved
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="quickLineCancel">Cancel</button>
       </div>
     </div>
   </div>
@@ -2257,6 +2309,26 @@
     types: ['Tee', 'Coupling', '90', 'Reducer', 'Drop Ear', 'Male Adapter', 'Female Adapter', 'Ball Valve'],
     materials: ['PEX', 'Brass', 'BI', 'Galv']
   };
+  const LINE_DEFAULTS = {
+    sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in', '3in', '4in'],
+    materials: ['PEX', 'Brass', 'BI', 'Galv']
+  };
+  function getLineModifiers() {
+    try {
+      const raw = localStorage.getItem('lineModifiers');
+      const saved = raw ? JSON.parse(raw) : {};
+      return {
+        sizes: (saved.sizes && saved.sizes.length) ? saved.sizes : LINE_DEFAULTS.sizes,
+        materials: (saved.materials && saved.materials.length) ? saved.materials : LINE_DEFAULTS.materials,
+        defaultColor: saved.defaultColor || COLORS[2]
+      };
+    } catch (_) {
+      return { sizes: [...LINE_DEFAULTS.sizes], materials: [...LINE_DEFAULTS.materials], defaultColor: COLORS[2] };
+    }
+  }
+  function saveLineModifiers(mods) {
+    try { localStorage.setItem('lineModifiers', JSON.stringify(mods)); } catch (_) {}
+  }
   function getPlumbingModifiers() {
     try {
       const raw = localStorage.getItem('plumbingModifiers');
@@ -2265,10 +2337,11 @@
         sizes: (saved.sizes && saved.sizes.length) ? saved.sizes : PLUMBING_DEFAULTS.sizes,
         types: (saved.types && saved.types.length) ? saved.types : PLUMBING_DEFAULTS.types,
         materials: (saved.materials && saved.materials.length) ? saved.materials : PLUMBING_DEFAULTS.materials,
-        iconByType: (saved.iconByType && typeof saved.iconByType === 'object') ? saved.iconByType : {}
+        iconByType: (saved.iconByType && typeof saved.iconByType === 'object') ? saved.iconByType : {},
+        defaultColor: saved.defaultColor || COLORS[2]
       };
     } catch (_) {
-      return { sizes: [...PLUMBING_DEFAULTS.sizes], types: [...PLUMBING_DEFAULTS.types], materials: [...PLUMBING_DEFAULTS.materials], iconByType: {} };
+      return { sizes: [...PLUMBING_DEFAULTS.sizes], types: [...PLUMBING_DEFAULTS.types], materials: [...PLUMBING_DEFAULTS.materials], iconByType: {}, defaultColor: COLORS[2] };
     }
   }
   function savePlumbingModifiers(mods) {
@@ -5470,7 +5543,7 @@
     const redoBtn = document.getElementById('redoBtn');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn'];
+    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -7891,6 +7964,7 @@
       document.querySelectorAll('#plumIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected');
+      updatePlumNamePreview();
     });
     const effectiveCustom = getEffectiveCustomIcons();
     const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
@@ -7903,19 +7977,51 @@
         document.querySelectorAll('#plumIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
         customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
         c.classList.add('selected');
+        updatePlumNamePreview();
       };
     });
     showPlumIconTab('icon');
     updatePlumNamePreview();
     updatePlumTypeIconBox();
     applyPlumIconForType();
+    const swatchEl = document.getElementById('plumNameRowSwatch');
+    if (swatchEl) {
+      swatchEl.onclick = () => {
+        const mods = getPlumbingModifiers();
+        showLineColorModal(mods.defaultColor || COLORS[2], (color) => {
+          mods.defaultColor = color;
+          savePlumbingModifiers(mods);
+          swatchEl.style.background = color;
+          updatePlumNamePreview();
+        });
+      };
+      swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
+    }
+  }
+  function getPlumEffectiveIconPath() {
+    const sel = document.querySelector('#plumIconGrid .icon-cell.selected') || document.querySelector('#plumIconGridCustom .icon-cell.selected');
+    if (sel?.dataset.path) return sel.dataset.path;
+    const type = document.getElementById('plumType')?.value;
+    const mods = getPlumbingModifiers();
+    const path = mods.iconByType?.[type];
+    if (path) return path;
+    return getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value;
   }
   function updatePlumNamePreview() {
     const size = document.getElementById('plumSize').value;
     const type = document.getElementById('plumType').value;
     const material = document.getElementById('plumMaterial').value;
     const name = [size, material, type].filter(Boolean).join(' ');
-    document.getElementById('plumNamePreview').value = name;
+    const nameEl = document.getElementById('plumNamePreview');
+    if (nameEl) nameEl.value = name;
+    const iconEl = document.getElementById('plumNameRowIcon');
+    if (iconEl) {
+      const path = getPlumEffectiveIconPath();
+      const color = getPlumbingModifiers().defaultColor || COLORS[2];
+      iconEl.innerHTML = path ? '<svg viewBox="' + iconVbFor(path) + '" width="20" height="20"><path fill="' + color + '" d="' + path + '"/></svg>' : '';
+    }
+    const swatchEl = document.getElementById('plumNameRowSwatch');
+    if (swatchEl) swatchEl.style.background = getPlumbingModifiers().defaultColor || COLORS[2];
   }
   function updatePlumTypeIconBox() {
     const box = document.getElementById('plumTypeIconBox');
@@ -7978,6 +8084,7 @@
     mods.iconByType[type] = path;
     savePlumbingModifiers(mods);
     updatePlumTypeIconBox();
+    updatePlumNamePreview();
   };
   document.getElementById('plumTypeIconBox').onclick = plumTypeIconBoxClick;
   document.getElementById('plumTypeIconBox').onkeydown = (e) => {
@@ -8021,11 +8128,14 @@
     const size = document.getElementById('plumSize').value;
     const type = document.getElementById('plumType').value;
     const material = document.getElementById('plumMaterial').value;
-    const name = [size, material, type].filter(Boolean).join(' ');
+    const computedName = [size, material, type].filter(Boolean).join(' ');
+    const nameInput = document.getElementById('plumNamePreview');
+    const name = (nameInput?.value?.trim() || computedName) || 'Plumbing';
     const sel = document.querySelector('#plumIconGrid .icon-cell.selected') || document.querySelector('#plumIconGridCustom .icon-cell.selected');
     const icon = sel ? sel.dataset.path : (getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value);
+    const mods = getPlumbingModifiers();
     pushUndoSnapshot();
-    const newCounter = { id: uid(), name: name || 'Plumbing', icon, color: COLORS[2] };
+    const newCounter = { id: uid(), name, icon, color: mods.defaultColor || COLORS[2] };
     state.counters.push(newCounter);
     state.activeCounterType = newCounter.id;
     state.tool = TOOL.COUNTER;
@@ -8034,6 +8144,86 @@
     document.getElementById('pagesSection').classList.add('collapsed');
     document.getElementById('pagesCollapseIcon').textContent = '▶';
     hideModal('plumModal');
+    updateUI();
+  };
+
+  function populateQuickLineModal() {
+    const mods = getLineModifiers();
+    const sizeSel = document.getElementById('quickLineSize');
+    const materialSel = document.getElementById('quickLineMaterial');
+    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+    materialSel.innerHTML = mods.materials.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    updateQuickLineNamePreview();
+    const swatchEl = document.getElementById('quickLineSwatch');
+    if (swatchEl) {
+      swatchEl.onclick = () => {
+        const mods = getLineModifiers();
+        showLineColorModal(mods.defaultColor || COLORS[2], (color) => {
+          mods.defaultColor = color;
+          saveLineModifiers(mods);
+          swatchEl.style.background = color;
+        });
+      };
+      swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
+    }
+  }
+  function updateQuickLineNamePreview() {
+    const size = document.getElementById('quickLineSize').value;
+    const material = document.getElementById('quickLineMaterial').value;
+    const name = [size, material].filter(Boolean).join(' ');
+    const nameEl = document.getElementById('quickLineName');
+    if (nameEl) nameEl.value = name;
+    const swatchEl = document.getElementById('quickLineSwatch');
+    if (swatchEl) swatchEl.style.background = getLineModifiers().defaultColor || COLORS[2];
+  }
+  document.getElementById('plumLineBtn').onclick = () => {
+    populateQuickLineModal();
+    showModal('quickLineModal');
+  };
+  document.getElementById('quickLineSize').onchange = updateQuickLineNamePreview;
+  document.getElementById('quickLineMaterial').onchange = updateQuickLineNamePreview;
+  document.getElementById('quickLineAddSize').onclick = () => {
+    const v = prompt('Enter new size:');
+    if (v && v.trim()) {
+      const mods = getLineModifiers();
+      mods.sizes.push(v.trim());
+      saveLineModifiers(mods);
+      populateQuickLineModal();
+      document.getElementById('quickLineSize').value = v.trim();
+      updateQuickLineNamePreview();
+    }
+  };
+  document.getElementById('quickLineAddMaterial').onclick = () => {
+    const v = prompt('Enter new material:');
+    if (v && v.trim()) {
+      const mods = getLineModifiers();
+      mods.materials.push(v.trim());
+      saveLineModifiers(mods);
+      populateQuickLineModal();
+      document.getElementById('quickLineMaterial').value = v.trim();
+      updateQuickLineNamePreview();
+    }
+  };
+  document.getElementById('quickLineCancel').onclick = () => hideModal('quickLineModal');
+  document.getElementById('quickLineAdd').onclick = () => {
+    const size = document.getElementById('quickLineSize').value;
+    const material = document.getElementById('quickLineMaterial').value;
+    const computedName = [size, material].filter(Boolean).join(' ');
+    const nameInput = document.getElementById('quickLineName');
+    const name = (nameInput?.value?.trim() || computedName) || 'Line';
+    const mods = getLineModifiers();
+    const color = mods.defaultColor || COLORS[2];
+    const curveSel = document.querySelector('input[name="quickLineCurve"]:checked');
+    const curveStyle = curveSel ? curveSel.value : 'straight';
+    pushUndoSnapshot();
+    const newLt = { id: uid(), name, color, curveStyle };
+    state.lineTypes.push(newLt);
+    state.activeLineTypeId = newLt.id;
+    markProjectDirty();
+    state.pagesListCollapsed = true;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
+    hideModal('quickLineModal');
     updateUI();
   };
 

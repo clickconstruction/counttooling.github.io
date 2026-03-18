@@ -11,7 +11,8 @@
     "test:load-project-delete": "playwright test load-project-delete.spec.js",
     "test:load-project-empty-pdf": "playwright test load-project-empty-pdf.spec.js",
     "test:upload-then-save": "playwright test upload-then-save.spec.js",
-    "test:indexeddb-backup": "playwright test indexeddb-backup.spec.js"
+    "test:indexeddb-backup": "playwright test indexeddb-backup.spec.js",
+    "test:custom-icon-paths": "playwright test custom-icon-paths-indexeddb.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0"

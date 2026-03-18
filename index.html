@@ -204,10 +204,17 @@
     .sidebar-search-row .sidebar-search-input { flex: 1; margin-bottom: 0; }
     .sidebar-plum-row { margin-bottom: 6px; }
     .plum-modifier-row { display: flex; flex-direction: column; gap: 4px; }
+    #counterQuickCountPanel .plum-modifier-row { flex-direction: row; align-items: center; gap: 8px; }
+    #counterQuickCountPanel .plum-modifier-row label { flex-shrink: 0; min-width: 60px; }
+    #counterQuickCountPanel .plum-modifier-row .plum-select-btn-row { flex: 1; min-width: 0; }
+    #counterQuickCountPanel .plum-name-row .plum-name-input { max-width: none; flex: 1 1 auto; min-width: 0; }
     .plum-select-btn-row { display: flex; align-items: stretch; gap: 6px; }
     .plum-select-btn-row select { flex: 1; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 1rem; }
     .plum-add-btn { flex-shrink: 0; width: 24px; min-width: 24px; padding: 0; font-size: 1.1rem; font-weight: 600; background: var(--accent); color: var(--bg); border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
     .plum-add-btn:hover { background: var(--accent2); }
+    .plum-remove-btn { flex-shrink: 0; width: 24px; min-width: 24px; padding: 0; font-size: 1.1rem; font-weight: 600; background: transparent; color: var(--text3); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+    .plum-remove-btn:hover { color: var(--red); border-color: var(--red); }
+    .plum-remove-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .plum-type-icon-box { flex-shrink: 0; width: 44px; height: 44px; min-width: 44px; border: 1px dashed var(--border); border-radius: 4px; background: var(--surface2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .plum-type-icon-box:hover { border-color: var(--accent); background: var(--surface); }
     .plum-type-icon-box.has-icon { border-style: solid; }
@@ -652,6 +659,8 @@
     .load-project-delete { flex-shrink: 0; padding: 4px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
     .load-project-delete:hover { color: var(--red); }
     #loadProjectList .load-project-actions { display: flex; flex-direction: row; align-items: center; gap: 8px; flex-shrink: 0; }
+    .counter-modal-search-row { padding: 0 0 12px 0; }
+    .counter-modal-search-row input { width: 100%; padding: 8px 12px; font-size: 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); box-sizing: border-box; }
     .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
     .counter-tab { flex: 1; padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
     .counter-tab:hover { color: var(--text); }
@@ -1080,9 +1089,13 @@
   </div>
   <div class="modal-overlay" id="counterModal">
     <div class="modal-card">
+      <div class="counter-modal-search-row">
+        <input type="text" id="counterModalSearchInput" placeholder="Search counters..." autocomplete="off">
+      </div>
       <div class="counter-modal-tabs">
-        <button class="counter-tab active" data-tab="choose">Choose Counter</button>
-        <button class="counter-tab" data-tab="create">Create Counter</button>
+        <button class="counter-tab active" data-tab="choose">Choose</button>
+        <button class="counter-tab" data-tab="create">Create</button>
+        <button class="counter-tab" data-tab="quickcount">Quick</button>
       </div>
       <div id="counterCreatePanel" class="counter-tab-panel" style="display:none;">
         <div class="form-group">
@@ -1122,6 +1135,57 @@
           <button id="counterChooseCancel">Cancel</button>
         </div>
       </div>
+      <div id="counterQuickCountPanel" class="counter-tab-panel" style="display:none;">
+        <div class="form-group">
+          <div class="plum-name-row sidebar-item">
+            <span id="counterQuickCountIcon" class="icon-svg" aria-hidden="true"></span>
+            <input type="text" id="counterQuickCountName" class="plum-name-input" placeholder="e.g. 1/2&quot; Copper Pipe">
+            <span id="counterQuickCountSwatch" class="swatch" role="button" tabindex="0" title="Change color"></span>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Size</label>
+          <div class="plum-select-btn-row">
+            <select id="counterQuickCountSize"></select>
+            <button type="button" id="counterQuickCountRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
+            <button type="button" id="counterQuickCountAddSize" class="plum-add-btn" title="Add size">+</button>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Type</label>
+          <div class="plum-select-btn-row">
+            <div class="plum-type-icon-box" id="counterQuickCountTypeIconBox" title="Select an icon below, then click to set for this type" role="button" tabindex="0"></div>
+            <select id="counterQuickCountType"></select>
+            <button type="button" id="counterQuickCountRemoveType" class="plum-remove-btn" title="Remove type">−</button>
+            <button type="button" id="counterQuickCountAddType" class="plum-add-btn" title="Add type">+</button>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Material</label>
+          <div class="plum-select-btn-row">
+            <select id="counterQuickCountMaterial"></select>
+            <button type="button" id="counterQuickCountRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
+            <button type="button" id="counterQuickCountAddMaterial" class="plum-add-btn" title="Add material">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="counter-icon-tabs">
+            <button class="counter-icon-tab active" data-counter-quickcount-icon-tab="icon">Icon</button>
+            <button class="counter-icon-tab" data-counter-quickcount-icon-tab="custom">Custom Icons</button>
+          </div>
+          <div id="counterQuickCountIconPanel" class="counter-icon-panel">
+            <div class="icon-grid plum-icon-grid" id="counterQuickCountIconGrid"></div>
+          </div>
+          <div id="counterQuickCountIconCustomPanel" class="counter-icon-panel" style="display:none;">
+            <label id="counterQuickCountCustomIconsLabel" style="cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
+            <div class="icon-grid plum-icon-grid" id="counterQuickCountIconGridCustom"></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="counterQuickCountCancel">Cancel</button>
+          <button type="button" id="counterQuickCountAdd" class="plum-header-add-btn">Add Counter</button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="modal-overlay" id="plumModal">
@@ -1141,6 +1205,7 @@
         <label>Size</label>
         <div class="plum-select-btn-row">
           <select id="plumSize"></select>
+          <button type="button" id="plumRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
           <button type="button" id="plumAddSize" class="plum-add-btn" title="Add size">+</button>
         </div>
       </div>
@@ -1149,6 +1214,7 @@
         <div class="plum-select-btn-row">
           <div class="plum-type-icon-box" id="plumTypeIconBox" title="Select an icon below, then click to set for this type" role="button" tabindex="0"></div>
           <select id="plumType"></select>
+          <button type="button" id="plumRemoveType" class="plum-remove-btn" title="Remove type">−</button>
           <button type="button" id="plumAddType" class="plum-add-btn" title="Add type">+</button>
         </div>
       </div>
@@ -1156,6 +1222,7 @@
         <label>Material</label>
         <div class="plum-select-btn-row">
           <select id="plumMaterial"></select>
+          <button type="button" id="plumRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
           <button type="button" id="plumAddMaterial" class="plum-add-btn" title="Add material">+</button>
         </div>
       </div>
@@ -1193,6 +1260,7 @@
         <label>Size</label>
         <div class="plum-select-btn-row">
           <select id="quickLineSize"></select>
+          <button type="button" id="quickLineRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
           <button type="button" id="quickLineAddSize" class="plum-add-btn" title="Add size">+</button>
         </div>
       </div>
@@ -1200,6 +1268,7 @@
         <label>Material</label>
         <div class="plum-select-btn-row">
           <select id="quickLineMaterial"></select>
+          <button type="button" id="quickLineRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
           <button type="button" id="quickLineAddMaterial" class="plum-add-btn" title="Add material">+</button>
         </div>
       </div>
@@ -2878,16 +2947,13 @@
     return [ic.value, { center: { x: w / 2, y: h / 2 }, vb: Math.max(w, h) }];
   }));
 
+  let customIconsCache = [];
   function getUserCustomIcons() {
-    try {
-      const raw = localStorage.getItem('customIconPaths');
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
-    } catch (_) { return []; }
+    return customIconsCache;
   }
   function saveUserCustomIcons(arr) {
-    localStorage.setItem('customIconPaths', JSON.stringify(Array.isArray(arr) ? arr : []));
+    customIconsCache = Array.isArray(arr) ? arr : [];
+    customIconsPutToIndexedDB(customIconsCache);
   }
   function getEffectiveCustomIcons() {
     return [...CUSTOM_ICONS, ...getUserCustomIcons()];
@@ -3631,6 +3697,7 @@
   const VIEW_PDFS_META_STORE = 'view_pdfs_meta';
   const TAKEOFF_BACKUP_STORE = 'takeoff_backup';
   const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
+  const CUSTOM_ICONS_STORE = 'custom_icons';
   const PDF_CACHE_MAX_ENTRIES = 10;
   const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
   const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
@@ -3639,7 +3706,7 @@
 
   function openPdfCacheDb() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(PDF_CACHE_DB, 3);
+      const req = indexedDB.open(PDF_CACHE_DB, 4);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (e) => {
@@ -3661,6 +3728,9 @@
         }
         if (!db.objectStoreNames.contains(TAKEOFF_BACKUP_META_STORE)) {
           db.createObjectStore(TAKEOFF_BACKUP_META_STORE, { keyPath: 'projectId' });
+        }
+        if (!db.objectStoreNames.contains(CUSTOM_ICONS_STORE)) {
+          db.createObjectStore(CUSTOM_ICONS_STORE, { keyPath: 'key' });
         }
       };
     });
@@ -3817,6 +3887,30 @@
     } catch (_) { /* ignore */ }
   }
 
+  const CUSTOM_ICONS_KEY = 'user';
+  async function customIconsGetFromIndexedDB() {
+    try {
+      const db = await openPdfCacheDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(CUSTOM_ICONS_STORE, 'readonly');
+        const req = tx.objectStore(CUSTOM_ICONS_STORE).get(CUSTOM_ICONS_KEY);
+        req.onsuccess = () => {
+          const entry = req.result;
+          resolve(entry && Array.isArray(entry.data) ? entry.data : null);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    } catch (_) { return null; }
+  }
+  async function customIconsPutToIndexedDB(arr) {
+    try {
+      const db = await openPdfCacheDb();
+      const tx = db.transaction(CUSTOM_ICONS_STORE, 'readwrite');
+      tx.objectStore(CUSTOM_ICONS_STORE).put({ key: CUSTOM_ICONS_KEY, data: Array.isArray(arr) ? arr : [] });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    } catch (_) {}
+  }
+
   async function deleteProjectAsOwner(projectId, pdfPath) {
     if (!supabase) return;
     try {
@@ -3897,15 +3991,6 @@
       });
       if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
       state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-      try {
-        const backupRaw = localStorage.getItem('takeoff-state');
-        if (backupRaw) {
-          const backup = JSON.parse(backupRaw);
-          if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
-            applyTakeoffBackupToState(backup);
-          }
-        }
-      } catch (_) {}
     }
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = proj.id === 'local' ? null : proj.id;
@@ -7741,10 +7826,13 @@
     updateUI();
   };
   function showCounterTab(tab) {
-    document.querySelectorAll('.counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('counterCreatePanel').style.display = tab === 'create' ? '' : 'none';
     document.getElementById('counterChoosePanel').style.display = tab === 'choose' ? '' : 'none';
-    if (tab === 'choose') populateCounterChooseList();
+    const qcPanel = document.getElementById('counterQuickCountPanel');
+    if (qcPanel) qcPanel.style.display = tab === 'quickcount' ? '' : 'none';
+    if (tab === 'choose') populateCounterChooseList(document.getElementById('counterModalSearchInput')?.value);
+    if (tab === 'quickcount') populateCounterQuickCountPanel();
   }
   function showCounterIconTab(tab) {
     document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>
@@ -7754,16 +7842,19 @@
     if (iconPanel) iconPanel.style.display = tab === 'icon' ? '' : 'none';
     if (customPanel) customPanel.style.display = tab === 'custom' ? '' : 'none';
   }
-  function populateCounterChooseList() {
+  function populateCounterChooseList(query) {
     const list = document.getElementById('counterChooseList');
     const empty = document.getElementById('counterChooseEmpty');
     list.innerHTML = '';
-    if (!state.counters.length) {
+    const q = (query || '').toLowerCase();
+    const filtered = q ? state.counters.filter(c => (c.name || '').toLowerCase().includes(q)) : state.counters;
+    if (!filtered.length) {
       empty.style.display = 'block';
+      empty.textContent = q ? 'No counters match. Try Create Counter or Quick Count.' : 'Add a counter first using Create Counter.';
       return;
     }
     empty.style.display = 'none';
-    state.counters.forEach(c => {
+    filtered.forEach(c => {
       const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
       const div = document.createElement('div');
       div.className = 'sidebar-item';
@@ -7781,7 +7872,11 @@
     });
   }
   document.getElementById('counterBtn').onclick = () => {
+    const modalSearchInput = document.getElementById('counterModalSearchInput');
+    if (modalSearchInput) { modalSearchInput.value = ''; }
     showCounterTab('choose');
+    populateCounterChooseList();
+    requestAnimationFrame(() => { setTimeout(() => modalSearchInput?.focus(), 0); });
     document.getElementById('counterName').value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
@@ -7794,6 +7889,16 @@
     showModal('counterModal');
   };
   document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
+  const counterModalSearchInput = document.getElementById('counterModalSearchInput');
+  if (counterModalSearchInput) {
+    counterModalSearchInput.oninput = counterModalSearchInput.onkeyup = () => populateCounterChooseList(counterModalSearchInput.value);
+    counterModalSearchInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        const first = document.querySelector('#counterChooseList .sidebar-item');
+        if (first) { first.click(); e.preventDefault(); }
+      }
+    };
+  }
   document.getElementById('counterChooseCancel').onclick = () => hideModal('counterModal');
   document.getElementById('doneEditing').onclick = () => exitEditMode(true);
 
@@ -7997,6 +8102,9 @@
       };
       swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
     }
+    document.getElementById('plumRemoveSize').disabled = mods.sizes.length <= 1;
+    document.getElementById('plumRemoveType').disabled = mods.types.length <= 1;
+    document.getElementById('plumRemoveMaterial').disabled = mods.materials.length <= 1;
   }
   function getPlumEffectiveIconPath() {
     const sel = document.querySelector('#plumIconGrid .icon-cell.selected') || document.querySelector('#plumIconGridCustom .icon-cell.selected');
@@ -8062,8 +8170,8 @@
     document.getElementById('plumIconCustomPanel').style.display = tab === 'custom' ? '' : 'none';
   }
   document.getElementById('plumBtn').onclick = () => {
-    populatePlumModal();
-    showModal('plumModal');
+    document.getElementById('counterBtn').click();
+    showCounterTab('quickcount');
   };
   document.querySelectorAll('#plumModal .counter-icon-tab').forEach(t =>
     t.onclick = () => showPlumIconTab(t.dataset.plumIconTab));
@@ -8090,6 +8198,37 @@
   document.getElementById('plumTypeIconBox').onkeydown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); plumTypeIconBoxClick(); }
   };
+  function removePlumbingModifier(kind, plumSelectId, qcSelectId) {
+    const plumEl = document.getElementById(plumSelectId);
+    const qcEl = document.getElementById(qcSelectId);
+    const qcPanel = document.getElementById('counterQuickCountPanel');
+    const qcVisible = qcPanel && qcPanel.style.display !== 'none';
+    const sel = qcVisible && qcEl ? qcEl : (plumEl || qcEl);
+    const value = sel?.value;
+    if (!value) return;
+    const mods = getPlumbingModifiers();
+    const arr = mods[kind];
+    if (arr.length <= 1) return;
+    const idx = arr.indexOf(value);
+    if (idx < 0) return;
+    arr.splice(idx, 1);
+    if (kind === 'types' && mods.iconByType) delete mods.iconByType[value];
+    savePlumbingModifiers(mods);
+    populatePlumModal();
+    populateCounterQuickCountPanel();
+    const newVal = arr[0] || arr[Math.max(0, idx - 1)];
+    const plumSel = document.getElementById(plumSelectId);
+    const qcSel = document.getElementById(qcSelectId);
+    if (plumSel) plumSel.value = newVal;
+    if (qcSel) qcSel.value = newVal;
+    updatePlumNamePreview();
+    updateCounterQuickCountNamePreview();
+    updatePlumTypeIconBox();
+    updateCounterQuickCountTypeIconBox();
+  }
+  document.getElementById('plumRemoveSize').onclick = () => removePlumbingModifier('sizes', 'plumSize', 'counterQuickCountSize');
+  document.getElementById('plumRemoveType').onclick = () => removePlumbingModifier('types', 'plumType', 'counterQuickCountType');
+  document.getElementById('plumRemoveMaterial').onclick = () => removePlumbingModifier('materials', 'plumMaterial', 'counterQuickCountMaterial');
   document.getElementById('plumAddSize').onclick = () => {
     const v = prompt('Enter new size:');
     if (v && v.trim()) {
@@ -8147,6 +8286,214 @@
     updateUI();
   };
 
+  function getCounterQuickCountEffectiveIconPath() {
+    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
+    if (sel?.dataset.path) return sel.dataset.path;
+    const type = document.getElementById('counterQuickCountType')?.value;
+    const mods = getPlumbingModifiers();
+    const path = mods.iconByType?.[type];
+    if (path) return path;
+    return getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value;
+  }
+  function updateCounterQuickCountNamePreview() {
+    const size = document.getElementById('counterQuickCountSize')?.value;
+    const type = document.getElementById('counterQuickCountType')?.value;
+    const material = document.getElementById('counterQuickCountMaterial')?.value;
+    const name = [size, material, type].filter(Boolean).join(' ');
+    const nameEl = document.getElementById('counterQuickCountName');
+    if (nameEl) nameEl.value = name;
+    const iconEl = document.getElementById('counterQuickCountIcon');
+    if (iconEl) {
+      const path = getCounterQuickCountEffectiveIconPath();
+      const color = getPlumbingModifiers().defaultColor || COLORS[2];
+      iconEl.innerHTML = path ? '<svg viewBox="' + iconVbFor(path) + '" width="20" height="20"><path fill="' + color + '" d="' + path + '"/></svg>' : '';
+    }
+    const swatchEl = document.getElementById('counterQuickCountSwatch');
+    if (swatchEl) swatchEl.style.background = getPlumbingModifiers().defaultColor || COLORS[2];
+  }
+  function updateCounterQuickCountTypeIconBox() {
+    const box = document.getElementById('counterQuickCountTypeIconBox');
+    if (!box) return;
+    const type = document.getElementById('counterQuickCountType')?.value;
+    const mods = getPlumbingModifiers();
+    const iconByType = mods.iconByType || {};
+    const path = iconByType[type];
+    const iconExists = path && (getOrderedIcons().some(ic => ic.value === path) || getEffectiveCustomIcons().some(ic => ic.value === path));
+    if (path && iconExists) {
+      box.innerHTML = '<svg viewBox="' + iconVbFor(path) + '"><path fill="var(--accent)" d="' + path + '"/></svg>';
+      box.classList.add('has-icon');
+      box.title = 'Click to use selected icon for ' + type;
+    } else {
+      box.innerHTML = '<span class="plum-type-icon-placeholder">?</span>';
+      box.classList.remove('has-icon');
+      box.title = 'Select an icon below, then click to set for ' + type;
+    }
+  }
+  function applyCounterQuickCountIconForType() {
+    const type = document.getElementById('counterQuickCountType')?.value;
+    const mods = getPlumbingModifiers();
+    const path = mods.iconByType && mods.iconByType[type];
+    if (!path) return;
+    const allCells = document.querySelectorAll('#counterQuickCountIconGrid .icon-cell[data-path], #counterQuickCountIconGridCustom .icon-cell[data-path]');
+    const cell = Array.from(allCells).find(c => c.dataset.path === path);
+    if (cell) {
+      const inCustom = cell.closest('#counterQuickCountIconGridCustom');
+      showCounterQuickCountIconTab(inCustom ? 'custom' : 'icon');
+      document.querySelectorAll('#counterQuickCountIconGrid .icon-cell, #counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
+      cell.classList.add('selected');
+    }
+  }
+  function showCounterQuickCountIconTab(tab) {
+    document.querySelectorAll('#counterQuickCountPanel .counter-icon-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.counterQuickcountIconTab === tab));
+    document.getElementById('counterQuickCountIconPanel').style.display = tab === 'icon' ? '' : 'none';
+    document.getElementById('counterQuickCountIconCustomPanel').style.display = tab === 'custom' ? '' : 'none';
+  }
+  function populateCounterQuickCountPanel() {
+    const mods = getPlumbingModifiers();
+    const sizeSel = document.getElementById('counterQuickCountSize');
+    const typeSel = document.getElementById('counterQuickCountType');
+    const materialSel = document.getElementById('counterQuickCountMaterial');
+    if (sizeSel) sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+    if (typeSel) typeSel.innerHTML = mods.types.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+    if (materialSel) materialSel.innerHTML = mods.materials.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    const icons = getOrderedIcons();
+    const grid = document.getElementById('counterQuickCountIconGrid');
+    if (grid) {
+      grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+      grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
+        document.querySelectorAll('#counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
+        grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+        updateCounterQuickCountNamePreview();
+      });
+    }
+    const effectiveCustom = getEffectiveCustomIcons();
+    const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
+    const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+    const customGrid = document.getElementById('counterQuickCountIconGridCustom');
+    if (customGrid) {
+      customGrid.innerHTML = uploadCell + iconCells;
+      customGrid.querySelectorAll('.icon-cell').forEach(c => {
+        c.onclick = () => {
+          if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
+          document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
+          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+          c.classList.add('selected');
+          updateCounterQuickCountNamePreview();
+        };
+      });
+    }
+    showCounterQuickCountIconTab('icon');
+    updateCounterQuickCountNamePreview();
+    updateCounterQuickCountTypeIconBox();
+    applyCounterQuickCountIconForType();
+    const swatchEl = document.getElementById('counterQuickCountSwatch');
+    if (swatchEl) {
+      swatchEl.onclick = () => {
+        const mods = getPlumbingModifiers();
+        showLineColorModal(mods.defaultColor || COLORS[2], (color) => {
+          mods.defaultColor = color;
+          savePlumbingModifiers(mods);
+          swatchEl.style.background = color;
+          updateCounterQuickCountNamePreview();
+        });
+      };
+      swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
+    }
+    const rmSize = document.getElementById('counterQuickCountRemoveSize');
+    const rmType = document.getElementById('counterQuickCountRemoveType');
+    const rmMaterial = document.getElementById('counterQuickCountRemoveMaterial');
+    if (rmSize) rmSize.disabled = mods.sizes.length <= 1;
+    if (rmType) rmType.disabled = mods.types.length <= 1;
+    if (rmMaterial) rmMaterial.disabled = mods.materials.length <= 1;
+  }
+  document.querySelectorAll('#counterQuickCountPanel .counter-icon-tab').forEach(t =>
+    t.onclick = () => showCounterQuickCountIconTab(t.dataset.counterQuickcountIconTab));
+  document.getElementById('counterQuickCountSize')?.addEventListener('change', updateCounterQuickCountNamePreview);
+  document.getElementById('counterQuickCountType')?.addEventListener('change', () => {
+    updateCounterQuickCountNamePreview();
+    updateCounterQuickCountTypeIconBox();
+    applyCounterQuickCountIconForType();
+  });
+  document.getElementById('counterQuickCountMaterial')?.addEventListener('change', updateCounterQuickCountNamePreview);
+  const counterQuickCountTypeIconBoxClick = () => {
+    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
+    const path = sel && sel.dataset.path;
+    if (!path) return;
+    const type = document.getElementById('counterQuickCountType')?.value;
+    const mods = getPlumbingModifiers();
+    mods.iconByType = mods.iconByType || {};
+    mods.iconByType[type] = path;
+    savePlumbingModifiers(mods);
+    updateCounterQuickCountTypeIconBox();
+    updateCounterQuickCountNamePreview();
+  };
+  const counterQuickCountTypeIconBox = document.getElementById('counterQuickCountTypeIconBox');
+  if (counterQuickCountTypeIconBox) {
+    counterQuickCountTypeIconBox.onclick = counterQuickCountTypeIconBoxClick;
+    counterQuickCountTypeIconBox.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); counterQuickCountTypeIconBoxClick(); } };
+  }
+  document.getElementById('counterQuickCountRemoveSize')?.addEventListener('click', () => removePlumbingModifier('sizes', 'plumSize', 'counterQuickCountSize'));
+  document.getElementById('counterQuickCountRemoveType')?.addEventListener('click', () => removePlumbingModifier('types', 'plumType', 'counterQuickCountType'));
+  document.getElementById('counterQuickCountRemoveMaterial')?.addEventListener('click', () => removePlumbingModifier('materials', 'plumMaterial', 'counterQuickCountMaterial'));
+  document.getElementById('counterQuickCountAddSize')?.addEventListener('click', () => {
+    const v = prompt('Enter new size:');
+    if (v && v.trim()) {
+      const mods = getPlumbingModifiers();
+      mods.sizes.push(v.trim());
+      savePlumbingModifiers(mods);
+      populateCounterQuickCountPanel();
+      document.getElementById('counterQuickCountSize').value = v.trim();
+      updateCounterQuickCountNamePreview();
+    }
+  });
+  document.getElementById('counterQuickCountAddType')?.addEventListener('click', () => {
+    const v = prompt('Enter new type:');
+    if (v && v.trim()) {
+      const mods = getPlumbingModifiers();
+      mods.types.push(v.trim());
+      savePlumbingModifiers(mods);
+      populateCounterQuickCountPanel();
+      document.getElementById('counterQuickCountType').value = v.trim();
+      updateCounterQuickCountNamePreview();
+    }
+  });
+  document.getElementById('counterQuickCountAddMaterial')?.addEventListener('click', () => {
+    const v = prompt('Enter new material:');
+    if (v && v.trim()) {
+      const mods = getPlumbingModifiers();
+      mods.materials.push(v.trim());
+      savePlumbingModifiers(mods);
+      populateCounterQuickCountPanel();
+      document.getElementById('counterQuickCountMaterial').value = v.trim();
+      updateCounterQuickCountNamePreview();
+    }
+  });
+  document.getElementById('counterQuickCountCancel')?.addEventListener('click', () => hideModal('counterModal'));
+  document.getElementById('counterQuickCountAdd')?.addEventListener('click', () => {
+    const size = document.getElementById('counterQuickCountSize')?.value;
+    const type = document.getElementById('counterQuickCountType')?.value;
+    const material = document.getElementById('counterQuickCountMaterial')?.value;
+    const computedName = [size, material, type].filter(Boolean).join(' ');
+    const nameInput = document.getElementById('counterQuickCountName');
+    const name = (nameInput?.value?.trim() || computedName) || 'Plumbing';
+    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
+    const icon = sel ? sel.dataset.path : (getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value);
+    const mods = getPlumbingModifiers();
+    pushUndoSnapshot();
+    const newCounter = { id: uid(), name, icon, color: mods.defaultColor || COLORS[2] };
+    state.counters.push(newCounter);
+    state.activeCounterType = newCounter.id;
+    state.tool = TOOL.COUNTER;
+    markProjectDirty();
+    state.pagesListCollapsed = true;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
+    hideModal('counterModal');
+    updateUI();
+  });
+
   function populateQuickLineModal() {
     const mods = getLineModifiers();
     const sizeSel = document.getElementById('quickLineSize');
@@ -8166,6 +8513,8 @@
       };
       swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
     }
+    document.getElementById('quickLineRemoveSize').disabled = mods.sizes.length <= 1;
+    document.getElementById('quickLineRemoveMaterial').disabled = mods.materials.length <= 1;
   }
   function updateQuickLineNamePreview() {
     const size = document.getElementById('quickLineSize').value;
@@ -8182,6 +8531,23 @@
   };
   document.getElementById('quickLineSize').onchange = updateQuickLineNamePreview;
   document.getElementById('quickLineMaterial').onchange = updateQuickLineNamePreview;
+  function removeLineModifier(kind, selectId) {
+    const sel = document.getElementById(selectId);
+    const value = sel?.value;
+    if (!value) return;
+    const mods = getLineModifiers();
+    const arr = mods[kind];
+    if (arr.length <= 1) return;
+    const idx = arr.indexOf(value);
+    if (idx < 0) return;
+    arr.splice(idx, 1);
+    saveLineModifiers(mods);
+    populateQuickLineModal();
+    sel.value = arr[0] || arr[Math.max(0, idx - 1)];
+    updateQuickLineNamePreview();
+  }
+  document.getElementById('quickLineRemoveSize').onclick = () => removeLineModifier('sizes', 'quickLineSize');
+  document.getElementById('quickLineRemoveMaterial').onclick = () => removeLineModifier('materials', 'quickLineMaterial');
   document.getElementById('quickLineAddSize').onclick = () => {
     const v = prompt('Enter new size:');
     if (v && v.trim()) {
@@ -9968,6 +10334,26 @@
           newIconCellPlum.classList.add('selected');
         }
       }
+      const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');
+      if (counterQuickCountCustomGrid) {
+        counterQuickCountCustomGrid.innerHTML = uploadCell + iconCells;
+        counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
+          c.onclick = () => {
+            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
+            document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
+            counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+            c.classList.add('selected');
+            updateCounterQuickCountNamePreview();
+          };
+        });
+        const newIconCellQC = Array.from(counterQuickCountCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
+        if (newIconCellQC) {
+          document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
+          counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+          newIconCellQC.classList.add('selected');
+          updateCounterQuickCountNamePreview();
+        }
+      }
       if (detailsCustomGrid) {
         const grid = document.getElementById('counterLineTypeDetailsIconGrid');
         const item = counterLineTypeDetailsItem;
@@ -10222,6 +10608,7 @@
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('plumCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
+  document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('customIconTipsClose').onclick = () => hideModal('customIconTipsModal');
   function openNoteModal(mode, initialText, positionOrNote) {
     document.getElementById('noteModalTitle').textContent = mode === 'edit' ? 'Edit Note' : 'Add Note';
@@ -11533,15 +11920,6 @@
                     state.pages.forEach(p => { p.scale = d.scale; });
                   }
                   state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-                  try {
-                    const backupRaw = localStorage.getItem('takeoff-state');
-                    if (backupRaw) {
-                      const backup = JSON.parse(backupRaw);
-                      if (backup.projectId === proj.id && backup.lastModifiedAt > projUpdated) {
-                        applyTakeoffBackupToState(backup);
-                      }
-                    }
-                  } catch (_) {}
                 }
                 reconcileOrphanedCountersAndLineTypes();
                 clearUndoStacks();
@@ -11939,13 +12317,6 @@
       pendingLastSessionRestore = null;
       hideModal('lastSessionRestoreModal');
       try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-      try {
-        const backupRaw = localStorage.getItem('takeoff-state');
-        if (backupRaw) {
-          const backup = JSON.parse(backupRaw);
-          if (backup.projectId === proj.id) localStorage.removeItem('takeoff-state');
-        }
-      } catch (_) {}
       await pdfCacheDelete(proj.id);
       await takeoffBackupDelete(proj.id);
       updateUI();
@@ -12926,48 +13297,6 @@
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
   });
 
-  const stored = localStorage.getItem('takeoff-state');
-  if (stored) {
-    try {
-      const data = JSON.parse(stored);
-      if (data.counters) state.counters = data.counters || [];
-      if (data.lineTypes) state.lineTypes = data.lineTypes || [];
-      if (Array.isArray(data.groups)) state.groups = ensureGroupColors(data.groups);
-      if (data.counterSettings) state.counterSettings = { ...state.counterSettings, ...data.counterSettings };
-      if (data.lineTypeSettings) state.lineTypeSettings = { ...state.lineTypeSettings, ...data.lineTypeSettings };
-      if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
-      if (data.exportSettings) state.exportSettings = { ...state.exportSettings, ...data.exportSettings };
-      if (data.recentLineColors) state.recentLineColors = data.recentLineColors;
-      if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
-      if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
-      if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
-      if (data.activeCanvasIdByPage && typeof data.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = data.activeCanvasIdByPage;
-      if (data.pageCanvases && Array.isArray(data.pageCanvases)) {
-        data.pageCanvases.forEach((canvases, i) => {
-          if (state.pages[i] && Array.isArray(canvases) && canvases.length) state.pages[i].canvases = canvases;
-        });
-      } else if (data.pageAnnotations && Array.isArray(data.pageAnnotations)) {
-        data.pageAnnotations.forEach((ann, i) => {
-          if (state.pages[i]) {
-            state.pages[i].canvases = [{ id: uid(), name: 'Main', annotations: ann }];
-            delete state.pages[i].annotations;
-          }
-        });
-      }
-      state.pages.forEach(migratePageToCanvases);
-      reconcileOrphanedCountersAndLineTypes();
-      if (data.pageScales) {
-        data.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-      } else if (data.scale) {
-        state.pages.forEach(p => { p.scale = data.scale; });
-      }
-      if (data.pageRotations) {
-        data.pageRotations.forEach((rot, i) => { if (state.pages[i]) state.pages[i].rotation = rot ?? 0; });
-      }
-      clearUndoStacks();
-    } catch (_) {}
-  }
-
   async function performSaveProjectToCloud(opts) {
     const { name, includePdf, pdfBuffer: optsPdfBuffer } = opts;
     const user = state.supabaseSession?.user;
@@ -13249,28 +13578,6 @@
   async function writeTakeoffStateBackup() {
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
     try {
-      const backup = {
-        counters: state.counters,
-        lineTypes: state.lineTypes,
-        groups: state.groups || [],
-        counterSettings: state.counterSettings,
-        lineTypeSettings: state.lineTypeSettings,
-        legendSettings: state.legendSettings,
-        exportSettings: state.exportSettings,
-        recentLineColors: state.recentLineColors,
-        iconNames: state.iconNames || {},
-        iconOrder: state.iconOrder || null,
-        customIconPaths: getUserCustomIcons(),
-        pageCanvases: state.pages.map(p => p.canvases),
-        activeCanvasIdByPage: state.activeCanvasIdByPage || {},
-        pageScales: state.pages.map(p => p.scale),
-        pageRotations: state.pages.map(p => p.rotation ?? 0)
-      };
-      if (state.currentProjectId) {
-        backup.projectId = state.currentProjectId;
-        backup.lastModifiedAt = lastModifiedAt || Date.now();
-      }
-      localStorage.setItem('takeoff-state', JSON.stringify(backup));
       await writeTakeoffBackupToIndexedDB();
     } catch (_) {}
   }
@@ -13379,6 +13686,9 @@
   window.renderIconHtml = renderIconHtml;
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;
+    window.__customIconsGetFromIndexedDBForTest = customIconsGetFromIndexedDB;
+    window.getUserCustomIcons = getUserCustomIcons;
+    window.saveUserCustomIcons = saveUserCustomIcons;
   }
 
   async function initViewOnlyMode(viewToken) {
@@ -13541,6 +13851,40 @@
       updateUI();
       return;
     }
+    // Load custom icons (IndexedDB-primary, localStorage fallback for migration)
+    let loaded = await customIconsGetFromIndexedDB();
+    if (!loaded) {
+      try {
+        const stored = localStorage.getItem('customIconPaths');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length) {
+            loaded = parsed;
+            await customIconsPutToIndexedDB(loaded);
+            localStorage.removeItem('customIconPaths');
+          }
+        }
+      } catch (_) {}
+    }
+    if (loaded) customIconsCache = loaded;
+    // Restore takeoff backup (IndexedDB-primary, localStorage fallback for migration)
+    const localBackup = await takeoffBackupGet('local');
+    let backupToApply = localBackup?.data || null;
+    if (!backupToApply) {
+      try {
+        const stored = localStorage.getItem('takeoff-state');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          backupToApply = parsed;
+          // One-time migration: write to IndexedDB, then clear localStorage
+          if (parsed.counters || parsed.lineTypes) {
+            await takeoffBackupPut('local', parsed, null, null, parsed.lastModifiedAt || Date.now(), parsed.projectName || null, null);
+            localStorage.removeItem('takeoff-state');
+          }
+        }
+      } catch (_) {}
+    }
+    if (backupToApply) applyTakeoffBackupToState(backupToApply);
     await initSupabaseAuth();
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
       const ok = await devAuthSignIn();

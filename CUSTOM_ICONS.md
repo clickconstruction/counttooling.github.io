@@ -3,7 +3,7 @@
 ClickCount supports two kinds of custom icons:
 
 1. **Bundled custom icons** (`CUSTOM_ICONS` in `index.html`) — Available to all users, shipped with the app.
-2. **User-uploaded icons** — Stored in `localStorage` per browser; users upload SVGs via Create Counter → Custom Icons.
+2. **User-uploaded icons** — Stored in IndexedDB per browser; users upload SVGs via Create Counter → Custom Icons.
 
 Both are merged by `getEffectiveCustomIcons()` and appear in the icon picker.
 

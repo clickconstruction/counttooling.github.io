@@ -98,6 +98,7 @@
     .sidebar-tool-buttons #measureBtnSidebar { margin-right: -6px; }
     .sidebar-tool-buttons .sidebar-btn-icon-above { display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .sidebar-tool-buttons #noteBtnSidebar,
+    .sidebar-tool-buttons #legendBtnSidebar,
     .sidebar-tool-buttons #moveBtnSidebar,
     .sidebar-tool-buttons #polylineBtnSidebar { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; }
     .sidebar-tool-buttons #doneEditingSidebar { flex: 1 1 100%; }
@@ -268,7 +269,7 @@
     .sidebar-clear-page { display: none; }
     .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; -webkit-tap-highlight-color: transparent; }
     .canvas-wrapper { flex: 1; overflow: hidden; position: relative; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-    .canvas-container { position: absolute; transform-origin: 0 0; }
+    .canvas-container { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
     .canvas-container canvas { display: block; position: absolute; left: 0; top: 0; }
     .canvas-container .pdf-canvas { z-index: 0; }
     .canvas-container .ann-canvas { z-index: 1; pointer-events: none; }
@@ -710,6 +711,9 @@
         <button id="noteBtn" class="sidebar-triggers" title="Note" aria-label="Note">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
         </button>
+        <button id="legendBtn" class="sidebar-triggers" title="Summary legend" aria-label="Legend">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M96 128H544C561.7 128 576 142.3 576 160C576 177.7 561.7 192 544 192H96C78.3 192 64 177.7 64 160C64 142.3 78.3 128 96 128zM96 288H544C561.7 288 576 302.3 576 320C576 337.7 561.7 352 544 352H96C78.3 352 64 337.7 64 320C64 302.3 78.3 288 96 288zM96 448H544C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512H96C78.3 512 64 497.7 64 480C64 462.3 78.3 448 96 448z"/></svg>
+        </button>
         <button id="counterBtn" class="sidebar-triggers" title="Counter" aria-label="Counter">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
         </button>
@@ -720,6 +724,9 @@
         <span id="headerActiveLineType" class="header-active-type"></span>
         <button id="polylineBtn" class="sidebar-triggers" title="Polyline" aria-label="Polyline">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
+        </button>
+        <button type="button" id="lineTypeSnapToHVHeaderBtn" class="sidebar-triggers sidebar-snap-icon-btn" title="Snap to horizontal/vertical" aria-pressed="false" style="display:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg>
         </button>
       </span>
       <span class="divider sidebar-triggers"></span>
@@ -802,6 +809,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
             Note
           </button>
+          <button id="legendBtnSidebar" class="sidebar-btn" title="Summary legend">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M96 128H544C561.7 128 576 142.3 576 160C576 177.7 561.7 192 544 192H96C78.3 192 64 177.7 64 160C64 142.3 78.3 128 96 128zM96 288H544C561.7 288 576 302.3 576 320C576 337.7 561.7 352 544 352H96C78.3 352 64 337.7 64 320C64 302.3 78.3 288 96 288zM96 448H544C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512H96C78.3 512 64 497.7 64 480C64 462.3 78.3 448 96 448z"/></svg>
+            Legend
+          </button>
           <button id="moveBtnSidebar" class="sidebar-btn" title="Move">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
             Move
@@ -836,12 +847,7 @@
         </div>
         <div class="sidebar-section" id="lineTypesSection">
           <div class="sidebar-section-header-row">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
-              <button type="button" id="lineTypeSnapToHVHeaderBtn" class="sidebar-snap-icon-btn" title="Snap to horizontal/vertical" aria-pressed="false">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg>
-              </button>
-            </div>
+            <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
           </div>
           <div id="lineTypesList"></div>
@@ -850,9 +856,9 @@
             <div id="linesList"></div>
           </div>
         </div>
-        <div class="sidebar-section" id="groupsSection">
+        <div class="sidebar-section collapsed" id="groupsSection">
           <div class="sidebar-section-header-row">
-            <h3 id="groupsSectionTitle" class="section-settings" title="Click to collapse">Groups <span class="collapse-icon" id="groupsCollapseIcon">▼</span></h3>
+            <h3 id="groupsSectionTitle" class="section-settings" title="Click to expand">Groups <span class="collapse-icon" id="groupsCollapseIcon">▶</span></h3>
             <button id="addGroup" class="sidebar-btn-inline" title="Add group">+ Add</button>
           </div>
           <div id="groupsList"></div>
@@ -1117,8 +1123,8 @@
         <input type="checkbox" id="counterShowOnlyOnPage" hidden>
       </div>
       <div class="form-group">
-        <label>Icon size: <span id="counterSizeVal">20</span>px</label>
-        <input type="range" id="counterSize" min="12" max="96" value="20" step="2">
+        <label>Icon size: <span id="counterSizeVal">22</span>px</label>
+        <input type="range" id="counterSize" min="12" max="96" value="22" step="2">
       </div>
       <div class="form-group">
         <label>Opacity: <span id="counterOpacityVal">100</span>%</label>
@@ -1258,6 +1264,47 @@
       </div>
       <div class="actions">
         <button id="lineTypeSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="legendSettingsModal">
+    <div class="modal-card">
+      <h2>Summary Legend</h2>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Show border</span>
+        <button type="button" class="toggle-switch" id="legendShowBorderBtn" aria-pressed="true" title="Show border around legend">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="legendShowBorder" checked hidden>
+      </div>
+      <div class="form-group">
+        <label>Background color</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="color" id="legendBgColor" value="#ffffff" style="width:48px;height:32px;cursor:pointer;padding:0;border:1px solid var(--border);border-radius:4px;">
+          <span id="legendBgColorHex" style="font-family:monospace;font-size:0.9rem;color:var(--text2);">#ffffff</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Background opacity: <span id="legendBgOpacityVal">100</span>%</label>
+        <input type="range" id="legendBgOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="form-group">
+        <label>Text opacity: <span id="legendTextOpacityVal">100</span>%</label>
+        <input type="range" id="legendTextOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="form-group">
+        <label>Legend size: <span id="legendScaleVal">100</span>%</label>
+        <input type="range" id="legendScale" min="50" max="400" value="100" step="5">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Show a highlight over the resize grip area">Highlight resize area</span>
+        <button type="button" class="toggle-switch" id="legendShowResizeHighlightBtn" aria-pressed="false" title="Highlight resize area">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="legendShowResizeHighlight" hidden>
+      </div>
+      <div class="actions">
+        <button id="legendSettingsClose">Done</button>
       </div>
     </div>
   </div>
@@ -1632,16 +1679,23 @@
           <span class="settings-menu-link" id="settingsMacros">macros</span>
           <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
         </div>
-        <div class="settings-advanced-section collapsed" id="settingsAdvancedSection">
-          <h3 class="settings-advanced-header" id="settingsAdvancedHeader" title="Click to expand">Advanced <span class="collapse-icon" id="settingsAdvancedCollapseIcon">▶</span></h3>
-          <div class="settings-advanced-buttons">
-            <button type="button" class="settings-menu-btn" id="settingsLoadTestPdf" style="display:none;">Load test PDF</button>
-            <button type="button" class="settings-menu-btn" id="settingsManageIcons">Manage Icons</button>
-            <button type="button" class="settings-menu-btn" id="settingsExport">Export Canvas</button>
-            <button type="button" class="settings-menu-btn" id="settingsImport">Import Canvas</button>
-            <button type="button" class="settings-menu-btn" id="settingsCanvasRepair" style="display:none;">Canvas Repair</button>
-          </div>
-        </div>
+        <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="settingsAdvancedModal" style="z-index:210;">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Advanced</h2>
+        <button type="button" class="modal-close-btn" id="settingsAdvancedModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="settings-menu">
+        <button type="button" class="settings-menu-btn" id="advancedLoadTestPdf" style="display:none;">Load test PDF</button>
+        <button type="button" class="settings-menu-btn" id="advancedManageIcons">Manage Icons</button>
+        <button type="button" class="settings-menu-btn btn-yellow" id="advancedExport">Export Canvas</button>
+        <button type="button" class="settings-menu-btn btn-yellow" id="advancedExportPdf" style="display:none;">Export PDF</button>
+        <button type="button" class="settings-menu-btn" id="advancedImport">Import Canvas</button>
+        <button type="button" class="settings-menu-btn" id="advancedCanvasRepair" style="display:none;">Canvas Repair</button>
       </div>
     </div>
   </div>
@@ -2706,7 +2760,7 @@
     { value: CHESSBOARD_PATH, terms: ['chessboard','chess','board','grid','checkered'], name: 'Chessboard' }
   ];
 
-  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [] }; }
+  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
   function getActiveCanvas(page) {
@@ -2821,7 +2875,8 @@
           polylines: Array.isArray(c.annotations.polylines) ? c.annotations.polylines : [],
           quickLines: Array.isArray(c.annotations.quickLines) ? c.annotations.quickLines : [],
           highlights: Array.isArray(c.annotations.highlights) ? c.annotations.highlights : [],
-          notes: Array.isArray(c.annotations.notes) ? c.annotations.notes : []
+          notes: Array.isArray(c.annotations.notes) ? c.annotations.notes : [],
+          legend: c.annotations.legend && typeof c.annotations.legend === 'object' ? c.annotations.legend : null
         } : makeAnnotations()
       }));
       delete page.annotations;
@@ -2832,7 +2887,8 @@
         polylines: Array.isArray(a.polylines) ? a.polylines : [],
         quickLines: Array.isArray(a.quickLines) ? a.quickLines : [],
         highlights: Array.isArray(a.highlights) ? a.highlights : [],
-        notes: Array.isArray(a.notes) ? a.notes : []
+        notes: Array.isArray(a.notes) ? a.notes : [],
+        legend: a.legend && typeof a.legend === 'object' ? a.legend : null
       };
       page.canvases = [{ id: uid(), name: 'Main', annotations: ann }];
       delete page.annotations;
@@ -2896,7 +2952,7 @@
     scalePointA: null, scalePointB: null, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
-    counterSettings: { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
+    counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
     pagesListCollapsed: false,
@@ -2905,12 +2961,13 @@
     sidebarReorderModeActive: false,
     lineTypesListCollapsed: false,
     linesListCollapsed: true,
-    groupsListCollapsed: false,
+    groupsListCollapsed: true,
     summaryListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false },
+    legendSettings: { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
-    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, longPressTimer: null, longPressFired: false,
+    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     lastScaleTapTime: 0,
@@ -2935,7 +2992,8 @@
     maxZoom: null,
     groups: [],
     activeGroupId: null,
-    activeCanvasIdByPage: {}
+    activeCanvasIdByPage: {},
+    showLegendOverlay: true
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
@@ -3596,6 +3654,10 @@
       const p = r({ x: n.x, y: n.y });
       n.x = p.x; n.y = p.y;
     });
+    if (ann.legend && typeof ann.legend === 'object') {
+      const p = r({ x: ann.legend.x, y: ann.legend.y });
+      ann.legend.x = p.x; ann.legend.y = p.y;
+    }
     };
     const canvases = getPageCanvases(page);
     if (canvases.length) canvases.forEach(c => { if (c.annotations) rotateAnn(c.annotations); });
@@ -3757,6 +3819,19 @@
       const ly = -sinR * (pos.x - n.x) + cosR * (pos.y - n.y);
       if (lx >= 0 && lx <= w && ly >= 0 && ly <= heightPdf) return { type: 'note', index: i };
     }
+    const leg = ann.legend;
+    if (leg && state.showLegendOverlay) {
+      const { x, y, w, h } = leg;
+      const HEADER_H = 18;
+      const RESIZE_SIZE = 16;
+      if (pos.x >= x && pos.x <= x + w && pos.y >= y && pos.y <= y + h) {
+        if (pos.x >= x + w - RESIZE_SIZE && pos.y >= y + h - RESIZE_SIZE)
+          return { type: 'legendResize' };
+        if (pos.y <= y + HEADER_H)
+          return { type: 'legendDrag' };
+        return { type: 'legend' };
+      }
+    }
     return null;
   }
 
@@ -3852,6 +3927,7 @@
         if (toolHint) mode += ' | ' + toolHint;
       }
     }
+    if (state.hoverLegendResize) mode += ' | Drag to resize';
     if (modeEl) modeEl.textContent = mode;
     if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : '—';
   }
@@ -4219,8 +4295,8 @@
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
-    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
-    const s = cs.size;
+    const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+    const s = cs.size ?? 22;
     const opacity = cs.opacity;
     const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
     const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
@@ -4334,6 +4410,14 @@
         ctx.fillStyle = '#e8c547'; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
       });
+    }
+    if (state.showLegendOverlay) {
+      if (!ann.legend) {
+        const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+        ann.legend = { x: vp.width - 110, y: 16, w: 100, h: 56 };
+      }
+      const scale = state.zoom * dpr();
+      drawLegend(ctx, page, state.currentPage, ann, scale, toCanvas);
     }
   }
 
@@ -4560,8 +4644,8 @@
     });
     const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
-    const cs = state.counterSettings || { size: 20, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
-    const s = (cs.size || 20) * scale * markerScale;
+    const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+    const s = (cs.size || 22) * scale * markerScale;
     const opacity = cs.opacity;
     const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
     const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
@@ -4628,9 +4712,154 @@
         }
       });
     });
+    if (state.showLegendOverlay) {
+      if (!ann.legend) {
+        const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+        ann.legend = { x: vp.width - 110, y: 16, w: 100, h: 56 };
+      }
+      drawLegend(ctx, page, pageIdx, ann, scale, tc);
+    }
   }
 
-  function getMaxZoom() { return state.maxZoom ?? 8; }
+  function hexToRgb(hex) {
+    const m = (hex || '#ffffff').match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [255, 255, 255];
+  }
+  function drawLegend(ctx, page, pageIdx, ann, scale, tc) {
+    if (!state.showLegendOverlay || !ann.legend) return;
+    const leg = ann.legend;
+    const legendScale = state.legendSettings?.legendScale ?? 1;
+    const effectiveScale = scale * legendScale;
+    const pageScale = getPageScale(pageIdx >= 0 ? pageIdx : 0);
+    const counterRows = [];
+    (state.counters || []).forEach(c => {
+      const markers = ann.counterMarkers?.[c.id] || [];
+      if (markers.length > 0) counterRows.push({ name: c.name || 'Counter', icon: c.icon || CIRCLE_PATH, color: c.color || '#e8c547', count: markers.length });
+    });
+    const lineRows = [];
+    (state.lineTypes || []).forEach(lt => {
+      let lenPdf = 0;
+      (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => { lenPdf += getLineLengthPdfPts(q, pageIdx >= 0 ? pageIdx : 0, false); });
+      (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => { lenPdf += getLineLengthPdfPts(poly, pageIdx >= 0 ? pageIdx : 0, true); });
+      if (lenPdf > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatDist(lenPdf, pageScale) });
+    });
+    const hasRows = counterRows.length > 0 || lineRows.length > 0;
+    ctx.font = (10 * effectiveScale) + 'px sans-serif';
+    let maxTextWidthCanvas = 0;
+    counterRows.forEach(r => {
+      const w = ctx.measureText((r.name || '') + ' [' + r.count + ']').width;
+      if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
+    });
+    lineRows.forEach(r => {
+      const w = ctx.measureText((r.name || '') + ' ' + r.lengthStr).width;
+      if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
+    });
+    const ROW_H_PDF = 14;
+    const PAD_PDF = 6;
+    const totalRows = counterRows.length + lineRows.length;
+    const idealHeightPdf = legendScale * (hasRows ? (2 * PAD_PDF + totalRows * ROW_H_PDF) : 40);
+    const idealWidthPdf = hasRows ? (legendScale * (24 + 6 + 6) + maxTextWidthCanvas / scale) : legendScale * 80;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    const pageW = vp.width, pageH = vp.height;
+    const minW = 60 * legendScale, minH = 40 * legendScale;
+    if (!leg.userResized) {
+      leg.w = Math.max(minW, Math.min(idealWidthPdf, pageW - leg.x - 10));
+      leg.h = Math.max(minH, Math.min(idealHeightPdf, pageH - leg.y - 10));
+    } else {
+      leg.w = Math.max(leg.w, Math.min(idealWidthPdf, pageW - leg.x - 10));
+      leg.h = Math.max(leg.h, Math.min(idealHeightPdf, pageH - leg.y - 10));
+    }
+    leg.w = Math.max(minW, Math.min(leg.w, pageW - leg.x - 10));
+    leg.h = Math.max(minH, Math.min(leg.h, pageH - leg.y - 10));
+    const tl = tc({ x: leg.x, y: leg.y });
+    const width = leg.w * scale;
+    const height = leg.h * scale;
+    const [r, g, b] = hexToRgb(state.legendSettings?.bgColor || '#ffffff');
+    const bgOpacity = state.legendSettings?.bgOpacity ?? 1;
+    ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + bgOpacity + ')';
+    ctx.fillRect(tl.x, tl.y, width, height);
+    ctx.save();
+    ctx.globalAlpha = state.legendSettings?.textOpacity ?? 1;
+    if (state.legendSettings?.showBorder !== false) {
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(tl.x, tl.y, width, height);
+    }
+    const GRIP_SIZE = 16;
+    const brX = tl.x + width - GRIP_SIZE - 4;
+    const brY = tl.y + height - GRIP_SIZE - 4;
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) {
+      const o = 2 + i * 3;
+      ctx.beginPath();
+      ctx.moveTo(brX + o, brY + GRIP_SIZE);
+      ctx.lineTo(brX + GRIP_SIZE, brY + o);
+      ctx.stroke();
+    }
+    if (state.legendSettings?.showResizeHighlight) {
+      const LEGEND_RESIZE_HIT = 16;
+      const hitW = LEGEND_RESIZE_HIT * scale;
+      const hitH = LEGEND_RESIZE_HIT * scale;
+      const hitX = tl.x + width - hitW;
+      const hitY = tl.y + height - hitH;
+      ctx.fillStyle = 'rgba(255, 200, 0, 0.4)';
+      ctx.fillRect(hitX, hitY, hitW, hitH);
+      ctx.strokeStyle = 'rgba(255, 200, 0, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hitX, hitY, hitW, hitH);
+    }
+    const ROW_H = 14 * effectiveScale;
+    const PAD = 6 * effectiveScale;
+    const ICON_SIZE = 14 * effectiveScale;
+    const LEFT_COL = 24 * effectiveScale;
+    const NAME_START = tl.x + PAD + LEFT_COL;
+    ctx.fillStyle = '#333';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    let rowY = tl.y + PAD;
+    const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
+    const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
+    const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
+    if (!hasRows) {
+      ctx.fillStyle = '#666';
+      ctx.fillText('No items', tl.x + PAD, rowY);
+      ctx.restore();
+      return;
+    }
+    counterRows.forEach(r => {
+      const center = iconCenter(r.icon);
+      const vb = iconVb(r.icon);
+      ctx.save();
+      const ICON_OFFSET_X = 6.5 * effectiveScale;
+      const ICON_OFFSET_Y = 4.5 * effectiveScale;
+      ctx.translate(tl.x + PAD + (LEFT_COL - ICON_SIZE) / 2 + ICON_OFFSET_X, rowY + (ROW_H - ICON_SIZE) / 2 + ICON_OFFSET_Y);
+      ctx.scale(ICON_SIZE / vb, ICON_SIZE / vb);
+      ctx.translate(-center.x, -center.y);
+      const path = new Path2D(r.icon);
+      ctx.fillStyle = r.color;
+      ctx.fill(path);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = vb / ICON_SIZE;
+      ctx.stroke(path);
+      ctx.restore();
+      ctx.fillStyle = '#000';
+      ctx.fillText((r.name || '') + ' [' + r.count + ']', NAME_START, rowY);
+      rowY += ROW_H;
+    });
+    lineRows.forEach(r => {
+      ctx.fillStyle = r.color;
+      const SWATCH_H = 3 * effectiveScale;
+      const swatchY = rowY + 1 + (ROW_H - SWATCH_H) / 4;
+      ctx.fillRect(tl.x + PAD + (LEFT_COL - 20 * effectiveScale) / 2, swatchY, 20 * effectiveScale, SWATCH_H);
+      ctx.fillStyle = '#000';
+      ctx.fillText((r.name || '') + ' ' + r.lengthStr, NAME_START, rowY);
+      rowY += ROW_H;
+    });
+    ctx.restore();
+  }
+
+  function getMaxZoom() { return state.maxZoom ?? 4; }
   function getWheelZoomSpeed() {
     try {
       const s = localStorage.getItem('zoomSettings');
@@ -4770,11 +4999,21 @@
     if (quickLineSidebar) quickLineSidebar.classList.toggle('active', state.tool === TOOL.LINE);
     if (polylineBtnSidebar) polylineBtnSidebar.classList.toggle('active', state.tool === TOOL.POLYLINE);
     const snapHvHeaderBtn = document.getElementById('lineTypeSnapToHVHeaderBtn');
-    if (snapHvHeaderBtn) { snapHvHeaderBtn.classList.toggle('active', !!state.lineTypeSettings.snapToHorizontalVertical); snapHvHeaderBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical); }
+    if (snapHvHeaderBtn) {
+      snapHvHeaderBtn.classList.toggle('active', !!state.lineTypeSettings.snapToHorizontalVertical);
+      snapHvHeaderBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
+      snapHvHeaderBtn.style.display = (!state.isViewer && (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE)) ? '' : 'none';
+    }
     const highlightBtnSidebar = document.getElementById('highlightBtnSidebar');
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
     if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
+    const legendBtnEl = document.getElementById('legendBtn');
+    const legendBtnSidebarEl = document.getElementById('legendBtnSidebar');
+    if (legendBtnEl) legendBtnEl.classList.toggle('active', !!state.showLegendOverlay);
+    if (legendBtnSidebarEl) legendBtnSidebarEl.classList.toggle('active', !!state.showLegendOverlay);
+    if (legendBtnEl) legendBtnEl.disabled = !state.pages.length;
+    if (legendBtnSidebarEl) legendBtnSidebarEl.disabled = !state.pages.length;
     document.getElementById('setScale').classList.toggle('active', state.tool === TOOL.SCALE);
     if (setScaleSidebarBtn) setScaleSidebarBtn.classList.toggle('active', state.tool === TOOL.SCALE);
     const measureBtn = document.getElementById('measureBtn');
@@ -4798,12 +5037,13 @@
     const redoBtn = document.getElementById('redoBtn');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType'];
+    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
       if (state.isViewer) el.style.display = 'none';
       else if (id === 'doneEditing' || id === 'doneEditingSidebar') { /* keep tool-based display */ }
+      else if (id === 'lineTypeSnapToHVHeaderBtn') { /* keep tool-based display from snap block */ }
       else el.style.display = '';
     });
     const activeLineEl = document.getElementById('headerActiveLineType');
@@ -4927,8 +5167,10 @@
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
     const settingsDownloadPdf = document.getElementById('settingsDownloadPdf');
     if (settingsDownloadPdf) settingsDownloadPdf.style.display = (state.pages.length && !state.isViewer && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
-    const settingsLoadTestPdf = document.getElementById('settingsLoadTestPdf');
-    if (settingsLoadTestPdf) settingsLoadTestPdf.style.display = (IS_DEV_HOST && !state.isViewer) ? '' : 'none';
+    const advancedExportPdf = document.getElementById('advancedExportPdf');
+    if (advancedExportPdf) advancedExportPdf.style.display = (state.pages.length && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
+    const advancedLoadTestPdf = document.getElementById('advancedLoadTestPdf');
+    if (advancedLoadTestPdf) advancedLoadTestPdf.style.display = (IS_DEV_HOST && !state.isViewer) ? '' : 'none';
     const settingsShareProject = document.getElementById('settingsShareProject');
     if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink) ? '' : 'none';
     const copyViewLinkBtn = document.getElementById('copyViewLinkBtn');
@@ -4946,12 +5188,14 @@
         ? 'Save Changes'
         : 'Name / Upload / Save Project to Cloud';
     }
-    const settingsAdvancedSection = document.getElementById('settingsAdvancedSection');
-    if (settingsAdvancedSection) settingsAdvancedSection.style.display = state.isViewer ? 'none' : '';
+    const settingsAdvancedBtn = document.getElementById('settingsAdvancedBtn');
+    if (settingsAdvancedBtn) settingsAdvancedBtn.style.display = '';
     const settingsClearPageBtn = document.getElementById('settingsClearPage');
     if (settingsClearPageBtn) settingsClearPageBtn.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
-    const settingsCanvasRepair = document.getElementById('settingsCanvasRepair');
-    if (settingsCanvasRepair) settingsCanvasRepair.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
+    const advancedCanvasRepair = document.getElementById('advancedCanvasRepair');
+    if (advancedCanvasRepair) advancedCanvasRepair.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
+    const advancedImport = document.getElementById('advancedImport');
+    if (advancedImport) advancedImport.style.display = state.isViewer ? 'none' : '';
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
     renderPagesList();
@@ -5470,7 +5714,7 @@
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">' + r.total + '</span>';
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
           div.onclick = () => openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
         }
@@ -5509,7 +5753,7 @@
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">' + count + '</span>';
+          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
           div.onclick = () => openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
         }
@@ -6990,6 +7234,32 @@
   document.getElementById('highlightBtnSidebar').onclick = () => document.getElementById('highlightBtn').click();
   document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; updateUI(); };
   document.getElementById('noteBtnSidebar').onclick = () => document.getElementById('noteBtn').click();
+  const legendBtn = document.getElementById('legendBtn');
+  const legendBtnSidebar = document.getElementById('legendBtnSidebar');
+  function toggleLegendOverlay() {
+    if (!state.pages.length) return;
+    state.showLegendOverlay = !state.showLegendOverlay;
+    if (state.showLegendOverlay) {
+      state.tool = TOOL.NONE;
+      state.activeCounterType = null;
+      state.activeLineTypeId = null;
+      state.quickLineStart = null;
+      state.highlightStart = null;
+      if (state.drawingPolyline) state.drawingPolyline = null;
+      const page = state.pages[state.currentPage];
+      const ann = getActiveAnnotations(page);
+      if (!ann.legend) {
+        const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+        const pageW = vp.width, pageH = vp.height;
+        ann.legend = { x: pageW - 110, y: 16, w: 100, h: 56 };
+      }
+    }
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
+  if (legendBtn) legendBtn.onclick = toggleLegendOverlay;
+  if (legendBtnSidebar) legendBtnSidebar.onclick = () => legendBtn?.click();
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
   document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
@@ -7272,6 +7542,7 @@
   };
 
   document.getElementById('lineTypeSettingsClose').onclick = () => hideModal('lineTypeSettingsModal');
+  document.getElementById('legendSettingsClose').onclick = () => hideModal('legendSettingsModal');
   document.getElementById('lineColorCancel').onclick = () => { state.pendingLineColorApply = null; hideModal('lineColorModal'); };
   document.querySelectorAll('.line-type-tab').forEach(t => t.onclick = () => showLineTypeTab(t.dataset.tab));
   document.getElementById('chooseLineTypeCancel').onclick = () => hideModal('chooseLineTypeModal');
@@ -7305,6 +7576,55 @@
     state.lineTypeSettings.opacity = parseInt(document.getElementById('lineTypeOpacity').value, 10) / 100;
     document.getElementById('lineTypeOpacityVal').textContent = Math.round(state.lineTypeSettings.opacity * 100);
     renderAnnotations();
+  };
+  document.getElementById('legendBgOpacity').oninput = () => {
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.bgOpacity = parseInt(document.getElementById('legendBgOpacity').value, 10) / 100;
+    document.getElementById('legendBgOpacityVal').textContent = Math.round(state.legendSettings.bgOpacity * 100);
+    renderPdf();
+  };
+  document.getElementById('legendBgColor').oninput = () => {
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    const hex = document.getElementById('legendBgColor').value;
+    state.legendSettings.bgColor = hex;
+    document.getElementById('legendBgColorHex').textContent = hex.toLowerCase();
+    renderPdf();
+  };
+  document.getElementById('legendShowBorderBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('legendShowBorder');
+    cb.checked = !cb.checked;
+    document.getElementById('legendShowBorderBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('legendShowBorder').onchange = () => {
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.showBorder = document.getElementById('legendShowBorder').checked;
+    renderPdf();
+  };
+  document.getElementById('legendScale').oninput = () => {
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.legendScale = parseInt(document.getElementById('legendScale').value, 10) / 100;
+    document.getElementById('legendScaleVal').textContent = Math.round(state.legendSettings.legendScale * 100);
+    renderPdf();
+  };
+  document.getElementById('legendShowResizeHighlightBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('legendShowResizeHighlight');
+    cb.checked = !cb.checked;
+    document.getElementById('legendShowResizeHighlightBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('legendShowResizeHighlight').onchange = () => {
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.showResizeHighlight = document.getElementById('legendShowResizeHighlight').checked;
+    renderPdf();
+  };
+  document.getElementById('legendTextOpacity').oninput = () => {
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.textOpacity = parseInt(document.getElementById('legendTextOpacity').value, 10) / 100;
+    document.getElementById('legendTextOpacityVal').textContent = Math.round(state.legendSettings.textOpacity * 100);
+    renderPdf();
   };
   document.getElementById('lineTypeDropXSize').oninput = () => {
     state.lineTypeSettings.dropXSize = parseInt(document.getElementById('lineTypeDropXSize').value, 10);
@@ -7398,6 +7718,12 @@
     document.getElementById('lineTypesSection').classList.toggle('collapsed', state.lineTypesListCollapsed);
     document.getElementById('lineTypesCollapseIcon').textContent = state.lineTypesListCollapsed ? '▶' : '▼';
   };
+  document.getElementById('summaryCollapseIcon').onclick = (e) => {
+    e.stopPropagation();
+    state.summaryListCollapsed = !state.summaryListCollapsed;
+    document.getElementById('summarySection').classList.toggle('collapsed', state.summaryListCollapsed);
+    document.getElementById('summaryCollapseIcon').textContent = state.summaryListCollapsed ? '▶' : '▼';
+  };
   document.getElementById('linesSectionTitle').onclick = () => {
     state.linesListCollapsed = !state.linesListCollapsed;
     document.getElementById('linesSection').classList.toggle('collapsed', state.linesListCollapsed);
@@ -7408,10 +7734,27 @@
     document.getElementById('groupsSection').classList.toggle('collapsed', state.groupsListCollapsed);
     document.getElementById('groupsCollapseIcon').textContent = state.groupsListCollapsed ? '▶' : '▼';
   };
-  document.getElementById('summarySectionTitle').onclick = () => {
-    state.summaryListCollapsed = !state.summaryListCollapsed;
-    document.getElementById('summarySection').classList.toggle('collapsed', state.summaryListCollapsed);
-    document.getElementById('summaryCollapseIcon').textContent = state.summaryListCollapsed ? '▶' : '▼';
+  document.getElementById('summarySectionTitle').onclick = (e) => {
+    if (e.target.closest('#summaryCollapseIcon')) return;
+    const ls = state.legendSettings || { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    document.getElementById('legendBgOpacity').value = Math.round((ls.bgOpacity ?? 1) * 100);
+    document.getElementById('legendBgOpacityVal').textContent = Math.round((ls.bgOpacity ?? 1) * 100);
+    document.getElementById('legendBgColor').value = ls.bgColor || '#ffffff';
+    document.getElementById('legendBgColorHex').textContent = (ls.bgColor || '#ffffff').toLowerCase();
+    document.getElementById('legendTextOpacity').value = Math.round((ls.textOpacity ?? 1) * 100);
+    document.getElementById('legendTextOpacityVal').textContent = Math.round((ls.textOpacity ?? 1) * 100);
+    const legendShowBorderCb = document.getElementById('legendShowBorder');
+    const legendShowBorderBtn = document.getElementById('legendShowBorderBtn');
+    legendShowBorderCb.checked = ls.showBorder !== false;
+    legendShowBorderBtn.setAttribute('aria-pressed', legendShowBorderCb.checked);
+    const legendScaleVal = Math.round((ls.legendScale ?? 1) * 100);
+    document.getElementById('legendScale').value = legendScaleVal;
+    document.getElementById('legendScaleVal').textContent = legendScaleVal;
+    const legendShowResizeHighlightCb = document.getElementById('legendShowResizeHighlight');
+    const legendShowResizeHighlightBtn = document.getElementById('legendShowResizeHighlightBtn');
+    legendShowResizeHighlightCb.checked = ls.showResizeHighlight === true;
+    legendShowResizeHighlightBtn.setAttribute('aria-pressed', legendShowResizeHighlightCb.checked);
+    showModal('legendSettingsModal');
   };
   document.getElementById('countersSectionTitle').onclick = (e) => {
     if (e.target.closest('#countersCollapseIcon')) return;
@@ -7550,7 +7893,7 @@
     showToast('Drag Counters and Lines by their left colors to re-order.', 3200);
   };
   function showZoomModal() {
-    const maxVal = Math.round((state.maxZoom ?? 8) * 100);
+    const maxVal = Math.round(getMaxZoom() * 100);
     document.getElementById('zoomMax').value = maxVal;
     document.getElementById('zoomMaxVal').textContent = maxVal;
     const speed = getWheelZoomSpeed();
@@ -7896,7 +8239,7 @@
   }
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: state.maxZoom ?? 8, groups: state.groups || [], pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -8643,6 +8986,7 @@
         state.groups = ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
+        if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
         if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
         (data.pages || []).forEach(p => {
           applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
@@ -9801,17 +10145,16 @@
     document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
     document.getElementById('settingsAddAdditionalPages').onclick = () => { hideModal('settingsModal'); document.getElementById('pdfInput').click(); };
     document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await downloadProjectPdf(); };
-    document.getElementById('settingsLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await loadTestPdf(); };
-    (function() {
-      const section = document.getElementById('settingsAdvancedSection');
-      const header = document.getElementById('settingsAdvancedHeader');
-      const icon = document.getElementById('settingsAdvancedCollapseIcon');
-      header.onclick = () => {
-        const collapsed = section.classList.toggle('collapsed');
-        icon.textContent = collapsed ? '▶' : '▼';
-        header.title = collapsed ? 'Click to expand' : 'Click to collapse';
-      };
-    })();
+    document.getElementById('settingsAdvancedBtn').onclick = () => showModal('settingsAdvancedModal');
+    document.getElementById('settingsAdvancedModalClose').onclick = () => hideModal('settingsAdvancedModal');
+    document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
+    document.querySelector('#settingsAdvancedModal .modal-card').onclick = (e) => e.stopPropagation();
+    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await loadTestPdf(); };
+    document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); openManageIconsModal(); };
+    document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
+    document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await downloadProjectPdf(); };
+    document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
+    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); openCanvasRepairModal(); };
     (function() {
       const section = document.getElementById('mySettingsAirboardSection');
       const header = document.getElementById('mySettingsAirboardHeader');
@@ -10384,10 +10727,6 @@
       updateUI();
       renderPdf();
     };
-    document.getElementById('settingsManageIcons').onclick = () => { hideModal('settingsModal'); openManageIconsModal(); };
-    document.getElementById('settingsExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-    document.getElementById('settingsImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
-    document.getElementById('settingsCanvasRepair').onclick = () => { hideModal('settingsModal'); openCanvasRepairModal(); };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); openShareProjectModal(); };
     document.getElementById('mySettingsSignOut').onclick = async () => { hideModal('mySettingsModal'); await checkInCurrentProjectIfHeld(); supabase.auth.signOut(); updateUI(); };
@@ -11070,7 +11409,17 @@
     const pt = canvasPointFromEvent(e);
     state.mousePos = canvasToPdf(pt.x, pt.y);
     const t = hitTest(state.mousePos);
-    if (t && t.type === 'noteResize') {
+    if (t && t.type === 'legendResize') {
+      pushUndoSnapshot();
+      state.resizingLegend = true;
+      const leg = getActiveAnnotations(state.pages[state.currentPage])?.legend;
+      if (leg) state.legendResizeStart = { w: leg.w, h: leg.h, pdfX: state.mousePos.x, pdfY: state.mousePos.y };
+    } else if (t && (t.type === 'legendDrag' || t.type === 'legend')) {
+      pushUndoSnapshot();
+      state.draggingLegend = true;
+      const leg = getActiveAnnotations(state.pages[state.currentPage])?.legend;
+      if (leg) state.legendDragOffset = { x: state.mousePos.x - leg.x, y: state.mousePos.y - leg.y };
+    } else if (t && t.type === 'noteResize') {
       pushUndoSnapshot();
       state.resizingNoteIdx = t.index;
       state.resizingNotePageIdx = state.currentPage;
@@ -11107,13 +11456,32 @@
     }
   });
 
-  (cWrapper || pdfCanvas).addEventListener('mousemove', (e) => {
+  function handleCanvasMouseMove(e) {
     const pt = canvasPointFromEvent(e);
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
     if (state.isPanning && state.panStart) {
       state.pan = { x: e.clientX - state.panStart.x, y: e.clientY - state.panStart.y };
       updateContainerTransform();
+    } else if (state.resizingLegend && state.legendResizeStart) {
+      const page = state.pages[state.currentPage];
+      const leg = page ? getActiveAnnotations(page)?.legend : null;
+      if (leg) {
+        leg.userResized = true;
+        leg.w = Math.max(60, state.legendResizeStart.w + (pdf.x - state.legendResizeStart.pdfX));
+        leg.h = Math.max(40, state.legendResizeStart.h + (pdf.y - state.legendResizeStart.pdfY));
+        renderAnnotations();
+      }
+    } else if (state.draggingLegend && state.legendDragOffset) {
+      const page = state.pages[state.currentPage];
+      const leg = page ? getActiveAnnotations(page)?.legend : null;
+      if (leg && page?.pdfPage) {
+        const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+        const pageW = vp.width, pageH = vp.height;
+        leg.x = Math.max(0, Math.min(pageW - leg.w, pdf.x - state.legendDragOffset.x));
+        leg.y = Math.max(0, Math.min(pageH - leg.h, pdf.y - state.legendDragOffset.y));
+        renderAnnotations();
+      }
     } else if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null && state.editingPolyline) {
       state.editingPolyline.points[state.draggingVertexIdx] = pdf;
       renderAnnotations();
@@ -11148,14 +11516,19 @@
       renderAnnotations();
     }
     const t = hitTest(pdf);
+    state.hoverLegendResize = !!(t && t.type === 'legendResize');
     if (annCanvas) {
       if (state.isPanning && state.panStart) {
         annCanvas.style.cursor = 'url(' + moveCursorSvg + ') 12 12, move';
       } else {
-        annCanvas.style.cursor = (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : '';
+        annCanvas.style.cursor = (t && t.type === 'legendResize') ? 'se-resize' : (t && (t.type === 'legendDrag' || t.type === 'legend')) ? 'move' : (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : '';
       }
     }
     updateStatus();
+  }
+  (cWrapper || pdfCanvas).addEventListener('mousemove', handleCanvasMouseMove);
+  window.addEventListener('mousemove', (e) => {
+    if (state.resizingLegend || state.draggingLegend) handleCanvasMouseMove(e);
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseup', (e) => {
@@ -11167,6 +11540,7 @@
     if (e.button !== 0) return;
     if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
     if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
+    if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
     state.isPanning = false;
     state.panStart = null;
     state.draggingVertexIdx = null;
@@ -11181,21 +11555,58 @@
     state.draggingNotePageIdx = null;
     state.draggingNoteOffset = null;
     state.dragNoteStartPos = null;
+    state.resizingLegend = false;
+    state.draggingLegend = false;
+    state.legendResizeStart = null;
+    state.legendDragOffset = null;
   });
 
-  (cWrapper || pdfCanvas).addEventListener('mouseleave', () => { state.isPanning = false; state.panStart = null; state.resizingNoteIdx = null; state.resizingNotePageIdx = null; state.resizingNoteFontSizeIdx = null; state.resizingNoteFontSizePageIdx = null; state.resizingNoteFontSizeStartY = null; state.resizingNoteFontSizeStartLocalY = null; state.resizingNoteFontSizeStartVal = null; state.draggingNoteIdx = null; state.draggingNotePageIdx = null; state.draggingNoteOffset = null; state.dragNoteStartPos = null; if (annCanvas) annCanvas.style.cursor = ''; });
+  (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
+    state.isPanning = false;
+    state.panStart = null;
+    state.resizingNoteIdx = null;
+    state.resizingNotePageIdx = null;
+    state.resizingNoteFontSizeIdx = null;
+    state.resizingNoteFontSizePageIdx = null;
+    state.resizingNoteFontSizeStartY = null;
+    state.resizingNoteFontSizeStartLocalY = null;
+    state.resizingNoteFontSizeStartVal = null;
+    state.draggingNoteIdx = null;
+    state.draggingNotePageIdx = null;
+    state.draggingNoteOffset = null;
+    state.dragNoteStartPos = null;
+    if (!state.resizingLegend && !state.draggingLegend) {
+      state.resizingLegend = false;
+      state.draggingLegend = false;
+      state.legendResizeStart = null;
+      state.legendDragOffset = null;
+      state.hoverLegendResize = false;
+      if (annCanvas) annCanvas.style.cursor = '';
+    }
+  });
 
   window.addEventListener('mouseup', (e) => {
     if (e.button === 1) {
       state.isPanning = false;
       state.panStart = null;
     }
+    if (e.button === 0 && (state.resizingLegend || state.draggingLegend)) {
+      state.justFinishedLegendResize = true;
+      markProjectDirty();
+      state.resizingLegend = false;
+      state.draggingLegend = false;
+      state.legendResizeStart = null;
+      state.legendDragOffset = null;
+      state.hoverLegendResize = false;
+      if (annCanvas) annCanvas.style.cursor = '';
+    }
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
-    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote) { state.justFinishedResize = false; state.justFinishedDragNote = false; return; }
+    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; return; }
     state.justFinishedResize = false;
     state.justFinishedDragNote = false;
+    state.justFinishedLegendResize = false;
     handleCanvasClick(e);
   });
 
@@ -11444,8 +11855,10 @@
         state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
         const cb = document.getElementById('lineTypeSnapToHV');
         const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
+        const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
         if (cb) { cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical; }
         if (snapBtn) snapBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
+        if (snapHeaderEl) snapHeaderEl.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
         renderAnnotations();
         updateUI();
         e.preventDefault();
@@ -11484,6 +11897,7 @@
       else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
+      else if (document.getElementById('settingsAdvancedModal').classList.contains('visible')) { hideModal('settingsAdvancedModal'); }
       else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
       else if (document.getElementById('mySettingsModal').classList.contains('visible')) { hideModal('mySettingsModal'); }
       else if (document.getElementById('authModal').classList.contains('visible')) { hideModal('authModal'); }
@@ -11579,6 +11993,7 @@
       if (Array.isArray(data.groups)) state.groups = ensureGroupColors(data.groups);
       if (data.counterSettings) state.counterSettings = { ...state.counterSettings, ...data.counterSettings };
       if (data.lineTypeSettings) state.lineTypeSettings = { ...state.lineTypeSettings, ...data.lineTypeSettings };
+      if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
       if (data.exportSettings) state.exportSettings = { ...state.exportSettings, ...data.exportSettings };
       if (data.recentLineColors) state.recentLineColors = data.recentLineColors;
       if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
@@ -11637,7 +12052,7 @@
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
       customIconPaths: getUserCustomIcons(),
-      maxZoom: state.maxZoom ?? 8,
+      maxZoom: getMaxZoom(),
       groups: state.groups || [],
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {}
@@ -11819,7 +12234,7 @@
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
       customIconPaths: getUserCustomIcons(),
-      maxZoom: state.maxZoom ?? 8,
+      maxZoom: getMaxZoom(),
       groups: state.groups || [],
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {}
@@ -11898,6 +12313,7 @@
         groups: state.groups || [],
         counterSettings: state.counterSettings,
         lineTypeSettings: state.lineTypeSettings,
+        legendSettings: state.legendSettings,
         exportSettings: state.exportSettings,
         recentLineColors: state.recentLineColors,
         iconNames: state.iconNames || {},

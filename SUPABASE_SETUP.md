@@ -140,6 +140,7 @@ on conflict (user_id) do update set is_admin = true;
 ## Limits
 
 - **PDF file size** — Maximum 50 MB (Supabase storage limit). Uploading a larger file shows an alert and is rejected.
+- **JWT expiry** — Access token expiry is set to 10 hours (Dashboard > Auth > JWT Settings). This reduces "session expired" issues during long work sessions. If users still see sync failures, they can refresh the page to continue.
 
 ## PDF Transfer Optimizations
 

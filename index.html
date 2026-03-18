@@ -3777,6 +3777,7 @@
         if (ptDist(pos, markers[i]) <= r) return { type: 'marker', typeId, index: i };
       }
     }
+    const lineCandidates = [];
     for (let i = 0; i < (ann.quickLines || []).length; i++) {
       const q = ann.quickLines[i];
       const a = { x: q.x1, y: q.y1 }, b = { x: q.x2, y: q.y2 };
@@ -3784,15 +3785,23 @@
       const d = lt?.curveStyle === 'arc'
         ? distToQuadraticBezier(pos, a, getQuadraticBezierControlPoint(a, b, 1), b)
         : distToSegment(pos, a, b);
-      if (d <= r) return { type: 'quickLine', index: i };
+      if (d <= r) lineCandidates.push({ type: 'quickLine', index: i, dist: d });
     }
     for (let i = 0; i < (ann.polylines || []).length; i++) {
       const poly = ann.polylines[i];
       const pts = poly.points || [];
+      let minD = Infinity;
       for (let j = 0; j < pts.length - 1; j++) {
-        if (distToSegment(pos, pts[j], pts[j + 1]) <= r) return { type: 'polyline', index: i };
+        minD = Math.min(minD, distToSegment(pos, pts[j], pts[j + 1]));
       }
-      if (poly.closed && pts.length >= 3 && distToSegment(pos, pts[pts.length - 1], pts[0]) <= r) return { type: 'polyline', index: i };
+      if (poly.closed && pts.length >= 3) {
+        minD = Math.min(minD, distToSegment(pos, pts[pts.length - 1], pts[0]));
+      }
+      if (minD <= r) lineCandidates.push({ type: 'polyline', index: i, dist: minD });
+    }
+    if (lineCandidates.length > 0) {
+      const best = lineCandidates.reduce((a, b) => a.dist <= b.dist ? a : b);
+      return { type: best.type, index: best.index };
     }
     for (let i = 0; i < (ann.highlights || []).length; i++) {
       const h = ann.highlights[i];
@@ -6505,6 +6514,13 @@
     });
   }
 
+  function isAuthError(e) {
+    if (!e) return false;
+    const msg = (e.message || '').toLowerCase();
+    return e.code === 'PGRST301' || e.status === 401 ||
+      msg.includes('jwt') || msg.includes('refresh') || msg.includes('token') || msg.includes('expired') || msg.includes('401');
+  }
+
   function canUseDevAuth() {
     return IS_DEV_HOST && typeof window.DEV_AUTH_EMAIL === 'string' && window.DEV_AUTH_EMAIL &&
       typeof window.DEV_AUTH_PASSWORD === 'string' && window.DEV_AUTH_PASSWORD;
@@ -6870,8 +6886,12 @@
     requestAnimationFrame(() => { fitZoom(); renderPdf(); });
     const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
     if (!saveResult.ok) {
-      const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
-      showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
+      if (isAuthError(saveResult.error)) {
+        showToast('Refresh the page to sync.', 4000);
+      } else {
+        const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
+        showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
+      }
     } else {
       autoSaveDirty = false;
     }
@@ -9988,7 +10008,11 @@
       const hadAutoSave = autoSaveDirty;
       if (autoSaveDirty) {
         const saveResult = await performAutoSave();
-        if (!saveResult.ok) return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
+        if (!saveResult.ok) {
+          if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
+          if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, error: 'Your edit session expired. Check out the project again to continue.' };
+          return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
+        }
         autoSaveDirty = false;
       }
       try {
@@ -10924,7 +10948,7 @@
           state.isViewer = true;
           state.canCheckOut = true;
           updateUI();
-          errEl.textContent = 'Your edit session expired (30 minutes inactivity). Please check out again.';
+          errEl.textContent = 'Your edit session expired. Check out the project again to continue.';
           errEl.style.display = 'block';
           return;
         }
@@ -10936,8 +10960,12 @@
       const includePdf = document.getElementById('saveProjectIncludePdf').checked;
       const result = await performSaveProjectToCloud({ name, includePdf });
       if (!result.ok) {
-        const errMsg = (result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error) || 'Save failed';
-        showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
+        if (isAuthError(result.error)) {
+          showToast('Refresh the page to sync.', 4000);
+        } else {
+          const errMsg = (result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error) || 'Save failed';
+          showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
+        }
       }
       saveBtn.disabled = false;
       saveBtn.textContent = origText;
@@ -10966,8 +10994,12 @@
         autoSaveDirty = false;
         hideModal('saveBeforeLoadModal');
       } else {
-        const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
-        showToast('Save failed' + (errMsg ? ': ' + errMsg : '') + '. Open Project Settings to retry.', 4000);
+        if (isAuthError(result.error)) {
+          showToast('Refresh the page to sync.', 4000);
+        } else {
+          const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
+          showToast('Save failed' + (errMsg ? ': ' + errMsg : '') + '. Open Project Settings to retry.', 4000);
+        }
         msgEl.textContent = 'You have unsaved changes. Save before loading another project?';
         discardBtn.style.display = '';
         saveBtn.style.display = '';
@@ -12224,7 +12256,7 @@
     const user = state.supabaseSession.user;
     if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
       const checkedAt = new Date(state.checkedOutAt).getTime();
-      if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) return { ok: false, error: null };
+      if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
     }
     const t0 = Date.now();
     const data = {
@@ -12392,7 +12424,16 @@
 
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') writeTakeoffStateBackup();
+      if (document.visibilityState === 'hidden') {
+        writeTakeoffStateBackup();
+      } else if (document.visibilityState === 'visible' && SUPABASE_ENABLED && supabase && state.supabaseSession?.user) {
+        supabase.auth.getSession().then(({ data }) => {
+          if (data?.session) {
+            state.supabaseSession = data.session;
+            updateUI();
+          }
+        }).catch(() => {});
+      }
     });
   }
 
@@ -12402,8 +12443,17 @@
     autoSaveDirty = false;
     const result = await performAutoSave();
     if (!result.ok) {
-      autoSaveDirty = true;
-      if (result.error) window.lastSaveError = result.error;
+      if (result.error?.code === 'CHECKOUT_EXPIRED') {
+        showToast('Your edit session expired. Check out the project again to continue editing.', 4000);
+      } else if (isAuthError(result.error)) {
+        autoSaveDirty = true;
+        if (result.error) window.lastSaveError = result.error;
+        showToast('Could not sync. Refresh the page to sync.', 4000);
+      } else {
+        autoSaveDirty = true;
+        if (result.error) window.lastSaveError = result.error;
+        showToast('Could not sync to cloud. Refresh the page or check your connection.', 4000);
+      }
     }
   }, AUTO_SAVE_INTERVAL_MS);
 

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build:icons": "node scripts/build-custom-icons.js",
     "test": "playwright test",
     "precloudtest": "node scripts/generate-config.js",
     "test:cloud": "npm run precloudtest && playwright test load-project-delete.spec.js load-project-empty-pdf.spec.js",

@@ -34,7 +34,7 @@
 
     const pageIndices = options.pageIndices ?? state.pages.map((_, i) => i);
     const getAnn = options.getAnnotations ?? ((page) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations());
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page?.annotations) || makeAnnotations());
 
     const styles = `
       body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; color: #000; margin: 2em; }
@@ -254,7 +254,7 @@
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
     const getAnn = opts.getAnnotations ?? ((page) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations());
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page?.annotations) || makeAnnotations());
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
     const counterSummaryByGroup = {};
@@ -319,7 +319,7 @@
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
     const getAnn = opts.getAnnotations ?? ((page) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page.annotations) || makeAnnotations());
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page?.annotations) || makeAnnotations());
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     const counterSummaryByGroup = {};

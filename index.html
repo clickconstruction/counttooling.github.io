@@ -74,6 +74,7 @@
     .header .header-tools-tight .divider.sidebar-triggers { background: var(--border); }
     .header .header-tools-tight .sidebar-triggers:hover { background: var(--surface2); }
     .header .header-tools-tight .sidebar-triggers.active { background: var(--accent); color: var(--bg); border: none; }
+    .header-tools-scroll { display: flex; align-items: center; gap: 8px; }
     .header #setScale.scale-set { display: none; }
     .header #setScale.scale-unset { color: var(--accent); }
     #setScale, #setScaleSidebar { display: inline-flex; align-items: center; gap: 6px; }
@@ -137,6 +138,10 @@
       .header-active-type .header-type-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
     @media (min-width: 769px) { .header-active-type { display: none !important; } }
       .header .header-primary-divider { display: none; }
+      .header .spacer { flex: 0; min-width: 0; }
+      .header-tools-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex: 1; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; }
+      .header-tools-scroll::-webkit-scrollbar { display: none; }
+      .header-tools-scroll > * { flex-shrink: 0; }
       .sidebar-logo { display: flex; }
       .sidebar-checkout-banner.supabase-only.edit-status-available,
       .sidebar-checkout-banner.supabase-only.edit-status-editing,
@@ -149,6 +154,8 @@
       .header #clearPage { display: none; }
       .sidebar-clear-page { display: block; }
       .status-bar #statusBarAuth { display: none !important; }
+      .status-bar { flex-wrap: nowrap; }
+      .status-bar #statusMode { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 0; }
       .page-info-label { display: none; }
     }
     .main { display: flex; flex: 1; overflow: hidden; }
@@ -156,7 +163,7 @@
     @media (max-width: 768px) {
       .sidebar { position: fixed; left: 0; top: 52px; bottom: 0; z-index: 100; transform: translateX(-100%); padding-left: env(safe-area-inset-left); }
       body.sidebar-open .sidebar { transform: translateX(0); }
-      .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+      .sidebar-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
       body.sidebar-open .sidebar-backdrop { display: block; }
       .zoom-bar button { width: 44px; height: 44px; }
       .zoom-bar #zoomOut { display: none; }
@@ -169,8 +176,12 @@
       .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
       .modal-overlay.visible .modal-card.modal-card-fullscreen { max-height: 90vh; height: 90vh; overflow: hidden; }
       #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
+      .page-zoom-row { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
+      .page-zoom-row::-webkit-scrollbar { display: none; }
+      .page-zoom-row > * { flex-shrink: 0; }
     }
     @media (min-width: 769px) {
+      .header-tools-scroll { flex: none; min-width: auto; overflow: visible; }
       #canvasSwitcher .canvas-pills, #canvasSwitcher #addCanvasBtn { display: none !important; }
       .canvas-switcher.canvas-layers-desktop-visible .canvas-layers-btn { display: flex !important; }
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
@@ -753,6 +764,7 @@
   <div class="app">
     <header class="header">
       <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+      <div class="header-tools-scroll">
       <button type="button" class="logo logo-btn" id="headerLogo" aria-label="Toggle sidebar">CountTooling</button>
       <span class="divider header-primary-divider"></span>
       <button id="uploadPdf" class="header-primary-btn">Upload PDF</button>
@@ -798,6 +810,7 @@
       </span>
       <span class="divider sidebar-triggers"></span>
       <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
+      </div>
       <span class="spacer"></span>
       <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
       <button id="headerShareBtn" class="header-settings-gear sidebar-triggers supabase-only" aria-label="Share" title="Share">
@@ -2473,7 +2486,7 @@
   </div>
   <script>
   (function() {
-  <!-- SECTION: Constants -->
+  // SECTION: Constants
   if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
   const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || '';
@@ -3583,7 +3596,7 @@
     return [...ordered, ...rest];
   }
 
-  <!-- SECTION: State -->
+  // SECTION: State
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
@@ -4146,7 +4159,7 @@
     subscribeToProjectCheckoutChanges(state.currentProjectId);
   }
 
-  <!-- SECTION: Math & Format Helpers -->
+  // SECTION: Math & Format Helpers
   function ptDist(a, b) { return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2); }
   function snapToHorizontalOrVertical(x1, y1, x2, y2) {
     const dx = x2 - x1, dy = y2 - y1;
@@ -4158,6 +4171,7 @@
     return toHorizontal ? { x: x2, y: y1 } : { x: x1, y: y2 };
   }
   function polylineDistance(pts, closed) {
+    if (!pts || !Array.isArray(pts)) return 0;
     let d = 0;
     for (let i = 0; i < pts.length - 1; i++) d += ptDist(pts[i], pts[i + 1]);
     if (closed && pts.length >= 3) d += ptDist(pts[pts.length - 1], pts[0]);
@@ -4637,11 +4651,11 @@
       }
     }
     if (state.hoverLegendResize) mode += ' | Drag to resize';
-    if (modeEl) modeEl.textContent = mode;
+    if (modeEl) { modeEl.textContent = mode; modeEl.title = mode || ''; }
     if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : '—';
   }
 
-  <!-- SECTION: Coordinate Helpers -->
+  // SECTION: Coordinate Helpers
   function canvasPointFromEvent(e) {
     const el = document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper');
     const rect = el ? el.getBoundingClientRect() : { left: 0, top: 0 };
@@ -4653,7 +4667,7 @@
   let pdfOffscreenCanvas = null;
   let pdfRenderId = 0;
   let pdfRenderPending = false;
-  <!-- SECTION: PDF Rendering -->
+  // SECTION: PDF Rendering
   function renderPdf() {
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) {
@@ -5662,7 +5676,7 @@
     updateUI();
   }
 
-  <!-- SECTION: UI Render Functions -->
+  // SECTION: UI Render Functions
   function updateUI() {
     document.getElementById('zoomPct').textContent = Math.round(state.zoom * 100) + '%';
     const pageInfo = document.getElementById('pageInfo');
@@ -6196,6 +6210,7 @@
   function renderCountersList() {
     const el = document.getElementById('countersList');
     el.innerHTML = '';
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const showEdit = !state.isViewer;
     const q = (state.counterSearch || '').trim().toLowerCase();
     const filtered = q ? state.counters.filter(c => (c.name || 'Counter').toLowerCase().includes(q)) : state.counters;
@@ -6209,7 +6224,7 @@
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
       const count = state.pages.reduce((n, p) => n + ((getActiveAnnotations(p)?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');
@@ -6249,6 +6264,7 @@
   function renderLineTypesList() {
     const el = document.getElementById('lineTypesList');
     el.innerHTML = '';
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const showEdit = !state.isViewer;
     const q = (state.lineTypeSearch || '').trim().toLowerCase();
     const filtered = q ? state.lineTypes.filter(lt => (lt.name || 'Line').toLowerCase().includes(q)) : state.lineTypes;
@@ -6273,7 +6289,7 @@
       const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;
         const handle = div.querySelector('.line-type-drag-handle');
@@ -6314,13 +6330,14 @@
     const el = document.getElementById('groupsList');
     if (!el) return;
     el.innerHTML = '';
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const showEdit = !state.isViewer;
     const groups = state.groups || [];
     groups.forEach(g => {
       const count = countItemsInGroup(g.id);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeGroupId === g.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + (g.name || 'Group') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.onclick = (e) => {
           if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) {
@@ -6351,6 +6368,7 @@
   function renderLinesList() {
     const el = document.getElementById('linesList');
     el.innerHTML = '';
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const byType = {};
     state.pages.forEach((p, pi) => {
       if (state.lineTypeSettings?.showOnlyLinesOnCurrentPage && state.pages.length > 0 && pi !== state.currentPage) return;
@@ -6390,7 +6408,7 @@
       groupWrapper.className = 'lines-type-group' + (expanded ? '' : ' collapsed');
       const header = document.createElement('div');
       header.className = 'lines-type-header';
-      header.innerHTML = '<span class="lines-type-name">' + typeName + '</span><span class="lines-type-summary">' + summary + '</span><span class="collapse-icon lines-type-collapse-icon">' + (expanded ? '▼' : '▶') + '</span>';
+      header.innerHTML = '<span class="lines-type-name">' + esc(typeName) + '</span><span class="lines-type-summary">' + summary + '</span><span class="collapse-icon lines-type-collapse-icon">' + (expanded ? '▼' : '▶') + '</span>';
       header.onclick = () => {
         state.linesTypeExpanded[tid] = !state.linesTypeExpanded[tid];
         try { localStorage.setItem('linesTypeExpanded', JSON.stringify(state.linesTypeExpanded)); } catch (_) {}
@@ -6425,7 +6443,7 @@
         if (ed > 0) parts.push('↧ ' + ed);
         dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
       }
-      div.innerHTML = '<span class="name line-type-name">' + name + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
+      div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
       div.onclick = (e) => {
         if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;
         if (isSelected) {
@@ -7418,7 +7436,7 @@
     if (document.visibilityState === 'visible' && state.currentProjectId && supabase) refreshProjectPermissions();
   });
 
-  <!-- SECTION: Modals & Handlers -->
+  // SECTION: Modals & Handlers
   document.getElementById('uploadPdf').onclick = () => document.getElementById('pdfInput').click();
   document.getElementById('uploadPdfSidebar').onclick = () => document.getElementById('pdfInput').click();
   const PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase storage limit)
@@ -7853,11 +7871,12 @@
       if (matches && matches.length > 0) {
         const listEl = document.getElementById('loadAnnotationsList');
         listEl.innerHTML = '';
+        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         matches.forEach(proj => {
           const div = document.createElement('div');
           const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
           div.className = 'sidebar-item load-annotations-item';
-          div.innerHTML = '<span class="name">' + (proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + date + '</span>';
+          div.innerHTML = '<span class="name">' + esc(proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + esc(date) + '</span>';
           div.onclick = async () => {
             const { data: full } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path').eq('id', proj.id).single();
             if (full && full.data) {
@@ -8057,6 +8076,7 @@
     const list = document.getElementById('counterChooseList');
     const empty = document.getElementById('counterChooseEmpty');
     list.innerHTML = '';
+    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const q = (query || '').toLowerCase();
     const filtered = q ? state.counters.filter(c => (c.name || '').toLowerCase().includes(q)) : state.counters;
     if (!filtered.length) {
@@ -8069,7 +8089,7 @@
       const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
       const div = document.createElement('div');
       div.className = 'sidebar-item';
-      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + (c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span>';
+      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span>';
       div.onclick = () => {
         state.activeCounterType = c.id;
         state.tool = TOOL.COUNTER;
@@ -11269,10 +11289,16 @@
     const newPages = state.pages.map((page, i) => ({ ...page, pdfPage: page.pdfPage, label: page.label }));
     const sourceCanvases = state.pages.map(p => JSON.parse(JSON.stringify(p.canvases || [])));
     rows.forEach((tr, i) => {
-      const srcIdx = parseInt(tr.querySelector('select[data-field="source"]').value, 10);
-      const targetRot = parseInt(tr.querySelector('select[data-field="rotation"]').value, 10);
+      const srcSelect = tr.querySelector('select[data-field="source"]');
+      const rotSelect = tr.querySelector('select[data-field="rotation"]');
+      if (!srcSelect || !rotSelect) return;
+      const srcIdx = parseInt(srcSelect.value, 10);
+      const targetRot = parseInt(rotSelect.value, 10);
+      if (isNaN(srcIdx) || srcIdx < 0 || srcIdx >= state.pages.length) return;
+      if (isNaN(targetRot)) return;
       const srcPage = state.pages[srcIdx];
-      newPages[i].canvases = sourceCanvases[srcIdx].length ? sourceCanvases[srcIdx] : [{ id: uid(), name: 'Main', annotations: makeAnnotations() }];
+      const srcCanvases = sourceCanvases[srcIdx];
+      newPages[i].canvases = (srcCanvases && srcCanvases.length) ? srcCanvases : [{ id: uid(), name: 'Main', annotations: makeAnnotations() }];
       delete newPages[i].annotations;
       newPages[i].scale = srcPage?.scale ?? null;
       const srcRot = srcPage?.rotation ?? 0;
@@ -12893,7 +12919,7 @@
     menu.classList.add('visible');
   }
 
-  <!-- SECTION: Canvas Event Handlers -->
+  // SECTION: Canvas Event Handlers
   function handleCanvasClick(e) {
     if (!state.pages.length) return;
     if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE) return;
@@ -13082,7 +13108,7 @@
     if (state.ctxTarget) showContextMenu(e.clientX, e.clientY);
   }
 
-  <!-- SECTION: Event Binding -->
+  // SECTION: Event Binding
   const cWrapper = document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper');
   let lastRenderedZoom = 1.0;
   let wheelZoomCommitTimer = null;

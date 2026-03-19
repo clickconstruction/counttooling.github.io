@@ -17,7 +17,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 |---------|-------|----------|
 | Constants | 1047–1607 | TOOL, SCALE_MODES, uid, COLORS (9, no white), icon paths, SCALE_CROSSHAIR_PATH, COUNTER_BTN_DEFAULT_SVG, ICONS array |
 | State & makeAnnotations | 1608–1750 | state object (counterSettings, lineTypeSettings, exportSettings, recentLineColors, pagesListCollapsed, pagesTitlesTruncated, touchPanStart, touchPanning, pendingCanvasLoad, isPanning, panStart), makeAnnotations(), undoStack, redoStack, pushUndoSnapshot, clearUndoStacks |
-| Math & Format Helpers | 1728–1977 | ptDist, polylineDistance, polygonArea, distToSegment, getPageScale, formatDist, formatArea |
+| Math & Format Helpers | 1728–1977 | ptDist, polylineDistance, polygonArea, distToSegment, getPageScale, formatDist, formatArea, parseRealWorldLength, parseFraction |
 | Coordinate Helpers | 1978–1989 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
 | PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight, X markers for drops), getPageSize, fitZoom |
 | UI Render Functions | 2341–2939 | updateUI (scale-set, counterBtn/counterBtnSidebar dynamic icon, headerActiveLineType; headerActiveCounter cleared), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
@@ -35,7 +35,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | PDF render logic | `function renderPdf` |
 | Annotation drawing | `function renderAnnotations` |
 | Export PDFs | `specificPagesModal` or `renderAnnotationsToContext` |
-| Scale modal | `scaleModal` or `scaleSet` |
+| Scale modal | `scaleModal` or `scaleSet` or `scaleCustomFraction` or `parseFraction` |
 | Out-of-bounds toast | `outOfBoundsModal` or `showOutOfBoundsToast` — toast when click is outside page bounds (Scale, Measure, Line, Highlight, Polyline) |
 | Scale crosshair | `SCALE_CROSSHAIR_PATH` |
 | Per-page scale | `getPageScale` or `page.scale` |
@@ -43,6 +43,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Counter settings | `counterSettingsModal` or `counterSettings` |
 | Line type settings | `lineTypeSettingsModal` or `lineTypeSettings` |
 | Line color modal | `lineColorModal` or `showLineColorModal` (Presets, color picker, Recent) |
+| Group modals | `groupModal` (Add/Edit Group; z-index 210), `groupAssignModal` (Assign to group; + Add group opens groupModal on top) |
 | Quick Plumbing | `plumModal` or `plumBtn` or `populatePlumModal`; PLUM buttons hidden in sidebar (`.sidebar-plum-row`) |
 | Line type creation | `addLineType` or `lineTypeCreate` |
 | Polyline drawing | `drawingPolyline` or `finishPolyline` |
@@ -87,7 +88,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Manage User modal | `manageUserModal` or `openManageUserModal` or `deleteUser` |
 | Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject` or `forceCheckInProjectFromManage`; Force turn-in (admin) per checked-out row; opened via `settingsManageProjects` in Project Settings |
 | Manage Icons modal | `manageIconsModal` or `openManageIconsModal`; opened via `settingsManageIcons` in Project Settings; edit icon display names; Custom icons section with Edit/Delete selected for uploaded icons; `getIconName(path)` |
-| User Settings | `mySettingsModal` or `openMySettings` — email, change password, Artboard (Save/Load/Export counters, line types, plumbingModifiers, lineModifiers to user profile), Add User / Manage User (admin), All Users list (admin), Sign Out; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard` |
+| User Settings | `mySettingsModal` or `openMySettings` — email, change password, Artboard (Save, Load from Cloud, Export, Clear Artboard; counters, line types, plumbingModifiers, lineModifiers to user profile), Add User / Manage User (admin), All Users list (admin), Sign Out; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard`, `mySettingsClearAirboard` |
 | Project Settings gear | `settingsGearBtn` or `header-settings-gear` — top right on desktop; opens settingsModal |
 | Project Settings | `settingsModal` — Name / Upload / Save Project to Cloud, Load Project from Cloud, Close Project, Check out Project / Turn In Project / Force Turn In (admin only), Share, Add additional PDF pages, Download PDF, Advanced (collapsed) with Manage Icons, Export Canvas, Export PDF (when PDF in project; both available in view mode), Import Canvas (hidden in view mode), Load test PDF (localhost only) |
 | Export PDFs modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report / Bundle highlights / Bundle notes with "— none to show" when no data |
@@ -96,7 +97,7 @@ Use this file to locate code when `index.html` exceeds context window limits. Up
 | Copy view link button | `copyViewLinkBtn` — header left of gear; copies view link (creates if none); hidden when viewer |
 | Summary count detail modal | `summaryCountDetailModal` or `openSummaryCountDetailModal` — "— by page" breakdown with thumbnails when clicking count/line in Summary |
 | Legend / Summary overlay | `showLegendOverlay` or `legendSettingsModal` or `drawLegend` or `userResized` |
-| Grid overlay | `showGridOverlay` or `gridSettingsModal` or `drawGrid` or `snapToGrid`; modifiers: opacity, color, lineWidth, lineStyle, offsetX/Y, majorInterval, snapToGrid; `resetGridOrigin()` on new document load (PDF upload, Prepare PDF commit, Load test PDF, Close project) |
+| Grid overlay | `showGridOverlay` or `gridSettingsModal` or `drawGrid` or `snapToGrid`; modifiers: opacity, color, lineWidth, lineStyle, offsetX/Y, majorInterval, snapToGrid; drawGrid draws lines left/above and right/below origin; `resetGridOrigin()` on new document load (PDF upload, Prepare PDF commit, Load test PDF, Close project) |
 | Undo/Redo | `undoBtn`, `redoBtn` — bottom bar next to rotate; `undoStack`, `redoStack`, `pushUndoSnapshot`, `clearUndoStacks`; Ctrl+Z / Ctrl+Shift+Z |
 | Middle mouse pan | `e.button === 1`; `state.isPanning`, `state.panStart`; `moveCursorSvg` during pan |
 | Show Highlights / Show Notes | `bundleHighlights` or `bundleNotes` or `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
@@ -136,6 +137,7 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 
 - **Move button** — Header button toggles active when `state.tool === TOOL.NONE`; left of Line; visible in header on mobile
 - **Set Scale button** — Dynamic: "Set Scale" when no scale; "Scale" + "1 ft = X" when set; opens scale modal for current page; clicking clears scale marks and closes modal (restart); hidden in header when scale is set (desktop and mobile); on mobile: Upload PDF shown in header when no PDF; Set Scale shown when PDF loaded and no scale; sidebar button shows scale value when set (no separate scale display above it)
+- **Set Scale modal** — Tabs: Select two points, Architectural & Engineering (presets); Custom scale section at bottom of presets: fraction input (e.g. 1/4 or 0.25), feet input, Apply; `parseFraction(str)` parses fraction strings; full-width layout
 - **Per-page scale** — Each page has `page.scale`; Set Scale only affects current page; `getPageScale(pi)` helper
 - **Scale crosshair** — Plus icon at scale point A/B when setting scale
 - **Scale toasts** — "Set Scale first to use Quick Line" / "Set Scale first to use Polyline" (3s auto-dismiss, Escape to close)
@@ -201,5 +203,5 @@ Events → handlers → state updates → renderPdf() / renderAnnotations() / up
 - **Middle mouse pan** — Hold middle mouse button to pan regardless of active tool; move SVG cursor during pan
 - **Summary count detail modal** — Click count or line in sidebar Summary opens modal with page breakdown and thumbnails
 - **Summary legend overlay** — Overlay on canvas showing counters and line totals; `state.showLegendOverlay` (default true); legend button toggles; draggable via header bar; resizable via bottom-right grip (16×16 hit area); Legend Settings: bg/text opacity, color, Show border, Legend size (50–400%), Highlight resize area; `ann.legend` has `{ x, y, w, h, userResized? }`; `userResized` preserves manual size across renders; window mousemove/mouseup for resize/drag when cursor leaves canvas
-- **Grid overlay** — Overlay on canvas with spacing grid; `state.showGridOverlay` (default false); grid button toggles; when enabled, prompts for spacing in `gridSettingsModal`; `state.gridSettings` has `{ spacing, unit, offsetX, offsetY, opacity, color, lineWidth, lineStyle, majorInterval?, snapToGrid }`; modal layout: origin row (Set origin on page, Snap counters to grid); Line color, Major line every N lines; Line opacity and Line width in one row; line style (solid/dashed/dotted) centered; `drawGrid` draws in PDF-space using page scale; `snapToGrid(pdf, pageIdx)` snaps counter placement when enabled; grid is view-only (not exported to PDF); persisted in save/load; `resetGridOrigin()` clears offset when new document loaded (PDF upload, Prepare PDF commit, Load test PDF, Close project)
+- **Grid overlay** — Overlay on canvas with spacing grid; `state.showGridOverlay` (default false); grid button toggles; when enabled, prompts for spacing in `gridSettingsModal`; `state.gridSettings` has `{ spacing, unit, offsetX, offsetY, opacity, color, lineWidth, lineStyle, majorInterval?, snapToGrid }`; modal layout: origin row (Set origin on page, Snap counters to grid); Line color, Major line every N lines; Line opacity and Line width in one row; line style (solid/dashed/dotted) centered; `drawGrid` draws in PDF-space using page scale, lines left/above and right/below origin; `snapToGrid(pdf, pageIdx)` snaps counter placement when enabled; grid is view-only (not exported to PDF); persisted in save/load; `resetGridOrigin()` clears offset when new document loaded (PDF upload, Prepare PDF commit, Load test PDF, Close project)
 - **Copy Summary (Email/Text)** — Export Options dropdown (`#copySummaryTextDropdown`) with options: This Canvas Only (hidden when single page), All Visible Canvases, All Canvases; copies counts and lines as plain text for email/paste via `getEmailTextSummary(options)`; menu pops up when no space below

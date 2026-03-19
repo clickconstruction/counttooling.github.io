@@ -1,0 +1,6 @@
+{"sessionId":"0f53a9","location":"index.html:2538","message":"SUPABASE_ENABLED at init","data":{"SUPABASE_ENABLED":true,"hasUrl":true,"hasKey":true},"timestamp":1773946219921,"hypothesisId":"A"}
+{"sessionId":"0f53a9","location":"index.html:7625","message":"before uploadPdf handlers","data":{},"timestamp":1773946219926,"hypothesisId":"I"}
+{"sessionId":"0f53a9","location":"index.html:9189","message":"before addLineType","data":{},"timestamp":1773946219927,"hypothesisId":"K"}
+{"sessionId":"0f53a9","location":"index.html:4299","message":"past window exports","data":{},"timestamp":1773946219926,"hypothesisId":"H"}
+{"sessionId":"0f53a9","location":"index.html:7632","message":"past uploadPdf handlers","data":{},"timestamp":1773946219926,"hypothesisId":"J"}
+{"sessionId":"0f53a9","location":"index.html:2548","message":"past supabase createClient","data":{},"timestamp":1773946219926,"hypothesisId":"F"}

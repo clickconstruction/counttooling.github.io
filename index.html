@@ -2169,6 +2169,7 @@
             <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Artboard</button>
             <button type="button" class="settings-menu-btn" id="mySettingsLoadAirboard">Load from Cloud</button>
             <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Artboard</button>
+            <button type="button" class="settings-menu-btn danger" id="mySettingsClearAirboard">Clear Artboard</button>
           </div>
           <p id="mySettingsAirboardStatus" class="form-group" style="margin:8px 0 0 0;font-size:0.85rem;color:var(--text3);"></p>
         </div>
@@ -12534,6 +12535,22 @@
       a.download = 'artboard-backup.json';
       a.click();
       showToast('Artboard exported');
+    };
+    document.getElementById('mySettingsClearAirboard').onclick = () => {
+      if (!confirm('Clear all counters and line types? This cannot be undone.')) return;
+      pushUndoSnapshot();
+      state.counters = [];
+      state.lineTypes = [];
+      state.iconNames = {};
+      state.iconOrder = null;
+      state.activeCounterType = null;
+      state.activeLineTypeId = null;
+      savePlumbingModifiers({ sizes: [...PLUMBING_DEFAULTS.sizes], types: [...PLUMBING_DEFAULTS.types], materials: [...PLUMBING_DEFAULTS.materials], iconByType: {}, defaultColor: COLORS[2] });
+      saveLineModifiers({ sizes: [...LINE_DEFAULTS.sizes], materials: [...LINE_DEFAULTS.materials], defaultColor: COLORS[2] });
+      markProjectDirty();
+      updateUI();
+      renderPdf();
+      showToast('Artboard cleared');
     };
     document.getElementById('mySettingsManageUsers').onclick = () => { hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };
     document.getElementById('mySettingsManageUser').onclick = () => openManageUserModal();

@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 029.
+**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 031. If you previously applied 032/033 (user_artboards, now reverted), also apply 034.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
 
@@ -85,6 +85,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 **030_list_accessible_projects_counts.sql** — Extends `list_accessible_projects` to return `counter_count` and `line_count`. Used by Load Project modal for counts badge (X cnt · Y ln).
 
 **031_user_airboard_modifiers.sql** — Adds `plumbing_modifiers` and `line_modifiers` (JSONB) to `user_airboard`. Used by Artboard Save/Load for Quick Count (Size/Type/Material) and Quick Line (Size/Material) preferences across devices.
+
+**034_revert_user_artboards.sql** — Reverts the aborted user_artboards feature. Run only if you previously applied 032_user_artboards and 033_migrate_airboard_to_artboards. Drops `user_artboards` table.
 
 ## 3. Deploy Edge Functions
 

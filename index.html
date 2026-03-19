@@ -71,6 +71,7 @@
     .header-edit-status.edit-status-editing:hover { background: transparent; }
     .header .header-tools-tight { display: flex; align-items: center; gap: 2px; }
     .header .header-tools-tight .sidebar-triggers { background: none; border: none; border-radius: 0; }
+    .header .header-tools-tight .divider.sidebar-triggers { background: var(--border); }
     .header .header-tools-tight .sidebar-triggers:hover { background: var(--surface2); }
     .header .header-tools-tight .sidebar-triggers.active { background: var(--accent); color: var(--bg); border: none; }
     .header #setScale.scale-set { display: none; }
@@ -202,7 +203,7 @@
     .sidebar-search-input { width: 100%; padding: 6px 8px; margin-bottom: 6px; font-size: 0.85rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); box-sizing: border-box; }
     .sidebar-search-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
     .sidebar-search-row .sidebar-search-input { flex: 1; margin-bottom: 0; }
-    .sidebar-plum-row { margin-bottom: 6px; }
+    .sidebar-plum-row { margin-bottom: 6px; display: none; }
     .plum-modifier-row { display: flex; flex-direction: column; gap: 4px; }
     #counterQuickCountPanel .plum-modifier-row { flex-direction: row; align-items: center; gap: 8px; }
     #counterQuickCountPanel .plum-modifier-row label { flex-shrink: 0; min-width: 60px; }
@@ -432,6 +433,16 @@
     .settings-menu-btn:hover { background: var(--surface3); border-color: var(--border2); }
     .settings-menu-btn.danger { color: var(--red); border-color: var(--red); }
     .settings-menu-btn.danger:hover { background: rgba(232,84,71,0.2); }
+    .grid-line-style-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.85rem; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .grid-line-style-opt:hover { background: var(--surface3); border-color: var(--border2); }
+    .grid-line-style-opt.selected { border-color: var(--accent); background: var(--surface3); }
+    .grid-line-style-opt svg { flex-shrink: 0; }
+    .grid-major-color-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+    .grid-major-color-row .form-group { flex: 1; min-width: 140px; }
+    .grid-opacity-width-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+    .grid-opacity-width-row .form-group { flex: 1; min-width: 140px; }
+    .grid-origin-snap-row { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+    .grid-origin-snap-row .form-group { margin-bottom: 0; }
     .settings-menu-btn.btn-yellow { background: var(--yellow); color: var(--bg); border-color: var(--yellow); }
     .settings-menu-btn.btn-yellow:hover { background: #f0c85a; border-color: #f0c85a; }
     .settings-menu-btn.btn-yellow-outline { border: 2px solid var(--yellow); color: var(--yellow); background: transparent; font-weight: 600; letter-spacing: 0.02em; transition: all 0.2s ease; box-shadow: 0 0 0 0 rgba(255,204,0,0); }
@@ -766,6 +777,10 @@
         <button id="legendBtn" class="sidebar-triggers" title="Summary legend" aria-label="Legend">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M96 128H544C561.7 128 576 142.3 576 160C576 177.7 561.7 192 544 192H96C78.3 192 64 177.7 64 160C64 142.3 78.3 128 96 128zM96 288H544C561.7 288 576 302.3 576 320C576 337.7 561.7 352 544 352H96C78.3 352 64 337.7 64 320C64 302.3 78.3 288 96 288zM96 448H544C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512H96C78.3 512 64 497.7 64 480C64 462.3 78.3 448 96 448z"/></svg>
         </button>
+        <button id="gridBtn" class="sidebar-triggers" title="Grid overlay" aria-label="Grid">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24"><path fill="currentColor" d="M480 160L480 224L416 224L416 160L480 160zM480 288L480 352L416 352L416 288L480 288zM480 416L480 480L416 480L416 416L480 416zM352 352L288 352L288 288L352 288L352 352zM288 416L352 416L352 480L288 480L288 416zM224 352L160 352L160 288L224 288L224 352zM160 416L224 416L224 480L160 480L160 416zM160 224L160 160L224 160L224 224L160 224zM288 224L288 160L352 160L352 224L288 224zM160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96z"/></svg>
+        </button>
+        <span class="divider sidebar-triggers"></span>
         <button id="counterBtn" class="sidebar-triggers" title="Counter" aria-label="Counter">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
         </button>
@@ -864,6 +879,10 @@
           <button id="legendBtnSidebar" class="sidebar-btn" title="Summary legend">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M96 128H544C561.7 128 576 142.3 576 160C576 177.7 561.7 192 544 192H96C78.3 192 64 177.7 64 160C64 142.3 78.3 128 96 128zM96 288H544C561.7 288 576 302.3 576 320C576 337.7 561.7 352 544 352H96C78.3 352 64 337.7 64 320C64 302.3 78.3 288 96 288zM96 448H544C561.7 448 576 462.3 576 480C576 497.7 561.7 512 544 512H96C78.3 512 64 497.7 64 480C64 462.3 78.3 448 96 448z"/></svg>
             Legend
+          </button>
+          <button id="gridBtnSidebar" class="sidebar-btn" title="Grid overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22"><path fill="currentColor" d="M64 64H192V192H64V64zM224 64H352V192H224V64zM384 64H512V192H384V64zM576 64H576V192H448V64H576zM64 224H192V352H64V224zM224 224H352V352H224V224zM384 224H512V352H384V224zM576 224H576V352H448V224H576zM64 384H192V512H64V384zM224 384H352V512H224V384zM384 384H512V512H384V384zM576 384H576V512H448V384H576z"/></svg>
+            Grid
           </button>
           <button id="moveBtnSidebar" class="sidebar-btn" title="Move">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
@@ -965,7 +984,7 @@
             </div>
           </div>
           <div class="sidebar-tooling-links">
-            <a href="http://pipetooling.com/bids?tab=counts" target="_blank" rel="noopener noreferrer">PipeTooling</a>
+            <a href="https://pipetooling.com/bids?tab=counts" target="_blank" rel="noopener noreferrer">PipeTooling</a>
             <a href="https://takeofftooling.com/" target="_blank" rel="noopener noreferrer">TakeoffTooling</a>
           </div>
           <div class="show-report-dropdown" id="copySummaryTextDropdown" style="position:relative;">
@@ -1491,6 +1510,100 @@
       </div>
       <div class="actions">
         <button id="legendSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="gridSettingsModal">
+    <div class="modal-card">
+      <h2>Grid overlay</h2>
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+          <label for="gridSpacingValue" style="margin:0;">Space between lines</label>
+          <div style="display:flex;gap:16px;">
+          <button type="button" class="gridSpacingPreset" data-spacing="10" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">10ft</button>
+          <button type="button" class="gridSpacingPreset" data-spacing="3" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">3ft</button>
+          <button type="button" class="gridSpacingPreset" data-spacing="1" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">1ft</button>
+        </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <input type="text" id="gridSpacingValue" placeholder="e.g. 3 or 1'-0&quot;" style="flex:1;min-width:0;">
+          <select id="gridSpacingUnit" style="flex:1;min-width:0;">
+            <option value="ft">ft</option>
+            <option value="in">in</option>
+            <option value="m">m</option>
+            <option value="cm">cm</option>
+            <option value="yd">yd</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-origin-snap-row">
+        <div style="flex:1;min-width:0;">
+          <div class="form-group" id="gridOriginDisplay" style="display:none;">
+            <label style="display:none;">Origin</label>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span id="gridOriginText" style="display:none;color:var(--text2);">—</span>
+              <button type="button" class="settings-menu-btn" id="gridClearOrigin">Origin set, click to reset</button>
+            </div>
+          </div>
+          <div class="form-group" id="gridSetOriginFormGroup">
+            <button type="button" class="settings-menu-btn" id="gridSetOriginOnPage">Set origin on page (optional)</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <span style="display:block;margin-bottom:4px;">Snap counters</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span>to grid</span>
+            <button type="button" class="toggle-switch" id="gridSnapToGridBtn" aria-pressed="false" title="Snap counters to grid">
+              <span class="toggle-switch-knob"></span>
+            </button>
+            <input type="checkbox" id="gridSnapToGrid" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="grid-major-color-row">
+        <div class="form-group">
+          <label>Line color</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" id="gridColor" value="#e8c547" style="width:48px;height:32px;cursor:pointer;padding:0;border:1px solid var(--border);border-radius:4px;">
+            <span id="gridColorHex" style="font-family:monospace;font-size:0.9rem;color:var(--text2);">#e8c547</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Major line every N lines</label>
+          <input type="number" id="gridMajorInterval" min="0" placeholder="none">
+        </div>
+      </div>
+      <div class="grid-opacity-width-row">
+        <div class="form-group">
+          <label>Line opacity: <span id="gridOpacityVal">35</span>%</label>
+          <input type="range" id="gridOpacity" min="10" max="100" value="35" step="5">
+        </div>
+        <div class="form-group">
+          <label>Line width: <span id="gridLineWidthVal">1</span> px</label>
+          <input type="range" id="gridLineWidth" min="0.5" max="3" value="1" step="0.25">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Line style</label>
+        <div class="grid-line-style-options" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <button type="button" class="grid-line-style-opt" data-style="solid" title="Solid">
+            <svg width="60" height="14" viewBox="0 0 60 14"><line x1="4" y1="7" x2="56" y2="7" stroke="currentColor" stroke-width="2"/></svg>
+            <span>Solid</span>
+          </button>
+          <button type="button" class="grid-line-style-opt" data-style="dashed" title="Dashed">
+            <svg width="60" height="14" viewBox="0 0 60 14"><line x1="4" y1="7" x2="56" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4"/></svg>
+            <span>Dashed</span>
+          </button>
+          <button type="button" class="grid-line-style-opt" data-style="dotted" title="Dotted">
+            <svg width="60" height="14" viewBox="0 0 60 14"><line x1="4" y1="7" x2="56" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray="2 2"/></svg>
+            <span>Dotted</span>
+          </button>
+        </div>
+        <input type="hidden" id="gridLineStyle" value="solid">
+      </div>
+      <div class="actions">
+        <button id="gridSettingsCancel">Cancel</button>
+        <button id="gridSettingsApply">Apply</button>
       </div>
     </div>
   </div>
@@ -3383,6 +3496,9 @@
     }
     if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
     if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
+    if (backup.legendSettings) state.legendSettings = { ...state.legendSettings, ...backup.legendSettings };
+    if (backup.showGridOverlay != null) state.showGridOverlay = !!backup.showGridOverlay;
+    if (backup.gridSettings) state.gridSettings = backup.gridSettings;
   }
 
   function applyPageAnnotationsFromData(page, p, scaleFallback) {
@@ -3470,7 +3586,7 @@
   <!-- SECTION: State -->
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
-    scalePointA: null, scalePointB: null, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
+    scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
@@ -3518,7 +3634,9 @@
     groups: [],
     activeGroupId: null,
     activeCanvasIdByPage: {},
-    showLegendOverlay: true
+    showLegendOverlay: true,
+    showGridOverlay: false,
+    gridSettings: null
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
@@ -3994,6 +4112,9 @@
       });
       if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
       state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+      if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+      if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+      if (d.gridSettings) state.gridSettings = d.gridSettings;
     }
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = proj.id === 'local' ? null : proj.id;
@@ -5007,6 +5128,10 @@
       const scale = state.zoom * dpr();
       drawLegend(ctx, page, state.currentPage, ann, scale, toCanvas);
     }
+    if (state.showGridOverlay) {
+      const scale = state.zoom * dpr();
+      drawGrid(ctx, page, state.currentPage, scale, toCanvas);
+    }
   }
 
   function renderAnnotationsToContext(ctx, page, scale, exportOverrides, annotationsOverride) {
@@ -5447,6 +5572,66 @@
     ctx.restore();
   }
 
+  function lineStyleToDash(style) {
+    if (style === 'dashed') return [4, 4];
+    if (style === 'dotted') return [2, 2];
+    return [];
+  }
+  function drawGrid(ctx, page, pageIdx, scale, toCanvas) {
+    if (!state.showGridOverlay || !state.gridSettings?.spacing) return;
+    const pageScale = getPageScale(pageIdx >= 0 ? pageIdx : 0);
+    if (!pageScale) return;
+    const gs = state.gridSettings;
+    const spacingX = gs.spacing * pageScale.pixelsPerUnit;
+    const spacingY = gs.spacing * pageScale.pixelsPerUnit;
+    const offsetXPdf = (gs.offsetX ?? 0) * pageScale.pixelsPerUnit;
+    const offsetYPdf = (gs.offsetY ?? 0) * pageScale.pixelsPerUnit;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    const pageW = vp.width, pageH = vp.height;
+    const opacity = gs.opacity ?? 0.35;
+    const [r, g, b] = hexToRgb(gs.color || '#e8c547');
+    const lineWidth = gs.lineWidth ?? 1;
+    const lineStyle = gs.lineStyle || 'solid';
+    const majorInterval = (gs.majorInterval != null && gs.majorInterval > 0) ? gs.majorInterval : null;
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.strokeStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    const drawLine = (x1, y1, x2, y2, isMajor) => {
+      ctx.beginPath();
+      ctx.lineWidth = isMajor ? lineWidth * 2 : lineWidth;
+      ctx.setLineDash(isMajor ? [] : lineStyleToDash(lineStyle));
+      const a = toCanvas({ x: x1, y: y1 });
+      const b = toCanvas({ x: x2, y: y2 });
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    };
+    let vIdx = 0;
+    for (let x = offsetXPdf; x <= pageW; x += spacingX, vIdx++) {
+      drawLine(x, 0, x, pageH, majorInterval && vIdx % majorInterval === 0);
+    }
+    let hIdx = 0;
+    for (let y = offsetYPdf; y <= pageH; y += spacingY, hIdx++) {
+      drawLine(0, y, pageW, y, majorInterval && hIdx % majorInterval === 0);
+    }
+    ctx.restore();
+  }
+
+  function snapToGrid(pdf, pageIdx) {
+    if (!state.gridSettings?.snapToGrid || !state.showGridOverlay) return pdf;
+    const pageScale = getPageScale(pageIdx);
+    if (!pageScale) return pdf;
+    const gs = state.gridSettings;
+    const spacingX = (gs.spacing ?? 0) * pageScale.pixelsPerUnit;
+    const spacingY = (gs.spacing ?? 0) * pageScale.pixelsPerUnit;
+    const offX = (gs.offsetX ?? 0) * pageScale.pixelsPerUnit;
+    const offY = (gs.offsetY ?? 0) * pageScale.pixelsPerUnit;
+    if (spacingX <= 0 || spacingY <= 0) return pdf;
+    const snappedX = offX + Math.round((pdf.x - offX) / spacingX) * spacingX;
+    const snappedY = offY + Math.round((pdf.y - offY) / spacingY) * spacingY;
+    return { x: snappedX, y: snappedY };
+  }
+
   function getMaxZoom() { return state.maxZoom ?? 4; }
   function getWheelZoomSpeed() {
     try {
@@ -5608,6 +5793,12 @@
     if (legendBtnSidebarEl) legendBtnSidebarEl.classList.toggle('active', !!state.showLegendOverlay);
     if (legendBtnEl) legendBtnEl.disabled = !state.pages.length;
     if (legendBtnSidebarEl) legendBtnSidebarEl.disabled = !state.pages.length;
+    const gridBtnEl = document.getElementById('gridBtn');
+    const gridBtnSidebarEl = document.getElementById('gridBtnSidebar');
+    if (gridBtnEl) gridBtnEl.classList.toggle('active', !!state.showGridOverlay);
+    if (gridBtnSidebarEl) gridBtnSidebarEl.classList.toggle('active', !!state.showGridOverlay);
+    if (gridBtnEl) gridBtnEl.disabled = !state.pages.length;
+    if (gridBtnSidebarEl) gridBtnSidebarEl.disabled = !state.pages.length;
     document.getElementById('setScale').classList.toggle('active', state.tool === TOOL.SCALE);
     if (setScaleSidebarBtn) setScaleSidebarBtn.classList.toggle('active', state.tool === TOOL.SCALE);
     const measureBtn = document.getElementById('measureBtn');
@@ -7489,6 +7680,7 @@
     preparePdfBuffer = null;
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
+    resetGridOrigin();
     return { ok: true, name, pdfBuffer: trimmedBuf };
     } catch (e) {
       console.error('[Prepare PDF]', e);
@@ -7549,6 +7741,7 @@
       openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
       state.pages = [];
       state.activeCanvasIdByPage = {};
+      resetGridOrigin();
       state.pdfBuffer = null;
       state.pdfBufferSize = 0;
       state.currentProjectName = 'Untitled';
@@ -7565,6 +7758,7 @@
     if (!files?.length) return;
     const filesToProcess = Array.from(files);
     const startPageIdx = state.pages.length;
+    if (startPageIdx === 0) resetGridOrigin();
     let firstBuf = null;
     const buffersForMerge = [];
     if (startPageIdx > 0 && state.pdfBuffer) {
@@ -7629,6 +7823,9 @@
           state.pages.forEach(p => { p.scale = d.scale; });
         }
         state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+        if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+        if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+        if (d.gridSettings) state.gridSettings = d.gridSettings;
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         state.pendingCanvasLoad = null;
@@ -7681,6 +7878,9 @@
                 state.pages.forEach(p => { p.scale = d.scale; });
               }
               state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+              if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+              if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+              if (d.gridSettings) state.gridSettings = d.gridSettings;
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               state.currentProjectId = full.id;
@@ -7946,6 +8146,146 @@
   }
   if (legendBtn) legendBtn.onclick = toggleLegendOverlay;
   if (legendBtnSidebar) legendBtnSidebar.onclick = () => legendBtn?.click();
+  const gridBtn = document.getElementById('gridBtn');
+  const gridBtnSidebar = document.getElementById('gridBtnSidebar');
+  function resetGridOrigin() {
+    if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
+    state.gridSettings.offsetX = 0;
+    state.gridSettings.offsetY = 0;
+    const disp = document.getElementById('gridOriginDisplay');
+    const setGrp = document.getElementById('gridSetOriginFormGroup');
+    const txt = document.getElementById('gridOriginText');
+    if (disp) disp.style.display = 'none';
+    if (setGrp) setGrp.style.display = '';
+    if (txt) txt.textContent = '—';
+  }
+  function toggleGridOverlay() {
+    if (!state.pages.length) return;
+    if (state.showGridOverlay) {
+      state.showGridOverlay = false;
+      markProjectDirty();
+      renderPdf();
+      updateUI();
+      return;
+    }
+    if (!getPageScale(state.currentPage)) {
+      showSetScaleFirstToast('Grid overlay');
+      return;
+    }
+    let gs = state.gridSettings || { spacing: 3, unit: 'ft' };
+    if (gs.unit === 'in') {
+      gs = { ...gs, spacing: gs.spacing / 12, unit: 'ft' };
+      state.gridSettings = state.gridSettings ? { ...state.gridSettings, ...gs } : gs;
+    }
+    document.getElementById('gridSpacingValue').value = gs.spacing != null ? String(gs.spacing) : '3';
+    document.getElementById('gridSpacingUnit').value = gs.unit || 'ft';
+    const ox = gs.offsetX ?? 0, oy = gs.offsetY ?? 0;
+    const hasOrigin = ox !== 0 || oy !== 0;
+    const disp = document.getElementById('gridOriginDisplay');
+    const txt = document.getElementById('gridOriginText');
+    disp.style.display = hasOrigin ? '' : 'none';
+    document.getElementById('gridSetOriginFormGroup').style.display = hasOrigin ? 'none' : '';
+    txt.textContent = hasOrigin ? (ox.toFixed(2) + ', ' + oy.toFixed(2) + ' ' + (gs.unit || 'ft')) : '—';
+    document.getElementById('gridMajorInterval').value = gs.majorInterval != null && gs.majorInterval > 0 ? String(gs.majorInterval) : '';
+    const opacityPct = Math.round((gs.opacity ?? 0.35) * 100);
+    document.getElementById('gridOpacity').value = opacityPct;
+    document.getElementById('gridOpacityVal').textContent = opacityPct;
+    document.getElementById('gridColor').value = gs.color || '#e8c547';
+    document.getElementById('gridColorHex').textContent = (gs.color || '#e8c547').toLowerCase();
+    const lw = gs.lineWidth ?? 1;
+    document.getElementById('gridLineWidth').value = lw;
+    document.getElementById('gridLineWidthVal').textContent = lw;
+    document.getElementById('gridLineStyle').value = gs.lineStyle || 'solid';
+    document.querySelectorAll('.grid-line-style-opt').forEach(b => {
+      b.classList.toggle('selected', b.dataset.style === (gs.lineStyle || 'solid'));
+    });
+    const snapCb = document.getElementById('gridSnapToGrid');
+    const snapBtn = document.getElementById('gridSnapToGridBtn');
+    snapCb.checked = gs.snapToGrid === true;
+    snapBtn.setAttribute('aria-pressed', snapCb.checked);
+    document.getElementById('gridOpacity').oninput = () => { document.getElementById('gridOpacityVal').textContent = document.getElementById('gridOpacity').value; };
+    document.getElementById('gridLineWidth').oninput = () => { document.getElementById('gridLineWidthVal').textContent = document.getElementById('gridLineWidth').value; };
+    document.getElementById('gridColor').oninput = () => { document.getElementById('gridColorHex').textContent = document.getElementById('gridColor').value.toLowerCase(); };
+    snapBtn.onclick = (e) => {
+      e.preventDefault();
+      snapCb.checked = !snapCb.checked;
+      snapBtn.setAttribute('aria-pressed', snapCb.checked);
+    };
+    showModal('gridSettingsModal');
+  }
+  if (gridBtn) gridBtn.onclick = toggleGridOverlay;
+  if (gridBtnSidebar) gridBtnSidebar.onclick = () => gridBtn?.click();
+  document.getElementById('gridSettingsCancel').onclick = () => hideModal('gridSettingsModal');
+  document.getElementById('gridSetOriginOnPage').onclick = () => {
+    if (!getPageScale(state.currentPage)) {
+      showToast('Set Scale first');
+      return;
+    }
+    hideModal('gridSettingsModal');
+    state.gridOriginPickMode = true;
+    showToast('Click on the plan to set grid origin');
+    updateUI();
+  };
+  document.getElementById('gridClearOrigin').onclick = () => {
+    if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
+    state.gridSettings.offsetX = 0;
+    state.gridSettings.offsetY = 0;
+    document.getElementById('gridOriginDisplay').style.display = 'none';
+    document.getElementById('gridSetOriginFormGroup').style.display = '';
+    document.getElementById('gridOriginText').textContent = '—';
+    renderPdf();
+    updateUI();
+  };
+  document.querySelectorAll('.gridSpacingPreset').forEach(btn => {
+    btn.onclick = () => {
+      document.getElementById('gridSpacingValue').value = btn.dataset.spacing;
+      document.getElementById('gridSpacingUnit').value = btn.dataset.unit;
+    };
+  });
+  document.querySelectorAll('.grid-line-style-opt').forEach(btn => {
+    btn.onclick = () => {
+      document.getElementById('gridLineStyle').value = btn.dataset.style;
+      document.querySelectorAll('.grid-line-style-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
+  document.getElementById('gridSettingsApply').onclick = () => {
+    const unit = document.getElementById('gridSpacingUnit').value;
+    const val = parseRealWorldLength(document.getElementById('gridSpacingValue').value, unit);
+    if (!val || val <= 0) {
+      showToast('Enter a valid spacing');
+      return;
+    }
+    if (!getPageScale(state.currentPage)) {
+      showToast('Set Scale first to use grid overlay');
+      return;
+    }
+    const offsetXVal = state.gridSettings?.offsetX ?? 0;
+    const offsetYVal = state.gridSettings?.offsetY ?? 0;
+    const majorInt = parseInt(document.getElementById('gridMajorInterval').value, 10);
+    const opacityVal = parseInt(document.getElementById('gridOpacity').value, 10) / 100;
+    const colorVal = document.getElementById('gridColor').value || '#e8c547';
+    const lineWidthVal = parseFloat(document.getElementById('gridLineWidth').value) || 1;
+    const lineStyleVal = document.getElementById('gridLineStyle').value || 'solid';
+    const snapToGridVal = document.getElementById('gridSnapToGrid').checked;
+    state.gridSettings = {
+      spacing: val,
+      unit,
+      offsetX: offsetXVal,
+      offsetY: offsetYVal,
+      opacity: opacityVal,
+      color: colorVal,
+      lineWidth: lineWidthVal,
+      lineStyle: lineStyleVal,
+      majorInterval: (majorInt > 0 ? majorInt : null),
+      snapToGrid: snapToGridVal
+    };
+    state.showGridOverlay = true;
+    hideModal('gridSettingsModal');
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  };
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
   document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
@@ -9541,7 +9881,7 @@
   }
 
   document.getElementById('exportBtn').onclick = () => {
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'takeoff-project.json';
@@ -10289,6 +10629,8 @@
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
+        if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;
+        if (data.gridSettings) state.gridSettings = data.gridSettings;
         if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
         (data.pages || []).forEach(p => {
           applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
@@ -11888,6 +12230,9 @@
                   if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
                   if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
                   if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+                  if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+                  if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+                  if (d.gridSettings) state.gridSettings = d.gridSettings;
                   reconcileOrphanedCountersAndLineTypes();
                   clearUndoStacks();
                   state.currentProjectId = proj.id;
@@ -11945,6 +12290,9 @@
                     state.pages.forEach(p => { p.scale = d.scale; });
                   }
                   state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+                  if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+                  if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+                  if (d.gridSettings) state.gridSettings = d.gridSettings;
                 }
                 reconcileOrphanedCountersAndLineTypes();
                 clearUndoStacks();
@@ -11969,6 +12317,9 @@
             if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
             if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
             if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
+            if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
+            if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
+            if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
             reconcileOrphanedCountersAndLineTypes();
             clearUndoStacks();
             autoSaveDirty = false;
@@ -12037,6 +12388,7 @@
       clearUndoStacks();
       state.pages = [];
       state.currentPage = 0;
+      resetGridOrigin();
       state.currentProjectId = null;
       subscribeToProjectCheckoutChanges(null);
       state.currentProjectName = null;
@@ -12548,6 +12900,25 @@
     const pt = canvasPointFromEvent(e);
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
+    if (state.gridOriginPickMode) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      const pageScale = getPageScale(state.currentPage);
+      if (!pageScale) { showToast('Set Scale first'); state.gridOriginPickMode = false; return; }
+      const offsetX = pdf.x / pageScale.pixelsPerUnit;
+      const offsetY = pdf.y / pageScale.pixelsPerUnit;
+      if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
+      state.gridSettings.offsetX = offsetX;
+      state.gridSettings.offsetY = offsetY;
+      document.getElementById('gridOriginDisplay').style.display = '';
+      document.getElementById('gridSetOriginFormGroup').style.display = 'none';
+      document.getElementById('gridOriginText').textContent = offsetX.toFixed(2) + ', ' + offsetY.toFixed(2) + ' ' + (document.getElementById('gridSpacingUnit')?.value || 'ft');
+      state.gridOriginPickMode = false;
+      showModal('gridSettingsModal');
+      showToast('Origin set. Click Apply to confirm.');
+      renderPdf();
+      updateUI();
+      return;
+    }
     if (state.tool === TOOL.SCALE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const now = Date.now();
@@ -12620,11 +12991,13 @@
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       pushUndoSnapshot();
+      let pos = pdf;
+      if (state.gridSettings?.snapToGrid && state.showGridOverlay) pos = snapToGrid(pdf, state.currentPage);
       const page = state.pages[state.currentPage];
       const canvas = page && ensureActiveCanvas(page);
       if (canvas) {
         if (!canvas.annotations.counterMarkers[state.activeCounterType]) canvas.annotations.counterMarkers[state.activeCounterType] = [];
-        canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pdf.x, y: pdf.y, id: uid(), group: state.activeGroupId || null });
+        canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pos.x, y: pos.y, id: uid(), group: state.activeGroupId || null });
         markProjectDirty();
       }
       renderAnnotations();
@@ -13223,6 +13596,12 @@
       }
     }
     if (e.key === 'Escape') {
+      if (state.gridOriginPickMode) {
+        state.gridOriginPickMode = false;
+        showModal('gridSettingsModal');
+        updateUI();
+        return;
+      }
       if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
         hideModal('setScaleFirstModal');
         if (setScaleFirstToastTimer) { clearTimeout(setScaleFirstToastTimer); setScaleFirstToastTimer = null; }
@@ -13238,6 +13617,7 @@
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
         hideModal('counterModal');
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
+      else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; }
@@ -13362,6 +13742,9 @@
       customIconPaths: getUserCustomIcons(),
       maxZoom: getMaxZoom(),
       groups: state.groups || [],
+      legendSettings: state.legendSettings,
+      showGridOverlay: state.showGridOverlay,
+      gridSettings: state.gridSettings,
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {}
     };
@@ -13544,6 +13927,9 @@
       customIconPaths: getUserCustomIcons(),
       maxZoom: getMaxZoom(),
       groups: state.groups || [],
+      legendSettings: state.legendSettings,
+      showGridOverlay: state.showGridOverlay,
+      gridSettings: state.gridSettings,
       pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {}
     };
@@ -13662,6 +14048,9 @@
       iconNames: state.iconNames || {},
       iconOrder: state.iconOrder || null,
       customIconPaths: getUserCustomIcons(),
+      legendSettings: state.legendSettings,
+      showGridOverlay: state.showGridOverlay,
+      gridSettings: state.gridSettings,
       pageCanvases: state.pages.map(p => p.canvases),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {},
       pageScales: state.pages.map(p => p.scale),
@@ -13853,6 +14242,9 @@
     });
     if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+    if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+    if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+    if (d.gridSettings) state.gridSettings = d.gridSettings;
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;
     state.currentProjectName = projectData.name || 'Untitled';

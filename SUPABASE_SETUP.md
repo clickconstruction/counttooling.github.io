@@ -34,7 +34,7 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **006_pdf_hash.sql** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
 
-**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Used by Save Artboard / Load from Cloud in User Settings.
+**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`. Used by Save Artboard / Load from Cloud in User Settings.
 
 **008_auth_profile_trigger.sql** — Auto-creates profile and user_airboard when a new user signs up.
 
@@ -83,6 +83,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 **029_admin_check_out_project.sql** — Allows admins to check out any project. Updates `check_out_project` RPC to include admin permission (aligns with `list_accessible_projects`).
 
 **030_list_accessible_projects_counts.sql** — Extends `list_accessible_projects` to return `counter_count` and `line_count`. Used by Load Project modal for counts badge (X cnt · Y ln).
+
+**031_user_airboard_modifiers.sql** — Adds `plumbing_modifiers` and `line_modifiers` (JSONB) to `user_airboard`. Used by Artboard Save/Load for Quick Count (Size/Type/Material) and Quick Line (Size/Material) preferences across devices.
 
 ## 3. Deploy Edge Functions
 
@@ -159,8 +161,8 @@ on conflict (user_id) do update set is_admin = true;
 - **Manage Projects** (admin only) — In Project Settings, open Manage Projects to list all projects across users and delete any project (removes project and stored PDF).
 - **Share** — In Project Settings, open Share to add users by email (viewer or editor). Any project member can add users. Editors can check out to edit; one editor at a time. Turn in releases the lock. 30-minute inactivity expiry (lock extends on edits/saves). System admins can force turn-in any project.
 - **View links** — In Share modal, view links section: Create view link (copy URL), list links, Access log (email, timestamp), Revoke. Recipients open the link, enter email (clickplumbing.com domain required), view plans. No sign-in. Cached in IndexedDB for repeat mobile visits.
-- **Save Artboard** — In User Settings, save your counters and line types to your account. They are restored when you sign in on any device.
-- **Load from Cloud** — In User Settings, replace your current artboard with the saved version from your account.
+- **Save Artboard** — In User Settings, save your counters, line types, and modifiers (Quick Count Size/Type/Material, Quick Line Size/Material) to your account. They are restored when you sign in on any device.
+- **Load from Cloud** — In User Settings, replace your current artboard with the saved version from your account (counters, line types, modifiers).
 - **Download PDF** — Project Settings "Download PDF" downloads the current project's PDF as-is. Prepare PDF modal "Download" downloads the edited PDF (with page deletions applied).
 
 ## Dev / Testing (localhost only)

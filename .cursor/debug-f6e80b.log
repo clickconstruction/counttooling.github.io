@@ -1,0 +1,35 @@
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894181304,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":false,"pageScaleValue":null},"timestamp":1773894181304,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:noScale","message":"calling showSetScaleFirstToast","data":{},"timestamp":1773894181305,"hypothesisId":"E"}
+{"sessionId":"f6e80b","location":"showSetScaleFirstToast:entry","message":"showSetScaleFirstToast called","data":{"toolName":"Grid overlay"},"timestamp":1773894181305,"hypothesisId":"E"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894203124,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":false,"pageScaleValue":null},"timestamp":1773894203124,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:noScale","message":"calling showSetScaleFirstToast","data":{},"timestamp":1773894203124,"hypothesisId":"E"}
+{"sessionId":"f6e80b","location":"showSetScaleFirstToast:entry","message":"showSetScaleFirstToast called","data":{"toolName":"Grid overlay"},"timestamp":1773894203124,"hypothesisId":"E"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":false,"pageScaleValue":null},"timestamp":1773894257979,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"showSetScaleFirstToast:entry","message":"showSetScaleFirstToast called","data":{"toolName":"Grid overlay"},"timestamp":1773894257979,"hypothesisId":"E"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894257978,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:noScale","message":"calling showSetScaleFirstToast","data":{},"timestamp":1773894257979,"hypothesisId":"E"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894263593,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":true,"pageScaleValue":"{\"pixelsPerUnit\":0.72,\"unit\":\"ft\",\"label\":\"1\\\" = 100'\"}"},"timestamp":1773894263593,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:proceed","message":"proceeding to open grid modal","data":{},"timestamp":1773894263594,"hypothesisId":"A"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":true,"currentPage":0},"timestamp":1773894312393,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:branch","message":"branch: grid already on, toggling off","data":{},"timestamp":1773894312393,"hypothesisId":"C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894312926,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":true,"pageScaleValue":"{\"pixelsPerUnit\":0.72,\"unit\":\"ft\",\"label\":\"1\\\" = 100'\"}"},"timestamp":1773894312927,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:proceed","message":"proceeding to open grid modal","data":{},"timestamp":1773894312927,"hypothesisId":"A"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":true,"currentPage":0},"timestamp":1773894321292,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:branch","message":"branch: grid already on, toggling off","data":{},"timestamp":1773894321293,"hypothesisId":"C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894321693,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":true,"pageScaleValue":"{\"pixelsPerUnit\":0.72,\"unit\":\"ft\",\"label\":\"1\\\" = 100'\"}"},"timestamp":1773894321694,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:proceed","message":"proceeding to open grid modal","data":{},"timestamp":1773894321694,"hypothesisId":"A"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":true,"currentPage":0},"timestamp":1773894330609,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:branch","message":"branch: grid already on, toggling off","data":{},"timestamp":1773894330609,"hypothesisId":"C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894331259,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":true,"pageScaleValue":"{\"pixelsPerUnit\":0.72,\"unit\":\"ft\",\"label\":\"1\\\" = 100'\"}"},"timestamp":1773894331259,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:proceed","message":"proceeding to open grid modal","data":{},"timestamp":1773894331260,"hypothesisId":"A"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":true,"currentPage":0},"timestamp":1773894433309,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:branch","message":"branch: grid already on, toggling off","data":{},"timestamp":1773894433309,"hypothesisId":"C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:entry","message":"toggleGridOverlay entered","data":{"pagesLength":9,"showGridOverlay":false,"currentPage":0},"timestamp":1773894434226,"hypothesisId":"B,C"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:scaleCheck","message":"scale check","data":{"currentPage":0,"pageScale":true,"pageScaleValue":"{\"pixelsPerUnit\":0.72,\"unit\":\"ft\",\"label\":\"1\\\" = 100'\"}"},"timestamp":1773894434227,"hypothesisId":"A,D"}
+{"sessionId":"f6e80b","location":"toggleGridOverlay:proceed","message":"proceeding to open grid modal","data":{},"timestamp":1773894434227,"hypothesisId":"A"}

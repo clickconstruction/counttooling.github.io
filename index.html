@@ -843,9 +843,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 64C324.6 64 329.2 65 333.4 66.9L521.8 146.8C543.8 156.1 560.2 177.8 560.1 204C559.6 303.2 518.8 484.7 346.5 567.2C329.8 575.2 310.4 575.2 293.7 567.2C121.3 484.7 80.6 303.2 80.1 204C80 177.8 96.4 156.1 118.4 146.8L306.7 66.9C310.9 65 315.4 64 320 64zM320 130.8L320 508.9C458 442.1 495.1 294.1 496 205.5L320 130.9L320 130.9z"/></svg>
         </button>
         <div class="export-dropdown-menu" id="exportDropdownMenu" style="display:none;">
-          <button type="button" class="export-dropdown-option" data-action="canvas">Export Canvas</button>
-          <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
-          <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
+          <div id="exportDropdownExportContent">
+            <button type="button" class="export-dropdown-option" data-action="canvas">Export Canvas</button>
+            <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
+            <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
+          </div>
+          <div id="exportDropdownImportContent" style="display:none;">
+            <button type="button" class="export-dropdown-option" data-action="uploadPdf">Upload PDF</button>
+            <button type="button" class="export-dropdown-option" data-action="importCanvas">Import Canvas</button>
+          </div>
         </div>
       </div>
       <div class="download-page-dropdown" id="downloadCurrentPageDropdown" style="position:relative;display:none;">
@@ -6078,7 +6084,18 @@
     const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
     if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
     const exportDropdown = document.getElementById('exportDropdown');
-    if (exportDropdown) exportDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
+    const hasProject = state.pages.length > 0;
+    const showExportDropdown = hasProject || (!hasProject && !state.isViewer);
+    if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
+    const exportContent = document.getElementById('exportDropdownExportContent');
+    const importContent = document.getElementById('exportDropdownImportContent');
+    if (exportContent) exportContent.style.display = hasProject ? '' : 'none';
+    if (importContent) importContent.style.display = hasProject ? 'none' : '';
+    const exportDropdownBtn = document.getElementById('exportDropdownBtn');
+    if (exportDropdownBtn) {
+      exportDropdownBtn.setAttribute('aria-label', hasProject ? 'Export' : 'Open');
+      exportDropdownBtn.title = hasProject ? 'Export project' : 'Upload PDF or import canvas';
+    }
     const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
     if (exportPdfOpt) exportPdfOpt.style.display = (state.pdfBuffer || state.pdfStoragePath) ? '' : 'none';
     const allCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-canvases"]');
@@ -11049,7 +11066,9 @@
       e.stopPropagation();
       const action = opt.dataset.action;
       if (exportDropdownMenu) exportDropdownMenu.classList.remove('visible');
-      if (action === 'canvas') document.getElementById('exportBtn').click();
+      if (action === 'uploadPdf') document.getElementById('pdfInput').click();
+      else if (action === 'importCanvas') document.getElementById('importInput').click();
+      else if (action === 'canvas') document.getElementById('exportBtn').click();
       else if (action === 'pdf') await downloadProjectPdf();
       else if (action === 'both') {
         document.getElementById('exportBtn').click();

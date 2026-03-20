@@ -2090,6 +2090,7 @@
         <button type="button" class="settings-menu-btn btn-yellow" id="advancedExportPdf" style="display:none;">Export PDF</button>
         <button type="button" class="settings-menu-btn" id="advancedImport">Import Canvas</button>
         <button type="button" class="settings-menu-btn" id="advancedCanvasRepair" style="display:none;">Canvas Repair</button>
+        <button type="button" class="settings-menu-btn danger" id="advancedEmptyCacheReload" title="Clear app cache and reload the page">Empty cache and hard reload</button>
       </div>
     </div>
   </div>
@@ -11991,6 +11992,21 @@
     document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await downloadProjectPdf(); };
     document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
     document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); openCanvasRepairModal(); };
+    document.getElementById('advancedEmptyCacheReload').onclick = async () => {
+      if (!confirm('Clear all cached data (IndexedDB, localStorage) and reload? Unsaved work will be lost.')) return;
+      hideModal('settingsAdvancedModal');
+      hideModal('settingsModal');
+      try {
+        indexedDB.deleteDatabase('clickcount-pdf-cache');
+      } catch (_) {}
+      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+      for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('view:allowed:')) { try { localStorage.removeItem(k); } catch (_) {} }
+      }
+      location.reload();
+    };
     (function() {
       const section = document.getElementById('mySettingsAirboardSection');
       const header = document.getElementById('mySettingsAirboardHeader');
@@ -12342,7 +12358,11 @@
           if (metaEl) metaEl.textContent = 'Loading…';
           try {
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
-          const d = proj.data || {};
+          let d = proj.data || {};
+          try {
+            const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
+            if (!error && full && full.data) d = full.data;
+          } catch (_) {}
           const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
           const idbBackup = await takeoffBackupGet(proj.id);
           const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;

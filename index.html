@@ -745,6 +745,12 @@
     .download-page-menu.visible { display: block !important; }
     .download-page-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
     .download-page-option:hover { background: var(--surface2); }
+    .export-dropdown { display: inline-flex; }
+    .export-dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 220px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .export-dropdown-menu.visible { display: block !important; }
+    .export-dropdown-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
+    .export-dropdown-option:hover { background: var(--surface2); }
+    .export-dropdown-option[style*="display: none"] { display: none !important; }
     .show-report-dropdown { display: inline-block; position: relative; width: 100%; }
     .show-report-menu { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
     .show-report-menu.visible { display: block !important; }
@@ -832,6 +838,16 @@
       <input type="file" id="importInput" accept=".json">
       <input type="file" id="customIconUploadInput" accept=".svg,image/svg+xml">
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
+      <div class="export-dropdown" id="exportDropdown" style="position:relative;display:none;">
+        <button id="exportDropdownBtn" class="header-settings-gear sidebar-triggers" aria-label="Export" title="Export project">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 64C324.6 64 329.2 65 333.4 66.9L521.8 146.8C543.8 156.1 560.2 177.8 560.1 204C559.6 303.2 518.8 484.7 346.5 567.2C329.8 575.2 310.4 575.2 293.7 567.2C121.3 484.7 80.6 303.2 80.1 204C80 177.8 96.4 156.1 118.4 146.8L306.7 66.9C310.9 65 315.4 64 320 64zM320 130.8L320 508.9C458 442.1 495.1 294.1 496 205.5L320 130.9L320 130.9z"/></svg>
+        </button>
+        <div class="export-dropdown-menu" id="exportDropdownMenu" style="display:none;">
+          <button type="button" class="export-dropdown-option" data-action="canvas">Export Canvas</button>
+          <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
+          <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
+        </div>
+      </div>
       <div class="download-page-dropdown" id="downloadCurrentPageDropdown" style="position:relative;display:none;">
         <button id="downloadCurrentPageBtn" class="header-settings-gear sidebar-triggers" aria-label="Download current page" title="Download current page as marked PDF">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
@@ -6061,6 +6077,10 @@
     }
     const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
     if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
+    const exportDropdown = document.getElementById('exportDropdown');
+    if (exportDropdown) exportDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
+    const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
+    if (exportPdfOpt) exportPdfOpt.style.display = (state.pdfBuffer || state.pdfStoragePath) ? '' : 'none';
     const allCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-canvases"]');
     if (allCanvasesOpt) {
       const page = state.pages[state.currentPage];
@@ -9956,7 +9976,7 @@
     const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
-    a.download = 'takeoff-project.json';
+    a.download = sanitizeForFilename(state.currentProjectName) + '.json';
     a.click();
   };
   document.getElementById('exportBtnSidebar').onclick = () => document.getElementById('exportBtn').click();
@@ -11004,6 +11024,37 @@
       const mode = opt.dataset.mode;
       if (downloadCurrentPageMenu) downloadCurrentPageMenu.classList.remove('visible');
       if (mode) downloadCurrentPageAsPdf(mode);
+    };
+  });
+  const exportDropdownBtn = document.getElementById('exportDropdownBtn');
+  const exportDropdownMenu = document.getElementById('exportDropdownMenu');
+  if (exportDropdownBtn && exportDropdownMenu) {
+    exportDropdownBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (exportDropdownMenu.classList.contains('visible')) {
+        exportDropdownMenu.classList.remove('visible');
+      } else {
+        exportDropdownMenu.style.left = '';
+        exportDropdownMenu.style.right = '';
+        exportDropdownMenu.classList.add('visible');
+        const btnRect = exportDropdownBtn.getBoundingClientRect();
+        exportDropdownMenu.style.position = 'fixed';
+        exportDropdownMenu.style.left = (btnRect.right - 220) + 'px';
+        exportDropdownMenu.style.top = (btnRect.bottom + 4) + 'px';
+      }
+    };
+  }
+  document.querySelectorAll('.export-dropdown-option').forEach(opt => {
+    opt.onclick = async (e) => {
+      e.stopPropagation();
+      const action = opt.dataset.action;
+      if (exportDropdownMenu) exportDropdownMenu.classList.remove('visible');
+      if (action === 'canvas') document.getElementById('exportBtn').click();
+      else if (action === 'pdf') await downloadProjectPdf();
+      else if (action === 'both') {
+        document.getElementById('exportBtn').click();
+        await downloadProjectPdf();
+      }
     };
   });
   const printReportBtn = document.getElementById('printReport');
@@ -13615,6 +13666,8 @@
     if (cm && !e.target.closest('#canvasMenu') && !e.target.closest('#canvasLayersBtn')) cm.classList.remove('visible');
     const dpm = document.getElementById('downloadCurrentPageMenu');
     if (dpm && !e.target.closest('#downloadCurrentPageDropdown')) dpm.classList.remove('visible');
+    const edm = document.getElementById('exportDropdownMenu');
+    if (edm && !e.target.closest('#exportDropdown')) edm.classList.remove('visible');
     const srm = document.getElementById('showReportMenu');
     const srd = document.getElementById('showReportDropdown');
     if (srm && !e.target.closest('#showReportDropdown') && !e.target.closest('.show-report-menu')) {

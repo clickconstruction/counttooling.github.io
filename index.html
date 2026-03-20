@@ -848,10 +848,6 @@
             <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
             <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
           </div>
-          <div id="exportDropdownImportContent" style="display:none;">
-            <button type="button" class="export-dropdown-option" data-action="uploadPdf">Upload PDF</button>
-            <button type="button" class="export-dropdown-option" data-action="importCanvas">Import Canvas</button>
-          </div>
         </div>
       </div>
       <div class="download-page-dropdown" id="downloadCurrentPageDropdown" style="position:relative;display:none;">
@@ -6086,16 +6082,14 @@
     if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
     const exportDropdown = document.getElementById('exportDropdown');
     const hasProject = state.pages.length > 0;
-    const showExportDropdown = hasProject || (!hasProject && !state.isViewer);
+    const showExportDropdown = hasProject;
     if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
     const exportContent = document.getElementById('exportDropdownExportContent');
-    const importContent = document.getElementById('exportDropdownImportContent');
-    if (exportContent) exportContent.style.display = hasProject ? '' : 'none';
-    if (importContent) importContent.style.display = hasProject ? 'none' : '';
+    if (exportContent) exportContent.style.display = '';
     const exportDropdownBtn = document.getElementById('exportDropdownBtn');
     if (exportDropdownBtn) {
-      exportDropdownBtn.setAttribute('aria-label', hasProject ? 'Export' : 'Open');
-      exportDropdownBtn.title = hasProject ? 'Export project' : 'Upload PDF or import canvas';
+      exportDropdownBtn.setAttribute('aria-label', 'Export');
+      exportDropdownBtn.title = 'Export project';
     }
     const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
     if (exportPdfOpt) exportPdfOpt.style.display = (state.pdfBuffer || state.pdfStoragePath) ? '' : 'none';
@@ -11067,9 +11061,7 @@
       e.stopPropagation();
       const action = opt.dataset.action;
       if (exportDropdownMenu) exportDropdownMenu.classList.remove('visible');
-      if (action === 'uploadPdf') document.getElementById('pdfInput').click();
-      else if (action === 'importCanvas') document.getElementById('importInput').click();
-      else if (action === 'canvas') document.getElementById('exportBtn').click();
+      if (action === 'canvas') document.getElementById('exportBtn').click();
       else if (action === 'pdf') await downloadProjectPdf();
       else if (action === 'both') {
         document.getElementById('exportBtn').click();

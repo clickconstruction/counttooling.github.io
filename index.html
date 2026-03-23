@@ -1580,6 +1580,16 @@
         <label>Label size: <span id="multiplyZoneSettingsLabelSizeVal">14</span></label>
         <input type="range" id="multiplyZoneSettingsLabelSize" min="8" max="24" value="14" step="1">
       </div>
+      <div class="form-group">
+        <label for="multiplyZoneSettingsLabelPosition">Label position</label>
+        <select id="multiplyZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+          <option value="center">Center</option>
+          <option value="top-left">Top-left</option>
+          <option value="top-right">Top-right</option>
+          <option value="bottom-left">Bottom-left</option>
+          <option value="bottom-right">Bottom-right</option>
+        </select>
+      </div>
       <div class="actions">
         <button id="multiplyZoneSettingsClose">Done</button>
       </div>
@@ -1769,7 +1779,7 @@
   </div>
   <div class="modal-overlay" id="airboardToastModal">
     <div class="modal-card modal-card-toast">
-      <p id="airboardToastText" style="margin:0;font-size:1rem;"></p>
+      <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
     </div>
   </div>
   <div class="modal-overlay" id="macrosModal">
@@ -3700,7 +3710,7 @@
     summaryListCollapsed: false,
     lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false, showOnlyLinesOnCurrentPage: false },
     legendSettings: { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false },
-    multiplyZoneSettings: { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14 },
+    multiplyZoneSettings: { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, longPressTimer: null, longPressFired: false,
@@ -4336,6 +4346,13 @@
     const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
     const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
     return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+  }
+  function rectsOverlap(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2) {
+    const aMinX = Math.min(ax1, ax2), aMaxX = Math.max(ax1, ax2);
+    const aMinY = Math.min(ay1, ay2), aMaxY = Math.max(ay1, ay2);
+    const bMinX = Math.min(bx1, bx2), bMaxX = Math.max(bx1, bx2);
+    const bMinY = Math.min(by1, by2), bMaxY = Math.max(by1, by2);
+    return aMinX <= bMaxX && aMaxX >= bMinX && aMinY <= bMaxY && aMaxY >= bMinY;
   }
   function getMultiplyZoneForPoint(ann, p) {
     const zones = ann?.multiplyZones || [];
@@ -5193,12 +5210,31 @@
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
+        const inset = 6;
+        const pos = state.multiplyZoneSettings?.labelPosition ?? 'center';
+        let textX, textY, rectX, rectY, textAlign, textBaseline;
+        if (pos === 'center') {
+          textX = center.x; textY = center.y; textAlign = 'center'; textBaseline = 'middle';
+          rectX = center.x - tw / 2 - pad; rectY = center.y - fontSize / 2 - pad;
+        } else if (pos === 'top-left') {
+          textX = tl.x + inset; textY = tl.y + inset; textAlign = 'left'; textBaseline = 'top';
+          rectX = textX; rectY = textY;
+        } else if (pos === 'top-right') {
+          textX = br.x - inset; textY = tl.y + inset; textAlign = 'right'; textBaseline = 'top';
+          rectX = textX - tw - pad * 2; rectY = textY;
+        } else if (pos === 'bottom-left') {
+          textX = tl.x + inset; textY = br.y - inset; textAlign = 'left'; textBaseline = 'bottom';
+          rectX = textX; rectY = textY - fontSize - pad;
+        } else {
+          textX = br.x - inset; textY = br.y - inset; textAlign = 'right'; textBaseline = 'bottom';
+          rectX = textX - tw - pad * 2; rectY = textY - fontSize - pad;
+        }
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(center.x - tw / 2 - pad, center.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillRect(rectX, rectY, tw + pad * 2, fontSize + pad * 2);
         ctx.fillStyle = '#2d7a4a';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, center.x, center.y);
+        ctx.textAlign = textAlign;
+        ctx.textBaseline = textBaseline;
+        ctx.fillText(label, textX, textY);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -5583,12 +5619,31 @@
         ctx.font = fontSize + 'px sans-serif';
         const tw = ctx.measureText(label).width;
         const pad = 4;
+        const inset = 6;
+        const pos = state.multiplyZoneSettings?.labelPosition ?? 'center';
+        let textX, textY, rectX, rectY, textAlign, textBaseline;
+        if (pos === 'center') {
+          textX = center.x; textY = center.y; textAlign = 'center'; textBaseline = 'middle';
+          rectX = center.x - tw / 2 - pad; rectY = center.y - fontSize / 2 - pad;
+        } else if (pos === 'top-left') {
+          textX = tl.x + inset; textY = tl.y + inset; textAlign = 'left'; textBaseline = 'top';
+          rectX = textX; rectY = textY;
+        } else if (pos === 'top-right') {
+          textX = br.x - inset; textY = tl.y + inset; textAlign = 'right'; textBaseline = 'top';
+          rectX = textX - tw - pad * 2; rectY = textY;
+        } else if (pos === 'bottom-left') {
+          textX = tl.x + inset; textY = br.y - inset; textAlign = 'left'; textBaseline = 'bottom';
+          rectX = textX; rectY = textY - fontSize - pad;
+        } else {
+          textX = br.x - inset; textY = br.y - inset; textAlign = 'right'; textBaseline = 'bottom';
+          rectX = textX - tw - pad * 2; rectY = textY - fontSize - pad;
+        }
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(center.x - tw / 2 - pad, center.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillRect(rectX, rectY, tw + pad * 2, fontSize + pad * 2);
         ctx.fillStyle = '#2d7a4a';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, center.x, center.y);
+        ctx.textAlign = textAlign;
+        ctx.textBaseline = textBaseline;
+        ctx.fillText(label, textX, textY);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -9458,15 +9513,18 @@
     if (valEl) valEl.textContent = v;
   };
   document.getElementById('multiplyZoneSettingsClose').onclick = () => {
-    if (!state.multiplyZoneSettings) state.multiplyZoneSettings = { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14 };
+    if (!state.multiplyZoneSettings) state.multiplyZoneSettings = { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' };
     const showLabelEl = document.getElementById('multiplyZoneSettingsShowLabel');
     const defaultMultEl = document.getElementById('multiplyZoneSettingsDefaultMult');
     const labelSizeEl = document.getElementById('multiplyZoneSettingsLabelSize');
+    const labelPosEl = document.getElementById('multiplyZoneSettingsLabelPosition');
     state.multiplyZoneSettings.showLabelOnZone = showLabelEl ? showLabelEl.checked : true;
     const mult = parseInt(defaultMultEl?.value || '2', 10);
     state.multiplyZoneSettings.defaultMultiplier = isNaN(mult) || mult < 1 ? 2 : mult;
     const size = parseInt(labelSizeEl?.value || '14', 10);
     state.multiplyZoneSettings.labelSize = isNaN(size) ? 14 : Math.max(8, Math.min(24, size));
+    const validPos = ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    state.multiplyZoneSettings.labelPosition = validPos.includes(labelPosEl?.value) ? labelPosEl.value : 'center';
     markProjectDirty();
     hideModal('multiplyZoneSettingsModal');
     renderPdf();
@@ -13298,7 +13356,7 @@
     const t = state.ctxTarget;
     if (!t || t.type !== 'multiplyZone') return;
     document.getElementById('contextMenu').classList.remove('visible');
-    const s = state.multiplyZoneSettings || { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14 };
+    const s = state.multiplyZoneSettings || { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' };
     const showLabelEl = document.getElementById('multiplyZoneSettingsShowLabel');
     const showLabelBtn = document.getElementById('multiplyZoneSettingsShowLabelBtn');
     const defaultMultEl = document.getElementById('multiplyZoneSettingsDefaultMult');
@@ -13312,6 +13370,8 @@
       const valEl = document.getElementById('multiplyZoneSettingsLabelSizeVal');
       if (valEl) valEl.textContent = String(s.labelSize ?? 14);
     }
+    const labelPosEl = document.getElementById('multiplyZoneSettingsLabelPosition');
+    if (labelPosEl) labelPosEl.value = (['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(s.labelPosition) ? s.labelPosition : 'center');
     showModal('multiplyZoneSettingsModal');
     state.ctxTarget = null;
   };
@@ -13352,6 +13412,7 @@
     markProjectDirty();
     document.getElementById('contextMenu').classList.remove('visible');
     state.ctxTarget = null;
+    renderAnnotations();
     renderPdf();
     updateUI();
   };
@@ -13518,12 +13579,19 @@
         if (canvas) {
           const x1 = Math.min(state.multiplyZoneStart.x, pdf.x), x2 = Math.max(state.multiplyZoneStart.x, pdf.x);
           const y1 = Math.min(state.multiplyZoneStart.y, pdf.y), y2 = Math.max(state.multiplyZoneStart.y, pdf.y);
-          const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-          const lenStr = formatDist(counts.lengthPdfPts, page?.scale);
-          state.pendingMultiplyZone = { x1, y1, x2, y2 };
-          document.getElementById('multiplyZonePreview').textContent = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
-          document.getElementById('multiplyZoneMultiplier').value = String(state.multiplyZoneSettings?.defaultMultiplier ?? 2);
-          showModal('multiplyZoneModal');
+          const zones = canvas.annotations.multiplyZones || [];
+          const overlaps = zones.some(z => rectsOverlap(x1, y1, x2, y2, z.x1, z.y1, z.x2, z.y2));
+          if (overlaps) {
+            showToast('Cannot place multiply zone:\nIt overlaps an existing zone.\nItems cannot be multiplied more than once.', 4000);
+            state.multiplyZoneStart = null;
+          } else {
+            const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
+            const lenStr = formatDist(counts.lengthPdfPts, page?.scale);
+            state.pendingMultiplyZone = { x1, y1, x2, y2 };
+            document.getElementById('multiplyZonePreview').textContent = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
+            document.getElementById('multiplyZoneMultiplier').value = String(state.multiplyZoneSettings?.defaultMultiplier ?? 2);
+            showModal('multiplyZoneModal');
+          }
         }
         state.multiplyZoneStart = null;
       }
@@ -13997,12 +14065,19 @@
         if (canvas) {
           const x1 = Math.min(state.multiplyZoneStart.x, pdf.x), x2 = Math.max(state.multiplyZoneStart.x, pdf.x);
           const y1 = Math.min(state.multiplyZoneStart.y, pdf.y), y2 = Math.max(state.multiplyZoneStart.y, pdf.y);
-          const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-          const lenStr = formatDist(counts.lengthPdfPts, page?.scale);
-          state.pendingMultiplyZone = { x1, y1, x2, y2 };
-          document.getElementById('multiplyZonePreview').textContent = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
-          document.getElementById('multiplyZoneMultiplier').value = String(state.multiplyZoneSettings?.defaultMultiplier ?? 2);
-          showModal('multiplyZoneModal');
+          const zones = canvas.annotations.multiplyZones || [];
+          const overlaps = zones.some(z => rectsOverlap(x1, y1, x2, y2, z.x1, z.y1, z.x2, z.y2));
+          if (overlaps) {
+            showToast('Cannot place multiply zone:\nIt overlaps an existing zone.\nItems cannot be multiplied more than once.', 4000);
+            state.multiplyZoneStart = null;
+          } else {
+            const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
+            const lenStr = formatDist(counts.lengthPdfPts, page?.scale);
+            state.pendingMultiplyZone = { x1, y1, x2, y2 };
+            document.getElementById('multiplyZonePreview').textContent = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
+            document.getElementById('multiplyZoneMultiplier').value = String(state.multiplyZoneSettings?.defaultMultiplier ?? 2);
+            showModal('multiplyZoneModal');
+          }
         }
         state.multiplyZoneStart = null;
       }

@@ -1,0 +1,22 @@
+{"sessionId":"fd38ea","location":"index.html:multiplyZone modal open","message":"modal opened","data":{"defaultMult":5,"inputValue":"5"},"timestamp":1774289637141,"hypothesisId":"H5"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone Apply entry","message":"Apply deferred","data":{"inputValueRaw":"5","parsedValue":5,"statePending":5},"timestamp":1774289638017,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone Apply mult","message":"mult resolved","data":{"mult":5,"usedState":true},"timestamp":1774289638017,"hypothesisId":"H3","runId":"post-fix"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone push","message":"zone pushed","data":{"zoneMultiplier":5},"timestamp":1774289638017,"hypothesisId":"H4","runId":"post-fix"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":5,"label":"×5"},"timestamp":1774289638022,"hypothesisId":"H6"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":5,"label":"×5"},"timestamp":1774289642063,"hypothesisId":"H6"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":5,"label":"×5"},"timestamp":1774289662879,"hypothesisId":"H6"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":5,"label":"×5"},"timestamp":1774289665383,"hypothesisId":"H6"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone modal open","message":"modal opened","data":{"defaultMult":2,"inputValue":"2"},"timestamp":1774289822028,"hypothesisId":"H5"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone modal open","message":"modal opened","data":{"defaultMult":2,"inputValue":"2"},"timestamp":1774289824661,"hypothesisId":"H5"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone Apply entry","message":"Apply deferred","data":{"inputValueRaw":"2","parsedValue":2,"statePending":2},"timestamp":1774289825637,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":2,"label":"×2"},"timestamp":1774289825783,"hypothesisId":"H6"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":2,"label":"×2"},"timestamp":1774289833095,"hypothesisId":"H6"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"3","pendingValue":3},"timestamp":1774289835195,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"3","pendingValue":3},"timestamp":1774289835269,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"4","pendingValue":4},"timestamp":1774289835387,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"4","pendingValue":4},"timestamp":1774289835444,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"5","pendingValue":5},"timestamp":1774289835536,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"5","pendingValue":5},"timestamp":1774289835602,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone sync","message":"input sync fired","data":{"inputValue":"5","pendingValue":5},"timestamp":1774289836555,"hypothesisId":"H1"}
+{"sessionId":"fd38ea","location":"index.html:multiplyZone Apply entry","message":"Apply deferred","data":{"inputValueRaw":"5","parsedValue":5,"statePending":5},"timestamp":1774289836645,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"fd38ea","location":"index.html:renderAnnotations zone label","message":"drawing zone label","data":{"zoneMultiplier":5,"label":"×5"},"timestamp":1774289836653,"hypothesisId":"H6"}

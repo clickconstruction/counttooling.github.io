@@ -793,6 +793,9 @@
         <button id="multiplyZoneBtn" class="sidebar-triggers" title="Multiply Zone (right-click for settings)" aria-label="Multiply Zone">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM224 128L416 128C433.7 128 448 142.3 448 160L448 192C448 209.7 433.7 224 416 224L224 224C206.3 224 192 209.7 192 192L192 160C192 142.3 206.3 128 224 128zM240 296C240 309.3 229.3 320 216 320C202.7 320 192 309.3 192 296C192 282.7 202.7 272 216 272C229.3 272 240 282.7 240 296zM320 320C306.7 320 296 309.3 296 296C296 282.7 306.7 272 320 272C333.3 272 344 282.7 344 296C344 309.3 333.3 320 320 320zM448 296C448 309.3 437.3 320 424 320C410.7 320 400 309.3 400 296C400 282.7 410.7 272 424 272C437.3 272 448 282.7 448 296zM216 416C202.7 416 192 405.3 192 392C192 378.7 202.7 368 216 368C229.3 368 240 378.7 240 392C240 405.3 229.3 416 216 416zM344 392C344 405.3 333.3 416 320 416C306.7 416 296 405.3 296 392C296 378.7 306.7 368 320 368C333.3 368 344 378.7 344 392zM424 416C410.7 416 400 405.3 400 392C400 378.7 410.7 368 424 368C437.3 368 448 378.7 448 392C448 405.3 437.3 416 424 416zM192 488C192 474.7 202.7 464 216 464L328 464C341.3 464 352 474.7 352 488C352 501.3 341.3 512 328 512L216 512C202.7 512 192 501.3 192 488zM424 464C437.3 464 448 474.7 448 488C448 501.3 437.3 512 424 512C410.7 512 400 501.3 400 488C400 474.7 410.7 464 424 464z"/></svg>
         </button>
+        <button id="deleteZoneBtn" class="sidebar-triggers" title="Delete area" aria-label="Delete area">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>
+        </button>
         <button id="noteBtn" class="sidebar-triggers" title="Note" aria-label="Note">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
         </button>
@@ -910,6 +913,10 @@
           <button id="multiplyZoneBtnSidebar" class="sidebar-btn" title="Multiply Zone (right-click for settings)">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM224 128L416 128C433.7 128 448 142.3 448 160L448 192C448 209.7 433.7 224 416 224L224 224C206.3 224 192 209.7 192 192L192 160C192 142.3 206.3 128 224 128zM240 296C240 309.3 229.3 320 216 320C202.7 320 192 309.3 192 296C192 282.7 202.7 272 216 272C229.3 272 240 282.7 240 296zM320 320C306.7 320 296 309.3 296 296C296 282.7 306.7 272 320 272C333.3 272 344 282.7 344 296C344 309.3 333.3 320 320 320zM448 296C448 309.3 437.3 320 424 320C410.7 320 400 309.3 400 296C400 282.7 410.7 272 424 272C437.3 272 448 282.7 448 296zM216 416C202.7 416 192 405.3 192 392C192 378.7 202.7 368 216 368C229.3 368 240 378.7 240 392C240 405.3 229.3 416 216 416zM344 392C344 405.3 333.3 416 320 416C306.7 416 296 405.3 296 392C296 378.7 306.7 368 320 368C333.3 368 344 378.7 344 392zM424 416C410.7 416 400 405.3 400 392C400 378.7 410.7 368 424 368C437.3 368 448 378.7 448 392C448 405.3 437.3 416 424 416zM192 488C192 474.7 202.7 464 216 464L328 464C341.3 464 352 474.7 352 488C352 501.3 341.3 512 328 512L216 512C202.7 512 192 501.3 192 488zM424 464C437.3 464 448 474.7 448 488C448 501.3 437.3 512 424 512C410.7 512 400 501.3 400 488C400 474.7 410.7 464 424 464z"/></svg>
             Multiply
+          </button>
+          <button id="deleteZoneBtnSidebar" class="sidebar-btn" title="Delete area">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>
+            Delete area
           </button>
           <button id="noteBtnSidebar" class="sidebar-btn" title="Note">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
@@ -1954,6 +1961,16 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="deleteZoneModal">
+    <div class="modal-card">
+      <h2>Delete in this area?</h2>
+      <p id="deleteZonePreview" class="form-group" style="margin-bottom:12px;color:var(--text2);"></p>
+      <div class="actions">
+        <button id="deleteZoneCancel">Cancel</button>
+        <button id="deleteZoneConfirm" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="linePropertiesModal">
     <div class="modal-card">
       <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
@@ -2588,7 +2605,7 @@
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
-  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9 };
+  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9, DELETE_ZONE: 10 };
   const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
   const uid = () => Math.random().toString(36).slice(2, 10);
   const PLUMBING_DEFAULTS = {
@@ -3694,7 +3711,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, deleteZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -3873,6 +3890,7 @@
     state.quickLineStart = null;
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.deleteZoneStart = null;
     state.drawingPolyline = null;
     state.editingPolyline = null;
     if (state.activeCounterType && !state.counters.some(c => c.id === state.activeCounterType)) state.activeCounterType = null;
@@ -4392,6 +4410,89 @@
     });
     return { counterCount, lineRunCount, lengthPdfPts };
   }
+  function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) {
+    const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
+    const result = {
+      counterCount: 0, lineRunCount: 0, lengthPdfPts: 0,
+      highlightCount: 0, noteCount: 0, multiplyZoneCount: 0,
+      counters: [], quickLines: [], polylines: [],
+      highlights: [], notes: [], multiplyZones: []
+    };
+    (state.counters || []).forEach(c => {
+      (ann?.counterMarkers?.[c.id] || []).forEach(m => {
+        if (inRect(m)) {
+          result.counterCount++;
+          result.counters.push({ counterId: c.id, marker: m });
+        }
+      });
+    });
+    (ann?.quickLines || []).forEach((q, i) => {
+      const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
+      if (inRect(start) && inRect(end)) {
+        result.lineRunCount++;
+        result.lengthPdfPts += getLineLengthPdfPts(q, pageIdx, false);
+        result.quickLines.push({ index: i, line: q });
+      }
+    });
+    (ann?.polylines || []).forEach((poly, i) => {
+      const pts = poly.points || [];
+      const start = pts[0], end = pts[pts.length - 1];
+      if (start && end && inRect(start) && inRect(end)) {
+        result.lineRunCount++;
+        result.lengthPdfPts += getLineLengthPdfPts(poly, pageIdx, true);
+        result.polylines.push({ index: i, poly });
+      }
+    });
+    (ann?.highlights || []).forEach((h, i) => {
+      const cx = (h.x1 + h.x2) / 2, cy = (h.y1 + h.y2) / 2;
+      if (inRect({ x: cx, y: cy })) {
+        result.highlightCount++;
+        result.highlights.push({ index: i });
+      }
+    });
+    (ann?.notes || []).forEach((n, i) => {
+      if (inRect({ x: n.x, y: n.y })) {
+        result.noteCount++;
+        result.notes.push({ index: i });
+      }
+    });
+    (ann?.multiplyZones || []).forEach((z, i) => {
+      const cx = (z.x1 + z.x2) / 2, cy = (z.y1 + z.y2) / 2;
+      if (inRect({ x: cx, y: cy })) {
+        result.multiplyZoneCount++;
+        result.multiplyZones.push({ index: i });
+      }
+    });
+    return result;
+  }
+  function performDeleteZone(ann, collected) {
+    pushUndoSnapshot();
+    (collected.counters || []).forEach(({ counterId, marker }) => {
+      const arr = ann?.counterMarkers?.[counterId];
+      if (arr) {
+        const idx = arr.indexOf(marker);
+        if (idx >= 0) arr.splice(idx, 1);
+      }
+    });
+    (collected.multiplyZones || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.multiplyZones || []).splice(index, 1);
+    });
+    (collected.polylines || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.polylines || []).splice(index, 1);
+    });
+    (collected.quickLines || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.quickLines || []).splice(index, 1);
+    });
+    (collected.highlights || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.highlights || []).splice(index, 1);
+    });
+    (collected.notes || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.notes || []).splice(index, 1);
+    });
+    markProjectDirty();
+    renderPdf();
+    updateUI();
+  }
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
   function pickScaleForLineType(pageIndices) {
     const preferredUnits = ['ft', 'in', 'm', 'cm', 'yd'];
@@ -4846,7 +4947,7 @@
         else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
         else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? 'Click second corner' : 'Click first corner';
-        else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? 'Click second corner' : 'Click first corner';
+        else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.NOTE) toolHint = 'Click to add note';
         else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
         else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
@@ -5363,6 +5464,14 @@
       const minY = Math.min(state.multiplyZoneStart.y, state.mousePos.y), maxY = Math.max(state.multiplyZoneStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
       ctx.strokeStyle = '#47c88e'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+    }
+    if (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart && state.mousePos) {
+      const minX = Math.min(state.deleteZoneStart.x, state.mousePos.x), maxX = Math.max(state.deleteZoneStart.x, state.mousePos.x);
+      const minY = Math.min(state.deleteZoneStart.y, state.mousePos.y), maxY = Math.max(state.deleteZoneStart.y, state.mousePos.y);
+      const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
+      ctx.strokeStyle = 'var(--red)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
@@ -6065,6 +6174,8 @@
     document.getElementById('highlightBtn').classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const multiplyZoneBtn = document.getElementById('multiplyZoneBtn');
     if (multiplyZoneBtn) multiplyZoneBtn.classList.toggle('active', state.tool === TOOL.MULTIPLY_ZONE);
+    const deleteZoneBtn = document.getElementById('deleteZoneBtn');
+    if (deleteZoneBtn) deleteZoneBtn.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
     const counterBtn = document.getElementById('counterBtn');
@@ -6117,6 +6228,8 @@
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const multiplyZoneBtnSidebar = document.getElementById('multiplyZoneBtnSidebar');
     if (multiplyZoneBtnSidebar) multiplyZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.MULTIPLY_ZONE);
+    const deleteZoneBtnSidebar = document.getElementById('deleteZoneBtnSidebar');
+    if (deleteZoneBtnSidebar) deleteZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
     if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
     const legendBtnEl = document.getElementById('legendBtn');
@@ -6147,6 +6260,7 @@
       state.quickLineStart = null;
       state.highlightStart = null;
       state.multiplyZoneStart = null;
+      state.deleteZoneStart = null;
       state.drawingPolyline = null;
       state.editingPolyline = null;
     }
@@ -6155,7 +6269,7 @@
     const redoBtn = document.getElementById('redoBtn');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -8361,6 +8475,9 @@
   document.getElementById('moveBtn').onclick = () => {
     state.tool = TOOL.NONE;
     state.quickLineStart = null;
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.deleteZoneStart = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
     updateUI();
@@ -8404,13 +8521,22 @@
   document.getElementById('highlightBtn').onclick = () => {
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.deleteZoneStart = null;
     state.tool = TOOL.HIGHLIGHT;
     updateUI();
   };
   document.getElementById('multiplyZoneBtn').onclick = () => {
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.deleteZoneStart = null;
     state.tool = TOOL.MULTIPLY_ZONE;
+    updateUI();
+  };
+  document.getElementById('deleteZoneBtn').onclick = () => {
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.deleteZoneStart = null;
+    state.tool = TOOL.DELETE_ZONE;
     updateUI();
   };
   document.getElementById('multiplyZoneBtn').oncontextmenu = (e) => {
@@ -8538,6 +8664,8 @@
       openMultiplyZoneSettingsModal();
     };
   }
+  const deleteZoneBtnSidebarEl = document.getElementById('deleteZoneBtnSidebar');
+  if (deleteZoneBtnSidebarEl) deleteZoneBtnSidebarEl.onclick = () => document.getElementById('deleteZoneBtn').click();
   document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; updateUI(); };
   document.getElementById('noteBtnSidebar').onclick = () => document.getElementById('noteBtn').click();
   const legendBtn = document.getElementById('legendBtn');
@@ -8552,6 +8680,7 @@
       state.quickLineStart = null;
       state.highlightStart = null;
       state.multiplyZoneStart = null;
+      state.deleteZoneStart = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
       const ann = getActiveAnnotations(page);
@@ -11569,6 +11698,18 @@
     state.pendingMultiplyZone = null;
     state.pendingMultiplyZoneEdit = null;
   };
+  document.getElementById('deleteZoneCancel').onclick = () => {
+    hideModal('deleteZoneModal');
+    state.pendingDeleteZone = null;
+  };
+  document.getElementById('deleteZoneConfirm').onclick = () => {
+    const pending = state.pendingDeleteZone;
+    hideModal('deleteZoneModal');
+    state.pendingDeleteZone = null;
+    if (pending?.ann && pending?.collected) {
+      performDeleteZone(pending.ann, pending.collected);
+    }
+  };
   (() => {
     const inputEl = document.getElementById('multiplyZoneMultiplier');
     const sync = () => { const v = parseInt(inputEl.value, 10); if (!isNaN(v) && v >= 1) state.pendingMultiplyZoneValue = v; };
@@ -13723,6 +13864,38 @@
       }
       renderAnnotations();
       updateUI();
+    } else if (state.tool === TOOL.DELETE_ZONE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      const page = state.pages[state.currentPage];
+      if (!state.deleteZoneStart) {
+        state.deleteZoneStart = pdf;
+      } else {
+        const canvas = page && ensureActiveCanvas(page);
+        const ann = canvas?.annotations;
+        if (ann) {
+          const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
+          const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
+          const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
+          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount;
+          if (total === 0) {
+            showToast('No items in this area.', 2000);
+          } else {
+            const lenStr = formatDist(collected.lengthPdfPts, page?.scale);
+            const parts = [];
+            if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
+            if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
+            if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
+            if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
+            if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
+            state.pendingDeleteZone = { ann, collected };
+            document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
+            showModal('deleteZoneModal');
+          }
+        }
+        state.deleteZoneStart = null;
+      }
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.NOTE) {
       const tNote = hitTest(pdf);
       if (tNote && (tNote.type === 'note' || tNote.type === 'noteResize' || tNote.type === 'noteFontSize')) {
@@ -13929,7 +14102,7 @@
         note.y = pdf.y - state.draggingNoteOffset.y;
         renderAnnotations();
       }
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart)) {
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart)) {
       renderAnnotations();
     }
     const t = hitTest(pdf);
@@ -14120,7 +14293,7 @@
         state.pan = { x: state.touchPanStart.panX + (c.x - state.touchPanStart.x), y: state.touchPanStart.panY + (c.y - state.touchPanStart.y) };
         updateContainerTransform();
       } else if (moved && state.longPressTimer && state.longPressStart) {
-        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) ? 25 : 10;
+        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
         if (ptDist(state.longPressStart, c) > tapCancelThreshold) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
       }
     }
@@ -14209,6 +14382,40 @@
           }
         }
         state.multiplyZoneStart = null;
+      }
+      renderAnnotations();
+      updateUI();
+      return;
+    }
+    if (state.tool === TOOL.DELETE_ZONE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      const page = state.pages[state.currentPage];
+      if (!state.deleteZoneStart) {
+        state.deleteZoneStart = pdf;
+      } else {
+        const canvas = page && ensureActiveCanvas(page);
+        const ann = canvas?.annotations;
+        if (ann) {
+          const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
+          const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
+          const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
+          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount;
+          if (total === 0) {
+            showToast('No items in this area.', 2000);
+          } else {
+            const lenStr = formatDist(collected.lengthPdfPts, page?.scale);
+            const parts = [];
+            if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
+            if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
+            if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
+            if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
+            if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
+            state.pendingDeleteZone = { ann, collected };
+            document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
+            showModal('deleteZoneModal');
+          }
+        }
+        state.deleteZoneStart = null;
       }
       renderAnnotations();
       updateUI();
@@ -14310,7 +14517,7 @@
       }
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.multiplyZoneStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
+      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.multiplyZoneStart = null; state.deleteZoneStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
       else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
       else if (k === 'r') { rotatePage90(); e.preventDefault(); }
       else if (k === 'j') {
@@ -14362,6 +14569,7 @@
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
+      else if (document.getElementById('deleteZoneModal').classList.contains('visible')) { hideModal('deleteZoneModal'); state.pendingDeleteZone = null; }
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { closeLinePropertiesModal(); }
       else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
@@ -14415,6 +14623,9 @@
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.MULTIPLY_ZONE) {
         if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderPdf(); updateUI(); }
+        else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.DELETE_ZONE) {
+        if (state.deleteZoneStart) { state.deleteZoneStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.NOTE) {
         state.tool = TOOL.NONE;

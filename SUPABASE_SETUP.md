@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 031. If you previously applied 032/033 (user_artboards, now reverted), also apply 034.
+**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 037 (or latest in `supabase/migrations/`). If you previously applied 032/033 (user_artboards, now reverted), also apply 034.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
 
@@ -88,6 +88,12 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **034_revert_user_artboards.sql** — Reverts the aborted user_artboards feature. Run only if you previously applied 032_user_artboards and 033_migrate_airboard_to_artboards. Drops `user_artboards` table.
 
+**035_list_project_shares_admin.sql** — Updates `list_project_shares` so admins can list shares for any project (same visibility as `list_accessible_projects`).
+
+**036_list_accessible_projects_access_filters.sql** — Extends `list_accessible_projects` with `owner_email` (project owner) and `my_access_role` (`owner` | `editor` | `viewer` | `admin` | `unknown`). Used by the Load Project modal for filters (Mine/Shared, role, admin owner dropdown).
+
+**037_remove_drop_claim_migration_entry.sql** — Idempotent cleanup: removes orphan migration history row `drop_claim_dev_with_code` (20260306034155) if present. The original migration only ran `DROP FUNCTION IF EXISTS public.claim_dev_with_code(text);`. Safe to apply on fresh databases (no-op).
+
 ## 3. Deploy Edge Functions
 
 Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gateway does not reject requests; each function validates auth in-code via `getUser()`.
@@ -156,7 +162,7 @@ on conflict (user_id) do update set is_admin = true;
 
 - **Sign In** — Click "Sign In", enter credentials (provided by admin). If you have a saved artboard, it is restored automatically.
 - **Name / Upload / Save Project to Cloud** — When logged in, click "Name / Upload / Save Project to Cloud", enter name. The PDF is uploaded to Storage when you save (if you uploaded one).
-- **Load Project** — When logged in, click "Load Project", select from list. Projects with stored PDFs load the PDF automatically. Legacy projects (no PDF): upload your PDF first, then load.
+- **Load Project** — When logged in, click "Load Project", select from list. Projects with stored PDFs load the PDF automatically. Legacy projects (no PDF): upload your PDF first, then load. Use search and filters (Show: All / Mine / Shared; My access: Owner / Editor / Viewer / Admin; admins with multiple owners can filter by owner). Filters strip can be collapsed via **Filters** (preference in `localStorage` key `loadProjectFiltersExpanded`).
 - **Add User** (admin only) — In User Settings, create new users with email + password; share password with user. Admin-created users are auto-confirmed and can sign in immediately. If an existing user sees "Email not confirmed", confirm them in Dashboard > Authentication > Users (or run `update auth.users set email_confirmed_at = now() where email = 'user@example.com';` in SQL Editor).
 - **Manage User** (admin only) — In User Settings, open Manage User to list all users and delete accounts (cannot delete yourself).
 - **All Users** (admin only) — In User Settings, view all users with role and last sign-in.
@@ -173,6 +179,15 @@ on conflict (user_id) do update set is_admin = true;
 - **Dev auth bypass** — For automated testing: add `DEV_AUTH_EMAIL` and `DEV_AUTH_PASSWORD` to `config.js` (create a test user in Supabase first). Then either:
   - Navigate to `http://localhost:PORT?devAuth=1` to auto sign-in on load, or
   - Open Sign In and click "Sign in as test user".
+
+## Save debug logging (troubleshooting)
+
+When diagnosing slow or failing cloud saves / auto-saves, enable structured `[SaveDebug]` lines in the browser console:
+
+1. **Without redeploy:** open DevTools Console, run `localStorage.setItem('clickcount-debug-save', '1')`, then reload the page.
+2. **In config:** set `window.CLICKCOUNT_DEBUG_SAVE = true` in `config.js` (copy from [config.example.js](config.example.js)) and reload.
+
+Then reproduce the issue and capture logs (phases include `autosave.payload`, `autosave.request.start` / `request.ok` / `request.timeout`, `manual.save.*`, and payload size). Disable with `localStorage.removeItem('clickcount-debug-save')` or by removing the config flag.
 
 ## CI / Automated Testing
 

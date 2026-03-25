@@ -3927,6 +3927,40 @@
       )
     ]);
 
+  function isSaveDebugEnabled() {
+    try {
+      if (typeof window.CLICKCOUNT_DEBUG_SAVE !== 'undefined' && window.CLICKCOUNT_DEBUG_SAVE) return true;
+      return localStorage.getItem('clickcount-debug-save') === '1';
+    } catch (_) { return false; }
+  }
+  function saveDebugRunId() {
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+  function saveDebugSerializeError(e) {
+    if (!e) return {};
+    return {
+      message: e.message,
+      name: e.name,
+      code: e.code,
+      details: e.details,
+      hint: e.hint,
+      status: e.status
+    };
+  }
+  function saveDebugLog(phase, payload) {
+    if (!isSaveDebugEnabled()) return;
+    console.log('[SaveDebug]', phase, payload && typeof payload === 'object' ? payload : {});
+  }
+  function saveDebugLogError(runId, context, e) {
+    if (!isSaveDebugEnabled()) return;
+    const msg = (e && e.message) || '';
+    if (msg.includes('timed out')) {
+      saveDebugLog(context + '.timeout', { runId, note: 'The HTTP request may still complete server-side.', message: msg });
+    } else {
+      saveDebugLog(context + '.error', Object.assign({ runId }, saveDebugSerializeError(e)));
+    }
+  }
+
   function perfLog(label, durationMs, extra) {
     const msg = '[Perf] ' + label + ': ' + durationMs + 'ms';
     if (extra && Object.keys(extra).length) console.log(msg, extra);
@@ -15265,9 +15299,13 @@
   });
 
   async function performSaveProjectToCloud(opts) {
+    const runId = saveDebugRunId();
     const { name, includePdf, pdfBuffer: optsPdfBuffer } = opts;
     const user = state.supabaseSession?.user;
-    if (!user || !supabase) return { ok: false, error: new Error('Not signed in') };
+    if (!user || !supabase) {
+      saveDebugLog('manual.save.skip', { runId, reason: 'not_signed_in' });
+      return { ok: false, error: new Error('Not signed in') };
+    }
     const rawPdf = optsPdfBuffer ?? state.pdfBuffer;
     const pdfToUpload = rawPdf && (rawPdf.byteLength || rawPdf.length || 0) > 0 ? rawPdf : null;
     const willUploadPdf = pdfToUpload && includePdf;
@@ -15306,6 +15344,20 @@
     const dataSize = dataJson.length;
     const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
     log('Starting save', { userId: user.id, name, hasPdfBuffer: !!pdfToUpload, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
+    saveDebugLog('manual.save.start', {
+      runId,
+      name,
+      includePdf,
+      hasPdfBuffer: !!pdfToUpload,
+      currentProjectId: state.currentProjectId,
+      willUploadPdf
+    });
+    saveDebugLog('manual.save.payload', {
+      runId,
+      dataSize,
+      counter_count: counts.counter_count,
+      line_count: counts.line_count
+    });
     try {
       let pdfPath = state.pdfStoragePath;
       let cachePdfHash = null;
@@ -15323,16 +15375,19 @@
             skipUpload = true;
             cachePdfHash = newHash;
             log('PDF unchanged (hash match), skipping upload');
+            saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
           }
         }
         if (!projectId) {
           setProgress('Uploading project...');
           await tick();
           log('Inserting project...');
+          saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000 });
           const t0 = Date.now();
           const { data: row, error } = await saveWithTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
           log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
           if (error) throw error;
+          saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id });
           projectId = row?.id;
           if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
           state.currentProjectId = projectId;
@@ -15351,10 +15406,12 @@
           await tick();
           const storagePath = user.id + '/' + projectId + '/document.pdf';
           log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
+          saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: 60000 });
           const t1 = Date.now();
           const { error: uploadErr } = await saveWithTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
           log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
           if (uploadErr) throw uploadErr;
+          saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1 });
           pdfPath = storagePath;
           await tick();
           const newHash = await sha256Hex(pdfToUpload);
@@ -15362,22 +15419,26 @@
           setProgress('Uploading project...');
           await tick();
           log('Updating project with pdf_path and pdf_hash...');
+          saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'after_pdf_upload', projectId, timeoutMs: 30000 });
           const t2 = Date.now();
           const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
           if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
           const { error: updateErr } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
           log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
           if (updateErr) throw updateErr;
+          saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'after_pdf_upload', ms: Date.now() - t2, projectId });
         } else {
           setProgress('Uploading project...');
           await tick();
           log('Updating project data (PDF unchanged)...');
+          saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'pdf_hash_skip', projectId, timeoutMs: 30000 });
           const t2 = Date.now();
           const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
           if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
           const { error: updateErr } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
           log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
           if (updateErr) throw updateErr;
+          saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'pdf_hash_skip', ms: Date.now() - t2, projectId });
         }
       } else if (state.currentProjectId) {
         setProgress('Uploading project...');
@@ -15385,26 +15446,34 @@
         let sizeBytes = dataSize;
         if (state.pdfStoragePath) {
           try {
+            const tInfo = Date.now();
             const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
             const sz = info && (info.metadata?.size ?? info.size);
             if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-          } catch (_) { /* ignore */ }
+            saveDebugLog('manual.save.storage.info.ok', { runId, ms: Date.now() - tInfo, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
+          } catch (se) {
+            saveDebugLog('manual.save.storage.info.error', { runId, message: se?.message, name: se?.name });
+          }
         }
         log('Updating existing project (no PDF)...');
+        saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'no_pdf_in_save', projectId: state.currentProjectId, timeoutMs: 30000 });
         const t3 = Date.now();
         const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
         if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
         const { error } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
         log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
         if (error) throw error;
+        saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId });
       } else {
         setProgress('Uploading project...');
         await tick();
         log('Inserting project (no PDF)...');
+        saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000 });
         const t4 = Date.now();
         const { data: row, error } = await saveWithTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
         log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
         if (error) throw error;
+        saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id });
         const projectId = row?.id;
         if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
         state.currentProjectId = projectId;
@@ -15439,11 +15508,13 @@
         } catch (_) {}
       }
       log('Save complete');
+      saveDebugLog('manual.save.complete', { runId });
       saveProgressMessage = '';
       updateUI();
       return { ok: true };
     } catch (e) {
       console.error('[Save] Failed:', e);
+      saveDebugLogError(runId, 'manual.save', e);
       log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
@@ -15458,15 +15529,31 @@
     }
   }
 
-  async function performAutoSave() {
-    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return { ok: false, error: null };
-    if (saveInProgress) return { ok: false, error: null };
-    if (!state.pages.length && !state.currentProjectId) return { ok: false, error: null };
-    if (state.isViewer) return { ok: false, error: null };
+  async function performAutoSave(externalRunId) {
+    const runId = externalRunId || saveDebugRunId();
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) {
+      saveDebugLog('autosave.skip', { runId, reason: 'no_supabase_or_user' });
+      return { ok: false, error: null };
+    }
+    if (saveInProgress) {
+      saveDebugLog('autosave.skip', { runId, reason: 'save_in_progress' });
+      return { ok: false, error: null };
+    }
+    if (!state.pages.length && !state.currentProjectId) {
+      saveDebugLog('autosave.skip', { runId, reason: 'no_pages_no_project' });
+      return { ok: false, error: null };
+    }
+    if (state.isViewer) {
+      saveDebugLog('autosave.skip', { runId, reason: 'viewer' });
+      return { ok: false, error: null };
+    }
     const user = state.supabaseSession.user;
     if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
       const checkedAt = new Date(state.checkedOutAt).getTime();
-      if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
+      if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) {
+        saveDebugLog('autosave.skip', { runId, reason: 'checkout_expired' });
+        return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
+      }
     }
     const t0 = Date.now();
     const data = {
@@ -15489,6 +15576,15 @@
     const dataSize = JSON.stringify(data).length;
     perfLog('performAutoSave JSON.stringify', Date.now() - t0, { dataSize, pages: state.pages.length });
     const name = state.currentProjectName || 'Untitled';
+    saveDebugLog('autosave.payload', {
+      runId,
+      projectId: state.currentProjectId || null,
+      dataSize,
+      pages: state.pages.length,
+      counter_count: counts.counter_count,
+      line_count: counts.line_count,
+      willInsert: !state.currentProjectId
+    });
     const tTotal = Date.now();
     try {
       if (state.currentProjectId) {
@@ -15497,17 +15593,24 @@
           try {
             const t1 = Date.now();
             const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
-            perfLog('performAutoSave storage.info', Date.now() - t1, { path: state.pdfStoragePath });
+            const dt = Date.now() - t1;
+            perfLog('performAutoSave storage.info', dt, { path: state.pdfStoragePath });
             const sz = info && (info.metadata?.size ?? info.size);
             if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-          } catch (_) { /* ignore */ }
+            saveDebugLog('autosave.storage.info.ok', { runId, ms: dt, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
+          } catch (se) {
+            saveDebugLog('autosave.storage.info.error', { runId, message: se?.message, name: se?.name });
+          }
         }
         const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
         if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+        saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: 30000 });
         const t3 = Date.now();
         const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
-        perfLog('performAutoSave projects.update', Date.now() - t3, { projectId: state.currentProjectId });
+        const updMs = Date.now() - t3;
+        perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId });
         if (error) throw error;
+        saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId });
       } else {
         let sizeBytes = dataSize;
         let pdfHash = null;
@@ -15517,14 +15620,17 @@
         }
         const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
         if (pdfHash) insertData.pdf_hash = pdfHash;
+        saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash });
         const t4 = Date.now();
         const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
-        perfLog('performAutoSave projects.insert', Date.now() - t4, { dataSize });
+        const insMs = Date.now() - t4;
+        perfLog('performAutoSave projects.insert', insMs, { dataSize });
         if (error) throw error;
         const projectId = row?.id;
         if (!projectId) throw new Error('Project created but no ID returned');
         state.currentProjectId = projectId;
         state.currentProjectName = name;
+        saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId });
       }
       lastSaveIncludedPdf = !!state.pdfStoragePath;
       state.lastSavedAt = new Date().toISOString();
@@ -15541,9 +15647,11 @@
       }
       updateUI();
       perfLog('performAutoSave total', Date.now() - tTotal);
+      saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
       return { ok: true };
     } catch (e) {
       console.error('[Auto-save] Failed:', e);
+      saveDebugLogError(runId, 'autosave.request', e);
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
       return { ok: false, error: e };
@@ -15637,8 +15745,10 @@
   setInterval(async () => {
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
     if (!autoSaveDirty) return;
+    const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
+    if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
     autoSaveDirty = false;
-    const result = await performAutoSave();
+    const result = await performAutoSave(intervalRunId);
     if (!result.ok) {
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
         showToast('Your edit session expired. Check out the project again to continue editing.', 4000);

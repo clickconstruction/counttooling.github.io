@@ -9,3 +9,5 @@ window.SUPABASE_ANON_KEY = 'your-anon-key';
 // Optional: dev-only auth bypass (localhost only); create a test user in Supabase first
 // window.DEV_AUTH_EMAIL = 'test@clickplumbing.com';
 // window.DEV_AUTH_PASSWORD = 'your-test-password';
+// Optional: verbose [SaveDebug] console logs for cloud save / auto-save troubleshooting (same flag in production config.js)
+// window.CLICKCOUNT_DEBUG_SAVE = true;

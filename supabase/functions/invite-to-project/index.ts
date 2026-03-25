@@ -25,9 +25,11 @@ Deno.serve(async (req) => {
     if (!proj) return new Response(JSON.stringify({ error: 'Project not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
     const { data: existingShare } = await adminClient.from('project_shares').select('user_id').eq('project_id', project_id).eq('user_id', user.id).maybeSingle()
+    const { data: callerProfile } = await adminClient.from('profiles').select('is_admin').eq('user_id', user.id).maybeSingle()
     const isOwner = proj.user_id === user.id
     const isMember = !!existingShare
-    if (!isOwner && !isMember) {
+    const isAdmin = !!callerProfile?.is_admin
+    if (!isOwner && !isMember && !isAdmin) {
       return new Response(JSON.stringify({ error: 'No permission to add share' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 

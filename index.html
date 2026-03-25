@@ -670,17 +670,90 @@
     .settings-users-list .settings-project-row .settings-project-meta { font-size: 0.8rem; color: var(--text3); }
     .settings-project-row .settings-project-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
     .settings-project-row .settings-project-badges { margin-bottom: 0; }
-    #loadProjectList .load-project-item { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; }
+    #loadProjectList .load-project-item { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 6px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 4px; cursor: pointer; }
     #loadProjectList .load-project-item:last-child { margin-bottom: 0; }
     #loadProjectList .load-project-item:hover { background: var(--surface2); }
     #loadProjectList .load-project-item.loading { pointer-events: none; opacity: 0.7; cursor: wait; }
     #loadProjectList.loading .load-project-item { pointer-events: none; }
-    #loadProjectList .load-project-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    #loadProjectList .load-project-name { font-size: 1.05rem; font-weight: 500; }
+    #loadProjectList .load-project-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    #loadProjectList .load-project-name { font-size: 1rem; font-weight: 500; }
     #loadProjectList .load-project-meta { font-size: 0.8rem; color: var(--text3); }
     .load-project-delete { flex-shrink: 0; padding: 4px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
     .load-project-delete:hover { color: var(--red); }
     #loadProjectList .load-project-actions { display: flex; flex-direction: row; align-items: center; gap: 8px; flex-shrink: 0; }
+    #loadProjectList button.load-project-canvas-download {
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      line-height: 1.2;
+      margin: 0;
+      padding: 2px 6px;
+      border: none;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--text2);
+    }
+    #loadProjectList button.load-project-canvas-download:hover { text-decoration: underline; filter: brightness(1.06); }
+    #loadProjectList button.load-project-copy-new {
+      flex-shrink: 0;
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 11px;
+      line-height: 1.2;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    #loadProjectList button.load-project-copy-new:hover { border-color: var(--accent); background: rgba(232,197,71,0.12); }
+    #loadProjectList .load-project-item { flex-direction: column; align-items: stretch; cursor: default; }
+    #loadProjectList .load-project-row-main { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 8px; cursor: pointer; }
+    #loadProjectList .load-project-admin-access { width: 100%; max-width: 100%; padding-top: 6px; margin-top: 6px; border-top: 1px solid var(--border); box-sizing: border-box; }
+    #loadProjectList .load-project-access-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px; width: 100%; max-width: 100%; box-sizing: border-box; }
+    #loadProjectList .load-project-access-add-wrap { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; max-width: 100%; box-sizing: border-box; }
+    #loadProjectList .load-project-access-add { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; justify-content: flex-start; max-width: 100%; min-width: 0; box-sizing: border-box; overflow-x: auto; }
+    #loadProjectList .load-project-access-user-select { min-width: 0; max-width: 100%; flex: 1 1 auto; padding: 4px 8px; font-size: 0.75rem; font-family: inherit; box-sizing: border-box; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer; }
+    #loadProjectList .load-project-access-role-select { flex: 0 0 auto; width: auto; max-width: fit-content; min-width: min-content; padding: 4px 8px; font-size: 0.75rem; font-family: inherit; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); }
+    #loadProjectList .load-project-access-add-btn { flex-shrink: 0; padding: 4px 10px; font-size: 0.75rem; font-family: inherit; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--accent); }
+    #loadProjectList .load-project-access-add-btn:hover { border-color: var(--accent); }
+    #loadProjectList .load-project-access-add-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #loadProjectList .load-project-access-add-error { font-size: 0.72rem; color: var(--red); text-align: right; line-height: 1.3; }
+    #loadProjectList .load-project-access-toggle { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 0.8rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 4px 0; text-align: left; flex-shrink: 0; }
+    #loadProjectList .load-project-access-toggle:hover { text-decoration: underline; }
+    #loadProjectList .load-project-access-chevron { display: inline-block; width: 1em; font-size: 0.65rem; color: var(--text3); }
+    #loadProjectList .load-project-access-panel { margin-top: 6px; font-size: 0.8rem; color: var(--text2); }
+    #loadProjectList .load-project-access-loading { color: var(--text3); font-size: 0.8rem; }
+    #loadProjectList .load-project-access-list { list-style: none; margin: 0; padding: 0; }
+    #loadProjectList .load-project-access-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 0; font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+    #loadProjectList .load-project-access-email { word-break: break-all; }
+    #loadProjectModal .load-project-modal-intro { margin-bottom: 8px; color: var(--text2); font-size: 0.88rem; line-height: 1.35; }
+    #loadProjectModal .load-project-filters.form-group { margin-bottom: 8px; }
+    #loadProjectModal .load-project-filters { display: flex; flex-direction: column; align-items: stretch; gap: 6px; max-width: 100%; box-sizing: border-box; }
+    #loadProjectModal .load-project-filters-top { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; }
+    #loadProjectModal .load-project-filters-top .load-project-filter-search { flex: 1 1 auto; min-width: 0; }
+    #loadProjectModal .load-project-filter-search { width: 100%; padding: 5px 8px; font-size: 0.78rem; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); box-sizing: border-box; font-family: inherit; }
+    #loadProjectModal .load-project-filters-toggle { flex-shrink: 0; padding: 5px 10px; font-size: 0.78rem; font-family: inherit; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); }
+    #loadProjectModal .load-project-filters-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    #loadProjectModal .load-project-filters-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+    #loadProjectModal .load-project-filters-extra[hidden] { display: none !important; }
+    #loadProjectModal .load-project-filter-select { padding: 5px 8px; font-size: 0.78rem; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); max-width: 100%; font-family: inherit; }
+    #loadProjectModal .load-project-filter-owner-wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; flex: 1 1 140px; }
+    #loadProjectModal .load-project-filter-owner-wrap .load-project-filter-select { min-width: 0; flex: 1 1 auto; }
+    @media (min-width: 768px) {
+      #loadProjectModal .load-project-filters { flex-direction: row; align-items: flex-start; flex-wrap: wrap; gap: 10px 12px; }
+      #loadProjectModal .load-project-filters-top { flex: 0 1 280px; min-width: min(42%, 320px); max-width: 100%; }
+      #loadProjectModal .load-project-filters:has(#loadProjectFiltersExtra[hidden]) .load-project-filters-top { flex: 1 1 100%; min-width: 0; max-width: 100%; }
+      #loadProjectModal .load-project-filters-extra { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; align-items: center; }
+      #loadProjectModal .load-project-filters-extra > .load-project-filter-select { flex: 1 1 0; min-width: 0; max-width: 100%; }
+      #loadProjectModal .load-project-filters-extra > .load-project-filter-owner-wrap { flex: 1 1 0; min-width: 0; max-width: 100%; display: flex; align-items: center; align-self: stretch; }
+      #loadProjectModal .load-project-filters-extra > .load-project-filter-owner-wrap .load-project-filter-select { width: 100%; min-width: 0; }
+      #loadProjectList .load-project-access-add-wrap { width: 100%; max-width: 100%; box-sizing: border-box; }
+      #loadProjectList .load-project-access-add { flex-wrap: nowrap; justify-content: flex-start; }
+      #loadProjectList .load-project-access-user-select { flex: 1 1 auto; min-width: min(140px, 100%); max-width: 100%; }
+      #loadProjectList .load-project-access-role-select { flex: 0 0 auto; }
+      #loadProjectList .load-project-access-add-btn { flex-shrink: 0; }
+    }
     .counter-modal-search-row { padding: 0 0 12px 0; }
     .counter-modal-search-row input { width: 100%; padding: 8px 12px; font-size: 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); box-sizing: border-box; }
     .counter-modal-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
@@ -2385,11 +2458,48 @@
   <div class="modal-overlay" id="loadProjectModal">
     <div class="modal-card modal-card-fullscreen">
       <h2>Load Project from Cloud</h2>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
+      <p class="form-group load-project-modal-intro">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
+      <div id="loadProjectFilters" class="load-project-filters form-group" style="display:none;">
+        <div class="load-project-filters-top">
+          <input type="search" id="loadProjectFilterSearch" placeholder="Search by name…" autocomplete="off" aria-label="Search projects by name" class="load-project-filter-search" />
+          <button type="button" id="loadProjectFiltersToggle" class="load-project-filters-toggle" aria-expanded="true" aria-controls="loadProjectFiltersExtra">Filters</button>
+        </div>
+        <div id="loadProjectFiltersExtra" class="load-project-filters-extra">
+          <select id="loadProjectFilterOwnership" class="load-project-filter-select" aria-label="Filter by ownership">
+            <option value="">All projects</option>
+            <option value="mine">Mine</option>
+            <option value="shared">Shared with me</option>
+          </select>
+          <select id="loadProjectFilterRole" class="load-project-filter-select" aria-label="Filter by my access role">
+            <option value="">All roles</option>
+            <option value="owner">Owner</option>
+            <option value="editor">Editor</option>
+            <option value="viewer">Viewer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <span id="loadProjectFilterOwnerWrap" class="load-project-filter-owner-wrap" style="display:none;">
+            <select id="loadProjectFilterOwnerEmail" class="load-project-filter-select" aria-label="Filter by project owner"></select>
+          </span>
+        </div>
+      </div>
       <div id="loadProjectList" class="form-group"></div>
       <p id="loadProjectEmpty" class="form-group" style="color:var(--text2);display:none;">No projects yet. Save your first project to get started.</p>
       <div class="actions">
         <button id="loadProjectCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="copyProjectModal">
+    <div class="modal-card">
+      <h2>Copy project</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Opens a local working copy. Save to cloud from Project Settings when you are ready.</p>
+      <div class="form-group">
+        <label for="copyProjectNameInput">Project name</label>
+        <input type="text" id="copyProjectNameInput" placeholder="Untitled" autocomplete="off" style="width:100%;box-sizing:border-box;padding:8px 12px;font-size:1rem;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+      </div>
+      <div class="actions">
+        <button type="button" id="copyProjectModalCancel">Cancel</button>
+        <button type="button" class="btn-yellow" id="copyProjectModalConfirm">Open copy</button>
       </div>
     </div>
   </div>
@@ -3787,6 +3897,8 @@
   let autoSaveDirty = false;
   let lastModifiedAt = 0;
   let pendingLastSessionRestore = null;
+  let pendingCopyProject = null;
+  let copyProjectModalTarget = null;
   let viewLinkEmailResolve = null;
   let saveInProgress = false;
   let savePdfInProgress = false;
@@ -12810,14 +12922,169 @@
         errEl.style.display = 'block';
       }
     };
+    function openCopyProjectModal(proj) {
+      copyProjectModalTarget = proj;
+      const inp = document.getElementById('copyProjectNameInput');
+      const confirmBtn = document.getElementById('copyProjectModalConfirm');
+      if (inp) inp.value = (proj.name || 'Untitled') + ' (copy)';
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Open copy'; }
+      showModal('copyProjectModal');
+      if (inp) setTimeout(function () { inp.focus(); inp.select && inp.select(); }, 0);
+    }
+    function openCopyProjectModalOrPromptSave(proj) {
+      if (!autoSaveDirty) {
+        pendingCopyProject = null;
+        openCopyProjectModal(proj);
+        return;
+      }
+      pendingCopyProject = proj;
+      const msgEl = document.querySelector('#saveBeforeLoadModal p');
+      const cancelBtn = document.getElementById('saveBeforeLoadCancel');
+      const discardBtn = document.getElementById('saveBeforeLoadDiscard');
+      const saveBtn = document.getElementById('saveBeforeLoadSave');
+      if (msgEl) msgEl.textContent = 'You have unsaved changes. Save before copying another project?';
+      if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancel'; }
+      if (discardBtn) discardBtn.style.display = '';
+      if (saveBtn) saveBtn.style.display = '';
+      showModal('saveBeforeLoadModal');
+    }
+    async function resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup) {
+      let buf;
+      if (useIdbBackup && idbBackup.pdfBlob) {
+        buf = await idbBackup.pdfBlob.arrayBuffer();
+      }
+      if (buf === undefined || !buf || buf.byteLength === 0) {
+        const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
+        if (cachedBlob && cachedBlob.size > 0) {
+          buf = await cachedBlob.arrayBuffer();
+        }
+        if (cachedBlob && (!buf || buf.byteLength === 0)) {
+          pdfCacheDelete(proj.id);
+        }
+      }
+      if (buf === undefined || !buf || buf.byteLength === 0) {
+        const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
+        const emptyOrMissing = dlErr || !blob || blob.size === 0;
+        if (emptyOrMissing) return null;
+        buf = await blob.arrayBuffer();
+        if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
+      }
+      return (buf && buf.byteLength > 0) ? buf : null;
+    }
+    async function buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup) {
+      const bufPdf = buf.slice(0);
+      const bufStorage = buf.slice(0);
+      const pdf = await pdfjsLib.getDocument(bufPdf).promise;
+      state.pages = [];
+      const numPages = pdf.numPages;
+      for (let i = 0; i < numPages; i++) {
+        const pdfPage = await pdf.getPage(i + 1);
+        const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+        const canvasId = uid();
+        state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
+        state.activeCanvasIdByPage[i] = canvasId;
+      }
+      if (useIdbBackup && idbBackup.data) {
+        applyTakeoffBackupToState(idbBackup.data);
+      } else {
+        state.counters = Array.isArray(d.counters) ? d.counters : [];
+        state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+        state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+        if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+        if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+        if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+        (d.pages || []).forEach(function (p) {
+          applyPageAnnotationsFromData(state.pages[p.index], p);
+        });
+        if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+        if (d.pageScales) {
+          d.pageScales.forEach(function (scale, i) { if (state.pages[i]) state.pages[i].scale = scale; });
+        } else if (d.scale) {
+          state.pages.forEach(function (p) { p.scale = d.scale; });
+        }
+        state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+        if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+        if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+        if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+        if (d.gridSettings) state.gridSettings = d.gridSettings;
+      }
+      reconcileOrphanedCountersAndLineTypes();
+      clearUndoStacks();
+      return bufStorage;
+    }
+    async function applyLocalForkAfterPdfLoad(forkName, pdfArrayBuffer) {
+      state.pdfStoragePath = null;
+      state.pendingCanvasLoad = null;
+      state.currentProjectId = null;
+      state.currentProjectName = forkName || 'Untitled';
+      state.pdfBuffer = pdfArrayBuffer;
+      state.pdfBufferSize = pdfArrayBuffer.byteLength;
+      state.pdfHash = await sha256Hex(pdfArrayBuffer);
+      subscribeToProjectCheckoutChanges(null);
+      state.checkedOutBy = null;
+      state.checkedOutAt = null;
+      state.checkedOutEmail = null;
+      state.isViewer = false;
+      state.canCheckOut = false;
+      state.projectOwnerId = null;
+      state.loadedViaViewLink = false;
+      state.lastSavedAt = null;
+      lastSaveIncludedPdf = false;
+      lastLocalBackupAt = null;
+      autoSaveDirty = false;
+      lastModifiedAt = 0;
+      state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
+      try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+      hideModal('copyProjectModal');
+      hideModal('loadProjectModal');
+      state.sidebarReorderModeActive = false;
+      copyProjectModalTarget = null;
+      fitZoom();
+      updateUI();
+      showToast('Local copy opened. Save to cloud from Project Settings when you are ready.', 5000);
+    }
+    async function forkCloudProjectToLocalWorkingCopy(proj, forkName) {
+      if (!supabase) {
+        showToast('Cloud not configured.', 3000);
+        return;
+      }
+      if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
+      let d = proj.data || {};
+      try {
+        const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
+        if (!error && full && full.data) d = full.data;
+      } catch (_) {}
+      const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
+      const idbBackup = await takeoffBackupGet(proj.id);
+      const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
+      if (!proj.pdf_path) {
+        showToast('Copy to new requires a PDF in the project.', 4000);
+        return;
+      }
+      try {
+        const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
+        if (!buf) {
+          showToast('Cannot copy: PDF is missing from storage. Open the project and upload a PDF if needed.', 5000);
+          return;
+        }
+        const bufStorage = await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
+        const nameTrim = (forkName || '').trim() || 'Untitled';
+        await applyLocalForkAfterPdfLoad(nameTrim, bufStorage);
+      } catch (e) {
+        console.error('[Fork project]', e);
+        showToast(e.message || 'Failed to copy project.', 5000);
+      }
+    }
     function openLoadProjectModalOrPromptSave() {
       if (!autoSaveDirty) {
+        pendingCopyProject = null;
         openLoadProjectModal().catch(e => {
           console.error('[Load Project]', e);
           showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
         });
         return;
       }
+      pendingCopyProject = null;
       const msgEl = document.querySelector('#saveBeforeLoadModal p');
       const cancelBtn = document.getElementById('saveBeforeLoadCancel');
       const discardBtn = document.getElementById('saveBeforeLoadDiscard');
@@ -12831,6 +13098,8 @@
     async function openLoadProjectModal() {
       const listEl = document.getElementById('loadProjectList');
       const emptyEl = document.getElementById('loadProjectEmpty');
+      const filtersBarInit = document.getElementById('loadProjectFilters');
+      if (filtersBarInit) filtersBarInit.style.display = 'none';
       listEl.innerHTML = '';
       emptyEl.style.display = 'none';
       try {
@@ -12866,19 +13135,139 @@
           return;
         }
         if (!projects || projects.length === 0) {
+          const filtersBarEmpty = document.getElementById('loadProjectFilters');
+          if (filtersBarEmpty) filtersBarEmpty.style.display = 'none';
           emptyEl.style.display = 'block';
           showModal('loadProjectModal');
           return;
         }
+        const projectsAll = projects;
         const formatSizeMb = function (bytes) {
           if (bytes == null || bytes < 0) return '';
           const mb = bytes / (1024 * 1024);
           return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
         };
         const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        let loadProjectInProgress = false;
-        for (let i = 0; i < projects.length; i++) {
-          const proj = projects[i];
+        const loadProjectAccessCache = Object.create(null);
+        function fillLoadProjectAccessPanel(panel, rows, escFn) {
+          if (!rows || rows.length === 0) {
+            panel.innerHTML = '<div class="load-project-access-empty" style="color:var(--text3);">No users listed.</div>';
+            return;
+          }
+          let html = '<ul class="load-project-access-list">';
+          for (let ai = 0; ai < rows.length; ai++) {
+            const r = rows[ai];
+            html += '<li><span class="load-project-access-email">' + escFn(r.email || '—') + '</span> <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:10px;">' + escFn(r.role || '') + '</span></li>';
+          }
+          html += '</ul>';
+          panel.innerHTML = html;
+        }
+        async function fetchLoadProjectAccessIntoPanel(accessPanel, proj) {
+          if (loadProjectAccessCache[proj.id]) {
+            fillLoadProjectAccessPanel(accessPanel, loadProjectAccessCache[proj.id], esc);
+            return;
+          }
+          if (!supabase) {
+            accessPanel.innerHTML = '<div class="load-project-access-error" style="color:var(--red);">Cloud not configured.</div>';
+            return;
+          }
+          accessPanel.innerHTML = '<div class="load-project-access-loading">Loading…</div>';
+          try {
+            const { data, error } = await supabase.rpc('list_project_shares', { p_project_id: proj.id });
+            if (error) {
+              accessPanel.innerHTML = '<div class="load-project-access-error" style="color:var(--red);">' + esc(error.message || 'Failed to load') + '</div>';
+              showToast(error.message || 'Could not load access list.', 4000);
+              return;
+            }
+            loadProjectAccessCache[proj.id] = data || [];
+            fillLoadProjectAccessPanel(accessPanel, loadProjectAccessCache[proj.id], esc);
+          } catch (err) {
+            accessPanel.innerHTML = '<div class="load-project-access-error" style="color:var(--red);">' + esc(err.message || 'Failed') + '</div>';
+            showToast(err.message || 'Could not load access list.', 4000);
+          }
+        }
+        async function populateLoadProjectUserSelect(userSelect, proj) {
+          const wrap = userSelect.closest('.load-project-access-add-wrap');
+          const addErrEl = wrap ? wrap.querySelector('.load-project-access-add-error') : null;
+          if (addErrEl) {
+            addErrEl.style.display = 'none';
+            addErrEl.textContent = '';
+          }
+          userSelect.innerHTML = '<option value="">Select a user…</option>';
+          if (!supabase) {
+            const o = document.createElement('option');
+            o.value = '';
+            o.disabled = true;
+            o.textContent = 'Cloud not configured';
+            userSelect.appendChild(o);
+            userSelect.disabled = true;
+            return;
+          }
+          userSelect.disabled = false;
+          try {
+            const { data, error } = await supabase.rpc('list_users_for_project_invite', { p_project_id: proj.id });
+            if (error) {
+              if (addErrEl) {
+                addErrEl.textContent = error.message || 'Could not load users';
+                addErrEl.style.display = 'block';
+              }
+              showToast(error.message || 'Could not load users for invite.', 4000);
+              return;
+            }
+            userSelect.innerHTML = '<option value="">Select a user…</option>';
+            if (data && data.length > 0) {
+              for (let ui = 0; ui < data.length; ui++) {
+                const u = data[ui];
+                const opt = document.createElement('option');
+                opt.value = (u.email || '').toLowerCase();
+                opt.textContent = u.email || u.id;
+                userSelect.appendChild(opt);
+              }
+            }
+          } catch (err) {
+            if (addErrEl) {
+              addErrEl.textContent = err.message || 'Could not load users';
+              addErrEl.style.display = 'block';
+            }
+            showToast(err.message || 'Could not load users for invite.', 4000);
+          }
+        }
+        function downloadLoadProjectCanvasJson(data, filename) {
+          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        function getFilteredLoadProjects() {
+          let filtered = projectsAll.slice();
+          const ownEl = document.getElementById('loadProjectFilterOwnership');
+          const roleEl = document.getElementById('loadProjectFilterRole');
+          const ownerEl = document.getElementById('loadProjectFilterOwnerEmail');
+          const searchEl = document.getElementById('loadProjectFilterSearch');
+          if (ownEl && ownEl.value === 'mine') filtered = filtered.filter(function (p) { return p.is_owner; });
+          else if (ownEl && ownEl.value === 'shared') filtered = filtered.filter(function (p) { return !p.is_owner; });
+          if (roleEl && roleEl.value) filtered = filtered.filter(function (p) { return (p.my_access_role || '') === roleEl.value; });
+          if (state.isAdmin && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
+          if (searchEl) {
+            const q = (searchEl.value || '').trim().toLowerCase();
+            if (q) filtered = filtered.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1; });
+          }
+          return filtered;
+        }
+        async function renderLoadProjectListRows() {
+          listEl.innerHTML = '';
+          const filtered = getFilteredLoadProjects();
+          if (filtered.length === 0) {
+            listEl.innerHTML = '<p class="load-project-no-match" style="color:var(--text2);margin:0;">No projects match filters.</p>';
+            showModal('loadProjectModal');
+            return;
+          }
+          let loadProjectInProgress = false;
+          for (let i = 0; i < filtered.length; i++) {
+            const proj = filtered[i];
           let sizeBytes = proj.size_bytes;
           if (sizeBytes == null && proj.pdf_path) {
             try {
@@ -12893,7 +13282,7 @@
           div.className = 'load-project-item';
           const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
           const sizeStr = formatSizeMb(sizeBytes);
-          const canvasOnlyBadge = !proj.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
+          const canvasOnlyBadge = !proj.pdf_path ? '<button type="button" class="badge load-project-canvas-download" title="Download canvas (.json)" aria-label="Download canvas">Canvas only</button>' : '';
           const countsBadge = (proj.counter_count != null || proj.line_count != null) && (proj.counter_count > 0 || proj.line_count > 0)
             ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">' + [proj.counter_count > 0 ? (proj.counter_count + ' cnt') : null, proj.line_count > 0 ? (proj.line_count + ' ln') : null].filter(Boolean).join(' · ') + '</span>'
             : '';
@@ -12906,8 +13295,34 @@
           const meta = esc(metaParts.join(' · ')) + lockBadge + ownerBadge;
           const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 640"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
           const deleteBtnHtml = proj.is_owner ? '<button type="button" class="load-project-delete" title="Delete from cloud" aria-label="Delete">' + trashSvg + '</button>' : '';
-          const actionsHtml = (countsBadge || canvasOnlyBadge || deleteBtnHtml) ? '<div class="load-project-actions">' + countsBadge + canvasOnlyBadge + deleteBtnHtml + '</div>' : '';
-          div.innerHTML = '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' + actionsHtml;
+          const copyNewBtnHtml = proj.pdf_path ? '<button type="button" class="load-project-copy-new" title="Open a local copy. Save to cloud from Project Settings when ready.">Copy to new</button>' : '';
+          const actionsHtml = (countsBadge || canvasOnlyBadge || copyNewBtnHtml || deleteBtnHtml) ? '<div class="load-project-actions">' + countsBadge + canvasOnlyBadge + copyNewBtnHtml + deleteBtnHtml + '</div>' : '';
+          const adminAccessHtml = state.isAdmin
+            ? '<div class="load-project-admin-access">' +
+              '<div class="load-project-access-header">' +
+              '<button type="button" class="load-project-access-toggle" aria-expanded="true" aria-controls="loadProjectAccess_' + proj.id + '">' +
+              '<span class="load-project-access-chevron" aria-hidden="true">▼</span> Who has access' +
+              '</button>' +
+              '<div class="load-project-access-add-wrap">' +
+              '<div class="load-project-access-add">' +
+              '<select class="load-project-access-user-select" aria-label="User to add">' +
+              '<option value="">Select a user…</option>' +
+              '</select>' +
+              '<select class="load-project-access-role-select" aria-label="Role for new user">' +
+              '<option value="viewer">Viewer</option>' +
+              '<option value="editor">Editor</option>' +
+              '</select>' +
+              '<button type="button" class="load-project-access-add-btn">Add</button>' +
+              '</div>' +
+              '<div class="load-project-access-add-error" style="display:none;"></div>' +
+              '</div>' +
+              '</div>' +
+              '<div id="loadProjectAccess_' + proj.id + '" class="load-project-access-panel"></div>' +
+              '</div>'
+            : '';
+          div.innerHTML = '<div class="load-project-row-main">' +
+            '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' +
+            actionsHtml + '</div>' + adminAccessHtml;
           const deleteBtn = div.querySelector('.load-project-delete');
           if (deleteBtn) {
             deleteBtn.onclick = async (e) => {
@@ -12916,9 +13331,16 @@
               try {
                 await deleteProjectAsOwner(proj.id, proj.pdf_path);
                 div.remove();
-                if (!listEl.querySelector('.load-project-item')) {
+                for (let pi = projectsAll.length - 1; pi >= 0; pi--) {
+                  if (projectsAll[pi].id === proj.id) { projectsAll.splice(pi, 1); break; }
+                }
+                if (!projectsAll.length) {
+                  const filtersBarDel = document.getElementById('loadProjectFilters');
+                  if (filtersBarDel) filtersBarDel.style.display = 'none';
                   listEl.innerHTML = '';
                   emptyEl.style.display = 'block';
+                } else {
+                  void renderLoadProjectListRows();
                 }
                 if (state.currentProjectId === proj.id) {
                   clearUndoStacks();
@@ -12946,7 +13368,126 @@
               }
             };
           }
-          div.onclick = async () => {
+          const canvasDlBtn = div.querySelector('.load-project-canvas-download');
+          if (canvasDlBtn) {
+            canvasDlBtn.onclick = async (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (!supabase) {
+                showToast('Cloud not configured.', 3000);
+                return;
+              }
+              try {
+                const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
+                if (error) {
+                  showToast(error.message || 'Could not load canvas data.', 4000);
+                  return;
+                }
+                if (!full || full.data == null) {
+                  showToast('No canvas data for this project.', 4000);
+                  return;
+                }
+                downloadLoadProjectCanvasJson(full.data, sanitizeForFilename(proj.name || 'Untitled') + '.json');
+              } catch (err) {
+                showToast(err?.message || 'Download failed.', 4000);
+              }
+            };
+          }
+          const copyNewBtn = div.querySelector('.load-project-copy-new');
+          if (copyNewBtn) {
+            copyNewBtn.onclick = function (e) {
+              e.stopPropagation();
+              e.preventDefault();
+              openCopyProjectModalOrPromptSave(proj);
+            };
+          }
+          if (state.isAdmin) {
+            const toggleBtn = div.querySelector('.load-project-access-toggle');
+            const accessPanel = div.querySelector('.load-project-access-panel');
+            const addWrap = div.querySelector('.load-project-access-add-wrap');
+            if (addWrap) {
+              addWrap.addEventListener('click', function (e) { e.stopPropagation(); });
+            }
+            if (toggleBtn && accessPanel) {
+              toggleBtn.onclick = async function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                const chev = toggleBtn.querySelector('.load-project-access-chevron');
+                if (expanded) {
+                  toggleBtn.setAttribute('aria-expanded', 'false');
+                  accessPanel.hidden = true;
+                  if (chev) chev.textContent = '▶';
+                  return;
+                }
+                toggleBtn.setAttribute('aria-expanded', 'true');
+                accessPanel.hidden = false;
+                if (chev) chev.textContent = '▼';
+                await fetchLoadProjectAccessIntoPanel(accessPanel, proj);
+              };
+              const addBtn = div.querySelector('.load-project-access-add-btn');
+              const userSelect = div.querySelector('.load-project-access-user-select');
+              const roleSel = div.querySelector('.load-project-access-role-select');
+              const addErrEl = div.querySelector('.load-project-access-add-error');
+              if (addBtn && userSelect && roleSel) {
+                addBtn.onclick = async function (e) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (addErrEl) {
+                    addErrEl.style.display = 'none';
+                    addErrEl.textContent = '';
+                  }
+                  const email = (userSelect.value || '').trim().toLowerCase();
+                  if (!email) {
+                    if (addErrEl) {
+                      addErrEl.textContent = 'Select a user';
+                      addErrEl.style.display = 'block';
+                    }
+                    return;
+                  }
+                  if (!supabase) {
+                    showToast('Cloud not configured.', 3000);
+                    return;
+                  }
+                  addBtn.disabled = true;
+                  try {
+                    const res = await fetch((typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/invite-to-project', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (state.supabaseSession?.access_token || '') },
+                      body: JSON.stringify({ project_id: proj.id, email: email, role: roleSel.value || 'viewer' })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                      delete loadProjectAccessCache[proj.id];
+                      userSelect.value = '';
+                      await fetchLoadProjectAccessIntoPanel(accessPanel, proj);
+                      showToast('Added ' + (data.email || email));
+                    } else {
+                      const msg = data.error || 'Failed to add user';
+                      if (addErrEl) {
+                        addErrEl.textContent = msg;
+                        addErrEl.style.display = 'block';
+                      }
+                      showToast(msg, 4000);
+                    }
+                  } catch (err) {
+                    const msg = err.message || 'Failed to add user';
+                    if (addErrEl) {
+                      addErrEl.textContent = msg;
+                      addErrEl.style.display = 'block';
+                    }
+                    showToast(msg, 4000);
+                  } finally {
+                    addBtn.disabled = false;
+                  }
+                };
+              }
+              void fetchLoadProjectAccessIntoPanel(accessPanel, proj);
+              if (userSelect) void populateLoadProjectUserSelect(userSelect, proj);
+            }
+          }
+          const rowMain = div.querySelector('.load-project-row-main');
+          const loadRowClick = async () => {
           if (loadProjectInProgress) return;
           loadProjectInProgress = true;
           div.classList.add('loading');
@@ -12966,24 +13507,8 @@
           const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
           if (proj.pdf_path) {
             try {
-              let buf;
-              if (useIdbBackup && idbBackup.pdfBlob) {
-                buf = await idbBackup.pdfBlob.arrayBuffer();
-              }
-              if (buf === undefined || !buf || buf.byteLength === 0) {
-                const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
-                const useCache = cachedBlob && cachedBlob.size > 0;
-                if (useCache) {
-                  buf = await cachedBlob.arrayBuffer();
-                }
-                if (cachedBlob && (!buf || buf.byteLength === 0)) {
-                  pdfCacheDelete(proj.id);
-                }
-              }
-              if (buf === undefined || !buf || buf.byteLength === 0) {
-                const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
-                const emptyOrMissing = dlErr || !blob || blob.size === 0;
-                if (emptyOrMissing) {
+              const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
+              if (!buf) {
                   /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
                   state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
                   state.pdfStoragePath = null;
@@ -13024,51 +13549,11 @@
                   showToast('This project\'s PDF is empty or missing. Upload your PDF to load the annotations.', 5000);
                   document.getElementById('pdfInput').click();
                   return;
-                }
-                buf = await blob.arrayBuffer();
-                if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
               }
-              if (buf && buf.byteLength > 0) {
-                const pdf = await pdfjsLib.getDocument(buf).promise;
-                state.pages = [];
-                const numPages = pdf.numPages;
-                for (let i = 0; i < numPages; i++) {
-                  const pdfPage = await pdf.getPage(i + 1);
-                  const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-                  const canvasId = uid();
-                  state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-                  state.activeCanvasIdByPage[i] = canvasId;
-                }
-                if (useIdbBackup && idbBackup.data) {
-                  applyTakeoffBackupToState(idbBackup.data);
-                } else {
-                  state.counters = Array.isArray(d.counters) ? d.counters : [];
-                  state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-                  state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-                  if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-                  if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-                  if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-                  (d.pages || []).forEach(p => {
-                    applyPageAnnotationsFromData(state.pages[p.index], p);
-                  });
-                  if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-                  if (d.pageScales) {
-                    d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-                  } else if (d.scale) {
-                    state.pages.forEach(p => { p.scale = d.scale; });
-                  }
-                  state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-                  if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-                  if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-                  if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-                  if (d.gridSettings) state.gridSettings = d.gridSettings;
-                }
-                reconcileOrphanedCountersAndLineTypes();
-                clearUndoStacks();
-                state.pdfStoragePath = proj.pdf_path;
-                state.pdfBuffer = null;
-                state.pdfBufferSize = 0;
-              }
+              await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
+              state.pdfStoragePath = proj.pdf_path;
+              state.pdfBuffer = null;
+              state.pdfBufferSize = 0;
             } catch (e) {
               listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
               return;
@@ -13138,9 +13623,80 @@
             if (metaEl) metaEl.textContent = origMeta;
           }
         };
+          if (rowMain) rowMain.onclick = loadRowClick;
           listEl.appendChild(div);
         }
         showModal('loadProjectModal');
+        }
+        const filtersBarEl = document.getElementById('loadProjectFilters');
+        if (filtersBarEl) {
+          filtersBarEl.style.display = 'flex';
+          const ownEl2 = document.getElementById('loadProjectFilterOwnership');
+          const roleEl2 = document.getElementById('loadProjectFilterRole');
+          const searchEl2 = document.getElementById('loadProjectFilterSearch');
+          const ownerWrap2 = document.getElementById('loadProjectFilterOwnerWrap');
+          const ownerEmailSel2 = document.getElementById('loadProjectFilterOwnerEmail');
+          if (ownEl2) ownEl2.value = '';
+          if (roleEl2) roleEl2.value = '';
+          if (searchEl2) searchEl2.value = '';
+          let ownerEmailsUnique = [];
+          if (state.isAdmin) {
+            const seenO = Object.create(null);
+            for (let ei = 0; ei < projectsAll.length; ei++) {
+              const emo = projectsAll[ei].owner_email;
+              if (emo && !seenO[emo]) { seenO[emo] = true; ownerEmailsUnique.push(emo); }
+            }
+            ownerEmailsUnique.sort();
+          }
+          if (ownerWrap2) ownerWrap2.style.display = (state.isAdmin && ownerEmailsUnique.length > 1) ? 'inline-flex' : 'none';
+          if (ownerEmailSel2) {
+            ownerEmailSel2.innerHTML = '<option value="">All owners</option>';
+            if (state.isAdmin) {
+              for (let ej = 0; ej < ownerEmailsUnique.length; ej++) {
+                const opto = document.createElement('option');
+                opto.value = ownerEmailsUnique[ej];
+                opto.textContent = ownerEmailsUnique[ej];
+                ownerEmailSel2.appendChild(opto);
+              }
+            }
+          }
+          const onFilterChange = function () { void renderLoadProjectListRows(); };
+          if (ownEl2) ownEl2.onchange = onFilterChange;
+          if (roleEl2) roleEl2.onchange = onFilterChange;
+          if (ownerEmailSel2) ownerEmailSel2.onchange = onFilterChange;
+          if (searchEl2) searchEl2.oninput = onFilterChange;
+          const filtersExtraEl = document.getElementById('loadProjectFiltersExtra');
+          const filtersToggleBtn = document.getElementById('loadProjectFiltersToggle');
+          if (filtersExtraEl && filtersToggleBtn) {
+            function applyLoadProjectFiltersPanelExpanded(isExp) {
+              if (isExp) {
+                filtersExtraEl.removeAttribute('hidden');
+                filtersToggleBtn.setAttribute('aria-expanded', 'true');
+              } else {
+                filtersExtraEl.setAttribute('hidden', '');
+                filtersToggleBtn.setAttribute('aria-expanded', 'false');
+              }
+            }
+            let expandedDefault;
+            try {
+              const stored = localStorage.getItem('loadProjectFiltersExpanded');
+              if (stored === 'true') expandedDefault = true;
+              else if (stored === 'false') expandedDefault = false;
+              else expandedDefault = !window.matchMedia('(max-width: 768px)').matches;
+            } catch (_) {
+              expandedDefault = !window.matchMedia('(max-width: 768px)').matches;
+            }
+            applyLoadProjectFiltersPanelExpanded(expandedDefault);
+            filtersToggleBtn.onclick = function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              const expand = filtersExtraEl.hasAttribute('hidden');
+              applyLoadProjectFiltersPanelExpanded(expand);
+              try { localStorage.setItem('loadProjectFiltersExpanded', expand ? 'true' : 'false'); } catch (_) {}
+            };
+          }
+        }
+        await renderLoadProjectListRows();
       } catch (e) {
         console.error('[Load Project]', e);
         listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects: ' + (e?.message || 'Unknown error') + '</p>';
@@ -13428,11 +13984,43 @@
     document.getElementById('loadProjectBtn').onclick = () => openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectBtnSidebar').onclick = () => openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
+    document.getElementById('copyProjectModalCancel').onclick = () => {
+      copyProjectModalTarget = null;
+      hideModal('copyProjectModal');
+    };
+    document.getElementById('copyProjectModalConfirm').onclick = async () => {
+      const proj = copyProjectModalTarget;
+      const inp = document.getElementById('copyProjectNameInput');
+      const confirmBtn = document.getElementById('copyProjectModalConfirm');
+      if (!proj) {
+        hideModal('copyProjectModal');
+        return;
+      }
+      const name = inp ? inp.value : '';
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Opening…';
+      }
+      try {
+        await forkCloudProjectToLocalWorkingCopy(proj, name);
+      } finally {
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Open copy';
+        }
+      }
+    };
     document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
-    document.getElementById('saveBeforeLoadCancel').onclick = () => hideModal('saveBeforeLoadModal');
+    document.getElementById('saveBeforeLoadCancel').onclick = () => {
+      pendingCopyProject = null;
+      hideModal('saveBeforeLoadModal');
+    };
     document.getElementById('saveBeforeLoadDiscard').onclick = () => {
       hideModal('saveBeforeLoadModal');
-      openLoadProjectModal();
+      const p = pendingCopyProject;
+      pendingCopyProject = null;
+      if (p) openCopyProjectModal(p);
+      else openLoadProjectModal();
     };
     document.getElementById('saveBeforeLoadSave').onclick = async () => {
       const cancelBtn = document.getElementById('saveBeforeLoadCancel');
@@ -13448,6 +14036,9 @@
       if (result.ok) {
         autoSaveDirty = false;
         hideModal('saveBeforeLoadModal');
+        const p = pendingCopyProject;
+        pendingCopyProject = null;
+        if (p) openCopyProjectModal(p);
       } else {
         if (isAuthError(result.error)) {
           showToast('Refresh the page to sync.', 4000);
@@ -13455,7 +14046,9 @@
           const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
           showToast('Save failed' + (errMsg ? ': ' + errMsg : '') + '. Open Project Settings to retry.', 4000);
         }
-        msgEl.textContent = 'You have unsaved changes. Save before loading another project?';
+        msgEl.textContent = pendingCopyProject
+          ? 'You have unsaved changes. Save before copying another project?'
+          : 'You have unsaved changes. Save before loading another project?';
         discardBtn.style.display = '';
         saveBtn.style.display = '';
         cancelBtn.disabled = false;
@@ -14588,6 +15181,7 @@
       else if (document.getElementById('manageIconsModal').classList.contains('visible')) { hideModal('manageIconsModal'); }
       else if (document.getElementById('canvasRepairModal').classList.contains('visible')) { hideModal('canvasRepairModal'); }
       else if (document.getElementById('saveProjectModal').classList.contains('visible')) { hideModal('saveProjectModal'); }
+      else if (document.getElementById('copyProjectModal').classList.contains('visible')) { copyProjectModalTarget = null; hideModal('copyProjectModal'); }
       else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
       else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }

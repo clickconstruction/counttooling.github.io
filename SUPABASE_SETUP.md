@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: 001 through 037 (or latest in `supabase/migrations/`). If you previously applied 032/033 (user_artboards, now reverted), also apply 034.
+**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: numbered `001`–`037` plus timestamped migrations in `supabase/migrations/` (remote history uses `YYYYMMDDHHMMSS_name.sql`; presence/activity is `20260326230000_user_presence_and_activity.sql`). If you previously applied 032/033 (user_artboards, now reverted), also apply 034.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
 
@@ -93,6 +93,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 **036_list_accessible_projects_access_filters.sql** — Extends `list_accessible_projects` with `owner_email` (project owner) and `my_access_role` (`owner` | `editor` | `viewer` | `admin` | `unknown`). Used by the Load Project modal for filters (Mine/Shared, role, admin owner dropdown).
 
 **037_remove_drop_claim_migration_entry.sql** — Idempotent cleanup: removes orphan migration history row `drop_claim_dev_with_code` (20260306034155) if present. The original migration only ran `DROP FUNCTION IF EXISTS public.claim_dev_with_code(text);`. Safe to apply on fresh databases (no-op).
+
+**20260326230000_user_presence_and_activity.sql** — Adds `profiles.last_seen_at`; table `user_activity` (event log); RPCs `touch_presence()`, `log_user_event(text, uuid, jsonb)`, `list_user_activity_for_admin(int, uuid, timestamptz)`; extends `list_users_for_admin()` with `last_seen_at`. Used by in-app presence heartbeat and admin **Activity** on user rows.
 
 ## 3. Deploy Edge Functions
 

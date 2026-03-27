@@ -785,12 +785,50 @@
     .settings-users-list .settings-user-email { flex: 1; overflow: hidden; text-overflow: ellipsis; }
     .settings-users-list .settings-user-role { color: var(--accent); font-size: 0.8rem; flex-shrink: 0; }
     .settings-users-list .settings-user-last { color: var(--text3); font-size: 0.8rem; flex-shrink: 0; }
+    .settings-users-list .settings-user-activity { flex-shrink: 0; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--accent); }
+    .settings-users-list .settings-user-activity:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
+    .settings-users-list .settings-user-activity svg { width: 20px; height: 20px; display: block; }
+    .settings-users-list .settings-user-activity path { fill: currentColor; }
     .settings-users-list .settings-user-delete { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--red); color: white; border: none; border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-user-delete:hover { opacity: 0.9; }
     .settings-users-list .settings-user-delete:disabled { opacity: 0.5; cursor: not-allowed; }
     .settings-users-list .settings-project-force-checkin { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-project-force-checkin:hover { background: var(--surface3); color: var(--text); }
     .settings-users-list .settings-project-force-checkin:disabled { opacity: 0.5; cursor: not-allowed; }
+    .manage-users-modal-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .manage-users-modal-header h2 { margin: 0; flex: 1; min-width: 0; }
+    .manage-users-header-activity-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: none; background: transparent; box-shadow: none; border-radius: 0; cursor: pointer; color: var(--yellow); line-height: 0; -webkit-appearance: none; appearance: none; }
+    .manage-users-header-activity-btn:hover { opacity: 0.88; }
+    .manage-users-header-activity-btn:focus { outline: none; }
+    .manage-users-header-activity-btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; border-radius: 2px; }
+    .manage-users-header-activity-btn svg { width: 22px; height: 22px; display: block; }
+    .manage-users-header-activity-btn path { fill: currentColor; }
+    #userActivityList .user-activity-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    #userActivityList .user-activity-table th,
+    #userActivityList .user-activity-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    #userActivityList .user-activity-table th { position: sticky; top: 0; background: var(--surface); color: var(--text2); font-weight: 600; z-index: 1; }
+    #userActivityList .user-activity-table .col-meta { word-break: break-all; max-width: 240px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+    #userActivityList .user-activity-summary-table th:nth-child(n+3),
+    #userActivityList .user-activity-summary-table td:nth-child(n+3) { text-align: right; }
+    .user-activity-toolbar { margin-bottom: 12px; }
+    .user-activity-toolbar-hidden { display: none !important; }
+    .user-activity-toolbar-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+    .user-activity-toolbar-field { margin-bottom: 0; flex: 1; min-width: 160px; }
+    .user-activity-toolbar-field label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 4px; }
+    .user-activity-toolbar-field select { width: 100%; max-width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 0.9rem; }
+    .user-activity-toolbar-filter { flex: 2; min-width: 200px; }
+    .user-activity-filter-wrap { display: flex; align-items: center; gap: 8px; }
+    .user-activity-filter-wrap input[type="search"] { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 0.9rem; }
+    .user-activity-filter-clear { padding: 6px 10px; font-size: 0.85rem; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+    .user-activity-filter-clear:hover { background: var(--surface3); color: var(--text); }
+    .user-activity-modal-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+    .user-activity-modal-header h2 { margin: 0; flex: 1; min-width: 0; }
+    .user-activity-view-toggle { display: flex; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface2); }
+    .user-activity-view-toggle-hidden { display: none !important; }
+    .user-activity-view-btn { margin: 0; padding: 8px 14px; font-size: 0.85rem; font-family: inherit; border: none; background: transparent; color: var(--text2); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+    .user-activity-view-btn:hover { color: var(--text); background: var(--surface3); }
+    .user-activity-view-btn[aria-pressed="true"] { background: var(--yellow); color: var(--bg); font-weight: 600; }
+    .user-activity-view-btn[aria-pressed="true"]:hover { background: var(--yellow); color: var(--bg); opacity: 0.95; }
     .context-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px; z-index: 300; min-width: 120px; }
     .context-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; }
     .context-menu-subtitle { display: block; font-size: 0.75rem; color: var(--text2); font-weight: normal; margin-top: 2px; }
@@ -2393,7 +2431,10 @@
   </div>
   <div class="modal-overlay" id="manageUserModal">
     <div class="modal-card">
-      <h2>Manage Users</h2>
+      <div class="manage-users-modal-header">
+        <h2>Manage Users</h2>
+        <button type="button" id="manageUserModalAllActivityBtn" class="manage-users-header-activity-btn" aria-label="View activity for all users"></button>
+      </div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Select a user to delete. You cannot delete yourself.</p>
       <div id="manageUserList" class="settings-users-list"></div>
       <div class="actions" style="margin-top:16px;">
@@ -2408,6 +2449,38 @@
       <div id="allUsersList" class="settings-users-list" style="max-height:60vh;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="allUsersModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="userActivityModal">
+    <div class="modal-card modal-card-large">
+      <div class="user-activity-modal-header">
+        <h2 id="userActivityModalTitle">User activity</h2>
+        <div id="userActivityModalViewToggle" class="user-activity-view-toggle user-activity-view-toggle-hidden" role="group" aria-label="View mode">
+          <button type="button" id="userActivityViewEventsBtn" class="user-activity-view-btn" aria-pressed="true">Events</button>
+          <button type="button" id="userActivityViewSummaryBtn" class="user-activity-view-btn" aria-pressed="false">Summary</button>
+        </div>
+      </div>
+      <p class="form-group" id="userActivityModalSubtitle" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;"></p>
+      <div id="userActivityToolbar" class="user-activity-toolbar user-activity-toolbar-hidden">
+        <div class="user-activity-toolbar-row">
+          <div class="form-group user-activity-toolbar-field">
+            <label for="userActivityUserSelect">User</label>
+            <select id="userActivityUserSelect" aria-describedby="userActivityUserListHint"></select>
+          </div>
+          <div class="form-group user-activity-toolbar-field user-activity-toolbar-filter">
+            <label for="userActivityFilterInput">Filter</label>
+            <div class="user-activity-filter-wrap">
+              <input type="search" id="userActivityFilterInput" placeholder="Filter by email or event…" autocomplete="off">
+              <button type="button" id="userActivityFilterClear" class="user-activity-filter-clear">Clear</button>
+            </div>
+          </div>
+        </div>
+        <p id="userActivityUserListHint" class="form-group" style="display:none;margin:8px 0 0;font-size:0.8rem;color:var(--text3);"></p>
+      </div>
+      <div id="userActivityList" class="settings-users-list" style="max-height:55vh;overflow-y:auto;font-size:0.85rem;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="userActivityModalClose">Close</button>
       </div>
     </div>
   </div>
@@ -3364,6 +3437,7 @@
   }
 
   const COUNTER_BTN_DEFAULT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
+  const USER_ACTIVITY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M320 171.9L305 151.1C280 116.5 239.9 96 197.1 96C123.6 96 64 155.6 64 229.1L64 231.7C64 255.3 70.2 279.7 80.6 304L186.6 304C189.8 304 192.7 302.1 194 299.1L225.8 222.8C229.5 214 238.1 208.2 247.6 208C257.1 207.8 265.9 213.4 269.8 222.1L321.1 336L362.5 253.2C366.6 245.1 374.9 239.9 384 239.9C393.1 239.9 401.4 245 405.5 253.2L428.7 299.5C430.1 302.2 432.8 303.9 435.9 303.9L559.5 303.9C570 279.6 576.1 255.2 576.1 231.6L576.1 229C576 155.6 516.4 96 442.9 96C400.2 96 360 116.5 335 151.1L320 171.8zM533.6 352L435.8 352C414.6 352 395.2 340 385.7 321L384 317.6L341.5 402.7C337.4 411 328.8 416.2 319.5 416C310.2 415.8 301.9 410.3 298.1 401.9L248.8 292.4L238.3 317.6C229.6 338.5 209.2 352.1 186.6 352.1L106.4 352.1C153.6 425.9 229.4 493.8 276.8 530C289.2 539.4 304.4 544.1 319.9 544.1C335.4 544.1 350.7 539.5 363 530C410.6 493.7 486.4 425.8 533.6 352z"/></svg>';
   const DROP_ICON_STYLES = [
     { id: 'circle', name: 'Circle', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>' },
     { id: 'x', name: 'X', svg: '<svg viewBox="0 0 24 24" width="24" height="24"><path stroke="currentColor" stroke-width="2" fill="none" d="M6 6 L18 18 M18 6 L6 18"/></svg>' },
@@ -3871,7 +3945,9 @@
     activeCanvasIdByPage: {},
     showLegendOverlay: true,
     showGridOverlay: false,
-    gridSettings: null
+    gridSettings: null,
+    userActivityAllRowsCache: null,
+    userActivityViewMode: 'events'
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
@@ -7892,6 +7968,88 @@
     return !error;
   }
 
+  let presenceHeartbeatTimer = null;
+  let presenceVisibilityTimer = null;
+  const ACTIVITY_HIGH_FREQ_MS = 60000;
+  const ACTIVITY_PROJECT_SAVE_MS = 5 * 60 * 1000;
+  const activityHighFreqLastAt = Object.create(null);
+  const activityProjectSaveLastAt = Object.create(null);
+
+  function rpcSupabase(rpcName, body) {
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.access_token) return Promise.resolve(null);
+    return fetch(SUPABASE_URL + '/rest/v1/rpc/' + rpcName, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + state.supabaseSession.access_token,
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body || {})
+    }).catch(() => {});
+  }
+  function touchPresence() {
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
+    rpcSupabase('touch_presence', {});
+  }
+  function stopPresenceHeartbeat() {
+    if (presenceHeartbeatTimer) { clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
+    if (presenceVisibilityTimer) { clearTimeout(presenceVisibilityTimer); presenceVisibilityTimer = null; }
+    document.removeEventListener('visibilitychange', onPresenceVisibilityChange);
+  }
+  function onPresenceVisibilityChange() {
+    if (document.visibilityState !== 'visible') return;
+    if (presenceVisibilityTimer) clearTimeout(presenceVisibilityTimer);
+    presenceVisibilityTimer = setTimeout(() => { touchPresence(); presenceVisibilityTimer = null; }, 5000);
+  }
+  function startPresenceHeartbeat() {
+    stopPresenceHeartbeat();
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
+    touchPresence();
+    presenceHeartbeatTimer = setInterval(touchPresence, 60000);
+    document.addEventListener('visibilitychange', onPresenceVisibilityChange);
+  }
+  function logUserEvent(eventType, projectId, metadata) {
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
+    if (eventType === 'counter_marker_added' || eventType === 'line_added') {
+      const now = Date.now();
+      const last = activityHighFreqLastAt[eventType];
+      if (last && now - last < ACTIVITY_HIGH_FREQ_MS) return;
+      activityHighFreqLastAt[eventType] = now;
+    }
+    rpcSupabase('log_user_event', {
+      p_event_type: eventType,
+      p_project_id: projectId == null ? null : projectId,
+      p_metadata: metadata && typeof metadata === 'object' ? metadata : {}
+    });
+  }
+  function maybeLogProjectSaveEvent(projectId) {
+    if (!projectId) return;
+    const now = Date.now();
+    const last = activityProjectSaveLastAt[projectId];
+    if (last && now - last < ACTIVITY_PROJECT_SAVE_MS) return;
+    activityProjectSaveLastAt[projectId] = now;
+    logUserEvent('project_save', projectId, {});
+  }
+  function maybeLogSessionStartOnce() {
+    try {
+      if (sessionStorage.getItem('clickcount-activity-session')) return;
+      sessionStorage.setItem('clickcount-activity-session', '1');
+    } catch (_) {}
+    logUserEvent('session_start', null, {});
+  }
+  function logProjectOpenEvent() {
+    if (!SUPABASE_ENABLED || !state.supabaseSession?.user || state.isViewer) return;
+    const pid = state.currentProjectId;
+    if (!pid) return;
+    logUserEvent('project_open', pid, {});
+  }
+  function logCounterMarkerAddedEvent() {
+    logUserEvent('counter_marker_added', state.currentProjectId, { counterTypeId: state.activeCounterType || null, pageIndex: state.currentPage });
+  }
+  function logLineAddedEvent(kind) {
+    logUserEvent('line_added', state.currentProjectId, { kind: kind, lineTypeId: state.activeLineTypeId || null, pageIndex: state.currentPage });
+  }
+
   async function initSupabaseAuth() {
     if (!supabase) return;
     let session = null;
@@ -7907,8 +8065,11 @@
     if (session?.user) {
       const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
+      startPresenceHeartbeat();
+      maybeLogSessionStartOnce();
     } else {
       state.isAdmin = false;
+      stopPresenceHeartbeat();
     }
     supabase.auth.onAuthStateChange(async (event, session) => {
       state.supabaseSession = session;
@@ -7918,6 +8079,8 @@
       if (session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
+        startPresenceHeartbeat();
+        maybeLogSessionStartOnce();
         if (!state.currentProjectId && state.pages.length === 0) {
           const airboard = await fetchUserAirboard();
           if (airboard && (airboard.counters?.length || airboard.lineTypes?.length) &&
@@ -7933,6 +8096,7 @@
         }
         reconcileOrphanedCountersAndLineTypes();
       } else {
+        stopPresenceHeartbeat();
         state.isAdmin = false;
         state.currentProjectId = null;
         subscribeToProjectCheckoutChanges(null);
@@ -8509,6 +8673,7 @@
               state.lastSavedAt = full.updated_at || null;
               autoSaveDirty = false;
               lastModifiedAt = 0;
+              logProjectOpenEvent();
             }
             state.sidebarReorderModeActive = false;
             hideModal('loadAnnotationsModal');
@@ -10407,6 +10572,7 @@
     const page = state.pages[state.currentPage];
     const canvas = page && ensureActiveCanvas(page);
     if (canvas) { if (!canvas.annotations.polylines) canvas.annotations.polylines = []; canvas.annotations.polylines.push(state.drawingPolyline); }
+    logLineAddedEvent('polyline');
     state.drawingPolyline = null;
     state.tool = TOOL.NONE;
     markProjectDirty();
@@ -10650,6 +10816,7 @@
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = sanitizeForFilename(state.currentProjectName) + '.json';
     a.click();
+    logUserEvent('export_canvas', state.currentProjectId, {});
   };
   document.getElementById('exportBtnSidebar').onclick = () => document.getElementById('exportBtn').click();
 
@@ -10776,6 +10943,7 @@
       return;
     }
     downloadPdfBuffer(buf, sanitizeForFilename(state.currentProjectName) + '.pdf');
+    logUserEvent('export_pdf', state.currentProjectId, { source: 'project-pdf' });
   }
   function updateSpecificPagesCanvasModeVisibility() {
     document.querySelectorAll('.specific-page-canvas-mode').forEach(sel => {
@@ -10938,6 +11106,7 @@
       if (doc) {
         const baseName = sanitizeForFilename(state.currentProjectName);
         doc.save('takeoff-specific-pages_' + baseName + '.pdf');
+        logUserEvent('export_pdf', state.currentProjectId, { source: 'specific-pages' });
       }
     } catch (err) {
       console.error(err);
@@ -11659,6 +11828,7 @@
         doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
         doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
       }
+      logUserEvent('export_pdf', state.currentProjectId, { source: 'download-current-page', mode: mode || 'this-canvas' });
     } catch (err) {
       console.error(err);
       alert('Download failed: ' + (err?.message || err));
@@ -11959,6 +12129,247 @@
     if (diffDays < 30) return Math.floor(diffDays / 7) + ' weeks ago';
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
   }
+
+  let userActivitySelectSuppress = false;
+
+  function filterUserActivityRows(rows, query) {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) => {
+      const email = String(row.email || '').toLowerCase();
+      const ev = String(row.event_type || '').toLowerCase();
+      let meta = '';
+      try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
+      return email.includes(q) || ev.includes(q) || meta.toLowerCase().includes(q);
+    });
+  }
+
+  function renderUserActivityAllUsersTableHtml(rows) {
+    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const head = '<thead><tr><th>Email</th><th>Event</th><th>Time</th><th>Project</th><th>Details</th></tr></thead>';
+    const body = rows.map((row) => {
+      const when = row.created_at ? new Date(row.created_at).toLocaleString() : '—';
+      let meta = '';
+      try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
+      const pid = row.project_id ? String(row.project_id) : '—';
+      return '<tr><td>' + esc(row.email) + '</td><td>' + esc(row.event_type) + '</td><td>' + esc(when) + '</td><td>' + esc(pid) + '</td><td class="col-meta">' + esc(meta) + '</td></tr>';
+    }).join('');
+    return '<table class="user-activity-table">' + head + '<tbody>' + body + '</tbody></table>';
+  }
+
+  function applyUserActivityFilter() {
+    const listEl = document.getElementById('userActivityList');
+    const filterInp = document.getElementById('userActivityFilterInput');
+    const toolbar = document.getElementById('userActivityToolbar');
+    if (!listEl || !toolbar || toolbar.classList.contains('user-activity-toolbar-hidden')) return;
+    if (!Array.isArray(state.userActivityAllRowsCache)) return;
+    const q = filterInp ? filterInp.value : '';
+    const filtered = filterUserActivityRows(state.userActivityAllRowsCache, q);
+    if (filtered.length === 0 && state.userActivityAllRowsCache.length > 0) {
+      listEl.innerHTML = '<p style="color:var(--text3);">No rows match your filter.</p>';
+      return;
+    }
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
+      return;
+    }
+    listEl.innerHTML = renderUserActivityAllUsersTableHtml(filtered);
+  }
+
+  function populateUserActivityUserSelect(users, listOk) {
+    const sel = document.getElementById('userActivityUserSelect');
+    const hint = document.getElementById('userActivityUserListHint');
+    if (!sel) return;
+    userActivitySelectSuppress = true;
+    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    let html = '<option value="">All users (latest)</option>';
+    if (listOk && Array.isArray(users) && users.length) {
+      const sorted = users.slice().sort((a, b) => String(a.email || '').localeCompare(String(b.email || ''), undefined, { sensitivity: 'base' }));
+      sorted.forEach((u) => {
+        html += '<option value="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + esc(u.email || '—') + '</option>';
+      });
+    }
+    sel.innerHTML = html;
+    sel.value = '';
+    userActivitySelectSuppress = false;
+    if (hint) {
+      if (!listOk) {
+        hint.textContent = 'Could not load user list; use Filter to narrow activity.';
+        hint.style.display = 'block';
+      } else {
+        hint.textContent = '';
+        hint.style.display = 'none';
+      }
+    }
+  }
+
+  function syncUserActivityViewToggleUI() {
+    const ev = document.getElementById('userActivityViewEventsBtn');
+    const sum = document.getElementById('userActivityViewSummaryBtn');
+    const mode = state.userActivityViewMode;
+    if (ev) ev.setAttribute('aria-pressed', mode === 'events' ? 'true' : 'false');
+    if (sum) sum.setAttribute('aria-pressed', mode === 'summary' ? 'true' : 'false');
+  }
+
+  function renderUserActivitySummaryTableHtml(rows) {
+    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const head = '<thead><tr><th>Email</th><th>Last sign-in</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>';
+    const body = rows.map((row) => {
+      const signIn = esc(formatLastSignIn(row.last_sign_in_at));
+      const e1 = row.events_1d != null ? String(row.events_1d) : '0';
+      const e7 = row.events_7d != null ? String(row.events_7d) : '0';
+      const e30 = row.events_30d != null ? String(row.events_30d) : '0';
+      return '<tr><td>' + esc(row.email) + '</td><td>' + signIn + '</td><td>' + esc(e1) + '</td><td>' + esc(e7) + '</td><td>' + esc(e30) + '</td></tr>';
+    }).join('');
+    return '<table class="user-activity-table user-activity-summary-table">' + head + '<tbody>' + body + '</tbody></table>';
+  }
+
+  function loadUserActivityAllUsersContent() {
+    const session = state.supabaseSession;
+    if (!session?.access_token) return;
+    const listEl = document.getElementById('userActivityList');
+    const toolbar = document.getElementById('userActivityToolbar');
+    const filterInp = document.getElementById('userActivityFilterInput');
+    const subEl = document.getElementById('userActivityModalSubtitle');
+    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+    if (subEl) {
+      subEl.textContent = state.userActivityViewMode === 'summary'
+        ? 'Per-user event counts (rolling windows) and last sign-in.'
+        : 'Latest events across all users (newest first).';
+    }
+    if (state.userActivityViewMode === 'summary') {
+      state.userActivityAllRowsCache = null;
+      if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
+      if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+      fetch(SUPABASE_URL + '/rest/v1/rpc/list_user_activity_summary_for_admin', {
+        method: 'POST',
+        headers: headers,
+        body: '{}'
+      }).then(async (res) => {
+        let data;
+        try { data = await res.json(); } catch (_) { data = []; }
+        if (!res.ok) {
+          const msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + res.status);
+          if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
+          return;
+        }
+        const rows = Array.isArray(data) ? data : [];
+        if (rows.length === 0) {
+          if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No users.</p>';
+          return;
+        }
+        if (listEl) listEl.innerHTML = renderUserActivitySummaryTableHtml(rows);
+      }).catch((e) => {
+        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
+      });
+      return;
+    }
+    if (toolbar) toolbar.classList.remove('user-activity-toolbar-hidden');
+    if (filterInp) filterInp.value = '';
+    if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+    const payload = { p_limit: 500, p_user_id: null, p_since: null };
+    const actFetch = fetch(SUPABASE_URL + '/rest/v1/rpc/list_user_activity_for_admin', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+    const usrFetch = fetch(SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', {
+      method: 'POST',
+      headers: headers,
+      body: '{}'
+    });
+    Promise.all([actFetch, usrFetch]).then(async ([actRes, usrRes]) => {
+      let actData;
+      let usrData;
+      try { actData = await actRes.json(); } catch (_) { actData = []; }
+      try { usrData = await usrRes.json(); } catch (_) { usrData = []; }
+      const usersOk = usrRes.ok && Array.isArray(usrData);
+      populateUserActivityUserSelect(usersOk ? usrData : [], usersOk);
+      if (!actRes.ok) {
+        state.userActivityAllRowsCache = null;
+        const msg = (actData && (actData.message || actData.error || actData.hint)) ? String(actData.message || actData.error || actData.hint) : ('HTTP ' + actRes.status);
+        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
+        if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
+        return;
+      }
+      const data = Array.isArray(actData) ? actData : [];
+      state.userActivityAllRowsCache = data;
+      if (data.length === 0) {
+        if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
+        return;
+      }
+      if (listEl) listEl.innerHTML = renderUserActivityAllUsersTableHtml(filterUserActivityRows(data, filterInp ? filterInp.value : ''));
+    }).catch((e) => {
+      state.userActivityAllRowsCache = null;
+      if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
+      if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
+    });
+  }
+
+  function openUserActivityModal(userId, email) {
+    const session = state.supabaseSession;
+    if (!session?.access_token || !state.isAdmin) return;
+    const allUsers = userId == null;
+    const titleEl = document.getElementById('userActivityModalTitle');
+    const listEl = document.getElementById('userActivityList');
+    const subEl = document.getElementById('userActivityModalSubtitle');
+    const toolbar = document.getElementById('userActivityToolbar');
+    const filterInp = document.getElementById('userActivityFilterInput');
+    const viewToggle = document.getElementById('userActivityModalViewToggle');
+    if (titleEl) titleEl.textContent = allUsers ? 'All user activity' : 'User activity';
+    if (subEl) subEl.textContent = allUsers ? 'Latest events across all users (newest first).' : (email ? ('Activity for ' + email) : String(userId));
+    if (!allUsers) {
+      state.userActivityAllRowsCache = null;
+      if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
+      if (viewToggle) viewToggle.classList.add('user-activity-view-toggle-hidden');
+    } else {
+      state.userActivityViewMode = 'events';
+      if (viewToggle) viewToggle.classList.remove('user-activity-view-toggle-hidden');
+      syncUserActivityViewToggleUI();
+      if (filterInp) filterInp.value = '';
+    }
+    if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+    showModal('userActivityModal');
+    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+    if (!allUsers) {
+      const payload = { p_limit: 200, p_user_id: userId, p_since: null };
+      fetch(SUPABASE_URL + '/rest/v1/rpc/list_user_activity_for_admin', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      }).then(async (res) => {
+        let data;
+        try { data = await res.json(); } catch (_) { data = []; }
+        if (!res.ok) {
+          const msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + res.status);
+          if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
+          return;
+        }
+        if (!Array.isArray(data) || data.length === 0) {
+          if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
+          return;
+        }
+        const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        if (listEl) {
+          listEl.innerHTML = data.map((row) => {
+            const when = row.created_at ? new Date(row.created_at).toLocaleString() : '—';
+            let meta = '';
+            try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
+            return '<div class="settings-user-row" style="flex-wrap:wrap;align-items:flex-start;">' +
+              '<span style="min-width:120px;font-weight:600;">' + esc(row.event_type) + '</span>' +
+              '<span style="color:var(--text3);min-width:150px;">' + esc(when) + '</span>' +
+              '<span style="color:var(--text2);flex:1;word-break:break-all;">' + esc(meta) + '</span>' +
+              '</div>';
+          }).join('');
+        }
+      }).catch((e) => {
+        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
+      });
+      return;
+    }
+    loadUserActivityAllUsersContent();
+  }
+
   function openMySettings() {
     const user = state.supabaseSession?.user;
     if (!user) { document.getElementById('authBtn').click(); return; }
@@ -12011,10 +12422,15 @@
         return '<div class="settings-user-row" data-user-id="' + esc(u.id) + '">' +
           '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
           '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-          '<span class="settings-user-last">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
+          '<span class="settings-user-last" title="Last sign-in">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
+          '<span class="settings-user-last" title="Last active">' + formatLastSignIn(u.last_seen_at) + '</span>' +
+          '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + USER_ACTIVITY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
           '</div>';
       }).join('');
+      listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
+        btn.onclick = () => openUserActivityModal(btn.dataset.userId, btn.dataset.email);
+      });
       listEl.querySelectorAll('.settings-user-delete:not([disabled])').forEach((btn) => {
         btn.onclick = () => deleteUser(btn.dataset.userId, btn.dataset.email, btn);
       });
@@ -12045,9 +12461,14 @@
         '<div class="settings-user-row">' +
         '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
         '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-        '<span class="settings-user-last">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
+        '<span class="settings-user-last" title="Last sign-in">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
+        '<span class="settings-user-last" title="Last active">' + formatLastSignIn(u.last_seen_at) + '</span>' +
+        '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + USER_ACTIVITY_ICON_SVG + '</button>' +
         '</div>'
       ).join('');
+      listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
+        btn.onclick = () => openUserActivityModal(btn.dataset.userId, btn.dataset.email);
+      });
     }
     function showErr(msg, hint) {
       listEl.innerHTML = '<p style="color:var(--red);">' + (msg + '').replace(/</g, '&lt;') + '</p>' +
@@ -13578,6 +13999,7 @@
                   state.canCheckOut = proj.can_check_out || false;
                   state.projectOwnerId = proj.user_id || null;
                   subscribeToProjectCheckoutChanges(proj.id);
+                  logProjectOpenEvent();
                   hideModal('loadProjectModal');
                   state.sidebarReorderModeActive = false;
                   showToast('This project\'s PDF is empty or missing. Upload your PDF to load the annotations.', 5000);
@@ -13631,6 +14053,7 @@
           state.canCheckOut = proj.can_check_out || false;
           state.projectOwnerId = proj.user_id || null;
           subscribeToProjectCheckoutChanges(proj.id);
+          logProjectOpenEvent();
           if (SUPABASE_ENABLED && state.supabaseSession?.user) {
             try {
               localStorage.setItem('clickcount-last-project', JSON.stringify({
@@ -14125,7 +14548,55 @@
     document.getElementById('manageUsersBtnSidebar').onclick = () => document.getElementById('manageUsersBtn').click();
     document.getElementById('adminPanelClose').onclick = () => hideModal('adminPanelModal');
     document.getElementById('manageUserModalClose').onclick = () => hideModal('manageUserModal');
+    const manageUserModalAllActivityBtn = document.getElementById('manageUserModalAllActivityBtn');
+    if (manageUserModalAllActivityBtn) {
+      manageUserModalAllActivityBtn.innerHTML = USER_ACTIVITY_ICON_SVG;
+      manageUserModalAllActivityBtn.onclick = () => openUserActivityModal(null, null);
+    }
     document.getElementById('allUsersModalClose').onclick = () => hideModal('allUsersModal');
+    document.getElementById('userActivityModalClose').onclick = () => hideModal('userActivityModal');
+    const userActivityUserSelect = document.getElementById('userActivityUserSelect');
+    if (userActivityUserSelect) {
+      userActivityUserSelect.onchange = function () {
+        if (userActivitySelectSuppress) return;
+        const v = this.value;
+        if (v === '') openUserActivityModal(null, null);
+        else {
+          const opt = this.options[this.selectedIndex];
+          const em = opt && opt.dataset ? opt.dataset.email : '';
+          openUserActivityModal(v, em || '');
+        }
+      };
+    }
+    const userActivityFilterInput = document.getElementById('userActivityFilterInput');
+    if (userActivityFilterInput) {
+      userActivityFilterInput.addEventListener('input', () => applyUserActivityFilter());
+    }
+    const userActivityFilterClear = document.getElementById('userActivityFilterClear');
+    if (userActivityFilterClear) {
+      userActivityFilterClear.onclick = () => {
+        if (userActivityFilterInput) userActivityFilterInput.value = '';
+        applyUserActivityFilter();
+      };
+    }
+    const userActivityViewEventsBtn = document.getElementById('userActivityViewEventsBtn');
+    const userActivityViewSummaryBtn = document.getElementById('userActivityViewSummaryBtn');
+    if (userActivityViewEventsBtn) {
+      userActivityViewEventsBtn.onclick = () => {
+        if (state.userActivityViewMode === 'events') return;
+        state.userActivityViewMode = 'events';
+        syncUserActivityViewToggleUI();
+        loadUserActivityAllUsersContent();
+      };
+    }
+    if (userActivityViewSummaryBtn) {
+      userActivityViewSummaryBtn.onclick = () => {
+        if (state.userActivityViewMode === 'summary') return;
+        state.userActivityViewMode = 'summary';
+        syncUserActivityViewToggleUI();
+        loadUserActivityAllUsersContent();
+      };
+    }
     document.getElementById('manageProjectsModalClose').onclick = () => hideModal('manageProjectsModal');
     document.getElementById('manageIconsModalClose').onclick = () => hideModal('manageIconsModal');
     document.getElementById('manageIconsCancel').onclick = () => hideModal('manageIconsModal');
@@ -14410,6 +14881,7 @@
         const page = state.pages[state.currentPage];
         const canvas = page && ensureActiveCanvas(page);
         if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
+        logLineAddedEvent('quick');
         state.quickLineStart = null;
         markProjectDirty();
       }
@@ -14439,6 +14911,7 @@
       if (canvas) {
         if (!canvas.annotations.counterMarkers[state.activeCounterType]) canvas.annotations.counterMarkers[state.activeCounterType] = [];
         canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pos.x, y: pos.y, id: uid(), group: state.activeGroupId || null });
+        logCounterMarkerAddedEvent();
         markProjectDirty();
       }
       renderAnnotations();
@@ -14954,6 +15427,7 @@
         const page = state.pages[state.currentPage];
         const canvas = page && ensureActiveCanvas(page);
         if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
+        logLineAddedEvent('quick');
         state.quickLineStart = null;
         markProjectDirty();
       }
@@ -15211,6 +15685,7 @@
       else if (document.getElementById('adminPanelModal').classList.contains('visible')) { hideModal('adminPanelModal'); }
       else if (document.getElementById('manageUserModal').classList.contains('visible')) { hideModal('manageUserModal'); }
       else if (document.getElementById('allUsersModal').classList.contains('visible')) { hideModal('allUsersModal'); }
+      else if (document.getElementById('userActivityModal').classList.contains('visible')) { hideModal('userActivityModal'); }
       else if (document.getElementById('manageProjectsModal').classList.contains('visible')) { hideModal('manageProjectsModal'); }
       else if (document.getElementById('manageIconsModal').classList.contains('visible')) { hideModal('manageIconsModal'); }
       else if (document.getElementById('canvasRepairModal').classList.contains('visible')) { hideModal('canvasRepairModal'); }
@@ -15648,6 +16123,7 @@
       updateUI();
       perfLog('performAutoSave total', Date.now() - tTotal);
       saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
+      maybeLogProjectSaveEvent(state.currentProjectId);
       return { ok: true };
     } catch (e) {
       console.error('[Auto-save] Failed:', e);

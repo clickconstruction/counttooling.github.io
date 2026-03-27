@@ -11,9 +11,9 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (if available): Use `list_migrations` to see applied migrations, then `apply_migration` with each migration's `name` (snake_case) and `query` (SQL contents). Apply in order: numbered `001`–`037` plus timestamped migrations in `supabase/migrations/` (remote history uses `YYYYMMDDHHMMSS_name.sql`; presence/activity is `20260326230000_user_presence_and_activity.sql`). If you previously applied 032/033 (user_artboards, now reverted), also apply 034.
+**Option A: Supabase MCP** (recommended if you do not use the Supabase CLI): Each migration is a single file under `supabase/migrations/`. Use `list_migrations` to see what is already applied, then `apply_migration` with `name` set to the **filename without `.sql`** (e.g. `20260326230000_user_presence_and_activity`) and `query` set to the **entire file contents** of that SQL file—do not retype SQL by hand. Apply files in version order: numbered `001`–`037`, then any timestamped files (e.g. `20260326230000_user_presence_and_activity.sql`). If you previously applied 032/033 (user_artboards, now reverted), also apply 034. The Dashboard SQL Editor (Option B) is equivalent: paste the same file contents there.
 
-**Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order:
+**Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order (same SQL as in each file under `supabase/migrations/`):
 
 **001_initial_schema.sql** — Creates:
 - **profiles** — `user_id`, `is_admin` (identifies admins)

@@ -1,0 +1,1 @@
+create policy "Shared users can read project PDFs" on storage.objects for select to authenticated using (bucket_id = 'pdfs' and exists (select 1 from public.projects p join public.project_shares ps on ps.project_id = p.id where p.pdf_path = name and ps.user_id = auth.uid()));;

@@ -12130,6 +12130,45 @@
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
   }
 
+  const USER_ACTIVITY_TZ = 'America/Chicago';
+
+  function dateKeyInTimeZone(isoOrTs, timeZone) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoOrTs));
+  }
+
+  function calendarDaysFromSignInToNowInZone(signKey, nowKey) {
+    const [sy, sm, sd] = signKey.split('-').map(Number);
+    const [ny, nm, nd] = nowKey.split('-').map(Number);
+    const s = Date.UTC(sy, sm - 1, sd);
+    const n = Date.UTC(ny, nm - 1, nd);
+    return Math.round((n - s) / 86400000);
+  }
+
+  function formatLastSignInUserActivity(ts) {
+    if (!ts) return 'Never';
+    const d = new Date(ts);
+    const signKey = dateKeyInTimeZone(ts, USER_ACTIVITY_TZ);
+    const nowKey = dateKeyInTimeZone(Date.now(), USER_ACTIVITY_TZ);
+    const diff = calendarDaysFromSignInToNowInZone(signKey, nowKey);
+    if (diff < 0) {
+      const ySign = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(d), 10);
+      const yNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(new Date()), 10);
+      return d.toLocaleDateString('en-US', { timeZone: USER_ACTIVITY_TZ, month: 'short', day: 'numeric', year: ySign !== yNow ? 'numeric' : undefined });
+    }
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    if (diff < 7) return diff + ' days ago';
+    if (diff < 30) return Math.floor(diff / 7) + ' weeks ago';
+    const ySign = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(d), 10);
+    const yNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(new Date()), 10);
+    return d.toLocaleDateString('en-US', { timeZone: USER_ACTIVITY_TZ, month: 'short', day: 'numeric', year: ySign !== yNow ? 'numeric' : undefined });
+  }
+
+  function formatUserActivityDateTime(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { timeZone: USER_ACTIVITY_TZ, dateStyle: 'short', timeStyle: 'short' });
+  }
+
   let userActivitySelectSuppress = false;
 
   function filterUserActivityRows(rows, query) {
@@ -12146,9 +12185,9 @@
 
   function renderUserActivityAllUsersTableHtml(rows) {
     const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const head = '<thead><tr><th>Email</th><th>Event</th><th>Time</th><th>Project</th><th>Details</th></tr></thead>';
+    const head = '<thead><tr><th>Email</th><th>Event</th><th title="US Central (Chicago)">Time</th><th>Project</th><th>Details</th></tr></thead>';
     const body = rows.map((row) => {
-      const when = row.created_at ? new Date(row.created_at).toLocaleString() : '—';
+      const when = row.created_at ? formatUserActivityDateTime(row.created_at) : '—';
       let meta = '';
       try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
       const pid = row.project_id ? String(row.project_id) : '—';
@@ -12213,9 +12252,9 @@
 
   function renderUserActivitySummaryTableHtml(rows) {
     const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const head = '<thead><tr><th>Email</th><th>Last sign-in</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>';
+    const head = '<thead><tr><th>Email</th><th title="Relative labels use US Central (Chicago) calendar days">Last sign-in</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>';
     const body = rows.map((row) => {
-      const signIn = esc(formatLastSignIn(row.last_sign_in_at));
+      const signIn = esc(formatLastSignInUserActivity(row.last_sign_in_at));
       const e1 = row.events_1d != null ? String(row.events_1d) : '0';
       const e7 = row.events_7d != null ? String(row.events_7d) : '0';
       const e30 = row.events_30d != null ? String(row.events_30d) : '0';
@@ -12234,8 +12273,8 @@
     const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
     if (subEl) {
       subEl.textContent = state.userActivityViewMode === 'summary'
-        ? 'Per-user event counts (rolling windows) and last sign-in.'
-        : 'Latest events across all users (newest first).';
+        ? 'Per-user event counts (rolling windows) and last sign-in. Days are in CST not UTC.'
+        : 'Latest events across all users (newest first). Event times are US Central (Chicago).';
     }
     if (state.userActivityViewMode === 'summary') {
       state.userActivityAllRowsCache = null;
@@ -12317,7 +12356,10 @@
     const filterInp = document.getElementById('userActivityFilterInput');
     const viewToggle = document.getElementById('userActivityModalViewToggle');
     if (titleEl) titleEl.textContent = allUsers ? 'All user activity' : 'User activity';
-    if (subEl) subEl.textContent = allUsers ? 'Latest events across all users (newest first).' : (email ? ('Activity for ' + email) : String(userId));
+    if (subEl) {
+      if (allUsers) subEl.textContent = 'Latest events across all users (newest first).';
+      else subEl.textContent = (email ? ('Activity for ' + email) : String(userId)) + ' Event times are US Central (Chicago).';
+    }
     if (!allUsers) {
       state.userActivityAllRowsCache = null;
       if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
@@ -12352,7 +12394,7 @@
         const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         if (listEl) {
           listEl.innerHTML = data.map((row) => {
-            const when = row.created_at ? new Date(row.created_at).toLocaleString() : '—';
+            const when = row.created_at ? formatUserActivityDateTime(row.created_at) : '—';
             let meta = '';
             try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
             return '<div class="settings-user-row" style="flex-wrap:wrap;align-items:flex-start;">' +

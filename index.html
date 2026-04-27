@@ -2088,6 +2088,7 @@
         <h2>Line Properties</h2>
         <span id="linePropertiesSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
       </div>
+      <p id="linePropertiesLineType" style="margin:0 0 12px 0;font-size:0.9rem;color:var(--text2);line-height:1.35;text-align:center;"></p>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="linePropertiesName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -7679,6 +7680,12 @@
     const line = it.type === 'poly' ? it.poly : it.q;
     const lt = state.lineTypes.find(l => l.id === line.lineTypeId);
     const color = line.color || (lt?.color || '#4a9eff');
+    const lineTypeLineEl = document.getElementById('linePropertiesLineType');
+    if (lineTypeLineEl) {
+      lineTypeLineEl.textContent = lt
+        ? ('Line type: ' + (lt.name || 'Line'))
+        : 'Line type: \u2014';
+    }
     const nameEl = document.getElementById('linePropertiesName');
     const swatchEl = document.getElementById('linePropertiesSwatch');
     const startDropEl = document.getElementById('linePropertiesStartDrop');

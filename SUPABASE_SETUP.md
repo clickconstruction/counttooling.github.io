@@ -96,6 +96,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **20260326230000_user_presence_and_activity.sql** — Adds `profiles.last_seen_at`; table `user_activity` (event log); RPCs `touch_presence()`, `log_user_event(text, uuid, jsonb)`, `list_user_activity_for_admin(int, uuid, timestamptz)`; extends `list_users_for_admin()` with `last_seen_at`. Used by in-app presence heartbeat and admin **Activity** on user rows.
 
+**20260327120000_user_activity_summary_for_admin.sql** — Adds RPC `list_user_activity_summary_for_admin()` returning per-user rows: `user_id`, `email`, `last_sign_in_at`, rolling event counts (`events_1d`, `events_7d`, `events_30d`) from `user_activity`. Used by the User Activity modal **Summary** tab (admin).
+
 ## 3. Deploy Edge Functions
 
 Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gateway does not reject requests; each function validates auth in-code via `getUser()`.

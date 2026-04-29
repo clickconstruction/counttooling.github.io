@@ -1,6 +1,6 @@
 /**
  * ClickCount Print Report
- * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getMultiplyZoneForPoint, getMultiplyZoneForLine
+ * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getLineLengthForTotals, getLineRealWorldLength, getMultiplyZoneForPoint, getMultiplyZoneForLine
  */
 (function() {
   function escapeHtml(s) {
@@ -79,19 +79,17 @@
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           const gid = q.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(q, i, false) * mult;
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           const gid = poly.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthPdfPts: 0, pages: [] };
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(poly, i, true) * mult;
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -109,7 +107,7 @@
 
     let totalCounters = 0;
     let totalLineRuns = 0;
-    let totalLengthPdfPts = 0;
+    let totalLengthReal = 0;
     const allPagesWithLines = [];
     orderedGroupIds.forEach(gid => {
       const counters = counterSummaryByGroup[gid] || {};
@@ -117,14 +115,14 @@
       Object.values(counters).forEach(r => { totalCounters += r.total; });
       Object.values(lines).forEach(r => {
         totalLineRuns += r.runs;
-        totalLengthPdfPts += r.lengthPdfPts;
+        totalLengthReal += r.lengthReal;
         r.pages.forEach(p => { if (!allPagesWithLines.includes(p)) allPagesWithLines.push(p); });
       });
     });
     const scale = pickScaleForLineType(allPagesWithLines.length ? allPagesWithLines : pageIndices.map(i => i + 1));
     const totalLengthStr = scale
-      ? (totalLengthPdfPts / scale.pixelsPerUnit).toFixed(2) + ' ' + scale.unit
-      : (totalLengthPdfPts > 0 ? Math.round(totalLengthPdfPts) + ' px' : '0');
+      ? totalLengthReal.toFixed(2) + ' ' + scale.unit
+      : (totalLengthReal > 0 ? Math.round(totalLengthReal) + ' px' : '0');
 
     if (totalCounters > 0 || totalLineRuns > 0) {
       const parts = [];
@@ -166,16 +164,14 @@
         let len = 0;
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           runs++;
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1;
-          len += getLineLengthPdfPts(q, i, false) * mult;
+          len += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           runs++;
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1;
-          len += getLineLengthPdfPts(poly, i, true) * mult;
+          len += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
         });
         if (runs > 0) {
-          lineTypeRows.push({ type: lt.name, runs, length: formatDist(len, page.scale), color: lt.color });
+          lineTypeRows.push({ type: lt.name, runs, length: page.scale ? len.toFixed(2) + ' ' + page.scale.unit : (len > 0 ? Math.round(len) + ' px' : '0'), color: lt.color });
         }
       });
       if (lineTypeRows.length > 0) {
@@ -214,10 +210,10 @@
         html += '<h3 class="section-header">' + escapeHtml(groupName) + '</h3>';
         const groupTotalCounters = Object.values(counters).reduce((s, r) => s + r.total, 0);
         const groupTotalRuns = Object.values(lines).reduce((s, r) => s + r.runs, 0);
-        const groupTotalPdfPts = Object.values(lines).reduce((s, r) => s + r.lengthPdfPts, 0);
+        const groupTotalReal = Object.values(lines).reduce((s, r) => s + r.lengthReal, 0);
         const groupPages = [...new Set([...Object.values(counters).flatMap(r => r.pages), ...Object.values(lines).flatMap(r => r.pages)])];
         const groupScale = pickScaleForLineType(groupPages);
-        const groupLengthStr = groupScale ? (groupTotalPdfPts / groupScale.pixelsPerUnit).toFixed(2) + ' ' + groupScale.unit : (groupTotalPdfPts > 0 ? Math.round(groupTotalPdfPts) + ' px' : '0');
+        const groupLengthStr = groupScale ? groupTotalReal.toFixed(2) + ' ' + groupScale.unit : (groupTotalReal > 0 ? Math.round(groupTotalReal) + ' px' : '0');
         const groupParts = [];
         if (groupTotalCounters > 0) groupParts.push(groupTotalCounters + ' counter' + (groupTotalCounters !== 1 ? 's' : ''));
         if (groupTotalRuns > 0) groupParts.push(groupTotalRuns + ' line run' + (groupTotalRuns !== 1 ? 's' : ''));
@@ -237,8 +233,8 @@
             const scale = pickScaleForLineType(r.pages);
             const unit = scale?.unit || 'px';
             const num = scale
-              ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
-              : String(Math.round(r.lengthPdfPts));
+              ? r.lengthReal.toFixed(2)
+              : String(Math.round(r.lengthReal));
             const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
             html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + r.pages.join(', ') + '</td></tr>';
           }
@@ -280,17 +276,15 @@
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           const gid = q.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(q, i, false) * mult;
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthReal: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           const gid = poly.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthPdfPts: 0, pages: [] };
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(poly, i, true) * mult;
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthReal: 0, pages: [] };
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -311,8 +305,8 @@
           const scale = pickScaleForLineType(r.pages);
           const unit = scale?.unit || 'px';
           const num = scale
-            ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
-            : String(Math.round(r.lengthPdfPts));
+            ? r.lengthReal.toFixed(2)
+            : String(Math.round(r.lengthReal));
           const fixture = prefix + unit + ' of ' + r.name;
           lines.push([fixture, num, r.pages.join(', ')].join('\t'));
         }
@@ -347,19 +341,17 @@
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           const gid = q.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(q, i, false) * mult;
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           const gid = poly.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthPdfPts: 0, pages: [] };
+          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1;
-          lineTypeSummaryByGroup[gid][lt.id].lengthPdfPts += getLineLengthPdfPts(poly, i, true) * mult;
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -396,8 +388,8 @@
             const scale = pickScaleForLineType(r.pages);
             const unit = scale?.unit || 'px';
             const num = scale
-              ? (r.lengthPdfPts / scale.pixelsPerUnit).toFixed(2)
-              : String(Math.round(r.lengthPdfPts));
+              ? r.lengthReal.toFixed(2)
+              : String(Math.round(r.lengthReal));
             const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
             lines.push('• ' + num + ' ' + unit + ' of ' + (r.name || 'Line') + ': ' + r.runs + ' run' + (r.runs > 1 ? 's' : '') + ' (' + pagesStr + ')');
           }

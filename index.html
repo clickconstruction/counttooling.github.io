@@ -904,6 +904,10 @@
         <button id="multiplyZoneBtn" class="sidebar-triggers" title="Multiply Zone (right-click for settings)" aria-label="Multiply Zone">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM224 128L416 128C433.7 128 448 142.3 448 160L448 192C448 209.7 433.7 224 416 224L224 224C206.3 224 192 209.7 192 192L192 160C192 142.3 206.3 128 224 128zM240 296C240 309.3 229.3 320 216 320C202.7 320 192 309.3 192 296C192 282.7 202.7 272 216 272C229.3 272 240 282.7 240 296zM320 320C306.7 320 296 309.3 296 296C296 282.7 306.7 272 320 272C333.3 272 344 282.7 344 296C344 309.3 333.3 320 320 320zM448 296C448 309.3 437.3 320 424 320C410.7 320 400 309.3 400 296C400 282.7 410.7 272 424 272C437.3 272 448 282.7 448 296zM216 416C202.7 416 192 405.3 192 392C192 378.7 202.7 368 216 368C229.3 368 240 378.7 240 392C240 405.3 229.3 416 216 416zM344 392C344 405.3 333.3 416 320 416C306.7 416 296 405.3 296 392C296 378.7 306.7 368 320 368C333.3 368 344 378.7 344 392zM424 416C410.7 416 400 405.3 400 392C400 378.7 410.7 368 424 368C437.3 368 448 378.7 448 392C448 405.3 437.3 416 424 416zM192 488C192 474.7 202.7 464 216 464L328 464C341.3 464 352 474.7 352 488C352 501.3 341.3 512 328 512L216 512C202.7 512 192 501.3 192 488zM424 464C437.3 464 448 474.7 448 488C448 501.3 437.3 512 424 512C410.7 512 400 501.3 400 488C400 474.7 410.7 464 424 464z"/></svg>
         </button>
+        <!-- Scale Zone: Font Awesome “scale” glyph, 180° vs Set Scale; https://fontawesome.com/license/free -->
+        <button id="scaleZoneBtn" class="sidebar-triggers" title="Scale Zone (region-specific scale)" aria-label="Scale Zone">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg>
+        </button>
         <button id="deleteZoneBtn" class="sidebar-triggers" title="Delete area" aria-label="Delete area">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>
         </button>
@@ -1024,6 +1028,10 @@
           <button id="multiplyZoneBtnSidebar" class="sidebar-btn" title="Multiply Zone (right-click for settings)">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM224 128L416 128C433.7 128 448 142.3 448 160L448 192C448 209.7 433.7 224 416 224L224 224C206.3 224 192 209.7 192 192L192 160C192 142.3 206.3 128 224 128zM240 296C240 309.3 229.3 320 216 320C202.7 320 192 309.3 192 296C192 282.7 202.7 272 216 272C229.3 272 240 282.7 240 296zM320 320C306.7 320 296 309.3 296 296C296 282.7 306.7 272 320 272C333.3 272 344 282.7 344 296C344 309.3 333.3 320 320 320zM448 296C448 309.3 437.3 320 424 320C410.7 320 400 309.3 400 296C400 282.7 410.7 272 424 272C437.3 272 448 282.7 448 296zM216 416C202.7 416 192 405.3 192 392C192 378.7 202.7 368 216 368C229.3 368 240 378.7 240 392C240 405.3 229.3 416 216 416zM344 392C344 405.3 333.3 416 320 416C306.7 416 296 405.3 296 392C296 378.7 306.7 368 320 368C333.3 368 344 378.7 344 392zM424 416C410.7 416 400 405.3 400 392C400 378.7 410.7 368 424 368C437.3 368 448 378.7 448 392C448 405.3 437.3 416 424 416zM192 488C192 474.7 202.7 464 216 464L328 464C341.3 464 352 474.7 352 488C352 501.3 341.3 512 328 512L216 512C202.7 512 192 501.3 192 488zM424 464C437.3 464 448 474.7 448 488C448 501.3 437.3 512 424 512C410.7 512 400 501.3 400 488C400 474.7 410.7 464 424 464z"/></svg>
             Multiply
+          </button>
+          <button id="scaleZoneBtnSidebar" class="sidebar-btn" title="Scale Zone (region-specific scale)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg>
+            Scale zone
           </button>
           <button id="deleteZoneBtnSidebar" class="sidebar-btn" title="Delete area">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>
@@ -1928,6 +1936,7 @@
           <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↻</span></td><td><kbd>R</kbd></td><td>Rotate page</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg></td><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
           <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">×</span></td><td><kbd>X</kbd></td><td>Multiply Zone mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg></td><td>—</td><td>Scale Zone (rotated Scale icon in header/sidebar)</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg></td><td><kbd>N</kbd></td><td>Note mode</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320zM451.3 331.3L347.3 435.3C342.7 439.9 335.8 441.2 329.9 438.8C324 436.4 320 430.5 320 424L320 368L224 368C206.3 368 192 353.7 192 336L192 304C192 286.3 206.3 272 224 272L320 272L320 216C320 209.5 323.9 203.7 329.9 201.2C335.9 198.7 342.8 200.1 347.3 204.7L451.3 308.7C457.5 314.9 457.5 325.1 451.3 331.3z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
@@ -2773,6 +2782,7 @@
     <button id="ctxShowLength" style="display:none;">Show Length</button>
     <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
     <button id="ctxEditMultiplyZone" style="display:none;">Edit multiplier</button>
+    <button id="ctxEditScaleZone" style="display:none;">Edit scale</button>
     <button class="danger" id="ctxDelete">Delete</button>
   </div>
   <script>
@@ -2789,7 +2799,7 @@
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
-  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9, DELETE_ZONE: 10 };
+  const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9, DELETE_ZONE: 10, SCALE_ZONE: 11 };
   const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
   const uid = () => Math.random().toString(36).slice(2, 10);
   const PLUMBING_DEFAULTS = {
@@ -3699,7 +3709,7 @@
     { value: CHESSBOARD_PATH, terms: ['chessboard','chess','board','grid','checkered'], name: 'Chessboard' }
   ];
 
-  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], legend: null }; }
+  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
   function getActiveCanvas(page) {
@@ -3729,6 +3739,7 @@
       (ann.notes || []).forEach(n => { (out.notes = out.notes || []).push(n); });
       (ann.highlights || []).forEach(h => { (out.highlights = out.highlights || []).push(h); });
       (ann.multiplyZones || []).forEach(z => { (out.multiplyZones = out.multiplyZones || []).push(z); });
+      (ann.scaleZones || []).forEach(z => { (out.scaleZones = out.scaleZones || []).push(z); });
     });
     return out;
   }
@@ -3759,7 +3770,7 @@
   function pageHasAnyAnnotations(p) {
     return getPageCanvases(p).some(c => {
       const ann = c.annotations || makeAnnotations();
-      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length);
+      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length);
     });
   }
 
@@ -3821,6 +3832,7 @@
           highlights: Array.isArray(c.annotations.highlights) ? c.annotations.highlights : [],
           notes: Array.isArray(c.annotations.notes) ? c.annotations.notes : [],
           multiplyZones: Array.isArray(c.annotations.multiplyZones) ? c.annotations.multiplyZones : [],
+          scaleZones: Array.isArray(c.annotations.scaleZones) ? c.annotations.scaleZones : [],
           legend: c.annotations.legend && typeof c.annotations.legend === 'object' ? c.annotations.legend : null
         } : makeAnnotations()
       }));
@@ -3834,6 +3846,7 @@
         highlights: Array.isArray(a.highlights) ? a.highlights : [],
         notes: Array.isArray(a.notes) ? a.notes : [],
         multiplyZones: Array.isArray(a.multiplyZones) ? a.multiplyZones : [],
+        scaleZones: Array.isArray(a.scaleZones) ? a.scaleZones : [],
         legend: a.legend && typeof a.legend === 'object' ? a.legend : null
       };
       page.canvases = [{ id: uid(), name: 'Main', annotations: ann }];
@@ -3896,7 +3909,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, deleteZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -4113,6 +4126,7 @@
     state.quickLineStart = null;
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
     state.deleteZoneStart = null;
     state.drawingPolyline = null;
     state.editingPolyline = null;
@@ -4616,30 +4630,96 @@
   }
   window.getMultiplyZoneForPoint = getMultiplyZoneForPoint;
   window.getMultiplyZoneForLine = getMultiplyZoneForLine;
+  function getScaleZoneForLine(ann, line, isPoly) {
+    const zones = ann?.scaleZones || [];
+    const start = isPoly ? (line.points?.[0] || { x: 0, y: 0 }) : { x: line.x1, y: line.y1 };
+    const end = isPoly ? (line.points?.[line.points?.length - 1] || { x: 0, y: 0 }) : { x: line.x2, y: line.y2 };
+    for (const z of zones) {
+      if (z.scale && pointInRect(start, z.x1, z.y1, z.x2, z.y2) && pointInRect(end, z.x1, z.y1, z.x2, z.y2)) return z;
+    }
+    return null;
+  }
+  function getEffectiveScaleForLine(ann, line, isPoly, pageIdx) {
+    const sz = getScaleZoneForLine(ann, line, isPoly);
+    if (sz && sz.scale) return sz.scale;
+    return getPageScale(pageIdx);
+  }
+  function getLineGeomPdfPts(line, isPoly) {
+    return isPoly ? polylineDistance(line.points || [], line.closed) : quickLineLength(line);
+  }
+  function getLineRealWorldLength(line, pageIdx, isPoly, ann) {
+    const base = getLineGeomPdfPts(line, isPoly);
+    const eff = getEffectiveScaleForLine(ann, line, isPoly, pageIdx);
+    if (!eff || !eff.pixelsPerUnit) return base;
+    const drop = (line.startDrop || 0) + (line.endDrop || 0);
+    return base / eff.pixelsPerUnit + drop;
+  }
+  function getLineLengthForTotals(line, pageIdx, isPoly, ann) {
+    const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, line, isPoly) : 1;
+    return getLineRealWorldLength(line, pageIdx, isPoly, ann) * mult;
+  }
+  window.getScaleZoneForLine = getScaleZoneForLine;
+  window.getEffectiveScaleForLine = getEffectiveScaleForLine;
+  window.getLineRealWorldLength = getLineRealWorldLength;
+  window.getLineLengthForTotals = getLineLengthForTotals;
+  function formatLineLengthRealSum(realSum, scale) {
+    if (scale && scale.pixelsPerUnit) return realSum.toFixed(2) + ' ' + (scale.unit || '');
+    if (realSum === 0) return '0';
+    return Math.round(realSum) + ' px';
+  }
+  function formatDistFeetInchesFromReal(val, scale) {
+    scale = scale ?? getPageScale(state.currentPage);
+    if (!scale) return Math.round(val) + ' px';
+    if (scale.unit === 'ft') {
+      let ft = Math.floor(val);
+      let inches = Math.round((val - ft) * 12);
+      if (inches >= 12) { inches = 0; ft++; }
+      return ft + "'-" + inches + '"';
+    }
+    if (scale.unit === 'in') {
+      const totalIn = val;
+      if (totalIn >= 12) {
+        let ft = Math.floor(totalIn / 12);
+        let inches = Math.round(totalIn - ft * 12);
+        if (inches >= 12) { inches = 0; ft++; }
+        return ft + "'-" + inches + '"';
+      }
+      return Math.round(totalIn) + '"';
+    }
+    if (scale.unit === 'yd') {
+      const valFt = val * 3;
+      let ft = Math.floor(valFt);
+      let inches = Math.round((valFt - ft) * 12);
+      if (inches >= 12) { inches = 0; ft++; }
+      return ft + "'-" + inches + '"';
+    }
+    return (val).toFixed(2) + ' ' + scale.unit;
+  }
+
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) {
-    let counterCount = 0, lineRunCount = 0, lengthPdfPts = 0;
+    let counterCount = 0, lineRunCount = 0, lengthRealSum = 0;
     const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
     (state.counters || []).forEach(c => {
       (ann?.counterMarkers?.[c.id] || []).forEach(m => { if (inRect(m)) counterCount++; });
     });
     (ann?.quickLines || []).forEach(q => {
       const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
-      if (inRect(start) && inRect(end)) { lineRunCount++; lengthPdfPts += getLineLengthPdfPts(q, pageIdx, false); }
+      if (inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLength(q, pageIdx, false, ann); }
     });
     (ann?.polylines || []).forEach(poly => {
       const pts = poly.points || [];
       const start = pts[0], end = pts[pts.length - 1];
-      if (start && end && inRect(start) && inRect(end)) { lineRunCount++; lengthPdfPts += getLineLengthPdfPts(poly, pageIdx, true); }
+      if (start && end && inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLength(poly, pageIdx, true, ann); }
     });
-    return { counterCount, lineRunCount, lengthPdfPts };
+    return { counterCount, lineRunCount, lengthRealSum };
   }
   function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) {
     const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
     const result = {
-      counterCount: 0, lineRunCount: 0, lengthPdfPts: 0,
-      highlightCount: 0, noteCount: 0, multiplyZoneCount: 0,
+      counterCount: 0, lineRunCount: 0, lengthRealSum: 0,
+      highlightCount: 0, noteCount: 0, multiplyZoneCount: 0, scaleZoneCount: 0,
       counters: [], quickLines: [], polylines: [],
-      highlights: [], notes: [], multiplyZones: []
+      highlights: [], notes: [], multiplyZones: [], scaleZones: []
     };
     (state.counters || []).forEach(c => {
       (ann?.counterMarkers?.[c.id] || []).forEach(m => {
@@ -4653,7 +4733,7 @@
       const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
       if (inRect(start) && inRect(end)) {
         result.lineRunCount++;
-        result.lengthPdfPts += getLineLengthPdfPts(q, pageIdx, false);
+        result.lengthRealSum += getLineRealWorldLength(q, pageIdx, false, ann);
         result.quickLines.push({ index: i, line: q });
       }
     });
@@ -4662,7 +4742,7 @@
       const start = pts[0], end = pts[pts.length - 1];
       if (start && end && inRect(start) && inRect(end)) {
         result.lineRunCount++;
-        result.lengthPdfPts += getLineLengthPdfPts(poly, pageIdx, true);
+        result.lengthRealSum += getLineRealWorldLength(poly, pageIdx, true, ann);
         result.polylines.push({ index: i, poly });
       }
     });
@@ -4686,6 +4766,13 @@
         result.multiplyZones.push({ index: i });
       }
     });
+    (ann?.scaleZones || []).forEach((z, i) => {
+      const cx = (z.x1 + z.x2) / 2, cy = (z.y1 + z.y2) / 2;
+      if (inRect({ x: cx, y: cy })) {
+        result.scaleZoneCount++;
+        result.scaleZones.push({ index: i });
+      }
+    });
     return result;
   }
   function performDeleteZone(ann, collected) {
@@ -4699,6 +4786,9 @@
     });
     (collected.multiplyZones || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
       (ann?.multiplyZones || []).splice(index, 1);
+    });
+    (collected.scaleZones || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.scaleZones || []).splice(index, 1);
     });
     (collected.polylines || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
       (ann?.polylines || []).splice(index, 1);
@@ -4830,6 +4920,10 @@
       h.x1 = a.x; h.y1 = a.y; h.x2 = b.x; h.y2 = b.y;
     });
     (ann.multiplyZones || []).forEach(z => {
+      const a = r({ x: z.x1, y: z.y1 }), b = r({ x: z.x2, y: z.y2 });
+      z.x1 = a.x; z.y1 = a.y; z.x2 = b.x; z.y2 = b.y;
+    });
+    (ann.scaleZones || []).forEach(z => {
       const a = r({ x: z.x1, y: z.y1 }), b = r({ x: z.x2, y: z.y2 });
       z.x1 = a.x; z.y1 = a.y; z.x2 = b.x; z.y2 = b.y;
     });
@@ -5017,6 +5111,12 @@
       const minY = Math.min(z.y1, z.y2), maxY = Math.max(z.y1, z.y2);
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'multiplyZone', index: i };
     }
+    for (let i = 0; i < (ann.scaleZones || []).length; i++) {
+      const z = ann.scaleZones[i];
+      const minX = Math.min(z.x1, z.x2), maxX = Math.max(z.x1, z.x2);
+      const minY = Math.min(z.y1, z.y2), maxY = Math.max(z.y1, z.y2);
+      if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'scaleZone', index: i };
+    }
     for (let i = 0; i < (ann.notes || []).length; i++) {
       const n = ann.notes[i];
       const noteRot = getNoteRotationRad(n, page);
@@ -5170,6 +5270,7 @@
         else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
         else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? 'Click second corner' : 'Click first corner';
+        else if (state.tool === TOOL.SCALE_ZONE) toolHint = state.scaleZoneStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.NOTE) toolHint = 'Click to add note';
         else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
@@ -5381,9 +5482,9 @@
         }
         const midPdf = isCurved && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
         const mid = toCanvas(midPdf);
-        const pageScale = getPageScale(state.currentPage);
-        const lenPdf = getLineLengthPdfPts(q, state.currentPage, false);
-        const label = formatDistFeetInches(lenPdf, pageScale);
+        const effScale = getEffectiveScaleForLine(ann, q, false, state.currentPage);
+        const realLen = getLineRealWorldLength(q, state.currentPage, false, ann);
+        const label = formatDistFeetInchesFromReal(realLen, effScale);
         const fontSize = (lts.lengthLabelSize ?? 12) * z * dpr();
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
@@ -5483,9 +5584,9 @@
           }
         }
         const mid = toCanvas(midPdf);
-        const pageScale = getPageScale(state.currentPage);
-        const lenPdf = getLineLengthPdfPts(poly, state.currentPage, true);
-        const label = formatDistFeetInches(lenPdf, pageScale);
+        const effScale = getEffectiveScaleForLine(ann, poly, true, state.currentPage);
+        const realLen = getLineRealWorldLength(poly, state.currentPage, true, ann);
+        const label = formatDistFeetInchesFromReal(realLen, effScale);
         const fontSize = (lts.lengthLabelSize ?? 12) * z * dpr();
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
@@ -5562,6 +5663,33 @@
         ctx.textAlign = textAlign;
         ctx.textBaseline = textBaseline;
         ctx.fillText(label, textX, textY);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
+    });
+    (ann.scaleZones || []).forEach((zone) => {
+      const minX = Math.min(zone.x1, zone.x2), maxX = Math.max(zone.x1, zone.x2);
+      const minY = Math.min(zone.y1, zone.y2), maxY = Math.max(zone.y1, zone.y2);
+      const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
+      ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.globalAlpha = 0.12; ctx.fillStyle = '#c9a227'; ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.globalAlpha = 1; ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+      const zoneW = br.x - tl.x, zoneH = br.y - tl.y;
+      const sc = zone.scale;
+      const label = (sc && sc.label) ? sc.label : ((sc && sc.unit) ? ((sc.pixelsPerUnit ? (1 / sc.pixelsPerUnit).toFixed(2) : '?') + ' ' + sc.unit + '/pt') : 'Scale');
+      if (zoneW >= 30 && zoneH >= 20 && label) {
+        const center = toCanvas({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * z * dpr();
+        ctx.font = fontSize + 'px DM Sans';
+        const tw = ctx.measureText(label).width;
+        const pad = 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(center.x - tw / 2 - pad, center.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#8a6d1a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, center.x, center.y);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -5690,6 +5818,14 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
+    if (state.scaleZoneStart && state.mousePos) {
+      const minX = Math.min(state.scaleZoneStart.x, state.mousePos.x), maxX = Math.max(state.scaleZoneStart.x, state.mousePos.x);
+      const minY = Math.min(state.scaleZoneStart.y, state.mousePos.y), maxY = Math.max(state.scaleZoneStart.y, state.mousePos.y);
+      const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
+      ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+    }
     if (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart && state.mousePos) {
       const minX = Math.min(state.deleteZoneStart.x, state.mousePos.x), maxX = Math.max(state.deleteZoneStart.x, state.mousePos.x);
       const minY = Math.min(state.deleteZoneStart.y, state.mousePos.y), maxY = Math.max(state.deleteZoneStart.y, state.mousePos.y);
@@ -5800,9 +5936,9 @@
         }
         const midPdf = useArc && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
         const mid = tc(midPdf);
-        const pageScale = page?.scale ?? getPageScale(pageIdx >= 0 ? pageIdx : 0);
-        const lenPdf = getLineLengthPdfPts(q, pageIdx >= 0 ? pageIdx : 0, false);
-        const label = formatDistFeetInches(lenPdf, pageScale);
+        const effScale = getEffectiveScaleForLine(ann, q, false, pageIdx >= 0 ? pageIdx : 0);
+        const realLen = getLineRealWorldLength(q, pageIdx >= 0 ? pageIdx : 0, false, ann);
+        const label = formatDistFeetInchesFromReal(realLen, effScale);
         const fontSize = (lts.lengthLabelSize ?? 12) * scale;
         ctx.font = fontSize + 'px sans-serif';
         const tw = ctx.measureText(label).width;
@@ -5900,9 +6036,9 @@
           }
         }
         const mid = tc(midPdf);
-        const pageScale = page?.scale ?? getPageScale(pageIdx >= 0 ? pageIdx : 0);
-        const lenPdf = getLineLengthPdfPts(poly, pageIdx >= 0 ? pageIdx : 0, true);
-        const label = formatDistFeetInches(lenPdf, pageScale);
+        const effScale = getEffectiveScaleForLine(ann, poly, true, pageIdx >= 0 ? pageIdx : 0);
+        const realLen = getLineRealWorldLength(poly, pageIdx >= 0 ? pageIdx : 0, true, ann);
+        const label = formatDistFeetInchesFromReal(realLen, effScale);
         const fontSize = (lts.lengthLabelSize ?? 12) * scale;
         ctx.font = fontSize + 'px sans-serif';
         const tw = ctx.measureText(label).width;
@@ -5979,6 +6115,33 @@
         ctx.textAlign = textAlign;
         ctx.textBaseline = textBaseline;
         ctx.fillText(label, textX, textY);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
+    });
+    (ann.scaleZones || []).forEach((zone) => {
+      const minX = Math.min(zone.x1, zone.x2), maxX = Math.max(zone.x1, zone.x2);
+      const minY = Math.min(zone.y1, zone.y2), maxY = Math.max(zone.y1, zone.y2);
+      const tl = tc({ x: minX, y: minY }), br = tc({ x: maxX, y: maxY });
+      ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.globalAlpha = 0.12; ctx.fillStyle = '#c9a227'; ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.globalAlpha = 1; ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+      const zoneW = br.x - tl.x, zoneH = br.y - tl.y;
+      const sc = zone.scale;
+      const label = (sc && sc.label) ? sc.label : ((sc && sc.unit) ? ((sc.pixelsPerUnit ? (1 / sc.pixelsPerUnit).toFixed(2) : '?') + ' ' + sc.unit + '/pt') : 'Scale');
+      if (zoneW >= 30 && zoneH >= 20 && label) {
+        const center = tc({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * scale;
+        ctx.font = fontSize + 'px sans-serif';
+        const tw = ctx.measureText(label).width;
+        const pad = 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(center.x - tw / 2 - pad, center.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#8a6d1a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, center.x, center.y);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }
@@ -6100,15 +6263,15 @@
     });
     const lineRows = [];
     (state.lineTypes || []).forEach(lt => {
-      let lenPdf = 0;
+      let lenReal = 0;
       const pi = pageIdx >= 0 ? pageIdx : 0;
       (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-        lenPdf += getLineLengthPdfPts(q, pi, false) * getMultiplyZoneForLine(ann, q, false);
+        lenReal += getLineLengthForTotals(q, pi, false, ann);
       });
       (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-        lenPdf += getLineLengthPdfPts(poly, pi, true) * getMultiplyZoneForLine(ann, poly, true);
+        lenReal += getLineLengthForTotals(poly, pi, true, ann);
       });
-      if (lenPdf > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatDist(lenPdf, pageScale) });
+      if (lenReal > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: pageScale ? formatDistFeetInchesFromReal(lenReal, pageScale) : formatLineLengthRealSum(lenReal, null) });
     });
     const hasRows = counterRows.length > 0 || lineRows.length > 0;
     ctx.font = (10 * effectiveScale) + 'px sans-serif';
@@ -6397,6 +6560,8 @@
     document.getElementById('highlightBtn').classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const multiplyZoneBtn = document.getElementById('multiplyZoneBtn');
     if (multiplyZoneBtn) multiplyZoneBtn.classList.toggle('active', state.tool === TOOL.MULTIPLY_ZONE);
+    const scaleZoneBtn = document.getElementById('scaleZoneBtn');
+    if (scaleZoneBtn) scaleZoneBtn.classList.toggle('active', state.tool === TOOL.SCALE_ZONE);
     const deleteZoneBtn = document.getElementById('deleteZoneBtn');
     if (deleteZoneBtn) deleteZoneBtn.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
@@ -6451,6 +6616,8 @@
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const multiplyZoneBtnSidebar = document.getElementById('multiplyZoneBtnSidebar');
     if (multiplyZoneBtnSidebar) multiplyZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.MULTIPLY_ZONE);
+    const scaleZoneBtnSidebar = document.getElementById('scaleZoneBtnSidebar');
+    if (scaleZoneBtnSidebar) scaleZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.SCALE_ZONE);
     const deleteZoneBtnSidebar = document.getElementById('deleteZoneBtnSidebar');
     if (deleteZoneBtnSidebar) deleteZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
@@ -6483,6 +6650,7 @@
       state.quickLineStart = null;
       state.highlightStart = null;
       state.multiplyZoneStart = null;
+      state.scaleZoneStart = null;
       state.deleteZoneStart = null;
       state.drawingPolyline = null;
       state.editingPolyline = null;
@@ -6492,7 +6660,7 @@
     const redoBtn = document.getElementById('redoBtn');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -6952,13 +7120,13 @@
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += getLineLengthPdfPts(q, pi, false); });
-        polys.forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pi, true); });
+        qLines.forEach(q => { runs++; len += getLineLengthForTotals(q, pi, false, ann); });
+        polys.forEach(poly => { runs++; len += getLineLengthForTotals(poly, pi, true, ann); });
       });
       const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatDist(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + (scale ? formatDistFeetInchesFromReal(len, scale) : formatLineLengthRealSum(len, null)) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;
         const handle = div.querySelector('.line-type-drag-handle');
@@ -7068,10 +7236,12 @@
       const pageIndices = [...new Set(filteredItems.map(it => it.pageIdx))];
       let totalLen = 0;
       filteredItems.forEach(it => {
-        totalLen += it.type === 'poly' ? getLineLengthPdfPts(it.poly, it.pageIdx, true) : getLineLengthPdfPts(it.q, it.pageIdx, false);
+        const p = state.pages[it.pageIdx];
+        const annIt = p ? getActiveAnnotations(p) : makeAnnotations();
+        totalLen += it.type === 'poly' ? getLineLengthForTotals(it.poly, it.pageIdx, true, annIt) : getLineLengthForTotals(it.q, it.pageIdx, false, annIt);
       });
       const scale = pickScaleForLineType(pageIndices);
-      const summary = filteredItems.length + ' lines · ' + formatDist(totalLen, scale);
+      const summary = filteredItems.length + ' lines · ' + (scale ? formatDistFeetInchesFromReal(totalLen, scale) : formatLineLengthRealSum(totalLen, null));
       const expanded = !!state.linesTypeExpanded[tid];
       const groupWrapper = document.createElement('div');
       groupWrapper.className = 'lines-type-group' + (expanded ? '' : ' collapsed');
@@ -7095,12 +7265,13 @@
       const ltItem = state.lineTypes.find(l => l.id === (it.type === 'poly' ? it.poly.lineTypeId : it.q.lineTypeId));
       const color = (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff');
       const pageScale = state.pages[it.pageIdx]?.scale;
+      const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx]) : makeAnnotations();
       let dist, name;
       if (it.type === 'poly') {
-        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatDist(getLineLengthPdfPts(it.poly, it.pageIdx, true), pageScale);
+        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatDistFeetInchesFromReal(getLineRealWorldLength(it.poly, it.pageIdx, true, annRow), getEffectiveScaleForLine(annRow, it.poly, true, it.pageIdx));
         name = it.poly.name || 'Polyline';
       } else {
-        dist = formatDist(getLineLengthPdfPts(it.q, it.pageIdx, false), pageScale);
+        dist = formatDistFeetInchesFromReal(getLineRealWorldLength(it.q, it.pageIdx, false, annRow), getEffectiveScaleForLine(annRow, it.q, false, it.pageIdx));
         name = it.q.name || 'Quick line';
       }
       const line = it.type === 'poly' ? it.poly : it.q;
@@ -7186,7 +7357,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += getLineLengthPdfPts(q, pi, false) * getMultiplyZoneForLine(ann, q, false);
+          lineTypeByGroup[gid][lt.id].len += getLineLengthForTotals(q, pi, false, ann);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
         (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -7194,7 +7365,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += getLineLengthPdfPts(poly, pi, true) * getMultiplyZoneForLine(ann, poly, true);
+          lineTypeByGroup[gid][lt.id].len += getLineLengthForTotals(poly, pi, true, ann);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
       });
@@ -7229,7 +7400,7 @@
           div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + formatDist(r.len, scale) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + (scale ? formatDistFeetInchesFromReal(r.len, scale) : formatLineLengthRealSum(r.len, null)) + '</span>';
           div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -7271,8 +7442,8 @@
           const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
           const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
           if (qLines.length || polys.length) pageIndices.push(pi);
-          qLines.forEach(q => { runs++; len += getLineLengthPdfPts(q, pi, false) * getMultiplyZoneForLine(ann, q, false); });
-          polys.forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pi, true) * getMultiplyZoneForLine(ann, poly, true); });
+          qLines.forEach(q => { runs++; len += getLineLengthForTotals(q, pi, false, ann); });
+          polys.forEach(poly => { runs++; len += getLineLengthForTotals(poly, pi, true, ann); });
         });
         if (runs > 0) {
           const scale = pickScaleForLineType(pageIndices);
@@ -7280,7 +7451,7 @@
           div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + formatDist(len, scale) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + (scale ? formatDistFeetInchesFromReal(len, scale) : formatLineLengthRealSum(len, null)) + '</span>';
           div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -7313,8 +7484,8 @@
       state.pages.forEach((p, pageIdx) => {
         const ann = getActiveAnnotations(p);
         let runs = 0, len = 0;
-        (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthPdfPts(q, pageIdx, false) * getMultiplyZoneForLine(ann, q, false); });
-        (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthPdfPts(poly, pageIdx, true) * getMultiplyZoneForLine(ann, poly, true); });
+        (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthForTotals(q, pageIdx, false, ann); });
+        (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthForTotals(poly, pageIdx, true, ann); });
         if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
       });
     }
@@ -7343,7 +7514,10 @@
       row.className = 'summary-count-detail-row';
       let metaHtml = '<div class="summary-count-detail-meta">';
       metaHtml += '<span class="summary-count-detail-count">' + esc(it.isCounter ? String(it.count) : String(it.runs)) + '</span>';
-      if (!it.isCounter) metaHtml += '<span class="summary-count-detail-length">' + esc(formatDist(it.length, getPageScale(it.pageIdx))) + '</span>';
+      if (!it.isCounter) {
+        const ps = getPageScale(it.pageIdx);
+        metaHtml += '<span class="summary-count-detail-length">' + esc(ps ? formatDistFeetInchesFromReal(it.length, ps) : formatLineLengthRealSum(it.length, null)) + '</span>';
+      }
       metaHtml += '<span class="summary-count-detail-page">on ' + esc(pagePart) + '</span></div>';
       row.innerHTML = metaHtml;
       if (page.pdfPage) {
@@ -8733,10 +8907,55 @@
       tabsEl.style.display = '';
       selectOnPdfGroup.style.display = '';
       if (lengthInputGroup) lengthInputGroup.style.display = 'none';
-      scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
+      if (state.scaleModalApplyTarget === 'zone') {
+        if (state.pendingScaleZoneEdit != null) {
+          const page = state.pages[state.currentPage];
+          const ann = page && getActiveAnnotations(page);
+          const z = ann?.scaleZones?.[state.pendingScaleZoneEdit.zoneIndex];
+          const cur = z?.scale ? (z.scale.label || ((z.scale.unit || 'ft') + ' @ ' + (z.scale.pixelsPerUnit != null ? Number(z.scale.pixelsPerUnit).toFixed(2) : '?') + ' px/unit')) : '';
+          scaleInfo.textContent = cur ? ('Current: ' + cur + '. Choose a new scale below.') : 'Choose a scale for this zone.';
+        } else {
+          scaleInfo.textContent = 'Lines fully inside this zone will use the scale you choose below.';
+        }
+      } else {
+        scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
+      }
       showScaleTab('presets');
     }
     showModal('scaleModal');
+  }
+  function resetScaleModalZoneMode() {
+    state.scaleModalApplyTarget = null;
+    state.pendingScaleZone = null;
+    state.pendingScaleZoneEdit = null;
+    const h2 = document.querySelector('#scaleModal h2');
+    if (h2) h2.textContent = 'Set Scale';
+  }
+  function applyScaleObjectToZoneOrPage(scaleObj) {
+    if (state.scaleModalApplyTarget !== 'zone') return false;
+    pushUndoSnapshot();
+    const edit = state.pendingScaleZoneEdit;
+    const pending = state.pendingScaleZone;
+    const page = state.pages[state.currentPage];
+    const canvas = page && ensureActiveCanvas(page);
+    resetScaleModalZoneMode();
+    hideModal('scaleModal');
+    state.tool = TOOL.NONE;
+    state.scaleMode = SCALE_MODES.NONE;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    if (canvas) {
+      if (!canvas.annotations.scaleZones) canvas.annotations.scaleZones = [];
+      if (edit && canvas.annotations.scaleZones[edit.zoneIndex]) {
+        canvas.annotations.scaleZones[edit.zoneIndex].scale = { ...scaleObj };
+      } else if (pending) {
+        canvas.annotations.scaleZones.push({ x1: pending.x1, y1: pending.y1, x2: pending.x2, y2: pending.y2, scale: { ...scaleObj }, id: uid() });
+      }
+    }
+    markProjectDirty();
+    updateUI();
+    renderPdf();
+    return true;
   }
   function showScaleTab(tab) {
     document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -8756,6 +8975,8 @@
         btn.type = 'button';
         btn.textContent = p.label;
         btn.onclick = () => {
+          const scaleObj = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
+          if (applyScaleObjectToZoneOrPage(scaleObj)) return;
           pushUndoSnapshot();
           const page = state.pages[state.currentPage];
           if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
@@ -8769,6 +8990,7 @@
     }
   }
   const setScaleClick = () => {
+    resetScaleModalZoneMode();
     state.scalePointA = null;
     state.scalePointB = null;
     state.scaleMode = SCALE_MODES.NONE;
@@ -8795,6 +9017,7 @@
     state.quickLineStart = null;
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
     state.deleteZoneStart = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
@@ -8839,6 +9062,7 @@
   document.getElementById('highlightBtn').onclick = () => {
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
     state.deleteZoneStart = null;
     state.tool = TOOL.HIGHLIGHT;
     updateUI();
@@ -8846,13 +9070,27 @@
   document.getElementById('multiplyZoneBtn').onclick = () => {
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
     state.deleteZoneStart = null;
     state.tool = TOOL.MULTIPLY_ZONE;
+    updateUI();
+  };
+  document.getElementById('scaleZoneBtn').onclick = () => {
+    if (!getPageScale(state.currentPage)) {
+      showSetScaleFirstToast('Scale Zone');
+      return;
+    }
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
+    state.deleteZoneStart = null;
+    state.tool = TOOL.SCALE_ZONE;
     updateUI();
   };
   document.getElementById('deleteZoneBtn').onclick = () => {
     state.highlightStart = null;
     state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
     state.deleteZoneStart = null;
     state.tool = TOOL.DELETE_ZONE;
     updateUI();
@@ -8982,6 +9220,8 @@
       openMultiplyZoneSettingsModal();
     };
   }
+  const scaleZoneBtnSidebarEl = document.getElementById('scaleZoneBtnSidebar');
+  if (scaleZoneBtnSidebarEl) scaleZoneBtnSidebarEl.onclick = () => document.getElementById('scaleZoneBtn').click();
   const deleteZoneBtnSidebarEl = document.getElementById('deleteZoneBtnSidebar');
   if (deleteZoneBtnSidebarEl) deleteZoneBtnSidebarEl.onclick = () => document.getElementById('deleteZoneBtn').click();
   document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; updateUI(); };
@@ -8998,6 +9238,7 @@
       state.quickLineStart = null;
       state.highlightStart = null;
       state.multiplyZoneStart = null;
+      state.scaleZoneStart = null;
       state.deleteZoneStart = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
@@ -9169,6 +9410,7 @@
   };
   document.getElementById('scalePresetsCancel').onclick = () => {
     if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+    resetScaleModalZoneMode();
     hideModal('scaleModal');
     updateUI();
   };
@@ -9184,6 +9426,8 @@
     const pixelsPerUnit = (fractionInches * 72) / feet;
     const fractionDisplay = String(fractionStr).trim();
     const label = fractionDisplay + '" = ' + feet + ' ft';
+    const scaleObj = { pixelsPerUnit, unit: 'ft', label };
+    if (applyScaleObjectToZoneOrPage(scaleObj)) return;
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
     if (page) page.scale = { pixelsPerUnit, unit: 'ft', label };
@@ -9194,6 +9438,7 @@
   };
   document.getElementById('scaleCancel').onclick = () => {
     if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+    resetScaleModalZoneMode();
     hideModal('scaleModal');
     updateUI();
   };
@@ -9205,9 +9450,11 @@
       showToast('Enter a valid length');
       return;
     }
+    const scaleObj = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit, label: null };
+    if (applyScaleObjectToZoneOrPage(scaleObj)) return;
     pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    if (page) page.scale = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit, label: null };
+    if (page) page.scale = scaleObj;
     markProjectDirty();
     state.tool = TOOL.NONE;
     state.scaleMode = SCALE_MODES.NONE;
@@ -14786,6 +15033,21 @@
     showModal('multiplyZoneModal');
     state.ctxTarget = null;
   };
+  document.getElementById('ctxEditScaleZone').onclick = () => {
+    const t = state.ctxTarget;
+    if (!t || t.type !== 'scaleZone') return;
+    document.getElementById('contextMenu').classList.remove('visible');
+    const page = state.pages[state.currentPage];
+    const ann = page ? getActiveAnnotations(page) : null;
+    if (!ann?.scaleZones?.[t.index]) return;
+    state.scaleModalApplyTarget = 'zone';
+    state.pendingScaleZone = null;
+    state.pendingScaleZoneEdit = { zoneIndex: t.index };
+    const h2 = document.querySelector('#scaleModal h2');
+    if (h2) h2.textContent = 'Edit zone scale';
+    openScaleModal();
+    state.ctxTarget = null;
+  };
   document.getElementById('ctxDelete').onclick = () => {
     const t = state.ctxTarget;
     if (!t) return;
@@ -14817,6 +15079,8 @@
       ann.highlights.splice(t.index, 1);
     } else if (t.type === 'multiplyZone') {
       if (ann.multiplyZones) ann.multiplyZones.splice(t.index, 1);
+    } else if (t.type === 'scaleZone') {
+      if (ann.scaleZones) ann.scaleZones.splice(t.index, 1);
     } else if (t.type === 'note' || t.type === 'noteResize' || t.type === 'noteFontSize') {
       ann.notes.splice(t.index, 1);
     }
@@ -14849,6 +15113,8 @@
     assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
     const ctxEditMzBtn = document.getElementById('ctxEditMultiplyZone');
     ctxEditMzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'multiplyZone' ? 'block' : 'none';
+    const ctxEditSzBtn = document.getElementById('ctxEditScaleZone');
+    ctxEditSzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'scaleZone' ? 'block' : 'none';
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
     menu.classList.add('visible');
@@ -14901,7 +15167,11 @@
       else if (state.scaleMode === SCALE_MODES.POINT_B) {
         state.scalePointB = pdf;
         const dist = ptDist(state.scalePointA, state.scalePointB);
-        const formatted = formatDistFeetInches(dist, getPageScale(state.currentPage));
+        const page = state.pages[state.currentPage];
+        const ann = page ? getActiveAnnotations(page) : null;
+        const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
+        const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
+        const formatted = formatDistFeetInches(dist, effScale);
         showToast('Distance: ' + formatted, 5000);
         state.scalePointA = null;
         state.scalePointB = null;
@@ -14999,7 +15269,7 @@
             state.multiplyZoneStart = null;
           } else {
             const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-            const lenStr = formatDist(counts.lengthPdfPts, page?.scale);
+            const lenStr = formatLineLengthRealSum(counts.lengthRealSum, page?.scale);
             state.pendingMultiplyZone = { x1, y1, x2, y2 };
             state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
             const mzTitleEl = document.querySelector('#multiplyZoneModal h2');
@@ -15010,6 +15280,38 @@
           }
         }
         state.multiplyZoneStart = null;
+      }
+      renderAnnotations();
+      updateUI();
+    } else if (state.tool === TOOL.SCALE_ZONE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      if (!getPageScale(state.currentPage)) {
+        showSetScaleFirstToast('Scale Zone');
+        return;
+      }
+      const page = state.pages[state.currentPage];
+      if (!state.scaleZoneStart) {
+        state.scaleZoneStart = pdf;
+      } else {
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) {
+          const x1 = Math.min(state.scaleZoneStart.x, pdf.x), x2 = Math.max(state.scaleZoneStart.x, pdf.x);
+          const y1 = Math.min(state.scaleZoneStart.y, pdf.y), y2 = Math.max(state.scaleZoneStart.y, pdf.y);
+          const szones = canvas.annotations.scaleZones || [];
+          const overlaps = szones.some(z => rectsOverlap(x1, y1, x2, y2, z.x1, z.y1, z.x2, z.y2));
+          if (overlaps) {
+            showToast('Cannot place scale zone:\nit overlaps an existing scale zone.', 4000);
+            state.scaleZoneStart = null;
+          } else {
+            state.scaleModalApplyTarget = 'zone';
+            state.pendingScaleZone = { x1, y1, x2, y2 };
+            state.pendingScaleZoneEdit = null;
+            const h2 = document.querySelector('#scaleModal h2');
+            if (h2) h2.textContent = 'Scale for zone';
+            openScaleModal();
+          }
+        }
+        state.scaleZoneStart = null;
       }
       renderAnnotations();
       updateUI();
@@ -15025,17 +15327,18 @@
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
           const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount;
+          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount;
           if (total === 0) {
             showToast('No items in this area.', 2000);
           } else {
-            const lenStr = formatDist(collected.lengthPdfPts, page?.scale);
+            const lenStr = formatLineLengthRealSum(collected.lengthRealSum, page?.scale);
             const parts = [];
             if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
             if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
             if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
             if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
             if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
+            if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
             state.pendingDeleteZone = { ann, collected };
             document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
             showModal('deleteZoneModal');
@@ -15251,7 +15554,7 @@
         note.y = pdf.y - state.draggingNoteOffset.y;
         renderAnnotations();
       }
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart)) {
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart)) {
       renderAnnotations();
     }
     const t = hitTest(pdf);
@@ -15428,7 +15731,7 @@
     } else if (e.touches.length === 1 && state.touchPanStart) {
       const c = getClientCoords(e);
       const moved = ptDist(state.touchPanStart, c) > 10;
-      if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart)) && moved) {
+      if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart)) && moved) {
         if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
         const pt = canvasPointFromEvent(e);
         const pdf = canvasToPdf(pt.x, pt.y);
@@ -15442,7 +15745,7 @@
         state.pan = { x: state.touchPanStart.panX + (c.x - state.touchPanStart.x), y: state.touchPanStart.panY + (c.y - state.touchPanStart.y) };
         updateContainerTransform();
       } else if (moved && state.longPressTimer && state.longPressStart) {
-        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
+        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
         if (ptDist(state.longPressStart, c) > tapCancelThreshold) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
       }
     }
@@ -15521,7 +15824,7 @@
             state.multiplyZoneStart = null;
           } else {
             const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-            const lenStr = formatDist(counts.lengthPdfPts, page?.scale);
+            const lenStr = formatLineLengthRealSum(counts.lengthRealSum, page?.scale);
             state.pendingMultiplyZone = { x1, y1, x2, y2 };
             state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
             const mzTitleElTouch = document.querySelector('#multiplyZoneModal h2');
@@ -15532,6 +15835,40 @@
           }
         }
         state.multiplyZoneStart = null;
+      }
+      renderAnnotations();
+      updateUI();
+      return;
+    }
+    if (state.tool === TOOL.SCALE_ZONE) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      if (!getPageScale(state.currentPage)) {
+        showSetScaleFirstToast('Scale Zone');
+        return;
+      }
+      const page = state.pages[state.currentPage];
+      if (!state.scaleZoneStart) {
+        state.scaleZoneStart = pdf;
+      } else {
+        const canvas = page && ensureActiveCanvas(page);
+        if (canvas) {
+          const x1 = Math.min(state.scaleZoneStart.x, pdf.x), x2 = Math.max(state.scaleZoneStart.x, pdf.x);
+          const y1 = Math.min(state.scaleZoneStart.y, pdf.y), y2 = Math.max(state.scaleZoneStart.y, pdf.y);
+          const szones = canvas.annotations.scaleZones || [];
+          const overlaps = szones.some(z => rectsOverlap(x1, y1, x2, y2, z.x1, z.y1, z.x2, z.y2));
+          if (overlaps) {
+            showToast('Cannot place scale zone:\nit overlaps an existing scale zone.', 4000);
+            state.scaleZoneStart = null;
+          } else {
+            state.scaleModalApplyTarget = 'zone';
+            state.pendingScaleZone = { x1, y1, x2, y2 };
+            state.pendingScaleZoneEdit = null;
+            const h2t = document.querySelector('#scaleModal h2');
+            if (h2t) h2t.textContent = 'Scale for zone';
+            openScaleModal();
+          }
+        }
+        state.scaleZoneStart = null;
       }
       renderAnnotations();
       updateUI();
@@ -15549,17 +15886,18 @@
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
           const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount;
+          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount;
           if (total === 0) {
             showToast('No items in this area.', 2000);
           } else {
-            const lenStr = formatDist(collected.lengthPdfPts, page?.scale);
+            const lenStr = formatLineLengthRealSum(collected.lengthRealSum, page?.scale);
             const parts = [];
             if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
             if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
             if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
             if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
             if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
+            if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
             state.pendingDeleteZone = { ann, collected };
             document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
             showModal('deleteZoneModal');
@@ -15597,7 +15935,7 @@
       if (!state.longPressFired) {
         e.preventDefault();
         const c = getClientCoords(e);
-        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT || state.tool === TOOL.MULTIPLY_ZONE || state.tool === TOOL.NOTE) {
+        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT || state.tool === TOOL.MULTIPLY_ZONE || state.tool === TOOL.SCALE_ZONE || state.tool === TOOL.NOTE) {
           handleTouchAsCanvasTap(c.x, c.y);
         } else {
           const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
@@ -15667,7 +16005,7 @@
       }
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.multiplyZoneStart = null; state.deleteZoneStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
+      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
       else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
       else if (k === 'r') { rotatePage90(); e.preventDefault(); }
       else if (k === 'j') {
@@ -15709,6 +16047,7 @@
         hideModal('chooseLineTypeModal');
       } else if (document.getElementById('scaleModal').classList.contains('visible')) {
         if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+        resetScaleModalZoneMode();
         hideModal('scaleModal');
         updateUI();
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
@@ -15763,7 +16102,7 @@
       else if (state.tool === TOOL.LINE) {
         if (state.quickLineStart) { state.quickLineStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
-      }       else if (state.tool === TOOL.MEASURE) {
+      } else if (state.tool === TOOL.MEASURE) {
         state.tool = TOOL.NONE;
         state.scalePointA = null;
         state.scalePointB = null;
@@ -15775,6 +16114,9 @@
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.MULTIPLY_ZONE) {
         if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderPdf(); updateUI(); }
+        else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.SCALE_ZONE) {
+        if (state.scaleZoneStart) { state.scaleZoneStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.DELETE_ZONE) {
         if (state.deleteZoneStart) { state.deleteZoneStart = null; renderPdf(); updateUI(); }

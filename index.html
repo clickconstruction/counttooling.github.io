@@ -383,6 +383,7 @@
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
     #lineColorModal { z-index: 260; }
+    #groupModal { z-index: 210; }
     .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; }
     .modal-card h2 { margin-bottom: 16px; font-size: 1.1rem; }
     .modal-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -836,6 +837,16 @@
     .context-menu button.danger { color: var(--red); }
     .context-menu { display: none; }
     .context-menu.visible { display: block; }
+    .context-menu-target-name {
+      display: none;
+      padding: 6px 12px 8px;
+      font-size: 0.8rem;
+      color: var(--text2);
+      border-top: 1px solid var(--border);
+      margin-top: 2px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
     .canvas-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 140px; max-height: 50vh; overflow-y: auto; display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
     .canvas-menu.visible { display: block; animation: canvasMenuIn 0.2s ease; }
     @keyframes canvasMenuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
@@ -2784,6 +2795,7 @@
     <button id="ctxEditMultiplyZone" style="display:none;">Edit multiplier</button>
     <button id="ctxEditScaleZone" style="display:none;">Edit scale</button>
     <button class="danger" id="ctxDelete">Delete</button>
+    <div id="ctxTargetNameRow" class="context-menu-target-name" aria-hidden="true"></div>
   </div>
   <script>
   (function() {
@@ -15115,6 +15127,34 @@
     ctxEditMzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'multiplyZone' ? 'block' : 'none';
     const ctxEditSzBtn = document.getElementById('ctxEditScaleZone');
     ctxEditSzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'scaleZone' ? 'block' : 'none';
+    const nameRow = document.getElementById('ctxTargetNameRow');
+    if (nameRow) {
+      const t = state.ctxTarget;
+      let targetLabel = null;
+      if (t && (t.type === 'marker' || t.type === 'quickLine' || t.type === 'polyline')) {
+        if (t.type === 'marker') {
+          const c = (state.counters || []).find(x => x.id === t.typeId);
+          targetLabel = c ? (c.name || 'Counter') : 'Unknown';
+        } else {
+          const page = state.pages[state.currentPage];
+          const ann = page ? getActiveAnnotations(page) : null;
+          const line = ann ? (t.type === 'quickLine' ? ann.quickLines?.[t.index] : ann.polylines?.[t.index]) : null;
+          if (line) {
+            const lt = (state.lineTypes || []).find(l => l.id === line.lineTypeId);
+            targetLabel = lt ? (lt.name || 'Line') : '\u2014';
+          }
+        }
+      }
+      if (targetLabel != null) {
+        nameRow.textContent = targetLabel;
+        nameRow.style.display = 'block';
+        nameRow.setAttribute('aria-hidden', 'false');
+      } else {
+        nameRow.textContent = '';
+        nameRow.style.display = 'none';
+        nameRow.setAttribute('aria-hidden', 'true');
+      }
+    }
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
     menu.classList.add('visible');

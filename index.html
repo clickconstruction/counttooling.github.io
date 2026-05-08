@@ -1003,11 +1003,7 @@
             <button type="button" class="export-dropdown-option" data-action="canvas">Export Canvas</button>
             <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
             <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
-          </div>
-          <div id="exportDropdownImportContent" style="display:none;">
-            <button type="button" class="export-dropdown-option" data-action="import-pdf">Import PDF</button>
             <button type="button" class="export-dropdown-option" data-action="import-canvas">Import Canvas</button>
-            <button type="button" class="export-dropdown-option" data-action="import-both">Import Both</button>
           </div>
         </div>
       </div>
@@ -7060,18 +7056,18 @@
     const exportDropdown = document.getElementById('exportDropdown');
     const showExportDropdownBase = !state.isViewer || state.pages.length > 0;
     const exportContent = document.getElementById('exportDropdownExportContent');
-    const importContent = document.getElementById('exportDropdownImportContent');
     const shieldImportMode = !state.isViewer && state.pages.length === 0;
     if (exportContent) exportContent.style.display = shieldImportMode ? 'none' : '';
-    if (importContent) importContent.style.display = shieldImportMode ? '' : 'none';
     const exportDropdownBtn = document.getElementById('exportDropdownBtn');
     if (exportDropdownBtn) {
       if (shieldImportMode) {
-        exportDropdownBtn.setAttribute('aria-label', 'Import');
-        exportDropdownBtn.title = 'Import PDF or canvas';
+        exportDropdownBtn.setAttribute('aria-label', 'Import PDF');
+        exportDropdownBtn.title = 'Upload PDF to start';
+        exportDropdownBtn.setAttribute('aria-haspopup', 'false');
       } else {
         exportDropdownBtn.setAttribute('aria-label', 'Export');
         exportDropdownBtn.title = 'Export project';
+        exportDropdownBtn.setAttribute('aria-haspopup', 'menu');
       }
       const iconImport = document.getElementById('exportDropdownIconImport');
       const iconExport = document.getElementById('exportDropdownIconExport');
@@ -7088,6 +7084,11 @@
       const showCanvasBoth = hasCanvasMarkupForExport ? '' : 'none';
       if (exportCanvasOpt) exportCanvasOpt.style.display = showCanvasBoth;
       if (exportBothOpt) exportBothOpt.style.display = showCanvasBoth;
+    }
+    const exportImportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="import-canvas"]');
+    if (exportImportCanvasOpt) {
+      const showImportCanvas = !shieldImportMode && !state.isViewer && !hasCanvasMarkupForExport ? '' : 'none';
+      exportImportCanvasOpt.style.display = showImportCanvas;
     }
     let showExportDropdown = showExportDropdownBase;
     if (showExportDropdown && !shieldImportMode && exportContent) {
@@ -12379,6 +12380,12 @@
   if (exportDropdownBtn && exportDropdownMenu) {
     exportDropdownBtn.onclick = (e) => {
       e.stopPropagation();
+      const shieldImportModeClick = !state.isViewer && state.pages.length === 0;
+      if (shieldImportModeClick) {
+        exportDropdownMenu.classList.remove('visible');
+        document.getElementById('pdfInput').click();
+        return;
+      }
       if (exportDropdownMenu.classList.contains('visible')) {
         exportDropdownMenu.classList.remove('visible');
       } else {
@@ -12402,13 +12409,8 @@
       else if (action === 'both') {
         document.getElementById('exportBtn').click();
         await downloadProjectPdf();
-      } else if (action === 'import-pdf') {
-        document.getElementById('pdfInput').click();
       } else if (action === 'import-canvas') {
         document.getElementById('importInput').click();
-      } else if (action === 'import-both') {
-        pendingImportCanvasAfterPdf = true;
-        document.getElementById('pdfInput').click();
       }
     };
   });

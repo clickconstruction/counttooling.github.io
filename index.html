@@ -382,6 +382,29 @@
     .header .replaced-by-status-bar { display: none !important; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
+    .save-status-bell-btn {
+      flex-shrink: 0; align-self: center; width: 40px; height: 40px; padding: 0; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .save-status-bell-btn:hover { background: var(--surface3); color: var(--text); }
+    .save-status-bell-btn.save-status-bell-attention {
+      color: var(--yellow); border-color: var(--yellow); background: rgba(232, 184, 74, 0.12);
+      box-shadow: 0 0 0 1px rgba(232, 184, 74, 0.35);
+    }
+    .save-status-summary-block { padding: 10px 12px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 10px; }
+    .save-status-summary-block .save-status-summary-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); margin-bottom: 4px; }
+    .save-status-summary-block .save-status-summary-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .save-status-summary-block .save-status-summary-detail { font-size: 0.85rem; color: var(--text2); white-space: pre-wrap; word-break: break-word; }
+    .save-status-event-list { max-height: 42vh; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+    .save-status-event { padding: 10px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); font-size: 0.88rem; }
+    .save-status-event-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .save-status-event-time { color: var(--text2); font-size: 0.8rem; }
+    .save-status-event-ago { color: var(--text3); }
+    .save-status-event-kind { font-size: 0.72rem; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+    .save-status-event-msg { color: var(--text); }
+    .save-status-event-detail-wrap summary { cursor: pointer; color: var(--accent); font-size: 0.82rem; margin-top: 8px; }
+    .save-status-event-detail { margin-top: 6px; font-size: 0.75rem; font-family: 'DM Mono', monospace; color: var(--text2); white-space: pre-wrap; word-break: break-word; max-height: 120px; overflow-y: auto; }
     #lineColorModal { z-index: 260; }
     #groupModal { z-index: 210; }
     .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; }
@@ -953,13 +976,13 @@
       <span class="spacer"></span>
       <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
       <button id="headerShareBtn" class="header-settings-gear sidebar-triggers supabase-only" aria-label="Share" title="Share">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
       </button>
       <button id="copyViewLinkBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Copy view link" title="Copy view link">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
       </button>
       <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Project Settings" title="Project Settings">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
       </button>
       <button id="authBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Sign In</button>
       <button id="saveProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Name / Upload / Save Project to Cloud</button>
@@ -972,7 +995,8 @@
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
       <div class="export-dropdown" id="exportDropdown" style="position:relative;display:none;">
         <button id="exportDropdownBtn" class="header-settings-gear sidebar-triggers" aria-label="Export" title="Export project">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 64C324.6 64 329.2 65 333.4 66.9L521.8 146.8C543.8 156.1 560.2 177.8 560.1 204C559.6 303.2 518.8 484.7 346.5 567.2C329.8 575.2 310.4 575.2 293.7 567.2C121.3 484.7 80.6 303.2 80.1 204C80 177.8 96.4 156.1 118.4 146.8L306.7 66.9C310.9 65 315.4 64 320 64zM320 130.8L320 508.9C458 442.1 495.1 294.1 496 205.5L320 130.9L320 130.9z"/></svg>
+          <svg id="exportDropdownIconImport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" style="display:none" aria-hidden="true"><path fill="currentColor" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM337 255C327.6 245.6 312.4 245.6 303.1 255L231.1 327C221.7 336.4 221.7 351.6 231.1 360.9C240.5 370.2 255.7 370.3 265 360.9L296 329.9L296 432C296 445.3 306.7 456 320 456C333.3 456 344 445.3 344 432L344 329.9L375 360.9C384.4 370.3 399.6 370.3 408.9 360.9C418.2 351.5 418.3 336.3 408.9 327L336.9 255z"/></svg>
+          <svg id="exportDropdownIconExport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
         </button>
         <div class="export-dropdown-menu" id="exportDropdownMenu" style="display:none;">
           <div id="exportDropdownExportContent">
@@ -980,11 +1004,16 @@
             <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
             <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
           </div>
+          <div id="exportDropdownImportContent" style="display:none;">
+            <button type="button" class="export-dropdown-option" data-action="import-pdf">Import PDF</button>
+            <button type="button" class="export-dropdown-option" data-action="import-canvas">Import Canvas</button>
+            <button type="button" class="export-dropdown-option" data-action="import-both">Import Both</button>
+          </div>
         </div>
       </div>
       <div class="download-page-dropdown" id="downloadCurrentPageDropdown" style="position:relative;display:none;">
         <button id="downloadCurrentPageBtn" class="header-settings-gear sidebar-triggers" aria-label="Download current page" title="Download current page as marked PDF">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M128 128C128 92.7 156.7 64 192 64L405.5 64C422.5 64 438.8 70.7 450.8 82.7L493.3 125.2C505.3 137.2 512 153.5 512 170.5L512 208L128 208L128 128zM64 320C64 284.7 92.7 256 128 256L512 256C547.3 256 576 284.7 576 320L576 416C576 433.7 561.7 448 544 448L512 448L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 448L96 448C78.3 448 64 433.7 64 416L64 320zM192 480L192 512L448 512L448 416L192 416L192 480zM520 336C520 322.7 509.3 312 496 312C482.7 312 472 322.7 472 336C472 349.3 482.7 360 496 360C509.3 360 520 349.3 520 336z"/></svg>
         </button>
         <div class="download-page-menu" id="downloadCurrentPageMenu" style="display:none;">
           <button type="button" class="download-page-option" data-mode="this-canvas">Print This Canvas Only</button>
@@ -1914,6 +1943,19 @@
       <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
     </div>
   </div>
+  <div class="modal-overlay" id="importCanvasAfterPdfModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Import canvas</h2>
+        <button type="button" class="modal-close-btn" id="importCanvasAfterPdfModalClose" aria-label="Close">×</button>
+      </div>
+      <p style="margin:0 0 1rem;font-size:0.95rem;color:var(--text2);">PDF loaded. Choose a canvas export (.json) to apply annotations.</p>
+      <div class="actions">
+        <button type="button" id="importCanvasAfterPdfCancel">Cancel</button>
+        <button type="button" class="btn-yellow" id="importCanvasAfterPdfChoose">Choose canvas file…</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="airboardToastModal">
     <div class="modal-card modal-card-toast">
       <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
@@ -2264,8 +2306,9 @@
           <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;align-self:stretch;">Force turn-in (admin)</button>
         </div>
         <div id="settingsCheckoutSection" class="settings-checkout-section" style="display:none;">
-          <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:stretch;">
+          <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
             <p id="settingsCheckoutStatus" class="settings-checkout-status" style="margin:0;font-size:0.9rem;color:var(--text2);flex:1;min-width:0;"></p>
+            <button type="button" class="save-status-bell-btn" id="saveStatusBtn" style="display:none;" aria-label="Save status" title="Save status"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg></button>
             <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Turn In Project</button>
           </div>
         </div>
@@ -2277,6 +2320,31 @@
           <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
         </div>
         <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="saveStatusModal" style="z-index:210;">
+    <div class="modal-card" style="max-width:440px;">
+      <div class="modal-card-header">
+        <h2>Save Status</h2>
+        <button type="button" class="modal-close-btn" id="saveStatusModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="save-status-modal-body" style="padding:0 1rem 1rem;">
+        <div id="saveStatusSummaryCanvas" class="save-status-summary-block">
+          <div class="save-status-summary-label">Canvas</div>
+          <div class="save-status-summary-title"></div>
+          <div class="save-status-summary-detail"></div>
+        </div>
+        <div id="saveStatusSummaryPdf" class="save-status-summary-block">
+          <div class="save-status-summary-label">PDF</div>
+          <div class="save-status-summary-title"></div>
+          <div class="save-status-summary-detail"></div>
+        </div>
+        <h3 style="font-size:0.9rem;margin:4px 0 8px;color:var(--text2);font-weight:600;">Activity (last 5 minutes)</h3>
+        <div id="saveStatusEventList" class="save-status-event-list"></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="saveStatusModalDone">Close</button>
       </div>
     </div>
   </div>
@@ -3785,6 +3853,9 @@
       return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length);
     });
   }
+  function projectHasAnyCanvasMarkup() {
+    return Array.isArray(state.pages) && state.pages.some(pageHasAnyAnnotations);
+  }
 
   function backupDataToProjFormat(data) {
     if (!data || (data.pages && Array.isArray(data.pages))) return data;
@@ -3996,6 +4067,7 @@
     return groups;
   }
 
+  let pendingImportCanvasAfterPdf = false;
   let autoSaveDirty = false;
   let lastModifiedAt = 0;
   let pendingLastSessionRestore = null;
@@ -4011,15 +4083,6 @@
   const CHECKOUT_INACTIVITY_MS = 30 * 60 * 1000;
   const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
   let lastCheckoutRefreshAt = 0;
-  let lastSyncFailureToastAt = 0;
-  const SYNC_FAILURE_TOAST_DEBOUNCE_MS = 60000;
-
-  function maybeShowSyncFailureToast(msg, durationMs = 4000) {
-    const now = Date.now();
-    if (now - lastSyncFailureToastAt < SYNC_FAILURE_TOAST_DEBOUNCE_MS) return;
-    lastSyncFailureToastAt = now;
-    showToast(msg, durationMs);
-  }
 
   const withTimeout = (promise, ms, label) =>
     Promise.race([
@@ -4063,6 +4126,24 @@
     }
   }
 
+  const SAVE_STATUS_LOG_MS = 300000;
+  let saveStatusLog = [];
+  let lastCloudSaveAttemptFailed = false;
+  let saveStatusDirtyLogAt = 0;
+  function pruneSaveStatusLog() {
+    const cutoff = Date.now() - SAVE_STATUS_LOG_MS;
+    while (saveStatusLog.length && saveStatusLog[0].ts < cutoff) saveStatusLog.shift();
+  }
+  function pushSaveEvent(kind, message, detail) {
+    if (!SUPABASE_ENABLED) return;
+    pruneSaveStatusLog();
+    saveStatusLog.push({ ts: Date.now(), kind: kind, message: message || '', detail: detail !== undefined && detail !== '' ? detail : undefined });
+  }
+  function formatSaveStatusErrDetail(e) {
+    if (!e) return '';
+    try { return JSON.stringify(saveDebugSerializeError(e)); } catch (_) { return String((e && e.message) || e); }
+  }
+
   function perfLog(label, durationMs, extra) {
     const msg = '[Perf] ' + label + ': ' + durationMs + 'ms';
     if (extra && Object.keys(extra).length) console.log(msg, extra);
@@ -4074,6 +4155,13 @@
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     autoSaveDirty = true;
     lastModifiedAt = Date.now();
+    if (SUPABASE_ENABLED && state.supabaseSession?.user && !state.isViewer) {
+      const now = Date.now();
+      if (now - saveStatusDirtyLogAt >= 2000) {
+        saveStatusDirtyLogAt = now;
+        pushSaveEvent('dirty', 'Project marked dirty (pending cloud sync)');
+      }
+    }
     if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
     backupDebounceTimer = setTimeout(() => { backupDebounceTimer = null; writeTakeoffStateBackup(); }, 1000);
     if (state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - lastCheckoutRefreshAt >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
@@ -5293,6 +5381,108 @@
     if (state.hoverLegendResize) mode += ' | Drag to resize';
     if (modeEl) { modeEl.textContent = mode; modeEl.title = mode || ''; }
     if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : '—';
+  }
+
+  function getCloudSaveSummary() {
+    const cloudMode = SUPABASE_ENABLED && state.supabaseSession?.user;
+    if (!cloudMode) {
+      return {
+        canvas: { label: 'Canvas', status: '—', detail: 'Not signed in to cloud' },
+        pdf: { label: 'PDF', status: '—', detail: '' }
+      };
+    }
+    let canvas = { label: 'Canvas', status: '', detail: '' };
+    if (saveInProgress) {
+      canvas = { label: 'Canvas', status: 'Uploading…', detail: 'Canvas data uploading to cloud' };
+    } else if (state.lastSavedAt && !autoSaveDirty) {
+      canvas = { label: 'Canvas', status: 'Synced with cloud', detail: state.lastSavedAt ? 'Cloud: ' + formatSaveTime(state.lastSavedAt) : '' };
+    } else if (!state.pages.length) {
+      canvas = { label: 'Canvas', status: 'No project', detail: 'Upload PDF to start' };
+    } else if (state.isViewer) {
+      canvas = { label: 'Canvas', status: 'Viewing (read-only)', detail: state.lastSavedAt ? 'Cloud: ' + formatSaveTime(state.lastSavedAt) : '' };
+    } else {
+      const pendingNote = lastCloudSaveAttemptFailed ? 'Last sync failed; changes are on this device. Retrying automatically.' : 'Pending sync to cloud.';
+      const timePart = state.lastSavedAt ? ' ' + formatSaveTime(state.lastSavedAt) : '';
+      canvas = { label: 'Canvas', status: 'Not saved to cloud', detail: pendingNote + timePart };
+    }
+    let pdf = { label: 'PDF', status: '', detail: '' };
+    const pdfSynced = lastSaveIncludedPdf || !!state.pdfStoragePath;
+    if (savePdfInProgress) {
+      pdf = { label: 'PDF', status: 'Uploading…', detail: 'PDF uploading to cloud' };
+    } else if (pdfSynced) {
+      pdf = { label: 'PDF', status: 'Synced with cloud', detail: state.lastSavedAt ? 'Cloud: ' + formatSaveTime(state.lastSavedAt) : '' };
+    } else if (!state.pdfBuffer || !state.pages.length) {
+      pdf = { label: 'PDF', status: 'No PDF in cloud', detail: !state.pages.length ? 'No pages in project' : 'PDF not uploaded to storage' };
+    } else {
+      pdf = { label: 'PDF', status: 'Not saved to cloud', detail: 'PDF not uploaded to storage' };
+    }
+    return { canvas: canvas, pdf: pdf };
+  }
+
+  function updateSaveStatusIndicator() {
+    const btn = document.getElementById('saveStatusBtn');
+    if (!btn) return;
+    const checkIn = document.getElementById('settingsCheckIn');
+    const show = checkIn && checkIn.style.display !== 'none' && SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user;
+    if (!show) {
+      btn.style.display = 'none';
+      btn.classList.remove('save-status-bell-attention');
+      return;
+    }
+    btn.style.display = '';
+    const attention = !!(lastCloudSaveAttemptFailed && autoSaveDirty);
+    btn.classList.toggle('save-status-bell-attention', attention);
+    btn.title = attention ? 'Save status — sync needs attention' : 'Save status';
+    btn.setAttribute('aria-label', attention ? 'Save status, attention needed' : 'Save status');
+  }
+
+  function escSaveStatusHtml(s) {
+    return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function openSaveStatusModal() {
+    pruneSaveStatusLog();
+    const sum = getCloudSaveSummary();
+    const sumCanvas = document.getElementById('saveStatusSummaryCanvas');
+    const sumPdf = document.getElementById('saveStatusSummaryPdf');
+    const listEl = document.getElementById('saveStatusEventList');
+    if (sumCanvas) {
+      const tEl = sumCanvas.querySelector('.save-status-summary-title');
+      const dEl = sumCanvas.querySelector('.save-status-summary-detail');
+      if (tEl) tEl.textContent = sum.canvas.status || '';
+      if (dEl) dEl.textContent = sum.canvas.detail || '';
+    }
+    if (sumPdf) {
+      const tEl = sumPdf.querySelector('.save-status-summary-title');
+      const dEl = sumPdf.querySelector('.save-status-summary-detail');
+      if (tEl) tEl.textContent = sum.pdf.status || '';
+      if (dEl) dEl.textContent = sum.pdf.detail || '';
+    }
+    if (listEl) {
+      const entries = saveStatusLog.slice().reverse();
+      if (!entries.length) {
+        listEl.innerHTML = '<p class="save-status-empty" style="color:var(--text2);font-size:0.9rem;">No save activity in the last 5 minutes.</p>';
+      } else {
+        listEl.innerHTML = '';
+        entries.forEach((ev) => {
+          const row = document.createElement('div');
+          row.className = 'save-status-event';
+          const d = new Date(ev.ts);
+          const agoMs = Date.now() - ev.ts;
+          let agoStr = agoMs < 1000 ? 'just now' : (agoMs < 60000 ? Math.floor(agoMs / 1000) + 's ago' : Math.floor(agoMs / 60000) + 'm ago');
+          const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+          let html = '<div class="save-status-event-head"><span class="save-status-event-time">' + escSaveStatusHtml(timeStr) + ' <span class="save-status-event-ago">(' + escSaveStatusHtml(agoStr) + ')</span></span><span class="save-status-event-kind">' + escSaveStatusHtml(ev.kind) + '</span></div>';
+          html += '<div class="save-status-event-msg">' + escSaveStatusHtml(ev.message || '') + '</div>';
+          if (ev.detail) {
+            const detStr = typeof ev.detail === 'string' ? ev.detail : JSON.stringify(ev.detail);
+            html += '<details class="save-status-event-detail-wrap"><summary>Details</summary><pre class="save-status-event-detail">' + escSaveStatusHtml(detStr) + '</pre></details>';
+          }
+          row.innerHTML = html;
+          listEl.appendChild(row);
+        });
+      }
+    }
+    showModal('saveStatusModal');
   }
 
   // SECTION: Coordinate Helpers
@@ -6804,6 +6994,8 @@
     if (settingsDownloadPdf) settingsDownloadPdf.style.display = (state.pages.length && !state.isViewer && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
     const advancedExportPdf = document.getElementById('advancedExportPdf');
     if (advancedExportPdf) advancedExportPdf.style.display = (state.pages.length && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
+    const advancedExportBtn = document.getElementById('advancedExport');
+    if (advancedExportBtn) advancedExportBtn.style.display = (state.pages.length && projectHasAnyCanvasMarkup() && !state.isViewer) ? '' : 'none';
     const advancedLoadTestPdf = document.getElementById('advancedLoadTestPdf');
     if (advancedLoadTestPdf) advancedLoadTestPdf.style.display = (IS_DEV_HOST && !state.isViewer) ? '' : 'none';
     const settingsShareProject = document.getElementById('settingsShareProject');
@@ -6866,18 +7058,43 @@
     const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
     if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
     const exportDropdown = document.getElementById('exportDropdown');
-    const hasProject = state.pages.length > 0;
-    const showExportDropdown = hasProject;
-    if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
+    const showExportDropdownBase = !state.isViewer || state.pages.length > 0;
     const exportContent = document.getElementById('exportDropdownExportContent');
-    if (exportContent) exportContent.style.display = '';
+    const importContent = document.getElementById('exportDropdownImportContent');
+    const shieldImportMode = !state.isViewer && state.pages.length === 0;
+    if (exportContent) exportContent.style.display = shieldImportMode ? 'none' : '';
+    if (importContent) importContent.style.display = shieldImportMode ? '' : 'none';
     const exportDropdownBtn = document.getElementById('exportDropdownBtn');
     if (exportDropdownBtn) {
-      exportDropdownBtn.setAttribute('aria-label', 'Export');
-      exportDropdownBtn.title = 'Export project';
+      if (shieldImportMode) {
+        exportDropdownBtn.setAttribute('aria-label', 'Import');
+        exportDropdownBtn.title = 'Import PDF or canvas';
+      } else {
+        exportDropdownBtn.setAttribute('aria-label', 'Export');
+        exportDropdownBtn.title = 'Export project';
+      }
+      const iconImport = document.getElementById('exportDropdownIconImport');
+      const iconExport = document.getElementById('exportDropdownIconExport');
+      if (iconImport) iconImport.style.display = shieldImportMode ? '' : 'none';
+      if (iconExport) iconExport.style.display = shieldImportMode ? 'none' : '';
     }
     const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
-    if (exportPdfOpt) exportPdfOpt.style.display = (state.pdfBuffer || state.pdfStoragePath) ? '' : 'none';
+    const hasPdfExport = !!(state.pdfBuffer || state.pdfStoragePath);
+    if (exportPdfOpt) exportPdfOpt.style.display = hasPdfExport ? '' : 'none';
+    const exportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="canvas"]');
+    const exportBothOpt = document.querySelector('.export-dropdown-option[data-action="both"]');
+    const hasCanvasMarkupForExport = projectHasAnyCanvasMarkup();
+    if (!shieldImportMode) {
+      const showCanvasBoth = hasCanvasMarkupForExport ? '' : 'none';
+      if (exportCanvasOpt) exportCanvasOpt.style.display = showCanvasBoth;
+      if (exportBothOpt) exportBothOpt.style.display = showCanvasBoth;
+    }
+    let showExportDropdown = showExportDropdownBase;
+    if (showExportDropdown && !shieldImportMode && exportContent) {
+      const anyExportRow = hasPdfExport || hasCanvasMarkupForExport;
+      if (!anyExportRow) showExportDropdown = false;
+    }
+    if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
     const allCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-canvases"]');
     if (allCanvasesOpt) {
       const page = state.pages[state.currentPage];
@@ -6892,6 +7109,7 @@
       el.style.display = state.pages.length <= 1 ? 'none' : '';
     });
     updateStatus();
+    if (SUPABASE_ENABLED && state.currentProjectId) updateSaveStatusIndicator();
   }
 
   function renderCanvasSwitcher() {
@@ -8729,7 +8947,12 @@
   }
   document.getElementById('pdfInput').onchange = async (e) => {
     const files = e.target.files;
-    if (!files?.length) return;
+    if (!files?.length) {
+      pendingImportCanvasAfterPdf = false;
+      return;
+    }
+    const importBothFollowUp = pendingImportCanvasAfterPdf;
+    pendingImportCanvasAfterPdf = false;
     const filesToProcess = Array.from(files);
     const startPageIdx = state.pages.length;
     if (startPageIdx === 0) resetGridOrigin();
@@ -8821,7 +9044,7 @@
     e.target.value = '';
 
     const hashBufForMatch = state.pdfBuffer || firstBuf;
-    if (!state.pendingCanvasLoad && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && hashBufForMatch) {
+    if (!importBothFollowUp && !state.pendingCanvasLoad && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && hashBufForMatch) {
       const uploadHash = await sha256Hex(hashBufForMatch);
       const user = state.supabaseSession.user;
       const { data: matches } = await supabase.from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
@@ -8888,6 +9111,9 @@
         updateUI();
         renderPdf();
       }
+    }
+    if (importBothFollowUp && state.pages.length > 0) {
+      showModal('importCanvasAfterPdfModal');
     }
   };
 
@@ -11077,6 +11303,7 @@
   }
 
   document.getElementById('exportBtn').onclick = () => {
+    if (!projectHasAnyCanvasMarkup()) return;
     const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
@@ -11815,6 +12042,18 @@
 
   document.getElementById('importBtn').onclick = () => document.getElementById('importInput').click();
   document.getElementById('importBtnSidebar').onclick = () => document.getElementById('importInput').click();
+  const importCanvasAfterPdfChoose = document.getElementById('importCanvasAfterPdfChoose');
+  const importCanvasAfterPdfCancel = document.getElementById('importCanvasAfterPdfCancel');
+  const importCanvasAfterPdfModalClose = document.getElementById('importCanvasAfterPdfModalClose');
+  function closeImportCanvasAfterPdfModal() { hideModal('importCanvasAfterPdfModal'); }
+  if (importCanvasAfterPdfChoose) {
+    importCanvasAfterPdfChoose.onclick = () => {
+      closeImportCanvasAfterPdfModal();
+      document.getElementById('importInput').click();
+    };
+  }
+  if (importCanvasAfterPdfCancel) importCanvasAfterPdfCancel.onclick = closeImportCanvasAfterPdfModal;
+  if (importCanvasAfterPdfModalClose) importCanvasAfterPdfModalClose.onclick = closeImportCanvasAfterPdfModal;
   document.getElementById('importInput').onchange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
@@ -12163,6 +12402,13 @@
       else if (action === 'both') {
         document.getElementById('exportBtn').click();
         await downloadProjectPdf();
+      } else if (action === 'import-pdf') {
+        document.getElementById('pdfInput').click();
+      } else if (action === 'import-canvas') {
+        document.getElementById('importInput').click();
+      } else if (action === 'import-both') {
+        pendingImportCanvasAfterPdf = true;
+        document.getElementById('pdfInput').click();
       }
     };
   });
@@ -13186,6 +13432,7 @@
       const titleEl = document.getElementById('settingsTitle');
       if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
       document.body.classList.remove('sidebar-open');
+      updateSettingsCheckoutSection();
       showModal('settingsModal');
     };
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); openMySettings(); };
@@ -13196,6 +13443,7 @@
       const titleEl = document.getElementById('settingsTitle');
       if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
       document.body.classList.remove('sidebar-open');
+      updateSettingsCheckoutSection();
       showModal('settingsModal');
     };
     document.getElementById('statusBarAuth').onclick = () => openMySettings();
@@ -13207,6 +13455,7 @@
       const forceBtn = document.getElementById('settingsForceCheckIn');
       if (!section || !SUPABASE_ENABLED || !state.currentProjectId) {
         if (section) section.style.display = 'none';
+        updateSaveStatusIndicator();
         return;
       }
       section.style.display = '';
@@ -13224,6 +13473,7 @@
         statusEl.textContent = state.checkedOutEmail + ' is editing.';
         if (state.isAdmin) forceBtn.style.display = '';
       }
+      updateSaveStatusIndicator();
     }
     async function copyOrCreateViewLinkToClipboard(btn) {
       if (!state.currentProjectId || !supabase) return;
@@ -13281,6 +13531,12 @@
       };
     }
     document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
+    const saveStatusBtnEl = document.getElementById('saveStatusBtn');
+    if (saveStatusBtnEl) saveStatusBtnEl.onclick = () => openSaveStatusModal();
+    const saveStatusModalCloseEl = document.getElementById('saveStatusModalClose');
+    if (saveStatusModalCloseEl) saveStatusModalCloseEl.onclick = () => hideModal('saveStatusModal');
+    const saveStatusModalDoneEl = document.getElementById('saveStatusModalDone');
+    if (saveStatusModalDoneEl) saveStatusModalDoneEl.onclick = () => hideModal('saveStatusModal');
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
       await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
@@ -13309,10 +13565,15 @@
         perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId });
         const result = data || (error ? { ok: false, error: error.message } : { ok: false });
         perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
-        if (result.ok) return { ok: true };
+        if (result.ok) {
+          pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)');
+          return { ok: true };
+        }
+        pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString());
         return { ok: false, error: result.error || 'Failed to turn in' };
       } catch (e) {
         perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
+        pushSaveEvent('turn_in_err', (e && e.message) || 'Failed to turn in', formatSaveStatusErrDetail(e));
         return { ok: false, error: (e && e.message) || 'Failed to turn in' };
       }
     }
@@ -16415,6 +16676,8 @@
       }
       log('Save complete');
       saveDebugLog('manual.save.complete', { runId });
+      lastCloudSaveAttemptFailed = false;
+      pushSaveEvent('manual_save_ok', 'Manual save to cloud completed');
       saveProgressMessage = '';
       updateUI();
       return { ok: true };
@@ -16424,6 +16687,7 @@
       log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
+      pushSaveEvent('manual_save_err', (e && e.message) || 'Manual save failed', formatSaveStatusErrDetail(e));
       try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
       saveProgressMessage = '';
       updateUI();
@@ -16493,6 +16757,7 @@
     });
     const tTotal = Date.now();
     try {
+      pushSaveEvent('autosave_start', state.currentProjectId ? 'Autosave: updating project in cloud' : 'Autosave: creating project in cloud', JSON.stringify({ projectId: state.currentProjectId || null, runId: runId }));
       if (state.currentProjectId) {
         let sizeBytes = dataSize;
         if (state.pdfStoragePath) {
@@ -16555,12 +16820,16 @@
       perfLog('performAutoSave total', Date.now() - tTotal);
       saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
       maybeLogProjectSaveEvent(state.currentProjectId);
+      lastCloudSaveAttemptFailed = false;
+      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)');
       return { ok: true };
     } catch (e) {
       console.error('[Auto-save] Failed:', e);
       saveDebugLogError(runId, 'autosave.request', e);
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
+      lastCloudSaveAttemptFailed = true;
+      pushSaveEvent('autosave_err', (e && e.message) || 'Autosave failed', formatSaveStatusErrDetail(e));
       return { ok: false, error: e };
     }
   }
@@ -16649,6 +16918,17 @@
     });
   }
 
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+      pushSaveEvent('online', 'Browser reports connection online');
+      updateSaveStatusIndicator();
+    });
+    window.addEventListener('offline', () => {
+      pushSaveEvent('offline', 'Browser reports connection offline');
+      updateSaveStatusIndicator();
+    });
+  }
+
   setInterval(async () => {
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
     if (!autoSaveDirty) return;
@@ -16658,18 +16938,17 @@
     const result = await performAutoSave(intervalRunId);
     if (!result.ok) {
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
+        pushSaveEvent('checkout_expired', 'Edit session expired; check out again to continue editing.');
         showToast('Your edit session expired. Check out the project again to continue editing.', 4000);
-      } else if (isAuthError(result.error)) {
+      } else if (!result.error) {
         autoSaveDirty = true;
-        if (result.error) window.lastSaveError = result.error;
-        maybeShowSyncFailureToast('Could not sync. Refresh the page to sync.', 4000);
       } else {
         autoSaveDirty = true;
         if (result.error) window.lastSaveError = result.error;
-        maybeShowSyncFailureToast('Could not sync to cloud. Refresh the page or check your connection.', 4000);
+        updateSaveStatusIndicator();
       }
     } else {
-      lastSyncFailureToastAt = 0;
+      updateSaveStatusIndicator();
     }
   }, AUTO_SAVE_INTERVAL_MS);
 

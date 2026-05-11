@@ -4125,7 +4125,13 @@
   const SAVE_STATUS_LOG_MS = 300000;
   let saveStatusLog = [];
   let lastCloudSaveAttemptFailed = false;
+  let checkoutExpiredNeedsAttention = false;
+  const CHECKOUT_EXPIRED_SAVE_STATUS_MSG = 'Edit session expired; check out again to continue editing.';
   let saveStatusDirtyLogAt = 0;
+  function clearCheckoutExpiredAttention() {
+    checkoutExpiredNeedsAttention = false;
+    updateSaveStatusIndicator();
+  }
   function pruneSaveStatusLog() {
     const cutoff = Date.now() - SAVE_STATUS_LOG_MS;
     while (saveStatusLog.length && saveStatusLog[0].ts < cutoff) saveStatusLog.shift();
@@ -5418,18 +5424,37 @@
   function updateSaveStatusIndicator() {
     const btn = document.getElementById('saveStatusBtn');
     if (!btn) return;
+    const section = document.getElementById('settingsCheckoutSection');
     const checkIn = document.getElementById('settingsCheckIn');
-    const show = checkIn && checkIn.style.display !== 'none' && SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user;
+    const checkOut = document.getElementById('settingsCheckOut');
+    const sectionVisible = section && section.style.display !== 'none';
+    const user = state.supabaseSession?.user;
+    const checkInOn = checkIn && checkIn.style.display !== 'none';
+    const checkOutOn = checkOut && checkOut.style.display !== 'none';
+    const syncAttention = !!(lastCloudSaveAttemptFailed && autoSaveDirty);
+    const show = !!(sectionVisible && SUPABASE_ENABLED && state.currentProjectId && user &&
+      (checkInOn || checkOutOn || checkoutExpiredNeedsAttention));
     if (!show) {
       btn.style.display = 'none';
       btn.classList.remove('save-status-bell-attention');
       return;
     }
     btn.style.display = '';
-    const attention = !!(lastCloudSaveAttemptFailed && autoSaveDirty);
+    const attention = syncAttention || checkoutExpiredNeedsAttention;
     btn.classList.toggle('save-status-bell-attention', attention);
-    btn.title = attention ? 'Save status — sync needs attention' : 'Save status';
-    btn.setAttribute('aria-label', attention ? 'Save status, attention needed' : 'Save status');
+    let title = 'Save status';
+    let aria = 'Save status';
+    if (attention) {
+      if (checkoutExpiredNeedsAttention) {
+        title = 'Save status — checkout expired';
+        aria = 'Save status, checkout expired';
+      } else {
+        title = 'Save status — sync needs attention';
+        aria = 'Save status, sync needs attention';
+      }
+    }
+    btn.title = title;
+    btn.setAttribute('aria-label', aria);
   }
 
   function escSaveStatusHtml(s) {
@@ -13552,7 +13577,7 @@
         const saveResult = await performAutoSave();
         if (!saveResult.ok) {
           if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-          if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, error: 'Your edit session expired. Check out the project again to continue.' };
+          if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
           return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
         }
         autoSaveDirty = false;
@@ -13583,6 +13608,7 @@
       opts = opts || {};
       const result = await doTurnIn();
       if (result.ok) {
+        clearCheckoutExpiredAttention();
         await refreshProjectPermissions();
         updateSettingsCheckoutSection();
         if (opts.hideSettings) hideModal('settingsModal');
@@ -13592,7 +13618,13 @@
         }
         updateUI();
       } else {
-        showToast(result.error || 'Failed to turn in', 3000);
+        if (result.code === 'CHECKOUT_EXPIRED') {
+          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+          checkoutExpiredNeedsAttention = true;
+          updateSaveStatusIndicator();
+        } else {
+          showToast(result.error || 'Failed to turn in', 3000);
+        }
       }
       return result;
     }
@@ -13617,6 +13649,7 @@
           const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
           const result = data || (error ? { ok: false, error: error.message } : { ok: false });
           if (result.ok) {
+            clearCheckoutExpiredAttention();
             state.checkedOutBy = state.supabaseSession?.user?.id;
             state.checkedOutAt = new Date().toISOString();
             state.isViewer = false;
@@ -13659,6 +13692,7 @@
         const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
         const result = data || (error ? { ok: false, error: error.message } : { ok: false });
         if (result.ok) {
+          clearCheckoutExpiredAttention();
           state.checkedOutBy = state.supabaseSession?.user?.id;
           state.checkedOutAt = new Date().toISOString();
           state.isViewer = false;
@@ -14987,7 +15021,10 @@
           state.isViewer = true;
           state.canCheckOut = true;
           updateUI();
-          errEl.textContent = 'Your edit session expired. Check out the project again to continue.';
+          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+          checkoutExpiredNeedsAttention = true;
+          updateSaveStatusIndicator();
+          errEl.textContent = CHECKOUT_EXPIRED_SAVE_STATUS_MSG + ' Open Project Settings to review Save status (bell).';
           errEl.style.display = 'block';
           return;
         }
@@ -15068,7 +15105,12 @@
         pendingCopyProject = null;
         if (p) openCopyProjectModal(p);
       } else {
-        if (isAuthError(result.error)) {
+        if (result.error?.code === 'CHECKOUT_EXPIRED') {
+          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+          checkoutExpiredNeedsAttention = true;
+          autoSaveDirty = true;
+          updateSaveStatusIndicator();
+        } else if (isAuthError(result.error)) {
           showToast('Refresh the page to sync.', 4000);
         } else {
           const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
@@ -16940,8 +16982,10 @@
     const result = await performAutoSave(intervalRunId);
     if (!result.ok) {
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
-        pushSaveEvent('checkout_expired', 'Edit session expired; check out again to continue editing.');
-        showToast('Your edit session expired. Check out the project again to continue editing.', 4000);
+        pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+        checkoutExpiredNeedsAttention = true;
+        autoSaveDirty = true;
+        updateSaveStatusIndicator();
       } else if (!result.error) {
         autoSaveDirty = true;
       } else {

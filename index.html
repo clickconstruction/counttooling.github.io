@@ -2424,10 +2424,15 @@
           <span class="save-status-summary-body"></span>
           <span class="save-status-summary-ago"></span>
         </div>
-        <h3 style="font-size:0.9rem;margin:4px 0 8px;color:var(--text2);font-weight:600;">Activity (last 5 minutes)</h3>
+        <h3 id="saveStatusActivityHeading" style="font-size:0.9rem;margin:4px 0 8px;color:var(--text2);font-weight:600;">Activity (last 5 minutes)</h3>
         <div id="saveStatusEventList" class="save-status-event-list"></div>
       </div>
       <div class="actions">
+        <label class="save-status-verbose-toggle" style="margin-right:auto;font-size:0.9rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="saveStatusVerboseToggle" /> Verbose mode
+        </label>
+        <button type="button" id="saveStatusCopyBtn">Copy logs</button>
+        <button type="button" id="saveStatusExportBtn">Export logs</button>
         <button type="button" id="saveStatusModalDone">Close</button>
       </div>
     </div>
@@ -4415,6 +4420,12 @@
       return localStorage.getItem('clickcount-debug-save') === '1';
     } catch (_) { return false; }
   }
+  function setSaveDebugEnabled(on) {
+    try {
+      if (on) localStorage.setItem('clickcount-debug-save', '1');
+      else localStorage.removeItem('clickcount-debug-save');
+    } catch (_) {}
+  }
   function saveDebugRunId() {
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   }
@@ -4431,7 +4442,14 @@
   }
   function saveDebugLog(phase, payload) {
     if (!isSaveDebugEnabled()) return;
-    console.log('[SaveDebug]', phase, payload && typeof payload === 'object' ? payload : {});
+    const obj = payload && typeof payload === 'object' ? payload : {};
+    console.log('[SaveDebug]', phase, obj);
+    try {
+      let detailStr;
+      try { detailStr = JSON.stringify(obj); } catch (_) { detailStr = String(obj); }
+      if (detailStr && detailStr.length > 4096) detailStr = detailStr.slice(0, 4096) + '…';
+      pushSaveEvent('debug', phase, detailStr);
+    } catch (_) {}
   }
   function saveDebugLogError(runId, context, e) {
     if (!isSaveDebugEnabled()) return;
@@ -4444,6 +4462,10 @@
   }
 
   const SAVE_STATUS_LOG_MS = 300000;
+  const SAVE_STATUS_LOG_VERBOSE_MS = 3600000;
+  function getSaveStatusLogWindowMs() {
+    return isSaveDebugEnabled() ? SAVE_STATUS_LOG_VERBOSE_MS : SAVE_STATUS_LOG_MS;
+  }
   let saveStatusLog = [];
   let saveStatusModalTickTimer = null;
   let lastCloudSaveAttemptFailed = false;
@@ -4459,7 +4481,7 @@
     updateSaveStatusIndicator();
   }
   function pruneSaveStatusLog() {
-    const cutoff = Date.now() - SAVE_STATUS_LOG_MS;
+    const cutoff = Date.now() - getSaveStatusLogWindowMs();
     while (saveStatusLog.length && saveStatusLog[0].ts < cutoff) saveStatusLog.shift();
   }
   function pushSaveEvent(kind, message, detail) {
@@ -4470,6 +4492,63 @@
   function formatSaveStatusErrDetail(e) {
     if (!e) return '';
     try { return JSON.stringify(saveDebugSerializeError(e)); } catch (_) { return String((e && e.message) || e); }
+  }
+
+  function getProjectSummaryForLogs() {
+    try {
+      const pages = (state && state.pages) || [];
+      let counters = 0, lines = 0, multiplyZones = 0, scaleZones = 0, highlights = 0, notes = 0;
+      pages.forEach(p => {
+        const a = p.annotations || {};
+        counters     += (a.counts || []).length;
+        lines        += (a.lines || []).length;
+        multiplyZones += (a.multiplyZones || []).length;
+        scaleZones   += (a.scaleZones || []).length;
+        highlights   += (a.highlights || []).length;
+        notes        += (a.notes || []).length;
+      });
+      return {
+        projectId: state.currentProjectId,
+        projectName: state.currentProjectName,
+        pageCount: pages.length,
+        pagesWithScale: pages.filter(p => p.scale && p.scale.feet > 0).length,
+        counters, lines, multiplyZones, scaleZones, highlights, notes,
+        isAdmin: !!state.isAdmin,
+        isViewer: !!state.isViewer
+      };
+    } catch (_) { return null; }
+  }
+
+  function buildSaveLogsEnvelope() {
+    let userEmail = null;
+    try { userEmail = state.supabaseSession?.user?.email || null; } catch (_) {}
+    return {
+      schema: 'clickcount-save-logs/v1',
+      capturedAt: new Date().toISOString(),
+      user: {
+        email: userEmail,
+        isAdmin: !!state.isAdmin,
+        isViewer: !!state.isViewer
+      },
+      browser: {
+        ua: (typeof navigator !== 'undefined' && navigator.userAgent) || null,
+        platform: (typeof navigator !== 'undefined' && navigator.platform) || null,
+        onLine: (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : null,
+        network: captureNetworkInfoDetail() || null
+      },
+      timing: {
+        lastSuccessfulSupabaseCallAt: (typeof lastSuccessfulSupabaseCallAt !== 'undefined') ? lastSuccessfulSupabaseCallAt : null,
+        serverClockOffsetMs: (typeof serverClockOffsetMs !== 'undefined') ? serverClockOffsetMs : null,
+        consecutiveAutoSaveFailures: (typeof consecutiveAutoSaveFailures !== 'undefined') ? consecutiveAutoSaveFailures : null,
+        autoSaveDirty: (typeof autoSaveDirty !== 'undefined') ? autoSaveDirty : null,
+        saveInProgress: (typeof saveInProgress !== 'undefined') ? saveInProgress : null,
+        turnInInProgress: (typeof turnInInProgress !== 'undefined') ? turnInInProgress : null,
+        verbose: isSaveDebugEnabled(),
+        windowMs: getSaveStatusLogWindowMs()
+      },
+      project: getProjectSummaryForLogs(),
+      events: saveStatusLog.slice()
+    };
   }
 
   function perfLog(label, durationMs, extra) {
@@ -5885,12 +5964,17 @@
     pruneSaveStatusLog();
     const sum = getCloudSaveSummary();
     const listEl = document.getElementById('saveStatusEventList');
+    const headingEl = document.getElementById('saveStatusActivityHeading');
+    const verboseChk = document.getElementById('saveStatusVerboseToggle');
+    const windowMin = Math.round(getSaveStatusLogWindowMs() / 60000);
+    if (headingEl) headingEl.textContent = 'Activity (last ' + windowMin + ' minutes)';
+    if (verboseChk) verboseChk.checked = isSaveDebugEnabled();
     applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryCanvas'), sum.canvas, 'dot');
     applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryPdf'),    sum.pdf,    'square');
     if (listEl) {
       const entries = saveStatusLog.slice().reverse();
       if (!entries.length) {
-        listEl.innerHTML = '<p class="save-status-empty" style="color:var(--text2);font-size:0.9rem;">No save activity in the last 5 minutes.</p>';
+        listEl.innerHTML = '<p class="save-status-empty" style="color:var(--text2);font-size:0.9rem;">No save activity in the last ' + windowMin + ' minutes.</p>';
       } else {
         listEl.innerHTML = '';
         entries.forEach((ev) => {
@@ -14138,6 +14222,55 @@
       if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
       hideModal('saveStatusModal');
     };
+    const saveStatusVerboseToggleEl = document.getElementById('saveStatusVerboseToggle');
+    if (saveStatusVerboseToggleEl) saveStatusVerboseToggleEl.onchange = (e) => {
+      const on = !!e.target.checked;
+      setSaveDebugEnabled(on);
+      pushSaveEvent(on ? 'verbose_on' : 'verbose_off', on ? 'Verbose logging enabled' : 'Verbose logging disabled');
+      renderSaveStatusModalContent();
+    };
+    const saveStatusExportBtnEl = document.getElementById('saveStatusExportBtn');
+    if (saveStatusExportBtnEl) saveStatusExportBtnEl.onclick = () => {
+      try {
+        const envelope = buildSaveLogsEnvelope();
+        const json = JSON.stringify(envelope, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        a.href = url;
+        a.download = 'clickcount-save-logs-' + ts + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 1000);
+        showToast('Logs exported');
+      } catch (err) {
+        showToast('Export failed: ' + (err && err.message || 'unknown'));
+      }
+    };
+    const saveStatusCopyBtnEl = document.getElementById('saveStatusCopyBtn');
+    if (saveStatusCopyBtnEl) saveStatusCopyBtnEl.onclick = async () => {
+      try {
+        const envelope = buildSaveLogsEnvelope();
+        const json = JSON.stringify(envelope, null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(json);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = json;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
+        }
+        showToast('Logs copied to clipboard');
+      } catch (err) {
+        showToast('Copy failed: ' + (err && err.message || 'unknown'));
+      }
+    };
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
       const { data } = await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
@@ -14150,46 +14283,72 @@
       }
       turnInInProgress = true;
       const tTurnIn = Date.now();
+      let currentStage = 'start';
+      let checkInAttempt = 0;
+      const progress = (stage, label) => {
+        currentStage = stage;
+        setTurnInProgress(label);
+        pushSaveEvent('turn_in_stage', label, JSON.stringify({ stage, elapsedMs: Date.now() - tTurnIn }));
+      };
+      const errDetail = (e) => {
+        try {
+          return JSON.stringify(Object.assign(saveDebugSerializeError(e) || {}, {
+            elapsedMs: Date.now() - tTurnIn,
+            stage: currentStage,
+            attempt: checkInAttempt,
+            online: (typeof navigator !== 'undefined') ? navigator.onLine : null,
+            network: captureNetworkInfoDetail() || null
+          }));
+        } catch (_) { return formatSaveStatusErrDetail(e); }
+      };
       try {
         if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
+        pushSaveEvent('turn_in_start', 'Turn In started', JSON.stringify({
+          onLine: (typeof navigator !== 'undefined') ? navigator.onLine : null,
+          network: captureNetworkInfoDetail() || null,
+          lastOk: lastSuccessfulSupabaseCallAt,
+          failures: consecutiveAutoSaveFailures,
+          dirty: autoSaveDirty,
+          saveInProgress,
+          projectId: state.currentProjectId
+        }));
         const looksStale = consecutiveAutoSaveFailures > 0 ||
           (lastSuccessfulSupabaseCallAt > 0 && Date.now() - lastSuccessfulSupabaseCallAt > TURN_IN_STALENESS_MS) ||
           lastSuccessfulSupabaseCallAt === 0;
         if (looksStale) {
-          setTurnInProgress('Checking connection…');
+          progress('pre_probe', 'Checking connection…');
           saveDebugLog('turnIn.preProbe', { failures: consecutiveAutoSaveFailures, lastOk: lastSuccessfulSupabaseCallAt });
           const probe = await runRecoveryProbe('turn_in_pre').catch(() => null);
           if (probe && !probe.ok && probe.errMsg !== 'in_flight') {
-            pushSaveEvent('turn_in_pre_probe_failed', 'Connection seems offline; Turn In aborted (saved locally)', JSON.stringify({ ms: probe.ms, status: probe.status, message: probe.errMsg }));
+            pushSaveEvent('turn_in_pre_probe_failed', 'Connection seems offline; Turn In aborted (saved locally)', JSON.stringify({ ms: probe.ms, status: probe.status, message: probe.errMsg, elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
             return { ok: false, error: 'Connection offline. Saved locally; try Turn In again in a moment.' };
           }
         }
-        setTurnInProgress('Saving local backup…');
+        progress('local_backup', 'Saving local backup…');
         await writeTakeoffStateBackup();
         const hadAutoSave = autoSaveDirty;
         if (autoSaveDirty) {
           if (saveInProgress) {
             saveDebugLog('turnIn.skip', { reason: 'save_in_progress' });
-            pushSaveEvent('turn_in_save_in_progress', 'Turn In skipped: sync still in progress');
+            pushSaveEvent('turn_in_save_in_progress', 'Turn In skipped: sync still in progress', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
             return { ok: false, error: 'Sync in progress, try again in a moment' };
           }
           autoSaveDirty = false;
-          setTurnInProgress('Syncing edits to cloud…');
+          progress('sync_to_cloud', 'Syncing edits to cloud…');
           const saveResult = await performAutoSave();
           if (!saveResult.ok) {
             autoSaveDirty = true;
             pushSaveEvent(
               'turn_in_blocked_by_save_err',
               'Turn In blocked: autosave failed before check-in',
-              (saveResult.error && saveResult.error.message) || ''
+              JSON.stringify({ message: (saveResult.error && saveResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
             );
             if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
             if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
             return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
           }
         }
-        setTurnInProgress('Releasing edit lock…');
-        let checkInAttempt = 0;
+        progress('release_lock', 'Releasing edit lock…');
         let result;
         while (true) {
           try {
@@ -14209,14 +14368,14 @@
               releaseCode === 'CHECKOUT_NOT_OWNED' ||
               /CHECKOUT_EXPIRED|NOT_OWNED|not.checked.out|do not have .* checked out|expired/i.test(releaseMsg);
             if (alreadyReleased) {
-              pushSaveEvent('turn_in_already_released', 'Server had already released the lock; treating as Turn In success', releaseMsg || releaseCode);
+              pushSaveEvent('turn_in_already_released', 'Server had already released the lock; treating as Turn In success', JSON.stringify({ message: releaseMsg || releaseCode, elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt }));
               return { ok: true, releasedByServer: true };
             }
             if (error && checkInAttempt === 0 && isTransientSaveError(error)) {
               saveDebugLog('turnIn.retry', { message: error?.message });
-              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', error?.message || '');
-              setTurnInProgress('Retrying…');
+              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', JSON.stringify({ message: error?.message || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
               checkInAttempt++;
+              progress('retry', 'Retrying…');
               await new Promise(r => setTimeout(r, 500));
               continue;
             }
@@ -14224,23 +14383,23 @@
           } catch (e) {
             if (checkInAttempt === 0 && isTransientSaveError(e)) {
               saveDebugLog('turnIn.retry', { message: e?.message });
-              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', e?.message || '');
-              setTurnInProgress('Retrying…');
+              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', JSON.stringify({ message: e?.message || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
               checkInAttempt++;
+              progress('retry', 'Retrying…');
               await new Promise(r => setTimeout(r, 500));
               continue;
             }
             perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
-            pushSaveEvent('turn_in_err', (e && e.message) || 'Failed to turn in', formatSaveStatusErrDetail(e));
+            pushSaveEvent('turn_in_err', (e && e.message) || 'Failed to turn in', errDetail(e));
             return { ok: false, error: (e && e.message) || 'Failed to turn in' };
           }
         }
         perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
         if (result.ok) {
-          pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)');
+          pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, attempts: checkInAttempt + 1 }));
           return { ok: true };
         }
-        pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString());
+        pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString(), JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt, online: (typeof navigator !== 'undefined') ? navigator.onLine : null, network: captureNetworkInfoDetail() || null }));
         return { ok: false, error: result.error || 'Failed to turn in' };
       } finally {
         setTurnInProgress(null);

@@ -123,6 +123,7 @@
       .header .divider.sidebar-triggers { display: none; }
       .header #copyViewLinkBtn { display: none; }
       .header #settingsGearBtn { display: none; }
+      .header #saveStatusBtnHeader { display: none !important; }
       .header #headerShareBtn { display: none; }
       .header #headerShareBtn.in-view-mode { display: inline-flex; }
       .header #headerEditStatusBanner { display: none !important; }
@@ -186,6 +187,7 @@
       .canvas-switcher.canvas-layers-desktop-visible .canvas-layers-btn { display: flex !important; }
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
       body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
+      body.supabase-enabled .header #saveStatusBtnHeader.supabase-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
       .status-bar #statusBarMacros.status-bar-desktop-only { display: inline !important; }
       body.supabase-enabled .status-bar #statusBarMacrosSep.status-bar-desktop-only { display: inline !important; }
@@ -360,16 +362,16 @@
     .polyline-finish-bar { display: none; padding: 8px; background: var(--surface2); border-top: 1px solid var(--border); gap: 8px; }
     .polyline-finish-bar.visible { display: flex; }
     .status-bar { padding: 4px 12px; font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .status-bar .dot { width: 6px; height: 6px; border-radius: 50%; }
-    .status-bar .dot.dot-red { background: var(--red); }
-    .status-bar .dot.dot-yellow { background: var(--yellow); }
-    .status-bar .dot.dot-green { background: var(--green); }
-    .status-bar .dot.dot-grey { background: var(--text3); }
-    .status-bar .square { width: 6px; height: 6px; border-radius: 0; }
-    .status-bar .square.square-red { background: var(--red); }
-    .status-bar .square.square-yellow { background: var(--yellow); }
-    .status-bar .square.square-green { background: var(--green); }
-    .status-bar .square.square-grey { background: var(--text3); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .dot.dot-red { background: var(--red); }
+    .dot.dot-yellow { background: var(--yellow); }
+    .dot.dot-green { background: var(--green); }
+    .dot.dot-grey { background: var(--text3); }
+    .square { width: 6px; height: 6px; border-radius: 0; display: inline-block; }
+    .square.square-red { background: var(--red); }
+    .square.square-yellow { background: var(--yellow); }
+    .square.square-green { background: var(--green); }
+    .square.square-grey { background: var(--text3); }
     .status-bar .status-bar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
     .status-bar .status-bar-link { color: var(--accent); cursor: pointer; white-space: nowrap; }
     .status-bar .status-bar-link:hover { text-decoration: underline; }
@@ -392,19 +394,42 @@
       color: var(--yellow); border-color: var(--yellow); background: rgba(232, 184, 74, 0.12);
       box-shadow: 0 0 0 1px rgba(232, 184, 74, 0.35);
     }
-    .save-status-summary-block { padding: 10px 12px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 10px; }
-    .save-status-summary-block .save-status-summary-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); margin-bottom: 4px; }
-    .save-status-summary-block .save-status-summary-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
-    .save-status-summary-block .save-status-summary-detail { font-size: 0.85rem; color: var(--text2); white-space: pre-wrap; word-break: break-word; }
-    .save-status-event-list { max-height: 42vh; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
-    .save-status-event { padding: 10px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); font-size: 0.88rem; }
-    .save-status-event-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-    .save-status-event-time { color: var(--text2); font-size: 0.8rem; }
-    .save-status-event-ago { color: var(--text3); }
-    .save-status-event-kind { font-size: 0.72rem; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-    .save-status-event-msg { color: var(--text); }
-    .save-status-event-detail-wrap summary { cursor: pointer; color: var(--accent); font-size: 0.82rem; margin-top: 8px; }
-    .save-status-event-detail { margin-top: 6px; font-size: 0.75rem; font-family: 'DM Mono', monospace; color: var(--text2); white-space: pre-wrap; word-break: break-word; max-height: 120px; overflow-y: auto; }
+    .header .header-save-status-btn { color: var(--text2); }
+    .header .header-save-status-btn:hover { color: var(--text); }
+    .header .header-save-status-btn.save-status-bell-attention {
+      color: var(--yellow);
+      background: rgba(232, 184, 74, 0.12);
+      border-radius: 6px;
+      box-shadow: 0 0 0 1px rgba(232, 184, 74, 0.35);
+    }
+    .save-status-summary-block { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 6px; }
+    .save-status-summary-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); font-weight: 600; flex-shrink: 0; }
+    .save-status-summary-icon { flex-shrink: 0; }
+    .save-status-summary-icon.dot, .save-status-summary-icon.square { width: 10px; height: 10px; }
+    .save-status-summary-sep { color: var(--text3); opacity: 0.5; flex-shrink: 0; }
+    .save-status-summary-body { font-size: 0.85rem; color: var(--text2); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .save-status-summary-ago { color: var(--text3); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; white-space: nowrap; }
+    @media (max-width: 768px) {
+      .save-status-summary-block { display: grid; grid-template-columns: auto auto 1fr auto; grid-template-rows: auto auto; column-gap: 8px; row-gap: 2px; align-items: center; }
+      .save-status-summary-icon { grid-row: 1; grid-column: 1; }
+      .save-status-summary-label { grid-row: 1; grid-column: 2; }
+      .save-status-summary-ago { grid-row: 1; grid-column: 4; }
+      .save-status-summary-sep { display: none; }
+      .save-status-summary-body { grid-row: 2; grid-column: 1 / -1; white-space: normal; word-break: break-word; overflow: visible; }
+    }
+    .save-status-event-list { max-height: 42vh; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .save-status-event { padding: 4px 8px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--border); font-size: 0.85rem; }
+    .save-status-event-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    .save-status-event-time { color: var(--text2); font-size: 0.8rem; flex-shrink: 0; white-space: nowrap; }
+    .save-status-event-ago { color: var(--text3); font-size: 0.8rem; flex-shrink: 0; white-space: nowrap; }
+    .save-status-event-kind { font-size: 0.7rem; text-transform: uppercase; color: var(--accent); font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+    .save-status-event-msg { color: var(--text); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    details.save-status-event > summary { list-style: none; cursor: pointer; }
+    details.save-status-event > summary::-webkit-details-marker { display: none; }
+    .save-status-event-caret { color: var(--text3); flex-shrink: 0; display: inline-flex; align-items: center; transition: transform 0.15s; }
+    .save-status-event-caret::before { content: '\25B8'; font-size: 0.7rem; }
+    details.save-status-event[open] .save-status-event-caret { transform: rotate(90deg); }
+    .save-status-event-detail { margin: 6px 0 2px; padding: 6px 8px; font-size: 0.75rem; font-family: 'DM Mono', monospace; color: var(--text2); white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow-y: auto; background: var(--surface3); border-radius: 4px; }
     #lineColorModal { z-index: 260; }
     #groupModal { z-index: 210; }
     .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; }
@@ -975,6 +1000,9 @@
       </div>
       <span class="spacer"></span>
       <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
+      <button id="saveStatusBtnHeader" class="header-settings-gear sidebar-triggers supabase-only header-save-status-btn" style="display:none;" aria-label="Save status" title="Save status">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg>
+      </button>
       <button id="headerShareBtn" class="header-settings-gear sidebar-triggers supabase-only" aria-label="Share" title="Share">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
       </button>
@@ -2320,21 +2348,25 @@
     </div>
   </div>
   <div class="modal-overlay" id="saveStatusModal" style="z-index:210;">
-    <div class="modal-card" style="max-width:440px;">
+    <div class="modal-card" style="width:96vw;max-width:820px;">
       <div class="modal-card-header">
         <h2>Save Status</h2>
         <button type="button" class="modal-close-btn" id="saveStatusModalClose" aria-label="Close">×</button>
       </div>
       <div class="save-status-modal-body" style="padding:0 1rem 1rem;">
         <div id="saveStatusSummaryCanvas" class="save-status-summary-block">
-          <div class="save-status-summary-label">Canvas</div>
-          <div class="save-status-summary-title"></div>
-          <div class="save-status-summary-detail"></div>
+          <span class="save-status-summary-icon dot dot-grey"></span>
+          <span class="save-status-summary-label">Canvas</span>
+          <span class="save-status-summary-sep" aria-hidden="true">|</span>
+          <span class="save-status-summary-body"></span>
+          <span class="save-status-summary-ago"></span>
         </div>
         <div id="saveStatusSummaryPdf" class="save-status-summary-block">
-          <div class="save-status-summary-label">PDF</div>
-          <div class="save-status-summary-title"></div>
-          <div class="save-status-summary-detail"></div>
+          <span class="save-status-summary-icon square square-grey"></span>
+          <span class="save-status-summary-label">PDF</span>
+          <span class="save-status-summary-sep" aria-hidden="true">|</span>
+          <span class="save-status-summary-body"></span>
+          <span class="save-status-summary-ago"></span>
         </div>
         <h3 style="font-size:0.9rem;margin:4px 0 8px;color:var(--text2);font-weight:600;">Activity (last 5 minutes)</h3>
         <div id="saveStatusEventList" class="save-status-event-list"></div>
@@ -4075,10 +4107,25 @@
   let saveProgressMessage = '';
   let lastSaveIncludedPdf = false;
   let lastLocalBackupAt = null;
+  let pdfCacheWarnShown = false;
   const AUTO_SAVE_INTERVAL_MS = 5000;
   const CHECKOUT_INACTIVITY_MS = 30 * 60 * 1000;
   const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
+  const CHECKOUT_KEEPALIVE_MS = 10 * 60 * 1000;
+  const CHECKOUT_NEAR_EXPIRY_MS = 5 * 60 * 1000;
+  const CHECKOUT_SOFT_GRACE_MS = 60 * 1000;
   let lastCheckoutRefreshAt = 0;
+  let suspendAutoSaveUntilCheckout = false;
+  let lastHiddenAt = 0;
+  let serverClockOffsetMs = 0;
+  function serverNowMs() { return Date.now() + serverClockOffsetMs; }
+  function updateServerClockFromRpc(rpcData) {
+    if (!rpcData) return;
+    const raw = rpcData.server_now;
+    if (!raw) return;
+    const t = typeof raw === 'string' ? new Date(raw).getTime() : Number(raw);
+    if (Number.isFinite(t)) serverClockOffsetMs = t - Date.now();
+  }
 
   const withTimeout = (promise, ms, label) =>
     Promise.race([
@@ -4124,12 +4171,17 @@
 
   const SAVE_STATUS_LOG_MS = 300000;
   let saveStatusLog = [];
+  let saveStatusModalTickTimer = null;
   let lastCloudSaveAttemptFailed = false;
   let checkoutExpiredNeedsAttention = false;
+  let checkoutExpiredToastShown = false;
   const CHECKOUT_EXPIRED_SAVE_STATUS_MSG = 'Edit session expired; check out again to continue editing.';
+  const CHECKOUT_EXPIRED_TOAST_MSG = 'Your edit session expired while idle. Check out again to keep editing.';
   let saveStatusDirtyLogAt = 0;
   function clearCheckoutExpiredAttention() {
     checkoutExpiredNeedsAttention = false;
+    checkoutExpiredToastShown = false;
+    suspendAutoSaveUntilCheckout = false;
     updateSaveStatusIndicator();
   }
   function pruneSaveStatusLog() {
@@ -4169,7 +4221,8 @@
     if (state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - lastCheckoutRefreshAt >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
       lastCheckoutRefreshAt = Date.now();
       if (supabase) supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }).then(({ data }) => {
-        if (data?.ok) state.checkedOutAt = new Date().toISOString();
+        updateServerClockFromRpc(data);
+        if (data?.ok) state.checkedOutAt = data.checked_out_at || new Date().toISOString();
       });
     }
   }
@@ -4264,9 +4317,49 @@
   async function refreshCheckoutActivity() {
     if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
     const { data } = await supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId });
+    updateServerClockFromRpc(data);
     if (data?.ok) {
-      state.checkedOutAt = new Date().toISOString();
+      state.checkedOutAt = data.checked_out_at || new Date().toISOString();
       lastCheckoutRefreshAt = Date.now();
+    }
+  }
+
+  async function probeCheckoutLock(runId) {
+    const userId = state.supabaseSession?.user?.id;
+    if (!SUPABASE_ENABLED || !supabase || !state.currentProjectId || !userId) {
+      return { ok: false, error: new Error('Not signed in or no project') };
+    }
+    if (state.checkedOutBy !== userId) {
+      return { ok: false, expired: true, error: 'Not the lock holder' };
+    }
+    const checkedAt = state.checkedOutAt ? new Date(state.checkedOutAt).getTime() : 0;
+    const ageMs = checkedAt ? serverNowMs() - checkedAt : null;
+    saveDebugLog('probe.start', { runId, ageMs, projectId: state.currentProjectId });
+    const t0 = Date.now();
+    try {
+      const { data, error } = await withTimeout(
+        supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }),
+        10000,
+        'Probe checkout'
+      );
+      const roundTripMs = Date.now() - t0;
+      updateServerClockFromRpc(data);
+      if (error) {
+        saveDebugLog('probe.error', { runId, ageMs, roundTripMs, message: error.message, code: error.code });
+        return { ok: false, error };
+      }
+      if (data?.ok) {
+        state.checkedOutAt = data.checked_out_at || new Date().toISOString();
+        lastCheckoutRefreshAt = Date.now();
+        saveDebugLog('probe.ok', { runId, ageMs, roundTripMs });
+        return { ok: true, refreshed: true };
+      }
+      saveDebugLog('probe.expired', { runId, ageMs, roundTripMs, serverError: data?.error });
+      return { ok: false, expired: true, error: data?.error || 'Checkout expired' };
+    } catch (e) {
+      const roundTripMs = Date.now() - t0;
+      saveDebugLog('probe.error', { runId, ageMs, roundTripMs, message: e?.message, name: e?.name });
+      return { ok: false, error: e };
     }
   }
 
@@ -4441,6 +4534,16 @@
       const tx = db.transaction([TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE], 'readwrite');
       const store = tx.objectStore(TAKEOFF_BACKUP_STORE);
       const metaStore = tx.objectStore(TAKEOFF_BACKUP_META_STORE);
+      const existing = await new Promise((resolve, reject) => {
+        const req = store.get(projectId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+      if (existing && typeof existing.lastModifiedAt === 'number' && typeof lastModifiedAt === 'number' && existing.lastModifiedAt > lastModifiedAt) {
+        saveDebugLog('takeoffBackup.skip_stale', { projectId, existing: existing.lastModifiedAt, incoming: lastModifiedAt });
+        try { tx.abort(); } catch (_) {}
+        return;
+      }
       const entries = await new Promise((resolve, reject) => {
         const req = metaStore.getAll();
         req.onsuccess = () => resolve(req.result);
@@ -4601,7 +4704,7 @@
     state.checkedOutEmail = null;
     const userId = state.supabaseSession?.user?.id;
     const isOwner = proj.user_id === userId;
-    const lockExpired = !proj.checked_out_at || (Date.now() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
+    const lockExpired = !proj.checked_out_at || (serverNowMs() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
     const hasValidCheckout = proj.checked_out_by === userId && !lockExpired;
     state.loadedViaViewLink = false;
     state.isViewer = !hasValidCheckout;
@@ -5279,6 +5382,18 @@
     return timeStr + ' (' + agoStr + ')';
   }
 
+  function formatSaveTimeParts(isoStr) {
+    if (!isoStr) return { clock: '', ago: '' };
+    const d = new Date(isoStr);
+    const agoSec = (Date.now() - d.getTime()) / 1000;
+    const clock = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    let ago = 'Just now';
+    if (agoSec >= 86400) ago = Math.floor(agoSec / 86400) + 'd ago';
+    else if (agoSec >= 3600) ago = Math.floor(agoSec / 3600) + 'hr ago';
+    else if (agoSec >= 60) ago = Math.floor(agoSec / 60) + 'min ago';
+    return { clock, ago };
+  }
+
   function updateStatus() {
     const modeEl = document.getElementById('statusMode');
     const coordsEl = document.getElementById('statusCoords');
@@ -5389,96 +5504,94 @@
     const cloudMode = SUPABASE_ENABLED && state.supabaseSession?.user;
     if (!cloudMode) {
       return {
-        canvas: { label: 'Canvas', status: '—', detail: 'Not signed in to cloud' },
-        pdf: { label: 'PDF', status: '—', detail: '' }
+        canvas: { label: 'Canvas', state: 'grey', status: 'Not signed in to cloud', clock: '', ago: '' },
+        pdf:    { label: 'PDF',    state: 'grey', status: '',                       clock: '', ago: '' }
       };
     }
-    let canvas = { label: 'Canvas', status: '', detail: '' };
+    const savedParts = formatSaveTimeParts(state.lastSavedAt);
+    let canvas;
     if (saveInProgress) {
-      canvas = { label: 'Canvas', status: 'Uploading…', detail: 'Canvas data uploading to cloud' };
+      canvas = { label: 'Canvas', state: 'yellow', status: 'Uploading...', clock: '', ago: '' };
     } else if (state.lastSavedAt && !autoSaveDirty) {
-      canvas = { label: 'Canvas', status: 'Synced with cloud', detail: state.lastSavedAt ? 'Cloud: ' + formatSaveTime(state.lastSavedAt) : '' };
+      canvas = { label: 'Canvas', state: 'green', status: 'Synced with cloud', clock: savedParts.clock, ago: savedParts.ago };
     } else if (!state.pages.length) {
-      canvas = { label: 'Canvas', status: 'No project', detail: 'Upload PDF to start' };
+      canvas = { label: 'Canvas', state: 'grey', status: 'No project', clock: '', ago: '' };
     } else if (state.isViewer) {
-      canvas = { label: 'Canvas', status: 'Viewing (read-only)', detail: state.lastSavedAt ? 'Cloud: ' + formatSaveTime(state.lastSavedAt) : '' };
+      canvas = { label: 'Canvas', state: 'yellow', status: 'Viewing (read-only)', clock: savedParts.clock, ago: savedParts.ago };
     } else {
-      const pendingNote = lastCloudSaveAttemptFailed ? 'Last sync failed; changes are on this device. Retrying automatically.' : 'Pending sync to cloud.';
-      const timePart = state.lastSavedAt ? ' ' + formatSaveTime(state.lastSavedAt) : '';
-      canvas = { label: 'Canvas', status: 'Not saved to cloud', detail: pendingNote + timePart };
+      const status = lastCloudSaveAttemptFailed ? 'Last sync failed' : 'Not saved to cloud';
+      canvas = { label: 'Canvas', state: 'red', status, clock: savedParts.clock, ago: savedParts.ago };
     }
-    let pdf = { label: 'PDF', status: '', detail: '' };
+    let pdf;
     const pdfSynced = lastSaveIncludedPdf || !!state.pdfStoragePath;
     if (savePdfInProgress) {
-      pdf = { label: 'PDF', status: 'Uploading…', detail: 'PDF uploading to cloud' };
+      pdf = { label: 'PDF', state: 'yellow', status: 'Uploading...', clock: '', ago: '' };
     } else if (pdfSynced) {
-      pdf = { label: 'PDF', status: 'Synced with cloud', detail: state.lastSavedAt ? 'Cloud: ' + formatSaveTime(state.lastSavedAt) : '' };
+      pdf = { label: 'PDF', state: 'green', status: 'Synced with cloud', clock: savedParts.clock, ago: savedParts.ago };
     } else if (!state.pdfBuffer || !state.pages.length) {
-      pdf = { label: 'PDF', status: 'No PDF in cloud', detail: !state.pages.length ? 'No pages in project' : 'PDF not uploaded to storage' };
+      pdf = { label: 'PDF', state: 'grey', status: 'No PDF in cloud', clock: '', ago: '' };
     } else {
-      pdf = { label: 'PDF', status: 'Not saved to cloud', detail: 'PDF not uploaded to storage' };
+      pdf = { label: 'PDF', state: 'red', status: 'Not saved to cloud', clock: '', ago: '' };
     }
-    return { canvas: canvas, pdf: pdf };
+    return { canvas, pdf };
   }
 
   function updateSaveStatusIndicator() {
-    const btn = document.getElementById('saveStatusBtn');
-    if (!btn) return;
+    const inModal = document.getElementById('saveStatusBtn');
+    const header  = document.getElementById('saveStatusBtnHeader');
     const section = document.getElementById('settingsCheckoutSection');
-    const checkIn = document.getElementById('settingsCheckIn');
-    const checkOut = document.getElementById('settingsCheckOut');
-    const sectionVisible = section && section.style.display !== 'none';
+    const sectionVisible = !!(section && section.style.display !== 'none');
     const user = state.supabaseSession?.user;
-    const checkInOn = checkIn && checkIn.style.display !== 'none';
-    const checkOutOn = checkOut && checkOut.style.display !== 'none';
     const syncAttention = !!(lastCloudSaveAttemptFailed && autoSaveDirty);
-    const show = !!(sectionVisible && SUPABASE_ENABLED && state.currentProjectId && user &&
-      (checkInOn || checkOutOn || checkoutExpiredNeedsAttention));
-    if (!show) {
-      btn.style.display = 'none';
-      btn.classList.remove('save-status-bell-attention');
-      return;
-    }
-    btn.style.display = '';
     const attention = syncAttention || checkoutExpiredNeedsAttention;
-    btn.classList.toggle('save-status-bell-attention', attention);
-    let title = 'Save status';
-    let aria = 'Save status';
-    if (attention) {
-      if (checkoutExpiredNeedsAttention) {
-        title = 'Save status — checkout expired';
-        aria = 'Save status, checkout expired';
-      } else {
-        title = 'Save status — sync needs attention';
-        aria = 'Save status, sync needs attention';
-      }
+
+    if (inModal) {
+      const showModal = !!(sectionVisible && SUPABASE_ENABLED && state.currentProjectId && user);
+      inModal.style.display = showModal ? '' : 'none';
+      inModal.classList.toggle('save-status-bell-attention', showModal && attention);
     }
-    btn.title = title;
-    btn.setAttribute('aria-label', aria);
+
+    if (header) {
+      const showHeader = !!(SUPABASE_ENABLED && user);
+      header.style.display = showHeader ? '' : 'none';
+      header.classList.toggle('save-status-bell-attention', showHeader && attention);
+    }
+
+    const title = attention
+      ? (checkoutExpiredNeedsAttention ? 'Save status — checkout expired' : 'Save status — sync needs attention')
+      : 'Save status';
+    const aria = attention
+      ? (checkoutExpiredNeedsAttention ? 'Save status, checkout expired' : 'Save status, sync needs attention')
+      : 'Save status';
+    if (inModal) { inModal.title = title; inModal.setAttribute('aria-label', aria); }
+    if (header)  { header.title  = title; header.setAttribute('aria-label',  aria); }
   }
 
   function escSaveStatusHtml(s) {
     return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function openSaveStatusModal() {
+  function applySaveStatusSummaryBlock(rootEl, data, iconBase) {
+    if (!rootEl) return;
+    const iconEl = rootEl.querySelector('.save-status-summary-icon');
+    const agoEl  = rootEl.querySelector('.save-status-summary-ago');
+    const bodyEl = rootEl.querySelector('.save-status-summary-body');
+    if (iconEl) iconEl.className = 'save-status-summary-icon ' + iconBase + ' ' + iconBase + '-' + (data.state || 'grey');
+    if (agoEl)  agoEl.textContent = data.ago ? '(' + data.ago + ')' : '';
+    if (bodyEl) {
+      const parts = [];
+      if (data.status) parts.push(data.status);
+      if (data.clock) parts.push(data.clock);
+      bodyEl.textContent = parts.length === 2 ? parts.join(': ') : (parts[0] || '');
+    }
+  }
+
+  function renderSaveStatusModalContent() {
     pruneSaveStatusLog();
     const sum = getCloudSaveSummary();
-    const sumCanvas = document.getElementById('saveStatusSummaryCanvas');
-    const sumPdf = document.getElementById('saveStatusSummaryPdf');
     const listEl = document.getElementById('saveStatusEventList');
-    if (sumCanvas) {
-      const tEl = sumCanvas.querySelector('.save-status-summary-title');
-      const dEl = sumCanvas.querySelector('.save-status-summary-detail');
-      if (tEl) tEl.textContent = sum.canvas.status || '';
-      if (dEl) dEl.textContent = sum.canvas.detail || '';
-    }
-    if (sumPdf) {
-      const tEl = sumPdf.querySelector('.save-status-summary-title');
-      const dEl = sumPdf.querySelector('.save-status-summary-detail');
-      if (tEl) tEl.textContent = sum.pdf.status || '';
-      if (dEl) dEl.textContent = sum.pdf.detail || '';
-    }
+    applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryCanvas'), sum.canvas, 'dot');
+    applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryPdf'),    sum.pdf,    'square');
     if (listEl) {
       const entries = saveStatusLog.slice().reverse();
       if (!entries.length) {
@@ -5486,24 +5599,50 @@
       } else {
         listEl.innerHTML = '';
         entries.forEach((ev) => {
-          const row = document.createElement('div');
-          row.className = 'save-status-event';
           const d = new Date(ev.ts);
           const agoMs = Date.now() - ev.ts;
-          let agoStr = agoMs < 1000 ? 'just now' : (agoMs < 60000 ? Math.floor(agoMs / 1000) + 's ago' : Math.floor(agoMs / 60000) + 'm ago');
+          const agoStr = agoMs < 1000 ? 'just now' : (agoMs < 60000 ? Math.floor(agoMs / 1000) + 's ago' : Math.floor(agoMs / 60000) + 'm ago');
           const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-          let html = '<div class="save-status-event-head"><span class="save-status-event-time">' + escSaveStatusHtml(timeStr) + ' <span class="save-status-event-ago">(' + escSaveStatusHtml(agoStr) + ')</span></span><span class="save-status-event-kind">' + escSaveStatusHtml(ev.kind) + '</span></div>';
-          html += '<div class="save-status-event-msg">' + escSaveStatusHtml(ev.message || '') + '</div>';
+          const msg = ev.message || '';
+          const caretHtml = ev.detail ? '<span class="save-status-event-caret" aria-hidden="true"></span>' : '';
+          const rowHtml =
+            '<span class="save-status-event-time">' + escSaveStatusHtml(timeStr) + '</span>' +
+            '<span class="save-status-event-kind">' + escSaveStatusHtml(ev.kind) + '</span>' +
+            '<span class="save-status-event-msg" title="' + escSaveStatusHtml(msg) + '">' + escSaveStatusHtml(msg) + '</span>' +
+            caretHtml +
+            '<span class="save-status-event-ago">(' + escSaveStatusHtml(agoStr) + ')</span>';
+          let el;
           if (ev.detail) {
-            const detStr = typeof ev.detail === 'string' ? ev.detail : JSON.stringify(ev.detail);
-            html += '<details class="save-status-event-detail-wrap"><summary>Details</summary><pre class="save-status-event-detail">' + escSaveStatusHtml(detStr) + '</pre></details>';
+            const detStr = typeof ev.detail === 'string' ? ev.detail : JSON.stringify(ev.detail, null, 2);
+            el = document.createElement('details');
+            el.className = 'save-status-event';
+            el.innerHTML =
+              '<summary><span class="save-status-event-row">' + rowHtml + '</span></summary>' +
+              '<pre class="save-status-event-detail">' + escSaveStatusHtml(detStr) + '</pre>';
+          } else {
+            el = document.createElement('div');
+            el.className = 'save-status-event';
+            el.innerHTML = '<span class="save-status-event-row">' + rowHtml + '</span>';
           }
-          row.innerHTML = html;
-          listEl.appendChild(row);
+          listEl.appendChild(el);
         });
       }
     }
+  }
+
+  function openSaveStatusModal() {
+    renderSaveStatusModalContent();
     showModal('saveStatusModal');
+    if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
+    saveStatusModalTickTimer = setInterval(() => {
+      const modal = document.getElementById('saveStatusModal');
+      if (!modal || !modal.classList.contains('visible')) {
+        clearInterval(saveStatusModalTickTimer);
+        saveStatusModalTickTimer = null;
+        return;
+      }
+      renderSaveStatusModalContent();
+    }, 5000);
   }
 
   // SECTION: Coordinate Helpers
@@ -8508,8 +8647,10 @@
       state.isAdmin = false;
       stopPresenceHeartbeat();
     }
+    updateSaveStatusIndicator();
     supabase.auth.onAuthStateChange(async (event, session) => {
       state.supabaseSession = session;
+      updateSaveStatusIndicator();
       if (event === 'TOKEN_REFRESHED') {
         return;
       }
@@ -8551,10 +8692,12 @@
         state.loadedViaViewLink = false;
         state.canCheckOut = false;
         state.projectOwnerId = null;
+        pdfCacheWarnShown = false;
         try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
       }
       updateUI();
       renderPdf();
+      updateSaveStatusIndicator();
     });
   }
 
@@ -8584,13 +8727,42 @@
   }
 
   let projectsCheckoutChannel = null;
+  let projectsCheckoutReconnectTimer = null;
+  let projectsCheckoutReconnectAttempt = 0;
+  const PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS = [1000, 3000, 10000, 30000];
+
+  function clearProjectsCheckoutReconnectTimer() {
+    if (projectsCheckoutReconnectTimer) {
+      clearTimeout(projectsCheckoutReconnectTimer);
+      projectsCheckoutReconnectTimer = null;
+    }
+  }
+
+  function scheduleProjectsCheckoutReconnect(projectId) {
+    if (!SUPABASE_ENABLED || !supabase || !projectId) return;
+    if (projectsCheckoutReconnectTimer) return;
+    const idx = Math.min(projectsCheckoutReconnectAttempt, PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS.length - 1);
+    const delay = PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS[idx];
+    projectsCheckoutReconnectAttempt += 1;
+    saveDebugLog('realtime.checkout.reconnect.schedule', { projectId, attempt: projectsCheckoutReconnectAttempt, delayMs: delay });
+    projectsCheckoutReconnectTimer = setTimeout(() => {
+      projectsCheckoutReconnectTimer = null;
+      if (state.currentProjectId === projectId) {
+        subscribeToProjectCheckoutChanges(projectId);
+      }
+    }, delay);
+  }
 
   function subscribeToProjectCheckoutChanges(projectId) {
     if (projectsCheckoutChannel && supabase) {
       supabase.removeChannel(projectsCheckoutChannel);
       projectsCheckoutChannel = null;
     }
-    if (!SUPABASE_ENABLED || !supabase || !projectId || !state.supabaseSession?.user) return;
+    clearProjectsCheckoutReconnectTimer();
+    if (!SUPABASE_ENABLED || !supabase || !projectId || !state.supabaseSession?.user) {
+      projectsCheckoutReconnectAttempt = 0;
+      return;
+    }
     projectsCheckoutChannel = supabase
       .channel('projects-checkout-' + projectId)
       .on('postgres_changes', {
@@ -8601,7 +8773,16 @@
       }, function() {
         refreshProjectPermissions();
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        saveDebugLog('realtime.checkout.status', { projectId, status, message: err?.message });
+        if (status === 'SUBSCRIBED') {
+          projectsCheckoutReconnectAttempt = 0;
+          clearProjectsCheckoutReconnectTimer();
+          refreshProjectPermissions().catch(() => {});
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          scheduleProjectsCheckoutReconnect(projectId);
+        }
+      });
   }
 
   async function refreshProjectPermissions() {
@@ -8613,6 +8794,12 @@
     if (error || !projects) return;
     const proj = projects.find(function(p) { return p.id === state.currentProjectId; });
     if (!proj) return;
+    const willBecomeViewer = prevWasCheckedOut && !proj.can_edit;
+    const hadDirty = autoSaveDirty;
+    const hadInflight = saveInProgress;
+    if (willBecomeViewer && hadDirty && !hadInflight) {
+      performAutoSave().catch(() => {});
+    }
     state.checkedOutBy = proj.checked_out_by || null;
     state.checkedOutAt = proj.checked_out_at || null;
     state.checkedOutEmail = proj.checked_out_email || null;
@@ -8622,7 +8809,12 @@
     updateUI();
     updateStatus();
     if (prevWasCheckedOut && state.isViewer) {
-      showToast('Project was turned in. You can check out to edit again.');
+      pushSaveEvent('force_turn_in', hadDirty ? 'Force turn-in with unsaved edits' : 'Force turn-in');
+      if (hadDirty) {
+        showToast('Project was turned in by another user. Unsaved edits may have been lost - check Save status (bell).', 6000);
+      } else {
+        showToast('Project was turned in. You can check out to edit again.');
+      }
     } else if (!prevCanCheckOut && state.canCheckOut) {
       if (prevCheckedOutEmail) {
         showToast('Project is now available. You can check out to edit.');
@@ -8632,9 +8824,8 @@
     }
   }
 
-  document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible' && state.currentProjectId && supabase) refreshProjectPermissions();
-  });
+  // Note: consolidated visibilitychange handler (with probeCheckoutLock + refreshProjectPermissions)
+  // lives near the autosave interval block below.
 
   // SECTION: Modals & Handlers
   document.getElementById('uploadPdf').onclick = () => document.getElementById('pdfInput').click();
@@ -8909,6 +9100,7 @@
     const r = await commitPreparePdfToState();
     if (!r.ok) { alert('Failed to build PDF.'); return; }
     hideModal('preparePdfModal');
+    markProjectDirty();
     updateUI();
     requestAnimationFrame(() => { fitZoom(); renderPdf(); });
     await writeTakeoffStateBackup();
@@ -8927,6 +9119,7 @@
     const r = await commitPreparePdfToState();
     if (!r.ok) { alert('Failed to build PDF.'); return; }
     hideModal('preparePdfModal');
+    markProjectDirty();
     updateUI();
     requestAnimationFrame(() => { fitZoom(); renderPdf(); });
     const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
@@ -9008,6 +9201,25 @@
         state.activeCanvasIdByPage[idx] = canvasId;
       }
     }
+    if (SUPABASE_ENABLED && buffersForMerge.length > 0) {
+      const projectedBytes = buffersForMerge.reduce(
+        (s, b) => s + ((b && (b.byteLength || b.length)) || 0),
+        0
+      );
+      if (projectedBytes > PDF_MAX_SIZE_BYTES) {
+        state.pages.length = startPageIdx;
+        Object.keys(state.activeCanvasIdByPage).forEach((k) => {
+          if (Number(k) >= startPageIdx) delete state.activeCanvasIdByPage[k];
+        });
+        alert(
+          'Total PDF size after merge would be ' +
+          (projectedBytes / 1024 / 1024).toFixed(1) +
+          ' MB. Maximum is 50 MB. No pages were added.'
+        );
+        e.target.value = '';
+        return;
+      }
+    }
     if (buffersForMerge.length > 0) {
       const merged = await mergePdfBuffers(buffersForMerge);
       state.pdfBuffer = merged;
@@ -9018,6 +9230,7 @@
       for (let i = 0; i < numPages && i < state.pages.length; i++) {
         state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
       }
+      if (!state.pendingCanvasLoad) markProjectDirty();
     }
     if (state.pendingCanvasLoad && firstBuf) {
       const d = state.pendingCanvasLoad.data;
@@ -12103,6 +12316,7 @@
         if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
+        markProjectDirty();
         updateUI();
         renderPdf();
       } catch (err) { alert('Invalid import file'); }
@@ -12119,6 +12333,7 @@
       const userIcons = getUserCustomIcons();
       userIcons.push(icon);
       saveUserCustomIcons(userIcons);
+      markProjectDirty();
       const customGrid = document.getElementById('counterIconGridCustom');
       const detailsCustomGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
       const effectiveCustom = getEffectiveCustomIcons();
@@ -13560,10 +13775,18 @@
     document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
     const saveStatusBtnEl = document.getElementById('saveStatusBtn');
     if (saveStatusBtnEl) saveStatusBtnEl.onclick = () => openSaveStatusModal();
+    const saveStatusHeaderBtnEl = document.getElementById('saveStatusBtnHeader');
+    if (saveStatusHeaderBtnEl) saveStatusHeaderBtnEl.onclick = () => openSaveStatusModal();
     const saveStatusModalCloseEl = document.getElementById('saveStatusModalClose');
-    if (saveStatusModalCloseEl) saveStatusModalCloseEl.onclick = () => hideModal('saveStatusModal');
+    if (saveStatusModalCloseEl) saveStatusModalCloseEl.onclick = () => {
+      if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
+      hideModal('saveStatusModal');
+    };
     const saveStatusModalDoneEl = document.getElementById('saveStatusModalDone');
-    if (saveStatusModalDoneEl) saveStatusModalDoneEl.onclick = () => hideModal('saveStatusModal');
+    if (saveStatusModalDoneEl) saveStatusModalDoneEl.onclick = () => {
+      if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
+      hideModal('saveStatusModal');
+    };
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
       await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
@@ -13574,13 +13797,14 @@
       writeTakeoffStateBackup();
       const hadAutoSave = autoSaveDirty;
       if (autoSaveDirty) {
+        autoSaveDirty = false;
         const saveResult = await performAutoSave();
         if (!saveResult.ok) {
+          autoSaveDirty = true;
           if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
           if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
           return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
         }
-        autoSaveDirty = false;
       }
       try {
         const tCheckIn = Date.now();
@@ -13621,6 +13845,12 @@
         if (result.code === 'CHECKOUT_EXPIRED') {
           pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
           checkoutExpiredNeedsAttention = true;
+          suspendAutoSaveUntilCheckout = true;
+          if (!checkoutExpiredToastShown) {
+            showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
+            checkoutExpiredToastShown = true;
+          }
+          refreshProjectPermissions().catch(() => {});
           updateSaveStatusIndicator();
         } else {
           showToast(result.error || 'Failed to turn in', 3000);
@@ -13647,11 +13877,15 @@
         btn.textContent = 'Checking out...';
         try {
           const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
+          updateServerClockFromRpc(data);
           const result = data || (error ? { ok: false, error: error.message } : { ok: false });
           if (result.ok) {
+            const wasSuspended = suspendAutoSaveUntilCheckout;
             clearCheckoutExpiredAttention();
+            if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: 'header_banner_checkout' });
             state.checkedOutBy = state.supabaseSession?.user?.id;
-            state.checkedOutAt = new Date().toISOString();
+            state.checkedOutAt = result.checked_out_at || new Date().toISOString();
+            lastCheckoutRefreshAt = Date.now();
             state.isViewer = false;
             state.canCheckOut = false;
             updateSettingsCheckoutSection();
@@ -13690,11 +13924,15 @@
       btn.textContent = 'Checking out...';
       try {
         const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
+        updateServerClockFromRpc(data);
         const result = data || (error ? { ok: false, error: error.message } : { ok: false });
         if (result.ok) {
+          const wasSuspended = suspendAutoSaveUntilCheckout;
           clearCheckoutExpiredAttention();
+          if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: 'settings_checkout' });
           state.checkedOutBy = state.supabaseSession?.user?.id;
-          state.checkedOutAt = new Date().toISOString();
+          state.checkedOutAt = result.checked_out_at || new Date().toISOString();
+          lastCheckoutRefreshAt = Date.now();
           state.isViewer = false;
           state.canCheckOut = false;
           updateSettingsCheckoutSection();
@@ -14181,6 +14419,7 @@
             }
           }
           updateUI();
+          updateSaveStatusIndicator();
         }
         if (!user) {
           const authDevBypassWrapEl = document.getElementById('authDevBypassWrap');
@@ -14808,7 +15047,7 @@
     };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); openShareProjectModal(); };
-    document.getElementById('mySettingsSignOut').onclick = async () => { hideModal('mySettingsModal'); await checkInCurrentProjectIfHeld(); supabase.auth.signOut(); updateUI(); };
+    document.getElementById('mySettingsSignOut').onclick = async () => { hideModal('mySettingsModal'); await checkInCurrentProjectIfHeld(); supabase.auth.signOut(); updateUI(); updateSaveStatusIndicator(); };
     document.getElementById('mySettingsModalClose').onclick = () => hideModal('mySettingsModal');
     document.getElementById('mySettingsSaveAirboard').onclick = async () => {
       const ok = await saveUserAirboard();
@@ -14916,6 +15155,7 @@
       state.supabaseSession = data.session;
       hideModal('authModal');
       updateUI();
+      updateSaveStatusIndicator();
     };
 
     document.getElementById('saveProjectBtn').onclick = async () => {
@@ -15012,18 +15252,38 @@
       }
       if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
         const checkedAt = new Date(state.checkedOutAt).getTime();
-        if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) {
-          if (supabase) await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
+        const ageMs = serverNowMs() - checkedAt;
+        let confirmedExpired = false;
+        if (ageMs > CHECKOUT_INACTIVITY_MS + CHECKOUT_SOFT_GRACE_MS) {
+          confirmedExpired = true;
+          saveDebugLog('manual.save.expired', { ageMs, mode: 'hard_skew' });
+        } else if (ageMs > CHECKOUT_INACTIVITY_MS - CHECKOUT_NEAR_EXPIRY_MS) {
+          const probe = await probeCheckoutLock();
+          if (probe.expired) {
+            confirmedExpired = true;
+            saveDebugLog('manual.save.expired', { ageMs, mode: 'probe' });
+          } else if (!probe.ok) {
+            showToast('Could not verify edit session. Try again.', 4000);
+            return;
+          }
+        }
+        if (confirmedExpired) {
           state.checkedOutBy = null;
           state.checkedOutAt = null;
           state.checkedOutEmail = null;
           clearUndoStacks();
           state.isViewer = true;
           state.canCheckOut = true;
-          updateUI();
+          suspendAutoSaveUntilCheckout = true;
           pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
           checkoutExpiredNeedsAttention = true;
+          if (!checkoutExpiredToastShown) {
+            showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
+            checkoutExpiredToastShown = true;
+          }
           updateSaveStatusIndicator();
+          await refreshProjectPermissions();
+          updateUI();
           errEl.textContent = CHECKOUT_EXPIRED_SAVE_STATUS_MSG + ' Open Project Settings to review Save status (bell).';
           errEl.style.display = 'block';
           return;
@@ -15097,18 +15357,20 @@
       saveBtn.style.display = 'none';
       cancelBtn.disabled = true;
       cancelBtn.textContent = 'Cancel';
+      const wasDirty = autoSaveDirty;
+      autoSaveDirty = false;
       const result = await performAutoSave();
       if (result.ok) {
-        autoSaveDirty = false;
         hideModal('saveBeforeLoadModal');
         const p = pendingCopyProject;
         pendingCopyProject = null;
         if (p) openCopyProjectModal(p);
+        else openLoadProjectModal();
       } else {
+        if (wasDirty) autoSaveDirty = true;
         if (result.error?.code === 'CHECKOUT_EXPIRED') {
           pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
           checkoutExpiredNeedsAttention = true;
-          autoSaveDirty = true;
           updateSaveStatusIndicator();
         } else if (isAuthError(result.error)) {
           showToast('Refresh the page to sync.', 4000);
@@ -16517,21 +16779,41 @@
       saveDebugLog('manual.save.skip', { runId, reason: 'not_signed_in' });
       return { ok: false, error: new Error('Not signed in') };
     }
-    const rawPdf = optsPdfBuffer ?? state.pdfBuffer;
-    const pdfToUpload = rawPdf && (rawPdf.byteLength || rawPdf.length || 0) > 0 ? rawPdf : null;
+    let rawPdf = optsPdfBuffer ?? state.pdfBuffer;
+    let rawPdfBytes = (rawPdf && (rawPdf.byteLength || rawPdf.length || 0)) | 0;
+    if (includePdf && rawPdfBytes === 0 && state.pdfBufferSize > 0 && state.currentProjectId && state.pdfHash) {
+      try {
+        const cached = await pdfCacheGet(state.currentProjectId, state.pdfHash);
+        if (cached && cached.size > 0) {
+          const recoveredBuf = await cached.arrayBuffer();
+          if (recoveredBuf && recoveredBuf.byteLength > 0) {
+            rawPdf = recoveredBuf;
+            rawPdfBytes = recoveredBuf.byteLength;
+            saveDebugLog('manual.save.recover_pdf', { runId, bytes: recoveredBuf.byteLength });
+            pushSaveEvent('manual_save_recover', 'Recovered PDF from local cache');
+          }
+        }
+      } catch (recoverErr) {
+        saveDebugLog('manual.save.recover_pdf_err', { runId, message: recoverErr?.message });
+      }
+    }
+    if (includePdf && rawPdfBytes === 0 && state.pdfBufferSize > 0 && !state.pdfStoragePath) {
+      const detachedErr = new Error('PDF data is no longer in memory. Reload the project, then re-open Save.');
+      saveDebugLog('manual.save.detached_pdf_fail', { runId, hadHash: !!state.pdfHash, hasStoragePath: !!state.pdfStoragePath });
+      pushSaveEvent('manual_save_err', detachedErr.message);
+      lastCloudSaveAttemptFailed = true;
+      updateSaveStatusIndicator();
+      return { ok: false, error: detachedErr };
+    }
+    const pdfToUpload = rawPdfBytes > 0 ? rawPdf : null;
     const willUploadPdf = pdfToUpload && includePdf;
     saveInProgress = true;
     savePdfInProgress = willUploadPdf;
+    const wasDirty = autoSaveDirty;
+    autoSaveDirty = false;
     updateStatus();
     const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
     const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
-    const saveWithTimeout = (promise, ms, label) =>
-      Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
-        )
-      ]);
     const data = {
       version: 1,
       counters: state.counters,
@@ -16579,7 +16861,13 @@
         let skipUpload = false;
         if (projectId) {
           const tSelect = Date.now();
-          const { data: row } = await supabase.from('projects').select('pdf_hash').eq('id', projectId).single();
+          let row = null;
+          try {
+            const res = await withTimeout(supabase.from('projects').select('pdf_hash').eq('id', projectId).single(), 10000, 'pdf_hash check');
+            row = res?.data || null;
+          } catch (hashErr) {
+            saveDebugLog('manual.save.pdf_hash_timeout', { runId, message: hashErr?.message });
+          }
           perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
           const newHash = await sha256Hex(pdfToUpload);
           if (row?.pdf_hash === newHash) {
@@ -16595,7 +16883,7 @@
           log('Inserting project...');
           saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000 });
           const t0 = Date.now();
-          const { data: row, error } = await saveWithTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+          const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
           log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
           if (error) throw error;
           saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id });
@@ -16619,7 +16907,7 @@
           log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
           saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: 60000 });
           const t1 = Date.now();
-          const { error: uploadErr } = await saveWithTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
+          const { error: uploadErr } = await withTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
           log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
           if (uploadErr) throw uploadErr;
           saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1 });
@@ -16634,7 +16922,7 @@
           const t2 = Date.now();
           const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
           if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-          const { error: updateErr } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+          const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
           log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
           if (updateErr) throw updateErr;
           saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'after_pdf_upload', ms: Date.now() - t2, projectId });
@@ -16646,7 +16934,7 @@
           const t2 = Date.now();
           const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
           if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-          const { error: updateErr } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+          const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
           log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
           if (updateErr) throw updateErr;
           saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'pdf_hash_skip', ms: Date.now() - t2, projectId });
@@ -16658,7 +16946,7 @@
         if (state.pdfStoragePath) {
           try {
             const tInfo = Date.now();
-            const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
+            const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
             const sz = info && (info.metadata?.size ?? info.size);
             if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
             saveDebugLog('manual.save.storage.info.ok', { runId, ms: Date.now() - tInfo, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
@@ -16671,7 +16959,7 @@
         const t3 = Date.now();
         const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
         if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-        const { error } = await saveWithTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+        const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
         log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
         if (error) throw error;
         saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId });
@@ -16681,7 +16969,7 @@
         log('Inserting project (no PDF)...');
         saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000 });
         const t4 = Date.now();
-        const { data: row, error } = await saveWithTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+        const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
         log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
         if (error) throw error;
         saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id });
@@ -16699,7 +16987,18 @@
       }
       state.currentProjectName = name;
       if (willUploadPdf && pdfToUpload && state.currentProjectId && cachePdfHash) {
-        pdfCachePut(state.currentProjectId, new Blob([pdfToUpload]), cachePdfHash);
+        withTimeout(pdfCachePut(state.currentProjectId, new Blob([pdfToUpload]), cachePdfHash), 5000, 'PDF cache put')
+          .catch((cacheErr) => {
+            saveDebugLog('manual.save.pdf_cache_put_err', { runId, message: cacheErr?.message });
+            if (!pdfCacheWarnShown) {
+              pdfCacheWarnShown = true;
+              pushSaveEvent(
+                'manual_save_cache_warn',
+                'Local PDF cache failed - recovery from a detached buffer may not work',
+                cacheErr?.message || ''
+              );
+            }
+          });
       }
       state.pdfBuffer = null;
       state.pdfBufferSize = 0;
@@ -16732,6 +17031,9 @@
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
       pushSaveEvent('manual_save_err', (e && e.message) || 'Manual save failed', formatSaveStatusErrDetail(e));
+      lastCloudSaveAttemptFailed = true;
+      if (wasDirty) autoSaveDirty = true;
+      updateSaveStatusIndicator();
       try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
       saveProgressMessage = '';
       updateUI();
@@ -16764,9 +17066,17 @@
     const user = state.supabaseSession.user;
     if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
       const checkedAt = new Date(state.checkedOutAt).getTime();
-      if (Date.now() - checkedAt > CHECKOUT_INACTIVITY_MS) {
-        saveDebugLog('autosave.skip', { runId, reason: 'checkout_expired' });
+      const ageMs = serverNowMs() - checkedAt;
+      if (ageMs > CHECKOUT_INACTIVITY_MS + CHECKOUT_SOFT_GRACE_MS) {
+        saveDebugLog('autosave.skip', { runId, reason: 'checkout_expired', ageMs, mode: 'hard_skew' });
         return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
+      }
+      if (ageMs > CHECKOUT_INACTIVITY_MS - CHECKOUT_NEAR_EXPIRY_MS) {
+        const probe = await probeCheckoutLock(runId);
+        if (probe.expired) {
+          saveDebugLog('autosave.skip', { runId, reason: 'checkout_expired', ageMs, mode: 'probe' });
+          return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
+        }
       }
     }
     const t0 = Date.now();
@@ -16800,6 +17110,7 @@
       willInsert: !state.currentProjectId
     });
     const tTotal = Date.now();
+    saveInProgress = true;
     try {
       pushSaveEvent('autosave_start', state.currentProjectId ? 'Autosave: updating project in cloud' : 'Autosave: creating project in cloud', JSON.stringify({ projectId: state.currentProjectId || null, runId: runId }));
       if (state.currentProjectId) {
@@ -16875,6 +17186,8 @@
       lastCloudSaveAttemptFailed = true;
       pushSaveEvent('autosave_err', (e && e.message) || 'Autosave failed', formatSaveStatusErrDetail(e));
       return { ok: false, error: e };
+    } finally {
+      saveInProgress = false;
     }
   }
 
@@ -16948,17 +17261,54 @@
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
 
   if (typeof document !== 'undefined' && document.addEventListener) {
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
+        lastHiddenAt = Date.now();
+        saveDebugLog('visibility.hidden', { autoSaveDirty, hasProject: !!state.currentProjectId });
         writeTakeoffStateBackup();
-      } else if (document.visibilityState === 'visible' && SUPABASE_ENABLED && supabase && state.supabaseSession?.user) {
-        supabase.auth.getSession().then(({ data }) => {
-          if (data?.session) {
-            state.supabaseSession = data.session;
-            updateUI();
-          }
-        }).catch(() => {});
+        const userId = state.supabaseSession?.user?.id;
+        if (SUPABASE_ENABLED && supabase && userId && state.currentProjectId &&
+            state.checkedOutBy === userId && autoSaveDirty && !saveInProgress && !suspendAutoSaveUntilCheckout) {
+          performAutoSave().catch(() => {});
+        }
+        return;
       }
+      if (document.visibilityState !== 'visible') return;
+      const hiddenForMs = lastHiddenAt ? Date.now() - lastHiddenAt : 0;
+      if (!(SUPABASE_ENABLED && supabase && state.supabaseSession?.user)) {
+        saveDebugLog('visibility.visible', { hiddenForMs, signedIn: false });
+        return;
+      }
+      let sessionRefreshOk = false;
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) {
+          state.supabaseSession = data.session;
+          sessionRefreshOk = true;
+        }
+      } catch (_) {}
+      let probeResult = null;
+      const userId = state.supabaseSession?.user?.id;
+      if (state.currentProjectId && userId && state.checkedOutBy === userId && !state.isViewer && !suspendAutoSaveUntilCheckout) {
+        const probe = await probeCheckoutLock();
+        probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
+        if (probe.expired) {
+          checkoutExpiredNeedsAttention = true;
+          suspendAutoSaveUntilCheckout = true;
+          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+          if (!checkoutExpiredToastShown) {
+            showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
+            checkoutExpiredToastShown = true;
+          }
+          updateSaveStatusIndicator();
+        }
+      }
+      let permsRefreshed = false;
+      if (state.currentProjectId) {
+        try { await refreshProjectPermissions(); permsRefreshed = true; } catch (_) {}
+      }
+      saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, probeResult, permsRefreshed });
+      updateUI();
     });
   }
 
@@ -16975,6 +17325,10 @@
 
   setInterval(async () => {
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
+    if (suspendAutoSaveUntilCheckout) {
+      if (autoSaveDirty && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
+      return;
+    }
     if (!autoSaveDirty) return;
     const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
     if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
@@ -16984,7 +17338,13 @@
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
         pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
         checkoutExpiredNeedsAttention = true;
+        suspendAutoSaveUntilCheckout = true;
         autoSaveDirty = true;
+        if (!checkoutExpiredToastShown) {
+          showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
+          checkoutExpiredToastShown = true;
+        }
+        refreshProjectPermissions().catch(() => {});
         updateSaveStatusIndicator();
       } else if (!result.error) {
         autoSaveDirty = true;
@@ -16997,6 +17357,42 @@
       updateSaveStatusIndicator();
     }
   }, AUTO_SAVE_INTERVAL_MS);
+
+  async function checkoutKeepalive() {
+    if (!SUPABASE_ENABLED || !supabase) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      saveDebugLog('keepalive.skip', { reason: 'not_visible' });
+      return;
+    }
+    const userId = state.supabaseSession?.user?.id;
+    if (!userId) return;
+    if (!state.currentProjectId || state.checkedOutBy !== userId) return;
+    if (state.isViewer || suspendAutoSaveUntilCheckout) {
+      saveDebugLog('keepalive.skip', { reason: state.isViewer ? 'viewer' : 'suspended' });
+      return;
+    }
+    if (Date.now() - lastCheckoutRefreshAt < CHECKOUT_REFRESH_DEBOUNCE_MS) {
+      saveDebugLog('keepalive.skip', { reason: 'debounced' });
+      return;
+    }
+    saveDebugLog('keepalive.tick', { projectId: state.currentProjectId });
+    const probe = await probeCheckoutLock();
+    if (probe.expired) {
+      saveDebugLog('keepalive.expired', {});
+      checkoutExpiredNeedsAttention = true;
+      suspendAutoSaveUntilCheckout = true;
+      pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+      if (!checkoutExpiredToastShown) {
+        showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
+        checkoutExpiredToastShown = true;
+      }
+      updateSaveStatusIndicator();
+      await refreshProjectPermissions();
+      updateUI();
+    }
+  }
+
+  setInterval(checkoutKeepalive, CHECKOUT_KEEPALIVE_MS);
 
   window.state = state;
   window.makeAnnotations = makeAnnotations;

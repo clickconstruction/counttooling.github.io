@@ -193,6 +193,17 @@ When diagnosing slow or failing cloud saves / auto-saves, enable structured `[Sa
 
 Then reproduce the issue and capture logs (phases include `autosave.payload`, `autosave.request.start` / `request.ok` / `request.timeout`, `manual.save.*`, and payload size). Disable with `localStorage.removeItem('clickcount-debug-save')` or by removing the config flag.
 
+For diagnosing **checkout / edit-session expiry after an idle tab**, additional phases are emitted:
+
+- `probe.start` / `probe.ok` / `probe.expired` / `probe.error` — server-side lock probe via `refresh_checkout_activity` RPC (`probeCheckoutLock`). Logged with `runId`, `ageMs` (since `state.checkedOutAt`), and `roundTripMs`.
+- `keepalive.tick` / `keepalive.skip` / `keepalive.expired` — the visible-tab keep-alive interval (`CHECKOUT_KEEPALIVE_MS`, every 10 minutes). Skip reasons: `not_visible`, `viewer`, `suspended`, `debounced`.
+- `visibility.hidden` / `visibility.visible` — consolidated `visibilitychange` handler. Hidden side logs `autoSaveDirty` and whether a project is loaded. Visible side logs `hiddenForMs`, `sessionRefreshOk`, `probeResult` (`ok` | `expired` | `error` | `null`), and `permsRefreshed`.
+- `autosave.suspended` / `autosave.resumed` — autosave loop halted after `CHECKOUT_EXPIRED` (`suspendAutoSaveUntilCheckout`), resumed on successful re-checkout. `autosave.resumed` includes a `trigger` (`header_banner_checkout` | `settings_checkout`).
+- `autosave.skip { reason: 'checkout_expired', mode: 'probe' | 'hard_skew' }` — autosave preflight decided expiry via probe (25–31 min boundary) or unconditionally (>31 min, clock skew shortcut).
+- `manual.save.expired { mode: 'probe' | 'hard_skew' }` — SaveProject modal expiry preflight.
+
+In the Save Status modal (`saveStatusModal`), `pushSaveEvent('keepalive_expired')` rows mark a passive expiry detected by the keep-alive interval, separate from `pushSaveEvent('checkout_expired')` which is raised by save preflight or Turn In paths.
+
 ## CI / Automated Testing
 
 Cloud tests (Load Project delete, empty PDF flow) require Supabase and a test user. To run them:

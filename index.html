@@ -54,6 +54,10 @@
     .header #copyViewLinkBtn.copied,
     .header #headerShareBtn.copied { color: var(--green); }
     .header #headerShareBtn { display: none; }
+    .global-reload-banner { position: sticky; top: 0; left: 0; right: 0; z-index: 9999; padding: 8px 12px; background: var(--yellow); color: #000; display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; font-size: 0.92rem; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .global-reload-banner-btn { background: #000; color: var(--yellow); border: 0; border-radius: 4px; padding: 4px 12px; font-weight: 600; cursor: pointer; }
+    .global-reload-banner-btn-secondary { background: transparent; color: #000; border: 1px solid #000; border-radius: 4px; padding: 2px 8px; cursor: pointer; line-height: 1; }
+    @media (max-width: 768px) { .global-reload-banner { font-size: 0.85rem; padding: 6px 10px; } }
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
     .header-edit-status.edit-status-available { background: transparent; color: #81c784; border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
@@ -981,6 +985,11 @@
       document.body.classList.add('supabase-enabled');
     }
   </script>
+  <div id="globalReloadBanner" class="global-reload-banner" style="display:none;">
+    <span id="globalReloadBannerText">Reload required for update.</span>
+    <button type="button" id="globalReloadBannerReload" class="global-reload-banner-btn">Reload</button>
+    <button type="button" id="globalReloadBannerDismiss" class="global-reload-banner-btn-secondary" aria-label="Dismiss">×</button>
+  </div>
   <div class="app">
     <header class="header">
       <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
@@ -2437,6 +2446,7 @@
         <button type="button" class="settings-menu-btn" id="advancedImport">Import Canvas</button>
         <button type="button" class="settings-menu-btn" id="advancedCanvasRepair" style="display:none;">Canvas Repair</button>
         <button type="button" class="settings-menu-btn danger" id="advancedEmptyCacheReload" title="Clear app cache and reload the page">Empty cache and hard reload</button>
+        <button type="button" class="settings-menu-btn danger" id="advancedGlobalForceReload" style="display:none;" title="Force a hard reload on every signed-in user">Global force reload (admin)</button>
       </div>
     </div>
   </div>
@@ -4182,6 +4192,7 @@
   const AUTOSAVE_SLOW_WINDOW = 20;
   const AUTOSAVE_SLOW_DEBOUNCE_MS = 60000;
   const AUTOSAVE_SLOW_MIN_SAMPLES = 10;
+  const GLOBAL_RELOAD_STAMP_KEY = 'clickcount-last-global-reload';
   const CHECKOUT_INACTIVITY_MS = 30 * 60 * 1000;
   const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
   const CHECKOUT_KEEPALIVE_MS = 10 * 60 * 1000;
@@ -4352,6 +4363,41 @@
     } finally {
       recoveryProbeInFlight = false;
     }
+  }
+
+  async function checkGlobalForceReload() {
+    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('system_settings').select('value_ts,value_text').eq('key', 'force_reload_after').single(),
+        5000,
+        'check global reload'
+      );
+      if (error || !data?.value_ts) return;
+      const serverTs = new Date(data.value_ts).getTime();
+      const localTs = parseInt(localStorage.getItem(GLOBAL_RELOAD_STAMP_KEY) || '0', 10);
+      state.globalReloadAtServerMs = serverTs;
+      state.globalReloadReason = data.value_text || '';
+      if (serverTs > localTs) doGlobalReloadNow('boot');
+    } catch (_) {}
+  }
+
+  function doGlobalReloadNow(trigger) {
+    try { localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, String(state.globalReloadAtServerMs || Date.now())); } catch (_) {}
+    try { pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
+    try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
+    const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+    for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
+    location.reload();
+  }
+
+  function showGlobalReloadBanner() {
+    const el = document.getElementById('globalReloadBanner');
+    const txt = document.getElementById('globalReloadBannerText');
+    if (!el) return;
+    const reason = state.globalReloadReason ? ' Reason: ' + state.globalReloadReason : '';
+    if (txt) txt.textContent = 'Reload required for update.' + reason;
+    el.style.display = '';
   }
 
   function isTransientSaveError(e) {
@@ -7319,6 +7365,8 @@
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
       if (settingsManageProjectsBtn) settingsManageProjectsBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
+      const globalReloadBtn = document.getElementById('advancedGlobalForceReload');
+      if (globalReloadBtn) globalReloadBtn.style.display = (loggedIn && state.isAdmin) ? '' : 'none';
       const settingsSidebarBtn = document.getElementById('settingsSidebarBtn');
       if (settingsSidebarBtn) settingsSidebarBtn.style.display = loggedIn ? '' : 'none';
       const statusBarAuth = document.getElementById('statusBarAuth');
@@ -8907,6 +8955,7 @@
       state.isAdmin = !!profile?.is_admin;
       startPresenceHeartbeat();
       maybeLogSessionStartOnce();
+      checkGlobalForceReload();
     } else {
       state.isAdmin = false;
       stopPresenceHeartbeat();
@@ -8916,6 +8965,7 @@
       state.supabaseSession = session;
       updateSaveStatusIndicator();
       if (event === 'TOKEN_REFRESHED') {
+        checkGlobalForceReload();
         return;
       }
       if (session?.user) {
@@ -8923,6 +8973,7 @@
         state.isAdmin = !!profile?.is_admin;
         startPresenceHeartbeat();
         maybeLogSessionStartOnce();
+        checkGlobalForceReload();
         if (!state.currentProjectId && state.pages.length === 0) {
           const airboard = await fetchUserAirboard();
           if (airboard && (airboard.counters?.length || airboard.lineTypes?.length) &&
@@ -14395,6 +14446,27 @@
       }
       location.reload();
     };
+    document.getElementById('advancedGlobalForceReload').onclick = async () => {
+      if (!state.isAdmin) return;
+      if (!confirm('Force a hard reload on EVERY signed-in user (active tabs see a Reload banner; everyone else reloads on next visit). Continue?')) return;
+      const reason = (prompt('Optional note shown to users (e.g. "v1.42 update"):') || '').trim() || null;
+      try {
+        const { error } = await supabase.rpc('admin_trigger_global_reload', { p_reason: reason });
+        if (error) { showToast(error.message || 'Failed to trigger global reload', 4000); return; }
+        showToast('Global reload triggered.', 3000);
+      } catch (e) {
+        showToast(e?.message || 'Failed to trigger global reload', 4000);
+      }
+    };
+    {
+      const reloadBtn = document.getElementById('globalReloadBannerReload');
+      const dismissBtn = document.getElementById('globalReloadBannerDismiss');
+      if (reloadBtn) reloadBtn.addEventListener('click', () => doGlobalReloadNow('banner'));
+      if (dismissBtn) dismissBtn.addEventListener('click', () => {
+        const el = document.getElementById('globalReloadBanner');
+        if (el) el.style.display = 'none';
+      });
+    }
     (function() {
       const section = document.getElementById('mySettingsAirboardSection');
       const header = document.getElementById('mySettingsAirboardHeader');
@@ -18114,6 +18186,11 @@
       const uid = state.supabaseSession.user.id;
       supabase.channel('project-shares-changes').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_shares', filter: 'user_id=eq.' + uid }, function() {
         if (state.currentProjectId) refreshProjectPermissions();
+      }).subscribe();
+      supabase.channel('system-settings-changes').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'key=eq.force_reload_after' }, function(payload) {
+        state.globalReloadAtServerMs = payload?.new?.value_ts ? new Date(payload.new.value_ts).getTime() : Date.now();
+        state.globalReloadReason = payload?.new?.value_text || '';
+        showGlobalReloadBanner();
       }).subscribe();
       try {
         let offeredRestore = false;

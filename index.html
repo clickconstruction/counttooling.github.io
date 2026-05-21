@@ -402,6 +402,18 @@
       border-radius: 6px;
       box-shadow: 0 0 0 1px rgba(232, 184, 74, 0.35);
     }
+    .save-status-bell-btn.save-status-bell-offline { color: #888; opacity: 0.6; }
+    .save-status-bell-btn.save-status-bell-offline.save-status-bell-attention {
+      color: #d4a017; opacity: 0.8;
+      background: rgba(212, 160, 23, 0.08);
+      box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.25);
+    }
+    .header .header-save-status-btn.save-status-bell-offline { color: #888; opacity: 0.6; }
+    .header .header-save-status-btn.save-status-bell-offline.save-status-bell-attention {
+      color: #d4a017; opacity: 0.8;
+      background: rgba(212, 160, 23, 0.08);
+      box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.25);
+    }
     .save-status-summary-block { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 6px; }
     .save-status-summary-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); font-weight: 600; flex-shrink: 0; }
     .save-status-summary-icon { flex-shrink: 0; }
@@ -4108,6 +4120,8 @@
   let lastSaveIncludedPdf = false;
   let lastLocalBackupAt = null;
   let pdfCacheWarnShown = false;
+  let takeoffBackupWarnShown = false;
+  let turnInInProgress = false;
   const AUTO_SAVE_INTERVAL_MS = 5000;
   const CHECKOUT_INACTIVITY_MS = 30 * 60 * 1000;
   const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
@@ -4134,6 +4148,15 @@
         setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
       )
     ]);
+
+  function isTransientSaveError(e) {
+    if (!e) return false;
+    const code = e.code || '';
+    const msg  = e.message || String(e);
+    if (code === 'CHECKOUT_EXPIRED' || code === 'CHECKOUT_NOT_OWNED' || code === '42501') return false;
+    if (typeof e.status === 'number' && e.status >= 400 && e.status < 500 && e.status !== 408 && e.status !== 429) return false;
+    return /timeout|network|fetch|temporarily|5\d\d/i.test(msg) || code === 'ETIMEDOUT';
+  }
 
   function isSaveDebugEnabled() {
     try {
@@ -4564,7 +4587,19 @@
       store.put(entry);
       metaStore.put({ projectId, lastUsed, size });
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (_) { /* ignore */ }
+    } catch (err) {
+      saveDebugLog('takeoffBackup.put_err', { projectId, message: err?.message });
+      if (!takeoffBackupWarnShown) {
+        takeoffBackupWarnShown = true;
+        try {
+          pushSaveEvent(
+            'takeoff_backup_warn',
+            'Local takeoff backup failed - tab-crash recovery may not work',
+            err?.message || ''
+          );
+        } catch (_) {}
+      }
+    }
   }
 
   async function takeoffBackupDelete(projectId) {
@@ -5542,6 +5577,7 @@
     const section = document.getElementById('settingsCheckoutSection');
     const sectionVisible = !!(section && section.style.display !== 'none');
     const user = state.supabaseSession?.user;
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
     const syncAttention = !!(lastCloudSaveAttemptFailed && autoSaveDirty);
     const attention = syncAttention || checkoutExpiredNeedsAttention;
 
@@ -5549,20 +5585,26 @@
       const showModal = !!(sectionVisible && SUPABASE_ENABLED && state.currentProjectId && user);
       inModal.style.display = showModal ? '' : 'none';
       inModal.classList.toggle('save-status-bell-attention', showModal && attention);
+      inModal.classList.toggle('save-status-bell-offline', showModal && offline);
     }
 
     if (header) {
       const showHeader = !!(SUPABASE_ENABLED && user);
       header.style.display = showHeader ? '' : 'none';
       header.classList.toggle('save-status-bell-attention', showHeader && attention);
+      header.classList.toggle('save-status-bell-offline', showHeader && offline);
     }
 
-    const title = attention
-      ? (checkoutExpiredNeedsAttention ? 'Save status — checkout expired' : 'Save status — sync needs attention')
-      : 'Save status';
-    const aria = attention
-      ? (checkoutExpiredNeedsAttention ? 'Save status, checkout expired' : 'Save status, sync needs attention')
-      : 'Save status';
+    const title = offline
+      ? 'Save status — offline (changes saved locally)'
+      : attention
+        ? (checkoutExpiredNeedsAttention ? 'Save status — checkout expired' : 'Save status — sync needs attention')
+        : 'Save status';
+    const aria = offline
+      ? 'Save status, offline, changes saved locally'
+      : attention
+        ? (checkoutExpiredNeedsAttention ? 'Save status, checkout expired' : 'Save status, sync needs attention')
+        : 'Save status';
     if (inModal) { inModal.title = title; inModal.setAttribute('aria-label', aria); }
     if (header)  { header.title  = title; header.setAttribute('aria-label',  aria); }
   }
@@ -8693,6 +8735,7 @@
         state.canCheckOut = false;
         state.projectOwnerId = null;
         pdfCacheWarnShown = false;
+        takeoffBackupWarnShown = false;
         try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
       }
       updateUI();
@@ -8729,6 +8772,7 @@
   let projectsCheckoutChannel = null;
   let projectsCheckoutReconnectTimer = null;
   let projectsCheckoutReconnectAttempt = 0;
+  let projectsCheckoutGeneration = 0;
   const PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS = [1000, 3000, 10000, 30000];
 
   function clearProjectsCheckoutReconnectTimer() {
@@ -8745,20 +8789,24 @@
     const delay = PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS[idx];
     projectsCheckoutReconnectAttempt += 1;
     saveDebugLog('realtime.checkout.reconnect.schedule', { projectId, attempt: projectsCheckoutReconnectAttempt, delayMs: delay });
+    const scheduledGen = projectsCheckoutGeneration;
     projectsCheckoutReconnectTimer = setTimeout(() => {
       projectsCheckoutReconnectTimer = null;
-      if (state.currentProjectId === projectId) {
+      if (scheduledGen === projectsCheckoutGeneration && state.currentProjectId === projectId) {
         subscribeToProjectCheckoutChanges(projectId);
       }
     }, delay);
   }
 
-  function subscribeToProjectCheckoutChanges(projectId) {
-    if (projectsCheckoutChannel && supabase) {
-      supabase.removeChannel(projectsCheckoutChannel);
-      projectsCheckoutChannel = null;
-    }
+  async function subscribeToProjectCheckoutChanges(projectId) {
+    const gen = ++projectsCheckoutGeneration;
     clearProjectsCheckoutReconnectTimer();
+    if (projectsCheckoutChannel && supabase) {
+      const old = projectsCheckoutChannel;
+      projectsCheckoutChannel = null;
+      try { await supabase.removeChannel(old); } catch (_) {}
+    }
+    if (gen !== projectsCheckoutGeneration) return;
     if (!SUPABASE_ENABLED || !supabase || !projectId || !state.supabaseSession?.user) {
       projectsCheckoutReconnectAttempt = 0;
       return;
@@ -8771,9 +8819,11 @@
         table: 'projects',
         filter: 'id=eq.' + projectId
       }, function() {
+        if (gen !== projectsCheckoutGeneration) return;
         refreshProjectPermissions();
       })
       .subscribe((status, err) => {
+        if (gen !== projectsCheckoutGeneration) return;
         saveDebugLog('realtime.checkout.status', { projectId, status, message: err?.message });
         if (status === 'SUBSCRIBED') {
           projectsCheckoutReconnectAttempt = 0;
@@ -8798,7 +8848,32 @@
     const hadDirty = autoSaveDirty;
     const hadInflight = saveInProgress;
     if (willBecomeViewer && hadDirty && !hadInflight) {
-      performAutoSave().catch(() => {});
+      performAutoSave()
+        .then((res) => {
+          if (res && res.ok === false) {
+            const code = res.error?.code || res.error?.details || '';
+            const msg  = res.error?.message || String(res.error || '');
+            const lockedOut =
+              code === 'CHECKOUT_EXPIRED' ||
+              code === 'CHECKOUT_NOT_OWNED' ||
+              code === '42501' ||
+              /not[_ ]?owned|checked[_ ]?out|permission/i.test(msg);
+            if (lockedOut) {
+              pushSaveEvent('force_turn_in_flush_blocked', 'Force turn-in: unsaved edits could not be flushed (lock taken)', msg);
+            } else {
+              pushSaveEvent('force_turn_in_flush_err', 'Force turn-in: flush errored', msg);
+            }
+            autoSaveDirty = true;
+            lastCloudSaveAttemptFailed = true;
+            updateSaveStatusIndicator();
+          }
+        })
+        .catch((err) => {
+          pushSaveEvent('force_turn_in_flush_err', 'Force turn-in: flush threw', err?.message || String(err));
+          autoSaveDirty = true;
+          lastCloudSaveAttemptFailed = true;
+          updateSaveStatusIndicator();
+        });
     }
     state.checkedOutBy = proj.checked_out_by || null;
     state.checkedOutAt = proj.checked_out_at || null;
@@ -13607,6 +13682,7 @@
     btnEl.textContent = 'Turning in…';
     try {
       const { data, error } = await supabase.rpc('force_check_in_project', { p_project_id: projectId });
+      updateServerClockFromRpc(data);
       const result = data || (error ? { ok: false, error: error.message } : { ok: false });
       if (result.ok) {
         showToast('Project force turned in.');
@@ -13789,32 +13865,74 @@
     };
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
-      await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
+      const { data } = await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
+      updateServerClockFromRpc(data);
     }
     async function doTurnIn() {
-      const tTurnIn = Date.now();
-      if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
-      writeTakeoffStateBackup();
-      const hadAutoSave = autoSaveDirty;
-      if (autoSaveDirty) {
-        autoSaveDirty = false;
-        const saveResult = await performAutoSave();
-        if (!saveResult.ok) {
-          autoSaveDirty = true;
-          if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-          if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-          return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
-        }
+      if (turnInInProgress) {
+        saveDebugLog('turnIn.skip', { reason: 'already_in_progress' });
+        return { ok: false, error: 'Turn In is already running' };
       }
+      turnInInProgress = true;
+      const tTurnIn = Date.now();
       try {
-        const tCheckIn = Date.now();
-        const { data, error } = await withTimeout(
-          supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
-          15000,
-          'Turn in'
-        );
-        perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId });
-        const result = data || (error ? { ok: false, error: error.message } : { ok: false });
+        if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
+        await writeTakeoffStateBackup();
+        const hadAutoSave = autoSaveDirty;
+        if (autoSaveDirty) {
+          if (saveInProgress) {
+            saveDebugLog('turnIn.skip', { reason: 'save_in_progress' });
+            pushSaveEvent('turn_in_save_in_progress', 'Turn In skipped: sync still in progress');
+            return { ok: false, error: 'Sync in progress, try again in a moment' };
+          }
+          autoSaveDirty = false;
+          const saveResult = await performAutoSave();
+          if (!saveResult.ok) {
+            autoSaveDirty = true;
+            pushSaveEvent(
+              'turn_in_blocked_by_save_err',
+              'Turn In blocked: autosave failed before check-in',
+              (saveResult.error && saveResult.error.message) || ''
+            );
+            if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
+            if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
+            return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
+          }
+        }
+        let checkInAttempt = 0;
+        let result;
+        while (true) {
+          try {
+            const tCheckIn = Date.now();
+            const { data, error } = await withTimeout(
+              supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
+              15000,
+              'Turn in'
+            );
+            updateServerClockFromRpc(data);
+            perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId, attempt: checkInAttempt });
+            result = data || (error ? { ok: false, error: error.message } : { ok: false });
+            if (error && checkInAttempt === 0 && isTransientSaveError(error)) {
+              saveDebugLog('turnIn.retry', { message: error?.message });
+              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', error?.message || '');
+              checkInAttempt++;
+              await new Promise(r => setTimeout(r, 500));
+              continue;
+            }
+            break;
+          } catch (e) {
+            if (checkInAttempt === 0 && isTransientSaveError(e)) {
+              saveDebugLog('turnIn.retry', { message: e?.message });
+              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', e?.message || '');
+              checkInAttempt++;
+              await new Promise(r => setTimeout(r, 500));
+              continue;
+            }
+            perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
+            pushSaveEvent('turn_in_err', (e && e.message) || 'Failed to turn in', formatSaveStatusErrDetail(e));
+            return { ok: false, error: (e && e.message) || 'Failed to turn in' };
+          }
+        }
         perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
         if (result.ok) {
           pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)');
@@ -13822,10 +13940,8 @@
         }
         pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString());
         return { ok: false, error: result.error || 'Failed to turn in' };
-      } catch (e) {
-        perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
-        pushSaveEvent('turn_in_err', (e && e.message) || 'Failed to turn in', formatSaveStatusErrDetail(e));
-        return { ok: false, error: (e && e.message) || 'Failed to turn in' };
+      } finally {
+        turnInInProgress = false;
       }
     }
     async function doTurnInAndHandleResult(opts) {
@@ -13852,6 +13968,13 @@
           }
           refreshProjectPermissions().catch(() => {});
           updateSaveStatusIndicator();
+        } else if (typeof result.error === 'string' && /do not have .* checked out|NOT_CHECKED_OUT|not_owned/i.test(result.error)) {
+          pushSaveEvent('turn_in_already_released', 'Turn In: checkout was already released elsewhere');
+          showToast('You no longer hold the checkout - refreshing.', 4000);
+          await refreshProjectPermissions();
+          updateSettingsCheckoutSection();
+          if (opts.hideSettings) hideModal('settingsModal');
+          updateUI();
         } else {
           showToast(result.error || 'Failed to turn in', 3000);
         }
@@ -13968,6 +14091,7 @@
     document.getElementById('settingsForceCheckIn').onclick = async () => {
       if (!state.currentProjectId || !supabase) return;
       const { data, error } = await supabase.rpc('force_check_in_project', { p_project_id: state.currentProjectId });
+      updateServerClockFromRpc(data);
       const result = data || (error ? { ok: false, error: error.message } : { ok: false });
       if (result.ok) {
         state.checkedOutBy = null;
@@ -15294,6 +15418,31 @@
       saveBtn.textContent = 'Saving…';
       hideModal('saveProjectModal');
       const includePdf = document.getElementById('saveProjectIncludePdf').checked;
+      if (!includePdf && state.currentProjectId && state.pdfBuffer && state.pdfHash) {
+        let cloudPdfHash = null;
+        try {
+          const { data: cloudProj } = await withTimeout(
+            supabase.from('projects').select('pdf_hash').eq('id', state.currentProjectId).single(),
+            5000,
+            'pdf_hash check (G7)'
+          );
+          cloudPdfHash = cloudProj?.pdf_hash || null;
+        } catch (_) { /* network blip: skip the confirm */ }
+        if (cloudPdfHash && cloudPdfHash !== state.pdfHash) {
+          const proceed = confirm(
+            'Heads up: your local PDF is newer than the one in the cloud.\n\n' +
+            'Saving canvas only will leave the cloud copy referencing the old PDF. ' +
+            'Click Cancel to go back and turn Include PDF on, or OK to save canvas only anyway.'
+          );
+          if (!proceed) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = origText;
+            pushSaveEvent('manual_save_canceled', 'User canceled at stale-PDF confirm');
+            return;
+          }
+          pushSaveEvent('manual_save_pdf_mismatch_accepted', 'User saved canvas only with newer local PDF');
+        }
+      }
       const result = await performSaveProjectToCloud({ name, includePdf });
       if (!result.ok) {
         if (isAuthError(result.error)) {
@@ -16807,6 +16956,7 @@
     }
     const pdfToUpload = rawPdfBytes > 0 ? rawPdf : null;
     const willUploadPdf = pdfToUpload && includePdf;
+    const prevPdfStoragePath = state.pdfStoragePath || null;
     saveInProgress = true;
     savePdfInProgress = willUploadPdf;
     const wasDirty = autoSaveDirty;
@@ -16854,136 +17004,154 @@
     try {
       let pdfPath = state.pdfStoragePath;
       let cachePdfHash = null;
-      if (willUploadPdf) {
-        let projectId = state.currentProjectId;
-        const pdfSize = pdfToUpload.byteLength;
-        const sizeBytes = dataSize + pdfSize;
-        let skipUpload = false;
-        if (projectId) {
-          const tSelect = Date.now();
-          let row = null;
-          try {
-            const res = await withTimeout(supabase.from('projects').select('pdf_hash').eq('id', projectId).single(), 10000, 'pdf_hash check');
-            row = res?.data || null;
-          } catch (hashErr) {
-            saveDebugLog('manual.save.pdf_hash_timeout', { runId, message: hashErr?.message });
+      const originalProjectId = state.currentProjectId;
+      let manualSaveAttempt = 0;
+      manualSaveLoop: while (true) {
+        pdfPath = state.pdfStoragePath;
+        cachePdfHash = null;
+        try {
+          if (willUploadPdf) {
+            let projectId = state.currentProjectId;
+            const pdfSize = pdfToUpload.byteLength;
+            const sizeBytes = dataSize + pdfSize;
+            let skipUpload = false;
+            if (projectId) {
+              const tSelect = Date.now();
+              let row = null;
+              try {
+                const res = await withTimeout(supabase.from('projects').select('pdf_hash').eq('id', projectId).single(), 10000, 'pdf_hash check');
+                row = res?.data || null;
+              } catch (hashErr) {
+                saveDebugLog('manual.save.pdf_hash_timeout', { runId, message: hashErr?.message });
+              }
+              perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
+              const newHash = await sha256Hex(pdfToUpload);
+              if (row?.pdf_hash === newHash) {
+                skipUpload = true;
+                cachePdfHash = newHash;
+                log('PDF unchanged (hash match), skipping upload');
+                saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
+              }
+            }
+            if (!projectId) {
+              setProgress('Uploading project...');
+              await tick();
+              log('Inserting project...');
+              saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000, attempt: manualSaveAttempt });
+              const t0 = Date.now();
+              const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+              log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
+              if (error) throw error;
+              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id });
+              projectId = row?.id;
+              if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
+              state.currentProjectId = projectId;
+              subscribeToProjectCheckoutChanges(projectId);
+              state.projectOwnerId = user.id;
+              state.loadedViaViewLink = false;
+              state.isViewer = false;
+              state.canCheckOut = true;
+              state.checkedOutBy = null;
+              state.checkedOutAt = null;
+              state.checkedOutEmail = null;
+              await tick();
+            }
+            if (!skipUpload) {
+              setProgress('Uploading project...');
+              await tick();
+              const storagePath = user.id + '/' + projectId + '/document.pdf';
+              log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
+              saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: 60000, attempt: manualSaveAttempt });
+              const t1 = Date.now();
+              const { error: uploadErr } = await withTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
+              log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
+              if (uploadErr) throw uploadErr;
+              saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1 });
+              pdfPath = storagePath;
+              await tick();
+              const newHash = await sha256Hex(pdfToUpload);
+              cachePdfHash = newHash;
+              setProgress('Uploading project...');
+              await tick();
+              log('Updating project with pdf_path and pdf_hash...');
+              saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'after_pdf_upload', projectId, timeoutMs: 30000, attempt: manualSaveAttempt });
+              const t2 = Date.now();
+              const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+              if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+              const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+              log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
+              if (updateErr) throw updateErr;
+              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'after_pdf_upload', ms: Date.now() - t2, projectId });
+            } else {
+              setProgress('Uploading project...');
+              await tick();
+              log('Updating project data (PDF unchanged)...');
+              saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'pdf_hash_skip', projectId, timeoutMs: 30000, attempt: manualSaveAttempt });
+              const t2 = Date.now();
+              const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+              if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+              const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+              log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
+              if (updateErr) throw updateErr;
+              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'pdf_hash_skip', ms: Date.now() - t2, projectId });
+            }
+          } else if (state.currentProjectId) {
+            setProgress('Uploading project...');
+            await tick();
+            let sizeBytes = dataSize;
+            if (state.pdfStoragePath) {
+              try {
+                const tInfo = Date.now();
+                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
+                const sz = info && (info.metadata?.size ?? info.size);
+                if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
+                saveDebugLog('manual.save.storage.info.ok', { runId, ms: Date.now() - tInfo, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
+              } catch (se) {
+                saveDebugLog('manual.save.storage.info.error', { runId, message: se?.message, name: se?.name });
+              }
+            }
+            log('Updating existing project (no PDF)...');
+            saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'no_pdf_in_save', projectId: state.currentProjectId, timeoutMs: 30000, attempt: manualSaveAttempt });
+            const t3 = Date.now();
+            const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+            if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+            const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+            log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
+            if (error) throw error;
+            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId });
+          } else {
+            setProgress('Uploading project...');
+            await tick();
+            log('Inserting project (no PDF)...');
+            saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000, attempt: manualSaveAttempt });
+            const t4 = Date.now();
+            const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+            log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
+            if (error) throw error;
+            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id });
+            const projectId = row?.id;
+            if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
+            state.currentProjectId = projectId;
+            subscribeToProjectCheckoutChanges(projectId);
+            state.projectOwnerId = user.id;
+            state.loadedViaViewLink = false;
+            state.isViewer = false;
+            state.canCheckOut = true;
+            state.checkedOutBy = null;
+            state.checkedOutAt = null;
+            state.checkedOutEmail = null;
           }
-          perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
-          const newHash = await sha256Hex(pdfToUpload);
-          if (row?.pdf_hash === newHash) {
-            skipUpload = true;
-            cachePdfHash = newHash;
-            log('PDF unchanged (hash match), skipping upload');
-            saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
+          break manualSaveLoop;
+        } catch (innerErr) {
+          if (manualSaveAttempt === 0 && originalProjectId && isTransientSaveError(innerErr)) {
+            saveDebugLog('manual.save.retry', { runId, message: innerErr?.message });
+            pushSaveEvent('manual_save_retry', 'Transient save error, retrying once', innerErr?.message || '');
+            manualSaveAttempt++;
+            await new Promise(r => setTimeout(r, 500));
+            continue;
           }
+          throw innerErr;
         }
-        if (!projectId) {
-          setProgress('Uploading project...');
-          await tick();
-          log('Inserting project...');
-          saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000 });
-          const t0 = Date.now();
-          const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
-          log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
-          if (error) throw error;
-          saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id });
-          projectId = row?.id;
-          if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-          state.currentProjectId = projectId;
-          subscribeToProjectCheckoutChanges(projectId);
-          state.projectOwnerId = user.id;
-          state.loadedViaViewLink = false;
-          state.isViewer = false;
-          state.canCheckOut = true;
-          state.checkedOutBy = null;
-          state.checkedOutAt = null;
-          state.checkedOutEmail = null;
-          await tick();
-        }
-        if (!skipUpload) {
-          setProgress('Uploading project...');
-          await tick();
-          const storagePath = user.id + '/' + projectId + '/document.pdf';
-          log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
-          saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: 60000 });
-          const t1 = Date.now();
-          const { error: uploadErr } = await withTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
-          log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
-          if (uploadErr) throw uploadErr;
-          saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1 });
-          pdfPath = storagePath;
-          await tick();
-          const newHash = await sha256Hex(pdfToUpload);
-          cachePdfHash = newHash;
-          setProgress('Uploading project...');
-          await tick();
-          log('Updating project with pdf_path and pdf_hash...');
-          saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'after_pdf_upload', projectId, timeoutMs: 30000 });
-          const t2 = Date.now();
-          const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-          if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-          const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
-          log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
-          if (updateErr) throw updateErr;
-          saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'after_pdf_upload', ms: Date.now() - t2, projectId });
-        } else {
-          setProgress('Uploading project...');
-          await tick();
-          log('Updating project data (PDF unchanged)...');
-          saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'pdf_hash_skip', projectId, timeoutMs: 30000 });
-          const t2 = Date.now();
-          const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-          if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-          const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
-          log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
-          if (updateErr) throw updateErr;
-          saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'pdf_hash_skip', ms: Date.now() - t2, projectId });
-        }
-      } else if (state.currentProjectId) {
-        setProgress('Uploading project...');
-        await tick();
-        let sizeBytes = dataSize;
-        if (state.pdfStoragePath) {
-          try {
-            const tInfo = Date.now();
-            const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
-            const sz = info && (info.metadata?.size ?? info.size);
-            if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-            saveDebugLog('manual.save.storage.info.ok', { runId, ms: Date.now() - tInfo, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
-          } catch (se) {
-            saveDebugLog('manual.save.storage.info.error', { runId, message: se?.message, name: se?.name });
-          }
-        }
-        log('Updating existing project (no PDF)...');
-        saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'no_pdf_in_save', projectId: state.currentProjectId, timeoutMs: 30000 });
-        const t3 = Date.now();
-        const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-        if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-        const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
-        log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
-        if (error) throw error;
-        saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId });
-      } else {
-        setProgress('Uploading project...');
-        await tick();
-        log('Inserting project (no PDF)...');
-        saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000 });
-        const t4 = Date.now();
-        const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
-        log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
-        if (error) throw error;
-        saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id });
-        const projectId = row?.id;
-        if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-        state.currentProjectId = projectId;
-        subscribeToProjectCheckoutChanges(projectId);
-        state.projectOwnerId = user.id;
-        state.loadedViaViewLink = false;
-        state.isViewer = false;
-        state.canCheckOut = true;
-        state.checkedOutBy = null;
-        state.checkedOutAt = null;
-        state.checkedOutEmail = null;
       }
       state.currentProjectName = name;
       if (willUploadPdf && pdfToUpload && state.currentProjectId && cachePdfHash) {
@@ -17004,6 +17172,19 @@
       state.pdfBufferSize = 0;
       if (pdfPath) state.pdfStoragePath = pdfPath;
       if (cachePdfHash) state.pdfHash = cachePdfHash;
+      if (pdfPath && prevPdfStoragePath && prevPdfStoragePath !== pdfPath) {
+        withTimeout(
+          supabase.storage.from('pdfs').remove([prevPdfStoragePath]),
+          10000,
+          'PDF cleanup remove'
+        )
+          .then((res) => {
+            const error = res && res.error;
+            if (error) saveDebugLog('manual.save.pdf_cleanup_err', { runId, message: error.message, path: prevPdfStoragePath });
+            else       saveDebugLog('manual.save.pdf_cleanup_ok',  { runId, path: prevPdfStoragePath });
+          })
+          .catch((err) => saveDebugLog('manual.save.pdf_cleanup_err', { runId, message: err?.message, path: prevPdfStoragePath }));
+      }
       lastSaveIncludedPdf = willUploadPdf;
       state.lastSavedAt = new Date().toISOString();
       if (SUPABASE_ENABLED && state.currentProjectId && user) {
@@ -17113,50 +17294,65 @@
     saveInProgress = true;
     try {
       pushSaveEvent('autosave_start', state.currentProjectId ? 'Autosave: updating project in cloud' : 'Autosave: creating project in cloud', JSON.stringify({ projectId: state.currentProjectId || null, runId: runId }));
-      if (state.currentProjectId) {
-        let sizeBytes = dataSize;
-        if (state.pdfStoragePath) {
-          try {
-            const t1 = Date.now();
-            const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
-            const dt = Date.now() - t1;
-            perfLog('performAutoSave storage.info', dt, { path: state.pdfStoragePath });
-            const sz = info && (info.metadata?.size ?? info.size);
-            if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-            saveDebugLog('autosave.storage.info.ok', { runId, ms: dt, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
-          } catch (se) {
-            saveDebugLog('autosave.storage.info.error', { runId, message: se?.message, name: se?.name });
+      let attempt = 0;
+      while (true) {
+        try {
+          if (state.currentProjectId) {
+            let sizeBytes = dataSize;
+            if (state.pdfStoragePath) {
+              try {
+                const t1 = Date.now();
+                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
+                const dt = Date.now() - t1;
+                perfLog('performAutoSave storage.info', dt, { path: state.pdfStoragePath });
+                const sz = info && (info.metadata?.size ?? info.size);
+                if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
+                saveDebugLog('autosave.storage.info.ok', { runId, ms: dt, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
+              } catch (se) {
+                saveDebugLog('autosave.storage.info.error', { runId, message: se?.message, name: se?.name });
+              }
+            }
+            const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
+            if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
+            saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: 30000, attempt });
+            const t3 = Date.now();
+            const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+            const updMs = Date.now() - t3;
+            perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId });
+            if (error) throw error;
+            saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId });
+          } else {
+            let sizeBytes = dataSize;
+            let pdfHash = null;
+            if (state.pdfBuffer) {
+              pdfHash = await sha256Hex(state.pdfBuffer);
+              sizeBytes += state.pdfBuffer.byteLength;
+            }
+            const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
+            if (pdfHash) insertData.pdf_hash = pdfHash;
+            saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash, attempt });
+            const t4 = Date.now();
+            const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
+            const insMs = Date.now() - t4;
+            perfLog('performAutoSave projects.insert', insMs, { dataSize });
+            if (error) throw error;
+            const projectId = row?.id;
+            if (!projectId) throw new Error('Project created but no ID returned');
+            state.currentProjectId = projectId;
+            state.currentProjectName = name;
+            saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId });
           }
+          break;
+        } catch (innerErr) {
+          if (attempt === 0 && isTransientSaveError(innerErr)) {
+            saveDebugLog('autosave.retry', { runId, message: innerErr?.message });
+            pushSaveEvent('autosave_retry', 'Transient autosave error, retrying once', innerErr?.message || '');
+            attempt++;
+            await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+          throw innerErr;
         }
-        const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-        if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-        saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: 30000 });
-        const t3 = Date.now();
-        const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
-        const updMs = Date.now() - t3;
-        perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId });
-        if (error) throw error;
-        saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId });
-      } else {
-        let sizeBytes = dataSize;
-        let pdfHash = null;
-        if (state.pdfBuffer) {
-          pdfHash = await sha256Hex(state.pdfBuffer);
-          sizeBytes += state.pdfBuffer.byteLength;
-        }
-        const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
-        if (pdfHash) insertData.pdf_hash = pdfHash;
-        saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash });
-        const t4 = Date.now();
-        const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
-        const insMs = Date.now() - t4;
-        perfLog('performAutoSave projects.insert', insMs, { dataSize });
-        if (error) throw error;
-        const projectId = row?.id;
-        if (!projectId) throw new Error('Project created but no ID returned');
-        state.currentProjectId = projectId;
-        state.currentProjectName = name;
-        saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId });
       }
       lastSaveIncludedPdf = !!state.pdfStoragePath;
       state.lastSavedAt = new Date().toISOString();

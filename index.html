@@ -408,6 +408,7 @@
     .status-bar .status-bar-link.danger { color: var(--red); }
     .status-bar .status-bar-link.danger:hover { color: var(--red); }
     .status-bar .status-bar-sep { color: var(--text2); opacity: 0.6; user-select: none; }
+    .status-bar .status-totals { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
     .status-bar .status-bar-desktop-only { display: none; }
     .status-bar .status-indicator-group { display: inline-flex; align-items: center; gap: 4px; }
     .status-bar .status-indicator-label { white-space: nowrap; }
@@ -1342,6 +1343,7 @@
           </span>
           <span id="statusMode">Ready</span>
           <span id="statusCoords">—</span>
+          <span id="statusTotals" class="status-totals" style="display:none;"></span>
           <div class="status-bar-actions" id="statusBarActions">
             <span class="status-bar-link status-bar-desktop-only" id="statusBarMacros">macros</span>
             <span class="status-bar-sep supabase-only status-bar-desktop-only" id="statusBarMacrosSep">|</span>
@@ -4562,6 +4564,7 @@
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     autoSaveDirty = true;
     lastModifiedAt = Date.now();
+    invalidateFooterTotals();
     if (SUPABASE_ENABLED && state.supabaseSession?.user && !state.isViewer) {
       const now = Date.now();
       if (now - saveStatusDirtyLogAt >= 2000) {
@@ -5761,6 +5764,55 @@
     return { clock, ago };
   }
 
+  let footerTotalsCache = null;
+  let footerTotalsDirty = true;
+  function invalidateFooterTotals() { footerTotalsDirty = true; }
+  function computeFooterTotals() {
+    if (!state.pages || !state.pages.length) return { count: 0, lengthReal: 0, scale: null };
+    let count = 0, lengthReal = 0;
+    const markedIdx = [];
+    state.pages.forEach((page, i) => {
+      const ann = (typeof getMergedAnnotationsForPage === 'function')
+        ? getMergedAnnotationsForPage(page)
+        : (page.annotations || makeAnnotations());
+      let pageHas = false;
+      (state.counters || []).forEach(c => {
+        const ms = ann.counterMarkers?.[c.id] || [];
+        ms.forEach(m => {
+          count += (typeof getMultiplyZoneForPoint === 'function') ? getMultiplyZoneForPoint(ann, m) : 1;
+          pageHas = true;
+        });
+      });
+      (ann.quickLines || []).forEach(q => {
+        lengthReal += (typeof getLineLengthForTotals === 'function') ? getLineLengthForTotals(q, i, false, ann) : 0;
+        pageHas = true;
+      });
+      (ann.polylines || []).forEach(poly => {
+        lengthReal += (typeof getLineLengthForTotals === 'function') ? getLineLengthForTotals(poly, i, true, ann) : 0;
+        pageHas = true;
+      });
+      if (pageHas) markedIdx.push(i);
+    });
+    const scaleIdx = markedIdx.length ? markedIdx : state.pages.map((_, i) => i);
+    return { count, lengthReal, scale: pickScaleForLineType(scaleIdx) };
+  }
+  function getFooterTotalsCached() {
+    const pageCount = state.pages?.length || 0;
+    const counterCount = state.counters?.length || 0;
+    const lineTypeCount = state.lineTypes?.length || 0;
+    if (footerTotalsDirty || !footerTotalsCache
+        || footerTotalsCache._pageCount !== pageCount
+        || footerTotalsCache._counterCount !== counterCount
+        || footerTotalsCache._lineTypeCount !== lineTypeCount) {
+      footerTotalsCache = computeFooterTotals();
+      footerTotalsCache._pageCount = pageCount;
+      footerTotalsCache._counterCount = counterCount;
+      footerTotalsCache._lineTypeCount = lineTypeCount;
+      footerTotalsDirty = false;
+    }
+    return footerTotalsCache;
+  }
+
   function updateStatus() {
     const modeEl = document.getElementById('statusMode');
     const coordsEl = document.getElementById('statusCoords');
@@ -5865,6 +5917,25 @@
     if (state.hoverLegendResize) mode += ' | Drag to resize';
     if (modeEl) { modeEl.textContent = mode; modeEl.title = mode || ''; }
     if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : '—';
+    const totalsEl = document.getElementById('statusTotals');
+    if (totalsEl) {
+      if (!state.pages || !state.pages.length) {
+        totalsEl.style.display = 'none';
+      } else {
+        const t = getFooterTotalsCached();
+        const countStr = (t.count || 0).toLocaleString();
+        let lenStr;
+        if (t.scale) {
+          const unit = t.scale.unit || '';
+          lenStr = Math.round(t.lengthReal || 0).toLocaleString() + (unit ? ' ' + unit : '');
+        } else {
+          lenStr = Math.round(t.lengthReal || 0).toLocaleString() + ' px';
+        }
+        totalsEl.textContent = '[' + countStr + ' | ' + lenStr + ']';
+        totalsEl.title = countStr + ' counters | ' + lenStr + ' of lines';
+        totalsEl.style.display = '';
+      }
+    }
   }
 
   function getCloudSaveSummary() {

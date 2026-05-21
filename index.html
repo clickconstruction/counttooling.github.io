@@ -362,6 +362,29 @@
     .polyline-finish-bar { display: none; padding: 8px; background: var(--surface2); border-top: 1px solid var(--border); gap: 8px; }
     .polyline-finish-bar.visible { display: flex; }
     .status-bar { padding: 4px 12px; font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .sync-paused-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      background: rgba(255, 196, 0, 0.18);
+      color: var(--text);
+      border-top: 1px solid rgba(255, 196, 0, 0.4);
+      border-bottom: 1px solid rgba(255, 196, 0, 0.4);
+    }
+    .sync-paused-banner-msg { flex: 1; min-width: 0; }
+    .sync-paused-banner-retry {
+      background: var(--accent);
+      color: #000;
+      border: 0;
+      border-radius: 4px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .sync-paused-banner-retry:hover { filter: brightness(1.05); }
     .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
     .dot.dot-red { background: var(--red); }
     .dot.dot-yellow { background: var(--yellow); }
@@ -1286,6 +1309,10 @@
         <div class="polyline-finish-bar" id="polylineFinishBar">
           <button id="finishPolyline">Finish</button>
           <button id="closePolygon">Close Polygon</button>
+        </div>
+        <div id="syncPausedBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
+          <span class="sync-paused-banner-msg">Cloud sync paused - your work is saved locally. Reconnecting...</span>
+          <button type="button" id="syncPausedBannerRetry" class="sync-paused-banner-retry">Retry now</button>
         </div>
         <div class="status-bar">
           <span class="status-indicator-group">
@@ -4122,7 +4149,27 @@
   let pdfCacheWarnShown = false;
   let takeoffBackupWarnShown = false;
   let turnInInProgress = false;
+  let consecutiveAutoSaveFailures = 0;
+  let firstAutoSaveFailureAt = 0;
+  let nextAutoSaveAttemptAt = 0;
+  let bannerShown = false;
+  let inFlightAutoSaveController = null;
+  let autoSaveAbortReason = null;
+  let recoveryProbeInFlight = false;
+  let recoveryProbeFiredForFailureCount = 0;
+  let autoSaveLatencySamples = [];
+  let autosaveSlowEmittedAt = 0;
+  let autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
   const AUTO_SAVE_INTERVAL_MS = 5000;
+  const AUTOSAVE_TIMEOUT_MS = 15000;
+  const AUTOSAVE_BACKOFF_LEVELS_MS = [5000, 15000, 30000, 60000];
+  const AUTOSAVE_BANNER_THRESHOLD = 3;
+  const AUTOSAVE_RECOVERY_THRESHOLD = 5;
+  const AUTOSAVE_RECOVERY_TIMEOUT_MS = 5000;
+  const AUTOSAVE_SLOW_MS = 1000;
+  const AUTOSAVE_SLOW_WINDOW = 20;
+  const AUTOSAVE_SLOW_DEBOUNCE_MS = 60000;
+  const AUTOSAVE_SLOW_MIN_SAMPLES = 10;
   const CHECKOUT_INACTIVITY_MS = 30 * 60 * 1000;
   const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
   const CHECKOUT_KEEPALIVE_MS = 10 * 60 * 1000;
@@ -4141,13 +4188,160 @@
     if (Number.isFinite(t)) serverClockOffsetMs = t - Date.now();
   }
 
-  const withTimeout = (promise, ms, label) =>
-    Promise.race([
-      promise,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's')), ms)
-      )
-    ]);
+  const withTimeout = (promiseOrFactory, ms, label) => {
+    const controller = (typeof promiseOrFactory === 'function') ? new AbortController() : null;
+    const inner = controller ? promiseOrFactory(controller.signal) : promiseOrFactory;
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        if (controller) { try { controller.abort(); } catch (_) {} }
+        reject(new Error((label || 'Request') + ' timed out after ' + (ms / 1000) + 's'));
+      }, ms);
+    });
+    const result = Promise.race([inner, timeout]).finally(() => clearTimeout(timer));
+    result.controller = controller;
+    return result;
+  };
+
+  function noteAutoSaveOutcome(ok, errOrNull) {
+    if (ok) {
+      if (consecutiveAutoSaveFailures > 0) {
+        pushSaveEvent('autosave_recovered', 'Cloud sync recovered', JSON.stringify({
+          failures: consecutiveAutoSaveFailures,
+          durationMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0
+        }));
+      }
+      consecutiveAutoSaveFailures = 0;
+      firstAutoSaveFailureAt = 0;
+      nextAutoSaveAttemptAt = 0;
+      recoveryProbeFiredForFailureCount = 0;
+      autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
+      updateSyncPausedBanner(false);
+      return;
+    }
+    consecutiveAutoSaveFailures++;
+    if (!firstAutoSaveFailureAt) firstAutoSaveFailureAt = Date.now();
+    const idx = Math.min(consecutiveAutoSaveFailures - 1, AUTOSAVE_BACKOFF_LEVELS_MS.length - 1);
+    nextAutoSaveAttemptAt = Date.now() + AUTOSAVE_BACKOFF_LEVELS_MS[idx];
+    if (consecutiveAutoSaveFailures >= AUTOSAVE_BANNER_THRESHOLD) updateSyncPausedBanner(true);
+
+    const netInfo = captureNetworkInfoDetail();
+    if (consecutiveAutoSaveFailures === 3 && !autosaveMilestoneFiredAt.f3) {
+      autosaveMilestoneFiredAt.f3 = Date.now();
+      pushSaveEvent('autosave_failing_3', 'Cloud sync has failed 3 times in a row', netInfo);
+    }
+    if (consecutiveAutoSaveFailures === AUTOSAVE_RECOVERY_THRESHOLD && !autosaveMilestoneFiredAt.f5) {
+      autosaveMilestoneFiredAt.f5 = Date.now();
+      pushSaveEvent('autosave_failing_5', 'Cloud sync has failed 5 times in a row', netInfo);
+    }
+    if (consecutiveAutoSaveFailures === 10 && !autosaveMilestoneFiredAt.f10) {
+      autosaveMilestoneFiredAt.f10 = Date.now();
+      pushSaveEvent('autosave_failing_10', 'Cloud sync has failed 10 times in a row', netInfo);
+    }
+
+    if (consecutiveAutoSaveFailures === AUTOSAVE_RECOVERY_THRESHOLD &&
+        recoveryProbeFiredForFailureCount !== AUTOSAVE_RECOVERY_THRESHOLD) {
+      recoveryProbeFiredForFailureCount = AUTOSAVE_RECOVERY_THRESHOLD;
+      runRecoveryProbe('failure_threshold').catch(() => {});
+    }
+  }
+
+  function updateSyncPausedBanner(show) {
+    const el = document.getElementById('syncPausedBanner');
+    if (!el) return;
+    const next = !!show;
+    if (next === bannerShown) return;
+    bannerShown = next;
+    el.style.display = next ? 'flex' : 'none';
+  }
+
+  async function retrySyncNow() {
+    if (inFlightAutoSaveController) {
+      autoSaveAbortReason = 'user_retry';
+      try { inFlightAutoSaveController.abort(); } catch (_) {}
+      inFlightAutoSaveController = null;
+    }
+    nextAutoSaveAttemptAt = 0;
+    autoSaveDirty = true;
+    try { await supabase.auth.getSession(); } catch (_) {}
+    pushSaveEvent('manual_sync_retry', 'User requested manual retry');
+  }
+
+  function recordAutosaveLatency(ms) {
+    if (typeof ms !== 'number' || ms < 0) return;
+    autoSaveLatencySamples.push(ms);
+    if (autoSaveLatencySamples.length > AUTOSAVE_SLOW_WINDOW) autoSaveLatencySamples.shift();
+    if (autoSaveLatencySamples.length < AUTOSAVE_SLOW_MIN_SAMPLES) return;
+    const sorted = autoSaveLatencySamples.slice().sort((a, b) => a - b);
+    const p95 = sorted[Math.floor(0.95 * (sorted.length - 1))];
+    if (p95 > AUTOSAVE_SLOW_MS && Date.now() - autosaveSlowEmittedAt > AUTOSAVE_SLOW_DEBOUNCE_MS) {
+      autosaveSlowEmittedAt = Date.now();
+      pushSaveEvent('autosave_slow', 'Cloud writes are slow', JSON.stringify({
+        p95, n: autoSaveLatencySamples.length, latest: ms
+      }));
+    }
+  }
+
+  function captureNetworkInfoDetail() {
+    if (typeof navigator === 'undefined' || !navigator.connection) return undefined;
+    const c = navigator.connection;
+    try {
+      return JSON.stringify({
+        effectiveType: c.effectiveType,
+        downlink: c.downlink,
+        rtt: c.rtt,
+        saveData: c.saveData
+      });
+    } catch (_) { return undefined; }
+  }
+
+  async function runRecoveryProbe(trigger) {
+    if (recoveryProbeInFlight) return;
+    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+    recoveryProbeInFlight = true;
+    const runId = saveDebugRunId();
+    saveDebugLog('autosave.recovery.start', { runId, trigger, failures: consecutiveAutoSaveFailures });
+    pushSaveEvent('autosave_recovery_probe', 'Attempting to refresh connection', JSON.stringify({ trigger }));
+    try {
+      let token = null;
+      try {
+        const { data } = await supabase.auth.getSession();
+        token = data?.session?.access_token || null;
+      } catch (_) {}
+      const controller = new AbortController();
+      const timer = setTimeout(() => { try { controller.abort(); } catch (_) {} }, AUTOSAVE_RECOVERY_TIMEOUT_MS);
+      const t0 = Date.now();
+      let ok = false, status = null, errMsg = null;
+      try {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/projects?select=id&limit=1', {
+          method: 'GET',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            ...(token ? { Authorization: 'Bearer ' + token } : {})
+          },
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        status = res.status;
+        ok = res.ok;
+      } catch (e) {
+        errMsg = e?.message || String(e);
+      } finally {
+        clearTimeout(timer);
+      }
+      const ms = Date.now() - t0;
+      if (ok) {
+        saveDebugLog('autosave.recovery.ok', { runId, ms, status });
+        pushSaveEvent('autosave_recovery_ok', 'Connection refreshed', JSON.stringify({ ms, status }));
+        nextAutoSaveAttemptAt = 0;
+      } else {
+        saveDebugLog('autosave.recovery.err', { runId, ms, status, message: errMsg });
+        pushSaveEvent('autosave_recovery_err', 'Recovery probe failed', JSON.stringify({ ms, status, message: errMsg }));
+      }
+    } finally {
+      recoveryProbeInFlight = false;
+    }
+  }
 
   function isTransientSaveError(e) {
     if (!e) return false;
@@ -13853,6 +14047,8 @@
     if (saveStatusBtnEl) saveStatusBtnEl.onclick = () => openSaveStatusModal();
     const saveStatusHeaderBtnEl = document.getElementById('saveStatusBtnHeader');
     if (saveStatusHeaderBtnEl) saveStatusHeaderBtnEl.onclick = () => openSaveStatusModal();
+    const syncPausedBannerRetryEl = document.getElementById('syncPausedBannerRetry');
+    if (syncPausedBannerRetryEl) syncPausedBannerRetryEl.onclick = () => { retrySyncNow(); };
     const saveStatusModalCloseEl = document.getElementById('saveStatusModalClose');
     if (saveStatusModalCloseEl) saveStatusModalCloseEl.onclick = () => {
       if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
@@ -17039,7 +17235,7 @@
               log('Inserting project...');
               saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000, attempt: manualSaveAttempt });
               const t0 = Date.now();
-              const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+              const { data: row, error } = await withTimeout((signal) => supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single().abortSignal(signal), 60000, 'Save project');
               log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
               if (error) throw error;
               saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id });
@@ -17078,7 +17274,7 @@
               const t2 = Date.now();
               const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
               if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-              const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+              const { error: updateErr } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', projectId).abortSignal(signal), 30000, 'Update project');
               log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
               if (updateErr) throw updateErr;
               saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'after_pdf_upload', ms: Date.now() - t2, projectId });
@@ -17090,7 +17286,7 @@
               const t2 = Date.now();
               const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
               if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-              const { error: updateErr } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', projectId), 30000, 'Update project');
+              const { error: updateErr } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', projectId).abortSignal(signal), 30000, 'Update project');
               log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
               if (updateErr) throw updateErr;
               saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'pdf_hash_skip', ms: Date.now() - t2, projectId });
@@ -17115,7 +17311,7 @@
             const t3 = Date.now();
             const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
             if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+            const { error } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), 30000, 'Update project');
             log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
             if (error) throw error;
             saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId });
@@ -17125,7 +17321,7 @@
             log('Inserting project (no PDF)...');
             saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000, attempt: manualSaveAttempt });
             const t4 = Date.now();
-            const { data: row, error } = await withTimeout(supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single(), 60000, 'Save project');
+            const { data: row, error } = await withTimeout((signal) => supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single().abortSignal(signal), 60000, 'Save project');
             log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
             if (error) throw error;
             saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id });
@@ -17314,11 +17510,14 @@
             }
             const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
             if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: 30000, attempt });
+            saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: AUTOSAVE_TIMEOUT_MS, attempt });
             const t3 = Date.now();
-            const { error } = await withTimeout(supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId), 30000, 'Update project');
+            const op = withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), AUTOSAVE_TIMEOUT_MS, 'Update project');
+            inFlightAutoSaveController = op.controller;
+            const { error } = await op;
             const updMs = Date.now() - t3;
             perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId });
+            recordAutosaveLatency(updMs);
             if (error) throw error;
             saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId });
           } else {
@@ -17332,7 +17531,9 @@
             if (pdfHash) insertData.pdf_hash = pdfHash;
             saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash, attempt });
             const t4 = Date.now();
-            const { data: row, error } = await withTimeout(supabase.from('projects').insert(insertData).select('id').single(), 60000, 'Save project');
+            const insertOp = withTimeout((signal) => supabase.from('projects').insert(insertData).select('id').single().abortSignal(signal), 60000, 'Save project');
+            inFlightAutoSaveController = insertOp.controller;
+            const { data: row, error } = await insertOp;
             const insMs = Date.now() - t4;
             perfLog('performAutoSave projects.insert', insMs, { dataSize });
             if (error) throw error;
@@ -17373,17 +17574,27 @@
       maybeLogProjectSaveEvent(state.currentProjectId);
       lastCloudSaveAttemptFailed = false;
       pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)');
+      autoSaveAbortReason = null;
+      noteAutoSaveOutcome(true, null);
       return { ok: true };
     } catch (e) {
+      if (autoSaveAbortReason) {
+        const reason = autoSaveAbortReason;
+        autoSaveAbortReason = null;
+        saveDebugLog('autosave.aborted', { runId, reason, message: e?.message });
+        return { ok: false, error: null };
+      }
       console.error('[Auto-save] Failed:', e);
       saveDebugLogError(runId, 'autosave.request', e);
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
       lastCloudSaveAttemptFailed = true;
       pushSaveEvent('autosave_err', (e && e.message) || 'Autosave failed', formatSaveStatusErrDetail(e));
+      noteAutoSaveOutcome(false, e);
       return { ok: false, error: e };
     } finally {
       saveInProgress = false;
+      inFlightAutoSaveController = null;
     }
   }
 
@@ -17462,6 +17673,11 @@
         lastHiddenAt = Date.now();
         saveDebugLog('visibility.hidden', { autoSaveDirty, hasProject: !!state.currentProjectId });
         writeTakeoffStateBackup();
+        if (inFlightAutoSaveController) {
+          autoSaveAbortReason = 'hidden';
+          try { inFlightAutoSaveController.abort(); } catch (_) {}
+          inFlightAutoSaveController = null;
+        }
         const userId = state.supabaseSession?.user?.id;
         if (SUPABASE_ENABLED && supabase && userId && state.currentProjectId &&
             state.checkedOutBy === userId && autoSaveDirty && !saveInProgress && !suspendAutoSaveUntilCheckout) {
@@ -17512,6 +17728,9 @@
     window.addEventListener('online', () => {
       pushSaveEvent('online', 'Browser reports connection online');
       updateSaveStatusIndicator();
+      if (consecutiveAutoSaveFailures > 0) {
+        runRecoveryProbe('online_event').catch(() => {});
+      }
     });
     window.addEventListener('offline', () => {
       pushSaveEvent('offline', 'Browser reports connection offline');
@@ -17526,6 +17745,10 @@
       return;
     }
     if (!autoSaveDirty) return;
+    if (Date.now() < nextAutoSaveAttemptAt) {
+      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: nextAutoSaveAttemptAt - Date.now() });
+      return;
+    }
     const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
     if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
     autoSaveDirty = false;

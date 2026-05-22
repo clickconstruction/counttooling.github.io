@@ -4186,8 +4186,22 @@
   let autosaveSlowEmittedAt = 0;
   let autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
   let lastSuccessfulSupabaseCallAt = 0;
+  let clientRecycleInFlight = false;
+  let clientRecycleCountThisRun = 0;
+  let lastClientRecycleAt = 0;
+  let clientProbeInFlightGuard = false;
+  let lastClientProbeAt = 0;
+  let lastClientProbeOk = null;
+  let lastClientProbeMs = 0;
+  let dirtyStartedAt = 0;
+  let envelopeSnapshotFiredAt = 0;
+  let envelopeSnapshotDirtyStamp = 0;
   const AUTO_SAVE_INTERVAL_MS = 5000;
   const AUTOSAVE_TIMEOUT_MS = 15000;
+  const STORAGE_INFO_TIMEOUT_MS = 3000;
+  const CLIENT_PROBE_TIMEOUT_MS = 5000;
+  const CLIENT_RECYCLE_COOLDOWN_MS = 30000;
+  const DIRTY_SNAPSHOT_THRESHOLD_MS = 10 * 60 * 1000;
   const CHECK_IN_TIMEOUT_MS = 8000;
   const LONG_IDLE_PROBE_MS = 5 * 60 * 1000;
   const TURN_IN_STALENESS_MS = 5 * 60 * 1000;
@@ -4236,9 +4250,10 @@
   function noteAutoSaveOutcome(ok, errOrNull) {
     if (ok) {
       if (consecutiveAutoSaveFailures > 0) {
-        pushSaveEvent('autosave_recovered', 'Cloud sync recovered', JSON.stringify({
+        pushSaveEvent('autosave_recovered', 'Cloud sync recovered', autosaveEventDetail({
           failures: consecutiveAutoSaveFailures,
-          durationMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0
+          durationMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0,
+          clientRecycles: clientRecycleCountThisRun
         }));
       }
       consecutiveAutoSaveFailures = 0;
@@ -4246,6 +4261,7 @@
       nextAutoSaveAttemptAt = 0;
       recoveryProbeFiredForFailureCount = 0;
       autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
+      clientRecycleCountThisRun = 0;
       lastSuccessfulSupabaseCallAt = Date.now();
       updateSyncPausedBanner(false);
       return;
@@ -4256,24 +4272,36 @@
     nextAutoSaveAttemptAt = Date.now() + AUTOSAVE_BACKOFF_LEVELS_MS[idx];
     if (consecutiveAutoSaveFailures >= AUTOSAVE_BANNER_THRESHOLD) updateSyncPausedBanner(true);
 
-    const netInfo = captureNetworkInfoDetail();
     if (consecutiveAutoSaveFailures === 3 && !autosaveMilestoneFiredAt.f3) {
       autosaveMilestoneFiredAt.f3 = Date.now();
-      pushSaveEvent('autosave_failing_3', 'Cloud sync has failed 3 times in a row', netInfo);
+      pushSaveEvent('autosave_failing_3', 'Cloud sync has failed 3 times in a row', autosaveEventDetail({ milestone: 3 }));
     }
     if (consecutiveAutoSaveFailures === AUTOSAVE_RECOVERY_THRESHOLD && !autosaveMilestoneFiredAt.f5) {
       autosaveMilestoneFiredAt.f5 = Date.now();
-      pushSaveEvent('autosave_failing_5', 'Cloud sync has failed 5 times in a row', netInfo);
+      pushSaveEvent('autosave_failing_5', 'Cloud sync has failed 5 times in a row', autosaveEventDetail({ milestone: 5 }));
+      writeSaveLogsSnapshot('autosave_failing_5').catch(() => {});
     }
     if (consecutiveAutoSaveFailures === 10 && !autosaveMilestoneFiredAt.f10) {
       autosaveMilestoneFiredAt.f10 = Date.now();
-      pushSaveEvent('autosave_failing_10', 'Cloud sync has failed 10 times in a row', netInfo);
+      pushSaveEvent('autosave_failing_10', 'Cloud sync has failed 10 times in a row', autosaveEventDetail({ milestone: 10 }));
     }
 
     if (consecutiveAutoSaveFailures === AUTOSAVE_RECOVERY_THRESHOLD &&
         recoveryProbeFiredForFailureCount !== AUTOSAVE_RECOVERY_THRESHOLD) {
       recoveryProbeFiredForFailureCount = AUTOSAVE_RECOVERY_THRESHOLD;
-      runRecoveryProbe('failure_threshold').catch(() => {});
+      runRecoveryProbeAndMaybeRecycle('failure_threshold').catch(() => {});
+    }
+  }
+
+  async function runRecoveryProbeAndMaybeRecycle(trigger) {
+    const probe = await runRecoveryProbe(trigger).catch(() => null);
+    if (!probe || !probe.ok) return;
+    if (consecutiveAutoSaveFailures === 0) return;
+    const clientProbe = await runSupabaseClientProbe(trigger).catch(() => null);
+    if (clientProbe && !clientProbe.ok) {
+      await recreateSupabaseClient('client_probe_failed:' + trigger).catch(() => {});
+    } else if (!clientProbe) {
+      await recreateSupabaseClient('client_probe_threw:' + trigger).catch(() => {});
     }
   }
 
@@ -4326,6 +4354,42 @@
     } catch (_) { return undefined; }
   }
 
+  function captureNetworkInfoObj() {
+    if (typeof navigator === 'undefined' || !navigator.connection) return null;
+    const c = navigator.connection;
+    try {
+      return {
+        effectiveType: c.effectiveType,
+        downlink: c.downlink,
+        rtt: c.rtt,
+        saveData: c.saveData
+      };
+    } catch (_) { return null; }
+  }
+
+  function autosaveEventDetail(extra) {
+    const ctx = {
+      failures: consecutiveAutoSaveFailures,
+      online: (typeof navigator !== 'undefined') ? navigator.onLine : null,
+      msSinceLastSuccess: lastSuccessfulSupabaseCallAt ? (Date.now() - lastSuccessfulSupabaseCallAt) : null,
+      network: captureNetworkInfoObj()
+    };
+    if (extra && typeof extra === 'object') Object.assign(ctx, extra);
+    try { return JSON.stringify(ctx); } catch (_) { return ''; }
+  }
+
+  function serializeSaveErrorForEvent(e) {
+    if (!e) return {};
+    return {
+      message: e.message || String(e),
+      name: e.name,
+      code: e.code,
+      status: e.status,
+      details: e.details,
+      hint: e.hint
+    };
+  }
+
   async function runRecoveryProbe(trigger) {
     if (recoveryProbeInFlight) return { ok: false, ms: 0, status: null, errMsg: 'in_flight' };
     if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, ms: 0, status: null, errMsg: 'disabled' };
@@ -4370,6 +4434,165 @@
     } finally {
       recoveryProbeInFlight = false;
     }
+  }
+
+  async function runSupabaseClientProbe(trigger) {
+    if (!SUPABASE_ENABLED || !supabase) return { ok: false, ms: 0, errMsg: 'disabled' };
+    if (clientProbeInFlightGuard) return { ok: false, ms: 0, errMsg: 'in_flight' };
+    clientProbeInFlightGuard = true;
+    const t0 = Date.now();
+    let ok = false, errMsg = null, errName = null;
+    try {
+      const probeOp = withTimeout(
+        (signal) => supabase.from('projects').select('id').limit(1).abortSignal(signal),
+        CLIENT_PROBE_TIMEOUT_MS,
+        'Client probe'
+      );
+      const { error } = await probeOp;
+      if (error) {
+        errMsg = error.message || String(error);
+        errName = error.name;
+      } else {
+        ok = true;
+      }
+    } catch (e) {
+      errMsg = e?.message || String(e);
+      errName = e?.name;
+    } finally {
+      clientProbeInFlightGuard = false;
+    }
+    const ms = Date.now() - t0;
+    lastClientProbeAt = Date.now();
+    lastClientProbeOk = ok;
+    lastClientProbeMs = ms;
+    if (ok) {
+      saveDebugLog('autosave.client_probe.ok', { trigger, ms });
+      pushSaveEvent('autosave_client_probe_ok', 'Supabase client responsive', autosaveEventDetail({ trigger, ms }));
+      lastSuccessfulSupabaseCallAt = Date.now();
+    } else {
+      saveDebugLog('autosave.client_probe.err', { trigger, ms, message: errMsg, name: errName });
+      pushSaveEvent('autosave_client_probe_err', 'Supabase client appears wedged', autosaveEventDetail({ trigger, ms, message: errMsg, name: errName }));
+    }
+    return { ok, ms, errMsg };
+  }
+
+  async function recreateSupabaseClient(reason) {
+    if (!SUPABASE_ENABLED || typeof window.supabase === 'undefined') return false;
+    if (clientRecycleInFlight) {
+      saveDebugLog('autosave.client_recycle.skip', { reason, why: 'in_flight' });
+      return false;
+    }
+    if (Date.now() - lastClientRecycleAt < CLIENT_RECYCLE_COOLDOWN_MS) {
+      saveDebugLog('autosave.client_recycle.skip', { reason, why: 'cooldown' });
+      return false;
+    }
+    clientRecycleInFlight = true;
+    const t0 = Date.now();
+    const previousSession = state.supabaseSession || null;
+    let resubscribed = false;
+    try {
+      try { if (supabase) await supabase.removeAllChannels(); } catch (_) {}
+      projectsCheckoutChannel = null;
+      const { createClient } = window.supabase;
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      if (previousSession?.access_token && previousSession?.refresh_token) {
+        try {
+          await withTimeout(
+            supabase.auth.setSession({
+              access_token: previousSession.access_token,
+              refresh_token: previousSession.refresh_token
+            }),
+            5000,
+            'Client recycle setSession'
+          );
+        } catch (sessErr) {
+          saveDebugLog('autosave.client_recycle.setSession_err', { reason, message: sessErr?.message });
+        }
+      }
+      if (state.currentProjectId && state.supabaseSession?.user) {
+        try {
+          subscribeToProjectCheckoutChanges(state.currentProjectId);
+          resubscribed = true;
+        } catch (rtErr) {
+          saveDebugLog('autosave.client_recycle.resubscribe_err', { reason, message: rtErr?.message });
+        }
+      }
+      lastClientRecycleAt = Date.now();
+      clientRecycleCountThisRun++;
+      const elapsedMs = Date.now() - t0;
+      saveDebugLog('autosave.client_recycle.ok', { reason, elapsedMs, resubscribed });
+      pushSaveEvent('autosave_client_recycled', 'Supabase client recreated', autosaveEventDetail({ reason, elapsedMs, resubscribed, recycleCount: clientRecycleCountThisRun }));
+      return true;
+    } catch (e) {
+      saveDebugLog('autosave.client_recycle.err', { reason, message: e?.message, name: e?.name });
+      pushSaveEvent('autosave_client_recycle_err', 'Supabase client recreate failed', autosaveEventDetail({ reason, message: e?.message, name: e?.name }));
+      return false;
+    } finally {
+      clientRecycleInFlight = false;
+    }
+  }
+
+  async function rawProjectsUpdate(projectId, payload, signal) {
+    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase not configured');
+    }
+    const accessToken = state.supabaseSession?.access_token || '';
+    if (!accessToken) throw new Error('No access token for raw projects update');
+    const url = SUPABASE_URL + '/rest/v1/projects?id=eq.' + encodeURIComponent(projectId);
+    const res = await fetch(url, {
+      method: 'PATCH',
+      cache: 'no-store',
+      signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      let body = '';
+      try { body = await res.text(); } catch (_) {}
+      const e = new Error('Raw projects update failed: ' + res.status + (body ? (' ' + body.slice(0, 200)) : ''));
+      e.status = res.status;
+      e.code = 'RAW_UPDATE_HTTP_' + res.status;
+      throw e;
+    }
+    return { ok: true, status: res.status };
+  }
+
+  async function rawCheckInProject(projectId, signal) {
+    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase not configured');
+    }
+    const accessToken = state.supabaseSession?.access_token || '';
+    if (!accessToken) throw new Error('No access token for raw check_in_project');
+    const url = SUPABASE_URL + '/rest/v1/rpc/check_in_project';
+    const res = await fetch(url, {
+      method: 'POST',
+      cache: 'no-store',
+      signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_project_id: projectId })
+    });
+    let bodyJson = null;
+    let bodyText = '';
+    try {
+      bodyText = await res.text();
+      if (bodyText) bodyJson = JSON.parse(bodyText);
+    } catch (_) {}
+    if (!res.ok) {
+      const e = new Error('Raw check_in failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      e.status = res.status;
+      e.code = 'RAW_RPC_HTTP_' + res.status;
+      return { data: bodyJson, error: e };
+    }
+    return { data: bodyJson, error: null };
   }
 
   async function checkGlobalForceReload() {
@@ -4521,6 +4744,15 @@
     } catch (_) { return null; }
   }
 
+  async function buildSaveLogsEnvelopeWithSnapshots() {
+    const envelope = buildSaveLogsEnvelope();
+    try {
+      const snapshots = await readSaveLogsSnapshots(5);
+      if (snapshots && snapshots.length) envelope.autoSnapshotEnvelopes = snapshots;
+    } catch (_) {}
+    return envelope;
+  }
+
   function buildSaveLogsEnvelope() {
     let userEmail = null;
     try { userEmail = state.supabaseSession?.user?.email || null; } catch (_) {}
@@ -4562,14 +4794,16 @@
   let backupDebounceTimer = null;
   function markProjectDirty() {
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
+    const wasDirty = autoSaveDirty;
     autoSaveDirty = true;
     lastModifiedAt = Date.now();
+    if (!wasDirty) dirtyStartedAt = Date.now();
     invalidateFooterTotals();
     if (SUPABASE_ENABLED && state.supabaseSession?.user && !state.isViewer) {
       const now = Date.now();
       if (now - saveStatusDirtyLogAt >= 2000) {
         saveStatusDirtyLogAt = now;
-        pushSaveEvent('dirty', 'Project marked dirty (pending cloud sync)');
+        pushSaveEvent('dirty', 'Project marked dirty (pending cloud sync)', autosaveEventDetail({ dirtyForMs: dirtyStartedAt ? (now - dirtyStartedAt) : 0 }));
       }
     }
     if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
@@ -4737,15 +4971,17 @@
   const TAKEOFF_BACKUP_STORE = 'takeoff_backup';
   const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
   const CUSTOM_ICONS_STORE = 'custom_icons';
+  const SAVE_LOGS_SNAPSHOT_STORE = 'save_logs_snapshots';
   const PDF_CACHE_MAX_ENTRIES = 10;
   const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
   const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
   const TAKEOFF_BACKUP_MAX_BYTES = 200 * 1024 * 1024;
+  const SAVE_LOGS_SNAPSHOT_MAX_ENTRIES = 10;
   const BACKUP_PDF_TO_INDEXEDDB = (typeof window.BACKUP_PDF_TO_INDEXEDDB !== 'undefined' ? window.BACKUP_PDF_TO_INDEXEDDB : true);
 
   function openPdfCacheDb() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(PDF_CACHE_DB, 4);
+      const req = indexedDB.open(PDF_CACHE_DB, 5);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (e) => {
@@ -4770,6 +5006,9 @@
         }
         if (!db.objectStoreNames.contains(CUSTOM_ICONS_STORE)) {
           db.createObjectStore(CUSTOM_ICONS_STORE, { keyPath: 'key' });
+        }
+        if (!db.objectStoreNames.contains(SAVE_LOGS_SNAPSHOT_STORE)) {
+          db.createObjectStore(SAVE_LOGS_SNAPSHOT_STORE, { keyPath: 'capturedAt' });
         }
       };
     });
@@ -4946,6 +5185,51 @@
       tx.objectStore(TAKEOFF_BACKUP_META_STORE).delete(projectId);
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
     } catch (_) { /* ignore */ }
+  }
+
+  async function writeSaveLogsSnapshot(reason) {
+    if (typeof indexedDB === 'undefined') return;
+    if (envelopeSnapshotFiredAt && Date.now() - envelopeSnapshotFiredAt < 60000) return;
+    envelopeSnapshotFiredAt = Date.now();
+    try {
+      const envelope = buildSaveLogsEnvelope();
+      envelope.autoSnapshotReason = reason || 'unknown';
+      const db = await openPdfCacheDb();
+      const tx = db.transaction(SAVE_LOGS_SNAPSHOT_STORE, 'readwrite');
+      const store = tx.objectStore(SAVE_LOGS_SNAPSHOT_STORE);
+      store.put({ capturedAt: envelope.capturedAt, envelope });
+      const keys = await new Promise((resolve, reject) => {
+        const req = store.getAllKeys();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+      if (keys.length > SAVE_LOGS_SNAPSHOT_MAX_ENTRIES) {
+        const sorted = keys.slice().sort();
+        const toDelete = sorted.slice(0, keys.length - SAVE_LOGS_SNAPSHOT_MAX_ENTRIES);
+        for (const k of toDelete) store.delete(k);
+      }
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+      saveDebugLog('autosave.snapshot.put', { reason, capturedAt: envelope.capturedAt, eventCount: envelope.events.length });
+    } catch (e) {
+      saveDebugLog('autosave.snapshot.put_err', { reason, message: e?.message });
+    }
+  }
+
+  async function readSaveLogsSnapshots(limit) {
+    if (typeof indexedDB === 'undefined') return [];
+    const cap = typeof limit === 'number' && limit > 0 ? limit : SAVE_LOGS_SNAPSHOT_MAX_ENTRIES;
+    try {
+      const db = await openPdfCacheDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(SAVE_LOGS_SNAPSHOT_STORE, 'readonly');
+        const req = tx.objectStore(SAVE_LOGS_SNAPSHOT_STORE).getAll();
+        req.onsuccess = () => {
+          const rows = (req.result || []).slice().sort((a, b) => (a.capturedAt < b.capturedAt ? 1 : -1));
+          resolve(rows.slice(0, cap).map(r => r.envelope).filter(Boolean));
+        };
+        req.onerror = () => reject(req.error);
+      });
+    } catch (_) { return []; }
   }
 
   const CUSTOM_ICONS_KEY = 'user';
@@ -14301,9 +14585,9 @@
       renderSaveStatusModalContent();
     };
     const saveStatusExportBtnEl = document.getElementById('saveStatusExportBtn');
-    if (saveStatusExportBtnEl) saveStatusExportBtnEl.onclick = () => {
+    if (saveStatusExportBtnEl) saveStatusExportBtnEl.onclick = async () => {
       try {
-        const envelope = buildSaveLogsEnvelope();
+        const envelope = await buildSaveLogsEnvelopeWithSnapshots();
         const json = JSON.stringify(envelope, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -14323,7 +14607,7 @@
     const saveStatusCopyBtnEl = document.getElementById('saveStatusCopyBtn');
     if (saveStatusCopyBtnEl) saveStatusCopyBtnEl.onclick = async () => {
       try {
-        const envelope = buildSaveLogsEnvelope();
+        const envelope = await buildSaveLogsEnvelopeWithSnapshots();
         const json = JSON.stringify(envelope, null, 2);
         if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(json);
@@ -14355,9 +14639,15 @@
       turnInInProgress = true;
       const tTurnIn = Date.now();
       let currentStage = 'start';
+      let stageStartedAt = Date.now();
       let checkInAttempt = 0;
+      let usedRawFetchForCheckIn = false;
       const progress = (stage, label) => {
+        if (currentStage && currentStage !== 'start') {
+          pushSaveEvent('turn_in_phase_done', currentStage + ' done', JSON.stringify({ stage: currentStage, durationMs: Date.now() - stageStartedAt, elapsedMs: Date.now() - tTurnIn }));
+        }
         currentStage = stage;
+        stageStartedAt = Date.now();
         setTurnInProgress(label);
         pushSaveEvent('turn_in_stage', label, JSON.stringify({ stage, elapsedMs: Date.now() - tTurnIn }));
       };
@@ -14424,13 +14714,31 @@
         while (true) {
           try {
             const tCheckIn = Date.now();
-            const { data, error } = await withTimeout(
-              supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
-              CHECK_IN_TIMEOUT_MS,
-              'Turn in'
-            );
+            const useRawForCheckIn = consecutiveAutoSaveFailures >= 3 || (checkInAttempt > 0 && !usedRawFetchForCheckIn);
+            usedRawFetchForCheckIn = useRawForCheckIn;
+            let data = null, error = null;
+            if (useRawForCheckIn) {
+              try {
+                const r = await withTimeout((signal) => rawCheckInProject(state.currentProjectId, signal), CHECK_IN_TIMEOUT_MS, 'Turn in');
+                data = r.data || null;
+                error = r.error || null;
+                if (!error) pushSaveEvent('turn_in_via_raw_fetch_ok', 'Raw-fetch check-in succeeded', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt }));
+                else pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in failed', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: error?.message, status: error?.status }));
+              } catch (rawErr) {
+                error = rawErr;
+                pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in threw', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: rawErr?.message, status: rawErr?.status }));
+              }
+            } else {
+              const r = await withTimeout(
+                supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
+                CHECK_IN_TIMEOUT_MS,
+                'Turn in'
+              );
+              data = r.data;
+              error = r.error;
+            }
             updateServerClockFromRpc(data);
-            perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId, attempt: checkInAttempt });
+            perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId, attempt: checkInAttempt, raw: useRawForCheckIn });
             result = data || (error ? { ok: false, error: error.message } : { ok: false });
             const releaseMsg = (result?.error || '').toString();
             const releaseCode = error?.code || '';
@@ -14466,11 +14774,14 @@
           }
         }
         perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
+        if (currentStage && currentStage !== 'start') {
+          pushSaveEvent('turn_in_phase_done', currentStage + ' done', JSON.stringify({ stage: currentStage, durationMs: Date.now() - stageStartedAt, elapsedMs: Date.now() - tTurnIn }));
+        }
         if (result.ok) {
-          pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, attempts: checkInAttempt + 1 }));
+          pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, attempts: checkInAttempt + 1, usedRawFetchForCheckIn }));
           return { ok: true };
         }
-        pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString(), JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt, online: (typeof navigator !== 'undefined') ? navigator.onLine : null, network: captureNetworkInfoDetail() || null }));
+        pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString(), JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt, usedRawFetchForCheckIn, online: (typeof navigator !== 'undefined') ? navigator.onLine : null, network: captureNetworkInfoDetail() || null }));
         return { ok: false, error: result.error || 'Failed to turn in' };
       } finally {
         setTurnInProgress(null);
@@ -17659,26 +17970,41 @@
             setProgress('Uploading project...');
             await tick();
             let sizeBytes = dataSize;
-            if (state.pdfStoragePath) {
+            const skipStorageInfoForDegraded = consecutiveAutoSaveFailures > 0;
+            if (state.pdfStoragePath && !skipStorageInfoForDegraded) {
+              const tInfo = Date.now();
               try {
-                const tInfo = Date.now();
-                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
+                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), STORAGE_INFO_TIMEOUT_MS, 'Storage info');
                 const sz = info && (info.metadata?.size ?? info.size);
                 if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
                 saveDebugLog('manual.save.storage.info.ok', { runId, ms: Date.now() - tInfo, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
               } catch (se) {
-                saveDebugLog('manual.save.storage.info.error', { runId, message: se?.message, name: se?.name });
+                saveDebugLog('manual.save.storage.info.error', { runId, ms: Date.now() - tInfo, message: se?.message, name: se?.name });
+                pushSaveEvent('manual_save_storage_info_err', 'Storage size check failed', autosaveEventDetail({ runId, ms: Date.now() - tInfo, message: se?.message, name: se?.name }));
               }
+            } else if (state.pdfStoragePath) {
+              pushSaveEvent('manual_save_storage_info_skipped', 'Skipping size check while sync is degraded', autosaveEventDetail({ runId, reason: 'degraded_mode' }));
             }
             log('Updating existing project (no PDF)...');
-            saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'no_pdf_in_save', projectId: state.currentProjectId, timeoutMs: 30000, attempt: manualSaveAttempt });
+            const useRawForManual = consecutiveAutoSaveFailures >= 3;
+            saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'no_pdf_in_save', projectId: state.currentProjectId, timeoutMs: 30000, attempt: manualSaveAttempt, raw: useRawForManual });
             const t3 = Date.now();
             const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
             if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            const { error } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), 30000, 'Update project');
-            log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
-            if (error) throw error;
-            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId });
+            if (useRawForManual) {
+              try {
+                await withTimeout((signal) => rawProjectsUpdate(state.currentProjectId, updatePayload, signal), 30000, 'Update project');
+                pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch manual save succeeded', autosaveEventDetail({ runId, ms: Date.now() - t3 }));
+              } catch (rawErr) {
+                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch manual save failed', autosaveEventDetail({ runId, ms: Date.now() - t3, message: rawErr?.message, status: rawErr?.status }));
+                throw rawErr;
+              }
+            } else {
+              const { error } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), 30000, 'Update project');
+              log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
+              if (error) throw error;
+            }
+            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId, raw: useRawForManual });
           } else {
             setProgress('Uploading project...');
             await tick();
@@ -17852,38 +18178,87 @@
     });
     const tTotal = Date.now();
     saveInProgress = true;
+    let storageInfoFailedThisCall = false;
+    let storageInfoMs = 0;
+    let storageInfoStatus = 'not_run';
+    let lastAttemptUsedRawFetch = false;
+    let lastAttemptOpMs = 0;
+    let lastAttemptPhase = 'init';
+    let attempt = 0;
     try {
-      pushSaveEvent('autosave_start', state.currentProjectId ? 'Autosave: updating project in cloud' : 'Autosave: creating project in cloud', JSON.stringify({ projectId: state.currentProjectId || null, runId: runId }));
-      let attempt = 0;
+      pushSaveEvent(
+        'autosave_start',
+        state.currentProjectId ? 'Autosave: updating project in cloud' : 'Autosave: creating project in cloud',
+        autosaveEventDetail({
+          runId,
+          projectId: state.currentProjectId || null,
+          dataSize,
+          pages: state.pages.length,
+          hasPdfStoragePath: !!state.pdfStoragePath,
+          attempt
+        })
+      );
       while (true) {
         try {
           if (state.currentProjectId) {
             let sizeBytes = dataSize;
-            if (state.pdfStoragePath) {
+            const skipStorageInfoForDegraded = consecutiveAutoSaveFailures > 0;
+            if (state.pdfStoragePath && !storageInfoFailedThisCall && !skipStorageInfoForDegraded) {
+              const t1 = Date.now();
               try {
-                const t1 = Date.now();
-                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), 10000, 'Storage info');
-                const dt = Date.now() - t1;
-                perfLog('performAutoSave storage.info', dt, { path: state.pdfStoragePath });
+                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), STORAGE_INFO_TIMEOUT_MS, 'Storage info');
+                storageInfoMs = Date.now() - t1;
+                storageInfoStatus = 'ok';
+                perfLog('performAutoSave storage.info', storageInfoMs, { path: state.pdfStoragePath });
                 const sz = info && (info.metadata?.size ?? info.size);
                 if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-                saveDebugLog('autosave.storage.info.ok', { runId, ms: dt, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
+                saveDebugLog('autosave.storage.info.ok', { runId, ms: storageInfoMs, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
               } catch (se) {
-                saveDebugLog('autosave.storage.info.error', { runId, message: se?.message, name: se?.name });
+                storageInfoMs = Date.now() - t1;
+                storageInfoStatus = 'err';
+                storageInfoFailedThisCall = true;
+                saveDebugLog('autosave.storage.info.error', { runId, ms: storageInfoMs, message: se?.message, name: se?.name });
+                pushSaveEvent('autosave_storage_info_err', 'Storage size check failed', autosaveEventDetail({ runId, ms: storageInfoMs, message: se?.message, name: se?.name, attempt }));
               }
+            } else if (state.pdfStoragePath) {
+              storageInfoStatus = storageInfoFailedThisCall ? 'skipped_failed' : 'skipped_degraded';
+              pushSaveEvent('autosave_storage_info_skipped', 'Skipping size check while sync is degraded', autosaveEventDetail({ runId, reason: storageInfoStatus, attempt }));
             }
             const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
             if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: AUTOSAVE_TIMEOUT_MS, attempt });
+            const useRawFetch = (consecutiveAutoSaveFailures >= 3) || (attempt > 0 && lastAttemptUsedRawFetch === false && lastAttemptPhase === 'projects.update');
+            lastAttemptUsedRawFetch = useRawFetch;
+            lastAttemptPhase = 'projects.update';
+            saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: AUTOSAVE_TIMEOUT_MS, attempt, raw: useRawFetch });
+            pushSaveEvent('autosave_request_start', useRawFetch ? 'Updating project (raw fetch)' : 'Updating project', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch }));
             const t3 = Date.now();
-            const op = withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), AUTOSAVE_TIMEOUT_MS, 'Update project');
-            inFlightAutoSaveController = op.controller;
-            const { error } = await op;
+            let opErr = null;
+            if (useRawFetch) {
+              const op = withTimeout((signal) => rawProjectsUpdate(state.currentProjectId, updatePayload, signal), AUTOSAVE_TIMEOUT_MS, 'Update project');
+              inFlightAutoSaveController = op.controller;
+              try {
+                await op;
+              } catch (rawErr) {
+                opErr = rawErr;
+              }
+            } else {
+              const op = withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), AUTOSAVE_TIMEOUT_MS, 'Update project');
+              inFlightAutoSaveController = op.controller;
+              const { error } = await op;
+              opErr = error || null;
+            }
             const updMs = Date.now() - t3;
-            perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId });
+            lastAttemptOpMs = updMs;
+            perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId, raw: useRawFetch });
             recordAutosaveLatency(updMs);
-            if (error) throw error;
-            saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId });
+            if (opErr) {
+              pushSaveEvent('autosave_request_end', useRawFetch ? 'Update failed (raw fetch)' : 'Update failed', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: false, message: opErr?.message, code: opErr?.code, status: opErr?.status }));
+              if (useRawFetch) pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch update failed', autosaveEventDetail({ runId, ms: updMs, message: opErr?.message, status: opErr?.status }));
+              throw opErr;
+            }
+            pushSaveEvent('autosave_request_end', useRawFetch ? 'Update OK (raw fetch)' : 'Update OK', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: true }));
+            if (useRawFetch) pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch update succeeded', autosaveEventDetail({ runId, ms: updMs }));
+            saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId, raw: useRawFetch });
           } else {
             let sizeBytes = dataSize;
             let pdfHash = null;
@@ -17893,25 +18268,33 @@
             }
             const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
             if (pdfHash) insertData.pdf_hash = pdfHash;
+            lastAttemptPhase = 'projects.insert';
+            lastAttemptUsedRawFetch = false;
             saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash, attempt });
+            pushSaveEvent('autosave_request_start', 'Creating project', autosaveEventDetail({ runId, op: 'projects.insert', attempt }));
             const t4 = Date.now();
             const insertOp = withTimeout((signal) => supabase.from('projects').insert(insertData).select('id').single().abortSignal(signal), 60000, 'Save project');
             inFlightAutoSaveController = insertOp.controller;
             const { data: row, error } = await insertOp;
             const insMs = Date.now() - t4;
+            lastAttemptOpMs = insMs;
             perfLog('performAutoSave projects.insert', insMs, { dataSize });
-            if (error) throw error;
+            if (error) {
+              pushSaveEvent('autosave_request_end', 'Create failed', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: false, message: error?.message, code: error?.code, status: error?.status }));
+              throw error;
+            }
             const projectId = row?.id;
             if (!projectId) throw new Error('Project created but no ID returned');
             state.currentProjectId = projectId;
             state.currentProjectName = name;
+            pushSaveEvent('autosave_request_end', 'Create OK', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, projectId }));
             saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId });
           }
           break;
         } catch (innerErr) {
           if (attempt === 0 && isTransientSaveError(innerErr)) {
             saveDebugLog('autosave.retry', { runId, message: innerErr?.message });
-            pushSaveEvent('autosave_retry', 'Transient autosave error, retrying once', innerErr?.message || '');
+            pushSaveEvent('autosave_retry', 'Transient autosave error, retrying once', autosaveEventDetail({ runId, attempt, message: innerErr?.message }));
             attempt++;
             await new Promise(r => setTimeout(r, 500));
             continue;
@@ -17937,7 +18320,8 @@
       saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
       maybeLogProjectSaveEvent(state.currentProjectId);
       lastCloudSaveAttemptFailed = false;
-      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)');
+      dirtyStartedAt = 0;
+      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)', autosaveEventDetail({ runId, totalMs: Date.now() - tTotal, attempts: attempt + 1, usedRawFetch: lastAttemptUsedRawFetch }));
       autoSaveAbortReason = null;
       noteAutoSaveOutcome(true, null);
       return { ok: true };
@@ -17953,7 +18337,24 @@
       window.lastSaveError = e;
       writeTakeoffBackupToIndexedDB();
       lastCloudSaveAttemptFailed = true;
-      pushSaveEvent('autosave_err', (e && e.message) || 'Autosave failed', formatSaveStatusErrDetail(e));
+      const elapsedMs = Date.now() - tTotal;
+      pushSaveEvent(
+        'autosave_err',
+        (e && e.message) || 'Autosave failed',
+        autosaveEventDetail(Object.assign(
+          serializeSaveErrorForEvent(e),
+          {
+            runId,
+            elapsedMs,
+            attempt,
+            phase: lastAttemptPhase,
+            usedRawFetch: lastAttemptUsedRawFetch,
+            opMs: lastAttemptOpMs,
+            storageInfoStatus,
+            storageInfoMs
+          }
+        ))
+      );
       noteAutoSaveOutcome(false, e);
       return { ok: false, error: e };
     } finally {
@@ -18118,6 +18519,10 @@
       return;
     }
     if (!autoSaveDirty) return;
+    if (dirtyStartedAt && Date.now() - dirtyStartedAt >= DIRTY_SNAPSHOT_THRESHOLD_MS && envelopeSnapshotDirtyStamp < dirtyStartedAt) {
+      envelopeSnapshotDirtyStamp = dirtyStartedAt;
+      writeSaveLogsSnapshot('dirty_10min').catch(() => {});
+    }
     if (Date.now() < nextAutoSaveAttemptAt) {
       if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: nextAutoSaveAttemptAt - Date.now() });
       return;

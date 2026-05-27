@@ -61,10 +61,14 @@
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
     .header-edit-status.edit-status-available { background: transparent; color: #81c784; border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
+    .header-edit-status.edit-status-expired { background: transparent; color: var(--yellow); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
     .header-edit-status.edit-status-viewing { background: var(--surface2); color: var(--text2); }
     .header-edit-status button.header-edit-status-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: none; transition: opacity 0.2s ease, transform 0.15s ease; }
     .header-edit-status.edit-status-editing button.header-edit-status-btn { color: var(--red); }
     .header-edit-status.edit-status-available button.header-edit-status-btn { color: #81c784; }
+    .header-edit-status.edit-status-expired button.header-edit-status-btn { color: var(--yellow); font-weight: 700; }
+    .header-edit-status button.header-edit-status-btn-expired { animation: header-edit-status-btn-expired-pulse 2s ease-in-out infinite; }
+    @keyframes header-edit-status-btn-expired-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
     .header-edit-status button.header-edit-status-btn-save { background: transparent; color: var(--red); padding: 6px 12px; border-radius: 0; font-weight: 600; }
     .header-edit-status button.header-edit-status-btn-save:hover { background: var(--yellow); color: var(--bg); padding: 6px 14px; border-radius: 6px; }
     .header-edit-status-btn-save .save-btn-label-hover { display: none; }
@@ -96,6 +100,7 @@
     .sidebar-checkout-banner .header-edit-status-btn-save { background: transparent; color: var(--red); padding: 6px 12px; border-radius: 0; font-weight: 600; }
     .sidebar-checkout-banner .header-edit-status-btn-save:hover { background: var(--yellow); color: var(--bg); padding: 6px 14px; border-radius: 6px; }
     .sidebar-checkout-banner.edit-status-available .header-edit-status-btn { color: #81c784; }
+    .sidebar-checkout-banner.edit-status-expired .header-edit-status-btn { color: var(--yellow); font-weight: 700; }
     .sidebar-checkout-banner.edit-status-viewing { background: var(--surface2); color: var(--text2); }
     .sidebar-header-buttons { display: none; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-header-buttons .sidebar-btn { flex: 1; min-width: 80px; }
@@ -152,6 +157,7 @@
       .sidebar-logo { display: flex; }
       .sidebar-checkout-banner.supabase-only.edit-status-available,
       .sidebar-checkout-banner.supabase-only.edit-status-editing,
+      .sidebar-checkout-banner.supabase-only.edit-status-expired,
       .sidebar-checkout-banner.supabase-only.edit-status-viewing { display: flex; }
       body.mobile-view-mode .sidebar-tool-buttons #moveBtnSidebar { order: -1; }
       .sidebar-logo-icons.supabase-only { display: flex; }
@@ -446,6 +452,11 @@
       box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.25);
     }
     .save-status-summary-block { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 6px; }
+    .save-status-expired-callout { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; background: rgba(212, 160, 23, 0.10); border: 1px solid rgba(212, 160, 23, 0.4); margin-bottom: 10px; }
+    .save-status-expired-callout-title { font-weight: 700; color: var(--yellow); font-size: 0.95rem; }
+    .save-status-expired-callout-body { font-size: 0.85rem; color: var(--text2); }
+    .save-status-expired-callout-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .save-status-expired-callout-actions button { padding: 6px 12px; font-size: 0.85rem; }
     .save-status-summary-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); font-weight: 600; flex-shrink: 0; }
     .save-status-summary-icon { flex-shrink: 0; }
     .save-status-summary-icon.dot, .save-status-summary-icon.square { width: 10px; height: 10px; }
@@ -1331,6 +1342,10 @@
         <div id="syncPausedBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
           <span class="sync-paused-banner-msg">Cloud sync paused - your work is saved locally. Reconnecting...</span>
           <button type="button" id="syncPausedBannerRetry" class="sync-paused-banner-retry">Retry now</button>
+        </div>
+        <div id="canvasOnlyNeedsPdfBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
+          <span class="sync-paused-banner-msg">This project has saved annotations but no PDF. Choose a PDF to view them.</span>
+          <button type="button" id="canvasOnlyNeedsPdfBannerChoose" class="sync-paused-banner-retry">Choose PDF</button>
         </div>
         <div class="status-bar">
           <span class="status-indicator-group">
@@ -2412,6 +2427,14 @@
         <button type="button" class="modal-close-btn" id="saveStatusModalClose" aria-label="Close">×</button>
       </div>
       <div class="save-status-modal-body" style="padding:0 1rem 1rem;">
+        <div id="saveStatusExpiredCallout" class="save-status-expired-callout" style="display:none;">
+          <div class="save-status-expired-callout-title">Edit session expired</div>
+          <div class="save-status-expired-callout-body">Your edits are safe locally but won't sync until you re-check out.</div>
+          <div class="save-status-expired-callout-actions">
+            <button type="button" id="saveStatusExpiredRecheckout" class="btn-yellow">Re-check out and save</button>
+            <button type="button" id="saveStatusExpiredExport">Export local backup</button>
+          </div>
+        </div>
         <div id="saveStatusSummaryCanvas" class="save-status-summary-block">
           <span class="save-status-summary-icon dot dot-grey"></span>
           <span class="save-status-summary-label">Canvas</span>
@@ -2818,6 +2841,25 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="checkoutExpiredRecoveryModal" style="z-index:220;">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-card-header">
+        <h2 id="checkoutExpiredRecoveryTitle">Edit session expired</h2>
+        <button type="button" class="modal-close-btn" id="checkoutExpiredRecoveryClose" aria-label="Close">×</button>
+      </div>
+      <div style="padding:0 1rem 1rem;">
+        <p id="checkoutExpiredRecoveryBody" style="margin:0 0 12px 0;color:var(--text2);">Your edit session expired while idle. Your edits are still safe in this browser. Re-check out to save them to the cloud.</p>
+        <p id="checkoutExpiredRecoveryAge" style="margin:0 0 16px 0;color:var(--text2);font-size:0.85rem;font-style:italic;display:none;"></p>
+        <p id="checkoutExpiredRecoveryError" style="margin:0 0 16px 0;color:var(--red);font-size:0.9rem;display:none;"></p>
+      </div>
+      <div class="actions" style="flex-wrap:wrap;gap:8px;">
+        <button type="button" id="checkoutExpiredRecoveryDiscard" class="danger" style="margin-right:auto;">Discard local edits and reload</button>
+        <button type="button" id="checkoutExpiredRecoveryCancel">Cancel</button>
+        <button type="button" id="checkoutExpiredRecoveryExport">Export local backup</button>
+        <button type="button" id="checkoutExpiredRecoveryRecheckout" class="btn-yellow">Re-check out and save</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="lastSessionRestoreModal">
     <div class="modal-card">
       <h2>Project from Last Session</h2>
@@ -2838,11 +2880,23 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="canvasOnlyNeedsPdfModal">
+    <div class="modal-card">
+      <h2 id="canvasOnlyNeedsPdfTitle">This project has annotations but no PDF</h2>
+      <p class="form-group" id="canvasOnlyNeedsPdfBody" style="margin-bottom:16px;color:var(--text2);font-size:0.95rem;line-height:1.4;">
+        Choose a PDF to view the saved counters, lines, and notes. The PDF will be attached to this project the next time you save.
+      </p>
+      <div class="actions">
+        <button id="canvasOnlyNeedsPdfSkip">Skip for now</button>
+        <button id="canvasOnlyNeedsPdfChoose" class="btn-yellow">Choose PDF...</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="preparePdfModal">
     <div class="modal-card" style="max-width:520px;">
-      <h2>Prepare PDF for Cloud</h2>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
-      <div class="form-group prepare-pdf-name-row">
+      <h2 id="preparePdfTitle">Prepare PDF for Cloud</h2>
+      <p class="form-group" id="preparePdfDescription" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
+      <div class="form-group prepare-pdf-name-row" id="preparePdfNameRow">
         <div class="prepare-pdf-name-tabs">
           <span class="prepare-pdf-name-tab active" id="preparePdfProjectTab" data-mode="project">Project name</span>
           <span class="prepare-pdf-name-tab" id="preparePdfPageTab" data-mode="page">&gt; Page Name</span>
@@ -4160,6 +4214,13 @@
   }
 
   let pendingImportCanvasAfterPdf = false;
+  // #7b: When true, the next pdfInput.onchange treats the upload as "add
+  // additional pages to the current project" and routes through Prepare PDF
+  // in append mode. Set by the Project Settings "Add additional PDF pages"
+  // button. Always cleared at the top of pdfInput.onchange so it can't leak
+  // across calls.
+  let pendingAddAdditionalPages = false;
+  let lastAuthUserId = null;
   let autoSaveDirty = false;
   let lastModifiedAt = 0;
   let pendingLastSessionRestore = null;
@@ -4174,6 +4235,7 @@
   let pdfCacheWarnShown = false;
   let takeoffBackupWarnShown = false;
   let turnInInProgress = false;
+  let inFlightRecoverySavePromise = null;
   let consecutiveAutoSaveFailures = 0;
   let firstAutoSaveFailureAt = 0;
   let nextAutoSaveAttemptAt = 0;
@@ -4219,6 +4281,10 @@
   const CHECKOUT_KEEPALIVE_MS = 10 * 60 * 1000;
   const CHECKOUT_NEAR_EXPIRY_MS = 5 * 60 * 1000;
   const CHECKOUT_SOFT_GRACE_MS = 60 * 1000;
+  const AUTO_RECHECKOUT_MAX_PER_PROJECT = 3;
+  const AUTO_RECHECKOUT_MIN_GAP_MS = 5000;
+  const autoRecheckoutCountByProject = new Map();
+  let lastAutoRecheckoutAt = 0;
   let lastCheckoutRefreshAt = 0;
   let suspendAutoSaveUntilCheckout = false;
   let lastHiddenAt = 0;
@@ -4562,6 +4628,46 @@
     return { ok: true, status: res.status };
   }
 
+  async function rawProjectsInsert(payload, signal) {
+    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return { data: null, error: { message: 'Supabase not configured', status: 0, code: 'RAW_INSERT_NOT_CONFIGURED' } };
+    }
+    const accessToken = state.supabaseSession?.access_token || '';
+    if (!accessToken) {
+      return { data: null, error: { message: 'No access token for raw projects insert', status: 401, code: 'RAW_INSERT_NO_TOKEN' } };
+    }
+    const url = SUPABASE_URL + '/rest/v1/projects';
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        cache: 'no-store',
+        signal,
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      return { data: null, error: { message: (e && e.message) || 'fetch_failed', status: 0, name: e && e.name, code: 'RAW_INSERT_FETCH_ERR' } };
+    }
+    let body = null;
+    let bodyText = '';
+    try {
+      bodyText = await res.text();
+      if (bodyText) body = JSON.parse(bodyText);
+    } catch (_) {}
+    if (!res.ok) {
+      const message = (body && (body.message || body.error)) || ('HTTP ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      return { data: null, error: { message, status: res.status, code: (body && body.code) || ('RAW_INSERT_HTTP_' + res.status) } };
+    }
+    const row = Array.isArray(body) ? body[0] : body;
+    return { data: row || null, error: null };
+  }
+
   async function rawCheckInProject(projectId, signal) {
     if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase not configured');
@@ -4612,13 +4718,41 @@
     } catch (_) {}
   }
 
+  const PENDING_GLOBAL_RELOAD_STAMP_KEY = 'clickcount-pending-global-reload';
   function doGlobalReloadNow(trigger) {
-    try { localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, String(state.globalReloadAtServerMs || Date.now())); } catch (_) {}
+    const stamp = String(state.globalReloadAtServerMs || Date.now());
+    try { localStorage.setItem(PENDING_GLOBAL_RELOAD_STAMP_KEY, stamp); } catch (_) {}
     try { pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
     try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
     const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
     for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
     location.reload();
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const commitPendingReloadStamp = () => {
+        try {
+          const pending = localStorage.getItem(PENDING_GLOBAL_RELOAD_STAMP_KEY);
+          if (!pending) return;
+          // We are running this code in a fresh document, so a navigation/load
+          // has happened. Treat any non-"prerender" navigation as a confirmed
+          // reload commit and write the real stamp.
+          let confirmedReload = true;
+          try {
+            const entries = (performance.getEntriesByType && performance.getEntriesByType('navigation')) || [];
+            if (entries.length && entries.every(e => e.type === 'prerender')) confirmedReload = false;
+          } catch (_) {}
+          if (confirmedReload) {
+            localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, pending);
+            localStorage.removeItem(PENDING_GLOBAL_RELOAD_STAMP_KEY);
+            try { pushSaveEvent && pushSaveEvent('global_reload_committed', 'Global reload stamp committed after successful reload', pending); } catch (_) {}
+          }
+        } catch (_) {}
+      };
+      if (document.readyState === 'complete' || document.readyState === 'interactive') commitPendingReloadStamp();
+      else window.addEventListener('load', commitPendingReloadStamp, { once: true });
+      window.addEventListener('pageshow', commitPendingReloadStamp, { once: true });
+    } catch (_) {}
   }
 
   function showGlobalReloadBanner() {
@@ -4792,10 +4926,12 @@
   }
 
   let backupDebounceTimer = null;
+  let dirtyGeneration = 0;
   function markProjectDirty() {
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     const wasDirty = autoSaveDirty;
     autoSaveDirty = true;
+    dirtyGeneration++;
     lastModifiedAt = Date.now();
     if (!wasDirty) dirtyStartedAt = Date.now();
     invalidateFooterTotals();
@@ -4808,7 +4944,7 @@
     }
     if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
     backupDebounceTimer = setTimeout(() => { backupDebounceTimer = null; writeTakeoffStateBackup(); }, 1000);
-    if (state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - lastCheckoutRefreshAt >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
+    if (!suspendAutoSaveUntilCheckout && !checkoutExpiredNeedsAttention && state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - lastCheckoutRefreshAt >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
       lastCheckoutRefreshAt = Date.now();
       if (supabase) supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }).then(({ data }) => {
         updateServerClockFromRpc(data);
@@ -4902,6 +5038,121 @@
   function clearUndoStacks() {
     undoStack = [];
     redoStack = [];
+  }
+
+  function resetAutosaveDegradedState() {
+    consecutiveAutoSaveFailures = 0;
+    firstAutoSaveFailureAt = 0;
+    nextAutoSaveAttemptAt = 0;
+    recoveryProbeFiredForFailureCount = 0;
+    autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
+    autoSaveLatencySamples = [];
+    autosaveSlowEmittedAt = 0;
+    envelopeSnapshotFiredAt = 0;
+    envelopeSnapshotDirtyStamp = 0;
+    dirtyStartedAt = 0;
+    clientRecycleCountThisRun = 0;
+    lastClientRecycleAt = 0;
+    lastClientProbeAt = 0;
+    lastClientProbeOk = null;
+    lastClientProbeMs = 0;
+    autoSaveAbortReason = null;
+    try { updateSyncPausedBanner(false); } catch (_) {}
+  }
+
+  function resetLocalSessionState(opts) {
+    opts = opts || {};
+    const keepArtboard = !!opts.keepArtboard;
+    if (inFlightAutoSaveController) {
+      try { autoSaveAbortReason = autoSaveAbortReason || 'session_reset'; inFlightAutoSaveController.abort(); } catch (_) {}
+      inFlightAutoSaveController = null;
+    }
+    try { subscribeToProjectCheckoutChanges(null); } catch (_) {}
+    state.pages = [];
+    state.currentPage = 0;
+    state.currentProjectId = null;
+    state.currentProjectName = null;
+    state.pdfBuffer = null;
+    state.pdfBufferSize = 0;
+    state.pdfStoragePath = null;
+    state.pdfHash = null;
+    state.projectOwnerId = null;
+    state.lastSavedAt = null;
+    lastLocalBackupAt = null;
+    lastSaveIncludedPdf = false;
+    state.pendingCanvasLoad = null;
+    state.groups = [];
+    state.maxZoom = null;
+    state.activeCanvasIdByPage = {};
+    state.checkedOutBy = null;
+    state.checkedOutAt = null;
+    state.checkedOutEmail = null;
+    state.isViewer = false;
+    state.loadedViaViewLink = false;
+    state.canCheckOut = false;
+    autoSaveDirty = false;
+    dirtyGeneration = 0;
+    saveInProgress = false;
+    savePdfInProgress = false;
+    turnInInProgress = false;
+    lastModifiedAt = 0;
+    pendingCopyProject = null;
+    pendingImportCanvasAfterPdf = false;
+    pendingLastSessionRestore = null;
+    clearUndoStacks();
+    resetAutosaveDegradedState();
+    pdfCacheWarnShown = false;
+    takeoffBackupWarnShown = false;
+    saveStatusLog = [];
+    state.userActivityAllRowsCache = null;
+    state.userActivityViewMode = 'events';
+    try { autoRecheckoutCountByProject.clear(); } catch (_) {}
+    lastAutoRecheckoutAt = 0;
+    lastCheckoutRefreshAt = 0;
+    try { clearCheckoutExpiredAttention(); } catch (_) {}
+    try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+    if (!keepArtboard) {
+      state.counters = [];
+      state.lineTypes = [];
+      try { customIconsCache = []; } catch (_) {}
+    }
+    try { updateSaveStatusIndicator(); } catch (_) {}
+  }
+
+  let signOutBroadcastChannel = null;
+  function broadcastSignOut() {
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        if (!signOutBroadcastChannel) signOutBroadcastChannel = new BroadcastChannel('clickcount-auth');
+        signOutBroadcastChannel.postMessage({ kind: 'signed_out', ts: Date.now() });
+      }
+    } catch (_) {}
+    try { localStorage.setItem('clickcount-signout-broadcast', String(Date.now())); } catch (_) {}
+  }
+  function handleCrossTabSignOut(source) {
+    try { pushSaveEvent('cross_tab_signout', 'Sign-out received from another tab', source || ''); } catch (_) {}
+    try { resetLocalSessionState(); } catch (_) {}
+    try { state.supabaseSession = null; state.isAdmin = false; } catch (_) {}
+    // Clear lastAuthUserId so the local SIGNED_OUT event that follows (once
+    // supabase-js syncs the auth storage change) skips a redundant broadcast.
+    lastAuthUserId = null;
+    try { stopPresenceHeartbeat && stopPresenceHeartbeat(); } catch (_) {}
+    try { updateUI(); renderPdf(); updateSaveStatusIndicator(); } catch (_) {}
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        signOutBroadcastChannel = new BroadcastChannel('clickcount-auth');
+        signOutBroadcastChannel.addEventListener('message', (ev) => {
+          if (ev?.data?.kind === 'signed_out') handleCrossTabSignOut('broadcast');
+        });
+      }
+    } catch (_) {}
+    try {
+      window.addEventListener('storage', (ev) => {
+        if (ev.key === 'clickcount-signout-broadcast' && ev.newValue) handleCrossTabSignOut('storage');
+      });
+    } catch (_) {}
   }
 
   async function refreshCheckoutActivity() {
@@ -5107,16 +5358,23 @@
     } catch (_) { /* ignore */ }
   }
 
-  async function takeoffBackupGet(projectId) {
+  async function takeoffBackupGet(projectId, currentUserId) {
     if (!BACKUP_PDF_TO_INDEXEDDB) return null;
     try {
       const db = await openPdfCacheDb();
-      return new Promise((resolve, reject) => {
+      const entry = await new Promise((resolve, reject) => {
         const tx = db.transaction([TAKEOFF_BACKUP_STORE], 'readonly');
         const req = tx.objectStore(TAKEOFF_BACKUP_STORE).get(projectId);
         req.onsuccess = () => resolve(req.result || null);
         req.onerror = () => reject(req.error);
       });
+      if (!entry) return null;
+      if (currentUserId && entry.userId && entry.userId !== currentUserId) {
+        try { saveDebugLog('takeoffBackup.user_mismatch', { projectId, ownerUserId: entry.userId, currentUserId }); } catch (_) {}
+        try { await takeoffBackupDelete(projectId); } catch (_) {}
+        return null;
+      }
+      return entry;
     } catch (_) { return null; }
   }
 
@@ -5233,25 +5491,48 @@
   }
 
   const CUSTOM_ICONS_KEY = 'user';
+  function customIconsCurrentKey() {
+    const uid = state.supabaseSession?.user?.id || null;
+    return uid ? ('customIcons_' + uid) : CUSTOM_ICONS_KEY;
+  }
   async function customIconsGetFromIndexedDB() {
     try {
       const db = await openPdfCacheDb();
-      return new Promise((resolve, reject) => {
+      const primaryKey = customIconsCurrentKey();
+      const primary = await new Promise((resolve, reject) => {
         const tx = db.transaction(CUSTOM_ICONS_STORE, 'readonly');
-        const req = tx.objectStore(CUSTOM_ICONS_STORE).get(CUSTOM_ICONS_KEY);
-        req.onsuccess = () => {
-          const entry = req.result;
-          resolve(entry && Array.isArray(entry.data) ? entry.data : null);
-        };
+        const req = tx.objectStore(CUSTOM_ICONS_STORE).get(primaryKey);
+        req.onsuccess = () => resolve(req.result || null);
         req.onerror = () => reject(req.error);
       });
+      if (primary && Array.isArray(primary.data)) return primary.data;
+      if (primaryKey !== CUSTOM_ICONS_KEY) {
+        const legacy = await new Promise((resolve, reject) => {
+          const tx = db.transaction(CUSTOM_ICONS_STORE, 'readonly');
+          const req = tx.objectStore(CUSTOM_ICONS_STORE).get(CUSTOM_ICONS_KEY);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+        if (legacy && Array.isArray(legacy.data) && legacy.data.length) {
+          try {
+            const tx = db.transaction(CUSTOM_ICONS_STORE, 'readwrite');
+            tx.objectStore(CUSTOM_ICONS_STORE).put({ key: primaryKey, data: legacy.data });
+            tx.objectStore(CUSTOM_ICONS_STORE).delete(CUSTOM_ICONS_KEY);
+            await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+            try { saveDebugLog('customIcons.migrated_to_per_user', { from: CUSTOM_ICONS_KEY, to: primaryKey, count: legacy.data.length }); } catch (_) {}
+          } catch (_) {}
+          return legacy.data;
+        }
+        return null;
+      }
+      return null;
     } catch (_) { return null; }
   }
   async function customIconsPutToIndexedDB(arr) {
     try {
       const db = await openPdfCacheDb();
       const tx = db.transaction(CUSTOM_ICONS_STORE, 'readwrite');
-      tx.objectStore(CUSTOM_ICONS_STORE).put({ key: CUSTOM_ICONS_KEY, data: Array.isArray(arr) ? arr : [] });
+      tx.objectStore(CUSTOM_ICONS_STORE).put({ key: customIconsCurrentKey(), data: Array.isArray(arr) ? arr : [] });
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
     } catch (_) {}
   }
@@ -5275,9 +5556,12 @@
   }
 
   async function doRestoreLastProject(proj, cachedBlob) {
+    // A1: Same hygiene as the Load Project row-click - clear any stale
+    // pendingCanvasLoad before we start rebuilding session state.
+    state.pendingCanvasLoad = null;
     const d = proj.data;
     const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-    const idbBackup = await takeoffBackupGet(proj.id);
+    const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
     const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
     let pdf;
     const idbPdfBlob = useIdbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0 ? idbBackup.pdfBlob : null;
@@ -5343,6 +5627,7 @@
     }
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = proj.id === 'local' ? null : proj.id;
+    try { clearCheckoutExpiredAttention(); } catch (_) {}
     state.currentProjectName = proj.name || 'Untitled';
     state.pdfStoragePath = proj.pdf_path;
     state.pdfHash = proj.pdf_hash || null;
@@ -6324,6 +6609,8 @@
     const windowMin = Math.round(getSaveStatusLogWindowMs() / 60000);
     if (headingEl) headingEl.textContent = 'Activity (last ' + windowMin + ' minutes)';
     if (verboseChk) verboseChk.checked = isSaveDebugEnabled();
+    const calloutEl = document.getElementById('saveStatusExpiredCallout');
+    if (calloutEl) calloutEl.style.display = checkoutExpiredNeedsAttention ? '' : 'none';
     applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryCanvas'), sum.canvas, 'dot');
     applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryPdf'),    sum.pdf,    'square');
     if (listEl) {
@@ -7583,6 +7870,7 @@
 
   // SECTION: UI Render Functions
   function updateUI() {
+    try { updateCanvasOnlyNeedsPdfBanner(); } catch (_) {}
     document.getElementById('zoomPct').textContent = Math.round(state.zoom * 100) + '%';
     const pageInfo = document.getElementById('pageInfo');
     const current = state.pages.length ? state.currentPage + 1 : 0;
@@ -7828,7 +8116,15 @@
         editBanner.style.display = '';
         editBanner.className = 'header-edit-status supabase-only';
         editBanner.innerHTML = '';
-        if (!state.isViewer && state.currentProjectId) {
+        if (checkoutExpiredNeedsAttention && !state.isViewer && state.currentProjectId) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'header-edit-status-btn header-edit-status-btn-expired';
+          btn.dataset.action = 'checkout_expired_recover';
+          btn.textContent = '[Edit session expired — Re-check out]';
+          editBanner.appendChild(btn);
+          editBanner.classList.add('edit-status-expired');
+        } else if (!state.isViewer && state.currentProjectId) {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'header-edit-status-btn';
@@ -9390,29 +9686,60 @@
     }
     state.supabaseSession = session;
     if (session?.user) {
+      lastAuthUserId = session.user.id;
       const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
       startPresenceHeartbeat();
       maybeLogSessionStartOnce();
       checkGlobalForceReload();
     } else {
+      lastAuthUserId = null;
       state.isAdmin = false;
       stopPresenceHeartbeat();
     }
     updateSaveStatusIndicator();
     supabase.auth.onAuthStateChange(async (event, session) => {
+      const prevUserId = lastAuthUserId;
+      const newUserId = session?.user?.id || null;
       state.supabaseSession = session;
       updateSaveStatusIndicator();
       if (event === 'TOKEN_REFRESHED') {
+        if (newUserId && prevUserId && newUserId !== prevUserId) {
+          try { pushSaveEvent('auth_user_changed_on_refresh', 'TOKEN_REFRESHED with different user id - tearing down prior session'); } catch (_) {}
+          try { stopPresenceHeartbeat(); } catch (_) {}
+          resetLocalSessionState();
+          lastAuthUserId = newUserId;
+          if (session?.user) {
+            const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
+            state.isAdmin = !!profile?.is_admin;
+            startPresenceHeartbeat();
+            maybeLogSessionStartOnce();
+          }
+          updateUI();
+          renderPdf();
+          updateSaveStatusIndicator();
+        }
         checkGlobalForceReload();
         return;
       }
       if (session?.user) {
+        const userChanged = newUserId !== prevUserId;
+        lastAuthUserId = newUserId;
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         startPresenceHeartbeat();
         maybeLogSessionStartOnce();
         checkGlobalForceReload();
+        // Reload custom icons on any user transition so per-user keys/migration
+        // pick up correctly, even when cache was populated from the legacy key
+        // (anonymous boot before sign-in).
+        const needsCustomIconReload = userChanged || !customIconsCache || customIconsCache.length === 0;
+        if (needsCustomIconReload && typeof customIconsGetFromIndexedDB === 'function') {
+          try {
+            const loaded = await customIconsGetFromIndexedDB();
+            customIconsCache = Array.isArray(loaded) ? loaded : [];
+          } catch (_) {}
+        }
         if (!state.currentProjectId && state.pages.length === 0) {
           const airboard = await fetchUserAirboard();
           if (airboard && (airboard.counters?.length || airboard.lineTypes?.length) &&
@@ -9430,25 +9757,10 @@
       } else {
         stopPresenceHeartbeat();
         state.isAdmin = false;
-        state.currentProjectId = null;
-        subscribeToProjectCheckoutChanges(null);
-        state.currentProjectName = null;
-        state.pdfBuffer = null;
-        state.pdfBufferSize = 0;
-        state.pdfStoragePath = null;
-        state.pdfHash = null;
-        state.lastSavedAt = null;
-        lastLocalBackupAt = null;
-        state.checkedOutBy = null;
-        state.checkedOutAt = null;
-        state.checkedOutEmail = null;
-        state.isViewer = false;
-        state.loadedViaViewLink = false;
-        state.canCheckOut = false;
-        state.projectOwnerId = null;
-        pdfCacheWarnShown = false;
-        takeoffBackupWarnShown = false;
-        try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+        const hadSession = !!prevUserId;
+        resetLocalSessionState();
+        lastAuthUserId = null;
+        if (hadSession) broadcastSignOut();
       }
       updateUI();
       renderPdf();
@@ -9552,14 +9864,39 @@
     const prevCanCheckOut = state.canCheckOut;
     const prevCheckedOutEmail = state.checkedOutEmail;
     const prevWasCheckedOut = state.checkedOutBy === state.supabaseSession?.user?.id;
-    const { data: projects, error } = await supabase.rpc('list_accessible_projects');
-    if (error || !projects) return;
+    let projects = null;
+    let error = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const r = await supabase.rpc('list_accessible_projects');
+      projects = r.data;
+      error = r.error;
+      if (!error && projects) break;
+      if (attempt === 0) await new Promise(r2 => setTimeout(r2, 500));
+    }
+    if (error || !projects) {
+      try { pushSaveEvent('refresh_permissions_err', 'refreshProjectPermissions failed', (error && (error.message || String(error))) || 'no data returned'); } catch (_) {}
+      return;
+    }
     const proj = projects.find(function(p) { return p.id === state.currentProjectId; });
-    if (!proj) return;
+    if (!proj) {
+      try { pushSaveEvent('permissions_project_missing', 'You no longer have access to this project', JSON.stringify({ projectId: state.currentProjectId })); } catch (_) {}
+      state.isViewer = true;
+      state.canCheckOut = false;
+      state.checkedOutBy = null;
+      state.checkedOutAt = null;
+      state.checkedOutEmail = null;
+      suspendAutoSaveUntilCheckout = true;
+      try { showToast('You no longer have access to this project.', 5000); } catch (_) {}
+      try { updateUI(); updateStatus(); updateSaveStatusIndicator(); } catch (_) {}
+      return;
+    }
     const willBecomeViewer = prevWasCheckedOut && !proj.can_edit;
     const hadDirty = autoSaveDirty;
     const hadInflight = saveInProgress;
     if (willBecomeViewer && hadDirty && !hadInflight) {
+      if (suspendAutoSaveUntilCheckout) {
+        try { pushSaveEvent('force_turn_in_flush_skipped_suspended', 'Force turn-in flush skipped: autosave suspended pending re-checkout'); } catch (_) {}
+      } else {
       performAutoSave()
         .then((res) => {
           if (res && res.ok === false) {
@@ -9586,6 +9923,7 @@
           lastCloudSaveAttemptFailed = true;
           updateSaveStatusIndicator();
         });
+      }
     }
     state.checkedOutBy = proj.checked_out_by || null;
     state.checkedOutAt = proj.checked_out_at || null;
@@ -9618,6 +9956,14 @@
   document.getElementById('uploadPdf').onclick = () => document.getElementById('pdfInput').click();
   document.getElementById('uploadPdfSidebar').onclick = () => document.getElementById('pdfInput').click();
   const PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase storage limit)
+  function assertPdfWithinLimit(bytes, context) {
+    if (typeof bytes !== 'number' || bytes <= PDF_MAX_SIZE_BYTES) return null;
+    const mb = Math.round(bytes / (1024 * 1024) * 10) / 10;
+    const maxMb = PDF_MAX_SIZE_BYTES / (1024 * 1024);
+    const msg = 'PDF is ' + mb + ' MB, which exceeds the ' + maxMb + ' MB cloud-storage limit. Please reduce the file size and try again.';
+    try { pushSaveEvent('pdf_size_exceeded', msg, JSON.stringify({ bytes, limit: PDF_MAX_SIZE_BYTES, context: context || null })); } catch (_) {}
+    return { ok: false, message: msg, bytes, limit: PDF_MAX_SIZE_BYTES };
+  }
   const IS_DEV_HOST = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const LOAD_TEST_PDF_URL = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf';
   function titleFromPdfFilename(name) {
@@ -9656,6 +10002,11 @@
   let preparePdfCurrentIdx = 0;
   let preparePdfDefaultName = 'Untitled';
   let preparePdfEditMode = 'project';
+  // #7a: Distinguishes "fresh PDF project" (default) from "append pages to
+  // existing project". In append mode openPreparePdfModal hides the project
+  // name editor and commitPreparePdfToState merges the trimmed buffer onto
+  // state.pdfBuffer + appends new state.pages entries instead of replacing.
+  let preparePdfMode = 'project';
   let preparePdfProjectName = 'Untitled';
   function renderPreparePdfPreview() {
     const canvas = document.getElementById('preparePdfCanvas');
@@ -9724,7 +10075,39 @@
     const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');
     if (saveAndOpenEl) saveAndOpenEl.disabled = kept.length === 0;
   }
-  function openPreparePdfModal(pages, buffer, defaultName) {
+  // C1: Open canvasOnlyNeedsPdfModal with optional context-specific copy.
+  function openCanvasOnlyNeedsPdfModal(opts) {
+    opts = opts || {};
+    const titleEl = document.getElementById('canvasOnlyNeedsPdfTitle');
+    const bodyEl = document.getElementById('canvasOnlyNeedsPdfBody');
+    if (titleEl) {
+      titleEl.textContent = opts.reason === 'pdf_missing'
+        ? 'This project\u2019s PDF is missing'
+        : 'This project has annotations but no PDF';
+    }
+    if (bodyEl) {
+      bodyEl.textContent = opts.reason === 'pdf_missing'
+        ? 'The PDF for this project couldn\u2019t be loaded from cloud storage. Choose a PDF to view the saved counters, lines, and notes. The PDF will be attached to this project the next time you save.'
+        : 'Choose a PDF to view the saved counters, lines, and notes. The PDF will be attached to this project the next time you save.';
+    }
+    showModal('canvasOnlyNeedsPdfModal');
+    updateCanvasOnlyNeedsPdfBanner();
+  }
+  // Show the persistent "Choose PDF" banner whenever a project is loaded but
+  // has zero pages and a pendingCanvasLoad is waiting for a PDF. Hidden once
+  // pages exist or the project is closed.
+  function updateCanvasOnlyNeedsPdfBanner() {
+    const el = document.getElementById('canvasOnlyNeedsPdfBanner');
+    if (!el) return;
+    const modalEl = document.getElementById('canvasOnlyNeedsPdfModal');
+    const modalVisible = !!(modalEl && modalEl.classList.contains('visible'));
+    const needsPdf = !!(state.currentProjectId && state.pages.length === 0 && state.pendingCanvasLoad && !state.isViewer);
+    el.style.display = (needsPdf && !modalVisible) ? '' : 'none';
+  }
+
+  function openPreparePdfModal(pages, buffer, defaultName, opts) {
+    opts = opts || {};
+    preparePdfMode = opts.mode === 'append' ? 'append' : 'project';
     preparePdfPages = pages.map(p => ({ pdfPage: p.pdfPage, label: p.label, rotation: p.rotation ?? 0 }));
     preparePdfBuffer = buffer;
     preparePdfPageBytes = {};
@@ -9737,6 +10120,20 @@
     document.getElementById('preparePdfName').value = preparePdfProjectName;
     document.getElementById('preparePdfProjectTab').classList.add('active');
     document.getElementById('preparePdfPageTab').classList.remove('active');
+    // #7a: In append mode hide the project-name editor (we are not renaming
+    // the current project) and adjust the title/description.
+    const titleEl = document.getElementById('preparePdfTitle');
+    const descEl = document.getElementById('preparePdfDescription');
+    const nameRowEl = document.getElementById('preparePdfNameRow');
+    if (preparePdfMode === 'append') {
+      if (titleEl) titleEl.textContent = 'Add pages — ' + (state.currentProjectName || 'Untitled');
+      if (descEl) descEl.textContent = 'Remove unnecessary pages before adding them to the current project.';
+      if (nameRowEl) nameRowEl.style.display = 'none';
+    } else {
+      if (titleEl) titleEl.textContent = 'Prepare PDF for Cloud';
+      if (descEl) descEl.textContent = 'Name your project and remove unnecessary pages before saving.';
+      if (nameRowEl) nameRowEl.style.display = '';
+    }
     renderPreparePdfPreview();
     updatePreparePdfControls();
     showModal('preparePdfModal');
@@ -9844,16 +10241,93 @@
   async function commitPreparePdfToState() {
     try {
     const nameInput = document.getElementById('preparePdfName');
-    if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput?.value || '').trim() || preparePdfDefaultName;
-    else saveCurrentPageName();
+    if (preparePdfMode !== 'append') {
+      if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput?.value || '').trim() || preparePdfDefaultName;
+      else saveCurrentPageName();
+    } else {
+      // In append mode the project name is locked - keep page-label edits.
+      if (preparePdfEditMode === 'page') saveCurrentPageName();
+    }
     const kept = preparePdfKeptIndices;
     if (!kept.length || !preparePdfBuffer) return { ok: false };
-    const name = preparePdfProjectName || preparePdfDefaultName;
+    const name = preparePdfMode === 'append'
+      ? (state.currentProjectName || preparePdfDefaultName)
+      : (preparePdfProjectName || preparePdfDefaultName);
     const trimmedBuf = kept.length === preparePdfPages.length
       ? preparePdfBuffer
       : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
     if (!trimmedBuf) return { ok: false };
-    const sizeBeforePdfJs = trimmedBuf.byteLength ?? trimmedBuf.length ?? trimmedBuf.size ?? 0;
+    const trimmedBufSize = trimmedBuf.byteLength ?? trimmedBuf.length ?? trimmedBuf.size ?? 0;
+    if (preparePdfMode === 'append') {
+      // #7a: Merge the new trimmed buffer onto the existing project buffer and
+      // append pages. Enforce the size ceiling on the MERGED result so we do
+      // not blow past the 50 MB cloud storage cap.
+      const existingBuf = state.pdfBuffer;
+      const existingSize = existingBuf ? (existingBuf.byteLength ?? existingBuf.length ?? 0) : 0;
+      // Pre-flight size check (worst-case sum) to avoid a wasted merge of a
+      // buffer that obviously cannot fit. The post-merge check below is the
+      // authoritative gate.
+      const projectedSize = existingSize + trimmedBufSize;
+      const preCheck = assertPdfWithinLimit(projectedSize, 'commitPreparePdfToState.append.pre');
+      if (preCheck && !preCheck.ok) {
+        try { alert(preCheck.message); } catch (_) {}
+        return { ok: false, error: preCheck.message };
+      }
+      if (!existingBuf) {
+        // Append mode requires the current project's PDF buffer to be in
+        // memory so we can merge onto it. Bail with a clear error rather than
+        // silently replacing the project's PDF (which would orphan existing
+        // page annotations).
+        const msg = 'Could not load the current PDF to merge new pages. Save the project, then try again.';
+        try { alert(msg); } catch (_) {}
+        return { ok: false, error: msg };
+      } else {
+        const mergedBuf = await mergePdfBuffers([existingBuf, trimmedBuf]);
+        if (!mergedBuf) return { ok: false, error: 'Failed to merge PDFs.' };
+        const mergedSize = mergedBuf.byteLength ?? mergedBuf.length ?? mergedBuf.size ?? 0;
+        const sizeCheck = assertPdfWithinLimit(mergedSize, 'commitPreparePdfToState.append.merged');
+        if (sizeCheck && !sizeCheck.ok) {
+          try { alert(sizeCheck.message); } catch (_) {}
+          return { ok: false, error: sizeCheck.message };
+        }
+        const mergedPdf = await pdfjsLib.getDocument(mergedBuf.slice(0)).promise;
+        const startIdx = state.pages.length;
+        const totalPages = mergedPdf.numPages;
+        const newPages = [];
+        for (let i = startIdx; i < totalPages; i++) {
+          const pdfPage = await mergedPdf.getPage(i + 1);
+          const keptOrigIdx = kept[i - startIdx];
+          const label = preparePdfPages[keptOrigIdx]?.label || ('Page ' + (i + 1));
+          const rotation = preparePdfPages[keptOrigIdx]?.rotation ?? 0;
+          const canvasId = uid();
+          newPages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation });
+          state.activeCanvasIdByPage[i] = canvasId;
+        }
+        // Re-bind existing state.pages to the merged pdf so all pages share a
+        // single pdfjs document. This avoids holding the old detached buffer.
+        for (let i = 0; i < startIdx; i++) {
+          if (state.pages[i]) state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
+        }
+        state.pages = state.pages.concat(newPages);
+        state.pdfBuffer = mergedBuf;
+        state.pdfBufferSize = mergedSize;
+        // Pdf binary changed: clear the hash so the next manual save triggers
+        // an upload. KEEP state.pdfStoragePath set to the previous cloud path
+        // so performSaveProjectToCloud can clean it up via its prevPdfStoragePath
+        // remove(). The path is replaced with the new uploaded path on save.
+        state.pdfHash = null;
+      }
+      preparePdfPages = [];
+      preparePdfBuffer = null;
+      preparePdfKeptIndices = [];
+      preparePdfUndoStack = [];
+      return { ok: true, name, pdfBuffer: state.pdfBuffer, appended: true };
+    }
+    const sizeCheck = assertPdfWithinLimit(trimmedBufSize, 'commitPreparePdfToState');
+    if (sizeCheck && !sizeCheck.ok) {
+      try { alert(sizeCheck.message); } catch (_) {}
+      return { ok: false, error: sizeCheck.message };
+    }
     const pdf = await pdfjsLib.getDocument(trimmedBuf.slice(0)).promise;
     const numPages = pdf.numPages;
     state.pages = [];
@@ -9868,7 +10342,7 @@
       state.activeCanvasIdByPage[i] = canvasId;
     }
     state.pdfBuffer = trimmedBuf;
-    state.pdfBufferSize = sizeBeforePdfJs;
+    state.pdfBufferSize = trimmedBufSize;
     state.pdfStoragePath = null;
     state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
     state.currentPage = 0;
@@ -9885,7 +10359,7 @@
   }
   document.getElementById('preparePdfDone').onclick = async () => {
     const r = await commitPreparePdfToState();
-    if (!r.ok) { alert('Failed to build PDF.'); return; }
+    if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
     hideModal('preparePdfModal');
     markProjectDirty();
     updateUI();
@@ -9904,7 +10378,7 @@
   };
   document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
     const r = await commitPreparePdfToState();
-    if (!r.ok) { alert('Failed to build PDF.'); return; }
+    if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
     hideModal('preparePdfModal');
     markProjectDirty();
     updateUI();
@@ -9917,11 +10391,16 @@
         const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
         showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
       }
-    } else {
-      autoSaveDirty = false;
     }
   };
   async function loadTestPdf() {
+    // A2: When a project is already loaded, refuse to clobber its name/buffer.
+    // The Advanced "Load test PDF" entry point is a dev fixture and should not
+    // be a back-door for the load-annotations-modal-style data loss.
+    if (state.currentProjectId) {
+      showToast('Close the current project before loading the test PDF.', 4000);
+      return;
+    }
     try {
       const res = await fetch(LOAD_TEST_PDF_URL);
       if (!res.ok) throw new Error('Fetch failed: ' + res.status);
@@ -9952,9 +10431,57 @@
     }
   }
   document.getElementById('pdfInput').onchange = async (e) => {
+    // #7b: Capture and clear the "Add additional PDF pages" flag immediately
+    // so it can never leak across calls (e.g. user dismisses picker, then
+    // uses Upload PDF from elsewhere).
+    const isAddAdditional = pendingAddAdditionalPages;
+    pendingAddAdditionalPages = false;
     const files = e.target.files;
     if (!files?.length) {
       pendingImportCanvasAfterPdf = false;
+      return;
+    }
+    // #7b: When this upload is an explicit "add additional pages" request and
+    // we have a project already, route through Prepare PDF in append mode.
+    // Single-file & multi-file uploads both work: multi-file is merged into a
+    // single new buffer first so Prepare PDF can show one continuous preview.
+    if (isAddAdditional && state.currentProjectId && state.pages.length > 0) {
+      const filesToProcess = Array.from(files);
+      for (const f of filesToProcess) {
+        if (SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
+          alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
+          e.target.value = '';
+          return;
+        }
+      }
+      const newBuffers = [];
+      const newPages = [];
+      try {
+        for (const f of filesToProcess) {
+          const buf = await f.arrayBuffer();
+          newBuffers.push(buf.slice(0));
+          const pdf = await pdfjsLib.getDocument(buf).promise;
+          const numPages = pdf.numPages;
+          for (let i = 0; i < numPages; i++) {
+            const pdfPage = await pdf.getPage(i + 1);
+            const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
+            newPages.push({ pdfPage, label, rotation: 0 });
+          }
+        }
+      } catch (err) {
+        alert('Failed to read uploaded PDF: ' + (err?.message || 'unknown error'));
+        e.target.value = '';
+        return;
+      }
+      const newBuf = newBuffers.length === 1
+        ? newBuffers[0]
+        : await mergePdfBuffers(newBuffers);
+      e.target.value = '';
+      if (!newBuf || !newPages.length) {
+        alert('Failed to read uploaded PDF.');
+        return;
+      }
+      openPreparePdfModal(newPages, newBuf, state.currentProjectName || 'Untitled', { mode: 'append' });
       return;
     }
     const importBothFollowUp = pendingImportCanvasAfterPdf;
@@ -10028,6 +10555,7 @@
         state.pendingCanvasLoad = null;
         state.currentProjectId = null;
         state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
+        try { clearCheckoutExpiredAttention(); } catch (_) {}
       } else {
         const projName = state.pendingCanvasLoad.name;
         const projectId = state.pendingCanvasLoad.projectId;
@@ -10070,7 +10598,11 @@
     e.target.value = '';
 
     const hashBufForMatch = state.pdfBuffer || firstBuf;
-    if (!importBothFollowUp && !state.pendingCanvasLoad && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && hashBufForMatch) {
+    // Only prompt to load existing annotations / auto-open Prepare PDF when the
+    // user is NOT already inside a loaded project. Otherwise the user is just
+    // attaching/adding a PDF to their active project and these prompts would
+    // either offer to switch projects (destructive) or clobber the project name.
+    if (!importBothFollowUp && !state.pendingCanvasLoad && !state.currentProjectId && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && hashBufForMatch) {
       const uploadHash = await sha256Hex(hashBufForMatch);
       const user = state.supabaseSession.user;
       const { data: matches } = await supabase.from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
@@ -10084,39 +10616,78 @@
           div.className = 'sidebar-item load-annotations-item';
           div.innerHTML = '<span class="name">' + esc(proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + esc(date) + '</span>';
           div.onclick = async () => {
-            const { data: full } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path').eq('id', proj.id).single();
-            if (full && full.data) {
-              const d = full.data;
-              state.counters = Array.isArray(d.counters) ? d.counters : [];
-              state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-              state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-              if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-              if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-              if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-              (d.pages || []).forEach(p => {
-                applyPageAnnotationsFromData(state.pages[p.index], p);
-              });
-              if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-              if (d.pageScales) {
-                d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-              } else if (d.scale) {
-                state.pages.forEach(p => { p.scale = d.scale; });
-              }
-              state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-              if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-              if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-              if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-              if (d.gridSettings) state.gridSettings = d.gridSettings;
-              reconcileOrphanedCountersAndLineTypes();
-              clearUndoStacks();
-              state.currentProjectId = full.id;
-              state.currentProjectName = full.name || 'Untitled';
-              lastSaveIncludedPdf = !!full.pdf_path;
-              state.lastSavedAt = full.updated_at || null;
-              autoSaveDirty = false;
-              lastModifiedAt = 0;
-              logProjectOpenEvent();
+            // B1b: Fetch the full project row via list_accessible_projects so
+            // we have can_edit / can_check_out / checked_out_* / user_id and
+            // can hydrate checkout/permissions via the shared helper.
+            let fullProj = null;
+            try {
+              const { data: allProjects, error: allErr } = await supabase.rpc('list_accessible_projects');
+              if (allErr) throw allErr;
+              fullProj = (allProjects || []).find(p => p.id === proj.id) || null;
+            } catch (fetchErr) {
+              showToast('Failed to load project: ' + ((fetchErr && fetchErr.message) || 'unknown error'), 4000);
+              return;
             }
+            if (!fullProj) {
+              showToast('Project is no longer accessible.', 4000);
+              return;
+            }
+            const d = fullProj.data || {};
+            // B2: Page-count mismatch warning. If the cloud project's pages
+            // count differs from the just-uploaded PDF, the user might lose
+            // annotations or end up with them on wrong pages. Only warn when
+            // the cloud project actually has per-page data; an empty d.pages
+            // array means nothing to misalign.
+            const cloudPages = Array.isArray(d.pages) ? d.pages : [];
+            const cloudPageCount = cloudPages.reduce((m, p) => Math.max(m, (p?.index ?? -1) + 1), 0) || cloudPages.length;
+            if (cloudPages.length > 0 && cloudPageCount !== state.pages.length) {
+              const ok = confirm(
+                'These annotations were saved for a ' + cloudPageCount + '-page PDF; ' +
+                'the PDF you uploaded has ' + state.pages.length + ' pages. ' +
+                'Some annotations may be missing or misplaced. Continue?'
+              );
+              if (!ok) return;
+            }
+            state.counters = Array.isArray(d.counters) ? d.counters : [];
+            state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+            state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+            if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+            if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+            if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+            cloudPages.forEach(p => {
+              if (state.pages[p.index]) applyPageAnnotationsFromData(state.pages[p.index], p);
+            });
+            // B2: Sanitize activeCanvasIdByPage to indices that exist in the
+            // current PDF so we never reference canvases on pages that aren't
+            // present.
+            if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') {
+              const sanitized = {};
+              Object.entries(d.activeCanvasIdByPage).forEach(([k, v]) => {
+                const idx = Number(k);
+                if (Number.isFinite(idx) && state.pages[idx]) sanitized[idx] = v;
+              });
+              state.activeCanvasIdByPage = sanitized;
+            }
+            if (d.pageScales) {
+              d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+            } else if (d.scale) {
+              state.pages.forEach(p => { p.scale = d.scale; });
+            }
+            state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+            if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+            if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+            if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+            if (d.gridSettings) state.gridSettings = d.gridSettings;
+            reconcileOrphanedCountersAndLineTypes();
+            clearUndoStacks();
+            // B1b: Shared helper sets currentProjectId/Name, checkout/permissions,
+            // realtime subscription, clickcount-last-project, etc. Reuse the
+            // in-memory PDF (matched by hash) so next save doesn't re-upload.
+            hydrateProjectFromCloudRow(fullProj, {
+              reusePdfHash: uploadHash,
+              reusePdfStoragePath: fullProj.pdf_path || null,
+              source: 'load_annotations'
+            });
             state.sidebarReorderModeActive = false;
             hideModal('loadAnnotationsModal');
             fitZoom();
@@ -14397,6 +14968,10 @@
       updateServerClockFromRpc(data);
       const result = data || (error ? { ok: false, error: error.message } : { ok: false });
       if (result.ok) {
+        if (state.currentProjectId === projectId) {
+          try { clearCheckoutExpiredAttention(); } catch (_) {}
+          try { resetAutoRecheckoutCounter(projectId); } catch (_) {}
+        }
         showToast('Project force turned in.');
         openManageProjectsModal();
       } else {
@@ -14628,13 +15203,281 @@
     };
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
-      const { data } = await supabase.rpc('check_in_project', { p_project_id: state.currentProjectId });
-      updateServerClockFromRpc(data);
+      try {
+        const { data } = await withTimeout(supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }), CHECK_IN_TIMEOUT_MS, 'Sign-out check-in');
+        updateServerClockFromRpc(data);
+      } catch (e) {
+        try { pushSaveEvent('signout_checkin_timeout', 'Sign-out check-in did not complete', (e && e.message) || String(e)); } catch (_) {}
+      }
+    }
+    let checkoutExpiredRecoveryInFlight = false;
+    function computeCheckoutExpiryAgeMs() {
+      const candidates = [];
+      if (state.checkedOutAt) {
+        const t = new Date(state.checkedOutAt).getTime();
+        if (Number.isFinite(t) && t > 0) candidates.push(t + CHECKOUT_INACTIVITY_MS);
+      }
+      try {
+        for (let i = saveStatusLog.length - 1; i >= 0; i--) {
+          const ev = saveStatusLog[i];
+          if (ev && (ev.kind === 'checkout_expired' || ev.kind === 'keepalive_expired')) {
+            candidates.push(ev.ts);
+            break;
+          }
+        }
+      } catch (_) {}
+      if (lastSuccessfulSupabaseCallAt > 0) candidates.push(lastSuccessfulSupabaseCallAt + CHECKOUT_INACTIVITY_MS);
+      if (!candidates.length) return 0;
+      const expiredAt = Math.min(...candidates);
+      const age = Date.now() - expiredAt;
+      return age > 0 ? age : 0;
+    }
+    function formatExpiryAge(ms) {
+      if (!ms || ms < 0) return '';
+      const minutes = Math.round(ms / 60000);
+      if (minutes < 1) return 'less than a minute ago';
+      if (minutes < 60) return '~' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
+      const hours = Math.round(minutes / 60);
+      return '~' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
+    }
+    function applyCheckoutExpiredRecoveryMode(mode, ctx) {
+      const modal = document.getElementById('checkoutExpiredRecoveryModal');
+      if (!modal) return;
+      const titleEl = document.getElementById('checkoutExpiredRecoveryTitle');
+      const bodyEl = document.getElementById('checkoutExpiredRecoveryBody');
+      const errEl = document.getElementById('checkoutExpiredRecoveryError');
+      const recheckBtn = document.getElementById('checkoutExpiredRecoveryRecheckout');
+      const exportBtn = document.getElementById('checkoutExpiredRecoveryExport');
+      if (mode === 'someone_else') {
+        if (titleEl) titleEl.textContent = 'Someone else is editing';
+        if (bodyEl) bodyEl.textContent = (ctx && ctx.otherEmail ? ctx.otherEmail : 'Another user') + ' is editing this project now. Save your edits to a file so you don\u2019t lose them.';
+        if (recheckBtn) recheckBtn.style.display = 'none';
+        if (exportBtn) { exportBtn.classList.add('btn-yellow'); }
+        if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+      } else if (mode === 'error') {
+        if (titleEl) titleEl.textContent = 'Edit session expired';
+        if (bodyEl) bodyEl.textContent = 'Your edit session expired while idle. Your edits are still safe in this browser. Re-check out to save them to the cloud.';
+        if (recheckBtn) recheckBtn.style.display = '';
+        if (exportBtn) { exportBtn.classList.remove('btn-yellow'); }
+        if (errEl) {
+          errEl.style.display = '';
+          errEl.textContent = (ctx && ctx.message) || 'Re-check out failed. Try again or export a local backup.';
+        }
+      } else {
+        if (titleEl) titleEl.textContent = 'Edit session expired';
+        if (bodyEl) bodyEl.textContent = 'Your edit session expired while idle. Your edits are still safe in this browser. Re-check out to save them to the cloud.';
+        if (recheckBtn) { recheckBtn.style.display = ''; recheckBtn.disabled = false; recheckBtn.textContent = 'Re-check out and save'; }
+        if (exportBtn) { exportBtn.classList.remove('btn-yellow'); }
+        if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+      }
+    }
+    function openCheckoutExpiredRecoveryModal(opts) {
+      opts = opts || {};
+      const modal = document.getElementById('checkoutExpiredRecoveryModal');
+      if (!modal) return;
+      try { hideModal('settingsModal'); } catch (_) {}
+      applyCheckoutExpiredRecoveryMode('default');
+      const ageEl = document.getElementById('checkoutExpiredRecoveryAge');
+      if (ageEl) {
+        const ageMs = computeCheckoutExpiryAgeMs();
+        const label = formatExpiryAge(ageMs);
+        if (label) { ageEl.style.display = ''; ageEl.textContent = 'Expired ' + label + '.'; }
+        else { ageEl.style.display = 'none'; ageEl.textContent = ''; }
+      }
+      showModal('checkoutExpiredRecoveryModal');
+      saveDebugLog('checkoutRecovery.open', { trigger: opts.trigger || 'unknown' });
+    }
+    function closeCheckoutExpiredRecoveryModal() {
+      hideModal('checkoutExpiredRecoveryModal');
+    }
+    async function reCheckOutAfterExpiry(trigger, opts) {
+      opts = opts || {};
+      const silent = !!opts.silent;
+      if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
+      if (checkoutExpiredRecoveryInFlight) return { ok: false, error: 'Re-check out already in progress' };
+      checkoutExpiredRecoveryInFlight = true;
+      const tStart = Date.now();
+      const ageMsAtStart = computeCheckoutExpiryAgeMs();
+      try {
+        let data = null, error = null;
+        try {
+          const r = await withTimeout(
+            supabase.rpc('check_out_project', { p_project_id: state.currentProjectId }),
+            CHECK_IN_TIMEOUT_MS,
+            'Re-check out'
+          );
+          data = r.data;
+          error = r.error;
+        } catch (e) {
+          error = e;
+        }
+        updateServerClockFromRpc(data);
+        const result = data || (error ? { ok: false, error: error.message } : { ok: false });
+        if (result.ok) {
+          const wasDirty = autoSaveDirty;
+          clearCheckoutExpiredAttention();
+          state.checkedOutBy = state.supabaseSession?.user?.id;
+          state.checkedOutAt = result.checked_out_at || new Date().toISOString();
+          lastCheckoutRefreshAt = Date.now();
+          state.isViewer = false;
+          state.canCheckOut = false;
+          pushSaveEvent('checkout_recovered', 'Re-checked out after expiry', JSON.stringify({
+            trigger: trigger || 'unknown',
+            msSinceExpiry: ageMsAtStart,
+            elapsedMs: Date.now() - tStart,
+            dirty: wasDirty
+          }));
+          saveDebugLog('checkoutRecovery.ok', { trigger, msSinceExpiry: ageMsAtStart, dirty: wasDirty });
+          updateSettingsCheckoutSection();
+          updateUI();
+          updateStatus();
+          refreshProjectPermissions().catch(() => {});
+          if (!silent) {
+            try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
+          }
+          if (wasDirty) {
+            const recoverySavePromise = performAutoSave('checkout_recovered').catch((e) => ({ ok: false, error: e }));
+            inFlightRecoverySavePromise = recoverySavePromise;
+            recoverySavePromise.finally(() => { if (inFlightRecoverySavePromise === recoverySavePromise) inFlightRecoverySavePromise = null; });
+            try { await recoverySavePromise; } catch (_) {}
+            if (!silent) showToast('Re-checked out. Saving your edits...');
+          } else {
+            if (!silent) showToast('Project checked out. You can now edit.');
+          }
+          return { ok: true };
+        }
+        await refreshProjectPermissions().catch(() => {});
+        const errMsg = (error && error.message) || result.error || 'Re-check out failed';
+        const otherEmail = state.checkedOutEmail || null;
+        if (otherEmail && state.checkedOutBy && state.checkedOutBy !== state.supabaseSession?.user?.id) {
+          pushSaveEvent('checkout_recover_blocked', 'Cannot re-check out: someone else has it', JSON.stringify({
+            trigger: trigger || 'unknown',
+            otherEmail,
+            elapsedMs: Date.now() - tStart
+          }));
+          saveDebugLog('checkoutRecovery.blocked', { trigger, otherEmail });
+          updateUI();
+          return { ok: false, otherEmail, error: errMsg };
+        }
+        pushSaveEvent('checkout_recover_err', 'Re-check out failed', JSON.stringify({
+          trigger: trigger || 'unknown',
+          message: errMsg,
+          status: error && error.status,
+          elapsedMs: Date.now() - tStart
+        }));
+        saveDebugLog('checkoutRecovery.err', { trigger, message: errMsg });
+        updateUI();
+        return { ok: false, error: errMsg };
+      } finally {
+        checkoutExpiredRecoveryInFlight = false;
+      }
+    }
+    function resetAutoRecheckoutCounter(projectId) {
+      if (projectId) autoRecheckoutCountByProject.delete(projectId);
+      else autoRecheckoutCountByProject.clear();
+      lastAutoRecheckoutAt = 0;
+    }
+    async function tryAutoRecheckoutIfAllowed(detectionTrigger) {
+      const trigger = detectionTrigger || 'unknown';
+      const projectId = state.currentProjectId;
+      if (!projectId || !supabase) {
+        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: no project', JSON.stringify({ trigger, reason: 'no_project' }));
+        return { skipped: true, reason: 'no_project' };
+      }
+      if (state.isViewer) {
+        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: viewer', JSON.stringify({ trigger, reason: 'viewer' }));
+        return { skipped: true, reason: 'viewer' };
+      }
+      if (Date.now() - lastAutoRecheckoutAt < AUTO_RECHECKOUT_MIN_GAP_MS) {
+        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: too soon after previous attempt', JSON.stringify({ trigger, reason: 'min_gap', sinceLastMs: Date.now() - lastAutoRecheckoutAt }));
+        return { skipped: true, reason: 'min_gap' };
+      }
+      const count = autoRecheckoutCountByProject.get(projectId) || 0;
+      if (count >= AUTO_RECHECKOUT_MAX_PER_PROJECT) {
+        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: cap reached', JSON.stringify({ trigger, reason: 'cap_reached', count, cap: AUTO_RECHECKOUT_MAX_PER_PROJECT, projectId }));
+        return { skipped: true, reason: 'cap_reached' };
+      }
+      const tStart = Date.now();
+      pushSaveEvent('auto_recheckout_attempt', 'Attempting silent re-check out', JSON.stringify({ trigger, count, projectId }));
+      try {
+        await refreshProjectPermissions();
+      } catch (_) {}
+      const selfId = state.supabaseSession?.user?.id;
+      const heldByOther = state.checkedOutBy && selfId && state.checkedOutBy !== selfId;
+      if (!state.canCheckOut || heldByOther) {
+        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: not allowed', JSON.stringify({
+          trigger,
+          reason: 'not_allowed',
+          canCheckOut: !!state.canCheckOut,
+          heldByOther: !!heldByOther,
+          otherEmail: state.checkedOutEmail || null
+        }));
+        return { skipped: true, reason: 'not_allowed', otherEmail: state.checkedOutEmail || null };
+      }
+      lastAutoRecheckoutAt = Date.now();
+      const result = await reCheckOutAfterExpiry('auto_' + trigger, { silent: true });
+      const elapsedMs = Date.now() - tStart;
+      const isTransient = result && !result.ok && typeof isTransientSaveError === 'function' && isTransientSaveError({ message: (result.error || '').toString() });
+      if (result && result.ok) {
+        autoRecheckoutCountByProject.set(projectId, count + 1);
+        pushSaveEvent('auto_recheckout_ok', 'Silent re-check out succeeded', JSON.stringify({
+          trigger,
+          count: count + 1,
+          cap: AUTO_RECHECKOUT_MAX_PER_PROJECT,
+          elapsedMs,
+          projectId
+        }));
+        return { ok: true };
+      }
+      if (!isTransient) autoRecheckoutCountByProject.set(projectId, count + 1);
+      pushSaveEvent('auto_recheckout_err', 'Silent re-check out failed', JSON.stringify({
+        trigger,
+        count: isTransient ? count : count + 1,
+        message: (result && result.error) || 'unknown',
+        otherEmail: (result && result.otherEmail) || null,
+        transient: !!isTransient,
+        elapsedMs
+      }));
+      return { ok: false, error: (result && result.error) || 'Auto re-check out failed', otherEmail: (result && result.otherEmail) || null };
+    }
+    let backgroundCheckoutExpiredInFlight = false;
+    async function handleBackgroundCheckoutExpired(trigger) {
+      if (backgroundCheckoutExpiredInFlight) {
+        try { saveDebugLog('checkoutExpired.skip_inflight', { trigger }); } catch (_) {}
+        return { silentlyRecovered: false, reason: 'already_handling' };
+      }
+      backgroundCheckoutExpiredInFlight = true;
+      try {
+        pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG, JSON.stringify({ trigger }));
+        checkoutExpiredNeedsAttention = true;
+        suspendAutoSaveUntilCheckout = true;
+        updateSaveStatusIndicator();
+        const auto = await tryAutoRecheckoutIfAllowed(trigger);
+        if (auto && auto.ok) return { silentlyRecovered: true };
+        if (!checkoutExpiredToastShown) {
+          showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
+          checkoutExpiredToastShown = true;
+        }
+        updateUI();
+        return { silentlyRecovered: false, reason: auto && auto.reason };
+      } finally {
+        backgroundCheckoutExpiredInFlight = false;
+      }
     }
     async function doTurnIn() {
       if (turnInInProgress) {
         saveDebugLog('turnIn.skip', { reason: 'already_in_progress' });
         return { ok: false, error: 'Turn In is already running' };
+      }
+      if (inFlightRecoverySavePromise) {
+        try {
+          saveDebugLog('turnIn.awaitRecovery', {});
+          pushSaveEvent('turn_in_await_recovery', 'Turn In waiting for recovery save to complete');
+          await Promise.race([
+            inFlightRecoverySavePromise,
+            new Promise(r => setTimeout(r, 8000))
+          ]);
+        } catch (_) {}
       }
       turnInInProgress = true;
       const tTurnIn = Date.now();
@@ -14694,11 +15537,9 @@
             pushSaveEvent('turn_in_save_in_progress', 'Turn In skipped: sync still in progress', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
             return { ok: false, error: 'Sync in progress, try again in a moment' };
           }
-          autoSaveDirty = false;
           progress('sync_to_cloud', 'Syncing edits to cloud…');
           const saveResult = await performAutoSave();
           if (!saveResult.ok) {
-            autoSaveDirty = true;
             pushSaveEvent(
               'turn_in_blocked_by_save_err',
               'Turn In blocked: autosave failed before check-in',
@@ -14790,6 +15631,12 @@
     }
     async function doTurnInAndHandleResult(opts) {
       opts = opts || {};
+      if (checkoutExpiredNeedsAttention && state.currentProjectId && !state.isViewer) {
+        pushSaveEvent('turn_in_short_circuit_expired', 'Turn In short-circuited to recovery modal');
+        if (opts.hideSettings) { try { hideModal('settingsModal'); } catch (_) {} }
+        openCheckoutExpiredRecoveryModal({ trigger: 'turn_in_short_circuit' });
+        return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
+      }
       const result = await doTurnIn();
       if (result.ok) {
         clearCheckoutExpiredAttention();
@@ -14806,12 +15653,10 @@
           pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
           checkoutExpiredNeedsAttention = true;
           suspendAutoSaveUntilCheckout = true;
-          if (!checkoutExpiredToastShown) {
-            showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
-            checkoutExpiredToastShown = true;
-          }
           refreshProjectPermissions().catch(() => {});
           updateSaveStatusIndicator();
+          if (opts.hideSettings) { try { hideModal('settingsModal'); } catch (_) {} }
+          openCheckoutExpiredRecoveryModal({ trigger: 'turn_in_button' });
         } else if (typeof result.error === 'string' && /do not have .* checked out|NOT_CHECKED_OUT|not_owned/i.test(result.error)) {
           pushSaveEvent('turn_in_already_released', 'Turn In: checkout was already released elsewhere');
           showToast('You no longer hold the checkout - refreshing.', 4000);
@@ -14849,6 +15694,7 @@
           if (result.ok) {
             const wasSuspended = suspendAutoSaveUntilCheckout;
             clearCheckoutExpiredAttention();
+            try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
             if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: 'header_banner_checkout' });
             state.checkedOutBy = state.supabaseSession?.user?.id;
             state.checkedOutAt = result.checked_out_at || new Date().toISOString();
@@ -14878,6 +15724,8 @@
           btn.disabled = false;
           updateUI();
         }
+      } else if (action === 'checkout_expired_recover') {
+        openCheckoutExpiredRecoveryModal({ trigger: 'expired_banner' });
       }
     }
     if (headerEditBanner) headerEditBanner.addEventListener('click', handleEditStatusBannerClick);
@@ -14896,6 +15744,7 @@
         if (result.ok) {
           const wasSuspended = suspendAutoSaveUntilCheckout;
           clearCheckoutExpiredAttention();
+          try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
           if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: 'settings_checkout' });
           state.checkedOutBy = state.supabaseSession?.user?.id;
           state.checkedOutAt = result.checked_out_at || new Date().toISOString();
@@ -14950,6 +15799,8 @@
         clearUndoStacks();
         state.isViewer = true;
         state.canCheckOut = true;
+        try { clearCheckoutExpiredAttention(); } catch (_) {}
+        try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
         updateSettingsCheckoutSection();
         updateUI();
         updateStatus();
@@ -14960,7 +15811,28 @@
       }
     };
     document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
-    document.getElementById('settingsAddAdditionalPages').onclick = () => { hideModal('settingsModal'); document.getElementById('pdfInput').click(); };
+    document.getElementById('settingsAddAdditionalPages').onclick = async () => {
+      // #7b: Route through Prepare PDF in append mode. We need the current
+      // project's PDF buffer in memory so the commit step can merge the new
+      // pages onto it; recover from pdfCache when needed.
+      hideModal('settingsModal');
+      if (!state.pdfBuffer && state.currentProjectId && state.pdfHash) {
+        try {
+          const blob = await pdfCacheGet(state.currentProjectId, state.pdfHash);
+          if (blob && blob.size > 0) {
+            const ab = await blob.arrayBuffer();
+            state.pdfBuffer = ab;
+            state.pdfBufferSize = ab.byteLength;
+          }
+        } catch (_) {}
+      }
+      if (!state.pdfBuffer) {
+        showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
+        return;
+      }
+      pendingAddAdditionalPages = true;
+      document.getElementById('pdfInput').click();
+    };
     document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await downloadProjectPdf(); };
     document.getElementById('settingsAdvancedBtn').onclick = () => showModal('settingsAdvancedModal');
     document.getElementById('settingsAdvancedModalClose').onclick = () => hideModal('settingsAdvancedModal');
@@ -15241,6 +16113,53 @@
       if (saveBtn) saveBtn.style.display = '';
       showModal('saveBeforeLoadModal');
     }
+    // B1: Centralizes the "post-PDF-load" hydration that turns a cloud project
+    // row into local session state. Used by both the Load Project modal row
+    // click and the loadAnnotationsModal row click, so checkout/permissions/
+    // realtime/subscription stay in lockstep.
+    //
+    // proj must include: id, name, updated_at, pdf_path, pdf_hash, user_id,
+    //   can_edit, can_check_out, checked_out_by, checked_out_at, checked_out_email
+    // opts: { reusePdfHash?: string|null, reusePdfStoragePath?: string|null,
+    //         source?: 'load_project'|'load_annotations'|'restore_last' }
+    function hydrateProjectFromCloudRow(proj, opts) {
+      opts = opts || {};
+      state.pendingCanvasLoad = null;
+      state.currentProjectId = proj.id;
+      state.currentProjectName = proj.name || 'Untitled';
+      state.pdfHash = opts.reusePdfHash !== undefined ? opts.reusePdfHash : (proj.pdf_hash || null);
+      if (opts.reusePdfStoragePath !== undefined) state.pdfStoragePath = opts.reusePdfStoragePath;
+      lastSaveIncludedPdf = !!proj.pdf_path;
+      state.lastSavedAt = proj.updated_at || null;
+      lastLocalBackupAt = null;
+      state.currentPage = state.pages.length > 0
+        ? Math.min(state.currentPage, Math.max(0, state.pages.length - 1))
+        : 0;
+      autoSaveDirty = false;
+      lastModifiedAt = 0;
+      state.checkedOutBy = proj.checked_out_by || null;
+      state.checkedOutAt = proj.checked_out_at || null;
+      state.checkedOutEmail = proj.checked_out_email || null;
+      state.loadedViaViewLink = false;
+      state.isViewer = !proj.can_edit;
+      state.canCheckOut = proj.can_check_out || false;
+      try { clearCheckoutExpiredAttention(); } catch (_) {}
+      state.projectOwnerId = proj.user_id || null;
+      subscribeToProjectCheckoutChanges(proj.id);
+      logProjectOpenEvent();
+      if (SUPABASE_ENABLED && state.supabaseSession?.user) {
+        try {
+          localStorage.setItem('clickcount-last-project', JSON.stringify({
+            projectId: state.currentProjectId,
+            projectName: state.currentProjectName || 'Untitled',
+            pdfStoragePath: state.pdfStoragePath || null,
+            pdfHash: state.pdfHash || null,
+            userId: state.supabaseSession.user.id
+          }));
+        } catch (_) {}
+      }
+    }
+
     async function resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup) {
       let buf;
       if (useIdbBackup && idbBackup.pdfBlob) {
@@ -15325,6 +16244,7 @@
       lastSaveIncludedPdf = false;
       lastLocalBackupAt = null;
       autoSaveDirty = false;
+      try { clearCheckoutExpiredAttention(); } catch (_) {}
       lastModifiedAt = 0;
       state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
       try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
@@ -15348,7 +16268,7 @@
         if (!error && full && full.data) d = full.data;
       } catch (_) {}
       const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-      const idbBackup = await takeoffBackupGet(proj.id);
+      const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
       const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
       if (!proj.pdf_path) {
         showToast('Copy to new requires a PDF in the project.', 4000);
@@ -15655,6 +16575,7 @@
                   state.isViewer = false;
                   state.canCheckOut = false;
                   try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+                  try { clearCheckoutExpiredAttention(); } catch (_) {}
                   updateUI();
                 }
               } catch (err) {
@@ -15790,6 +16711,10 @@
           const origMeta = metaEl ? metaEl.textContent : '';
           if (metaEl) metaEl.textContent = 'Loading…';
           try {
+          // A1: Clear any stale pendingCanvasLoad from a previous canvas-only
+          // load whose file picker the user dismissed, so it can't apply to
+          // the project we're about to open.
+          state.pendingCanvasLoad = null;
           if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
           let d = proj.data || {};
           try {
@@ -15797,14 +16722,13 @@
             if (!error && full && full.data) d = full.data;
           } catch (_) {}
           const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-          const idbBackup = await takeoffBackupGet(proj.id);
+          const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
           const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
           if (proj.pdf_path) {
             try {
               const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
               if (!buf) {
                   /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
-                  state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
                   state.pdfStoragePath = null;
                   state.pdfBuffer = null;
                   state.pdfBufferSize = 0;
@@ -15821,28 +16745,21 @@
                   if (d.gridSettings) state.gridSettings = d.gridSettings;
                   reconcileOrphanedCountersAndLineTypes();
                   clearUndoStacks();
-                  state.currentProjectId = proj.id;
-                  state.currentProjectName = proj.name || 'Untitled';
-                  state.pdfHash = null;
+                  hydrateProjectFromCloudRow(proj, { reusePdfHash: null, source: 'load_project' });
+                  // The cloud PDF object is empty/missing even though pdf_path
+                  // is set; correct the status-bar indicator so the user sees
+                  // the project as missing its PDF (matches original behavior
+                  // before the helper extraction).
                   lastSaveIncludedPdf = false;
-                  state.lastSavedAt = proj.updated_at || null;
-                  lastLocalBackupAt = null;
-                  state.currentPage = 0;
-                  autoSaveDirty = false;
-                  lastModifiedAt = 0;
-                  state.checkedOutBy = proj.checked_out_by || null;
-                  state.checkedOutAt = proj.checked_out_at || null;
-                  state.checkedOutEmail = proj.checked_out_email || null;
-                  state.loadedViaViewLink = false;
-                  state.isViewer = !proj.can_edit;
-                  state.canCheckOut = proj.can_check_out || false;
-                  state.projectOwnerId = proj.user_id || null;
-                  subscribeToProjectCheckoutChanges(proj.id);
-                  logProjectOpenEvent();
+                  // hydrateProjectFromCloudRow clears pendingCanvasLoad, but this
+                  // path needs it set so the next PDF upload knows which project
+                  // these annotations belong to.
+                  state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
                   hideModal('loadProjectModal');
                   state.sidebarReorderModeActive = false;
-                  showToast('This project\'s PDF is empty or missing. Upload your PDF to load the annotations.', 5000);
-                  document.getElementById('pdfInput').click();
+                  // C1: Replaced the toast + auto-pdfInput.click() pair with a
+                  // dedicated modal so the user has a clear next action.
+                  openCanvasOnlyNeedsPdfModal({ reason: 'pdf_missing' });
                   return;
               }
               await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
@@ -15875,40 +16792,17 @@
             autoSaveDirty = false;
             lastModifiedAt = 0;
           }
-          state.currentProjectId = proj.id;
-          state.currentProjectName = proj.name || 'Untitled';
-          state.pdfHash = proj.pdf_hash || null;
-          lastSaveIncludedPdf = !!proj.pdf_path;
-          state.lastSavedAt = proj.updated_at || null;
-          lastLocalBackupAt = null;
-          state.currentPage = proj.pdf_path ? Math.min(state.currentPage, Math.max(0, state.pages.length - 1)) : 0;
-          autoSaveDirty = false;
-          lastModifiedAt = 0;
-          state.checkedOutBy = proj.checked_out_by || null;
-          state.checkedOutAt = proj.checked_out_at || null;
-          state.checkedOutEmail = proj.checked_out_email || null;
-          state.loadedViaViewLink = false;
-          state.isViewer = !proj.can_edit;
-          state.canCheckOut = proj.can_check_out || false;
-          state.projectOwnerId = proj.user_id || null;
-          subscribeToProjectCheckoutChanges(proj.id);
-          logProjectOpenEvent();
-          if (SUPABASE_ENABLED && state.supabaseSession?.user) {
-            try {
-              localStorage.setItem('clickcount-last-project', JSON.stringify({
-                projectId: state.currentProjectId,
-                projectName: state.currentProjectName || 'Untitled',
-                pdfStoragePath: state.pdfStoragePath || null,
-                pdfHash: state.pdfHash || null,
-                userId: state.supabaseSession.user.id
-              }));
-            } catch (_) {}
-          }
+          // B1: Capture pendingCanvasLoad that the no-PDF branch above set, so
+          // the helper does not clear it. (For the with-PDF path this is null.)
+          const preservedPendingCanvasLoad = state.pendingCanvasLoad;
+          hydrateProjectFromCloudRow(proj, { source: 'load_project' });
+          if (preservedPendingCanvasLoad) state.pendingCanvasLoad = preservedPendingCanvasLoad;
           hideModal('loadProjectModal');
           state.sidebarReorderModeActive = false;
           if (!proj.pdf_path) {
-            showToast('This project has no PDF stored. Upload the PDF to load the annotations.', 5000);
-            document.getElementById('pdfInput').click();
+            // C1: Replaced the toast + auto-pdfInput.click() pair with a
+            // dedicated modal so the user has a clear next action.
+            openCanvasOnlyNeedsPdfModal({ reason: 'no_pdf_stored' });
           }
           fitZoom();
           updateUI();
@@ -16008,31 +16902,8 @@
       hideModal('settingsModal');
       if (state.pages.length > 0 && !confirm('Close project? Any unsaved changes will be lost.')) return;
       await checkInCurrentProjectIfHeld();
-      clearUndoStacks();
-      state.pages = [];
-      state.currentPage = 0;
       resetGridOrigin();
-      state.currentProjectId = null;
-      subscribeToProjectCheckoutChanges(null);
-      state.currentProjectName = null;
-      state.pdfBuffer = null;
-      state.pdfBufferSize = 0;
-      state.pdfStoragePath = null;
-      state.pdfHash = null;
-      state.lastSavedAt = null;
-      lastLocalBackupAt = null;
-      lastSaveIncludedPdf = false;
-      state.pendingCanvasLoad = null;
-      state.groups = [];
-      state.maxZoom = null;
-      state.checkedOutBy = null;
-      state.checkedOutAt = null;
-      state.checkedOutEmail = null;
-      state.isViewer = false;
-      state.loadedViaViewLink = false;
-      state.canCheckOut = false;
-      state.projectOwnerId = null;
-      try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+      resetLocalSessionState({ keepArtboard: true });
       state.pagesListCollapsed = true;
       state.sidebarReorderModeActive = false;
       document.getElementById('pagesSection').classList.add('collapsed');
@@ -16267,20 +17138,16 @@
           state.checkedOutAt = null;
           state.checkedOutEmail = null;
           clearUndoStacks();
-          state.isViewer = true;
-          state.canCheckOut = true;
-          suspendAutoSaveUntilCheckout = true;
-          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-          checkoutExpiredNeedsAttention = true;
-          if (!checkoutExpiredToastShown) {
-            showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
-            checkoutExpiredToastShown = true;
-          }
           updateSaveStatusIndicator();
-          await refreshProjectPermissions();
+          const recovered = await handleBackgroundCheckoutExpired('manual_save');
+          await refreshProjectPermissions().catch(() => {});
           updateUI();
-          errEl.textContent = CHECKOUT_EXPIRED_SAVE_STATUS_MSG + ' Open Project Settings to review Save status (bell).';
-          errEl.style.display = 'block';
+          if (recovered && recovered.silentlyRecovered) {
+            errEl.style.display = 'none';
+          } else {
+            hideModal('saveProjectModal');
+            openCheckoutExpiredRecoveryModal({ trigger: 'manual_save' });
+          }
           return;
         }
       }
@@ -16356,6 +17223,89 @@
       }
     };
     document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
+    (function wireCheckoutExpiredRecoveryModal() {
+      const modal = document.getElementById('checkoutExpiredRecoveryModal');
+      if (!modal) return;
+      const closeBtn = document.getElementById('checkoutExpiredRecoveryClose');
+      const cancelBtn = document.getElementById('checkoutExpiredRecoveryCancel');
+      const exportBtn = document.getElementById('checkoutExpiredRecoveryExport');
+      const recheckBtn = document.getElementById('checkoutExpiredRecoveryRecheckout');
+      const discardBtn = document.getElementById('checkoutExpiredRecoveryDiscard');
+      if (closeBtn) closeBtn.onclick = () => closeCheckoutExpiredRecoveryModal();
+      if (cancelBtn) cancelBtn.onclick = () => closeCheckoutExpiredRecoveryModal();
+      modal.onclick = (e) => { if (e.target === modal) closeCheckoutExpiredRecoveryModal(); };
+      const card = modal.querySelector('.modal-card');
+      if (card) card.onclick = (e) => e.stopPropagation();
+      if (exportBtn) exportBtn.onclick = () => {
+        try {
+          const btn = document.getElementById('exportBtn');
+          if (btn) btn.click();
+          else showToast('Export not available', 3000);
+        } catch (_) { showToast('Export failed', 3000); }
+      };
+      if (recheckBtn) recheckBtn.onclick = async () => {
+        if (recheckBtn.disabled) return;
+        recheckBtn.disabled = true;
+        recheckBtn.textContent = 'Re-checking out...';
+        try {
+          const result = await reCheckOutAfterExpiry('expired_modal');
+          if (result.ok) {
+            closeCheckoutExpiredRecoveryModal();
+          } else if (result.otherEmail) {
+            applyCheckoutExpiredRecoveryMode('someone_else', { otherEmail: result.otherEmail });
+          } else {
+            applyCheckoutExpiredRecoveryMode('error', { message: result.error });
+          }
+        } finally {
+          recheckBtn.disabled = false;
+          if (recheckBtn.textContent === 'Re-checking out...') recheckBtn.textContent = 'Re-check out and save';
+        }
+      };
+      if (discardBtn) discardBtn.onclick = async () => {
+        if (saveInProgress || turnInInProgress) {
+          showToast('Sync in progress, try again in a moment', 3000);
+          return;
+        }
+        if (!confirm('Discard local edits and reload? Your unsaved local edits for this project will be lost.')) return;
+        try {
+          autoSaveDirty = false;
+          if (state.currentProjectId) {
+            try { await takeoffBackupDelete(state.currentProjectId); } catch (_) {}
+          }
+          pushSaveEvent('checkout_recover_discarded', 'User discarded local edits and reloaded', JSON.stringify({ projectId: state.currentProjectId || null }));
+        } catch (_) {}
+        try { location.reload(); } catch (_) {}
+      };
+    })();
+    (function wireSaveStatusExpiredCallout() {
+      const recheckBtn = document.getElementById('saveStatusExpiredRecheckout');
+      const exportBtn = document.getElementById('saveStatusExpiredExport');
+      if (recheckBtn) recheckBtn.onclick = async () => {
+        if (recheckBtn.disabled) return;
+        recheckBtn.disabled = true;
+        const origText = recheckBtn.textContent;
+        recheckBtn.textContent = 'Re-checking out...';
+        try {
+          const result = await reCheckOutAfterExpiry('save_status_modal');
+          if (!result.ok) {
+            openCheckoutExpiredRecoveryModal({ trigger: 'save_status_modal_fallback' });
+            if (result.otherEmail) applyCheckoutExpiredRecoveryMode('someone_else', { otherEmail: result.otherEmail });
+            else applyCheckoutExpiredRecoveryMode('error', { message: result.error });
+          }
+        } finally {
+          recheckBtn.disabled = false;
+          recheckBtn.textContent = origText;
+          renderSaveStatusModalContent();
+        }
+      };
+      if (exportBtn) exportBtn.onclick = () => {
+        try {
+          const btn = document.getElementById('exportBtn');
+          if (btn) btn.click();
+          else showToast('Export not available', 3000);
+        } catch (_) { showToast('Export failed', 3000); }
+      };
+    })();
     document.getElementById('saveBeforeLoadCancel').onclick = () => {
       pendingCopyProject = null;
       hideModal('saveBeforeLoadModal');
@@ -16377,8 +17327,6 @@
       saveBtn.style.display = 'none';
       cancelBtn.disabled = true;
       cancelBtn.textContent = 'Cancel';
-      const wasDirty = autoSaveDirty;
-      autoSaveDirty = false;
       const result = await performAutoSave();
       if (result.ok) {
         hideModal('saveBeforeLoadModal');
@@ -16387,11 +17335,16 @@
         if (p) openCopyProjectModal(p);
         else openLoadProjectModal();
       } else {
-        if (wasDirty) autoSaveDirty = true;
         if (result.error?.code === 'CHECKOUT_EXPIRED') {
           pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
           checkoutExpiredNeedsAttention = true;
+          suspendAutoSaveUntilCheckout = true;
+          refreshProjectPermissions().catch(() => {});
           updateSaveStatusIndicator();
+          hideModal('saveBeforeLoadModal');
+          pendingCopyProject = null;
+          openCheckoutExpiredRecoveryModal({ trigger: 'save_before_load' });
+          return;
         } else if (isAuthError(result.error)) {
           showToast('Refresh the page to sync.', 4000);
         } else {
@@ -16409,6 +17362,23 @@
     document.getElementById('loadAnnotationsSkip').onclick = () => {
       hideModal('loadAnnotationsModal');
       renderPdf();
+    };
+    // C1: canvasOnlyNeedsPdfModal - opens after a canvas-only project loads so
+    // the user has a clear next action (choose PDF) instead of a fleeting toast.
+    document.getElementById('canvasOnlyNeedsPdfChoose').onclick = () => {
+      hideModal('canvasOnlyNeedsPdfModal');
+      // Refresh the banner so it appears if the user dismisses the file
+      // picker. If a file is chosen, the resulting pdfInput.onchange will call
+      // updateUI (which calls this again) and hide the banner once pages exist.
+      updateCanvasOnlyNeedsPdfBanner();
+      try { document.getElementById('pdfInput').click(); } catch (_) {}
+    };
+    document.getElementById('canvasOnlyNeedsPdfSkip').onclick = () => {
+      hideModal('canvasOnlyNeedsPdfModal');
+      updateCanvasOnlyNeedsPdfBanner();
+    };
+    document.getElementById('canvasOnlyNeedsPdfBannerChoose').onclick = () => {
+      try { document.getElementById('pdfInput').click(); } catch (_) {}
     };
     document.getElementById('lastSessionRestoreKeep').onclick = async () => {
       const p = pendingLastSessionRestore;
@@ -17831,6 +18801,7 @@
     saveInProgress = true;
     savePdfInProgress = willUploadPdf;
     const wasDirty = autoSaveDirty;
+    const genAtEntry = dirtyGeneration;
     autoSaveDirty = false;
     updateStatus();
     const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
@@ -17872,6 +18843,8 @@
       counter_count: counts.counter_count,
       line_count: counts.line_count
     });
+    let orphanProjectIdForCleanup = null;
+    let pendingNewProjectHydration = null;
     try {
       let pdfPath = state.pdfStoragePath;
       let cachePdfHash = null;
@@ -17904,27 +18877,31 @@
                 saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
               }
             }
+            if (!skipUpload) {
+              // Check size BEFORE creating the project row so we don't leave an
+              // orphan record behind when the PDF exceeds the limit.
+              const sizeCheck = assertPdfWithinLimit(pdfToUpload.byteLength, 'performSaveProjectToCloud.upload');
+              if (sizeCheck && !sizeCheck.ok) throw new Error(sizeCheck.message);
+            }
             if (!projectId) {
               setProgress('Uploading project...');
               await tick();
               log('Inserting project...');
-              saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000, attempt: manualSaveAttempt });
+              saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000, attempt: manualSaveAttempt, raw: true });
               const t0 = Date.now();
-              const { data: row, error } = await withTimeout((signal) => supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single().abortSignal(signal), 60000, 'Save project');
+              const insertPayload = { user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count };
+              const { data: row, error } = await withTimeout((signal) => rawProjectsInsert(insertPayload, signal), 60000, 'Save project');
               log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
-              if (error) throw error;
-              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id });
+              if (error) {
+                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (with PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t0, message: error.message, status: error.status, code: error.code, phase: 'with_pdf_new_project' }));
+                throw error;
+              }
+              pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (with PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t0, projectId: row?.id, phase: 'with_pdf_new_project' }));
+              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id, raw: true });
               projectId = row?.id;
               if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-              state.currentProjectId = projectId;
-              subscribeToProjectCheckoutChanges(projectId);
-              state.projectOwnerId = user.id;
-              state.loadedViaViewLink = false;
-              state.isViewer = false;
-              state.canCheckOut = true;
-              state.checkedOutBy = null;
-              state.checkedOutAt = null;
-              state.checkedOutEmail = null;
+              orphanProjectIdForCleanup = projectId;
+              pendingNewProjectHydration = { projectId, userId: user.id };
               await tick();
             }
             if (!skipUpload) {
@@ -18009,15 +18986,21 @@
             setProgress('Uploading project...');
             await tick();
             log('Inserting project (no PDF)...');
-            saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000, attempt: manualSaveAttempt });
+            saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000, attempt: manualSaveAttempt, raw: true });
             const t4 = Date.now();
-            const { data: row, error } = await withTimeout((signal) => supabase.from('projects').insert({ user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count }).select('id').single().abortSignal(signal), 60000, 'Save project');
+            const insertPayloadNoPdf = { user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count };
+            const { data: row, error } = await withTimeout((signal) => rawProjectsInsert(insertPayloadNoPdf, signal), 60000, 'Save project');
             log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
-            if (error) throw error;
-            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id });
+            if (error) {
+              pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (no PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t4, message: error.message, status: error.status, code: error.code, phase: 'no_pdf' }));
+              throw error;
+            }
+            pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (no PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t4, projectId: row?.id, phase: 'no_pdf' }));
+            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id, raw: true });
             const projectId = row?.id;
             if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
             state.currentProjectId = projectId;
+            try { clearCheckoutExpiredAttention(); } catch (_) {}
             subscribeToProjectCheckoutChanges(projectId);
             state.projectOwnerId = user.id;
             state.loadedViaViewLink = false;
@@ -18027,6 +19010,21 @@
             state.checkedOutAt = null;
             state.checkedOutEmail = null;
           }
+          if (pendingNewProjectHydration && !state.currentProjectId) {
+            const h = pendingNewProjectHydration;
+            state.currentProjectId = h.projectId;
+            try { clearCheckoutExpiredAttention(); } catch (_) {}
+            subscribeToProjectCheckoutChanges(h.projectId);
+            state.projectOwnerId = h.userId;
+            state.loadedViaViewLink = false;
+            state.isViewer = false;
+            state.canCheckOut = true;
+            state.checkedOutBy = null;
+            state.checkedOutAt = null;
+            state.checkedOutEmail = null;
+          }
+          orphanProjectIdForCleanup = null;
+          pendingNewProjectHydration = null;
           break manualSaveLoop;
         } catch (innerErr) {
           if (manualSaveAttempt === 0 && originalProjectId && isTransientSaveError(innerErr)) {
@@ -18087,7 +19085,8 @@
       log('Save complete');
       saveDebugLog('manual.save.complete', { runId });
       lastCloudSaveAttemptFailed = false;
-      pushSaveEvent('manual_save_ok', 'Manual save to cloud completed');
+      autoSaveDirty = (dirtyGeneration !== genAtEntry);
+      pushSaveEvent('manual_save_ok', 'Manual save to cloud completed', autosaveEventDetail({ runId, genAtEntry, genNow: dirtyGeneration, stillDirty: autoSaveDirty }));
       saveProgressMessage = '';
       updateUI();
       return { ok: true };
@@ -18096,10 +19095,21 @@
       saveDebugLogError(runId, 'manual.save', e);
       log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
       window.lastSaveError = e;
+      if (orphanProjectIdForCleanup) {
+        const orphanId = orphanProjectIdForCleanup;
+        orphanProjectIdForCleanup = null;
+        try {
+          await withTimeout(supabase.from('projects').delete().eq('id', orphanId), 5000, 'Orphan project cleanup');
+          pushSaveEvent('manual_save_orphan_cleanup_ok', 'Orphan project row deleted after save failure', JSON.stringify({ projectId: orphanId }));
+        } catch (cleanupErr) {
+          pushSaveEvent('manual_save_orphan_cleanup_err', 'Orphan project cleanup failed', JSON.stringify({ projectId: orphanId, message: cleanupErr?.message }));
+        }
+      }
+      pendingNewProjectHydration = null;
       writeTakeoffBackupToIndexedDB();
       pushSaveEvent('manual_save_err', (e && e.message) || 'Manual save failed', formatSaveStatusErrDetail(e));
       lastCloudSaveAttemptFailed = true;
-      if (wasDirty) autoSaveDirty = true;
+      autoSaveDirty = wasDirty || (dirtyGeneration !== genAtEntry);
       updateSaveStatusIndicator();
       try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
       saveProgressMessage = '';
@@ -18130,6 +19140,10 @@
       saveDebugLog('autosave.skip', { runId, reason: 'viewer' });
       return { ok: false, error: null };
     }
+    if (suspendAutoSaveUntilCheckout && externalRunId !== 'checkout_recovered') {
+      saveDebugLog('autosave.skip', { runId, reason: 'suspended_pending_recheckout' });
+      return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
+    }
     const user = state.supabaseSession.user;
     if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
       const checkedAt = new Date(state.checkedOutAt).getTime();
@@ -18147,6 +19161,8 @@
       }
     }
     const t0 = Date.now();
+    const genAtEntry = dirtyGeneration;
+    autoSaveDirty = false;
     const data = {
       version: 1,
       counters: state.counters,
@@ -18269,26 +19285,37 @@
             const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
             if (pdfHash) insertData.pdf_hash = pdfHash;
             lastAttemptPhase = 'projects.insert';
-            lastAttemptUsedRawFetch = false;
-            saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash, attempt });
-            pushSaveEvent('autosave_request_start', 'Creating project', autosaveEventDetail({ runId, op: 'projects.insert', attempt }));
+            lastAttemptUsedRawFetch = true;
+            saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash, attempt, raw: true });
+            pushSaveEvent('autosave_request_start', 'Creating project (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, raw: true }));
             const t4 = Date.now();
-            const insertOp = withTimeout((signal) => supabase.from('projects').insert(insertData).select('id').single().abortSignal(signal), 60000, 'Save project');
+            const insertOp = withTimeout((signal) => rawProjectsInsert(insertData, signal), 60000, 'Save project');
             inFlightAutoSaveController = insertOp.controller;
             const { data: row, error } = await insertOp;
             const insMs = Date.now() - t4;
             lastAttemptOpMs = insMs;
-            perfLog('performAutoSave projects.insert', insMs, { dataSize });
+            perfLog('performAutoSave projects.insert', insMs, { dataSize, raw: true });
             if (error) {
-              pushSaveEvent('autosave_request_end', 'Create failed', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: false, message: error?.message, code: error?.code, status: error?.status }));
+              pushSaveEvent('autosave_request_end', 'Create failed (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: false, raw: true, message: error?.message, code: error?.code, status: error?.status }));
+              pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch autosave insert failed', autosaveEventDetail({ runId, ms: insMs, message: error?.message, status: error?.status, code: error?.code }));
               throw error;
             }
             const projectId = row?.id;
             if (!projectId) throw new Error('Project created but no ID returned');
             state.currentProjectId = projectId;
+            try { clearCheckoutExpiredAttention(); } catch (_) {}
+            subscribeToProjectCheckoutChanges(projectId);
+            state.projectOwnerId = user.id;
+            state.loadedViaViewLink = false;
+            state.isViewer = false;
+            state.canCheckOut = true;
+            state.checkedOutBy = null;
+            state.checkedOutAt = null;
+            state.checkedOutEmail = null;
             state.currentProjectName = name;
-            pushSaveEvent('autosave_request_end', 'Create OK', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, projectId }));
-            saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId });
+            pushSaveEvent('autosave_request_end', 'Create OK (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, raw: true, projectId }));
+            pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch autosave insert succeeded', autosaveEventDetail({ runId, ms: insMs, projectId }));
+            saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId, raw: true });
           }
           break;
         } catch (innerErr) {
@@ -18320,8 +19347,9 @@
       saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
       maybeLogProjectSaveEvent(state.currentProjectId);
       lastCloudSaveAttemptFailed = false;
-      dirtyStartedAt = 0;
-      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)', autosaveEventDetail({ runId, totalMs: Date.now() - tTotal, attempts: attempt + 1, usedRawFetch: lastAttemptUsedRawFetch }));
+      autoSaveDirty = (dirtyGeneration !== genAtEntry);
+      if (!autoSaveDirty) dirtyStartedAt = 0;
+      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)', autosaveEventDetail({ runId, totalMs: Date.now() - tTotal, attempts: attempt + 1, usedRawFetch: lastAttemptUsedRawFetch, genAtEntry, genNow: dirtyGeneration }));
       autoSaveAbortReason = null;
       noteAutoSaveOutcome(true, null);
       return { ok: true };
@@ -18329,12 +19357,14 @@
       if (autoSaveAbortReason) {
         const reason = autoSaveAbortReason;
         autoSaveAbortReason = null;
+        autoSaveDirty = true;
         saveDebugLog('autosave.aborted', { runId, reason, message: e?.message });
         return { ok: false, error: null };
       }
       console.error('[Auto-save] Failed:', e);
       saveDebugLogError(runId, 'autosave.request', e);
       window.lastSaveError = e;
+      autoSaveDirty = true;
       writeTakeoffBackupToIndexedDB();
       lastCloudSaveAttemptFailed = true;
       const elapsedMs = Date.now() - tTotal;
@@ -18363,8 +19393,14 @@
     }
   }
 
+  let takeoffBackupWriteInFlight = null;
   async function writeTakeoffStateBackup() {
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    // If an in-flight write exists, wait for it to finish then start a fresh write so
+    // the latest state is captured (critical for doTurnIn / preparePdf commit paths).
+    if (takeoffBackupWriteInFlight) {
+      try { await takeoffBackupWriteInFlight; } catch (_) {}
+    }
     try {
       await writeTakeoffBackupToIndexedDB();
     } catch (_) {}
@@ -18373,6 +19409,23 @@
   async function writeTakeoffBackupToIndexedDB() {
     if (!BACKUP_PDF_TO_INDEXEDDB) return;
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    if (takeoffBackupWriteInFlight) {
+      try { saveDebugLog('takeoff_backup_skip_inflight', {}); } catch (_) {}
+      return takeoffBackupWriteInFlight;
+    }
+    let resolveInFlight;
+    takeoffBackupWriteInFlight = new Promise((res) => { resolveInFlight = res; });
+    try {
+      return await doWriteTakeoffBackupToIndexedDB();
+    } finally {
+      const p = takeoffBackupWriteInFlight;
+      takeoffBackupWriteInFlight = null;
+      try { resolveInFlight && resolveInFlight(); } catch (_) {}
+      void p;
+    }
+  }
+
+  async function doWriteTakeoffBackupToIndexedDB() {
     let projectId = state.currentProjectId || 'local';
     let pdfBlob = state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length || 0) > 0
       ? new Blob([state.pdfBuffer], { type: 'application/pdf' }) : null;
@@ -18479,14 +19532,7 @@
         const probe = await probeCheckoutLock();
         probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
         if (probe.expired) {
-          checkoutExpiredNeedsAttention = true;
-          suspendAutoSaveUntilCheckout = true;
-          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-          if (!checkoutExpiredToastShown) {
-            showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
-            checkoutExpiredToastShown = true;
-          }
-          updateSaveStatusIndicator();
+          await handleBackgroundCheckoutExpired('visibility_probe');
         }
       }
       let permsRefreshed = false;
@@ -18529,25 +19575,12 @@
     }
     const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
     if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
-    autoSaveDirty = false;
     const result = await performAutoSave(intervalRunId);
     if (!result.ok) {
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
-        pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-        checkoutExpiredNeedsAttention = true;
-        suspendAutoSaveUntilCheckout = true;
-        autoSaveDirty = true;
-        if (!checkoutExpiredToastShown) {
-          showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
-          checkoutExpiredToastShown = true;
-        }
-        refreshProjectPermissions().catch(() => {});
-        updateSaveStatusIndicator();
-      } else if (!result.error) {
-        autoSaveDirty = true;
-      } else {
-        autoSaveDirty = true;
-        if (result.error) window.lastSaveError = result.error;
+        await handleBackgroundCheckoutExpired('autosave');
+      } else if (result.error) {
+        window.lastSaveError = result.error;
         updateSaveStatusIndicator();
       }
     } else {
@@ -18576,16 +19609,8 @@
     const probe = await probeCheckoutLock();
     if (probe.expired) {
       saveDebugLog('keepalive.expired', {});
-      checkoutExpiredNeedsAttention = true;
-      suspendAutoSaveUntilCheckout = true;
       pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-      if (!checkoutExpiredToastShown) {
-        showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
-        checkoutExpiredToastShown = true;
-      }
-      updateSaveStatusIndicator();
-      await refreshProjectPermissions();
-      updateUI();
+      await handleBackgroundCheckoutExpired('keepalive');
     }
   }
 
@@ -18751,6 +19776,7 @@
     state.checkedOutEmail = null;
     state.projectOwnerId = null;
     state.currentPage = 0;
+    try { clearCheckoutExpiredAttention(); } catch (_) {}
     document.body.classList.add('has-pdf');
     fitZoom();
     renderPdf();
@@ -18763,6 +19789,18 @@
     if (viewToken && SUPABASE_ENABLED && SUPABASE_URL) {
       try {
         await initViewOnlyMode(viewToken);
+        try {
+          await initSupabaseAuth();
+          if (state.supabaseSession?.user) {
+            state.isViewer = true;
+            state.canCheckOut = false;
+            state.loadedViaViewLink = true;
+            try { pushSaveEvent('view_link_session_attached', 'View-link tab observed an existing Supabase session', JSON.stringify({ userEmail: state.supabaseSession.user.email || null })); } catch (_) {}
+            try { updateUI(); updateSaveStatusIndicator(); } catch (_) {}
+          }
+        } catch (authErr) {
+          console.warn('[View link] auth init failed:', authErr);
+        }
       } catch (e) {
         console.error('[View link]', e);
         showToast('Failed to load: ' + (e.message || 'Unknown error'), 5000);
@@ -18770,7 +19808,12 @@
       updateUI();
       return;
     }
-    // Load custom icons (IndexedDB-primary, localStorage fallback for migration)
+    // PR 11: resolve auth BEFORE applying takeoff backup so backups tied to a
+    // previous user are not briefly visible on the canvas of the new user.
+    await initSupabaseAuth();
+    // Load custom icons AFTER auth so customIconsCurrentKey() resolves to the
+    // signed-in user's key (PR 7 per-user split). If signed-out, falls back to
+    // the legacy 'user' key with automatic migration on first signed-in load.
     let loaded = await customIconsGetFromIndexedDB();
     if (!loaded) {
       try {
@@ -18787,24 +19830,30 @@
     }
     if (loaded) customIconsCache = loaded;
     // Restore takeoff backup (IndexedDB-primary, localStorage fallback for migration)
-    const localBackup = await takeoffBackupGet('local');
-    let backupToApply = localBackup?.data || null;
+    const localBackupForBoot = await takeoffBackupGet('local', state.supabaseSession?.user?.id || null);
+    let backupToApply = localBackupForBoot?.data || null;
     if (!backupToApply) {
       try {
         const stored = localStorage.getItem('takeoff-state');
         if (stored) {
           const parsed = JSON.parse(stored);
-          backupToApply = parsed;
-          // One-time migration: write to IndexedDB, then clear localStorage
-          if (parsed.counters || parsed.lineTypes) {
-            await takeoffBackupPut('local', parsed, null, null, parsed.lastModifiedAt || Date.now(), parsed.projectName || null, null);
+          const storedUserId = parsed?.userId || null;
+          const currentUid = state.supabaseSession?.user?.id || null;
+          if (!storedUserId || !currentUid || storedUserId === currentUid) {
+            backupToApply = parsed;
+            // One-time migration: write to IndexedDB, then clear localStorage
+            if (parsed.counters || parsed.lineTypes) {
+              await takeoffBackupPut('local', parsed, null, null, parsed.lastModifiedAt || Date.now(), parsed.projectName || null, currentUid);
+              localStorage.removeItem('takeoff-state');
+            }
+          } else {
+            try { pushSaveEvent('takeoff_backup_skip_other_user', 'Skipped legacy takeoff-state from a different user', JSON.stringify({ storedUserId })); } catch (_) {}
             localStorage.removeItem('takeoff-state');
           }
         }
       } catch (_) {}
     }
     if (backupToApply) applyTakeoffBackupToState(backupToApply);
-    await initSupabaseAuth();
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
       const ok = await devAuthSignIn();
       if (ok && window.history?.replaceState) {
@@ -18829,7 +19878,7 @@
       }).subscribe();
       try {
         let offeredRestore = false;
-        const localBackup = await takeoffBackupGet('local');
+        const localBackup = await takeoffBackupGet('local', uid);
         const hasLocalPdf = localBackup && localBackup.pdfBlob && localBackup.pdfBlob.size > 0;
         if (hasLocalPdf && localBackup.data) {
           const projForRestore = { id: 'local', name: localBackup.projectName || 'Untitled', data: backupDataToProjFormat(localBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: localBackup.pdfHash, user_id: uid, checked_out_by: null, checked_out_at: null };
@@ -18848,9 +19897,14 @@
             const last = JSON.parse(stored);
             if (last && last.userId === state.supabaseSession.user.id && last.projectId) {
               const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
-              const idbBackup = await takeoffBackupGet(last.projectId);
+              const idbBackup = await takeoffBackupGet(last.projectId, uid);
               const hasIdbPdf = idbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0;
-              if ((!error && proj && proj.data) || hasIdbPdf) {
+              const projectAccessDenied = !!error && (error.code === 'PGRST116' || /no rows|denied|permission|policy/i.test(error.message || ''));
+              if (projectAccessDenied) {
+                try { pushSaveEvent('last_session_restore_skip_inaccessible', 'Last-session project not accessible to current user', JSON.stringify({ projectId: last.projectId, code: error.code, message: error.message })); } catch (_) {}
+                try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+                try { await takeoffBackupDelete(last.projectId); } catch (_) {}
+              } else if ((!error && proj && proj.data) || hasIdbPdf) {
                 const projForRestore = proj || (idbBackup ? { id: last.projectId, name: idbBackup.projectName || 'Untitled', data: backupDataToProjFormat(idbBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: idbBackup.pdfHash, user_id: last.userId, checked_out_by: null, checked_out_at: null } : null);
                 const pdfHashForCache = proj?.pdf_hash || last.pdfHash;
                 const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;

@@ -4285,8 +4285,18 @@
   const CHECKOUT_SOFT_GRACE_MS = 60 * 1000;
   const AUTO_RECHECKOUT_MAX_PER_PROJECT = 3;
   const AUTO_RECHECKOUT_MIN_GAP_MS = 5000;
+  const AUTO_RECHECKOUT_COOLDOWN_MS = 30 * 60 * 1000;
+  const REFRESH_PERMISSIONS_TIMEOUT_MS = 8000;
   const autoRecheckoutCountByProject = new Map();
+  const autoRecheckoutCapReachedAt = new Map();
   let lastAutoRecheckoutAt = 0;
+  // Forward declaration: hoisted to IIFE scope so the autosave/keepalive/visibility
+  // background callers (which live outside `if (SUPABASE_ENABLED)`) can reach it.
+  // The real implementation is assigned inside the SUPABASE_ENABLED block; when
+  // Supabase is disabled the no-op below stands in.
+  var handleBackgroundCheckoutExpired = async function () {
+    return { silentlyRecovered: false, reason: 'supabase_disabled' };
+  };
   let lastCheckoutRefreshAt = 0;
   let suspendAutoSaveUntilCheckout = false;
   let lastHiddenAt = 0;
@@ -5143,6 +5153,7 @@
     state.userActivityAllRowsCache = null;
     state.userActivityViewMode = 'events';
     try { autoRecheckoutCountByProject.clear(); } catch (_) {}
+    try { autoRecheckoutCapReachedAt.clear(); } catch (_) {}
     lastAutoRecheckoutAt = 0;
     lastCheckoutRefreshAt = 0;
     try { clearCheckoutExpiredAttention(); } catch (_) {}
@@ -9903,9 +9914,18 @@
     let projects = null;
     let error = null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await supabase.rpc('list_accessible_projects');
-      projects = r.data;
-      error = r.error;
+      try {
+        const r = await withTimeout(
+          supabase.rpc('list_accessible_projects'),
+          REFRESH_PERMISSIONS_TIMEOUT_MS,
+          'list_accessible_projects'
+        );
+        projects = r.data;
+        error = r.error;
+      } catch (e) {
+        projects = null;
+        error = e;
+      }
       if (!error && projects) break;
       if (attempt === 0) await new Promise(r2 => setTimeout(r2, 500));
     }
@@ -15409,8 +15429,13 @@
       }
     }
     function resetAutoRecheckoutCounter(projectId) {
-      if (projectId) autoRecheckoutCountByProject.delete(projectId);
-      else autoRecheckoutCountByProject.clear();
+      if (projectId) {
+        autoRecheckoutCountByProject.delete(projectId);
+        autoRecheckoutCapReachedAt.delete(projectId);
+      } else {
+        autoRecheckoutCountByProject.clear();
+        autoRecheckoutCapReachedAt.clear();
+      }
       lastAutoRecheckoutAt = 0;
     }
     async function tryAutoRecheckoutIfAllowed(detectionTrigger) {
@@ -15428,10 +15453,29 @@
         pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: too soon after previous attempt', JSON.stringify({ trigger, reason: 'min_gap', sinceLastMs: Date.now() - lastAutoRecheckoutAt }));
         return { skipped: true, reason: 'min_gap' };
       }
-      const count = autoRecheckoutCountByProject.get(projectId) || 0;
+      let count = autoRecheckoutCountByProject.get(projectId) || 0;
       if (count >= AUTO_RECHECKOUT_MAX_PER_PROJECT) {
-        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: cap reached', JSON.stringify({ trigger, reason: 'cap_reached', count, cap: AUTO_RECHECKOUT_MAX_PER_PROJECT, projectId }));
-        return { skipped: true, reason: 'cap_reached' };
+        const capReachedAt = autoRecheckoutCapReachedAt.get(projectId) || 0;
+        if (capReachedAt && Date.now() - capReachedAt > AUTO_RECHECKOUT_COOLDOWN_MS) {
+          autoRecheckoutCountByProject.set(projectId, 0);
+          autoRecheckoutCapReachedAt.delete(projectId);
+          count = 0;
+          pushSaveEvent('auto_recheckout_cooldown_reset', 'Per-project auto-recheckout cap reset after cool-down',
+            JSON.stringify({ trigger, projectId, cooldownMs: AUTO_RECHECKOUT_COOLDOWN_MS }));
+        } else {
+          if (!capReachedAt) autoRecheckoutCapReachedAt.set(projectId, Date.now());
+          const stamp = capReachedAt || Date.now();
+          pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: cap reached',
+            JSON.stringify({
+              trigger,
+              reason: 'cap_reached',
+              count,
+              cap: AUTO_RECHECKOUT_MAX_PER_PROJECT,
+              projectId,
+              cooldownRemainingMs: Math.max(0, AUTO_RECHECKOUT_COOLDOWN_MS - (Date.now() - stamp))
+            }));
+          return { skipped: true, reason: 'cap_reached' };
+        }
       }
       const tStart = Date.now();
       pushSaveEvent('auto_recheckout_attempt', 'Attempting silent re-check out', JSON.stringify({ trigger, count, projectId }));
@@ -15477,7 +15521,12 @@
       return { ok: false, error: (result && result.error) || 'Auto re-check out failed', otherEmail: (result && result.otherEmail) || null };
     }
     let backgroundCheckoutExpiredInFlight = false;
-    async function handleBackgroundCheckoutExpired(trigger) {
+    // Assigned (not declared) so the binding installed at IIFE scope above is
+    // overwritten with the real implementation. Async function declarations
+    // inside this `if (SUPABASE_ENABLED)` block are block-scoped per spec
+    // (Annex B.3.3 does not apply to AsyncFunctionDeclaration), so the
+    // background callers outside the block would otherwise hit a ReferenceError.
+    handleBackgroundCheckoutExpired = async function (trigger) {
       if (backgroundCheckoutExpiredInFlight) {
         try { saveDebugLog('checkoutExpired.skip_inflight', { trigger }); } catch (_) {}
         return { silentlyRecovered: false, reason: 'already_handling' };
@@ -15499,7 +15548,7 @@
       } finally {
         backgroundCheckoutExpiredInFlight = false;
       }
-    }
+    };
     async function doTurnIn() {
       if (turnInInProgress) {
         saveDebugLog('turnIn.skip', { reason: 'already_in_progress' });
@@ -17190,20 +17239,32 @@
           }
         }
         if (confirmedExpired) {
-          state.checkedOutBy = null;
-          state.checkedOutAt = null;
-          state.checkedOutEmail = null;
+          // Note: keep state.checkedOutBy/At/Email populated until recovery resolves.
+          // Nulling them eagerly lets a re-click during a slow recovery bypass the
+          // preflight expiry guard and fall through to performSaveProjectToCloud
+          // against a wedged client.
           clearUndoStacks();
           updateSaveStatusIndicator();
           const recovered = await handleBackgroundCheckoutExpired('manual_save');
           await refreshProjectPermissions().catch(() => {});
-          updateUI();
           if (recovered && recovered.silentlyRecovered) {
             errEl.style.display = 'none';
-          } else {
-            hideModal('saveProjectModal');
-            openCheckoutExpiredRecoveryModal({ trigger: 'manual_save' });
+            updateUI();
+            return;
           }
+          // Only zero locally when refresh did not reassign the lock to a
+          // different user. If refresh repopulated state.checkedOutBy with a
+          // new holder, preserve their info so the header banner / settings
+          // checkout row can show "Checked out by <email>" while the recovery
+          // modal is open.
+          if (state.checkedOutBy === user.id || !state.checkedOutBy) {
+            state.checkedOutBy = null;
+            state.checkedOutAt = null;
+            state.checkedOutEmail = null;
+          }
+          updateUI();
+          hideModal('saveProjectModal');
+          openCheckoutExpiredRecoveryModal({ trigger: 'manual_save' });
           return;
         }
       }
@@ -19623,7 +19684,14 @@
         const probe = await probeCheckoutLock();
         probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
         if (probe.expired) {
-          await handleBackgroundCheckoutExpired('visibility_probe');
+          try {
+            await handleBackgroundCheckoutExpired('visibility_probe');
+          } catch (e) {
+            try {
+              pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+                JSON.stringify({ trigger: 'visibility_probe', message: (e && e.message) || String(e), name: e && e.name }));
+            } catch (_) {}
+          }
         }
       }
       let permsRefreshed = false;
@@ -19669,7 +19737,14 @@
     const result = await performAutoSave(intervalRunId);
     if (!result.ok) {
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
-        await handleBackgroundCheckoutExpired('autosave');
+        try {
+          await handleBackgroundCheckoutExpired('autosave');
+        } catch (e) {
+          try {
+            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+              JSON.stringify({ trigger: 'autosave', message: (e && e.message) || String(e), name: e && e.name }));
+          } catch (_) {}
+        }
       } else if (result.error) {
         window.lastSaveError = result.error;
         updateSaveStatusIndicator();
@@ -19701,7 +19776,14 @@
     if (probe.expired) {
       saveDebugLog('keepalive.expired', {});
       pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-      await handleBackgroundCheckoutExpired('keepalive');
+      try {
+        await handleBackgroundCheckoutExpired('keepalive');
+      } catch (e) {
+        try {
+          pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+            JSON.stringify({ trigger: 'keepalive', message: (e && e.message) || String(e), name: e && e.name }));
+        } catch (_) {}
+      }
     }
   }
 

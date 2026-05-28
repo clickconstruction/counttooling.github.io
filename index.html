@@ -4236,6 +4236,7 @@
   let takeoffBackupWarnShown = false;
   let turnInInProgress = false;
   let inFlightRecoverySavePromise = null;
+  let inFlightAutoSavePromise = null;
   let consecutiveAutoSaveFailures = 0;
   let firstAutoSaveFailureAt = 0;
   let nextAutoSaveAttemptAt = 0;
@@ -4248,6 +4249,7 @@
   let autosaveSlowEmittedAt = 0;
   let autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
   let lastSuccessfulSupabaseCallAt = 0;
+  let lastSupabaseJsFailureAt = 0;
   let clientRecycleInFlight = false;
   let clientRecycleCountThisRun = 0;
   let lastClientRecycleAt = 0;
@@ -4264,7 +4266,7 @@
   const CLIENT_PROBE_TIMEOUT_MS = 5000;
   const CLIENT_RECYCLE_COOLDOWN_MS = 30000;
   const DIRTY_SNAPSHOT_THRESHOLD_MS = 10 * 60 * 1000;
-  const CHECK_IN_TIMEOUT_MS = 8000;
+  const CHECK_IN_TIMEOUT_MS = 10000;
   const LONG_IDLE_PROBE_MS = 5 * 60 * 1000;
   const TURN_IN_STALENESS_MS = 5 * 60 * 1000;
   const AUTOSAVE_BACKOFF_LEVELS_MS = [5000, 15000, 30000, 60000];
@@ -4352,11 +4354,31 @@
       pushSaveEvent('autosave_failing_10', 'Cloud sync has failed 10 times in a row', autosaveEventDetail({ milestone: 10 }));
     }
 
-    if (consecutiveAutoSaveFailures === AUTOSAVE_RECOVERY_THRESHOLD &&
-        recoveryProbeFiredForFailureCount !== AUTOSAVE_RECOVERY_THRESHOLD) {
-      recoveryProbeFiredForFailureCount = AUTOSAVE_RECOVERY_THRESHOLD;
-      runRecoveryProbeAndMaybeRecycle('failure_threshold').catch(() => {});
+    if (consecutiveAutoSaveFailures >= 3 &&
+        recoveryProbeFiredForFailureCount !== consecutiveAutoSaveFailures) {
+      recoveryProbeFiredForFailureCount = consecutiveAutoSaveFailures;
+      const trigger = consecutiveAutoSaveFailures >= AUTOSAVE_RECOVERY_THRESHOLD ? 'failure_threshold' : 'failure_threshold_early';
+      runRecoveryProbeAndMaybeRecycle(trigger).catch(() => {});
     }
+  }
+
+  function noteSupabaseJsFailure(context, err) {
+    if (err && typeof err.status === 'number' && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
+      return;
+    }
+    if (err && (err.code === 'CHECKOUT_EXPIRED' || err.code === 'CHECKOUT_NOT_OWNED' || err.code === '42501' || err.code === 'PGRST116')) {
+      return;
+    }
+    lastSupabaseJsFailureAt = Date.now();
+    try {
+      pushSaveEvent('sbjs_failure_recorded', 'Supabase-js call failed (raw-fetch may be safer)', autosaveEventDetail({
+        context: context || 'unknown',
+        message: err?.message,
+        name: err?.name,
+        code: err?.code,
+        status: err?.status
+      }));
+    } catch (_) {}
   }
 
   async function runRecoveryProbeAndMaybeRecycle(trigger) {
@@ -4507,7 +4529,7 @@
     if (clientProbeInFlightGuard) return { ok: false, ms: 0, errMsg: 'in_flight' };
     clientProbeInFlightGuard = true;
     const t0 = Date.now();
-    let ok = false, errMsg = null, errName = null;
+    let ok = false, errMsg = null, errName = null, errStatus = null, errCode = null;
     try {
       const probeOp = withTimeout(
         (signal) => supabase.from('projects').select('id').limit(1).abortSignal(signal),
@@ -4518,12 +4540,16 @@
       if (error) {
         errMsg = error.message || String(error);
         errName = error.name;
+        errStatus = (typeof error.status === 'number') ? error.status : null;
+        errCode = error.code || null;
       } else {
         ok = true;
       }
     } catch (e) {
       errMsg = e?.message || String(e);
       errName = e?.name;
+      errStatus = (typeof e?.status === 'number') ? e.status : null;
+      errCode = e?.code || null;
     } finally {
       clientProbeInFlightGuard = false;
     }
@@ -4538,6 +4564,7 @@
     } else {
       saveDebugLog('autosave.client_probe.err', { trigger, ms, message: errMsg, name: errName });
       pushSaveEvent('autosave_client_probe_err', 'Supabase client appears wedged', autosaveEventDetail({ trigger, ms, message: errMsg, name: errName }));
+      noteSupabaseJsFailure('client_probe', { message: errMsg, name: errName, status: errStatus, code: errCode });
     }
     return { ok, ms, errMsg };
   }
@@ -4546,10 +4573,12 @@
     if (!SUPABASE_ENABLED || typeof window.supabase === 'undefined') return false;
     if (clientRecycleInFlight) {
       saveDebugLog('autosave.client_recycle.skip', { reason, why: 'in_flight' });
+      pushSaveEvent('client_recycle_skipped_inflight', 'Client recycle skipped (already running)', autosaveEventDetail({ reason }));
       return false;
     }
     if (Date.now() - lastClientRecycleAt < CLIENT_RECYCLE_COOLDOWN_MS) {
       saveDebugLog('autosave.client_recycle.skip', { reason, why: 'cooldown' });
+      pushSaveEvent('client_recycle_skipped_cooldown', 'Client recycle skipped (cooldown)', autosaveEventDetail({ reason, msSinceLastRecycle: Date.now() - lastClientRecycleAt, cooldownMs: CLIENT_RECYCLE_COOLDOWN_MS }));
       return false;
     }
     clientRecycleInFlight = true;
@@ -4769,8 +4798,15 @@
     const code = e.code || '';
     const msg  = e.message || String(e);
     if (code === 'CHECKOUT_EXPIRED' || code === 'CHECKOUT_NOT_OWNED' || code === '42501') return false;
-    if (typeof e.status === 'number' && e.status >= 400 && e.status < 500 && e.status !== 408 && e.status !== 429) return false;
-    return /timeout|network|fetch|temporarily|5\d\d/i.test(msg) || code === 'ETIMEDOUT';
+    if (e.name === 'AbortError') return true;
+    if (typeof e.status === 'number') {
+      if (e.status === 408 || e.status === 429) return true;
+      if (e.status >= 500) return true;
+      if (e.status >= 400) return false;
+    }
+    return /timed?\s*out|timeout|network|fetch|temporarily|connection\s+closed|socket|5\d\d/i.test(msg)
+      || code === 'ETIMEDOUT'
+      || code === 'ECONNRESET';
   }
 
   function isSaveDebugEnabled() {
@@ -15516,9 +15552,11 @@
           saveInProgress,
           projectId: state.currentProjectId
         }));
+        const isSbJsRecentlyBad = () => lastSupabaseJsFailureAt > 0 && Date.now() - lastSupabaseJsFailureAt < 5 * 60 * 1000;
         const looksStale = consecutiveAutoSaveFailures > 0 ||
           (lastSuccessfulSupabaseCallAt > 0 && Date.now() - lastSuccessfulSupabaseCallAt > TURN_IN_STALENESS_MS) ||
-          lastSuccessfulSupabaseCallAt === 0;
+          lastSuccessfulSupabaseCallAt === 0 ||
+          isSbJsRecentlyBad();
         if (looksStale) {
           progress('pre_probe', 'Checking connection…');
           saveDebugLog('turnIn.preProbe', { failures: consecutiveAutoSaveFailures, lastOk: lastSuccessfulSupabaseCallAt });
@@ -15550,12 +15588,29 @@
             return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
           }
         }
+        if (inFlightAutoSavePromise && saveInProgress) {
+          const tAwait = Date.now();
+          pushSaveEvent('turn_in_await_inflight_autosave', 'Turn In waiting briefly for in-flight autosave', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
+          try {
+            await Promise.race([
+              inFlightAutoSavePromise,
+              new Promise(r => setTimeout(r, 3000))
+            ]);
+          } catch (_) {}
+          pushSaveEvent('turn_in_await_inflight_autosave_done', 'Done waiting for in-flight autosave', JSON.stringify({ waitMs: Date.now() - tAwait, saveStillInProgress: saveInProgress }));
+        }
         progress('release_lock', 'Releasing edit lock…');
         let result;
         while (true) {
           try {
             const tCheckIn = Date.now();
-            const useRawForCheckIn = consecutiveAutoSaveFailures >= 3 || (checkInAttempt > 0 && !usedRawFetchForCheckIn);
+            const sbJsBadNow = isSbJsRecentlyBad();
+            const useRawForCheckIn = consecutiveAutoSaveFailures >= 3 ||
+              (checkInAttempt > 0 && !usedRawFetchForCheckIn) ||
+              sbJsBadNow;
+            if (useRawForCheckIn && checkInAttempt === 0 && sbJsBadNow && consecutiveAutoSaveFailures < 3) {
+              pushSaveEvent('turn_in_raw_fetch_engaged_proactively', 'Turn In using raw fetch (supabase-js wedged recently)', JSON.stringify({ msSinceSbJsFailure: Date.now() - lastSupabaseJsFailureAt, lastOk: lastSuccessfulSupabaseCallAt, failures: consecutiveAutoSaveFailures }));
+            }
             usedRawFetchForCheckIn = useRawForCheckIn;
             let data = null, error = null;
             if (useRawForCheckIn) {
@@ -15601,9 +15656,10 @@
             }
             break;
           } catch (e) {
-            if (checkInAttempt === 0 && isTransientSaveError(e)) {
+            const isTimedOutMsg = /timed?\s*out/i.test(e?.message || '');
+            if (checkInAttempt === 0 && (isTransientSaveError(e) || isTimedOutMsg)) {
               saveDebugLog('turnIn.retry', { message: e?.message });
-              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', JSON.stringify({ message: e?.message || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
+              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', JSON.stringify({ message: e?.message || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage, viaTimedOutCatch: isTimedOutMsg && !isTransientSaveError(e) }));
               checkInAttempt++;
               progress('retry', 'Retrying…');
               await new Promise(r => setTimeout(r, 500));
@@ -18897,6 +18953,9 @@
                 throw error;
               }
               pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (with PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t0, projectId: row?.id, phase: 'with_pdf_new_project' }));
+              if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+                runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
+              }
               saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id, raw: true });
               projectId = row?.id;
               if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
@@ -18972,14 +19031,26 @@
               try {
                 await withTimeout((signal) => rawProjectsUpdate(state.currentProjectId, updatePayload, signal), 30000, 'Update project');
                 pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch manual save succeeded', autosaveEventDetail({ runId, ms: Date.now() - t3 }));
+                if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+                  runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
+                }
               } catch (rawErr) {
                 pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch manual save failed', autosaveEventDetail({ runId, ms: Date.now() - t3, message: rawErr?.message, status: rawErr?.status }));
                 throw rawErr;
               }
             } else {
-              const { error } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), 30000, 'Update project');
-              log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
-              if (error) throw error;
+              let mErr = null;
+              try {
+                const { error } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), 30000, 'Update project');
+                log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
+                mErr = error || null;
+              } catch (timeoutOrThrow) {
+                mErr = timeoutOrThrow;
+              }
+              if (mErr) {
+                noteSupabaseJsFailure('manual_save.projects.update', mErr);
+                throw mErr;
+              }
             }
             saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId, raw: useRawForManual });
           } else {
@@ -18996,6 +19067,9 @@
               throw error;
             }
             pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (no PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t4, projectId: row?.id, phase: 'no_pdf' }));
+            if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+              runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
+            }
             saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id, raw: true });
             const projectId = row?.id;
             if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
@@ -19194,6 +19268,8 @@
     });
     const tTotal = Date.now();
     saveInProgress = true;
+    let _resolveAutoSaveInFlight = null;
+    inFlightAutoSavePromise = new Promise(r => { _resolveAutoSaveInFlight = r; });
     let storageInfoFailedThisCall = false;
     let storageInfoMs = 0;
     let storageInfoStatus = 'not_run';
@@ -19235,6 +19311,7 @@
                 storageInfoFailedThisCall = true;
                 saveDebugLog('autosave.storage.info.error', { runId, ms: storageInfoMs, message: se?.message, name: se?.name });
                 pushSaveEvent('autosave_storage_info_err', 'Storage size check failed', autosaveEventDetail({ runId, ms: storageInfoMs, message: se?.message, name: se?.name, attempt }));
+                noteSupabaseJsFailure('autosave.storage.info', se);
               }
             } else if (state.pdfStoragePath) {
               storageInfoStatus = storageInfoFailedThisCall ? 'skipped_failed' : 'skipped_degraded';
@@ -19273,7 +19350,12 @@
               throw opErr;
             }
             pushSaveEvent('autosave_request_end', useRawFetch ? 'Update OK (raw fetch)' : 'Update OK', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: true }));
-            if (useRawFetch) pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch update succeeded', autosaveEventDetail({ runId, ms: updMs }));
+            if (useRawFetch) {
+              pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch update succeeded', autosaveEventDetail({ runId, ms: updMs }));
+              if ((consecutiveAutoSaveFailures > 0 || attempt > 0) && !clientRecycleInFlight) {
+                runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
+              }
+            }
             saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId, raw: useRawFetch });
           } else {
             let sizeBytes = dataSize;
@@ -19315,10 +19397,16 @@
             state.currentProjectName = name;
             pushSaveEvent('autosave_request_end', 'Create OK (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, raw: true, projectId }));
             pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch autosave insert succeeded', autosaveEventDetail({ runId, ms: insMs, projectId }));
+            if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+              runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
+            }
             saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId, raw: true });
           }
           break;
         } catch (innerErr) {
+          if (!lastAttemptUsedRawFetch && lastAttemptPhase !== 'init') {
+            noteSupabaseJsFailure('autosave.' + lastAttemptPhase, innerErr);
+          }
           if (attempt === 0 && isTransientSaveError(innerErr)) {
             saveDebugLog('autosave.retry', { runId, message: innerErr?.message });
             pushSaveEvent('autosave_retry', 'Transient autosave error, retrying once', autosaveEventDetail({ runId, attempt, message: innerErr?.message }));
@@ -19390,6 +19478,9 @@
     } finally {
       saveInProgress = false;
       inFlightAutoSaveController = null;
+      try { if (_resolveAutoSaveInFlight) _resolveAutoSaveInFlight(); } catch (_) {}
+      _resolveAutoSaveInFlight = null;
+      inFlightAutoSavePromise = null;
     }
   }
 
@@ -19629,6 +19720,23 @@
     window.__customIconsGetFromIndexedDBForTest = customIconsGetFromIndexedDB;
     window.getUserCustomIcons = getUserCustomIcons;
     window.saveUserCustomIcons = saveUserCustomIcons;
+    try {
+      console.assert(isTransientSaveError(new Error('Turn in timed out after 8s')), 'isTransientSaveError: "timed out" should be transient');
+      console.assert(isTransientSaveError(new Error('Update project timed out after 15s')), 'isTransientSaveError: "timed out" should be transient');
+      console.assert(isTransientSaveError(new Error('Storage info timed out after 3s')), 'isTransientSaveError: "timed out" should be transient');
+      console.assert(isTransientSaveError({ name: 'AbortError', message: 'aborted' }), 'isTransientSaveError: AbortError should be transient');
+      console.assert(isTransientSaveError(new Error('Failed to fetch')), 'isTransientSaveError: fetch errors should be transient');
+      console.assert(isTransientSaveError(new Error('NetworkError when attempting to fetch resource')), 'isTransientSaveError: network errors should be transient');
+      console.assert(isTransientSaveError({ status: 408, message: 'request timeout' }), 'isTransientSaveError: 408 should be transient');
+      console.assert(isTransientSaveError({ status: 429, message: 'rate limit' }), 'isTransientSaveError: 429 should be transient');
+      console.assert(isTransientSaveError({ status: 500, message: 'server error' }), 'isTransientSaveError: 500 should be transient');
+      console.assert(isTransientSaveError({ status: 503, message: 'service unavailable' }), 'isTransientSaveError: 503 should be transient');
+      console.assert(!isTransientSaveError({ code: 'CHECKOUT_EXPIRED' }), 'isTransientSaveError: CHECKOUT_EXPIRED should NOT be transient');
+      console.assert(!isTransientSaveError({ status: 401, message: 'unauthorized' }), 'isTransientSaveError: 401 should NOT be transient');
+      console.assert(!isTransientSaveError({ status: 403, message: 'forbidden' }), 'isTransientSaveError: 403 should NOT be transient');
+      console.assert(!isTransientSaveError({ status: 404, message: 'not found' }), 'isTransientSaveError: 404 should NOT be transient');
+      console.assert(!isTransientSaveError(null), 'isTransientSaveError: null should NOT be transient');
+    } catch (_) {}
   }
 
   async function initViewOnlyMode(viewToken) {

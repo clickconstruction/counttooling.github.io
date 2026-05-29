@@ -10614,7 +10614,6 @@
         try { clearCheckoutExpiredAttention(); } catch (_) {}
       } else {
         const projName = state.pendingCanvasLoad.name;
-        const projectId = state.pendingCanvasLoad.projectId;
         state.counters = Array.isArray(d.counters) ? d.counters : [];
         state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
         state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
@@ -10639,9 +10638,13 @@
         state.pendingCanvasLoad = null;
         state.currentProjectName = projName;
         state.pdfHash = uploadHash;
-        if (!hashMatches && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && projectId) {
-          supabase.from('projects').update({ pdf_hash: uploadHash }).eq('id', projectId).then(() => {});
-        }
+        // Do NOT push this hash to the cloud row here: the locally-uploaded PDF
+        // has not been stored, so recording its hash would make the row claim a
+        // PDF that isn't in storage (or that differs from the file pdf_path
+        // points to). That both reintroduces the "saved but no PDF" bug and can
+        // cause the manual-save hash-skip to skip the real upload. The next real
+        // save (performSaveProjectToCloud with Include PDF) writes pdf_hash and
+        // pdf_path together once the file is actually uploaded.
       }
     } else {
       state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
@@ -18980,18 +18983,27 @@
               const tSelect = Date.now();
               let row = null;
               try {
-                const res = await withTimeout(supabase.from('projects').select('pdf_hash').eq('id', projectId).single(), 10000, 'pdf_hash check');
+                const res = await withTimeout(supabase.from('projects').select('pdf_hash, pdf_path').eq('id', projectId).single(), 10000, 'pdf_hash check');
                 row = res?.data || null;
               } catch (hashErr) {
                 saveDebugLog('manual.save.pdf_hash_timeout', { runId, message: hashErr?.message });
               }
               perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
               const newHash = await sha256Hex(pdfToUpload);
-              if (row?.pdf_hash === newHash) {
+              // Skip the upload only when the cloud row carries a matching hash
+              // AND actually has a pdf_path. A row can hold a pdf_hash with no
+              // pdf_path (e.g. a project first created by autosave, which records
+              // the hash but never uploads the file); in that case the storage
+              // object does not exist, so we MUST upload even though the hashes
+              // match — otherwise the project is left permanently without its PDF.
+              if (row?.pdf_hash === newHash && row?.pdf_path) {
                 skipUpload = true;
                 cachePdfHash = newHash;
                 log('PDF unchanged (hash match), skipping upload');
                 saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
+              } else if (row?.pdf_hash === newHash && !row?.pdf_path) {
+                saveDebugLog('manual.save.branch', { runId, branch: 'hash_match_but_no_path_force_upload' });
+                pushSaveEvent('manual_save_force_upload_missing_pdf', 'PDF hash matched but no file in cloud — uploading');
               }
             }
             if (!skipUpload) {
@@ -19420,16 +19432,19 @@
             saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId, raw: useRawFetch });
           } else {
             let sizeBytes = dataSize;
-            let pdfHash = null;
             if (state.pdfBuffer) {
-              pdfHash = await sha256Hex(state.pdfBuffer);
               sizeBytes += state.pdfBuffer.byteLength;
             }
+            // IMPORTANT: autosave never uploads the PDF file. We must NOT record
+            // pdf_hash here. Doing so would poison the row — the cloud would claim
+            // a PDF (pdf_hash set) while no storage object exists (pdf_path null),
+            // and the manual-save hash-skip would then skip the upload forever,
+            // leaving the project permanently without its PDF. pdf_hash is only
+            // written once the file is actually uploaded (performSaveProjectToCloud).
             const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
-            if (pdfHash) insertData.pdf_hash = pdfHash;
             lastAttemptPhase = 'projects.insert';
             lastAttemptUsedRawFetch = true;
-            saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: !!pdfHash, attempt, raw: true });
+            saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: false, attempt, raw: true });
             pushSaveEvent('autosave_request_start', 'Creating project (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, raw: true }));
             const t4 = Date.now();
             const insertOp = withTimeout((signal) => rawProjectsInsert(insertData, signal), 60000, 'Save project');

@@ -2,7 +2,7 @@
 
 ClickCount supports two kinds of custom icons:
 
-1. **Bundled custom icons** (`CUSTOM_ICONS` in `index.html`) — Available to all users, shipped with the app.
+1. **Bundled custom icons** (`CUSTOM_ICONS` in `icons.js`) — Available to all users, shipped with the app.
 2. **User-uploaded icons** — Stored in IndexedDB per browser; users upload SVGs via Create Counter → Custom Icons.
 
 Both are merged by `getEffectiveCustomIcons()` and appear in the icon picker.
@@ -21,7 +21,7 @@ To add SVG icons that ship with the app:
    node scripts/build-custom-icons.js --dir path/to/svgs
    ```
 3. Copy the output line (starts with `const CUSTOM_ICONS = `).
-4. In `index.html`, replace the existing `const CUSTOM_ICONS = [];` (around line 2448) with the pasted line.
+4. In `icons.js`, replace the existing `const CUSTOM_ICONS = [ ... ];` array with the pasted line. (`icons.js` is a classic `<script src>` loaded before the main script in `index.html`; the icon data lives in the shared global lexical scope.)
 
 Optional: write output to a file instead of stdout:
 ```bash

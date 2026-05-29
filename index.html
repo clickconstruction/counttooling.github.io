@@ -2163,6 +2163,16 @@
     const minX = Number(parts[0]) || 0, minY = Number(parts[1]) || 0, w = Number(parts[2]) || 24, h = Number(parts[3]) || 24;
     return { center: { x: minX + w / 2, y: minY + h / 2 }, vb: Math.max(w, h) };
   }
+  // Shared icon-render metadata helpers (single source of truth for viewBox/center rules).
+  function iconRenderVb(path) {
+    return getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
+  }
+  function iconRenderCenter(path) {
+    return getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
+  }
+  function iconViewBoxString(path) {
+    return getCustomIconViewBox(path) || (VB_384_512_PATHS.includes(path) ? '0 0 384 512' : FA_PATHS.includes(path) ? '0 0 512 512' : '0 0 640 640');
+  }
 
   function parseUploadedSvg(file) {
     return new Promise((resolve, reject) => {
@@ -4644,7 +4654,7 @@
   }
 
   function renderIconHtml(iconValue, color) {
-    const vb = getCustomIconViewBox(iconValue) || (VB_384_512_PATHS.includes(iconValue) ? '0 0 384 512' : FA_PATHS.includes(iconValue) ? '0 0 512 512' : '0 0 640 640');
+    const vb = iconViewBoxString(iconValue);
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
   }
 
@@ -5442,14 +5452,12 @@
     const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const s = cs.size ?? 22;
     const opacity = cs.opacity;
-    const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
-    const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
       const def = state.counters.find(c => c.id === typeId);
       const iconPath = def ? def.icon : CIRCLE_PATH;
       const color = def ? def.color : '#e8c547';
-      const vb = iconVb(iconPath);
-      const center = iconCenter(iconPath);
+      const vb = iconRenderVb(iconPath);
+      const center = iconRenderCenter(iconPath);
       markers.forEach((m, i) => {
         const p = toCanvas(m);
         if (cs.showRings) {
@@ -5889,14 +5897,12 @@
     const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const s = (cs.size || 22) * scale * markerScale;
     const opacity = cs.opacity;
-    const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
-    const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
       const def = state.counters.find(c => c.id === typeId);
       const iconPath = def ? def.icon : CIRCLE_PATH;
       const color = def ? def.color : '#e8c547';
-      const vb = iconVb(iconPath);
-      const center = iconCenter(iconPath);
+      const vb = iconRenderVb(iconPath);
+      const center = iconRenderCenter(iconPath);
       markers.forEach((m, i) => {
         const p = tc(m);
         if (cs.showRings) {
@@ -6067,8 +6073,6 @@
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     let rowY = tl.y + PAD;
-    const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
-    const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
     if (!hasRows) {
       ctx.fillStyle = '#666';
       ctx.fillText('No items', tl.x + PAD, rowY);
@@ -6076,8 +6080,8 @@
       return;
     }
     counterRows.forEach(r => {
-      const center = iconCenter(r.icon);
-      const vb = iconVb(r.icon);
+      const center = iconRenderCenter(r.icon);
+      const vb = iconRenderVb(r.icon);
       ctx.save();
       const ICON_OFFSET_X = 6.5 * effectiveScale;
       const ICON_OFFSET_Y = 4.5 * effectiveScale;
@@ -9650,7 +9654,7 @@
     renderPdf();
   };
 
-  const iconVbFor = (p) => getCustomIconViewBox(p) || (VB_384_512_PATHS.includes(p) ? '0 0 384 512' : FA_PATHS.includes(p) ? '0 0 512 512' : '0 0 640 640');
+  const iconVbFor = (p) => iconViewBoxString(p);
   document.getElementById('addCounter').onclick = () => {
     showCounterTab('create');
     showCounterIconTab('icon');

@@ -11,7 +11,7 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (recommended if you do not use the Supabase CLI): Each migration is a single file under `supabase/migrations/`. Use `list_migrations` to see what is already applied, then `apply_migration` with `name` set to the **filename without `.sql`** (e.g. `20260326230000_user_presence_and_activity`) and `query` set to the **entire file contents** of that SQL file—do not retype SQL by hand. Apply files in version order: numbered `001`–`037`, then any timestamped files (e.g. `20260326230000_user_presence_and_activity.sql`). If you previously applied 032/033 (user_artboards, now reverted), also apply 034. The Dashboard SQL Editor (Option B) is equivalent: paste the same file contents there.
+**Option A: Supabase MCP** (recommended if you do not use the Supabase CLI): Each migration is a single file under `supabase/migrations/`. Use `list_migrations` to see what is already applied, then `apply_migration` with `name` set to the **filename without `.sql`** (e.g. `20260326230000_user_presence_and_activity`) and `query` set to the **entire file contents** of that SQL file—do not retype SQL by hand. Apply files in version order: numbered `001`–`041`, then any timestamped files (e.g. `20260326230000_user_presence_and_activity.sql`). Note that `supabase/migrations/` mixes two naming schemes—see **Migration file naming** below. If you previously applied 032/033 (user_artboards, now reverted), also apply 034. The Dashboard SQL Editor (Option B) is equivalent: paste the same file contents there.
 
 **Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order (same SQL as in each file under `supabase/migrations/`):
 
@@ -94,9 +94,26 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **037_remove_drop_claim_migration_entry.sql** — Idempotent cleanup: removes orphan migration history row `drop_claim_dev_with_code` (20260306034155) if present. The original migration only ran `DROP FUNCTION IF EXISTS public.claim_dev_with_code(text);`. Safe to apply on fresh databases (no-op).
 
+**038_checkout_server_time.sql** — `check_out_project` and `refresh_checkout_activity` now return `server_now` (and `checked_out_at`) in their JSONB result so the client can compute its clock offset and do checkout-expiry math against the server clock instead of the (possibly skewed) browser clock. Preserves the admin permission path from 029.
+
+**039_projects_updated_at_trigger.sql** — Adds a `set_projects_updated_at()` BEFORE UPDATE trigger on `public.projects` so `updated_at` is set to `now()` server-side on every UPDATE. Makes the row mtime authoritative, eliminating multi-tab races caused by skewed client clocks when comparing IndexedDB takeoff backups against the cloud copy.
+
+**040_check_in_server_time.sql** — Extends `check_in_project` and `force_check_in_project` to return `server_now` (same pattern as 038), so every check-in roundtrip also refreshes the client's `serverClockOffsetMs`.
+
+**041_global_force_reload.sql** — Adds a `system_settings` key/value table (with RLS read for authenticated users) holding a `force_reload_after` timestamp, and an admin-only `admin_trigger_global_reload(reason)` RPC that bumps it. Adds `system_settings` to the `supabase_realtime` publication so open tabs see the change immediately. Clients compare the timestamp against a localStorage stamp on boot and reload (clearing the PDF IndexedDB cache + selected localStorage keys) when the server value is newer; open tabs surface a banner with a manual Reload button via the realtime subscription.
+
 **20260326230000_user_presence_and_activity.sql** — Adds `profiles.last_seen_at`; table `user_activity` (event log); RPCs `touch_presence()`, `log_user_event(text, uuid, jsonb)`, `list_user_activity_for_admin(int, uuid, timestamptz)`; extends `list_users_for_admin()` with `last_seen_at`. Used by in-app presence heartbeat and admin **Activity** on user rows.
 
 **20260327120000_user_activity_summary_for_admin.sql** — Adds RPC `list_user_activity_summary_for_admin()` returning per-user rows: `user_id`, `email`, `last_sign_in_at`, rolling event counts (`events_1d`, `events_7d`, `events_30d`) from `user_activity`. Used by the User Activity modal **Summary** tab (admin).
+
+### Migration file naming
+
+`supabase/migrations/` contains two naming schemes:
+
+- **Legacy numbered** — `NNN_name.sql` (e.g. `001_initial_schema.sql` … `041_global_force_reload.sql`). Many of the early ones also have a Supabase-CLI **timestamped** twin (e.g. `20260301171417_001_initial_schema.sql`) with the same content; these are duplicates of the numbered files.
+- **Timestamped** — `YYYYMMDDHHMMSS_name.sql`. The newest features that have no numbered twin are `20260326230000_user_presence_and_activity.sql` and `20260327120000_user_activity_summary_for_admin.sql`.
+
+On a **fresh** database, apply each distinct migration once, in version order (leading number, then timestamp); do not apply both a numbered file and its timestamped twin. On an **existing** database, use `list_migrations` (MCP) first to see what is already recorded and only apply what is missing. New migrations should be added via the Supabase MCP `apply_migration` tool.
 
 ## 3. Deploy Edge Functions
 
@@ -225,6 +242,6 @@ Tests skip gracefully when Supabase or dev auth is not configured.
 |-------|--------|
 | Phase 1: Auth + Project CRUD | Complete |
 | Phase 2: PDF storage | Complete |
-| Phase 3: Auto-save / sync | Not started |
+| Phase 3: Auto-save / sync | Complete (5s auto-save when dirty, localStorage + IndexedDB backups, sync hardening — see CHANGELOG.md) |
 | Phase 4: Sharing & collaboration | Complete (checkout/turn-in, 30min inactivity expiry, admin force turn-in) |
 | Phase 5: View links | Complete (email domain gate, access log, IndexedDB cache) |

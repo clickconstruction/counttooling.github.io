@@ -4644,7 +4644,7 @@
   }
 
   function renderIconHtml(iconValue, color) {
-    const vb = getCustomIconViewBox(iconValue) || (VB_384_512_PATHS.includes(iconValue) ? '0 0 384 512' : [LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH, BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH].includes(iconValue) ? '0 0 512 512' : '0 0 640 640');
+    const vb = getCustomIconViewBox(iconValue) || (VB_384_512_PATHS.includes(iconValue) ? '0 0 384 512' : FA_PATHS.includes(iconValue) ? '0 0 512 512' : '0 0 640 640');
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
   }
 
@@ -5439,8 +5439,6 @@
       ctx.fillRect(w * scale - 3, 8 * scale - 3, 6, 6);
       ctx.restore();
     });
-    const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
-    const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
     const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const s = cs.size ?? 22;
     const opacity = cs.opacity;
@@ -5888,8 +5886,6 @@
       lines.forEach((line, i) => { ctx.fillText(line, 0, i * lh); });
       ctx.restore();
     });
-    const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
-    const RING_PATH = 'M528 320C528 205.1 434.9 112 320 112C205.1 112 112 205.1 112 320C112 434.9 205.1 528 320 528C434.9 528 528 434.9 528 320zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z';
     const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const s = (cs.size || 22) * scale * markerScale;
     const opacity = cs.opacity;
@@ -6071,7 +6067,6 @@
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     let rowY = tl.y + PAD;
-    const FA_PATHS = [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH];
     const iconCenter = (path) => getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
     const iconVb = (path) => getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
     if (!hasRows) {
@@ -9655,7 +9650,7 @@
     renderPdf();
   };
 
-  const iconVbFor = (p) => getCustomIconViewBox(p) || (VB_384_512_PATHS.includes(p) ? '0 0 384 512' : [BATH_PATH, LAUNDRY_PATH, WATER_HEATER_PATH, LIGHT_PATH, PLUG_PATH, POWER_PATH, WALL_SCONCE_PATH].includes(p) ? '0 0 512 512' : '0 0 640 640');
+  const iconVbFor = (p) => getCustomIconViewBox(p) || (VB_384_512_PATHS.includes(p) ? '0 0 384 512' : FA_PATHS.includes(p) ? '0 0 512 512' : '0 0 640 640');
   document.getElementById('addCounter').onclick = () => {
     showCounterTab('create');
     showCounterIconTab('icon');

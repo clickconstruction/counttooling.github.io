@@ -154,3 +154,15 @@
     const n = parseFloat(s);
     return (n > 0 && !isNaN(n)) ? n : null;
   }
+
+  // Node test harness only: in a classic browser <script> `module` is undefined,
+  // so this is a no-op there and the declarations above stay plain globals.
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      ptDist, snapToHorizontalOrVertical, polylineDistance, polygonArea, distToSegment,
+      getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
+      rotatePoint90CW, pointInRect, rectsOverlap,
+      getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
+      formatLineLengthRealSum, parseRealWorldLength, parseFraction
+    };
+  }

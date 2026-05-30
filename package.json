@@ -5,6 +5,7 @@
   "scripts": {
     "build:icons": "node scripts/build-custom-icons.js",
     "test": "playwright test",
+    "test:unit": "node --test",
     "precloudtest": "node scripts/generate-config.js",
     "test:cloud": "npm run precloudtest && playwright test load-project-delete.spec.js load-project-empty-pdf.spec.js",
     "test:delete-page": "playwright test delete-page.spec.js",

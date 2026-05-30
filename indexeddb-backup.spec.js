@@ -13,12 +13,9 @@ async function loadProjectWithPdfAndAddCounter(page) {
   await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());
   await page.waitForSelector('#settingsModal.visible', { timeout: 5000 });
 
-  const advancedSection = page.locator('#settingsAdvancedSection');
-  if (await advancedSection.evaluate((el) => el.classList.contains('collapsed'))) {
-    await page.locator('#settingsAdvancedHeader').click();
-    await page.waitForTimeout(200);
-  }
-  await page.locator('#settingsLoadTestPdf').click();
+  await page.locator('#settingsAdvancedBtn').click();
+  await page.waitForSelector('#settingsAdvancedModal.visible', { timeout: 5000 });
+  await page.locator('#advancedLoadTestPdf').click();
   await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
   await page.locator('#preparePdfSaveAndOpen').click();
   await page.waitForSelector('body.has-pdf', { timeout: 15000 });

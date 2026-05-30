@@ -19,9 +19,9 @@ test.describe('PDF page delete', () => {
 
     expect(pageItemsBefore).toBeGreaterThanOrEqual(2);
 
-    // Click edit (pen) on first page to enter rename mode
+    // Click the page-number badge on the first page to enter rename/delete mode
     const firstPageRow = page.locator('#pagesList .sidebar-item').first();
-    await firstPageRow.locator('.edit-btn').click();
+    await firstPageRow.locator('.page-num-badge-editable').click();
 
     // Rename input and delete button should appear
     const deleteBtn = page.locator('.page-delete-btn');

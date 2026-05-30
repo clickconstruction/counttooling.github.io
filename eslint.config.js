@@ -102,6 +102,7 @@ module.exports = [
       },
     },
     rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_' }],
       eqeqeq: ['warn', 'always', { null: 'ignore' }],
     },

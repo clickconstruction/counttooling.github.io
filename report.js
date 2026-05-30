@@ -432,9 +432,16 @@
     w.focus();
   }
 
-  window.escapeHtml = escapeHtml;
-  window.buildReportHtml = buildReportHtml;
-  window.printReport = printReport;
-  window.getPipeToolingSummary = getPipeToolingSummary;
-  window.getEmailTextSummary = getEmailTextSummary;
+  if (typeof window !== 'undefined') {
+    window.escapeHtml = escapeHtml;
+    window.buildReportHtml = buildReportHtml;
+    window.printReport = printReport;
+    window.getPipeToolingSummary = getPipeToolingSummary;
+    window.getEmailTextSummary = getEmailTextSummary;
+  }
+
+  // Node test harness only: inert in the browser (where `module` is undefined).
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { escapeHtml, pickScaleForLineType };
+  }
 })();

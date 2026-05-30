@@ -56,12 +56,16 @@ Implementation history (e.g. the sync-hardening work) lives in
 | [counter-settings.spec.js](counter-settings.spec.js) | Playwright regression for pilot #10 — uploads `test-2pages.pdf`, asserts `window.App.openCounterSettingsModal` + the 2 publish-only deps (`renderAnnotations`/`renderCountersList`) are functions, opens via the registry, sets `#counterSize` to 40 (dispatching `input`, asserting `#counterSizeVal` reads `40` and `state.counterSettings.size === 40`), clicks `#counterShowRingsBtn` and asserts `state.counterSettings.showRings` flipped + `#counterRingSection` display follows, clicks `#counterSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test counter-settings.spec.js` |
 | [features/line-type-settings.js](features/line-type-settings.js) | Eleventh feature-file split (`window.App` registry pilot #11) — the Line Type **settings** modal, the **final settings-modal unit** drained from the old grab-bag (page #8, counter #10, line-type here). `openLineTypeSettingsModal` (incl. the drop-icon grid build from `DROP_ICON_STYLES`) + the value handlers (`lineTypeSize`/`lineTypeOpacity`/`lineTypeDropXSize`/`lineTypeOrientLength(Btn)`/`lineTypeParallelEnds`/`lineTypeLengthLabel`/`lineTypeSnapToHV(Btn)`/`lineTypeShowOnlyOnPage(Btn)`) + `lineTypeSettingsClose` + `lineTypeSettingsReorder`, plus the `#lineTypesSectionTitle` opener. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openLineTypeSettingsModal`, binds everything at load. Two new publish-only deps — `renderLineTypesList`, `DROP_ICON_STYLES` (stay in app.js, read via `App.*`); `renderAnnotations` (from the counter pilot) + `state`/`showModal`/`hideModal`/`updateUI`/`showToast` were already on `App`. Scope is the settings modal only — the header snap button (`#lineTypeSnapToHVHeaderBtn`), the sidebar inline show-only buttons, the shared `#sidebarReorderFinish`, the J-hotkey snap toggle, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#lineTypesCollapseIcon')` guard; the 5 right-click `lineTypesSectionTitle.click()` callers (Quick Line / Polyline) keep working via DOM dispatch. **Renamed** the now-stale `// SECTION: Line type, counter & page settings modal handlers` marker → `// SECTION: Choose/Create Line Type, line color & sidebar handlers` (TOC stays 49) |
 | [line-type-settings.spec.js](line-type-settings.spec.js) | Playwright regression for pilot #11 — uploads `test-2pages.pdf`, asserts `window.App.openLineTypeSettingsModal` + `renderLineTypesList` are functions and `Array.isArray(App.DROP_ICON_STYLES)`, opens via the registry, sets `#lineTypeSize` to 8 (dispatching `input`, asserting `#lineTypeSizeVal` reads `8` and `state.lineTypeSettings.lineSize === 8`), clicks `#lineTypeOrientLengthBtn` and asserts `state.lineTypeSettings.orientLengthWithLine` flipped, asserts `#lineTypeDropIconGrid .icon-cell` count === `DROP_ICON_STYLES.length` and clicking a non-selected cell updates `state.lineTypeSettings.dropIconStyle`, clicks `#lineTypeSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test line-type-settings.spec.js` |
-| [features/choose-create-line-type.js](features/choose-create-line-type.js) | Twelfth feature-file split (`window.App` registry pilot #12) — the **Choose/Create Line Type** modal (`#chooseLineTypeModal`), the tabbed picker opened by the Quick Line button / `L` hotkey. `showLineTypeTab` (Choose/Create/Quick panels) + `populateChooseLineTypeList` (searchable existing-type list) + `showChooseLineTypeModal`, plus the `.line-type-tab` clicks, `#lineTypeModalSearchInput`, `#chooseLineTypeCancel`, `#createLineTypeCancel`, and `#createLineTypeCreate` handlers. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showChooseLineTypeModal` + `App.showLineTypeTab`, binds everything at load. **First split to share *constants* via the registry** — three new publish-only deps `TOOL`/`COLORS`/`populateQuickLineModal` (stay in app.js, read via `App.*`); `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI` were already on `App`. Scope is this modal only — the **line color modal** (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`), the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay in app.js. The three call sites — `#quickLine.onclick`, `#plumLineBtn.onclick`, and the Shift+L hotkey — reach it via `App.showChooseLineTypeModal()` / `App.showLineTypeTab('quick')`. **Renamed** the section marker `// SECTION: Choose/Create Line Type, line color & sidebar handlers` → `// SECTION: Line color & sidebar handlers` (TOC stays 49) |
+| [features/choose-create-line-type.js](features/choose-create-line-type.js) | Twelfth feature-file split (`window.App` registry pilot #12) — the **Choose/Create Line Type** modal (`#chooseLineTypeModal`), the tabbed picker opened by the Quick Line button / `L` hotkey. `showLineTypeTab` (Choose/Create/Quick panels) + `populateChooseLineTypeList` (searchable existing-type list) + `showChooseLineTypeModal`, plus the `.line-type-tab` clicks, `#lineTypeModalSearchInput`, `#chooseLineTypeCancel`, `#createLineTypeCancel`, and `#createLineTypeCreate` handlers. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showChooseLineTypeModal` + `App.showLineTypeTab`, binds everything at load. **First split to share *constants* via the registry** — two new publish-only deps `TOOL`/`COLORS` (it also consumes `App.populateQuickLineModal`, which since pilot #16 is registered by [features/quick-line.js](features/quick-line.js), not app.js); `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI` were already on `App`. Scope is this modal only — the **line color modal** (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`), the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay in app.js. The three call sites — `#quickLine.onclick`, `#plumLineBtn.onclick`, and the Shift+L hotkey — reach it via `App.showChooseLineTypeModal()` / `App.showLineTypeTab('quick')`. **Renamed** the section marker `// SECTION: Choose/Create Line Type, line color & sidebar handlers` → `// SECTION: Line color & sidebar handlers` (TOC stays 49) |
 | [choose-create-line-type.spec.js](choose-create-line-type.spec.js) | Playwright regression for pilot #12 — uploads `test-2pages.pdf`, asserts `window.App.showChooseLineTypeModal` + `showLineTypeTab` are functions, opens via the registry, switches to the Create tab and creates a line type (asserts `state.lineTypes` grew by 1, `state.activeLineTypeId` points at the new type, and the modal closed), reopens and exercises the Choose-list search + select (asserts the modal closes and `state.activeLineTypeId` matches the picked type); asserts no console / page errors; `npx playwright test choose-create-line-type.spec.js` |
 | [features/scale.js](features/scale.js) | Thirteenth feature-file split (`window.App` registry pilot #13) — the **Scale modal** (`#scaleModal`), opened by the Set Scale buttons / `S` hotkey and reused for per-page scale, scale-zone create, and scale-zone edit. `updateScalePlaceholder` + `openScaleModal` + `resetScaleModalZoneMode` + `applyScaleObjectToZoneOrPage` + `showScaleTab`, plus the `#setScale`/`#setScaleSidebar` openers and the `#scaleModalTabs`/`#scaleUnit`/`#scaleSelectOnPdf`/`#scalePresetsCancel`/`#scaleCustomApply`/`#scaleCancel`/`#scaleSet` handlers (which had lived down in the Counter-modal region). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openScaleModal` + `App.resetScaleModalZoneMode`, binds everything at load. **First split to route geometry.js globals + `SCALE_*` constants through the registry** — six new publish-only deps `SCALE_MODES`/`SCALE_PRESETS`/`ptDist`/`parseFraction`/`parseRealWorldLength`/`getActiveAnnotations` (stay in app.js, read via `App.*` so the `features/*.js` group's browser-only globals don't trip `no-undef`); `state`/`showModal`/`hideModal`/`updateUI`/`renderPdf`/`pushUndoSnapshot`/`markProjectDirty`/`uid`/`ensureActiveCanvas`/`showToast`/`TOOL` were already on `App`. The modal doubles as the scale-zone create/edit dialog (`scaleModalApplyTarget === 'zone'`), so `applyScaleObjectToZoneOrPage` moves with it; the four `openScaleModal` callers (canvas two-point finish + scale-zone context-menu Edit) and the Escape-key `resetScaleModalZoneMode` branch keep their zone-entry state/DOM setup inline and reach the modal via `App.*`. The toolbar tool buttons (`#measureBtn`/`#moveBtn`/`#quickLine`/`#undoBtn`/`#redoBtn`/`#polylineBtn`/`#highlightBtn`/`#multiplyZoneBtn`/`#scaleZoneBtn`/`#deleteZoneBtn`) that shared the grab-bag stay in app.js. **Renamed** the section marker `// SECTION: Scale modal` → `// SECTION: Toolbar tool buttons` (TOC stays 49) |
 | [scale.spec.js](scale.spec.js) | Playwright regression for pilot #13 — uploads `test-2pages.pdf`, asserts `window.App.openScaleModal` + `resetScaleModalZoneMode` are functions and `Array.isArray(App.SCALE_PRESETS)`, opens via the registry, clicks a preset and asserts `state.pages[currentPage].scale` was set + the modal closed, reopens and exercises `#scaleCustomApply` with a valid fraction + feet asserting the computed `pixelsPerUnit` + closed modal; asserts no console / page errors; `npx playwright test scale.spec.js` |
 | [features/groups.js](features/groups.js) | Fourteenth feature-file split (`window.App` registry pilot #14) and **first two-modal move** — the group create/edit modal (`#groupModal`) and the assign-item-to-group modal (`#groupAssignModal`). `openGroupModal` + `refreshGroupAssignButtons` + `openGroupAssignModal`, the three group-modal state flags (`pendingGroupEdit`/`pendingGroupAssignTarget`/`openedGroupModalFromAssign`, now private `let`s in the IIFE), and the `#addGroup` opener + `#groupModal*` / `#groupAssign*` handlers. Its own IIFE loaded **after** [app.js](app.js); registers `App.openGroupModal` + `App.openGroupAssignModal` + `App.onGroupModalHidden`. One new publish-only dep `App.deleteGroup` (the heavier group-deletion mutation, which clears the group off every annotation, stays in app.js); the rest (`state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`) were already on `App`. **First core-function → feature callback in the codebase**: the `hideModal('groupModal')` reset hook in app.js now calls `App.onGroupModalHidden()` instead of mutating the now-private `openedGroupModalFromAssign` directly. The `#showGroupColors` sidebar toggle stays in app.js; the two external callers (the groups-list Edit button in the render code, and the canvas right-click "Assign to Group") reach the modals via `App.*`. **Removed** the emptied `// SECTION: Groups` marker (TOC 49 → 48) |
 | [groups.spec.js](groups.spec.js) | Playwright regression for pilot #14 — uploads `test-2pages.pdf`, asserts `window.App.openGroupModal` + `openGroupAssignModal` + `onGroupModalHidden` are functions, creates a group via `#addGroup` → name/color → `#groupModalDone` (asserts `state.groups` grew + `state.activeGroupId` points at it), edits via `App.openGroupModal(group)`, and runs the assign flow (`App.openGroupAssignModal(item)` → pick a group → `#groupAssignDone` sets `item.group`); asserts no console / page errors; `npx playwright test groups.spec.js` |
+| [features/grid.js](features/grid.js) | Fifteenth feature-file split (`window.App` registry pilot #15) — the Grid Settings modal (`#gridSettingsModal`) + the grid-overlay toggle, carved out of the `// SECTION: Counter modal` grab-bag. `toggleGridOverlay` + the `gridBtn`/`gridBtnSidebar` bindings + the `#gridSettingsCancel`/`#gridSetOriginOnPage`/`#gridClearOrigin`/`.gridSpacingPreset`/`.grid-line-style-opt`/`#gridSettingsApply` handlers. Its own IIFE loaded **after** [app.js](app.js); registers `App.toggleGridOverlay` (only for the spec/symmetry — nothing in app.js calls it; the Grid buttons are bound inside the feature, and there is no grid hotkey). Two new publish-only deps `App.getPageScale` + `App.showSetScaleFirstToast`; the rest (`state`/`markProjectDirty`/`renderPdf`/`updateUI`/`showModal`/`hideModal`/`showToast`/`parseRealWorldLength`) were already on `App`. The `drawGrid` renderer, the snap-to-grid branch, the render-code grid-button active/disabled toggling, and `resetGridOrigin` (a state reset used by the prepare-PDF / page-setup flows, not the modal) all stay in app.js. **No registry callback needed** for the "set origin on page" handoff (contrast Groups): the feature sets the shared `state.gridOriginPickMode` flag and the app.js canvas handler reads it, writes the origin, flips it false, and reopens the modal — because the flag lives on `state`, not a closure `let`. No `// SECTION:` marker change (the grab-bag keeps the counter modal + sidebar buttons + legend + `resetGridOrigin`), so TOC stays 48 |
+| [grid.spec.js](grid.spec.js) | Playwright regression for pilot #15 — uploads `test-2pages.pdf`, asserts `window.App.toggleGridOverlay` is a function, sets a page scale via `state.pages[0].scale`, opens the modal with `App.toggleGridOverlay()`, sets `#gridSpacingValue` + `#gridSettingsApply` and asserts `state.gridSettings.spacing` + `state.showGridOverlay === true` + the modal closed; also asserts that with no page scale the open path shows the "Set Scale first" toast and does NOT open the modal; asserts no console / page errors; `npx playwright test grid.spec.js` |
+| [features/quick-line.js](features/quick-line.js) | Sixteenth feature-file split (`window.App` registry pilot #16) — the Quick Line modal (the "quick" tab body of `#chooseLineTypeModal`): `populateQuickLineModal` + `updateQuickLineNamePreview` + `removeLineModifier`, plus the `#plumLineBtn` opener and the `#quickLineSize`/`#quickLineMaterial`/`#quickLineRemoveSize`/`#quickLineRemoveMaterial`/`#quickLineAddSize`/`#quickLineAddMaterial`/`#quickLineCancel`/`#quickLineAdd` handlers. Its own IIFE loaded **after** [app.js](app.js). **Takes over publishing `App.populateQuickLineModal`** — that publish moved here from app.js, and [features/choose-create-line-type.js](features/choose-create-line-type.js) keeps consuming it via `App.*` at call time (load order between the two feature files is irrelevant: registration at load, the call on user action). Two new publish-only deps `App.getLineModifiers` + `App.saveLineModifiers` (the line-modifier persistence stays in app.js); the rest (`state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI`/`showLineColorModal`/`showLineTypeTab`) were already on `App`. The separate "Add Line Type" modal (`#addLineType`/`#lineTypeModal`) stays in app.js. **Renamed** the now-stale `// SECTION: Quick Line modal` marker → `// SECTION: Add Line Type modal` (rename, not removal, TOC stays 48) |
+| [quick-line.spec.js](quick-line.spec.js) | Playwright regression for pilot #16 — uploads `test-2pages.pdf`, asserts `window.App.populateQuickLineModal` is a function, opens the quick tab (`#plumLineBtn`), asserts the `#quickLineSize`/`#quickLineMaterial` selects are populated, then `#quickLineAdd` creates a line type (asserts `state.lineTypes` grew + `state.activeLineTypeId` points at it + the modal closed); asserts no console / page errors. The cross-file handoff is also guarded by [choose-create-line-type.spec.js](choose-create-line-type.spec.js) (which exercises `showLineTypeTab('quick') → App.populateQuickLineModal()`); `npx playwright test quick-line.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
@@ -75,7 +79,7 @@ feature-file splits (`features/canvas-repair.js`, `features/note.js`,
 `features/multiply-zone-settings.js`, `features/export-pdfs.js`,
 `features/legend-settings.js`, `features/page-settings.js`,
 `features/counter-settings.js`, `features/line-type-settings.js`,
-`features/choose-create-line-type.js`, `features/scale.js`, `features/groups.js`), followed by `report.js`. The CSS, icon data, pure icon-render rules, pure geometry/parse
+`features/choose-create-line-type.js`, `features/scale.js`, `features/groups.js`, `features/grid.js`, `features/quick-line.js`), followed by `report.js`. The CSS, icon data, pure icon-render rules, pure geometry/parse
 primitives, pure constant literals, the IndexedDB storage layer, pure
 date/time/text formatters, pure save/sync helpers, and finally the main IIFE
 itself were lifted out of `index.html` into `styles.css` / `icons.js` /
@@ -226,7 +230,23 @@ app.js now calls `App.onGroupModalHidden()` to clear the now-private
 `openedGroupModalFromAssign` flag (one new publish-only dep, `App.deleteGroup`,
 stays in app.js). It **emptied and removed** the `// SECTION: Groups` marker
 (removal, not rename), dropping the section count 49 → 48 — the second pilot to
-reduce the TOC (after Counter settings #10's 50 → 49).
+reduce the TOC (after Counter settings #10's 50 → 49). Grid (pilot #15) carved the
+self-contained Grid Settings modal (`toggleGridOverlay` + the `#gridSettings*`
+handlers) out of the `// SECTION: Counter modal` grab-bag into
+[features/grid.js](features/grid.js) — the **cleanest split to date**: no external
+callers (the Grid buttons bind inside the feature, no hotkey), and the
+"set origin on page" handoff needs **no callback** because it rides the shared
+`state.gridOriginPickMode` flag rather than a closure `let`. Two new publish-only
+deps (`getPageScale`/`showSetScaleFirstToast`); `drawGrid` and `resetGridOrigin`
+stay in app.js, and the grab-bag keeps enough content that no marker changed (TOC
+stays 48). Quick Line (pilot #16) extracted the "quick" tab body of
+`#chooseLineTypeModal` into [features/quick-line.js](features/quick-line.js) — the
+**first split to take over publishing a registry entry from another file**:
+`App.populateQuickLineModal` (consumed by choose-create-line-type.js) moved from
+app.js's registry tail to quick-line.js, which now registers it. Two new
+publish-only deps (`getLineModifiers`/`saveLineModifiers`); the separate "Add Line
+Type" modal stays, so the `// SECTION: Quick Line modal` marker was **renamed**
+`// SECTION: Add Line Type modal` (rename, not removal, TOC stays 48).
 
 ## Section index (grep `// SECTION:`)
 
@@ -255,36 +275,36 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L5740 - Prepare PDF modal
 - L6353 - Toolbar tool buttons
 - L6460 - Counter modal
-- L6837 - Quick Plumbing / Quick Count modals
-- L7280 - Quick Line modal
-- L7448 - Line color & sidebar handlers
-- L7592 - Polyline modal & drawing
-- L7623 - Zoom bar & page navigation
-- L7662 - Canvas layers
-- L7865 - PDF download helpers & PipeTooling menu
-- L7940 - Copy summaries (PipeTooling / Email)
-- L8073 - PDF bundling (report / notes / highlights)
-- L8465 - Download current page
-- L8713 - Zone & page-action modal handlers
-- L8823 - User activity time formatting
-- L8981 - User Activity modal (admin)
-- L9049 - User Settings & Manage Users
-- L9221 - Manage Projects modal
-  - L9381 - Project Settings checkout & Save Status bell
-  - L9570 - Checkout expired recovery
-  - L9824 - Turn In
-  - L10326 - Share project & view links
-  - L10545 - Cloud project hydrate / copy / fork
-  - L10732 - Load Project modal
-- L12148 - Canvas Event Handlers
-- L12436 - Event Binding
-- L13189 - Manual save to cloud
-- L13638 - Auto-save
-- L13935 - Local backup (IndexedDB takeoff state)
-- L14150 - Checkout keep-alive
-- L14195 - App feature registry
-- L14257 - View-only mode
-- L14410 - Init / boot
+- L6715 - Quick Plumbing / Quick Count modals
+- L7158 - Add Line Type modal
+- L7230 - Line color & sidebar handlers
+- L7374 - Polyline modal & drawing
+- L7405 - Zoom bar & page navigation
+- L7444 - Canvas layers
+- L7647 - PDF download helpers & PipeTooling menu
+- L7722 - Copy summaries (PipeTooling / Email)
+- L7855 - PDF bundling (report / notes / highlights)
+- L8247 - Download current page
+- L8495 - Zone & page-action modal handlers
+- L8605 - User activity time formatting
+- L8763 - User Activity modal (admin)
+- L8831 - User Settings & Manage Users
+- L9003 - Manage Projects modal
+  - L9163 - Project Settings checkout & Save Status bell
+  - L9352 - Checkout expired recovery
+  - L9606 - Turn In
+  - L10108 - Share project & view links
+  - L10327 - Cloud project hydrate / copy / fork
+  - L10514 - Load Project modal
+- L11930 - Canvas Event Handlers
+- L12218 - Event Binding
+- L12971 - Manual save to cloud
+- L13420 - Auto-save
+- L13717 - Local backup (IndexedDB takeoff state)
+- L13932 - Checkout keep-alive
+- L13977 - App feature registry
+- L14042 - View-only mode
+- L14195 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -307,7 +327,7 @@ Annotated, in rough order:
   - Scale modal — `openScaleModal`, `applyScaleObjectToZoneOrPage`, `resetScaleModalZoneMode`
   - Counter modal — `showCounterTab`, `populateCounterChooseList`
   - Quick Plumbing / Quick Count modals — `populatePlumModal`, `populateCounterQuickCountPanel`
-  - Quick Line modal — `populateQuickLineModal`, line modifiers
+  - Quick Line modal — `populateQuickLineModal`, line modifiers (features/quick-line.js)
   - Groups — `openGroupAssignModal`, group color helpers
   - Multiply Zone settings — `openMultiplyZoneSettingsModal`
   - Zoom modal — `showZoomModal`

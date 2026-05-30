@@ -23,7 +23,8 @@
   `features/export-pdfs.js`, `features/legend-settings.js`,
   `features/page-settings.js`, `features/counter-settings.js`,
   `features/line-type-settings.js`, `features/choose-create-line-type.js`,
-  `features/scale.js`, `features/groups.js`), then
+  `features/scale.js`, `features/groups.js`, `features/grid.js`,
+  `features/quick-line.js`), then
   `report.js`),
   [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
   extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
@@ -163,12 +164,14 @@
   `populateChooseLineTypeList` + `showChooseLineTypeModal`; registers
   `App.showChooseLineTypeModal`/`App.showLineTypeTab` and binds the `.line-type-tab`
   clicks + `#lineTypeModalSearchInput` + `#chooseLineTypeCancel`/`#createLineTypeCancel`
-  + `#createLineTypeCreate` at load; three new publish-only deps `TOOL`/`COLORS`/
-  `populateQuickLineModal`, reuses `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/
+  + `#createLineTypeCreate` at load; two new publish-only deps `TOOL`/`COLORS`
+  (it also consumes `App.populateQuickLineModal`, which now comes from
+  `features/quick-line.js` — pilot #16 — not app.js), reuses
+  `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/
   `showModal`/`hideModal`/`updateUI`; the line color modal
-  (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`),
-  the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay
-  in app.js; the three call sites (`#quickLine.onclick`, `#plumLineBtn.onclick`, the
+  (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`)
+  stays in app.js; the three call sites (`#quickLine.onclick`, `#plumLineBtn.onclick`
+  — now in quick-line.js, the
   Shift+L hotkey) reach it via `App.*`; renamed the section marker to
   `// SECTION: Line color & sidebar handlers`),
   [features/scale.js](features/scale.js) (the thirteenth registry split and first
@@ -207,7 +210,40 @@
   stays in app.js; the two external callers (the groups-list Edit button in the
   render code and the canvas right-click "Assign to Group") reach the modals via
   `App.*`; the emptied `// SECTION: Groups` marker was removed, dropping the
-  section count to 48), and
+  section count to 48),
+  [features/grid.js](features/grid.js) (the fifteenth registry split — the Grid
+  Settings modal (`#gridSettingsModal`) + the grid-overlay toggle, carved out of
+  the `// SECTION: Counter modal` grab-bag: `toggleGridOverlay` + the
+  `gridBtn`/`gridBtnSidebar` bindings + the `#gridSettings*`/`#gridSetOriginOnPage`/
+  `#gridClearOrigin`/spacing-preset/line-style handlers; registers
+  `App.toggleGridOverlay` (only for the spec/symmetry — nothing in app.js calls it,
+  the Grid buttons are bound inside the feature). Two new publish-only deps
+  `App.getPageScale`/`App.showSetScaleFirstToast`; reuses
+  `state`/`markProjectDirty`/`renderPdf`/`updateUI`/`showModal`/`hideModal`/
+  `showToast`/`parseRealWorldLength`. The `drawGrid` renderer, the snap-to-grid
+  branch, the render-code grid-button active/disabled toggling, and
+  `resetGridOrigin` (used by the prepare-PDF / page-setup flows, not the modal) all
+  stay in app.js. The "set origin on page" handoff goes through the shared
+  `state.gridOriginPickMode` flag — the feature sets it true and the app.js canvas
+  handler reads it, writes the origin, flips it false, and reopens the modal — so
+  **no registry callback is needed** (unlike the Groups
+  `openedGroupModalFromAssign` case), because the flag lives on `state`, not a
+  closure `let`. No marker change (the grab-bag keeps the counter modal + sidebar
+  buttons + legend + `resetGridOrigin`), so the count stays 48),
+  [features/quick-line.js](features/quick-line.js) (the sixteenth registry split —
+  the Quick Line modal (the "quick" tab body of `#chooseLineTypeModal`):
+  `populateQuickLineModal` + `updateQuickLineNamePreview` + `removeLineModifier` +
+  the `#plumLineBtn` opener and the `#quickLine*` handlers. **Takes over publishing
+  `App.populateQuickLineModal`** — that publish moved here from app.js, and
+  `features/choose-create-line-type.js` keeps consuming it via `App.*` at call time
+  (load order between the two feature files does not matter). Two new publish-only
+  deps `App.getLineModifiers`/`App.saveLineModifiers` (the line-modifier
+  persistence stays in app.js); reuses
+  `state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/
+  `hideModal`/`updateUI`/`showLineColorModal`/`showLineTypeTab`. The separate
+  "Add Line Type" modal (`#addLineType`/`#lineTypeModal`) stays in app.js; renamed
+  the now-stale `// SECTION: Quick Line modal` marker to
+  `// SECTION: Add Line Type modal` (rename, not removal, count stays 48)), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
@@ -324,8 +360,11 @@ Rules to follow when adding/editing a feature file:
   `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`,
   `logUserEvent`, `renderPagesList`, `renderAnnotations`, `renderCountersList`,
   `renderLineTypesList`, `DROP_ICON_STYLES`, `TOOL`, `COLORS`,
-  `populateQuickLineModal`, `SCALE_MODES`, `SCALE_PRESETS`, `ptDist`,
-  `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`, `deleteGroup`).
+  `SCALE_MODES`, `SCALE_PRESETS`, `ptDist`,
+  `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`, `deleteGroup`,
+  `getPageScale`, `showSetScaleFirstToast`, `getLineModifiers`,
+  `saveLineModifiers`). (`populateQuickLineModal` is no longer published here — it
+  moved to `features/quick-line.js`, which registers it.)
   Some are
   "publish-only" — the function stays defined in app.js (used widely there) and
   is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
@@ -335,11 +374,13 @@ Rules to follow when adding/editing a feature file:
   `addHighlightsToPdf`/`addNotesToPdf`/`hasAnyHighlights`/`hasAnyNotes`/
   `sanitizeForFilename`/`logUserEvent`, Page settings's `renderPagesList`,
   Counter settings's `renderAnnotations`/`renderCountersList`, Line type
-  settings's `renderLineTypesList`/`DROP_ICON_STYLES`, and Choose/Create Line
-  Type's `populateQuickLineModal` plus the two constants `TOOL`/`COLORS`, and
+  settings's `renderLineTypesList`/`DROP_ICON_STYLES`, Choose/Create Line
+  Type's two constants `TOOL`/`COLORS`, Quick Line's
+  `getLineModifiers`/`saveLineModifiers`, and
   Scale's `getActiveAnnotations`, the geometry globals
   `ptDist`/`parseFraction`/`parseRealWorldLength`, plus the constants
-  `SCALE_MODES`/`SCALE_PRESETS`, and Groups' `deleteGroup`);
+  `SCALE_MODES`/`SCALE_PRESETS`, Groups' `deleteGroup`, and Grid's
+  `getPageScale`/`showSetScaleFirstToast`);
   only the feature's own functions move out. Add any new dep a feature needs here. Leave the
   existing `window.*` report.js exports alone.
 - `features/<name>.js` is its own IIFE that does

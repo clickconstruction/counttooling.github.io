@@ -55,6 +55,16 @@ async function loadProjectWithPdfAndAddCounter(page) {
   await canvasWrapper.click({ position: { x: 200, y: 200 } });
   await page.waitForTimeout(300);
 
+  // The dev "Load test PDF" fixture runs before Save, so a stale anonymous
+  // 'local' takeoff backup (0 counters) gets written under the 'local' key.
+  // Boot checks 'local' first and would restore that instead of this cloud
+  // project, so clear it here to exercise the project's own IDB backup path.
+  await page.evaluate(async () => {
+    if (window.__takeoffBackupDeleteForTest) {
+      try { await window.__takeoffBackupDeleteForTest('local'); } catch (_) {}
+    }
+  });
+
   return true;
 }
 

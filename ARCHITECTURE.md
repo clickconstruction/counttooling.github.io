@@ -26,8 +26,8 @@ Implementation history (e.g. the sync-hardening work) lives in
 | [constants.test.js](constants.test.js) | Node `node:test` invariant tests for [constants.js](constants.js) (backoff arrays increasing & positive, timings/caps > 0, unique enum ids, valid hex colors, positive scale presets); run with `npm run test:unit` |
 | [report.js](report.js) | Loads after app.js. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals exposed by app.js via `window.*`. Its `window.*` attachment is guarded by `typeof window` and it has a guarded CommonJS export footer (`escapeHtml`, `pickScaleForLineType`) — both inert in the browser — so those pure helpers can be `require()`d by [report.test.js](report.test.js) |
 | [report.test.js](report.test.js) | Node `node:test` unit tests for [report.js](report.js)'s pure helpers — `escapeHtml` (null/undefined → `''`, entity escaping, `&`-first ordering, `String()` coercion) and `pickScaleForLineType` (preferred-unit selection via a `global.state` stub); run with `npm run test:unit` |
-| [save-utils.js](save-utils.js) | Pure helpers for the save/sync layer — `isTransientSaveError` (which save/turn-in errors merit one retry) and `getProjectCounts` (counter/line totals over a project `data` object, both legacy `annotations` and `canvases` shapes); classic `<script src>` loaded before the IIFE; no `state`/DOM dependency; guarded CommonJS export footer so the helpers can be `require()`d by [save-utils.test.js](save-utils.test.js) |
-| [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, plus `getProjectCounts` shape/sum cases); run with `npm run test:unit` |
+| [save-utils.js](save-utils.js) | Pure helpers for the save/sync layer — `isTransientSaveError` (which save/turn-in errors merit one retry), `getProjectCounts` (counter/line totals over a project `data` object, both legacy `annotations` and `canvases` shapes), plus the pure-mined set: `serializeSaveError` (the **deduped** error serializer that replaced app.js's near-identical `serializeSaveErrorForEvent` + `saveDebugSerializeError`), `formatSaveStatusErrDetail`, `backoffDelayMs` (auto-save backoff level for a failure count), `computeClockOffsetMs` (server/local skew from an RPC `server_now`), and `percentile` (p95 of latency samples). Classic `<script src>` loaded before the IIFE; no `state`/DOM dependency — app.js keeps the state-coupled callers (`updateServerClockFromRpc`, the backoff line, `recordAutosaveLatency`) that delegate to these. Guarded CommonJS export footer so the helpers can be `require()`d by [save-utils.test.js](save-utils.test.js) |
+| [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, `getProjectCounts` shape/sum cases, plus the pure-mined helpers: `serializeSaveError` fields/null/`String(e)` fallback, `formatSaveStatusErrDetail`, `backoffDelayMs` clamp, `computeClockOffsetMs` string/numeric/null, and `percentile` p95/empty); run with `npm run test:unit` |
 | [idb.js](idb.js) | IndexedDB storage layer extracted from app.js — the single `openPdfCacheDb` (one DB `clickcount-pdf-cache` v5, 8 stores) plus the context-free accessors `viewCache*`, `pdfCache*` (LRU), `takeoffBackupDelete`, `readSaveLogsSnapshots`, and the pure primitives `idbTakeoffBackupGetRaw`, `idbTakeoffBackupPut` (eviction + stale-skip, returns a status), `idbPutSaveLogsSnapshot` (put + prune), `idbCustomIconsGet`/`idbCustomIconsPut`. Classic `<script src>` loaded after [constants.js](constants.js) (whose store-name/cap globals it reads by bare name) and before [app.js](app.js). Depends only on constants + `indexedDB` + args — no `state`/loggers; the state/logging concerns stay in app.js as same-named thin wrappers (`takeoffBackupGet`, `takeoffBackupPut`, `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`). Guarded CommonJS export footer so the primitives can be `require()`d by [idb.test.js](idb.test.js) |
 | [idb.test.js](idb.test.js) | Node `node:test` unit tests for [idb.js](idb.js) using `fake-indexeddb` (a fresh `IDBFactory` per test) — pdf-cache hash-mismatch + byte-cap LRU eviction, takeoff-backup round-trip + stale-skip + delete, custom-icon legacy→per-user migration, and save-logs-snapshot prune/newest-first ordering; run with `npm run test:unit` |
 | [format.js](format.js) | Pure date/time/text formatters extracted from app.js — `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`, `formatLastSignInUserActivity`, `formatUserActivityDateTime`, `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`. Classic `<script src>` loaded after [constants.js](constants.js) (reads `USER_ACTIVITY_TZ` by bare name) and before [app.js](app.js); no `state`/DOM dependency (the DOM-coupled User Activity modal code — `applyUserActivityFilter`, `populateUserActivityUserSelect` — stays in app.js). Guarded CommonJS export footer so the formatters can be `require()`d by [format.test.js](format.test.js) |
@@ -66,6 +66,8 @@ Implementation history (e.g. the sync-hardening work) lives in
 | [grid.spec.js](grid.spec.js) | Playwright regression for pilot #15 — uploads `test-2pages.pdf`, asserts `window.App.toggleGridOverlay` is a function, sets a page scale via `state.pages[0].scale`, opens the modal with `App.toggleGridOverlay()`, sets `#gridSpacingValue` + `#gridSettingsApply` and asserts `state.gridSettings.spacing` + `state.showGridOverlay === true` + the modal closed; also asserts that with no page scale the open path shows the "Set Scale first" toast and does NOT open the modal; asserts no console / page errors; `npx playwright test grid.spec.js` |
 | [features/quick-line.js](features/quick-line.js) | Sixteenth feature-file split (`window.App` registry pilot #16) — the Quick Line modal (the "quick" tab body of `#chooseLineTypeModal`): `populateQuickLineModal` + `updateQuickLineNamePreview` + `removeLineModifier`, plus the `#plumLineBtn` opener and the `#quickLineSize`/`#quickLineMaterial`/`#quickLineRemoveSize`/`#quickLineRemoveMaterial`/`#quickLineAddSize`/`#quickLineAddMaterial`/`#quickLineCancel`/`#quickLineAdd` handlers. Its own IIFE loaded **after** [app.js](app.js). **Takes over publishing `App.populateQuickLineModal`** — that publish moved here from app.js, and [features/choose-create-line-type.js](features/choose-create-line-type.js) keeps consuming it via `App.*` at call time (load order between the two feature files is irrelevant: registration at load, the call on user action). Two new publish-only deps `App.getLineModifiers` + `App.saveLineModifiers` (the line-modifier persistence stays in app.js); the rest (`state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI`/`showLineColorModal`/`showLineTypeTab`) were already on `App`. The separate "Add Line Type" modal (`#addLineType`/`#lineTypeModal`) stays in app.js. **Renamed** the now-stale `// SECTION: Quick Line modal` marker → `// SECTION: Add Line Type modal` (rename, not removal, TOC stays 48) |
 | [quick-line.spec.js](quick-line.spec.js) | Playwright regression for pilot #16 — uploads `test-2pages.pdf`, asserts `window.App.populateQuickLineModal` is a function, opens the quick tab (`#plumLineBtn`), asserts the `#quickLineSize`/`#quickLineMaterial` selects are populated, then `#quickLineAdd` creates a line type (asserts `state.lineTypes` grew + `state.activeLineTypeId` points at it + the modal closed); asserts no console / page errors. The cross-file handoff is also guarded by [choose-create-line-type.spec.js](choose-create-line-type.spec.js) (which exercises `showLineTypeTab('quick') → App.populateQuickLineModal()`); `npx playwright test quick-line.spec.js` |
+| [features/counter.js](features/counter.js) | Seventeenth feature-file split (`window.App` registry pilot #17) — the Counter modal (`#counterModal`) choose/create-counter picker, an **interleaved** extraction from the Counter-modal grab-bag. `showCounterTab` + `showCounterIconTab` + `populateCounterChooseList`, the choose-tab handlers (`#counterBtn`/`.counter-tab`/`#counterModalSearchInput`/`#counterChooseCancel`) and the create-tab handlers (`#addCounter`/`.counter-icon-tab`/`#counterIconSearch`/`#counterCancel`/`#counterCreate`). Its own IIFE loaded **after** [app.js](app.js); registers `App.showCounterTab`. **Bidirectional quickcount coupling** (same shape as Quick Line): it consumes `App.populateCounterQuickCountPanel` (the quickcount tab body stays in app.js's Quick Count section), and the Quick Count code (`#plumBtn`) + the Shift+C hotkey reach the tab via `App.showCounterTab('quickcount')`. Three new publish-only deps `App.getIconName` + `App.getEffectiveCustomIcons` + `App.populateCounterQuickCountPanel`; the rest (`state`/`COLORS`/`TOOL`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI`/`getOrderedIcons`/`iconVbFor`) were already on `App`. The interleaved neighbors (`#doneEditing`, the sidebar tool buttons, `toggleLegendOverlay` + legend buttons, the `iconVbFor` global helper) stay in app.js; the many `#counterBtn.click()` DOM triggers keep working since the handler moves with the element. **Renamed** the `// SECTION: Counter modal` marker → `// SECTION: Tool sidebar buttons & legend overlay` (rename, not removal, TOC stays 48) |
+| [counter.spec.js](counter.spec.js) | Playwright regression for pilot #17 — uploads `test-2pages.pdf`, asserts `window.App.showCounterTab` is a function, creates a counter via the Create tab (`#addCounter` → name → `#counterCreate`, asserts `state.counters` grew + `state.activeCounterType` points at it + the modal closed), reopens and selects it from the Choose list (asserts the modal closes and `state.activeCounterType` matches); asserts no console / page errors; `npx playwright test counter.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
@@ -79,7 +81,7 @@ feature-file splits (`features/canvas-repair.js`, `features/note.js`,
 `features/multiply-zone-settings.js`, `features/export-pdfs.js`,
 `features/legend-settings.js`, `features/page-settings.js`,
 `features/counter-settings.js`, `features/line-type-settings.js`,
-`features/choose-create-line-type.js`, `features/scale.js`, `features/groups.js`, `features/grid.js`, `features/quick-line.js`), followed by `report.js`. The CSS, icon data, pure icon-render rules, pure geometry/parse
+`features/choose-create-line-type.js`, `features/scale.js`, `features/groups.js`, `features/grid.js`, `features/quick-line.js`, `features/counter.js`), followed by `report.js`. The CSS, icon data, pure icon-render rules, pure geometry/parse
 primitives, pure constant literals, the IndexedDB storage layer, pure
 date/time/text formatters, pure save/sync helpers, and finally the main IIFE
 itself were lifted out of `index.html` into `styles.css` / `icons.js` /
@@ -246,7 +248,18 @@ stays 48). Quick Line (pilot #16) extracted the "quick" tab body of
 app.js's registry tail to quick-line.js, which now registers it. Two new
 publish-only deps (`getLineModifiers`/`saveLineModifiers`); the separate "Add Line
 Type" modal stays, so the `// SECTION: Quick Line modal` marker was **renamed**
-`// SECTION: Add Line Type modal` (rename, not removal, TOC stays 48).
+`// SECTION: Add Line Type modal` (rename, not removal, TOC stays 48). Counter
+(pilot #17) was an **interleaved** extraction of the Counter modal from its
+grab-bag (two counter blocks sandwiching the sidebar buttons + legend toggle +
+`iconVbFor`, which all stay) into [features/counter.js](features/counter.js). It
+has the same bidirectional quickcount coupling as Quick Line: it registers
+`App.showCounterTab` (reached by the Quick Count `#plumBtn` and the Shift+C
+hotkey) and consumes `App.populateCounterQuickCountPanel` (the quickcount tab body
+stays in app.js's Quick Count section). Three new publish-only deps
+(`getIconName`/`getEffectiveCustomIcons`/`populateCounterQuickCountPanel`); the
+`// SECTION: Counter modal` marker was **renamed**
+`// SECTION: Tool sidebar buttons & legend overlay` (rename, not removal, TOC
+stays 48).
 
 ## Section index (grep `// SECTION:`)
 
@@ -261,50 +274,50 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L53 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L142 - ICONS array lives in icons.js (see icon-data note above).
 - L343 - State
-- L571 - Sync recovery & client recycle
-- L918 - Global force reload
-- L1049 - Save Status log & envelope
-- L1134 - Dirty tracking & local session reset
-- L1349 - Checkout probe, hashing & PDF cache
-- L1596 - Math & Format Helpers
-- L2307 - Save Status modal
-- L2374 - Coordinate Helpers
-- L2386 - PDF Rendering
-- L3558 - UI Render Functions
-- L5589 - Modals & Handlers
-- L5740 - Prepare PDF modal
-- L6353 - Toolbar tool buttons
-- L6460 - Counter modal
-- L6715 - Quick Plumbing / Quick Count modals
-- L7158 - Add Line Type modal
-- L7230 - Line color & sidebar handlers
-- L7374 - Polyline modal & drawing
-- L7405 - Zoom bar & page navigation
-- L7444 - Canvas layers
-- L7647 - PDF download helpers & PipeTooling menu
-- L7722 - Copy summaries (PipeTooling / Email)
-- L7855 - PDF bundling (report / notes / highlights)
-- L8247 - Download current page
-- L8495 - Zone & page-action modal handlers
-- L8605 - User activity time formatting
-- L8763 - User Activity modal (admin)
-- L8831 - User Settings & Manage Users
-- L9003 - Manage Projects modal
-  - L9163 - Project Settings checkout & Save Status bell
-  - L9352 - Checkout expired recovery
-  - L9606 - Turn In
-  - L10108 - Share project & view links
-  - L10327 - Cloud project hydrate / copy / fork
-  - L10514 - Load Project modal
-- L11930 - Canvas Event Handlers
-- L12218 - Event Binding
-- L12971 - Manual save to cloud
-- L13420 - Auto-save
-- L13717 - Local backup (IndexedDB takeoff state)
-- L13932 - Checkout keep-alive
-- L13977 - App feature registry
-- L14042 - View-only mode
-- L14195 - Init / boot
+- L567 - Sync recovery & client recycle
+- L906 - Global force reload
+- L1026 - Save Status log & envelope
+- L1106 - Dirty tracking & local session reset
+- L1321 - Checkout probe, hashing & PDF cache
+- L1568 - Math & Format Helpers
+- L2279 - Save Status modal
+- L2346 - Coordinate Helpers
+- L2358 - PDF Rendering
+- L3530 - UI Render Functions
+- L5561 - Modals & Handlers
+- L5712 - Prepare PDF modal
+- L6325 - Toolbar tool buttons
+- L6432 - Tool sidebar buttons & legend overlay
+- L6542 - Quick Plumbing / Quick Count modals
+- L6985 - Add Line Type modal
+- L7057 - Line color & sidebar handlers
+- L7201 - Polyline modal & drawing
+- L7232 - Zoom bar & page navigation
+- L7271 - Canvas layers
+- L7474 - PDF download helpers & PipeTooling menu
+- L7549 - Copy summaries (PipeTooling / Email)
+- L7682 - PDF bundling (report / notes / highlights)
+- L8074 - Download current page
+- L8322 - Zone & page-action modal handlers
+- L8432 - User activity time formatting
+- L8590 - User Activity modal (admin)
+- L8658 - User Settings & Manage Users
+- L8830 - Manage Projects modal
+  - L8990 - Project Settings checkout & Save Status bell
+  - L9179 - Checkout expired recovery
+  - L9433 - Turn In
+  - L9935 - Share project & view links
+  - L10154 - Cloud project hydrate / copy / fork
+  - L10341 - Load Project modal
+- L11757 - Canvas Event Handlers
+- L12045 - Event Binding
+- L12798 - Manual save to cloud
+- L13247 - Auto-save
+- L13544 - Local backup (IndexedDB takeoff state)
+- L13759 - Checkout keep-alive
+- L13804 - App feature registry
+- L13872 - View-only mode
+- L14025 - Init / boot
 
 <!-- END SECTION TOC -->
 

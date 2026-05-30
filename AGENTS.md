@@ -24,7 +24,7 @@
   `features/page-settings.js`, `features/counter-settings.js`,
   `features/line-type-settings.js`, `features/choose-create-line-type.js`,
   `features/scale.js`, `features/groups.js`, `features/grid.js`,
-  `features/quick-line.js`), then
+  `features/quick-line.js`, `features/counter.js`), then
   `report.js`),
   [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
   extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
@@ -99,7 +99,12 @@
   [line-metrics.test.js](line-metrics.test.js) can `require()` it after
   `Object.assign(globalThis, require('./geometry.js'))`),
   [save-utils.js](save-utils.js) (pure save/sync helpers: `isTransientSaveError`,
-  `getProjectCounts`; classic script loaded before app.js; guarded CommonJS
+  `getProjectCounts`, `serializeSaveError` (the deduped error serializer that
+  replaced app.js's near-identical `serializeSaveErrorForEvent` +
+  `saveDebugSerializeError`), `formatSaveStatusErrDetail`, `backoffDelayMs`,
+  `computeClockOffsetMs`, `percentile`; classic script loaded before app.js;
+  app.js keeps the state-coupled callers (`updateServerClockFromRpc`, the auto-save
+  backoff line, `recordAutosaveLatency`) that delegate to these; guarded CommonJS
   footer so [save-utils.test.js](save-utils.test.js) can `require()` it),
   [features/canvas-repair.js](features/canvas-repair.js) (the first feature-file
   split of the app.js IIFE via the `window.App` registry — the Canvas Repair
@@ -243,7 +248,26 @@
   `hideModal`/`updateUI`/`showLineColorModal`/`showLineTypeTab`. The separate
   "Add Line Type" modal (`#addLineType`/`#lineTypeModal`) stays in app.js; renamed
   the now-stale `// SECTION: Quick Line modal` marker to
-  `// SECTION: Add Line Type modal` (rename, not removal, count stays 48)), and
+  `// SECTION: Add Line Type modal` (rename, not removal, count stays 48)),
+  [features/counter.js](features/counter.js) (the seventeenth registry split — the
+  Counter modal (`#counterModal`) choose/create-counter picker, an **interleaved**
+  extraction from the Counter-modal grab-bag: `showCounterTab` +
+  `showCounterIconTab` + `populateCounterChooseList`, the choose-tab handlers
+  (`#counterBtn`/`.counter-tab`/`#counterModalSearchInput`/`#counterChooseCancel`)
+  and the create-tab handlers (`#addCounter`/`.counter-icon-tab`/`#counterIconSearch`/
+  `#counterCancel`/`#counterCreate`); registers `App.showCounterTab`. Bidirectional
+  quickcount coupling (same shape as Quick Line): it consumes
+  `App.populateCounterQuickCountPanel` (the quickcount tab body stays in app.js's
+  Quick Count section) and the Quick Count code + Shift+C hotkey reach the tab via
+  `App.showCounterTab('quickcount')`. Three new publish-only deps `App.getIconName`/
+  `App.getEffectiveCustomIcons`/`App.populateCounterQuickCountPanel`; reuses
+  `state`/`COLORS`/`TOOL`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/
+  `hideModal`/`updateUI`/`getOrderedIcons`/`iconVbFor`. The interleaved neighbors
+  (`#doneEditing`, the sidebar tool buttons, `toggleLegendOverlay` + legend
+  buttons, the `iconVbFor` global helper) stay in app.js; the many
+  `#counterBtn.click()` DOM triggers keep working since the handler moves with the
+  element; renamed the `// SECTION: Counter modal` marker to
+  `// SECTION: Tool sidebar buttons & legend overlay` (rename, count stays 48)), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
@@ -363,8 +387,9 @@ Rules to follow when adding/editing a feature file:
   `SCALE_MODES`, `SCALE_PRESETS`, `ptDist`,
   `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`, `deleteGroup`,
   `getPageScale`, `showSetScaleFirstToast`, `getLineModifiers`,
-  `saveLineModifiers`). (`populateQuickLineModal` is no longer published here — it
-  moved to `features/quick-line.js`, which registers it.)
+  `saveLineModifiers`, `getIconName`, `getEffectiveCustomIcons`,
+  `populateCounterQuickCountPanel`). (`populateQuickLineModal` is no longer
+  published here — it moved to `features/quick-line.js`, which registers it.)
   Some are
   "publish-only" — the function stays defined in app.js (used widely there) and
   is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
@@ -376,7 +401,8 @@ Rules to follow when adding/editing a feature file:
   Counter settings's `renderAnnotations`/`renderCountersList`, Line type
   settings's `renderLineTypesList`/`DROP_ICON_STYLES`, Choose/Create Line
   Type's two constants `TOOL`/`COLORS`, Quick Line's
-  `getLineModifiers`/`saveLineModifiers`, and
+  `getLineModifiers`/`saveLineModifiers`, Counter's
+  `getIconName`/`getEffectiveCustomIcons`/`populateCounterQuickCountPanel`, and
   Scale's `getActiveAnnotations`, the geometry globals
   `ptDist`/`parseFraction`/`parseRealWorldLength`, plus the constants
   `SCALE_MODES`/`SCALE_PRESETS`, Groups' `deleteGroup`, and Grid's

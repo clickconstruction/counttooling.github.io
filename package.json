@@ -19,7 +19,7 @@
     "test:custom-icon-paths": "playwright test custom-icon-paths-indexeddb.spec.js"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.49.0",
     "eslint": "^9.39.4",
     "globals": "^17.6.0"

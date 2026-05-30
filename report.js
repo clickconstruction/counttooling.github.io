@@ -409,7 +409,7 @@
     const mergedGetAnn = typeof window.getMergedAnnotationsForPage === 'function'
       ? (page) => window.getMergedAnnotationsForPage(page)
       : defaultGetAnn;
-    let options = {};
+    let options;
     if (mode === 'this-canvas') {
       options = { pageIndices: [state.currentPage], getAnnotations: defaultGetAnn };
     } else if (mode === 'all-canvases-on-page') {

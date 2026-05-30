@@ -5,6 +5,7 @@
   "scripts": {
     "build:icons": "node scripts/build-custom-icons.js",
     "build:toc": "node scripts/build-toc.js",
+    "lint": "eslint .",
     "test": "playwright test",
     "test:unit": "node --test",
     "precloudtest": "node scripts/generate-config.js",
@@ -17,6 +18,9 @@
     "test:custom-icon-paths": "playwright test custom-icon-paths-indexeddb.spec.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.49.0",
+    "eslint": "^9.39.4",
+    "globals": "^17.6.0"
   }
 }

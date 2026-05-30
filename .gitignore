@@ -1,3 +1,6 @@
 .DS_Store
 supabase/.temp/
 config.local.js
+node_modules/
+playwright-report/
+test-results/

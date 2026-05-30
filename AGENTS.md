@@ -43,13 +43,30 @@
   `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`.
   It exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`,
   `getEmailTextSummary`; both summary functions accept optional
-  `{ pageIndices, getAnnotations }`.
+  `{ pageIndices, getAnnotations }`. The `window.*` attachment is wrapped in
+  `if (typeof window !== 'undefined')` and there is a guarded CommonJS export
+  footer (`module.exports = { escapeHtml, pickScaleForLineType }`) -- both inert
+  in the browser -- so [report.test.js](report.test.js) can `require()` those
+  pure helpers; keep both guards when editing the IIFE's tail.
 - jsPDF for Export PDF; html2canvas for report-to-PDF.
 - **Tests**: `npm test` runs the Playwright end-to-end specs; `npm run test:unit`
   runs the dependency-free Node unit tests ([geometry.test.js](geometry.test.js),
-  [constants.test.js](constants.test.js)) via `node --test`. Naming split (enforced
-  by `testMatch` in [playwright.config.js](playwright.config.js)): `*.spec.js` =
-  Playwright, `*.test.js` = Node unit tests.
+  [constants.test.js](constants.test.js), [report.test.js](report.test.js)) via
+  `node --test`. Naming split (enforced by `testMatch` in
+  [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
+  `*.test.js` = Node unit tests.
+- **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
+  covers the extracted `.js` only (`geometry.js`, `constants.js`, `icons.js`,
+  `report.js`) plus the Node tooling (tests, specs + helpers, `scripts/`, configs);
+  the inline `<script>` in [index.html](index.html) is not linted. report.js's
+  cross-file project globals are enumerated as `readonly` so `no-undef` /
+  `no-redeclare` stay on as errors -- if you add a new cross-file global consumed
+  by report.js, add it to `projectGlobals` in the config. Pinned to eslint v9
+  because v10's formatter needs Node >= 20.12 (this repo runs Node 20.0.0).
+- **Section index**: `npm run build:toc` ([scripts/build-toc.js](scripts/build-toc.js))
+  regenerates the line-numbered list between the BEGIN/END SECTION TOC markers in
+  [ARCHITECTURE.md](ARCHITECTURE.md) from the `// SECTION:` markers in index.html;
+  run it after adding/moving a marker (`--check` exits non-zero when stale).
 - Supabase is **optional** (gated by `SUPABASE_ENABLED`). When enabled it provides
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
   storage bucket, several RPCs, and Edge Functions (`admin-create-user`,

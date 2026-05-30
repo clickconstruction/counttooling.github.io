@@ -17,7 +17,13 @@
 - Static assets, no bundler: the app is split across a few files loaded via
   `<link>` / `<script src>` and sharing state through `window` globals and the
   shared global lexical scope — [index.html](index.html) (HTML shell + modals,
-  ~2.1k lines; no inline JS logic — the body loads `app.js` then `report.js`),
+  ~2.1k lines; no inline JS logic — the body loads `app.js`, then the feature-file
+  splits (`features/canvas-repair.js`, `features/note.js`, `features/zoom.js`,
+  `features/manage-icons.js`, `features/multiply-zone-settings.js`,
+  `features/export-pdfs.js`, `features/legend-settings.js`,
+  `features/page-settings.js`, `features/counter-settings.js`,
+  `features/line-type-settings.js`, `features/choose-create-line-type.js`), then
+  `report.js`),
   [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
   extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
   sibling modules' values by bare name and exposes its own helpers to `report.js`
@@ -42,9 +48,113 @@
   `BACKUP_PDF_TO_INDEXEDDB`, `IS_DEV_HOST`), icon-derived consts, and
   function-local consts stay in app.js; same guarded CommonJS footer so
   [constants.test.js](constants.test.js) can `require()` it in Node),
+  [idb.js](idb.js) (IndexedDB storage layer extracted from app.js: one
+  `openPdfCacheDb` (DB `clickcount-pdf-cache` v5, 8 stores) + the context-free
+  accessors `viewCache*`, `pdfCache*`, `takeoffBackupDelete`,
+  `readSaveLogsSnapshots` and the pure primitives `idbTakeoffBackupGetRaw`,
+  `idbTakeoffBackupPut`, `idbPutSaveLogsSnapshot`, `idbCustomIconsGet/Put`;
+  classic script loaded **after constants.js** (reads its store-name/cap globals
+  by bare name) and **before app.js**; depends only on constants + `indexedDB` +
+  args, no `state`/loggers -- the state/logging concerns stay in app.js as
+  same-named thin wrappers `takeoffBackupGet`, `takeoffBackupPut`,
+  `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`;
+  guarded CommonJS footer so [idb.test.js](idb.test.js) can `require()` it with
+  `fake-indexeddb`),
+  [format.js](format.js) (pure date/time/text formatters extracted from app.js:
+  `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`,
+  `formatLastSignInUserActivity`, `formatUserActivityDateTime`,
+  `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`; classic script
+  loaded **after constants.js** (reads `USER_ACTIVITY_TZ` by bare name) and
+  **before app.js**; no `state`/DOM dependency -- the DOM-coupled User Activity
+  modal code `applyUserActivityFilter`/`populateUserActivityUserSelect` stays in
+  app.js; guarded CommonJS footer so [format.test.js](format.test.js) can
+  `require()` it),
+  [icon-render.js](icon-render.js) (pure icon geometry / render-rule helpers
+  extracted from app.js: the `CUSTOM_ICON_META` table + `iconMetaFromList`,
+  `iconViewBoxFromList`, `iconRenderVbRule`, `iconRenderCenterRule`,
+  `iconViewBoxStringRule`, `iconSvgHtml`; classic script loaded **after icons.js**
+  (reads `CUSTOM_ICONS`/`VB_384_512_PATHS`/`FA_PATHS` by bare name; the top-level
+  `CUSTOM_ICON_META` read is `typeof`-guarded so Node `require` stays load-safe)
+  and **before app.js**; depends only on icons.js globals + args, no
+  `state`/DOM/user-icon-cache -- the cache-coupled lookups `getCustomIconMeta`,
+  `getCustomIconViewBox`, `iconRenderVb`, `iconRenderCenter`, `iconViewBoxString`,
+  `renderIconHtml` stay in app.js as same-named thin wrappers that inject
+  `getEffectiveCustomIcons()`; guarded CommonJS footer so
+  [icon-render.test.js](icon-render.test.js) can `require()` it),
   [save-utils.js](save-utils.js) (pure save/sync helpers: `isTransientSaveError`,
   `getProjectCounts`; classic script loaded before app.js; guarded CommonJS
-  footer so [save-utils.test.js](save-utils.test.js) can `require()` it), and
+  footer so [save-utils.test.js](save-utils.test.js) can `require()` it),
+  [features/canvas-repair.js](features/canvas-repair.js) (the first feature-file
+  split of the app.js IIFE via the `window.App` registry — the Canvas Repair
+  modal; its own IIFE loaded **after app.js**, reads shared state/helpers from
+  `window.App` at call time and registers `App.openCanvasRepairModal`/
+  `App.applyCanvasRepair` back onto it; see "`window.App` registry" below),
+  [features/note.js](features/note.js) (the second registry split — the Note
+  add/edit modal; registers `App.openNoteModal` and binds the modal's Cancel/Done
+  at load), [features/zoom.js](features/zoom.js) (the third registry split — the
+  Zoom Settings modal; registers `App.showZoomModal`; `getMaxZoom`/
+  `getWheelZoomSpeed` stay in app.js and are published-only),
+  [features/manage-icons.js](features/manage-icons.js) (the fourth registry split
+  and first multi-region move — the Manage Icons modal; registers
+  `App.openManageIconsModal` and binds the modal's Close/Cancel/Save at load;
+  `getOrderedIcons`/`iconVbFor`/`getUserCustomIcons`/`saveUserCustomIcons`/
+  `showToast` stay in app.js and are published-only),
+  [features/multiply-zone-settings.js](features/multiply-zone-settings.js) (the
+  fifth registry split and first needing no new published deps — the Multiply
+  Zone settings modal; registers `App.openMultiplyZoneSettingsModal` and binds
+  the toggle/slider/Close at load; the Multiply Zone apply flow stays in app.js),
+  [features/export-pdfs.js](features/export-pdfs.js) (the sixth registry split and
+  largest single move — the Export PDFs modal's `specificPages*` cluster;
+  registers `App.openSpecificPagesModal` and binds the `#specificPages*`
+  buttons/scroll/nav at load; an interleaved move — the shared
+  `sanitizeForFilename`/`downloadPdfBuffer`/`downloadProjectPdf` helpers + the
+  PipeTooling toggle stay in app.js; 9 publish-only deps read via `App.*`),
+  [features/legend-settings.js](features/legend-settings.js) (the seventh
+  registry split and second zero-new-dep move — the Summary Legend settings
+  modal's opener + close + 8 live appearance handlers; registers
+  `App.openLegendSettingsModal` and binds the `#summarySectionTitle` opener at
+  load; reuses `state`/`showModal`/`hideModal`/`renderPdf`; the `#summaryCollapseIcon`
+  toggle, `drawLegend`, the legend overlay toggles, and `legendSettings`
+  save/load all stay in app.js),
+  [features/page-settings.js](features/page-settings.js) (the eighth registry
+  split — the Page settings modal's opener + truncate/hide-unmarked toggles +
+  close; registers `App.openPageSettingsModal` and binds the `#pagesSectionTitle`
+  opener at load; one new publish-only dep `renderPagesList`, reuses
+  `state`/`showModal`/`hideModal`/`updateUI`; the `#pagesCollapseIcon` toggle and
+  the Escape-key close branch stay in app.js),
+  [features/counter-settings.js](features/counter-settings.js) (the tenth registry
+  split and first two-region consolidation — the Counter settings modal's
+  opener + value handlers + close + reorder, merged from the grab-bag and the
+  separate `// SECTION: Counter settings handlers` block; registers
+  `App.openCounterSettingsModal` and binds the `#countersSectionTitle` opener at
+  load; two new publish-only deps `renderAnnotations`/`renderCountersList`, reuses
+  `state`/`showModal`/`hideModal`/`updateUI`/`showToast`; the `#countersCollapseIcon`
+  toggle, the sidebar inline `#counterShowOnlyOnPageInlineBtn`, `#sidebarReorderFinish`,
+  and the Escape branch stay in app.js; removing the emptied marker drops the
+  section-count to 49),
+  [features/line-type-settings.js](features/line-type-settings.js) (the eleventh
+  registry split and final settings-modal unit — the Line Type settings modal's
+  opener + value handlers + close + reorder + drop-icon grid; registers
+  `App.openLineTypeSettingsModal` and binds the `#lineTypesSectionTitle` opener at
+  load; two new publish-only deps `renderLineTypesList`/`DROP_ICON_STYLES`, reuses
+  `renderAnnotations`/`state`/`showModal`/`hideModal`/`updateUI`/`showToast`; the
+  header snap button, sidebar inline buttons, `#sidebarReorderFinish`, the J-hotkey,
+  and the Escape branch stay in app.js; renamed the now-stale section marker to
+  `// SECTION: Choose/Create Line Type, line color & sidebar handlers`),
+  [features/choose-create-line-type.js](features/choose-create-line-type.js) (the
+  twelfth registry split and first to share *constants* via the registry — the
+  Choose/Create Line Type modal (`#chooseLineTypeModal`): `showLineTypeTab` +
+  `populateChooseLineTypeList` + `showChooseLineTypeModal`; registers
+  `App.showChooseLineTypeModal`/`App.showLineTypeTab` and binds the `.line-type-tab`
+  clicks + `#lineTypeModalSearchInput` + `#chooseLineTypeCancel`/`#createLineTypeCancel`
+  + `#createLineTypeCreate` at load; three new publish-only deps `TOOL`/`COLORS`/
+  `populateQuickLineModal`, reuses `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/
+  `showModal`/`hideModal`/`updateUI`; the line color modal
+  (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`),
+  the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay
+  in app.js; the three call sites (`#quickLine.onclick`, `#plumLineBtn.onclick`, the
+  Shift+L hotkey) reach it via `App.*`; renamed the section marker to
+  `// SECTION: Line color & sidebar handlers`), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
@@ -60,10 +170,14 @@
   pure helpers; keep both guards when editing the IIFE's tail.
 - jsPDF for Export PDF; html2canvas for report-to-PDF.
 - **Tests**: `npm test` runs the Playwright end-to-end specs; `npm run test:unit`
-  runs the dependency-free Node unit tests ([geometry.test.js](geometry.test.js),
+  runs the Node unit tests ([geometry.test.js](geometry.test.js),
   [constants.test.js](constants.test.js), [report.test.js](report.test.js),
-  [save-utils.test.js](save-utils.test.js)) via
-  `node --test`. Naming split (enforced by `testMatch` in
+  [save-utils.test.js](save-utils.test.js), [idb.test.js](idb.test.js),
+  [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js)) via
+  `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
+  which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
+  auto-skips its two en-CA-hyphen-dependent cases on a limited-ICU runtime and
+  runs them on full-ICU (browser-equivalent / CI Node 20). Naming split (enforced by `testMatch` in
   [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
   `*.test.js` = Node unit tests.
 - **Aggregate check**: `npm run check` runs lint + `test:unit` + `build:toc --check`
@@ -72,11 +186,19 @@
   needs a server + Supabase/dev-auth secrets.
 - **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
   covers all the `.js` — the browser modules (`geometry.js`, `constants.js`,
-  `icons.js`, `save-utils.js`, `report.js`), the whole app (`app.js`), and the
-  Node tooling (tests, specs + helpers, `scripts/`, configs). Now that the JS
-  lives in `app.js` (not an inline `<script>`), the entire app is linted. The
-  `app.js` group auto-derives the sibling modules' exports as `readonly` globals
-  (via `require()`) and runs the recommended set as **warnings** with `no-undef`
+  `idb.js`, `format.js`, `icons.js`, `icon-render.js`, `save-utils.js`,
+  `report.js`), the whole app (`app.js`), and the Node tooling (tests, specs +
+  helpers, `scripts/`, configs).
+  Now that the JS lives in `app.js` (not an inline `<script>`), the entire app is
+  linted. The `app.js` group auto-derives the sibling modules' exports as
+  `readonly` globals (via `require()`, including `idb.js`, `format.js`, and
+  `icon-render.js`); the constants-only pure-module group (`idb.js` + `format.js`)
+  gets a constants-only global set, and `icon-render.js` gets its own icons-only
+  group (`icons.js` globals) -- in both cases not their own exports, which would
+  trip `no-redeclare`. A `features/*.js` group lints the registry feature files
+  (browser globals + `module` readonly, `no-undef` error, `no-unused-vars` off).
+  The `app.js` group
+  runs the recommended set as **warnings** with `no-undef`
   re-raised to **error** — so `no-undef` must stay clean while the existing
   `no-unused-vars`/etc. warnings are a triage backlog (don't add new ones). A few
   IIFE-internal helpers unreachable to eslint-scope from every call site
@@ -124,6 +246,47 @@
 - Keep the app functional with Supabase disabled.
 - When adding a new persisted setting or per-project field, include it in
   export/import and save/load.
+
+### `window.App` registry (splitting app.js)
+
+`app.js` is one ~16k-line IIFE, so feature code that moves to a separate
+`<script>` cannot see its closure-locals by bare name. The `window.App` registry
+is the bridge for incremental splits (full contract + extraction recipe in
+[ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").
+Rules to follow when adding/editing a feature file:
+
+- `app.js` publishes the shared surface near its tail
+  (`// SECTION: App feature registry`): `const App = (window.App = window.App || {});`
+  then `App.state = state; App.renderPdf = renderPdf; …` (currently also `uid`,
+  `makeAnnotations`, `applyRotationDeltaToAnnotations`,
+  `reconcileOrphanedCountersAndLineTypes`, `pushUndoSnapshot`, `markProjectDirty`,
+  `showModal`, `hideModal`, `updateUI`, `showLineColorModal`, `ensureActiveCanvas`,
+  `getMaxZoom`, `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`,
+  `getUserCustomIcons`, `saveUserCustomIcons`, `showToast`, `getPageCanvases`,
+  `renderAnnotationsToContext`, `addReportPagesToPdf`, `addHighlightsToPdf`,
+  `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`,
+  `logUserEvent`, `renderPagesList`, `renderAnnotations`, `renderCountersList`,
+  `renderLineTypesList`, `DROP_ICON_STYLES`, `TOOL`, `COLORS`,
+  `populateQuickLineModal`). Some are
+  "publish-only" — the function stays defined in app.js (used widely there) and
+  is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
+  `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`, `getUserCustomIcons`,
+  `saveUserCustomIcons`, `showToast`, the 9 Export PDFs deps
+  `getPageCanvases`/`renderAnnotationsToContext`/`addReportPagesToPdf`/
+  `addHighlightsToPdf`/`addNotesToPdf`/`hasAnyHighlights`/`hasAnyNotes`/
+  `sanitizeForFilename`/`logUserEvent`, Page settings's `renderPagesList`,
+  Counter settings's `renderAnnotations`/`renderCountersList`, Line type
+  settings's `renderLineTypesList`/`DROP_ICON_STYLES`, and Choose/Create Line
+  Type's `populateQuickLineModal` plus the two constants `TOOL`/`COLORS`);
+  only the feature's own functions move out. Add any new dep a feature needs here. Leave the
+  existing `window.*` report.js exports alone.
+- `features/<name>.js` is its own IIFE that does
+  `const App = (window.App = window.App || {});`, rewrites every bare app-dep to
+  `App.*`, and registers its public entry points (`App.fn = fn;`).
+- **Load order**: feature files load **after** `app.js` (before `report.js`).
+  Read deps from `App.*` **inside** functions (at call time), never at module load.
+- **Deferred bindings**: call sites in `app.js` must use `() => App.fn()`, never
+  `App.fn` captured before the feature file registers it.
 
 ### Persisted settings (localStorage unless noted)
 

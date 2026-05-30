@@ -5,7 +5,8 @@
   "scripts": {
     "build:icons": "node scripts/build-custom-icons.js",
     "build:toc": "node scripts/build-toc.js",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
+    "check": "npm run lint && npm run test:unit && npm run build:toc -- --check",
     "test": "playwright test",
     "test:unit": "node --test",
     "precloudtest": "node scripts/generate-config.js",

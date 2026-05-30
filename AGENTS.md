@@ -4,8 +4,8 @@
 
 - [RECONSTITUTE.md](RECONSTITUTE.md) — base spec: core data model, coordinate
   contract, invariants. Read this first to understand what the app *is*.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — code map (how to navigate `index.html`) and
-  the full feature catalog ("Features Beyond Spec").
+- [ARCHITECTURE.md](ARCHITECTURE.md) — code map (how to navigate `app.js` +
+  `index.html`) and the full feature catalog ("Features Beyond Spec").
 - [CHANGELOG.md](CHANGELOG.md) — implementation history (the sync-hardening PRs and
   other detail). Consult when you need the "why" behind the save/sync machinery.
 - [SUPABASE_SETUP.md](SUPABASE_SETUP.md) — cloud setup, migrations, Edge Functions.
@@ -16,27 +16,37 @@
 - Vanilla HTML, CSS, JavaScript. No build step; static deployment.
 - Static assets, no bundler: the app is split across a few files loaded via
   `<link>` / `<script src>` and sharing state through `window` globals and the
-  shared global lexical scope — [index.html](index.html) (HTML shell + modals +
-  the main JS IIFE), [styles.css](styles.css) (all CSS), [icons.js](icons.js)
-  (bundled icon data: `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`,
-  `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic script loaded before the IIFE),
+  shared global lexical scope — [index.html](index.html) (HTML shell + modals,
+  ~2.1k lines; no inline JS logic — the body loads `app.js` then `report.js`),
+  [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
+  extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
+  sibling modules' values by bare name and exposes its own helpers to `report.js`
+  via `window.*` at the IIFE tail; linted with `no-undef` as error, the rest of
+  the recommended set as warnings), [styles.css](styles.css) (all CSS),
+  [icons.js](icons.js) (bundled icon data: `*_PATH` consts, `VB_384_512_PATHS`,
+  `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic script loaded before
+  app.js; guarded CommonJS export footer so `eslint.config.js` can derive the
+  app.js lint globals),
   [geometry.js](geometry.js) (pure math/geometry/parse primitives: `ptDist`,
   `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers,
   `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, zone locators,
   `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`,
-  `formatFeetInchesFromVal`; classic script loaded before the IIFE; no `state`
+  `formatFeetInchesFromVal`; classic script loaded before app.js; no `state`
   dependency; ends with a guarded CommonJS export footer that is inert in the
   browser so [geometry.test.js](geometry.test.js) can `require()` it in Node),
   [constants.js](constants.js) (pure module-level constant literals: `TOOL`,
   `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`,
   the autosave/checkout timing & threshold block, IndexedDB store names + caps,
   Save Status log windows, checkout messages, keys/URLs/TZ; classic script loaded
-  before the IIFE; no `state`/`window`/icon dependency -- env reads (`SUPABASE_*`,
+  before app.js; no `state`/`window`/icon dependency -- env reads (`SUPABASE_*`,
   `BACKUP_PDF_TO_INDEXEDDB`, `IS_DEV_HOST`), icon-derived consts, and
-  function-local consts stay in index.html; same guarded CommonJS footer so
-  [constants.test.js](constants.test.js) can `require()` it in Node), and
+  function-local consts stay in app.js; same guarded CommonJS footer so
+  [constants.test.js](constants.test.js) can `require()` it in Node),
+  [save-utils.js](save-utils.js) (pure save/sync helpers: `isTransientSaveError`,
+  `getProjectCounts`; classic script loaded before app.js; guarded CommonJS
+  footer so [save-utils.test.js](save-utils.test.js) can `require()` it), and
   [report.js](report.js).
-- [report.js](report.js) loads after index.html and consumes these globals (keep
+- [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
   `formatDist`, `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,
   `getLineLengthForTotals`, `getLineRealWorldLength`, `getMultiplyZoneForLine`,
@@ -51,21 +61,36 @@
 - jsPDF for Export PDF; html2canvas for report-to-PDF.
 - **Tests**: `npm test` runs the Playwright end-to-end specs; `npm run test:unit`
   runs the dependency-free Node unit tests ([geometry.test.js](geometry.test.js),
-  [constants.test.js](constants.test.js), [report.test.js](report.test.js)) via
+  [constants.test.js](constants.test.js), [report.test.js](report.test.js),
+  [save-utils.test.js](save-utils.test.js)) via
   `node --test`. Naming split (enforced by `testMatch` in
   [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
   `*.test.js` = Node unit tests.
+- **Aggregate check**: `npm run check` runs lint + `test:unit` + `build:toc --check`
+  (fast, no browser/cloud). [.github/workflows/ci.yml](.github/workflows/ci.yml)
+  runs it on every push/PR (Node 20); Playwright is excluded from CI because it
+  needs a server + Supabase/dev-auth secrets.
 - **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
-  covers the extracted `.js` only (`geometry.js`, `constants.js`, `icons.js`,
-  `report.js`) plus the Node tooling (tests, specs + helpers, `scripts/`, configs);
-  the inline `<script>` in [index.html](index.html) is not linted. report.js's
-  cross-file project globals are enumerated as `readonly` so `no-undef` /
-  `no-redeclare` stay on as errors -- if you add a new cross-file global consumed
-  by report.js, add it to `projectGlobals` in the config. Pinned to eslint v9
-  because v10's formatter needs Node >= 20.12 (this repo runs Node 20.0.0).
+  covers all the `.js` — the browser modules (`geometry.js`, `constants.js`,
+  `icons.js`, `save-utils.js`, `report.js`), the whole app (`app.js`), and the
+  Node tooling (tests, specs + helpers, `scripts/`, configs). Now that the JS
+  lives in `app.js` (not an inline `<script>`), the entire app is linted. The
+  `app.js` group auto-derives the sibling modules' exports as `readonly` globals
+  (via `require()`) and runs the recommended set as **warnings** with `no-undef`
+  re-raised to **error** — so `no-undef` must stay clean while the existing
+  `no-unused-vars`/etc. warnings are a triage backlog (don't add new ones). A few
+  IIFE-internal helpers unreachable to eslint-scope from every call site
+  (`closePreparePdfModal` window-assigned; `hydrateProjectFromCloudRow` /
+  `resetAutoRecheckoutCounter` sloppy-mode block declarations hoisted to the IIFE
+  scope at runtime) are listed as `readonly` globals in the app.js group.
+  report.js's cross-file project globals are enumerated as `readonly` so
+  `no-undef` / `no-redeclare` stay on as errors -- if you add a new cross-file
+  global consumed by report.js, add it to `projectGlobals` in the config. Pinned
+  to eslint v9 because v10's formatter needs Node >= 20.12 (this repo runs Node
+  20.0.0).
 - **Section index**: `npm run build:toc` ([scripts/build-toc.js](scripts/build-toc.js))
   regenerates the line-numbered list between the BEGIN/END SECTION TOC markers in
-  [ARCHITECTURE.md](ARCHITECTURE.md) from the `// SECTION:` markers in index.html;
+  [ARCHITECTURE.md](ARCHITECTURE.md) from the `// SECTION:` markers in app.js;
   run it after adding/moving a marker (`--check` exits non-zero when stale).
 - Supabase is **optional** (gated by `SUPABASE_ENABLED`). When enabled it provides
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
@@ -81,8 +106,8 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [index.html](index.html) is ~20k lines. Navigate
-   by `// SECTION:` markers (`rg "^\s*// SECTION:" index.html`) and the grep-pattern
+2. **Do not trust line numbers** — [app.js](app.js) is ~16k lines. Navigate
+   by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
 

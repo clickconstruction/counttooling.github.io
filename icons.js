@@ -765,3 +765,14 @@
     { value: CHECKBOX_SLOT_PATH, terms: ['checkbox','slot','check','checked','task'], name: 'Checkbox Slot' },
     { value: CHESSBOARD_PATH, terms: ['chessboard','chess','board','grid','checkered'], name: 'Chessboard' }
   ];
+
+  // Node test/tooling harness only: in a classic browser <script> `module` is
+  // undefined, so this is a no-op there and the declarations above stay plain
+  // globals. Exposes the names app.js consumes by bare name so eslint.config.js
+  // can derive them as readonly globals for the app.js lint group.
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      ICONS, CUSTOM_ICONS, VB_384_512_PATHS, FA_PATHS, RING_PATH,
+      CIRCLE_PATH, SCALE_CROSSHAIR_PATH
+    };
+  }

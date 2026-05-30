@@ -55,15 +55,11 @@ async function loadProjectWithPdfAndAddCounter(page) {
   await canvasWrapper.click({ position: { x: 200, y: 200 } });
   await page.waitForTimeout(300);
 
-  // The dev "Load test PDF" fixture runs before Save, so a stale anonymous
-  // 'local' takeoff backup (0 counters) gets written under the 'local' key.
-  // Boot checks 'local' first and would restore that instead of this cloud
-  // project, so clear it here to exercise the project's own IDB backup path.
-  await page.evaluate(async () => {
-    if (window.__takeoffBackupDeleteForTest) {
-      try { await window.__takeoffBackupDeleteForTest('local'); } catch (_) {}
-    }
-  });
+  // Note: the dev "Load test PDF" fixture runs before Save, so a stale
+  // anonymous 'local' takeoff backup may be written under the 'local' key.
+  // The app clears that 'local' backup on cloud-save graduation (see
+  // performSaveProjectToCloud / performAutoSave), so boot correctly restores
+  // this cloud project rather than the stale 'local' snapshot.
 
   return true;
 }
@@ -180,6 +176,56 @@ test.describe('IndexedDB Backup', () => {
     );
     const count = await page.evaluate(() => window.state?.counters?.length ?? 0);
     expect(count).toBeGreaterThanOrEqual(1);
+  });
+
+  test('restore prefers cloud project over stale local backup after save', async ({ page }) => {
+    if (!cloudSetup.ok) {
+      test.skip(true, cloudSetup.skipReason);
+      return;
+    }
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/?devAuth=1');
+    await page.waitForLoadState('networkidle');
+
+    const loaded = await loadProjectWithPdfAndAddCounter(page);
+    if (!loaded) {
+      test.skip(true, 'Could not load or create project');
+      return;
+    }
+
+    await page.waitForTimeout(7000);
+
+    const projectId = await page.evaluate(() => window.state?.currentProjectId);
+    if (!projectId) {
+      test.skip(true, 'No project loaded');
+      return;
+    }
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const lastSessionModal = page.locator('#lastSessionRestoreModal.visible');
+    await expect(lastSessionModal).toBeVisible({ timeout: 10000 });
+
+    // The 'local' backup was cleared on save graduation, so boot must offer
+    // the cloud project ("project from your last session"), not the stale
+    // anonymous local snapshot ("local session from your last visit").
+    const message = (await page.locator('#lastSessionRestoreMessage').innerText()).toLowerCase();
+    expect(message).toContain('project from your last session');
+    expect(message).not.toContain('local session');
+
+    await page.locator('#lastSessionRestoreKeep').click();
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/, { timeout: 15000 });
+
+    // Cloud restore reconnects to the saved row, so currentProjectId is the
+    // real project id (not null / the 'local' sentinel).
+    await page.waitForFunction(
+      (id) => window.state?.currentProjectId === id,
+      projectId,
+      { timeout: 15000 }
+    );
+    const restoredId = await page.evaluate(() => window.state?.currentProjectId);
+    expect(restoredId).toBe(projectId);
   });
 
   test('Discard clears backup', async ({ page }) => {

@@ -1,96 +1,106 @@
 # ClickCount — Code Map for AI Navigation
 
-Use this file to locate code in the app (most of it in [index.html](index.html)). The core data model and
+Use this file to locate code in the app. The HTML shell + every modal live in
+[index.html](index.html) (~2.1k lines); the entire app logic (the main JS IIFE)
+lives in [app.js](app.js) (~16.2k lines). The core data model and
 invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
 navigation map plus the catalog of features built on top of that core.
 Implementation history (e.g. the sync-hardening work) lives in
 [CHANGELOG.md](CHANGELOG.md).
 
-> Navigation philosophy: **do not rely on line numbers** — [index.html](index.html)
-> is ~20k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
+> is ~16k lines and edits shift them constantly. Navigate by the `// SECTION:`
 > markers in the code and by the grep patterns in the Search Hints table below.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| [index.html](index.html) | The app: HTML structure + every modal, and the main JS IIFE |
+| [index.html](index.html) | The app shell: HTML structure + every modal; `<head>` loads the CSS/CDN/module scripts, the body ends by loading `app.js` then `report.js`. No inline JS logic anymore (~2.1k lines) |
+| [app.js](app.js) | The entire app logic — the former inline `index.html` IIFE, extracted verbatim into a classic `<script src>` (`(function() { … })();`, ~16.2k lines). Resolves the sibling modules' values by bare name; exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
-| [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before the IIFE; values resolve in the shared global lexical scope |
+| [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals |
 | [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
-| [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in index.html); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
+| [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in app.js); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
 | [geometry.test.js](geometry.test.js) | Node `node:test` + `node:assert` unit tests for the [geometry.js](geometry.js) primitives; run with `npm run test:unit` (no deps). Naming split: `*.test.js` = Node unit tests, `*.spec.js` = Playwright (see `testMatch` in [playwright.config.js](playwright.config.js)) |
 | [constants.test.js](constants.test.js) | Node `node:test` invariant tests for [constants.js](constants.js) (backoff arrays increasing & positive, timings/caps > 0, unique enum ids, valid hex colors, positive scale presets); run with `npm run test:unit` |
-| [report.js](report.js) | Loads after index.html. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals from index.html. Its `window.*` attachment is guarded by `typeof window` and it has a guarded CommonJS export footer (`escapeHtml`, `pickScaleForLineType`) — both inert in the browser — so those pure helpers can be `require()`d by [report.test.js](report.test.js) |
+| [report.js](report.js) | Loads after app.js. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals exposed by app.js via `window.*`. Its `window.*` attachment is guarded by `typeof window` and it has a guarded CommonJS export footer (`escapeHtml`, `pickScaleForLineType`) — both inert in the browser — so those pure helpers can be `require()`d by [report.test.js](report.test.js) |
 | [report.test.js](report.test.js) | Node `node:test` unit tests for [report.js](report.js)'s pure helpers — `escapeHtml` (null/undefined → `''`, entity escaping, `&`-first ordering, `String()` coercion) and `pickScaleForLineType` (preferred-unit selection via a `global.state` stub); run with `npm run test:unit` |
-| [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [index.html](index.html), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
-| [eslint.config.js](eslint.config.js) | ESLint v9 flat config for the extracted `.js` (browser modules + Node tooling); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The inline `<script>` in [index.html](index.html) is not linted (needs an HTML processor) |
+| [save-utils.js](save-utils.js) | Pure helpers for the save/sync layer — `isTransientSaveError` (which save/turn-in errors merit one retry) and `getProjectCounts` (counter/line totals over a project `data` object, both legacy `annotations` and `canvases` shapes); classic `<script src>` loaded before the IIFE; no `state`/DOM dependency; guarded CommonJS export footer so the helpers can be `require()`d by [save-utils.test.js](save-utils.test.js) |
+| [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, plus `getProjectCounts` shape/sum cases); run with `npm run test:unit` |
+| [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
+| [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`) and runs the recommended set as warnings with `no-undef` re-raised to error. Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
 High level: the `<head>` of [index.html](index.html) loads `config.js`, the CDN
 libs (pdf.js, pdf-lib, html2canvas, jsPDF, supabase-js), `styles.css`,
-`icons.js`, `geometry.js`, and `constants.js`. The body holds the app shell +
-every modal. The bulk is a single JS IIFE; `report.js` is included last. The
-CSS, icon data, pure geometry/parse primitives, and pure constant literals were
-lifted out into `styles.css` / `icons.js` / `geometry.js` / `constants.js` (no
-build step — plain `<link>` / `<script src>`).
+`icons.js`, `geometry.js`, `constants.js`, and `save-utils.js`. The body holds
+the app shell + every modal, then loads `app.js` (the single JS IIFE — the whole
+app logic) followed by `report.js`. The CSS, icon data, pure geometry/parse
+primitives, pure constant literals, pure save/sync helpers, and finally the main
+IIFE itself were lifted out of `index.html` into `styles.css` / `icons.js` /
+`geometry.js` / `constants.js` / `save-utils.js` / `app.js` (no build step —
+plain `<link>` / `<script src>`). `app.js` resolves the module values by bare
+name (shared global lexical scope); `report.js` resolves `app.js`'s output via
+`window.*`.
 
 ## Section index (grep `// SECTION:`)
 
-The JS is organized with `// SECTION:` comment markers. The live list with
-current line numbers is generated by `npm run build:toc` (run it after adding or
-moving a `// SECTION:` marker; `node scripts/build-toc.js --check` fails if stale):
+The JS in [app.js](app.js) is organized with `// SECTION:` comment markers. The
+live list with current `app.js` line numbers is generated by `npm run build:toc`
+(run it after adding or moving a `// SECTION:` marker;
+`node scripts/build-toc.js --check` fails if stale):
 
 <!-- BEGIN SECTION TOC (generated by scripts/build-toc.js - do not edit by hand) -->
 
-- L2052 - Constants
-- L2103 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
-- L2202 - ICONS array lives in icons.js (see icon-data note above).
-- L2403 - State
-- L2634 - Sync recovery & client recycle
-- L2984 - Global force reload
-- L3129 - Save Status log & envelope
-- L3214 - Dirty tracking & local session reset
-- L3454 - Checkout probe, hashing & PDF cache
-- L3932 - Math & Format Helpers
-- L4690 - Save Status modal
-- L4757 - Coordinate Helpers
-- L4769 - PDF Rendering
-- L5948 - UI Render Functions
-- L8038 - Modals & Handlers
-- L8189 - Prepare PDF modal
-- L8810 - Scale modal
-- L9024 - Counter modal
-- L9465 - Quick Plumbing / Quick Count modals
-- L9908 - Quick Line modal
-- L10092 - Groups
-- L10187 - Multiply Zone settings
-- L10646 - Zoom modal
-- L10802 - Canvas layers
-- L11008 - Export PDFs modal
-- L11384 - Copy summaries (PipeTooling / Email)
-- L11517 - PDF bundling (report / notes / highlights)
-- L11910 - Download current page
-- L12155 - Note modal
-- L12330 - User activity time formatting
-- L12557 - User Activity modal (admin)
-- L12625 - User Settings & Manage Users
-- L12788 - Canvas Repair
-- L12859 - Manage Icons modal
-- L12997 - Manage Projects modal
-  - L13157 - Project Settings checkout & Save Status bell
-  - L13346 - Checkout expired recovery
-  - L13600 - Turn In
-  - L14102 - Share project & view links
-  - L14321 - Cloud project hydrate / copy / fork
-  - L14508 - Load Project modal
-- L15944 - Canvas Event Handlers
-- L16235 - Event Binding
-- L16988 - Manual save to cloud
-- L17432 - Auto-save
-- L17725 - Local backup (IndexedDB takeoff state)
-- L17940 - Checkout keep-alive
-- L18008 - View-only mode
-- L18161 - Init / boot
+- L2 - Constants
+- L53 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
+- L151 - ICONS array lives in icons.js (see icon-data note above).
+- L352 - State
+- L580 - Sync recovery & client recycle
+- L927 - Global force reload
+- L1058 - Save Status log & envelope
+- L1143 - Dirty tracking & local session reset
+- L1358 - Checkout probe, hashing & PDF cache
+- L1836 - Math & Format Helpers
+- L2576 - Save Status modal
+- L2643 - Coordinate Helpers
+- L2655 - PDF Rendering
+- L3827 - UI Render Functions
+- L5917 - Modals & Handlers
+- L6068 - Prepare PDF modal
+- L6689 - Scale modal
+- L6903 - Counter modal
+- L7344 - Quick Plumbing / Quick Count modals
+- L7787 - Quick Line modal
+- L7971 - Groups
+- L8066 - Multiply Zone settings
+- L8525 - Zoom modal
+- L8681 - Canvas layers
+- L8886 - Export PDFs modal
+- L9262 - Copy summaries (PipeTooling / Email)
+- L9395 - PDF bundling (report / notes / highlights)
+- L9787 - Download current page
+- L10031 - Note modal
+- L10206 - User activity time formatting
+- L10433 - User Activity modal (admin)
+- L10501 - User Settings & Manage Users
+- L10664 - Canvas Repair
+- L10735 - Manage Icons modal
+- L10873 - Manage Projects modal
+  - L11033 - Project Settings checkout & Save Status bell
+  - L11222 - Checkout expired recovery
+  - L11476 - Turn In
+  - L11978 - Share project & view links
+  - L12197 - Cloud project hydrate / copy / fork
+  - L12384 - Load Project modal
+- L13820 - Canvas Event Handlers
+- L14108 - Event Binding
+- L14861 - Manual save to cloud
+- L15310 - Auto-save
+- L15607 - Local backup (IndexedDB takeoff state)
+- L15822 - Checkout keep-alive
+- L15875 - View-only mode
+- L16028 - Init / boot
 
 <!-- END SECTION TOC -->
 

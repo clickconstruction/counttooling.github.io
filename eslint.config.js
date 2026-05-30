@@ -9,6 +9,28 @@
 const js = require('@eslint/js');
 const globals = require('globals');
 
+// app.js (the former inline IIFE) consumes every name the sibling classic
+// scripts declare; derive those from the modules' export footers so the lint
+// globals stay in sync automatically as exports change.
+const moduleGlobals = Object.fromEntries(
+  []
+    .concat(
+      Object.keys(require('./geometry.js')),
+      Object.keys(require('./constants.js')),
+      Object.keys(require('./save-utils.js')),
+      Object.keys(require('./icons.js')),
+    )
+    .map((k) => [k, 'readonly']),
+);
+
+// app.js is a ~16k-line legacy file. We only want no-undef as an error (the
+// high-value typo/missing-global guard); the rest of the recommended ruleset is
+// surfaced as warnings to triage over time. Downgrade the whole recommended set
+// to warn, then re-raise no-undef below.
+const recommendedAsWarn = Object.fromEntries(
+  Object.entries(js.configs.recommended.rules).map(([k]) => [k, 'warn']),
+);
+
 // Cross-file names report.js reads but does not declare. They are defined
 // either by the main IIFE in index.html (loaded after report.js) or by the
 // sibling data/constants modules / CDN libraries. Listed as readonly so
@@ -51,7 +73,7 @@ module.exports = [
     // Definition modules: classic scripts whose top-level declarations exist
     // solely to be consumed cross-file by the index.html IIFE / report.js, so
     // no-unused-vars is pure noise here. `module` covers the dual-env footers.
-    files: ['geometry.js', 'constants.js', 'icons.js'],
+    files: ['geometry.js', 'constants.js', 'icons.js', 'save-utils.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -104,6 +126,43 @@ module.exports = [
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_' }],
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // app.js: the former inline index.html IIFE, now a classic <script src>.
+    // Consumes the sibling modules' globals (auto-derived) + the CDN libs.
+    // Only no-undef is an error; the rest of the recommended ruleset is warn.
+    files: ['app.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...moduleGlobals,
+        // CDN libraries loaded via <script> in index.html before app.js
+        pdfjsLib: 'readonly',
+        jspdf: 'readonly',
+        html2canvas: 'readonly',
+        supabase: 'readonly',
+        PDFLib: 'readonly',
+        // IIFE-internal helpers that are reachable everywhere at runtime but
+        // which eslint-scope cannot see from every call site, so they read as
+        // no-undef. closePreparePdfModal is assigned to window (resolves via
+        // the global object); hydrateProjectFromCloudRow and
+        // resetAutoRecheckoutCounter are sloppy-mode function declarations
+        // inside the `if (SUPABASE_ENABLED) {...}` block, hoisted to the IIFE
+        // scope at runtime (Annex B.3.3) and only ever called on Supabase paths.
+        closePreparePdfModal: 'readonly',
+        hydrateProjectFromCloudRow: 'readonly',
+        resetAutoRecheckoutCounter: 'readonly',
+      },
+    },
+    rules: {
+      ...recommendedAsWarn,
+      'no-undef': 'error',
+      'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
       eqeqeq: ['warn', 'always', { null: 'ignore' }],
     },
   },

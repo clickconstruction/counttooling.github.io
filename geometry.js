@@ -154,6 +154,40 @@
     const n = parseFloat(s);
     return (n > 0 && !isNaN(n)) ? n : null;
   }
+  // Compact "time ago" label from a seconds delta.
+  function formatAgo(agoSec) {
+    if (agoSec >= 86400) return Math.floor(agoSec / 86400) + 'd ago';
+    if (agoSec >= 3600) return Math.floor(agoSec / 3600) + 'hr ago';
+    if (agoSec >= 60) return Math.floor(agoSec / 60) + 'min ago';
+    return 'Just now';
+  }
+  // Format a real-world value into feet-inches (ft/in/yd) or a decimal fallback for other units.
+  function formatFeetInchesFromVal(val, unit) {
+    if (unit === 'ft') {
+      let ft = Math.floor(val);
+      let inches = Math.round((val - ft) * 12);
+      if (inches >= 12) { inches = 0; ft++; }
+      return ft + "'-" + inches + '"';
+    }
+    if (unit === 'in') {
+      const totalIn = val;
+      if (totalIn >= 12) {
+        let ft = Math.floor(totalIn / 12);
+        let inches = Math.round(totalIn - ft * 12);
+        if (inches >= 12) { inches = 0; ft++; }
+        return ft + "'-" + inches + '"';
+      }
+      return Math.round(totalIn) + '"';
+    }
+    if (unit === 'yd') {
+      const valFt = val * 3;
+      let ft = Math.floor(valFt);
+      let inches = Math.round((valFt - ft) * 12);
+      if (inches >= 12) { inches = 0; ft++; }
+      return ft + "'-" + inches + '"';
+    }
+    return (val).toFixed(2) + ' ' + unit;
+  }
 
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
@@ -163,6 +197,7 @@
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
       rotatePoint90CW, pointInRect, rectsOverlap,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
-      formatLineLengthRealSum, parseRealWorldLength, parseFraction
+      formatLineLengthRealSum, parseRealWorldLength, parseFraction,
+      formatAgo, formatFeetInchesFromVal
     };
   }

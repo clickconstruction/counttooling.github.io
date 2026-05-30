@@ -4064,30 +4064,7 @@
   function formatDistFeetInchesFromReal(val, scale) {
     scale = scale ?? getPageScale(state.currentPage);
     if (!scale) return Math.round(val) + ' px';
-    if (scale.unit === 'ft') {
-      let ft = Math.floor(val);
-      let inches = Math.round((val - ft) * 12);
-      if (inches >= 12) { inches = 0; ft++; }
-      return ft + "'-" + inches + '"';
-    }
-    if (scale.unit === 'in') {
-      const totalIn = val;
-      if (totalIn >= 12) {
-        let ft = Math.floor(totalIn / 12);
-        let inches = Math.round(totalIn - ft * 12);
-        if (inches >= 12) { inches = 0; ft++; }
-        return ft + "'-" + inches + '"';
-      }
-      return Math.round(totalIn) + '"';
-    }
-    if (scale.unit === 'yd') {
-      const valFt = val * 3;
-      let ft = Math.floor(valFt);
-      let inches = Math.round((valFt - ft) * 12);
-      if (inches >= 12) { inches = 0; ft++; }
-      return ft + "'-" + inches + '"';
-    }
-    return (val).toFixed(2) + ' ' + scale.unit;
+    return formatFeetInchesFromVal(val, scale.unit);
   }
 
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) {
@@ -4230,30 +4207,7 @@
     scale = scale ?? getPageScale(state.currentPage);
     if (!scale) return Math.round(pdfPts) + ' px';
     const val = pdfPts / scale.pixelsPerUnit;
-    if (scale.unit === 'ft') {
-      let ft = Math.floor(val);
-      let inches = Math.round((val - ft) * 12);
-      if (inches >= 12) { inches = 0; ft++; }
-      return ft + "'-" + inches + '"';
-    }
-    if (scale.unit === 'in') {
-      const totalIn = val;
-      if (totalIn >= 12) {
-        let ft = Math.floor(totalIn / 12);
-        let inches = Math.round(totalIn - ft * 12);
-        if (inches >= 12) { inches = 0; ft++; }
-        return ft + "'-" + inches + '"';
-      }
-      return Math.round(totalIn) + '"';
-    }
-    if (scale.unit === 'yd') {
-      const valFt = val * 3;
-      let ft = Math.floor(valFt);
-      let inches = Math.round((valFt - ft) * 12);
-      if (inches >= 12) { inches = 0; ft++; }
-      return ft + "'-" + inches + '"';
-    }
-    return (val).toFixed(2) + ' ' + scale.unit;
+    return formatFeetInchesFromVal(val, scale.unit);
   }
   function formatArea(sqPdfPts, scale) {
     scale = scale ?? getPageScale(state.currentPage);
@@ -4534,10 +4488,7 @@
     const d = new Date(isoStr);
     const agoSec = (Date.now() - d.getTime()) / 1000;
     const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    let agoStr = 'Just now';
-    if (agoSec >= 86400) agoStr = Math.floor(agoSec / 86400) + 'd ago';
-    else if (agoSec >= 3600) agoStr = Math.floor(agoSec / 3600) + 'hr ago';
-    else if (agoSec >= 60) agoStr = Math.floor(agoSec / 60) + 'min ago';
+    const agoStr = formatAgo(agoSec);
     return timeStr + ' (' + agoStr + ')';
   }
 
@@ -4546,10 +4497,7 @@
     const d = new Date(isoStr);
     const agoSec = (Date.now() - d.getTime()) / 1000;
     const clock = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    let ago = 'Just now';
-    if (agoSec >= 86400) ago = Math.floor(agoSec / 86400) + 'd ago';
-    else if (agoSec >= 3600) ago = Math.floor(agoSec / 3600) + 'hr ago';
-    else if (agoSec >= 60) ago = Math.floor(agoSec / 60) + 'min ago';
+    const ago = formatAgo(agoSec);
     return { clock, ago };
   }
 
@@ -4682,10 +4630,7 @@
           const d = new Date(state.lastSavedAt);
           const agoSec = (Date.now() - d.getTime()) / 1000;
           const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-          let agoStr = 'Just now';
-          if (agoSec >= 86400) agoStr = Math.floor(agoSec / 86400) + 'd ago';
-          else if (agoSec >= 3600) agoStr = Math.floor(agoSec / 3600) + 'hr ago';
-          else if (agoSec >= 60) agoStr = Math.floor(agoSec / 60) + 'min ago';
+          const agoStr = formatAgo(agoSec);
           lastSavedSegment = timeStr + ' | ' + agoStr;
         }
         mode = projectSegment + ' - ' + lastSavedSegment;

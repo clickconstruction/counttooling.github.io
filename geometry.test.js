@@ -120,3 +120,28 @@ test('parseFraction', () => {
   assert.strictEqual(g.parseFraction(''), null);
   assert.strictEqual(g.parseFraction('abc'), null);
 });
+
+test('formatAgo ladder boundaries', () => {
+  assert.strictEqual(g.formatAgo(0), 'Just now');
+  assert.strictEqual(g.formatAgo(59), 'Just now');
+  assert.strictEqual(g.formatAgo(60), '1min ago');
+  assert.strictEqual(g.formatAgo(3599), '59min ago');
+  assert.strictEqual(g.formatAgo(3600), '1hr ago');
+  assert.strictEqual(g.formatAgo(86399), '23hr ago');
+  assert.strictEqual(g.formatAgo(86400), '1d ago');
+  assert.strictEqual(g.formatAgo(2 * 86400), '2d ago');
+});
+
+test('formatFeetInchesFromVal', () => {
+  // ft: floor feet + rounded inches, with carry at 12"
+  assert.strictEqual(g.formatFeetInchesFromVal(5, 'ft'), `5'-0"`);
+  assert.strictEqual(g.formatFeetInchesFromVal(5.5, 'ft'), `5'-6"`);
+  assert.strictEqual(g.formatFeetInchesFromVal(5.99, 'ft'), `6'-0"`); // 11.88" rounds to 12 -> carry
+  // in: < 12 stays inches-only, >= 12 becomes ft-in
+  assert.strictEqual(g.formatFeetInchesFromVal(7, 'in'), `7"`);
+  assert.strictEqual(g.formatFeetInchesFromVal(18, 'in'), `1'-6"`);
+  // yd: value is in yards -> *3 feet
+  assert.strictEqual(g.formatFeetInchesFromVal(2, 'yd'), `6'-0"`);
+  // other unit: decimal fallback
+  assert.strictEqual(g.formatFeetInchesFromVal(2.5, 'm'), '2.50 m');
+});

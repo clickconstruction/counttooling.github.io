@@ -27,7 +27,15 @@
   `formatFeetInchesFromVal`; classic script loaded before the IIFE; no `state`
   dependency; ends with a guarded CommonJS export footer that is inert in the
   browser so [geometry.test.js](geometry.test.js) can `require()` it in Node),
-  and [report.js](report.js).
+  [constants.js](constants.js) (pure module-level constant literals: `TOOL`,
+  `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`,
+  the autosave/checkout timing & threshold block, IndexedDB store names + caps,
+  Save Status log windows, checkout messages, keys/URLs/TZ; classic script loaded
+  before the IIFE; no `state`/`window`/icon dependency -- env reads (`SUPABASE_*`,
+  `BACKUP_PDF_TO_INDEXEDDB`, `IS_DEV_HOST`), icon-derived consts, and
+  function-local consts stay in index.html; same guarded CommonJS footer so
+  [constants.test.js](constants.test.js) can `require()` it in Node), and
+  [report.js](report.js).
 - [report.js](report.js) loads after index.html and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
   `formatDist`, `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,
@@ -38,9 +46,10 @@
   `{ pageIndices, getAnnotations }`.
 - jsPDF for Export PDF; html2canvas for report-to-PDF.
 - **Tests**: `npm test` runs the Playwright end-to-end specs; `npm run test:unit`
-  runs the dependency-free Node [geometry.test.js](geometry.test.js) (`node --test`).
-  Naming split (enforced by `testMatch` in [playwright.config.js](playwright.config.js)):
-  `*.spec.js` = Playwright, `*.test.js` = Node unit tests.
+  runs the dependency-free Node unit tests ([geometry.test.js](geometry.test.js),
+  [constants.test.js](constants.test.js)) via `node --test`. Naming split (enforced
+  by `testMatch` in [playwright.config.js](playwright.config.js)): `*.spec.js` =
+  Playwright, `*.test.js` = Node unit tests.
 - Supabase is **optional** (gated by `SUPABASE_ENABLED`). When enabled it provides
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
   storage bucket, several RPCs, and Edge Functions (`admin-create-user`,

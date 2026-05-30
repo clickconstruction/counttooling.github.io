@@ -18,15 +18,18 @@ Implementation history (e.g. the sync-hardening work) lives in
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before the IIFE; values resolve in the shared global lexical scope |
 | [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
+| [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in index.html); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
 | [geometry.test.js](geometry.test.js) | Node `node:test` + `node:assert` unit tests for the [geometry.js](geometry.js) primitives; run with `npm run test:unit` (no deps). Naming split: `*.test.js` = Node unit tests, `*.spec.js` = Playwright (see `testMatch` in [playwright.config.js](playwright.config.js)) |
+| [constants.test.js](constants.test.js) | Node `node:test` invariant tests for [constants.js](constants.js) (backoff arrays increasing & positive, timings/caps > 0, unique enum ids, valid hex colors, positive scale presets); run with `npm run test:unit` |
 | [report.js](report.js) | Loads after index.html. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals from index.html |
 
 High level: the `<head>` of [index.html](index.html) loads `config.js`, the CDN
 libs (pdf.js, pdf-lib, html2canvas, jsPDF, supabase-js), `styles.css`,
-`icons.js`, and `geometry.js`. The body holds the app shell + every modal. The
-bulk is a single JS IIFE; `report.js` is included last. The CSS, icon data, and
-pure geometry/parse primitives were lifted out into `styles.css` / `icons.js` /
-`geometry.js` (no build step — plain `<link>` / `<script src>`).
+`icons.js`, `geometry.js`, and `constants.js`. The body holds the app shell +
+every modal. The bulk is a single JS IIFE; `report.js` is included last. The
+CSS, icon data, pure geometry/parse primitives, and pure constant literals were
+lifted out into `styles.css` / `icons.js` / `geometry.js` / `constants.js` (no
+build step — plain `<link>` / `<script src>`).
 
 ## Section index (grep `// SECTION:`)
 
@@ -34,7 +37,7 @@ The JS is organized with `// SECTION:` comment markers. Run
 `rg "^\s*// SECTION:" index.html` for the live list with current line numbers.
 In rough order:
 
-- Constants — `TOOL`, `SCALE_MODES`, `uid`, `COLORS`, `SCALE_PRESETS`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS` (the icon path constants, `VB_384_512_PATHS`, `CUSTOM_ICONS`, and `ICONS` live in [icons.js](icons.js); custom-icon helpers like `getEffectiveCustomIcons` / `parseUploadedSvg` stay here)
+- Constants — `uid`, the `SUPABASE_*`/`supabase` setup, `getLineModifiers`/`getPlumbingModifiers` and friends, and the icon-derived consts (`CUSTOM_ICON_VIEWBOXES`, `CUSTOM_ICON_META`, etc.) stay here. The pure literals `TOOL`, `SCALE_MODES`, `COLORS`, `SCALE_PRESETS`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS` plus the autosave/checkout timing & threshold block, IndexedDB store names + caps, and assorted keys/URLs/TZ now live in [constants.js](constants.js); the icon path constants, `VB_384_512_PATHS`, `CUSTOM_ICONS`, and `ICONS` live in [icons.js](icons.js)
 - State — the `state` object, `makeAnnotations()`, module-level sync/checkout vars and tuning constants, `withTimeout`, `serverNowMs`/`updateServerClockFromRpc`
 - Sync recovery & client recycle — `runRecoveryProbe`, `runRecoveryProbeAndMaybeRecycle`, `recreateSupabaseClient`, `rawProjectsUpdate`/`rawProjectsInsert`/`rawCheckInProject`
 - Global force reload — `checkGlobalForceReload`, `doGlobalReloadNow`

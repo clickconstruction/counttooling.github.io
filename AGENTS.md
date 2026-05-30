@@ -22,7 +22,8 @@
   `features/manage-icons.js`, `features/multiply-zone-settings.js`,
   `features/export-pdfs.js`, `features/legend-settings.js`,
   `features/page-settings.js`, `features/counter-settings.js`,
-  `features/line-type-settings.js`, `features/choose-create-line-type.js`), then
+  `features/line-type-settings.js`, `features/choose-create-line-type.js`,
+  `features/scale.js`), then
   `report.js`),
   [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
   extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
@@ -154,7 +155,26 @@
   the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay
   in app.js; the three call sites (`#quickLine.onclick`, `#plumLineBtn.onclick`, the
   Shift+L hotkey) reach it via `App.*`; renamed the section marker to
-  `// SECTION: Line color & sidebar handlers`), and
+  `// SECTION: Line color & sidebar handlers`),
+  [features/scale.js](features/scale.js) (the thirteenth registry split and first
+  to route geometry.js globals + `SCALE_*` constants through the registry — the
+  Scale modal (`#scaleModal`): `updateScalePlaceholder` + `openScaleModal` +
+  `resetScaleModalZoneMode` + `applyScaleObjectToZoneOrPage` + `showScaleTab`;
+  registers `App.openScaleModal`/`App.resetScaleModalZoneMode` and binds the
+  `#setScale`/`#setScaleSidebar` openers + the `#scaleModalTabs`/`#scaleUnit`/
+  `#scaleSelectOnPdf`/`#scalePresetsCancel`/`#scaleCustomApply`/`#scaleCancel`/
+  `#scaleSet` handlers (which had been down in the Counter-modal region) at load;
+  six new publish-only deps `SCALE_MODES`/`SCALE_PRESETS`/`ptDist`/`parseFraction`/
+  `parseRealWorldLength`/`getActiveAnnotations`, reuses
+  `state`/`showModal`/`hideModal`/`updateUI`/`renderPdf`/`pushUndoSnapshot`/
+  `markProjectDirty`/`uid`/`ensureActiveCanvas`/`showToast`/`TOOL`; the modal
+  doubles as the scale-zone create/edit dialog (`scaleModalApplyTarget === 'zone'`),
+  so `applyScaleObjectToZoneOrPage` moves with it while the four `openScaleModal`
+  callers (canvas two-point finish + scale-zone context-menu Edit) and the
+  Escape-key `resetScaleModalZoneMode` branch keep their zone-entry state/DOM setup
+  inline in app.js and reach the modal via `App.*`; the toolbar tool buttons that
+  shared the old grab-bag stay in app.js under the renamed section marker
+  `// SECTION: Toolbar tool buttons`), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
@@ -267,7 +287,8 @@ Rules to follow when adding/editing a feature file:
   `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`,
   `logUserEvent`, `renderPagesList`, `renderAnnotations`, `renderCountersList`,
   `renderLineTypesList`, `DROP_ICON_STYLES`, `TOOL`, `COLORS`,
-  `populateQuickLineModal`). Some are
+  `populateQuickLineModal`, `SCALE_MODES`, `SCALE_PRESETS`, `ptDist`,
+  `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`). Some are
   "publish-only" — the function stays defined in app.js (used widely there) and
   is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
   `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`, `getUserCustomIcons`,
@@ -277,7 +298,10 @@ Rules to follow when adding/editing a feature file:
   `sanitizeForFilename`/`logUserEvent`, Page settings's `renderPagesList`,
   Counter settings's `renderAnnotations`/`renderCountersList`, Line type
   settings's `renderLineTypesList`/`DROP_ICON_STYLES`, and Choose/Create Line
-  Type's `populateQuickLineModal` plus the two constants `TOOL`/`COLORS`);
+  Type's `populateQuickLineModal` plus the two constants `TOOL`/`COLORS`, and
+  Scale's `getActiveAnnotations`, the geometry globals
+  `ptDist`/`parseFraction`/`parseRealWorldLength`, plus the constants
+  `SCALE_MODES`/`SCALE_PRESETS`);
   only the feature's own functions move out. Add any new dep a feature needs here. Leave the
   existing `window.*` report.js exports alone.
 - `features/<name>.js` is its own IIFE that does

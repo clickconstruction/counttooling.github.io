@@ -77,3 +77,56 @@ test('getProjectCounts: sums across multiple pages and canvases', () => {
   // counters: 2 + 1 + 3 = 6; lines: 1 + 2 + (1+1) = 5
   assert.deepStrictEqual(s.getProjectCounts(data), { counter_count: 6, line_count: 5 });
 });
+
+test('serializeSaveError: extracts the log-safe field set', () => {
+  const e = Object.assign(new Error('boom'), { code: 'X1', status: 500, details: 'd', hint: 'h' });
+  assert.deepStrictEqual(s.serializeSaveError(e), {
+    message: 'boom', name: 'Error', code: 'X1', status: 500, details: 'd', hint: 'h',
+  });
+});
+
+test('serializeSaveError: null -> {}, message falls back to String(e)', () => {
+  assert.deepStrictEqual(s.serializeSaveError(null), {});
+  // an error-like object with no `message` falls back to String(e)
+  const noMsg = { name: 'Weird', toString: () => 'stringified' };
+  assert.strictEqual(s.serializeSaveError(noMsg).message, 'stringified');
+});
+
+test('formatSaveStatusErrDetail: JSON string of the serialized error; empty for null', () => {
+  assert.strictEqual(s.formatSaveStatusErrDetail(null), '');
+  const out = JSON.parse(s.formatSaveStatusErrDetail(new Error('nope')));
+  assert.strictEqual(out.message, 'nope');
+  assert.strictEqual(out.name, 'Error');
+});
+
+test('backoffDelayMs: failures=1 -> levels[0]; clamps at the last level', () => {
+  const levels = [1000, 5000, 30000];
+  assert.strictEqual(s.backoffDelayMs(1, levels), 1000);
+  assert.strictEqual(s.backoffDelayMs(2, levels), 5000);
+  assert.strictEqual(s.backoffDelayMs(3, levels), 30000);
+  assert.strictEqual(s.backoffDelayMs(99, levels), 30000); // clamped
+  assert.strictEqual(s.backoffDelayMs(0, levels), 1000);   // guarded to index 0
+  assert.strictEqual(s.backoffDelayMs(3, []), 0);          // empty levels
+});
+
+test('computeClockOffsetMs: string / numeric server_now -> offset; missing -> null', () => {
+  const localNow = 1_000_000;
+  // numeric epoch ms
+  assert.strictEqual(s.computeClockOffsetMs({ server_now: 1_005_000 }, localNow), 5000);
+  // ISO string
+  const iso = new Date(localNow + 2000).toISOString();
+  assert.strictEqual(s.computeClockOffsetMs({ server_now: iso }, localNow), 2000);
+  // missing / unparseable / null payload
+  assert.strictEqual(s.computeClockOffsetMs({}, localNow), null);
+  assert.strictEqual(s.computeClockOffsetMs({ server_now: 'not-a-date' }, localNow), null);
+  assert.strictEqual(s.computeClockOffsetMs(null, localNow), null);
+});
+
+test('percentile: p95 of a known array; empty -> null', () => {
+  const samples = Array.from({ length: 100 }, (_, i) => i + 1); // 1..100
+  // nearest-rank index: floor(0.95 * 99) = 94 -> value 95
+  assert.strictEqual(s.percentile(samples, 0.95), 95);
+  assert.strictEqual(s.percentile([42], 0.95), 42);
+  assert.strictEqual(s.percentile([], 0.95), null);
+  assert.strictEqual(s.percentile(null, 0.95), null);
+});

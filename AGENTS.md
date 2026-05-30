@@ -23,8 +23,11 @@
   [geometry.js](geometry.js) (pure math/geometry/parse primitives: `ptDist`,
   `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers,
   `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, zone locators,
-  `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`; classic
-  script loaded before the IIFE; no `state` dependency), and [report.js](report.js).
+  `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`,
+  `formatFeetInchesFromVal`; classic script loaded before the IIFE; no `state`
+  dependency; ends with a guarded CommonJS export footer that is inert in the
+  browser so [geometry.test.js](geometry.test.js) can `require()` it in Node),
+  and [report.js](report.js).
 - [report.js](report.js) loads after index.html and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
   `formatDist`, `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,
@@ -34,6 +37,10 @@
   `getEmailTextSummary`; both summary functions accept optional
   `{ pageIndices, getAnnotations }`.
 - jsPDF for Export PDF; html2canvas for report-to-PDF.
+- **Tests**: `npm test` runs the Playwright end-to-end specs; `npm run test:unit`
+  runs the dependency-free Node [geometry.test.js](geometry.test.js) (`node --test`).
+  Naming split (enforced by `testMatch` in [playwright.config.js](playwright.config.js)):
+  `*.spec.js` = Playwright, `*.test.js` = Node unit tests.
 - Supabase is **optional** (gated by `SUPABASE_ENABLED`). When enabled it provides
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
   storage bucket, several RPCs, and Edge Functions (`admin-create-user`,

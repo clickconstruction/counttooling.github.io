@@ -22,6 +22,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./idb.js')),
       Object.keys(require('./format.js')),
       Object.keys(require('./icon-render.js')),
+      Object.keys(require('./line-metrics.js')),
     )
     .map((k) => [k, 'readonly']),
 );
@@ -39,6 +40,14 @@ const constantsGlobals = Object.fromEntries(
 // it an icons-only global set (not its own exports).
 const iconsGlobals = Object.fromEntries(
   Object.keys(require('./icons.js')).map((k) => [k, 'readonly']),
+);
+
+// line-metrics.js reaches for the pure geometry helpers (ptDist,
+// polylineDistance, the bezier helpers, getScaleZoneForLine,
+// getMultiplyZoneForLine) by bare name; same no-redeclare reasoning, so give it a
+// geometry-only global set (not its own exports).
+const geometryGlobals = Object.fromEntries(
+  Object.keys(require('./geometry.js')).map((k) => [k, 'readonly']),
 );
 
 // app.js is a ~16k-line legacy file. We only want no-undef as an error (the
@@ -144,6 +153,30 @@ module.exports = [
       globals: {
         ...globals.browser,
         ...iconsGlobals,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // line-metrics.js: pure line-length / scale math extracted from app.js.
+    // Classic <script> loaded after geometry.js, so it reads the geometry helpers
+    // (ptDist / polylineDistance / the bezier helpers / getScaleZoneForLine /
+    // getMultiplyZoneForLine) by bare name (provided via geometryGlobals). Its
+    // exports are consumed cross-file by app.js, so no-unused-vars is noise;
+    // no-undef stays an error. Like the constants-only / icons-only groups, it
+    // must NOT receive its own export names as globals (no-redeclare).
+    files: ['line-metrics.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...geometryGlobals,
         module: 'readonly',
       },
     },

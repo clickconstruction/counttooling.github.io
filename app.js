@@ -1599,49 +1599,32 @@
   // rectsOverlap, the zone locators, formatLineLengthRealSum, parseRealWorldLength,
   // parseFraction) live in geometry.js (loaded before this IIFE); referenced here by bare
   // name via the shared global lexical scope. The state-coupled helpers below stay.
+  // The pure line-length / scale math lives in line-metrics.js (loaded before
+  // this IIFE); the helpers below are same-named thin wrappers that resolve the
+  // state-coupled inputs (per-page scale, the line's resolved line-type, the
+  // pages array) and delegate to the distinctly-named pure primitives. The
+  // window.* exports stay here unchanged (report.js contract).
+  function lineTypeForLine(line) {
+    return (state.lineTypes || []).find(l => l.id === line.lineTypeId);
+  }
   function quickLineLength(q) {
-    const lt = (state.lineTypes || []).find(l => l.id === q.lineTypeId);
-    if (lt && lt.curveStyle === 'arc') {
-      const a = { x: q.x1, y: q.y1 }, b = { x: q.x2, y: q.y2 };
-      const ctrl = getQuadraticBezierControlPoint(a, b, 1);
-      return quadraticBezierLength(a, ctrl, b);
-    }
-    return ptDist({ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 });
+    return lineSegmentLength(q, lineTypeForLine(q));
   }
   window.quickLineLength = quickLineLength;
   function getLineLengthPdfPts(line, pageIdx, isPoly) {
-    const page = state.pages[pageIdx];
-    const scale = page?.scale;
-    const base = isPoly
-      ? polylineDistance(line.points || [], line.closed)
-      : quickLineLength(line);
-    if (!scale || ((line.startDrop || 0) === 0 && (line.endDrop || 0) === 0))
-      return base;
-    const ppu = scale.pixelsPerUnit;
-    const dropPts = ((line.startDrop || 0) + (line.endDrop || 0)) * ppu;
-    return base + dropPts;
+    return lineLengthPdfPts(line, isPoly, state.pages[pageIdx]?.scale, lineTypeForLine(line));
   }
   window.getLineLengthPdfPts = getLineLengthPdfPts;
   window.getMultiplyZoneForPoint = getMultiplyZoneForPoint;
   window.getMultiplyZoneForLine = getMultiplyZoneForLine;
   function getEffectiveScaleForLine(ann, line, isPoly, pageIdx) {
-    const sz = getScaleZoneForLine(ann, line, isPoly);
-    if (sz && sz.scale) return sz.scale;
-    return getPageScale(pageIdx);
-  }
-  function getLineGeomPdfPts(line, isPoly) {
-    return isPoly ? polylineDistance(line.points || [], line.closed) : quickLineLength(line);
+    return effectiveScaleForLine(ann, line, isPoly, getPageScale(pageIdx));
   }
   function getLineRealWorldLength(line, pageIdx, isPoly, ann) {
-    const base = getLineGeomPdfPts(line, isPoly);
-    const eff = getEffectiveScaleForLine(ann, line, isPoly, pageIdx);
-    if (!eff || !eff.pixelsPerUnit) return base;
-    const drop = (line.startDrop || 0) + (line.endDrop || 0);
-    return base / eff.pixelsPerUnit + drop;
+    return lineRealWorldLength(line, isPoly, ann, getPageScale(pageIdx), lineTypeForLine(line));
   }
   function getLineLengthForTotals(line, pageIdx, isPoly, ann) {
-    const mult = typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, line, isPoly) : 1;
-    return getLineRealWorldLength(line, pageIdx, isPoly, ann) * mult;
+    return lineLengthForTotals(line, isPoly, ann, getPageScale(pageIdx), lineTypeForLine(line));
   }
   window.getScaleZoneForLine = getScaleZoneForLine;
   window.getEffectiveScaleForLine = getEffectiveScaleForLine;
@@ -1765,18 +1748,7 @@
   }
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
   function pickScaleForLineType(pageIndices) {
-    const preferredUnits = ['ft', 'in', 'm', 'cm', 'yd'];
-    for (const u of preferredUnits) {
-      for (const pi of pageIndices) {
-        const scale = state.pages[pi]?.scale;
-        if (scale && scale.unit === u) return scale;
-      }
-    }
-    for (const pi of pageIndices) {
-      const scale = state.pages[pi]?.scale;
-      if (scale) return scale;
-    }
-    return state.pages[0]?.scale ?? null;
+    return scaleForLineType(pageIndices, state.pages);
   }
   function getMarkedPageIndices() {
     return state.pages
@@ -4326,7 +4298,7 @@
           }
         };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderPdf(); }); });
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openGroupModal(g); });
+        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openGroupModal(g); });
       }
       el.appendChild(div);
     });
@@ -4809,7 +4781,7 @@
 
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) {
-    if (id === 'groupModal') openedGroupModalFromAssign = false;
+    if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
     if (id === 'counterLineTypeDetailsModal') counterLineTypeDetailsItem = null;
     if (id === 'canvasDetailsModal') pendingCanvasEdit = null;
     if (id === 'deleteCanvasConfirmModal') pendingDeleteCanvas = null;
@@ -5102,26 +5074,12 @@
     renderPdf();
   }
 
-  let pendingGroupEdit = null;
-  function openGroupModal(g) {
-    pendingGroupEdit = g;
-    const titleEl = document.getElementById('groupModalTitle');
-    const nameEl = document.getElementById('groupModalName');
-    const colorRow = document.getElementById('groupModalColorRow');
-    const deleteBtn = document.getElementById('groupModalDelete');
-    titleEl.textContent = g ? 'Edit Group' : 'Add Group';
-    nameEl.value = g ? (g.name || '') : '';
-    const groups = state.groups || [];
-    const defaultColor = g ? (g.color || COLORS[0]) : (COLORS[groups.length % COLORS.length]);
-    colorRow.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (c === defaultColor ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-    colorRow.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => {
-      colorRow.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
-      s.classList.add('selected');
-    });
-    if (deleteBtn) deleteBtn.style.display = g ? '' : 'none';
-    nameEl.focus();
-    showModal('groupModal');
-  }
+  // The Groups modals (openGroupModal + the groupModal handlers,
+  // refreshGroupAssignButtons + openGroupAssignModal + the groupAssign handlers,
+  // and the pendingGroupEdit / pendingGroupAssignTarget / openedGroupModalFromAssign
+  // flags) moved to features/groups.js (window.App registry); reached via
+  // App.openGroupModal / App.openGroupAssignModal at call time. deleteGroup stays
+  // here (published as App.deleteGroup for the moved Delete handler).
   function deleteGroup(groupId) {
     const g = (state.groups || []).find(x => x.id === groupId);
     if (!g) return false;
@@ -7447,7 +7405,9 @@
     updateUI();
   };
 
-  document.getElementById('addGroup').onclick = () => openGroupModal(null);
+  // The #addGroup opener + the #groupModalCancel/#groupModalDelete/#groupModalDone
+  // handlers moved to features/groups.js (window.App registry). The #showGroupColors
+  // sidebar toggle below stays here.
   const showGroupColorsCheckbox = document.getElementById('showGroupColorsCheckbox');
   const showGroupColorsBtn = document.getElementById('showGroupColorsBtn');
   if (showGroupColorsCheckbox && showGroupColorsBtn) {
@@ -7464,126 +7424,9 @@
       renderPdf();
     };
   }
-  document.getElementById('groupModalCancel').onclick = () => {
-    if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
-    pendingGroupEdit = null;
-    hideModal('groupModal');
-  };
-  document.getElementById('groupModalDelete').onclick = () => {
-    if (pendingGroupEdit && deleteGroup(pendingGroupEdit.id)) {
-      if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
-      pendingGroupEdit = null;
-      hideModal('groupModal');
-      updateUI();
-      renderPdf();
-    }
-  };
-  document.getElementById('groupModalDone').onclick = () => {
-    const name = document.getElementById('groupModalName').value.trim() || 'Group';
-    const colorSel = document.querySelector('#groupModalColorRow .color-swatch.selected');
-    const color = colorSel ? colorSel.dataset.color : COLORS[0];
-    if (pendingGroupEdit) {
-      pushUndoSnapshot();
-      pendingGroupEdit.name = name;
-      pendingGroupEdit.color = color;
-      markProjectDirty();
-    } else {
-      pushUndoSnapshot();
-      const newGroup = { id: uid(), name, color };
-      if (!state.groups) state.groups = [];
-      state.groups.push(newGroup);
-      state.activeGroupId = newGroup.id;
-      markProjectDirty();
-    }
-    if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
-    pendingGroupEdit = null;
-    hideModal('groupModal');
-    updateUI();
-    renderPdf();
-  };
-  let pendingGroupAssignTarget = null;
-  let openedGroupModalFromAssign = false;
-  // SECTION: Groups
-  function refreshGroupAssignButtons() {
-    if (!pendingGroupAssignTarget) return;
-    const container = document.getElementById('groupAssignButtons');
-    if (!container) return;
-    const groups = state.groups || [];
-    const item = pendingGroupAssignTarget.item;
-    const targetGroupId = (item.group || null) || '';
-    container.innerHTML = '';
-    const noneBtn = document.createElement('button');
-    noneBtn.type = 'button';
-    noneBtn.className = 'group-assign-btn none' + (targetGroupId === '' ? ' selected' : '');
-    noneBtn.dataset.groupId = '';
-    noneBtn.textContent = 'None';
-    noneBtn.onclick = () => { container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected')); noneBtn.classList.add('selected'); };
-    container.appendChild(noneBtn);
-    groups.forEach(g => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'group-assign-btn' + (targetGroupId === g.id ? ' selected' : '');
-      btn.dataset.groupId = g.id;
-      btn.style.background = (g.color || COLORS[0]);
-      btn.style.color = '#fff';
-      btn.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
-      btn.textContent = g.name || 'Group';
-      btn.onclick = () => { container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
-      container.appendChild(btn);
-    });
-  }
-  function openGroupAssignModal(item) {
-    pendingGroupAssignTarget = { item };
-    const container = document.getElementById('groupAssignButtons');
-    const groups = state.groups || [];
-    const currentGroupId = (item.group || null) || '';
-    container.innerHTML = '';
-    const noneBtn = document.createElement('button');
-    noneBtn.type = 'button';
-    noneBtn.className = 'group-assign-btn none' + (currentGroupId === '' ? ' selected' : '');
-    noneBtn.dataset.groupId = '';
-    noneBtn.textContent = 'None';
-    noneBtn.onclick = () => {
-      container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected'));
-      noneBtn.classList.add('selected');
-    };
-    container.appendChild(noneBtn);
-    groups.forEach(g => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'group-assign-btn' + (currentGroupId === g.id ? ' selected' : '');
-      btn.dataset.groupId = g.id;
-      btn.style.background = (g.color || COLORS[0]);
-      btn.style.color = '#fff';
-      btn.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
-      btn.textContent = g.name || 'Group';
-      btn.onclick = () => {
-        container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-      };
-      container.appendChild(btn);
-    });
-    showModal('groupAssignModal');
-  }
-  document.getElementById('groupAssignAddGroup').onclick = () => {
-    openedGroupModalFromAssign = true;
-    openGroupModal(null);
-  };
-  document.getElementById('groupAssignCancel').onclick = () => { pendingGroupAssignTarget = null; hideModal('groupAssignModal'); };
-  document.getElementById('groupAssignDone').onclick = () => {
-    if (pendingGroupAssignTarget && pendingGroupAssignTarget.item) {
-      const container = document.getElementById('groupAssignButtons');
-      const sel = container.querySelector('.group-assign-btn.selected');
-      const groupId = sel ? (sel.dataset.groupId || null) : null;
-      pushUndoSnapshot();
-      pendingGroupAssignTarget.item.group = groupId;
-      markProjectDirty();
-      updateUI();
-      renderPdf();
-    }
-    pendingGroupAssignTarget = null;
-    hideModal('groupAssignModal');
-  };
+  // The #groupAssign* handlers and refreshGroupAssignButtons / openGroupAssignModal
+  // moved to features/groups.js (window.App registry) alongside the group-modal
+  // handlers; the emptied "// SECTION: Groups" marker was removed.
 
   // The Summary Legend settings modal (openLegendSettingsModal + its close / 8
   // appearance handlers + the #summarySectionTitle opener) lives in
@@ -12164,7 +12007,7 @@
     else if (t.type === 'polyline') item = ann.polylines?.[t.index];
     if (!item) return;
     document.getElementById('contextMenu').classList.remove('visible');
-    openGroupAssignModal(item);
+    App.openGroupAssignModal(item);
   };
   document.getElementById('ctxEditMultiplyZone').onclick = () => {
     const t = state.ctxTarget;
@@ -14400,6 +14243,7 @@
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.getActiveAnnotations = getActiveAnnotations;
+  App.deleteGroup = deleteGroup;
 
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;

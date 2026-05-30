@@ -52,12 +52,10 @@
 
   // SECTION: Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
   // a classic <script src> loaded before this IIFE; referenced here via the shared global lexical scope.
-  const CUSTOM_ICON_META = Object.fromEntries(CUSTOM_ICONS.map(ic => {
-    const parts = ic.viewBox.split(/\s+/);
-    const w = Number(parts[2]) || 640, h = Number(parts[3]) || 640;
-    return [ic.value, { center: { x: w / 2, y: h / 2 }, vb: Math.max(w, h) }];
-  }));
-
+  // CUSTOM_ICON_META + the pure icon-render rules live in icon-render.js (loaded
+  // before app.js) and resolve here by bare name. The helpers below stay because
+  // they read the runtime user-icon cache; they inject getEffectiveCustomIcons()
+  // into the pure *FromList/*Rule primitives.
   let customIconsCache = [];
   function getUserCustomIcons() {
     return customIconsCache;
@@ -70,26 +68,19 @@
     return [...CUSTOM_ICONS, ...getUserCustomIcons()];
   }
   function getCustomIconViewBox(path) {
-    const ic = getEffectiveCustomIcons().find(i => i.value === path);
-    return ic ? ic.viewBox : null;
+    return iconViewBoxFromList(path, getEffectiveCustomIcons());
   }
   function getCustomIconMeta(path) {
-    if (CUSTOM_ICON_META[path]) return CUSTOM_ICON_META[path];
-    const ic = getEffectiveCustomIcons().find(i => i.value === path);
-    if (!ic) return null;
-    const parts = (ic.viewBox || '0 0 24 24').split(/\s+/);
-    const minX = Number(parts[0]) || 0, minY = Number(parts[1]) || 0, w = Number(parts[2]) || 24, h = Number(parts[3]) || 24;
-    return { center: { x: minX + w / 2, y: minY + h / 2 }, vb: Math.max(w, h) };
+    return iconMetaFromList(path, getEffectiveCustomIcons());
   }
-  // Shared icon-render metadata helpers (single source of truth for viewBox/center rules).
   function iconRenderVb(path) {
-    return getCustomIconMeta(path)?.vb || (VB_384_512_PATHS.includes(path) ? 512 : (FA_PATHS.includes(path) ? 512 : 640));
+    return iconRenderVbRule(getCustomIconMeta(path), path);
   }
   function iconRenderCenter(path) {
-    return getCustomIconMeta(path)?.center || (VB_384_512_PATHS.includes(path) ? { x: 192, y: 256 } : { x: (FA_PATHS.includes(path) ? 512 : 640) / 2, y: (FA_PATHS.includes(path) ? 512 : 640) / 2 });
+    return iconRenderCenterRule(getCustomIconMeta(path), path);
   }
   function iconViewBoxString(path) {
-    return getCustomIconViewBox(path) || (VB_384_512_PATHS.includes(path) ? '0 0 384 512' : FA_PATHS.includes(path) ? '0 0 512 512' : '0 0 640 640');
+    return iconViewBoxStringRule(getCustomIconViewBox(path), path);
   }
 
   function parseUploadedSvg(file) {
@@ -1407,221 +1398,48 @@
   // IndexedDB store names & caps live in constants.js (see note in the Constants section).
   const BACKUP_PDF_TO_INDEXEDDB = (typeof window.BACKUP_PDF_TO_INDEXEDDB !== 'undefined' ? window.BACKUP_PDF_TO_INDEXEDDB : true);
 
-  function openPdfCacheDb() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(PDF_CACHE_DB, 5);
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => resolve(req.result);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(PDF_CACHE_STORE)) {
-          db.createObjectStore(PDF_CACHE_STORE, { keyPath: 'projectId' });
-        }
-        if (!db.objectStoreNames.contains(PDF_CACHE_META_STORE)) {
-          db.createObjectStore(PDF_CACHE_META_STORE, { keyPath: 'projectId' });
-        }
-        if (!db.objectStoreNames.contains(VIEW_PDFS_STORE)) {
-          db.createObjectStore(VIEW_PDFS_STORE, { keyPath: 'token' });
-        }
-        if (!db.objectStoreNames.contains(VIEW_PDFS_META_STORE)) {
-          db.createObjectStore(VIEW_PDFS_META_STORE, { keyPath: 'token' });
-        }
-        if (!db.objectStoreNames.contains(TAKEOFF_BACKUP_STORE)) {
-          db.createObjectStore(TAKEOFF_BACKUP_STORE, { keyPath: 'projectId' });
-        }
-        if (!db.objectStoreNames.contains(TAKEOFF_BACKUP_META_STORE)) {
-          db.createObjectStore(TAKEOFF_BACKUP_META_STORE, { keyPath: 'projectId' });
-        }
-        if (!db.objectStoreNames.contains(CUSTOM_ICONS_STORE)) {
-          db.createObjectStore(CUSTOM_ICONS_STORE, { keyPath: 'key' });
-        }
-        if (!db.objectStoreNames.contains(SAVE_LOGS_SNAPSHOT_STORE)) {
-          db.createObjectStore(SAVE_LOGS_SNAPSHOT_STORE, { keyPath: 'capturedAt' });
-        }
-      };
-    });
-  }
+  // openPdfCacheDb, viewCache*, pdfCache* live in idb.js (loaded before app.js).
+  // They are context-free storage primitives and resolve here by bare name.
 
-  async function viewCacheGet(token, pdfHash) {
-    try {
-      const db = await openPdfCacheDb();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(VIEW_PDFS_STORE, 'readonly');
-        const req = tx.objectStore(VIEW_PDFS_STORE).get(token);
-        req.onsuccess = () => {
-          const entry = req.result;
-          if (entry && entry.pdfHash === pdfHash && entry.blob) resolve(entry.blob);
-          else resolve(null);
-        };
-        req.onerror = () => reject(req.error);
-      });
-    } catch (_) { return null; }
-  }
-
-  async function viewCachePut(token, blob, pdfHash, meta) {
-    try {
-      const db = await openPdfCacheDb();
-      const tx = db.transaction([VIEW_PDFS_STORE, VIEW_PDFS_META_STORE], 'readwrite');
-      tx.objectStore(VIEW_PDFS_STORE).put({ token, blob, pdfHash });
-      tx.objectStore(VIEW_PDFS_META_STORE).put({ token, lastUsed: Date.now(), size: blob.size, projectId: meta?.projectId, name: meta?.name, data: meta?.data, pdfHash: pdfHash });
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (_) { /* ignore */ }
-  }
-
-  async function viewCacheGetMeta(token) {
-    try {
-      const db = await openPdfCacheDb();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(VIEW_PDFS_META_STORE, 'readonly');
-        const req = tx.objectStore(VIEW_PDFS_META_STORE).get(token);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
-      });
-    } catch (_) { return null; }
-  }
-
-  async function pdfCacheGet(projectId, pdfHash) {
-    try {
-      const db = await openPdfCacheDb();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(PDF_CACHE_STORE, 'readonly');
-        const req = tx.objectStore(PDF_CACHE_STORE).get(projectId);
-        req.onsuccess = () => {
-          const entry = req.result;
-          if (entry && entry.pdfHash === pdfHash && entry.blob) resolve(entry.blob);
-          else resolve(null);
-        };
-        req.onerror = () => reject(req.error);
-      });
-    } catch (_) { return null; }
-  }
-
-  async function pdfCachePut(projectId, blob, pdfHash) {
-    try {
-      const db = await openPdfCacheDb();
-      const size = blob.size;
-      const lastUsed = Date.now();
-      const tx = db.transaction([PDF_CACHE_STORE, PDF_CACHE_META_STORE], 'readwrite');
-      const store = tx.objectStore(PDF_CACHE_STORE);
-      const metaStore = tx.objectStore(PDF_CACHE_META_STORE);
-      const entries = await new Promise((resolve, reject) => {
-        const req = metaStore.getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-      let totalBytes = entries.reduce((s, e) => s + (e.size || 0), 0);
-      const byLastUsed = [...entries].sort((a, b) => (a.lastUsed || 0) - (b.lastUsed || 0));
-      for (const evict of byLastUsed) {
-        if (entries.length < PDF_CACHE_MAX_ENTRIES && totalBytes + size <= PDF_CACHE_MAX_BYTES) break;
-        if (evict.projectId === projectId) break;
-        store.delete(evict.projectId);
-        metaStore.delete(evict.projectId);
-        totalBytes -= evict.size || 0;
-        entries.splice(entries.findIndex(e => e.projectId === evict.projectId), 1);
-      }
-      store.put({ projectId, blob, pdfHash });
-      metaStore.put({ projectId, lastUsed, size });
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (_) { /* ignore */ }
-  }
-
-  async function pdfCacheDelete(projectId) {
-    try {
-      const db = await openPdfCacheDb();
-      const tx = db.transaction([PDF_CACHE_STORE, PDF_CACHE_META_STORE], 'readwrite');
-      tx.objectStore(PDF_CACHE_STORE).delete(projectId);
-      tx.objectStore(PDF_CACHE_META_STORE).delete(projectId);
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (_) { /* ignore */ }
-  }
-
+  // Wrapper over idb.js idbTakeoffBackupGetRaw: keeps the cross-user mismatch
+  // check + logging in app.js (saveDebugLog / takeoffBackupDelete are app-side).
   async function takeoffBackupGet(projectId, currentUserId) {
-    if (!BACKUP_PDF_TO_INDEXEDDB) return null;
-    try {
-      const db = await openPdfCacheDb();
-      const entry = await new Promise((resolve, reject) => {
-        const tx = db.transaction([TAKEOFF_BACKUP_STORE], 'readonly');
-        const req = tx.objectStore(TAKEOFF_BACKUP_STORE).get(projectId);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
-      });
-      if (!entry) return null;
-      if (currentUserId && entry.userId && entry.userId !== currentUserId) {
-        try { saveDebugLog('takeoffBackup.user_mismatch', { projectId, ownerUserId: entry.userId, currentUserId }); } catch (_) {}
-        try { await takeoffBackupDelete(projectId); } catch (_) {}
-        return null;
-      }
-      return entry;
-    } catch (_) { return null; }
+    const entry = await idbTakeoffBackupGetRaw(projectId);
+    if (!entry) return null;
+    if (currentUserId && entry.userId && entry.userId !== currentUserId) {
+      try { saveDebugLog('takeoffBackup.user_mismatch', { projectId, ownerUserId: entry.userId, currentUserId }); } catch (_) {}
+      try { await takeoffBackupDelete(projectId); } catch (_) {}
+      return null;
+    }
+    return entry;
   }
 
+  // Wrapper over idb.js idbTakeoffBackupPut: the pure primitive does the eviction
+  // + stale-skip inside one transaction and returns a status; the logging + the
+  // one-shot warning (gated by the IIFE-local takeoffBackupWarnShown) stay here.
   async function takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAt, projectName, userId) {
-    if (!BACKUP_PDF_TO_INDEXEDDB) return;
-    try {
-      const db = await openPdfCacheDb();
-      const dataSize = JSON.stringify(data).length;
-      const pdfSize = pdfBlob ? pdfBlob.size : 0;
-      const size = dataSize + pdfSize;
-      const lastUsed = Date.now();
-      const tx = db.transaction([TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE], 'readwrite');
-      const store = tx.objectStore(TAKEOFF_BACKUP_STORE);
-      const metaStore = tx.objectStore(TAKEOFF_BACKUP_META_STORE);
-      const existing = await new Promise((resolve, reject) => {
-        const req = store.get(projectId);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
-      });
-      if (existing && typeof existing.lastModifiedAt === 'number' && typeof lastModifiedAt === 'number' && existing.lastModifiedAt > lastModifiedAt) {
-        saveDebugLog('takeoffBackup.skip_stale', { projectId, existing: existing.lastModifiedAt, incoming: lastModifiedAt });
-        try { tx.abort(); } catch (_) {}
-        return;
-      }
-      const entries = await new Promise((resolve, reject) => {
-        const req = metaStore.getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-      let totalBytes = entries.reduce((s, e) => s + (e.size || 0), 0);
-      const byLastUsed = [...entries].sort((a, b) => (a.lastUsed || 0) - (b.lastUsed || 0));
-      for (const evict of byLastUsed) {
-        if (entries.length < TAKEOFF_BACKUP_MAX_ENTRIES && totalBytes + size <= TAKEOFF_BACKUP_MAX_BYTES) break;
-        if (evict.projectId === projectId) break;
-        store.delete(evict.projectId);
-        metaStore.delete(evict.projectId);
-        totalBytes -= evict.size || 0;
-        entries.splice(entries.findIndex(e => e.projectId === evict.projectId), 1);
-      }
-      const entry = { projectId, data, pdfHash: pdfHash || null, lastModifiedAt, projectName: projectName || null, userId: userId || null };
-      if (pdfBlob) entry.pdfBlob = pdfBlob;
-      store.put(entry);
-      metaStore.put({ projectId, lastUsed, size });
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (err) {
-      saveDebugLog('takeoffBackup.put_err', { projectId, message: err?.message });
+    const res = await idbTakeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAt, projectName, userId);
+    if (res && res.skippedStale) {
+      saveDebugLog('takeoffBackup.skip_stale', { projectId, existing: res.existing, incoming: res.incoming });
+    } else if (res && res.error) {
+      saveDebugLog('takeoffBackup.put_err', { projectId, message: res.error?.message });
       if (!takeoffBackupWarnShown) {
         takeoffBackupWarnShown = true;
         try {
           pushSaveEvent(
             'takeoff_backup_warn',
             'Local takeoff backup failed - tab-crash recovery may not work',
-            err?.message || ''
+            res.error?.message || ''
           );
         } catch (_) {}
       }
     }
   }
 
-  async function takeoffBackupDelete(projectId) {
-    if (!BACKUP_PDF_TO_INDEXEDDB) return;
-    try {
-      const db = await openPdfCacheDb();
-      const tx = db.transaction([TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE], 'readwrite');
-      tx.objectStore(TAKEOFF_BACKUP_STORE).delete(projectId);
-      tx.objectStore(TAKEOFF_BACKUP_META_STORE).delete(projectId);
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (_) { /* ignore */ }
-  }
+  // takeoffBackupDelete + readSaveLogsSnapshots live in idb.js (context-free).
 
+  // Wrapper over idb.js idbPutSaveLogsSnapshot: the throttle, envelope build
+  // (reads state), and logging stay here; idb.js owns the put + prune-to-max.
   async function writeSaveLogsSnapshot(reason) {
     if (typeof indexedDB === 'undefined') return;
     if (envelopeSnapshotFiredAt && Date.now() - envelopeSnapshotFiredAt < 60000) return;
@@ -1629,88 +1447,30 @@
     try {
       const envelope = buildSaveLogsEnvelope();
       envelope.autoSnapshotReason = reason || 'unknown';
-      const db = await openPdfCacheDb();
-      const tx = db.transaction(SAVE_LOGS_SNAPSHOT_STORE, 'readwrite');
-      const store = tx.objectStore(SAVE_LOGS_SNAPSHOT_STORE);
-      store.put({ capturedAt: envelope.capturedAt, envelope });
-      const keys = await new Promise((resolve, reject) => {
-        const req = store.getAllKeys();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
-      if (keys.length > SAVE_LOGS_SNAPSHOT_MAX_ENTRIES) {
-        const sorted = keys.slice().sort();
-        const toDelete = sorted.slice(0, keys.length - SAVE_LOGS_SNAPSHOT_MAX_ENTRIES);
-        for (const k of toDelete) store.delete(k);
-      }
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+      const res = await idbPutSaveLogsSnapshot(envelope);
+      if (res && res.error) throw res.error;
       saveDebugLog('autosave.snapshot.put', { reason, capturedAt: envelope.capturedAt, eventCount: envelope.events.length });
     } catch (e) {
       saveDebugLog('autosave.snapshot.put_err', { reason, message: e?.message });
     }
   }
 
-  async function readSaveLogsSnapshots(limit) {
-    if (typeof indexedDB === 'undefined') return [];
-    const cap = typeof limit === 'number' && limit > 0 ? limit : SAVE_LOGS_SNAPSHOT_MAX_ENTRIES;
-    try {
-      const db = await openPdfCacheDb();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(SAVE_LOGS_SNAPSHOT_STORE, 'readonly');
-        const req = tx.objectStore(SAVE_LOGS_SNAPSHOT_STORE).getAll();
-        req.onsuccess = () => {
-          const rows = (req.result || []).slice().sort((a, b) => (a.capturedAt < b.capturedAt ? 1 : -1));
-          resolve(rows.slice(0, cap).map(r => r.envelope).filter(Boolean));
-        };
-        req.onerror = () => reject(req.error);
-      });
-    } catch (_) { return []; }
-  }
-
   function customIconsCurrentKey() {
     const uid = state.supabaseSession?.user?.id || null;
     return uid ? ('customIcons_' + uid) : CUSTOM_ICONS_KEY;
   }
+  // Wrappers over idb.js idbCustomIconsGet/Put: customIconsCurrentKey reads state,
+  // so the key is computed here and passed in; the migration log stays app-side.
   async function customIconsGetFromIndexedDB() {
-    try {
-      const db = await openPdfCacheDb();
-      const primaryKey = customIconsCurrentKey();
-      const primary = await new Promise((resolve, reject) => {
-        const tx = db.transaction(CUSTOM_ICONS_STORE, 'readonly');
-        const req = tx.objectStore(CUSTOM_ICONS_STORE).get(primaryKey);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
-      });
-      if (primary && Array.isArray(primary.data)) return primary.data;
-      if (primaryKey !== CUSTOM_ICONS_KEY) {
-        const legacy = await new Promise((resolve, reject) => {
-          const tx = db.transaction(CUSTOM_ICONS_STORE, 'readonly');
-          const req = tx.objectStore(CUSTOM_ICONS_STORE).get(CUSTOM_ICONS_KEY);
-          req.onsuccess = () => resolve(req.result || null);
-          req.onerror = () => reject(req.error);
-        });
-        if (legacy && Array.isArray(legacy.data) && legacy.data.length) {
-          try {
-            const tx = db.transaction(CUSTOM_ICONS_STORE, 'readwrite');
-            tx.objectStore(CUSTOM_ICONS_STORE).put({ key: primaryKey, data: legacy.data });
-            tx.objectStore(CUSTOM_ICONS_STORE).delete(CUSTOM_ICONS_KEY);
-            await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-            try { saveDebugLog('customIcons.migrated_to_per_user', { from: CUSTOM_ICONS_KEY, to: primaryKey, count: legacy.data.length }); } catch (_) {}
-          } catch (_) {}
-          return legacy.data;
-        }
-        return null;
-      }
-      return null;
-    } catch (_) { return null; }
+    const primaryKey = customIconsCurrentKey();
+    const res = await idbCustomIconsGet(primaryKey, CUSTOM_ICONS_KEY);
+    if (res && res.migratedFrom) {
+      try { saveDebugLog('customIcons.migrated_to_per_user', { from: res.migratedFrom, to: res.migratedTo, count: Array.isArray(res.data) ? res.data.length : 0 }); } catch (_) {}
+    }
+    return res ? res.data : null;
   }
   async function customIconsPutToIndexedDB(arr) {
-    try {
-      const db = await openPdfCacheDb();
-      const tx = db.transaction(CUSTOM_ICONS_STORE, 'readwrite');
-      tx.objectStore(CUSTOM_ICONS_STORE).put({ key: customIconsCurrentKey(), data: Array.isArray(arr) ? arr : [] });
-      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    } catch (_) {}
+    await idbCustomIconsPut(customIconsCurrentKey(), arr);
   }
 
   async function deleteProjectAsOwner(projectId, pdfPath) {
@@ -2287,8 +2047,7 @@
   }
 
   function renderIconHtml(iconValue, color) {
-    const vb = iconViewBoxString(iconValue);
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
+    return iconSvgHtml(iconValue, color, iconViewBoxString(iconValue));
   }
 
   function formatSaveTime(isoStr) {
@@ -5429,55 +5188,10 @@
       outOfBoundsToastTimer = null;
     }, 2000);
   }
-  function showLineTypeTab(tab) {
-    document.querySelectorAll('.line-type-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    document.getElementById('chooseLineTypePanel').style.display = tab === 'choose' ? '' : 'none';
-    document.getElementById('createLineTypePanel').style.display = tab === 'create' ? '' : 'none';
-    const quickPanel = document.getElementById('chooseLineTypeQuickPanel');
-    if (quickPanel) quickPanel.style.display = tab === 'quick' ? '' : 'none';
-    if (tab === 'choose') populateChooseLineTypeList(document.getElementById('lineTypeModalSearchInput')?.value);
-    else if (tab === 'create') {
-      document.getElementById('createLineTypeName').value = '';
-      const cr = document.getElementById('createLineTypeColorRow');
-      cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-      cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
-    } else if (tab === 'quick') populateQuickLineModal();
-  }
-  function populateChooseLineTypeList(filter) {
-    const list = document.getElementById('chooseLineTypeList');
-    const empty = document.getElementById('chooseLineTypeEmpty');
-    list.innerHTML = '';
-    const q = (filter || '').trim().toLowerCase();
-    const filtered = state.lineTypes.filter(lt => !q || (lt.name || 'Line').toLowerCase().includes(q));
-    if (!filtered.length) {
-      empty.style.display = 'block';
-      return;
-    }
-    empty.style.display = 'none';
-    filtered.forEach(lt => {
-      const div = document.createElement('div');
-      div.className = 'sidebar-item sidebar-item-line-type';
-      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><span class="swatch" style="background:' + (lt.color || '#4a9eff') + '"></span>';
-      div.onclick = () => {
-        state.activeLineTypeId = lt.id;
-        hideModal('chooseLineTypeModal');
-        state.tool = TOOL.LINE;
-        state.quickLineStart = null;
-        state.pagesListCollapsed = true;
-        document.getElementById('pagesSection').classList.add('collapsed');
-        document.getElementById('pagesCollapseIcon').textContent = '▶';
-        updateUI();
-      };
-      list.appendChild(div);
-    });
-  }
-  function showChooseLineTypeModal() {
-    const searchInput = document.getElementById('lineTypeModalSearchInput');
-    if (searchInput) searchInput.value = '';
-    showLineTypeTab('choose');
-    showModal('chooseLineTypeModal');
-    requestAnimationFrame(() => { setTimeout(() => searchInput?.focus(), 0); });
-  }
+  // The Choose/Create Line Type modal (showLineTypeTab,
+  // populateChooseLineTypeList, showChooseLineTypeModal) moved to
+  // features/choose-create-line-type.js (window.App registry); reached via
+  // App.showChooseLineTypeModal / App.showLineTypeTab at call time.
 
   function showLineColorModal(currentColor, onApply) {
     state.pendingLineColorApply = onApply;
@@ -6833,7 +6547,7 @@
       state.quickLineStart = null;
       renderAnnotations();
     }
-    showChooseLineTypeModal();
+    App.showChooseLineTypeModal();
   };
   document.getElementById('quickLine').oncontextmenu = (e) => {
     e.preventDefault();
@@ -6898,7 +6612,7 @@
   document.getElementById('multiplyZoneBtn').oncontextmenu = (e) => {
     e.preventDefault();
     if (state.isViewer) return;
-    openMultiplyZoneSettingsModal();
+    App.openMultiplyZoneSettingsModal();
   };
   // SECTION: Counter modal
   function showCounterTab(tab) {
@@ -7018,7 +6732,7 @@
     multiplyZoneBtnSidebarEl.oncontextmenu = (e) => {
       e.preventDefault();
       if (state.isViewer) return;
-      openMultiplyZoneSettingsModal();
+      App.openMultiplyZoneSettingsModal();
     };
   }
   const scaleZoneBtnSidebarEl = document.getElementById('scaleZoneBtnSidebar');
@@ -7819,7 +7533,7 @@
   }
   document.getElementById('plumLineBtn').onclick = () => {
     populateQuickLineModal();
-    showLineTypeTab('quick');
+    App.showLineTypeTab('quick');
     showModal('chooseLineTypeModal');
   };
   document.getElementById('quickLineSize').onchange = updateQuickLineNamePreview;
@@ -8050,197 +7764,34 @@
     hideModal('groupAssignModal');
   };
 
-  document.getElementById('lineTypeSettingsClose').onclick = () => hideModal('lineTypeSettingsModal');
-  document.getElementById('legendSettingsClose').onclick = () => hideModal('legendSettingsModal');
-  document.getElementById('multiplyZoneSettingsShowLabelBtn').onclick = (e) => {
-    e.preventDefault();
-    const cb = document.getElementById('multiplyZoneSettingsShowLabel');
-    cb.checked = !cb.checked;
-    document.getElementById('multiplyZoneSettingsShowLabelBtn').setAttribute('aria-pressed', cb.checked);
-  };
-  document.getElementById('multiplyZoneSettingsLabelSize').oninput = () => {
-    const v = document.getElementById('multiplyZoneSettingsLabelSize').value;
-    const valEl = document.getElementById('multiplyZoneSettingsLabelSizeVal');
-    if (valEl) valEl.textContent = v;
-  };
-  // SECTION: Multiply Zone settings
-  function openMultiplyZoneSettingsModal() {
-    const s = state.multiplyZoneSettings || { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' };
-    const showLabelEl = document.getElementById('multiplyZoneSettingsShowLabel');
-    const showLabelBtn = document.getElementById('multiplyZoneSettingsShowLabelBtn');
-    const defaultMultEl = document.getElementById('multiplyZoneSettingsDefaultMult');
-    const labelSizeEl = document.getElementById('multiplyZoneSettingsLabelSize');
-    const checked = s.showLabelOnZone !== false;
-    if (showLabelEl) showLabelEl.checked = checked;
-    if (showLabelBtn) showLabelBtn.setAttribute('aria-pressed', checked);
-    if (defaultMultEl) defaultMultEl.value = String(s.defaultMultiplier ?? 2);
-    if (labelSizeEl) {
-      labelSizeEl.value = String(s.labelSize ?? 14);
-      const valEl = document.getElementById('multiplyZoneSettingsLabelSizeVal');
-      if (valEl) valEl.textContent = String(s.labelSize ?? 14);
-    }
-    const labelPosEl = document.getElementById('multiplyZoneSettingsLabelPosition');
-    if (labelPosEl) labelPosEl.value = (['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(s.labelPosition) ? s.labelPosition : 'center');
-    showModal('multiplyZoneSettingsModal');
-  }
-  document.getElementById('multiplyZoneSettingsClose').onclick = () => {
-    if (!state.multiplyZoneSettings) state.multiplyZoneSettings = { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' };
-    const showLabelEl = document.getElementById('multiplyZoneSettingsShowLabel');
-    const defaultMultEl = document.getElementById('multiplyZoneSettingsDefaultMult');
-    const labelSizeEl = document.getElementById('multiplyZoneSettingsLabelSize');
-    const labelPosEl = document.getElementById('multiplyZoneSettingsLabelPosition');
-    state.multiplyZoneSettings.showLabelOnZone = showLabelEl ? showLabelEl.checked : true;
-    const mult = parseInt(defaultMultEl?.value || '2', 10);
-    state.multiplyZoneSettings.defaultMultiplier = isNaN(mult) || mult < 1 ? 2 : mult;
-    const size = parseInt(labelSizeEl?.value || '14', 10);
-    state.multiplyZoneSettings.labelSize = isNaN(size) ? 14 : Math.max(8, Math.min(24, size));
-    const validPos = ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
-    state.multiplyZoneSettings.labelPosition = validPos.includes(labelPosEl?.value) ? labelPosEl.value : 'center';
-    markProjectDirty();
-    hideModal('multiplyZoneSettingsModal');
-    renderPdf();
-    updateUI();
-  };
+  // The Summary Legend settings modal (openLegendSettingsModal + its close / 8
+  // appearance handlers + the #summarySectionTitle opener) lives in
+  // features/legend-settings.js (window.App registry); it is reached via
+  // App.openLegendSettingsModal at call time. The #summaryCollapseIcon toggle,
+  // drawLegend, and the legendBtn overlay stay here.
+  // The Multiply Zone settings modal (openMultiplyZoneSettingsModal + its
+  // ShowLabel/LabelSize/Close handlers) lives in
+  // features/multiply-zone-settings.js (window.App registry);
+  // openMultiplyZoneSettingsModal is reached via App.openMultiplyZoneSettingsModal
+  // at call time. The Multiply Zone apply flow (X-tool draw + multiplyZoneModal)
+  // stays here.
+  // The Line Type settings modal (openLineTypeSettingsModal + its value handlers
+  // + close + reorder + the #lineTypesSectionTitle opener) lives in
+  // features/line-type-settings.js (window.App registry); reached via
+  // App.openLineTypeSettingsModal at call time. The #lineTypeSnapToHVHeaderBtn,
+  // the sidebar inline show-only buttons, #sidebarReorderFinish, the J-hotkey,
+  // and the Escape-key close branch stay here.
+  // SECTION: Line color & sidebar handlers
   document.getElementById('lineColorCancel').onclick = () => { state.pendingLineColorApply = null; hideModal('lineColorModal'); };
-  document.querySelectorAll('.line-type-tab').forEach(t => t.onclick = () => showLineTypeTab(t.dataset.tab));
-  const lineTypeModalSearchInput = document.getElementById('lineTypeModalSearchInput');
-  if (lineTypeModalSearchInput) {
-    lineTypeModalSearchInput.oninput = lineTypeModalSearchInput.onkeyup = () => populateChooseLineTypeList(lineTypeModalSearchInput.value);
-    lineTypeModalSearchInput.onkeydown = (e) => {
-      if (e.key === 'Enter') {
-        const first = document.querySelector('#chooseLineTypeList .sidebar-item');
-        if (first) first.click();
-      }
-    };
-  }
-  document.getElementById('chooseLineTypeCancel').onclick = () => hideModal('chooseLineTypeModal');
-  document.getElementById('createLineTypeCancel').onclick = () => hideModal('chooseLineTypeModal');
-  document.getElementById('createLineTypeCreate').onclick = () => {
-    const name = document.getElementById('createLineTypeName').value.trim() || 'Line';
-    const colorSel = document.querySelector('#createLineTypeColorRow .color-swatch.selected');
-    const color = colorSel ? colorSel.dataset.color : COLORS[2];
-    const curveSel = document.querySelector('input[name="createLineTypeCurve"]:checked');
-    const curveStyle = curveSel ? curveSel.value : 'straight';
-    pushUndoSnapshot();
-    const newLt = { id: uid(), name, color, curveStyle };
-    state.lineTypes.push(newLt);
-    state.activeLineTypeId = newLt.id;
-    markProjectDirty();
-    hideModal('chooseLineTypeModal');
-    state.tool = TOOL.LINE;
-    state.quickLineStart = null;
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
-    updateUI();
-  };
+  // The Choose/Create Line Type modal handlers (.line-type-tab clicks,
+  // #lineTypeModalSearchInput, #chooseLineTypeCancel, #createLineTypeCancel,
+  // #createLineTypeCreate) moved to features/choose-create-line-type.js
+  // (window.App registry). The line color modal handlers (#lineColorCancel
+  // above, #lineColorCustom below) and showLineColorModal/applyLineColor stay.
   document.getElementById('lineColorCustom').onchange = () => applyLineColor(document.getElementById('lineColorCustom').value);
-  document.getElementById('lineTypeSize').oninput = () => {
-    state.lineTypeSettings.lineSize = parseInt(document.getElementById('lineTypeSize').value, 10);
-    document.getElementById('lineTypeSizeVal').textContent = state.lineTypeSettings.lineSize;
-    renderAnnotations();
-  };
-  document.getElementById('lineTypeOpacity').oninput = () => {
-    state.lineTypeSettings.opacity = parseInt(document.getElementById('lineTypeOpacity').value, 10) / 100;
-    document.getElementById('lineTypeOpacityVal').textContent = Math.round(state.lineTypeSettings.opacity * 100);
-    renderAnnotations();
-  };
-  document.getElementById('legendBgOpacity').oninput = () => {
-    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    state.legendSettings.bgOpacity = parseInt(document.getElementById('legendBgOpacity').value, 10) / 100;
-    document.getElementById('legendBgOpacityVal').textContent = Math.round(state.legendSettings.bgOpacity * 100);
-    renderPdf();
-  };
-  document.getElementById('legendBgColor').oninput = () => {
-    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    const hex = document.getElementById('legendBgColor').value;
-    state.legendSettings.bgColor = hex;
-    document.getElementById('legendBgColorHex').textContent = hex.toLowerCase();
-    renderPdf();
-  };
-  document.getElementById('legendShowBorderBtn').onclick = (e) => {
-    e.preventDefault();
-    const cb = document.getElementById('legendShowBorder');
-    cb.checked = !cb.checked;
-    document.getElementById('legendShowBorderBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('legendShowBorder').onchange = () => {
-    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    state.legendSettings.showBorder = document.getElementById('legendShowBorder').checked;
-    renderPdf();
-  };
-  document.getElementById('legendScale').oninput = () => {
-    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    state.legendSettings.legendScale = parseInt(document.getElementById('legendScale').value, 10) / 100;
-    document.getElementById('legendScaleVal').textContent = Math.round(state.legendSettings.legendScale * 100);
-    renderPdf();
-  };
-  document.getElementById('legendShowResizeHighlightBtn').onclick = (e) => {
-    e.preventDefault();
-    const cb = document.getElementById('legendShowResizeHighlight');
-    cb.checked = !cb.checked;
-    document.getElementById('legendShowResizeHighlightBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('legendShowResizeHighlight').onchange = () => {
-    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    state.legendSettings.showResizeHighlight = document.getElementById('legendShowResizeHighlight').checked;
-    renderPdf();
-  };
-  document.getElementById('legendTextOpacity').oninput = () => {
-    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    state.legendSettings.textOpacity = parseInt(document.getElementById('legendTextOpacity').value, 10) / 100;
-    document.getElementById('legendTextOpacityVal').textContent = Math.round(state.legendSettings.textOpacity * 100);
-    renderPdf();
-  };
-  document.getElementById('lineTypeDropXSize').oninput = () => {
-    state.lineTypeSettings.dropXSize = parseInt(document.getElementById('lineTypeDropXSize').value, 10);
-    document.getElementById('lineTypeDropXSizeVal').textContent = state.lineTypeSettings.dropXSize;
-    renderAnnotations();
-  };
-  document.getElementById('lineTypeOrientLengthBtn').onclick = () => {
-    const cb = document.getElementById('lineTypeOrientLength');
-    cb.checked = !cb.checked;
-    document.getElementById('lineTypeOrientLengthBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('lineTypeOrientLength').onchange = () => {
-    state.lineTypeSettings.orientLengthWithLine = document.getElementById('lineTypeOrientLength').checked;
-    renderAnnotations();
-  };
-  document.getElementById('lineTypeParallelEnds').oninput = () => {
-    state.lineTypeSettings.parallelEndsSize = parseInt(document.getElementById('lineTypeParallelEnds').value, 10);
-    document.getElementById('lineTypeParallelEndsVal').textContent = state.lineTypeSettings.parallelEndsSize;
-    renderAnnotations();
-  };
-  document.getElementById('lineTypeLengthLabel').oninput = () => {
-    state.lineTypeSettings.lengthLabelSize = parseInt(document.getElementById('lineTypeLengthLabel').value, 10);
-    document.getElementById('lineTypeLengthLabelVal').textContent = state.lineTypeSettings.lengthLabelSize;
-    renderAnnotations();
-  };
-  document.getElementById('lineTypeSnapToHVBtn').onclick = () => {
-    const cb = document.getElementById('lineTypeSnapToHV');
-    cb.checked = !cb.checked;
-    document.getElementById('lineTypeSnapToHVBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('lineTypeSnapToHV').onchange = () => {
-    state.lineTypeSettings.snapToHorizontalVertical = document.getElementById('lineTypeSnapToHV').checked;
-    renderAnnotations();
-    updateUI();
-  };
-  document.getElementById('lineTypeShowOnlyOnPageBtn').onclick = () => {
-    const cb = document.getElementById('lineTypeShowOnlyOnPage');
-    cb.checked = !cb.checked;
-    document.getElementById('lineTypeShowOnlyOnPageBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('lineTypeShowOnlyOnPage').onchange = () => {
-    state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = document.getElementById('lineTypeShowOnlyOnPage').checked;
-    renderLineTypesList();
-    updateUI();
-  };
+  // The Line Type settings value handlers (lineTypeSize/Opacity/DropXSize/
+  // OrientLength/ParallelEnds/LengthLabel/SnapToHV/ShowOnlyOnPage) moved to
+  // features/line-type-settings.js (window.App registry).
   document.getElementById('lineTypeSnapToHVHeaderBtn').onclick = (e) => {
     e.stopPropagation();
     state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
@@ -8258,22 +7809,10 @@
     document.getElementById('pagesSection').classList.toggle('collapsed', state.pagesListCollapsed);
     document.getElementById('pagesCollapseIcon').textContent = state.pagesListCollapsed ? '▶' : '▼';
   };
-  document.getElementById('pagesSectionTitle').onclick = (e) => {
-    if (e.target.closest('#pagesCollapseIcon')) return;
-    const pageSettingsTruncate = document.getElementById('pageSettingsTruncate');
-    const pageSettingsTruncateBtn = document.getElementById('pageSettingsTruncateBtn');
-    if (pageSettingsTruncate && pageSettingsTruncateBtn) {
-      pageSettingsTruncate.checked = !!state.pagesTitlesTruncated;
-      pageSettingsTruncateBtn.setAttribute('aria-pressed', state.pagesTitlesTruncated);
-    }
-    const pageSettingsHideUnmarked = document.getElementById('pageSettingsHideUnmarked');
-    const pageSettingsHideUnmarkedBtn = document.getElementById('pageSettingsHideUnmarkedBtn');
-    if (pageSettingsHideUnmarked && pageSettingsHideUnmarkedBtn) {
-      pageSettingsHideUnmarked.checked = !!state.hideUnmarkedPagesFromSidebar;
-      pageSettingsHideUnmarkedBtn.setAttribute('aria-pressed', state.hideUnmarkedPagesFromSidebar);
-    }
-    showModal('pageSettingsModal');
-  };
+  // The #pagesSectionTitle opener + the pageSettingsTruncate/HideUnmarked toggles
+  // + pageSettingsClose (Page settings modal) moved to features/page-settings.js
+  // (window.App registry); reached via App.openPageSettingsModal at call time.
+  // The #pagesCollapseIcon toggle above and the Escape-key close branch stay here.
   document.getElementById('countersCollapseIcon').onclick = (e) => {
     e.stopPropagation();
     state.countersListCollapsed = !state.countersListCollapsed;
@@ -8364,252 +7903,29 @@
     document.getElementById('groupsSection').classList.toggle('collapsed', state.groupsListCollapsed);
     document.getElementById('groupsCollapseIcon').textContent = state.groupsListCollapsed ? '▶' : '▼';
   };
-  document.getElementById('summarySectionTitle').onclick = (e) => {
-    if (e.target.closest('#summaryCollapseIcon')) return;
-    const ls = state.legendSettings || { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
-    document.getElementById('legendBgOpacity').value = Math.round((ls.bgOpacity ?? 1) * 100);
-    document.getElementById('legendBgOpacityVal').textContent = Math.round((ls.bgOpacity ?? 1) * 100);
-    document.getElementById('legendBgColor').value = ls.bgColor || '#ffffff';
-    document.getElementById('legendBgColorHex').textContent = (ls.bgColor || '#ffffff').toLowerCase();
-    document.getElementById('legendTextOpacity').value = Math.round((ls.textOpacity ?? 1) * 100);
-    document.getElementById('legendTextOpacityVal').textContent = Math.round((ls.textOpacity ?? 1) * 100);
-    const legendShowBorderCb = document.getElementById('legendShowBorder');
-    const legendShowBorderBtn = document.getElementById('legendShowBorderBtn');
-    legendShowBorderCb.checked = ls.showBorder !== false;
-    legendShowBorderBtn.setAttribute('aria-pressed', legendShowBorderCb.checked);
-    const legendScaleVal = Math.round((ls.legendScale ?? 1) * 100);
-    document.getElementById('legendScale').value = legendScaleVal;
-    document.getElementById('legendScaleVal').textContent = legendScaleVal;
-    const legendShowResizeHighlightCb = document.getElementById('legendShowResizeHighlight');
-    const legendShowResizeHighlightBtn = document.getElementById('legendShowResizeHighlightBtn');
-    legendShowResizeHighlightCb.checked = ls.showResizeHighlight === true;
-    legendShowResizeHighlightBtn.setAttribute('aria-pressed', legendShowResizeHighlightCb.checked);
-    showModal('legendSettingsModal');
-  };
-  document.getElementById('countersSectionTitle').onclick = (e) => {
-    if (e.target.closest('#countersCollapseIcon')) return;
-    document.getElementById('counterSize').value = state.counterSettings.size;
-    document.getElementById('counterSizeVal').textContent = state.counterSettings.size;
-    document.getElementById('counterOpacity').value = Math.round(state.counterSettings.opacity * 100);
-    document.getElementById('counterOpacityVal').textContent = Math.round(state.counterSettings.opacity * 100);
-    document.getElementById('counterOutline').value = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
-    document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
-    const counterShowRingsCb = document.getElementById('counterShowRings');
-    const counterShowRingsBtn = document.getElementById('counterShowRingsBtn');
-    counterShowRingsCb.checked = state.counterSettings.showRings;
-    counterShowRingsBtn.setAttribute('aria-pressed', state.counterSettings.showRings);
-    document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
-    document.getElementById('counterNumberSize').value = state.counterSettings.numberSize || 10;
-    document.getElementById('counterNumberSizeVal').textContent = state.counterSettings.numberSize || 10;
-    document.getElementById('counterRingSize').value = state.counterSettings.ringSize != null ? state.counterSettings.ringSize : 100;
-    document.getElementById('counterRingSizeVal').textContent = state.counterSettings.ringSize != null ? state.counterSettings.ringSize : 100;
-    document.getElementById('counterRingOpacity').value = Math.round((state.counterSettings.ringOpacity != null ? state.counterSettings.ringOpacity : 1) * 100);
-    document.getElementById('counterRingOpacityVal').textContent = Math.round((state.counterSettings.ringOpacity != null ? state.counterSettings.ringOpacity : 1) * 100);
-    const counterRingSolidCb = document.getElementById('counterRingSolid');
-    const counterRingSolidBtn = document.getElementById('counterRingSolidBtn');
-    counterRingSolidCb.checked = !!state.counterSettings.ringSolid;
-    counterRingSolidBtn.setAttribute('aria-pressed', !!state.counterSettings.ringSolid);
-    const counterShowOnlyOnPageCb = document.getElementById('counterShowOnlyOnPage');
-    const counterShowOnlyOnPageBtn = document.getElementById('counterShowOnlyOnPageBtn');
-    if (counterShowOnlyOnPageCb && counterShowOnlyOnPageBtn) {
-      counterShowOnlyOnPageCb.checked = !!state.counterSettings.showOnlyCountersOnCurrentPage;
-      counterShowOnlyOnPageBtn.setAttribute('aria-pressed', state.counterSettings.showOnlyCountersOnCurrentPage);
-    }
-    document.getElementById('counterSettingsReorder').style.display = state.counters.length < 2 ? 'none' : '';
-    showModal('counterSettingsModal');
-  };
-  document.getElementById('lineTypesSectionTitle').onclick = (e) => {
-    if (e.target.closest('#lineTypesCollapseIcon')) return;
-    document.getElementById('lineTypeSize').value = state.lineTypeSettings.lineSize ?? 2;
-    document.getElementById('lineTypeSizeVal').textContent = state.lineTypeSettings.lineSize ?? 2;
-    document.getElementById('lineTypeOpacity').value = Math.round((state.lineTypeSettings.opacity ?? 1) * 100);
-    document.getElementById('lineTypeOpacityVal').textContent = Math.round((state.lineTypeSettings.opacity ?? 1) * 100);
-    document.getElementById('lineTypeDropXSize').value = state.lineTypeSettings.dropXSize ?? 10;
-    document.getElementById('lineTypeDropXSizeVal').textContent = state.lineTypeSettings.dropXSize ?? 10;
-    const dropIconGrid = document.getElementById('lineTypeDropIconGrid');
-    const currentStyle = state.lineTypeSettings.dropIconStyle ?? 'circle';
-    dropIconGrid.innerHTML = DROP_ICON_STYLES.map(st =>
-      '<div class="icon-cell' + (st.id === currentStyle ? ' selected' : '') + '" data-style="' + st.id + '" title="' + st.name + '">' + st.svg + '</div>'
-    ).join('');
-    dropIconGrid.querySelectorAll('.icon-cell').forEach(c => {
-      c.onclick = () => {
-        dropIconGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        c.classList.add('selected');
-        state.lineTypeSettings.dropIconStyle = c.dataset.style;
-        renderAnnotations();
-      };
-    });
-    const orientCb = document.getElementById('lineTypeOrientLength');
-    const orientBtn = document.getElementById('lineTypeOrientLengthBtn');
-    orientCb.checked = state.lineTypeSettings.orientLengthWithLine !== false;
-    orientBtn.setAttribute('aria-pressed', orientCb.checked);
-    document.getElementById('lineTypeParallelEnds').value = state.lineTypeSettings.parallelEndsSize ?? 10;
-    document.getElementById('lineTypeParallelEndsVal').textContent = state.lineTypeSettings.parallelEndsSize ?? 10;
-    document.getElementById('lineTypeLengthLabel').value = state.lineTypeSettings.lengthLabelSize ?? 12;
-    document.getElementById('lineTypeLengthLabelVal').textContent = state.lineTypeSettings.lengthLabelSize ?? 12;
-    const snapCb = document.getElementById('lineTypeSnapToHV');
-    const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
-    snapCb.checked = !!state.lineTypeSettings.snapToHorizontalVertical;
-    snapBtn.setAttribute('aria-pressed', snapCb.checked);
-    const lineTypeShowOnlyOnPageCb = document.getElementById('lineTypeShowOnlyOnPage');
-    const lineTypeShowOnlyOnPageBtn = document.getElementById('lineTypeShowOnlyOnPageBtn');
-    if (lineTypeShowOnlyOnPageCb && lineTypeShowOnlyOnPageBtn) {
-      lineTypeShowOnlyOnPageCb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
-      lineTypeShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
-    }
-    document.getElementById('lineTypeSettingsReorder').style.display = state.lineTypes.length < 2 ? 'none' : '';
-    showModal('lineTypeSettingsModal');
-  };
-  document.getElementById('counterSettingsClose').onclick = () => hideModal('counterSettingsModal');
-  const pageSettingsTruncateCb = document.getElementById('pageSettingsTruncate');
-  const pageSettingsTruncateBtn = document.getElementById('pageSettingsTruncateBtn');
-  if (pageSettingsTruncateCb && pageSettingsTruncateBtn) {
-    pageSettingsTruncateBtn.onclick = () => {
-      pageSettingsTruncateCb.checked = !pageSettingsTruncateCb.checked;
-      pageSettingsTruncateBtn.setAttribute('aria-pressed', pageSettingsTruncateCb.checked);
-      pageSettingsTruncateCb.dispatchEvent(new Event('change'));
-    };
-    pageSettingsTruncateCb.onchange = () => {
-      state.pagesTitlesTruncated = pageSettingsTruncateCb.checked;
-      try { localStorage.setItem('pagesTitlesTruncated', state.pagesTitlesTruncated ? '1' : '0'); } catch (_) {}
-      renderPagesList();
-      updateUI();
-    };
-  }
-  const pageSettingsHideUnmarkedCb = document.getElementById('pageSettingsHideUnmarked');
-  const pageSettingsHideUnmarkedBtn = document.getElementById('pageSettingsHideUnmarkedBtn');
-  if (pageSettingsHideUnmarkedCb && pageSettingsHideUnmarkedBtn) {
-    pageSettingsHideUnmarkedBtn.onclick = () => {
-      pageSettingsHideUnmarkedCb.checked = !pageSettingsHideUnmarkedCb.checked;
-      pageSettingsHideUnmarkedBtn.setAttribute('aria-pressed', pageSettingsHideUnmarkedCb.checked);
-      pageSettingsHideUnmarkedCb.dispatchEvent(new Event('change'));
-    };
-    pageSettingsHideUnmarkedCb.onchange = () => {
-      state.hideUnmarkedPagesFromSidebar = pageSettingsHideUnmarkedCb.checked;
-      try { localStorage.setItem('hideUnmarkedPagesFromSidebar', state.hideUnmarkedPagesFromSidebar ? '1' : '0'); } catch (_) {}
-      renderPagesList();
-      updateUI();
-    };
-  }
-  document.getElementById('pageSettingsClose').onclick = () => hideModal('pageSettingsModal');
-  document.getElementById('lineTypeSettingsReorder').onclick = () => {
-    hideModal('lineTypeSettingsModal');
-    state.countersListCollapsed = false;
-    state.lineTypesListCollapsed = false;
-    document.getElementById('countersSection').classList.remove('collapsed');
-    document.getElementById('countersCollapseIcon').textContent = '▼';
-    document.getElementById('lineTypesSection').classList.remove('collapsed');
-    document.getElementById('lineTypesCollapseIcon').textContent = '▼';
-    state.sidebarReorderModeActive = true;
-    document.getElementById('lineTypesList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    updateUI();
-    showToast('Drag Counters and Lines by their left colors to re-order.', 3200);
-  };
+  // The #summarySectionTitle opener (Summary Legend settings) moved to
+  // features/legend-settings.js; the #summaryCollapseIcon toggle above stays.
+  // The #countersSectionTitle opener + the counterSettings* value handlers +
+  // counterSettingsClose + counterSettingsReorder (Counter settings modal) moved
+  // to features/counter-settings.js (window.App registry); reached via
+  // App.openCounterSettingsModal at call time. The #countersCollapseIcon toggle,
+  // the #counterShowOnlyOnPageInlineBtn sidebar button, #sidebarReorderFinish,
+  // and the Escape-key close branch stay here.
+  // The #lineTypesSectionTitle opener + the lineTypeSettingsReorder handler moved
+  // to features/line-type-settings.js (window.App registry).
+  // The Page settings toggles (pageSettingsTruncate/HideUnmarked) + pageSettingsClose
+  // moved to features/page-settings.js (window.App registry).
   document.getElementById('sidebarReorderFinish').onclick = () => {
     state.sidebarReorderModeActive = false;
     updateUI();
   };
-  document.getElementById('counterSettingsReorder').onclick = () => {
-    hideModal('counterSettingsModal');
-    state.countersListCollapsed = false;
-    state.lineTypesListCollapsed = false;
-    document.getElementById('countersSection').classList.remove('collapsed');
-    document.getElementById('countersCollapseIcon').textContent = '▼';
-    document.getElementById('lineTypesSection').classList.remove('collapsed');
-    document.getElementById('lineTypesCollapseIcon').textContent = '▼';
-    state.sidebarReorderModeActive = true;
-    document.getElementById('countersList').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    updateUI();
-    showToast('Drag Counters and Lines by their left colors to re-order.', 3200);
-  };
-  // SECTION: Zoom modal
-  function showZoomModal() {
-    const maxVal = Math.round(getMaxZoom() * 100);
-    document.getElementById('zoomMax').value = maxVal;
-    document.getElementById('zoomMaxVal').textContent = maxVal;
-    const speed = getWheelZoomSpeed();
-    const speedPct = Math.round(speed * 100);
-    document.getElementById('zoomSpeed').value = speedPct;
-    document.getElementById('zoomSpeedVal').textContent = speed.toFixed(1);
-    showModal('zoomModal');
-  }
-  document.getElementById('zoomModalClose').onclick = () => {
-    const maxPct = parseInt(document.getElementById('zoomMax').value, 10);
-    state.maxZoom = maxPct / 100;
-    const speedPct = parseInt(document.getElementById('zoomSpeed').value, 10);
-    const speed = speedPct / 100;
-    try { localStorage.setItem('zoomSettings', JSON.stringify({ wheelZoomSpeed: speed })); } catch (_) {}
-    document.getElementById('zoomSpeedVal').textContent = speed.toFixed(1);
-    if (state.zoom > getMaxZoom()) { state.zoom = getMaxZoom(); renderPdf(); }
-    markProjectDirty();
-    hideModal('zoomModal');
-    updateUI();
-  };
-  document.getElementById('zoomMax').oninput = () => { document.getElementById('zoomMaxVal').textContent = document.getElementById('zoomMax').value; };
-  document.getElementById('zoomSpeed').oninput = () => { document.getElementById('zoomSpeedVal').textContent = (parseInt(document.getElementById('zoomSpeed').value, 10) / 100).toFixed(1); };
-  document.getElementById('counterSize').oninput = () => {
-    state.counterSettings.size = parseInt(document.getElementById('counterSize').value, 10);
-    document.getElementById('counterSizeVal').textContent = state.counterSettings.size;
-    renderAnnotations();
-  };
-  document.getElementById('counterOpacity').oninput = () => {
-    state.counterSettings.opacity = parseInt(document.getElementById('counterOpacity').value, 10) / 100;
-    document.getElementById('counterOpacityVal').textContent = Math.round(state.counterSettings.opacity * 100);
-    renderAnnotations();
-  };
-  document.getElementById('counterOutline').oninput = () => {
-    state.counterSettings.outlineSize = parseInt(document.getElementById('counterOutline').value, 10);
-    document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize;
-    renderAnnotations();
-  };
-  document.getElementById('counterShowRingsBtn').onclick = () => {
-    const cb = document.getElementById('counterShowRings');
-    cb.checked = !cb.checked;
-    document.getElementById('counterShowRingsBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('counterShowRings').onchange = () => {
-    state.counterSettings.showRings = document.getElementById('counterShowRings').checked;
-    document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
-    renderAnnotations();
-  };
-  document.getElementById('counterNumberSize').oninput = () => {
-    state.counterSettings.numberSize = parseInt(document.getElementById('counterNumberSize').value, 10);
-    document.getElementById('counterNumberSizeVal').textContent = state.counterSettings.numberSize;
-    renderAnnotations();
-  };
-  document.getElementById('counterRingSize').oninput = () => {
-    state.counterSettings.ringSize = parseInt(document.getElementById('counterRingSize').value, 10);
-    document.getElementById('counterRingSizeVal').textContent = state.counterSettings.ringSize;
-    renderAnnotations();
-  };
-  document.getElementById('counterRingOpacity').oninput = () => {
-    state.counterSettings.ringOpacity = parseInt(document.getElementById('counterRingOpacity').value, 10) / 100;
-    document.getElementById('counterRingOpacityVal').textContent = Math.round(state.counterSettings.ringOpacity * 100);
-    renderAnnotations();
-  };
-  document.getElementById('counterRingSolidBtn').onclick = () => {
-    const cb = document.getElementById('counterRingSolid');
-    cb.checked = !cb.checked;
-    document.getElementById('counterRingSolidBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('counterRingSolid').onchange = () => {
-    state.counterSettings.ringSolid = document.getElementById('counterRingSolid').checked;
-    renderAnnotations();
-  };
-  document.getElementById('counterShowOnlyOnPageBtn').onclick = () => {
-    const cb = document.getElementById('counterShowOnlyOnPage');
-    cb.checked = !cb.checked;
-    document.getElementById('counterShowOnlyOnPageBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('counterShowOnlyOnPage').onchange = () => {
-    state.counterSettings.showOnlyCountersOnCurrentPage = document.getElementById('counterShowOnlyOnPage').checked;
-    renderCountersList();
-    updateUI();
-  };
+  // The Counter settings modal (opener + value handlers + close + reorder) moved
+  // to features/counter-settings.js (window.App registry).
+  // The Zoom Settings modal (showZoomModal + its Close/max/speed handlers) lives
+  // in features/zoom.js (window.App registry); showZoomModal is reached via
+  // App.showZoomModal at call time. getMaxZoom/getWheelZoomSpeed stay here.
 
+  // SECTION: Polyline modal & drawing
   document.getElementById('polylineCancel').onclick = () => hideModal('polylineModal');
   document.getElementById('polylineStart').onclick = () => {
     const lineTypeId = document.getElementById('polylineLineType').value || state.lineTypes[0]?.id;
@@ -8640,6 +7956,7 @@
     renderPdf();
   }
 
+  // SECTION: Zoom bar & page navigation
   function doZoomOut() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); }
   function doZoomIn() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); updateUI(); }
   document.getElementById('zoomOut').onclick = () => doZoomOut();
@@ -8658,7 +7975,7 @@
       zoomOverlay.style.left = left + 'px';
       zoomOverlay.style.top = Math.max(8, rect.top - zoomOverlay.offsetHeight - 8) + 'px';
     } else {
-      showZoomModal();
+      App.showZoomModal();
     }
   };
   document.getElementById('zoomOverlayMinus').onclick = (e) => { e.stopPropagation(); doZoomOut(); };
@@ -8881,87 +8198,12 @@
   };
   document.getElementById('exportBtnSidebar').onclick = () => document.getElementById('exportBtn').click();
 
-  let specificPagesSelections = {};
-  let specificPagesCanvasMode = {};
-  // SECTION: Export PDFs modal
-  function openSpecificPagesModal() {
-    if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
-    const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Export PDFs requires jsPDF. Please refresh the page.'); return; }
-    specificPagesSelections = {};
-    specificPagesCanvasMode = {};
-    state.pages.forEach((_, i) => { specificPagesSelections[i] = 'marked'; specificPagesCanvasMode[i] = 'current'; });
-    try {
-      const stored = localStorage.getItem('specificPagesIncludeReport');
-      document.getElementById('specificPagesIncludeReport').checked = stored !== '0';
-    } catch (_) {}
-    document.getElementById('specificPagesBundleHighlights').checked = state.exportSettings.bundleHighlightsToPdf !== false;
-    document.getElementById('specificPagesBundleNotes').checked = state.exportSettings.bundleNotesToPdf !== false;
-    const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
-    const incReport = document.getElementById('specificPagesIncludeReport');
-    const incReportBtn = document.getElementById('specificPagesIncludeReportBtn');
-    const incReportNone = document.getElementById('specificPagesIncludeReportNone');
-    if (hasCountsOrLines) { incReportNone.textContent = ''; incReportBtn.disabled = false; } else { incReportNone.textContent = ' — none to show'; incReportBtn.disabled = true; incReport.checked = false; }
-    incReportBtn.setAttribute('aria-pressed', incReport.checked);
-    const bundleHigh = document.getElementById('specificPagesBundleHighlights');
-    const bundleHighBtn = document.getElementById('specificPagesBundleHighlightsBtn');
-    const bundleHighNone = document.getElementById('specificPagesBundleHighlightsNone');
-    if (hasAnyHighlights()) { bundleHighNone.textContent = ''; bundleHighBtn.disabled = false; } else { bundleHighNone.textContent = ' — none to show'; bundleHighBtn.disabled = true; bundleHigh.checked = false; }
-    bundleHighBtn.setAttribute('aria-pressed', bundleHigh.checked);
-    const bundleNotes = document.getElementById('specificPagesBundleNotes');
-    const bundleNotesBtn = document.getElementById('specificPagesBundleNotesBtn');
-    const bundleNotesNone = document.getElementById('specificPagesBundleNotesNone');
-    if (hasAnyNotes()) { bundleNotesNone.textContent = ''; bundleNotesBtn.disabled = false; } else { bundleNotesNone.textContent = ' — none to show'; bundleNotesBtn.disabled = true; bundleNotes.checked = false; }
-    bundleNotesBtn.setAttribute('aria-pressed', bundleNotes.checked);
-    const grid = document.getElementById('specificPagesGrid');
-    grid.innerHTML = '';
-    state.pages.forEach((page, i) => {
-      const card = document.createElement('div');
-      card.className = 'specific-page-card';
-      card.dataset.pageIndex = String(i);
-      const img = document.createElement('img');
-      img.className = 'specific-page-thumb';
-      img.alt = 'Page ' + (i + 1);
-      img.style.background = '#fff';
-      const label = document.createElement('div');
-      label.className = 'specific-page-label';
-      label.textContent = page.label || 'Page ' + (i + 1);
-      const select = document.createElement('select');
-      select.innerHTML = '<option value="marked">Marked up</option><option value="unmarked">Not marked up</option><option value="exclude">Exclude</option>';
-      select.value = 'marked';
-      select.onchange = () => { specificPagesSelections[i] = select.value; updateSpecificPagesCanvasModeVisibility(); updateSpecificPagesDownloadState(); };
-      card.appendChild(img);
-      card.appendChild(label);
-      card.appendChild(select);
-      const canvases = getPageCanvases(page);
-      const canvasModeSelect = document.createElement('select');
-      canvasModeSelect.className = 'specific-page-canvas-mode';
-      canvasModeSelect.dataset.pageIndex = String(i);
-      canvasModeSelect.innerHTML = '<option value="current">Current canvas</option><option value="all">All canvases</option>';
-      canvasModeSelect.value = specificPagesCanvasMode[i] || 'current';
-      canvasModeSelect.style.display = (canvases.length > 1 && specificPagesSelections[i] === 'marked') ? '' : 'none';
-      canvasModeSelect.onchange = () => { specificPagesCanvasMode[i] = canvasModeSelect.value; };
-      card.appendChild(canvasModeSelect);
-      grid.appendChild(card);
-      (async () => {
-        const THUMB_SCALE = 0.4;
-        const viewport = page.pdfPage.getViewport({ scale: THUMB_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'display' }).promise;
-        img.src = canvas.toDataURL('image/jpeg', 0.8);
-      })();
-    });
-    document.getElementById('specificPagesMarkerScale').value = Math.round((state.exportSettings.markerScale ?? 0.75) * 100);
-    document.getElementById('specificPagesMarkerScaleVal').textContent = document.getElementById('specificPagesMarkerScale').value;
-    document.getElementById('specificPagesLineScale').value = Math.round((state.exportSettings.lineScale ?? 0.75) * 100);
-    document.getElementById('specificPagesLineScaleVal').textContent = document.getElementById('specificPagesLineScale').value;
-    updateSpecificPagesDownloadState();
-    updateSpecificPagesNavState();
-    showModal('specificPagesModal');
-  }
+  // SECTION: PDF download helpers & PipeTooling menu
+  // The Export PDFs modal (openSpecificPagesModal + the specificPages* cluster
+  // and its #specificPages* handlers) lives in features/export-pdfs.js
+  // (window.App registry); it is reached via App.openSpecificPagesModal at call
+  // time. The shared download helpers below (sanitizeForFilename /
+  // downloadPdfBuffer / downloadProjectPdf) and the PipeTooling toggle stay here.
   function sanitizeForFilename(s) {
     const raw = (s || 'Untitled').replace(/\.pdf$/i, '').trim();
     const cleaned = raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, '_').trim();
@@ -9007,234 +8249,6 @@
     downloadPdfBuffer(buf, sanitizeForFilename(state.currentProjectName) + '.pdf');
     logUserEvent('export_pdf', state.currentProjectId, { source: 'project-pdf' });
   }
-  function updateSpecificPagesCanvasModeVisibility() {
-    document.querySelectorAll('.specific-page-canvas-mode').forEach(sel => {
-      const i = parseInt(sel.dataset.pageIndex, 10);
-      const page = state.pages[i];
-      const canvases = page ? getPageCanvases(page) : [];
-      const show = canvases.length > 1 && specificPagesSelections[i] === 'marked';
-      sel.style.display = show ? '' : 'none';
-    });
-  }
-  function updateSpecificPagesDownloadState() {
-    const hasIncluded = Object.values(specificPagesSelections).some(v => v !== 'exclude');
-    document.getElementById('specificPagesDownload').disabled = !hasIncluded;
-  }
-  function updateSpecificPagesNavState() {
-    const grid = document.getElementById('specificPagesGrid');
-    const prev = document.querySelector('.specific-pages-nav-prev');
-    const next = document.querySelector('.specific-pages-nav-next');
-    if (!grid || !prev || !next) return;
-    const { scrollLeft, scrollWidth, clientWidth } = grid;
-    const atEnd = scrollWidth <= clientWidth || scrollLeft >= scrollWidth - clientWidth - 1;
-    prev.disabled = scrollLeft <= 0;
-    next.disabled = atEnd;
-  }
-  function setAllSpecificPagesTo(value) {
-    state.pages.forEach((_, i) => {
-      specificPagesSelections[i] = value;
-      if (value === 'marked') specificPagesCanvasMode[i] = 'current';
-    });
-    const grid = document.getElementById('specificPagesGrid');
-    state.pages.forEach((_, i) => {
-      const card = grid?.children[i];
-      if (card) {
-        const mainSelect = card.querySelector('select:not(.specific-page-canvas-mode)');
-        const modeSelect = card.querySelector('.specific-page-canvas-mode');
-        if (mainSelect) mainSelect.value = specificPagesSelections[i];
-        if (modeSelect) modeSelect.value = specificPagesCanvasMode[i] || 'current';
-      }
-    });
-    updateSpecificPagesCanvasModeVisibility();
-    updateSpecificPagesDownloadState();
-  }
-  function setAllSpecificPagesToMarkedWithAllCanvases() {
-    state.pages.forEach((_, i) => {
-      specificPagesSelections[i] = 'marked';
-      specificPagesCanvasMode[i] = 'all';
-    });
-    const grid = document.getElementById('specificPagesGrid');
-    state.pages.forEach((_, i) => {
-      const card = grid?.children[i];
-      if (card) {
-        const mainSelect = card.querySelector('select:not(.specific-page-canvas-mode)');
-        const modeSelect = card.querySelector('.specific-page-canvas-mode');
-        if (mainSelect) mainSelect.value = specificPagesSelections[i];
-        if (modeSelect) modeSelect.value = specificPagesCanvasMode[i] || 'all';
-      }
-    });
-    updateSpecificPagesCanvasModeVisibility();
-    updateSpecificPagesDownloadState();
-  }
-  async function downloadSpecificPages() {
-    const included = state.pages.map((_, i) => i).filter(i => specificPagesSelections[i] !== 'exclude');
-    if (!included.length) return;
-    const markerScale = parseInt(document.getElementById('specificPagesMarkerScale').value, 10) / 100;
-    const lineScale = parseInt(document.getElementById('specificPagesLineScale').value, 10) / 100;
-    state.exportSettings.markerScale = markerScale;
-    state.exportSettings.lineScale = lineScale;
-    hideModal('specificPagesModal');
-    const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
-    const includeReport = document.getElementById('specificPagesIncludeReport').checked;
-    const bundleHighlights = document.getElementById('specificPagesBundleHighlights').checked;
-    const bundleNotes = document.getElementById('specificPagesBundleNotes').checked;
-    state.exportSettings.bundleHighlightsToPdf = bundleHighlights;
-    state.exportSettings.bundleNotesToPdf = bundleNotes;
-    try { localStorage.setItem('specificPagesIncludeReport', includeReport ? '1' : '0'); } catch (_) {}
-    const EXPORT_SCALE = 4;
-    const PT_TO_MM = 25.4 / 72;
-    const exportOverrides = { markerScale, lineScale };
-    const btn = document.getElementById('specificPages');
-    const origText = btn.textContent;
-    btn.textContent = 'Downloading…';
-    try {
-      let doc = null;
-      if (includeReport) {
-        doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-        btn.textContent = 'Exporting report…';
-        await addReportPagesToPdf(doc);
-      }
-      for (let idx = 0; idx < included.length; idx++) {
-        const i = included[idx];
-        const page = state.pages[i];
-        const canvases = getPageCanvases(page);
-        const canvasMode = specificPagesCanvasMode[i] || 'current';
-        const useAllCanvases = specificPagesSelections[i] === 'marked' && canvasMode === 'all' && canvases.length > 1;
-        if (specificPagesSelections[i] === 'unmarked') {
-          btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
-          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        } else if (useAllCanvases) {
-          for (let ci = 0; ci < canvases.length; ci++) {
-            btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
-            const c = canvases[ci];
-            const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-            renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || makeAnnotations());
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-            const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-            const caption = c.name || 'Main';
-            const captionTop = 10;
-            const imageTop = 14;
-            const pdfPageW = Math.max(210, wMm + 28);
-            const pdfPageH = imageTop + hMm + 14 + 20;
-            if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-            else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-            doc.setFontSize(9);
-            doc.text(caption, 14, captionTop);
-            doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-          }
-        } else {
-          btn.textContent = 'Exporting page ' + (idx + 1) + '/' + included.length + '…';
-          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        }
-      }
-      if (doc && bundleHighlights && hasAnyHighlights()) {
-        btn.textContent = 'Exporting highlights…';
-        await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
-      }
-      if (doc && bundleNotes && hasAnyNotes()) {
-        btn.textContent = 'Exporting notes…';
-        await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
-      }
-      if (doc) {
-        const baseName = sanitizeForFilename(state.currentProjectName);
-        doc.save('takeoff-specific-pages_' + baseName + '.pdf');
-        logUserEvent('export_pdf', state.currentProjectId, { source: 'specific-pages' });
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Download failed: ' + (err.message || err));
-    }
-    btn.textContent = origText;
-  }
-
-  document.getElementById('specificPages').onclick = openSpecificPagesModal;
-  document.getElementById('specificPagesCancel').onclick = () => hideModal('specificPagesModal');
-  document.getElementById('specificPagesDownload').onclick = downloadSpecificPages;
-  document.getElementById('specificPagesAllMarked').onclick = () => setAllSpecificPagesTo('marked');
-  document.getElementById('specificPagesAllUnmarked').onclick = () => setAllSpecificPagesTo('unmarked');
-  document.getElementById('specificPagesAllExclude').onclick = () => setAllSpecificPagesTo('exclude');
-  document.getElementById('specificPagesAllCanvases').onclick = setAllSpecificPagesToMarkedWithAllCanvases;
-  document.getElementById('specificPagesIncludeReport').onchange = () => {
-    try { localStorage.setItem('specificPagesIncludeReport', document.getElementById('specificPagesIncludeReport').checked ? '1' : '0'); } catch (_) {}
-  };
-
-  document.getElementById('specificPagesIncludeReportBtn').onclick = (e) => {
-    e.preventDefault();
-    if (e.currentTarget.disabled) return;
-    const cb = document.getElementById('specificPagesIncludeReport');
-    cb.checked = !cb.checked;
-    document.getElementById('specificPagesIncludeReportBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('specificPagesBundleHighlightsBtn').onclick = (e) => {
-    e.preventDefault();
-    if (e.currentTarget.disabled) return;
-    const cb = document.getElementById('specificPagesBundleHighlights');
-    cb.checked = !cb.checked;
-    document.getElementById('specificPagesBundleHighlightsBtn').setAttribute('aria-pressed', cb.checked);
-  };
-  document.getElementById('specificPagesBundleNotesBtn').onclick = (e) => {
-    e.preventDefault();
-    if (e.currentTarget.disabled) return;
-    const cb = document.getElementById('specificPagesBundleNotes');
-    cb.checked = !cb.checked;
-    document.getElementById('specificPagesBundleNotesBtn').setAttribute('aria-pressed', cb.checked);
-  };
-  document.getElementById('specificPagesMarkerScale').oninput = () => {
-    document.getElementById('specificPagesMarkerScaleVal').textContent = document.getElementById('specificPagesMarkerScale').value;
-  };
-  document.getElementById('specificPagesLineScale').oninput = () => {
-    document.getElementById('specificPagesLineScaleVal').textContent = document.getElementById('specificPagesLineScale').value;
-  };
-  const specificPagesGrid = document.getElementById('specificPagesGrid');
-  if (specificPagesGrid) {
-    specificPagesGrid.addEventListener('scroll', updateSpecificPagesNavState);
-    specificPagesGrid.addEventListener('wheel', (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        specificPagesGrid.scrollLeft += e.deltaY;
-      }
-    }, { passive: false });
-  }
-  document.querySelector('.specific-pages-nav-prev')?.addEventListener('click', () => {
-    const grid = document.getElementById('specificPagesGrid');
-    if (grid) { grid.scrollBy({ left: -156, behavior: 'smooth' }); }
-  });
-  document.querySelector('.specific-pages-nav-next')?.addEventListener('click', () => {
-    const grid = document.getElementById('specificPagesGrid');
-    if (grid) { grid.scrollBy({ left: 156, behavior: 'smooth' }); }
-  });
-
   const forPipeToolingBtn = document.getElementById('forPipeTooling');
   const forPipeToolingMenu = document.getElementById('forPipeToolingMenu');
   const forPipeToolingDropdown = document.getElementById('forPipeToolingDropdown');
@@ -10028,72 +9042,11 @@
   document.getElementById('plumCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('customIconTipsClose').onclick = () => hideModal('customIconTipsModal');
-  // SECTION: Note modal
-  function openNoteModal(mode, initialText, positionOrNote) {
-    document.getElementById('noteModalTitle').textContent = mode === 'edit' ? 'Edit Note' : 'Add Note';
-    document.getElementById('noteModalText').value = initialText || '';
-    const defaultColor = '#e85447';
-    let currentColor;
-    if (mode === 'edit') {
-      currentColor = (positionOrNote && positionOrNote.color) || defaultColor;
-      state.editingNote = positionOrNote;
-      state.pendingNote = null;
-    } else {
-      currentColor = state.pendingNoteColor || defaultColor;
-      state.pendingNote = positionOrNote;
-      state.editingNote = null;
-    }
-    const swatchEl = document.getElementById('noteModalColorSwatch');
-    if (swatchEl) {
-      swatchEl.style.background = currentColor;
-      swatchEl.onclick = () => {
-        const color = state.editingNote ? (state.editingNote.color || defaultColor) : (state.pendingNoteColor || defaultColor);
-        showLineColorModal(color, (newColor) => {
-          if (state.editingNote) {
-            pushUndoSnapshot();
-            state.editingNote.color = newColor;
-            markProjectDirty();
-            renderPdf();
-          } else {
-            state.pendingNoteColor = newColor;
-          }
-          swatchEl.style.background = newColor;
-        });
-      };
-    }
-    showModal('noteModal');
-    document.getElementById('noteModalText').focus();
-  }
-  document.getElementById('noteModalCancel').onclick = () => {
-    hideModal('noteModal');
-    state.pendingNote = null;
-    state.editingNote = null;
-    state.pendingNoteColor = null;
-  };
-  document.getElementById('noteModalDone').onclick = () => {
-    const text = document.getElementById('noteModalText').value.trim();
-    hideModal('noteModal');
-    if (state.pendingNote) {
-      if (text) {
-        pushUndoSnapshot();
-        const page = state.pages[state.currentPage];
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) {
-          if (!canvas.annotations.notes) canvas.annotations.notes = [];
-          canvas.annotations.notes.push({ x: state.pendingNote.x, y: state.pendingNote.y, text, id: uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: state.pendingNoteColor || '#e85447' });
-        }
-      }
-      state.pendingNote = null;
-      state.pendingNoteColor = null;
-    } else if (state.editingNote) {
-      pushUndoSnapshot();
-      state.editingNote.text = text;
-      state.editingNote = null;
-    }
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  };
+  // The Note add/edit modal (openNoteModal + its Cancel/Done handlers) lives in
+  // features/note.js (window.App registry); openNoteModal is reached via
+  // App.openNoteModal at call time.
+
+  // SECTION: Zone & page-action modal handlers
   document.getElementById('multiplyZoneCancel').onclick = () => {
     hideModal('multiplyZoneModal');
     state.multiplyZoneStart = null;
@@ -10204,82 +9157,13 @@
   };
 
   // SECTION: User activity time formatting
-  function formatLastSignIn(ts) {
-    if (!ts) return 'Never';
-    const d = new Date(ts);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return diffDays + ' days ago';
-    if (diffDays < 30) return Math.floor(diffDays / 7) + ' weeks ago';
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
-  }
-
-  function dateKeyInTimeZone(isoOrTs, timeZone) {
-    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoOrTs));
-  }
-
-  function calendarDaysFromSignInToNowInZone(signKey, nowKey) {
-    const [sy, sm, sd] = signKey.split('-').map(Number);
-    const [ny, nm, nd] = nowKey.split('-').map(Number);
-    const s = Date.UTC(sy, sm - 1, sd);
-    const n = Date.UTC(ny, nm - 1, nd);
-    return Math.round((n - s) / 86400000);
-  }
-
-  function formatLastSignInUserActivity(ts) {
-    if (!ts) return 'Never';
-    const d = new Date(ts);
-    const signKey = dateKeyInTimeZone(ts, USER_ACTIVITY_TZ);
-    const nowKey = dateKeyInTimeZone(Date.now(), USER_ACTIVITY_TZ);
-    const diff = calendarDaysFromSignInToNowInZone(signKey, nowKey);
-    if (diff < 0) {
-      const ySign = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(d), 10);
-      const yNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(new Date()), 10);
-      return d.toLocaleDateString('en-US', { timeZone: USER_ACTIVITY_TZ, month: 'short', day: 'numeric', year: ySign !== yNow ? 'numeric' : undefined });
-    }
-    if (diff === 0) return 'Today';
-    if (diff === 1) return 'Yesterday';
-    if (diff < 7) return diff + ' days ago';
-    if (diff < 30) return Math.floor(diff / 7) + ' weeks ago';
-    const ySign = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(d), 10);
-    const yNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: USER_ACTIVITY_TZ, year: 'numeric' }).format(new Date()), 10);
-    return d.toLocaleDateString('en-US', { timeZone: USER_ACTIVITY_TZ, month: 'short', day: 'numeric', year: ySign !== yNow ? 'numeric' : undefined });
-  }
-
-  function formatUserActivityDateTime(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleString('en-US', { timeZone: USER_ACTIVITY_TZ, dateStyle: 'short', timeStyle: 'short' });
-  }
+  // The pure formatters live in format.js (loaded before app.js) and resolve
+  // here by bare name: formatLastSignIn, dateKeyInTimeZone,
+  // calendarDaysFromSignInToNowInZone, formatLastSignInUserActivity,
+  // formatUserActivityDateTime, filterUserActivityRows,
+  // renderUserActivityAllUsersTableHtml. The DOM-coupled modal code stays below.
 
   let userActivitySelectSuppress = false;
-
-  function filterUserActivityRows(rows, query) {
-    const q = (query || '').trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => {
-      const email = String(row.email || '').toLowerCase();
-      const ev = String(row.event_type || '').toLowerCase();
-      let meta;
-      try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
-      return email.includes(q) || ev.includes(q) || meta.toLowerCase().includes(q);
-    });
-  }
-
-  function renderUserActivityAllUsersTableHtml(rows) {
-    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const head = '<thead><tr><th>Email</th><th>Event</th><th title="US Central (Chicago)">Time</th><th>Project</th><th>Details</th></tr></thead>';
-    const body = rows.map((row) => {
-      const when = row.created_at ? formatUserActivityDateTime(row.created_at) : '—';
-      let meta;
-      try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
-      const pid = row.project_id ? String(row.project_id) : '—';
-      return '<tr><td>' + esc(row.email) + '</td><td>' + esc(row.event_type) + '</td><td>' + esc(when) + '</td><td>' + esc(pid) + '</td><td class="col-meta">' + esc(meta) + '</td></tr>';
-    }).join('');
-    return '<table class="user-activity-table">' + head + '<tbody>' + body + '</tbody></table>';
-  }
 
   function applyUserActivityFilter() {
     const listEl = document.getElementById('userActivityList');
@@ -10661,214 +9545,14 @@
     }
   }
 
-  // SECTION: Canvas Repair
-  function openCanvasRepairModal() {
-    if (!state.pages || !state.pages.length) return;
-    const tbody = document.getElementById('canvasRepairBody');
-    tbody.innerHTML = '';
-    const ROT_OPTS = [0, 90, 180, 270];
-    state.pages.forEach((page, i) => {
-      const tr = document.createElement('tr');
-      tr.dataset.pageIndex = String(i);
-      const sourceSelect = document.createElement('select');
-      sourceSelect.dataset.field = 'source';
-      for (let j = 0; j < state.pages.length; j++) {
-        const opt = document.createElement('option');
-        opt.value = String(j);
-        opt.textContent = 'Page ' + (j + 1);
-        if (j === i) opt.selected = true;
-        sourceSelect.appendChild(opt);
-      }
-      const rotSelect = document.createElement('select');
-      rotSelect.dataset.field = 'rotation';
-      ROT_OPTS.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = String(r);
-        opt.textContent = r + '°';
-        if (r === (page.rotation ?? 0)) opt.selected = true;
-        rotSelect.appendChild(opt);
-      });
-      tr.innerHTML = '<td>Page ' + (i + 1) + '</td><td></td><td></td>';
-      tr.querySelector('td:nth-child(2)').appendChild(sourceSelect);
-      tr.querySelector('td:nth-child(3)').appendChild(rotSelect);
-      tbody.appendChild(tr);
-    });
-    document.getElementById('canvasRepairResetRotations').onclick = () => {
-      tbody.querySelectorAll('select[data-field="rotation"]').forEach(s => { s.value = '0'; });
-    };
-    showModal('canvasRepairModal');
-  }
-  function applyCanvasRepair() {
-    const tbody = document.getElementById('canvasRepairBody');
-    if (!tbody || !state.pages.length) return;
-    const rows = tbody.querySelectorAll('tr[data-page-index]');
-    const newPages = state.pages.map((page, i) => ({ ...page, pdfPage: page.pdfPage, label: page.label }));
-    const sourceCanvases = state.pages.map(p => JSON.parse(JSON.stringify(p.canvases || [])));
-    rows.forEach((tr, i) => {
-      const srcSelect = tr.querySelector('select[data-field="source"]');
-      const rotSelect = tr.querySelector('select[data-field="rotation"]');
-      if (!srcSelect || !rotSelect) return;
-      const srcIdx = parseInt(srcSelect.value, 10);
-      const targetRot = parseInt(rotSelect.value, 10);
-      if (isNaN(srcIdx) || srcIdx < 0 || srcIdx >= state.pages.length) return;
-      if (isNaN(targetRot)) return;
-      const srcPage = state.pages[srcIdx];
-      const srcCanvases = sourceCanvases[srcIdx];
-      newPages[i].canvases = (srcCanvases && srcCanvases.length) ? srcCanvases : [{ id: uid(), name: 'Main', annotations: makeAnnotations() }];
-      delete newPages[i].annotations;
-      newPages[i].scale = srcPage?.scale ?? null;
-      const srcRot = srcPage?.rotation ?? 0;
-      newPages[i].rotation = srcRot;
-      const delta = ((targetRot - srcRot) + 360) % 360;
-      if (delta !== 0) applyRotationDeltaToAnnotations(newPages[i], delta);
-      newPages[i].rotation = targetRot;
-    });
-    pushUndoSnapshot();
-    state.pages = newPages;
-    reconcileOrphanedCountersAndLineTypes();
-    markProjectDirty();
-    hideModal('canvasRepairModal');
-    renderPdf();
-    updateUI();
-  }
+  // Canvas Repair lives in features/canvas-repair.js (window.App registry pilot);
+  // openCanvasRepairModal / applyCanvasRepair are reached via App.* at call time.
 
-  // SECTION: Manage Icons modal
-  function openManageIconsModal() {
-    const listEl = document.getElementById('manageIconsList');
-    const customSection = document.getElementById('manageIconsCustomSection');
-    const customListEl = document.getElementById('manageIconsCustomList');
-    const editToggleBtn = document.getElementById('manageIconsEditToggle');
-    const deleteSelectedBtn = document.getElementById('manageIconsDeleteSelected');
-    listEl.innerHTML = '';
-    const ordered = getOrderedIcons();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    function updateMoveButtons() {
-      listEl.querySelectorAll('.manage-icon-row').forEach((row, i) => {
-        const rows = listEl.querySelectorAll('.manage-icon-row');
-        const n = rows.length;
-        const btns = row.querySelectorAll('.icon-move-btns button');
-        if (btns.length >= 4) {
-          btns[0].disabled = i === 0;
-          btns[1].disabled = i === n - 1;
-          btns[2].disabled = i === 0;
-          btns[3].disabled = i === n - 1;
-        }
-      });
-    }
-    ordered.forEach((ic, i) => {
-      const row = document.createElement('div');
-      row.className = 'manage-icon-row';
-      row.dataset.iconPath = ic.value;
-      const currentName = state.iconNames && state.iconNames[ic.value] !== undefined ? state.iconNames[ic.value] : ic.name;
-      row.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="var(--accent)" d="' + ic.value + '"/></svg></span><input type="text" value="' + esc(currentName) + '" placeholder="' + esc(ic.name || 'Icon') + '"><div class="icon-move-btns"><button type="button" title="Move up" data-action="up">↑</button><button type="button" title="Move down" data-action="down">↓</button><button type="button" title="Send to top" data-action="top">⏫</button><button type="button" title="Send to bottom" data-action="bottom">⏬</button></div>';
-      listEl.appendChild(row);
-      row.querySelectorAll('.icon-move-btns button').forEach(btn => {
-        btn.onclick = () => {
-          if (btn.dataset.action === 'up' && row.previousElementSibling) {
-            listEl.insertBefore(row, row.previousElementSibling);
-          } else if (btn.dataset.action === 'down' && row.nextElementSibling) {
-            listEl.insertBefore(row, row.nextElementSibling.nextElementSibling);
-          } else if (btn.dataset.action === 'top') {
-            listEl.insertBefore(row, listEl.firstChild);
-          } else if (btn.dataset.action === 'bottom') {
-            listEl.appendChild(row);
-          }
-          updateMoveButtons();
-        };
-      });
-    });
-    updateMoveButtons();
-
-    let customEditMode = false;
-    const selectedPaths = new Set();
-    function renderCustomIcons() {
-      const customIcons = getUserCustomIcons();
-      if (customIcons.length === 0) {
-        customSection.style.display = 'none';
-        return;
-      }
-      customSection.style.display = '';
-      customListEl.innerHTML = '';
-      customIcons.forEach((ic) => {
-        const row = document.createElement('div');
-        row.className = 'manage-icon-row manage-icon-row-custom';
-        row.dataset.iconPath = ic.value;
-        row.dataset.custom = '1';
-        const vb = ic.viewBox || '0 0 24 24';
-        const name = (state.iconNames && state.iconNames[ic.value]) || ic.name || 'Custom icon';
-        const cbHtml = customEditMode ? '<input type="checkbox" class="icon-select-cb" aria-label="Select">' : '';
-        row.innerHTML = cbHtml + '<span class="icon-svg"><svg viewBox="' + esc(vb) + '" width="24" height="24"><path fill="var(--accent)" d="' + esc(ic.value) + '"/></svg></span><span class="manage-icon-custom-name">' + esc(name) + '</span>';
-        customListEl.appendChild(row);
-        if (customEditMode) {
-          const cb = row.querySelector('.icon-select-cb');
-          row.onclick = (e) => {
-            if (e.target === cb) return;
-            const path = row.dataset.iconPath;
-            if (selectedPaths.has(path)) {
-              selectedPaths.delete(path);
-              row.classList.remove('selected');
-              if (cb) cb.checked = false;
-            } else {
-              selectedPaths.add(path);
-              row.classList.add('selected');
-              if (cb) cb.checked = true;
-            }
-            deleteSelectedBtn.disabled = selectedPaths.size === 0;
-          };
-          if (cb) {
-            cb.onclick = (e) => e.stopPropagation();
-            cb.onchange = () => {
-              if (cb.checked) {
-                selectedPaths.add(ic.value);
-                row.classList.add('selected');
-              } else {
-                selectedPaths.delete(ic.value);
-                row.classList.remove('selected');
-              }
-              deleteSelectedBtn.disabled = selectedPaths.size === 0;
-            };
-          }
-        } else {
-          row.onclick = null;
-        }
-      });
-      deleteSelectedBtn.disabled = selectedPaths.size === 0;
-    }
-    function toggleEditMode() {
-      customEditMode = !customEditMode;
-      selectedPaths.clear();
-      const span = editToggleBtn.querySelector('span');
-      if (span) span.textContent = customEditMode ? 'Done' : 'Edit';
-      editToggleBtn.classList.toggle('active', customEditMode);
-      deleteSelectedBtn.style.display = customEditMode ? '' : 'none';
-      renderCustomIcons();
-    }
-    editToggleBtn.onclick = toggleEditMode;
-    deleteSelectedBtn.onclick = () => {
-      const toRemove = Array.from(selectedPaths);
-      if (toRemove.length === 0) return;
-      const updated = getUserCustomIcons().filter((ic) => !toRemove.includes(ic.value));
-      saveUserCustomIcons(updated);
-      selectedPaths.clear();
-      customEditMode = false;
-      const span = editToggleBtn.querySelector('span');
-      if (span) span.textContent = 'Edit';
-      editToggleBtn.classList.remove('active');
-      deleteSelectedBtn.style.display = 'none';
-      deleteSelectedBtn.disabled = true;
-      renderCustomIcons();
-      showToast('Removed ' + toRemove.length + ' custom icon(s).');
-      updateUI();
-    };
-    renderCustomIcons();
-    const initSpan = editToggleBtn.querySelector('span');
-    if (initSpan) initSpan.textContent = 'Edit';
-    editToggleBtn.classList.remove('active');
-    deleteSelectedBtn.style.display = 'none';
-    deleteSelectedBtn.disabled = true;
-
-    showModal('manageIconsModal');
-  }
+  // The Manage Icons modal (openManageIconsModal + its Close/Cancel/Save
+  // handlers) lives in features/manage-icons.js (window.App registry);
+  // openManageIconsModal is reached via App.openManageIconsModal at call time.
+  // getOrderedIcons/iconVbFor/getUserCustomIcons/saveUserCustomIcons/showToast
+  // stay here and are published on App.
 
   // SECTION: Manage Projects modal
   function openManageProjectsModal() {
@@ -11910,11 +10594,11 @@
     document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
     document.querySelector('#settingsAdvancedModal .modal-card').onclick = (e) => e.stopPropagation();
     document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await loadTestPdf(); };
-    document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); openManageIconsModal(); };
+    document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openManageIconsModal(); };
     document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
     document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await downloadProjectPdf(); };
     document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
-    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); openCanvasRepairModal(); };
+    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openCanvasRepairModal(); };
     document.getElementById('advancedEmptyCacheReload').onclick = async () => {
       if (!confirm('Clear all cached data (IndexedDB, localStorage) and reload? Unsaved work will be lost.')) return;
       hideModal('settingsAdvancedModal');
@@ -13563,31 +12247,11 @@
       };
     }
     document.getElementById('manageProjectsModalClose').onclick = () => hideModal('manageProjectsModal');
-    document.getElementById('manageIconsModalClose').onclick = () => hideModal('manageIconsModal');
-    document.getElementById('manageIconsCancel').onclick = () => hideModal('manageIconsModal');
+    // manageIconsModalClose / manageIconsCancel / manageIconsSave handlers live
+    // in features/manage-icons.js (window.App registry).
     document.getElementById('canvasRepairModalClose').onclick = () => hideModal('canvasRepairModal');
     document.getElementById('canvasRepairCancel').onclick = () => hideModal('canvasRepairModal');
-    document.getElementById('canvasRepairApply').onclick = applyCanvasRepair;
-    document.getElementById('manageIconsSave').onclick = () => {
-      const listEl = document.getElementById('manageIconsList');
-      const rows = listEl.querySelectorAll('.manage-icon-row');
-      const next = {};
-      const order = [];
-      rows.forEach((row) => {
-        const path = row.dataset.iconPath;
-        const inp = row.querySelector('input');
-        const ic = ICONS.find(i => i.value === path);
-        if (ic && inp) {
-          const v = inp.value.trim();
-          if (v && v !== ic.name) next[ic.value] = v;
-          order.push(path);
-        }
-      });
-      state.iconNames = next;
-      state.iconOrder = order.length ? order : null;
-      hideModal('manageIconsModal');
-      updateUI();
-    };
+    document.getElementById('canvasRepairApply').onclick = () => App.applyCanvasRepair();
     document.getElementById('adminCreateForm').onsubmit = async (e) => {
       e.preventDefault();
       const email = document.getElementById('adminCreateEmail').value.trim();
@@ -13635,7 +12299,7 @@
     if (note) {
       document.getElementById('contextMenu').classList.remove('visible');
       state.ctxTarget = null;
-      openNoteModal('edit', note.text, note);
+      App.openNoteModal('edit', note.text, note);
     }
   };
   document.getElementById('ctxLineProperties').onclick = () => {
@@ -14051,10 +12715,10 @@
         const page = state.pages[state.currentPage];
         const ann = page ? getActiveAnnotations(page) : null;
         const note = ann?.notes?.[tNote.index];
-        if (note) { openNoteModal('edit', note.text, note); return; }
+        if (note) { App.openNoteModal('edit', note.text, note); return; }
       }
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      openNoteModal('add', '', { x: pdf.x, y: pdf.y });
+      App.openNoteModal('add', '', { x: pdf.x, y: pdf.y });
     } else if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
       if (state.draggingVertexIdx !== null) state.draggingVertexIdx = null;
     }
@@ -14075,7 +12739,7 @@
         const page = state.pages[state.currentPage];
         const ann = page ? getActiveAnnotations(page) : null;
         const note = ann?.notes?.[t.index];
-        if (note) openNoteModal('edit', note.text, note);
+        if (note) App.openNoteModal('edit', note.text, note);
       }
     }
   }
@@ -14605,7 +13269,7 @@
     }
     if (state.tool === TOOL.NOTE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      openNoteModal('add', '', { x: pdf.x, y: pdf.y });
+      App.openNoteModal('add', '', { x: pdf.x, y: pdf.y });
       updateUI();
       return;
     }
@@ -14678,7 +13342,7 @@
       return;
     }
     if (document.getElementById('chooseLineTypeModal').classList.contains('visible') && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
-      showLineTypeTab('quick');
+      App.showLineTypeTab('quick');
       e.preventDefault();
       return;
     }
@@ -15863,6 +14527,53 @@
   window.polylineDistance = polylineDistance;
   window.formatDist = formatDist;
   window.renderIconHtml = renderIconHtml;
+
+  // SECTION: App feature registry
+  // Shared registry that lets feature files (features/*.js, loaded AFTER this
+  // IIFE) reach the cross-cutting state + helpers they need without living
+  // inside this closure. Feature files read these at call time (user actions,
+  // long after load) and register their own public entry points back onto App;
+  // app.js then calls those via deferred bindings (() => App.fn()). See
+  // ARCHITECTURE.md "Feature files / window.App registry".
+  const App = (window.App = window.App || {});
+  App.state = state;
+  App.uid = uid;
+  App.makeAnnotations = makeAnnotations;
+  App.applyRotationDeltaToAnnotations = applyRotationDeltaToAnnotations;
+  App.reconcileOrphanedCountersAndLineTypes = reconcileOrphanedCountersAndLineTypes;
+  App.pushUndoSnapshot = pushUndoSnapshot;
+  App.markProjectDirty = markProjectDirty;
+  App.showModal = showModal;
+  App.hideModal = hideModal;
+  App.renderPdf = renderPdf;
+  App.updateUI = updateUI;
+  App.showLineColorModal = showLineColorModal;
+  App.ensureActiveCanvas = ensureActiveCanvas;
+  App.getMaxZoom = getMaxZoom;
+  App.getWheelZoomSpeed = getWheelZoomSpeed;
+  App.getOrderedIcons = getOrderedIcons;
+  App.iconVbFor = iconVbFor;
+  App.getUserCustomIcons = getUserCustomIcons;
+  App.saveUserCustomIcons = saveUserCustomIcons;
+  App.showToast = showToast;
+  App.getPageCanvases = getPageCanvases;
+  App.renderAnnotationsToContext = renderAnnotationsToContext;
+  App.addReportPagesToPdf = addReportPagesToPdf;
+  App.addHighlightsToPdf = addHighlightsToPdf;
+  App.addNotesToPdf = addNotesToPdf;
+  App.hasAnyHighlights = hasAnyHighlights;
+  App.hasAnyNotes = hasAnyNotes;
+  App.sanitizeForFilename = sanitizeForFilename;
+  App.logUserEvent = logUserEvent;
+  App.renderPagesList = renderPagesList;
+  App.renderAnnotations = renderAnnotations;
+  App.renderCountersList = renderCountersList;
+  App.renderLineTypesList = renderLineTypesList;
+  App.DROP_ICON_STYLES = DROP_ICON_STYLES;
+  App.TOOL = TOOL;
+  App.COLORS = COLORS;
+  App.populateQuickLineModal = populateQuickLineModal;
+
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;
     window.__takeoffBackupDeleteForTest = takeoffBackupDelete;

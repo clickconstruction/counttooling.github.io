@@ -19,8 +19,26 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./constants.js')),
       Object.keys(require('./save-utils.js')),
       Object.keys(require('./icons.js')),
+      Object.keys(require('./idb.js')),
+      Object.keys(require('./format.js')),
+      Object.keys(require('./icon-render.js')),
     )
     .map((k) => [k, 'readonly']),
+);
+
+// idb.js / format.js only reach for the store-name / cap / TZ constants by bare
+// name; they must NOT receive their own exported function names as globals
+// (no-redeclare would flag the local function declarations), so derive a
+// constants-only set for them.
+const constantsGlobals = Object.fromEntries(
+  Object.keys(require('./constants.js')).map((k) => [k, 'readonly']),
+);
+
+// icon-render.js reaches for the icon-data globals (CUSTOM_ICONS,
+// VB_384_512_PATHS, FA_PATHS) by bare name; same no-redeclare reasoning, so give
+// it an icons-only global set (not its own exports).
+const iconsGlobals = Object.fromEntries(
+  Object.keys(require('./icons.js')).map((k) => [k, 'readonly']),
 );
 
 // app.js is a ~16k-line legacy file. We only want no-undef as an error (the
@@ -74,6 +92,75 @@ module.exports = [
     // solely to be consumed cross-file by the index.html IIFE / report.js, so
     // no-unused-vars is pure noise here. `module` covers the dual-env footers.
     files: ['geometry.js', 'constants.js', 'icons.js', 'save-utils.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // idb.js / format.js: pure modules extracted from app.js. Classic <script>s
+    // loaded after constants.js, so they reference constants (store names / caps,
+    // USER_ACTIVITY_TZ) by bare name (provided via constantsGlobals). Their
+    // exported functions are consumed cross-file by app.js, so no-unused-vars is
+    // noise here. no-undef stays an error (inherited from recommended) to catch
+    // typo'd constants. They must NOT receive their own export names as globals
+    // (no-redeclare would flag the local declarations), hence constants-only.
+    files: ['idb.js', 'format.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...constantsGlobals,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // icon-render.js: pure icon geometry / render-rule helpers extracted from
+    // app.js. Classic <script> loaded after icons.js, so it reads the icon-data
+    // globals (CUSTOM_ICONS / VB_384_512_PATHS / FA_PATHS) by bare name (provided
+    // via iconsGlobals). Its exports are consumed cross-file by app.js, so
+    // no-unused-vars is noise; no-undef stays an error. Like the constants-only
+    // group, it must NOT receive its own export names as globals (no-redeclare).
+    files: ['icon-render.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...iconsGlobals,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // features/*.js: incremental splits of the app.js IIFE (window.App registry
+    // pilot). Each is its own classic-script IIFE loaded AFTER app.js; it reads
+    // shared state/helpers from the local `App` it declares (window.App) at call
+    // time and registers its public entry points back onto it. no-undef stays an
+    // error to catch typos / missing browser globals; no-unused-vars is off
+    // (these files exist to publish onto App, not to be self-contained).
+    files: ['features/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

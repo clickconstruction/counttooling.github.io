@@ -23,7 +23,7 @@
   `features/export-pdfs.js`, `features/legend-settings.js`,
   `features/page-settings.js`, `features/counter-settings.js`,
   `features/line-type-settings.js`, `features/choose-create-line-type.js`,
-  `features/scale.js`), then
+  `features/scale.js`, `features/groups.js`), then
   `report.js`),
   [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
   extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
@@ -82,6 +82,21 @@
   `renderIconHtml` stay in app.js as same-named thin wrappers that inject
   `getEffectiveCustomIcons()`; guarded CommonJS footer so
   [icon-render.test.js](icon-render.test.js) can `require()` it),
+  [line-metrics.js](line-metrics.js) (pure line-length / scale math extracted from
+  app.js: `lineSegmentLength`, `lineGeomPdfPts`, `lineLengthPdfPts`,
+  `effectiveScaleForLine`, `lineRealWorldLength`, `lineLengthForTotals`,
+  `scaleForLineType`; classic script loaded **after geometry.js** (reads
+  `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/
+  `getMultiplyZoneForLine` by bare name) and **before app.js**; depends only on
+  geometry.js globals + args, no `state` -- the per-page scale, the line's
+  resolved line-type, and the pages array are injected by app.js's same-named thin
+  wrappers `quickLineLength`/`getLineLengthPdfPts`/`getEffectiveScaleForLine`/
+  `getLineRealWorldLength`/`getLineLengthForTotals`/`pickScaleForLineType` (which
+  resolve those from `state` and keep their `window.*` exports for report.js); the
+  module function names are deliberately distinct from the wrappers so the
+  app.js-derived globals don't trip `no-redeclare`; guarded CommonJS footer so
+  [line-metrics.test.js](line-metrics.test.js) can `require()` it after
+  `Object.assign(globalThis, require('./geometry.js'))`),
   [save-utils.js](save-utils.js) (pure save/sync helpers: `isTransientSaveError`,
   `getProjectCounts`; classic script loaded before app.js; guarded CommonJS
   footer so [save-utils.test.js](save-utils.test.js) can `require()` it),
@@ -174,7 +189,25 @@
   Escape-key `resetScaleModalZoneMode` branch keep their zone-entry state/DOM setup
   inline in app.js and reach the modal via `App.*`; the toolbar tool buttons that
   shared the old grab-bag stay in app.js under the renamed section marker
-  `// SECTION: Toolbar tool buttons`), and
+  `// SECTION: Toolbar tool buttons`),
+  [features/groups.js](features/groups.js) (the fourteenth registry split and first
+  two-modal move — the group create/edit modal (`#groupModal`) and the
+  assign-item-to-group modal (`#groupAssignModal`): `openGroupModal` +
+  `refreshGroupAssignButtons` + `openGroupAssignModal`, the three group-modal state
+  flags `pendingGroupEdit`/`pendingGroupAssignTarget`/`openedGroupModalFromAssign`
+  (private `let`s in the IIFE), and the `#addGroup` opener + `#groupModal*` /
+  `#groupAssign*` handlers; registers `App.openGroupModal`/`App.openGroupAssignModal`/
+  `App.onGroupModalHidden`. One new publish-only dep `App.deleteGroup` (the heavier
+  group-deletion mutation stays in app.js); reuses
+  `state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/
+  `showModal`/`hideModal`. **First core-function -> feature callback**: the
+  `hideModal('groupModal')` reset hook in app.js now calls
+  `App.onGroupModalHidden()` instead of mutating the now-private
+  `openedGroupModalFromAssign` flag directly. The `#showGroupColors` sidebar toggle
+  stays in app.js; the two external callers (the groups-list Edit button in the
+  render code and the canvas right-click "Assign to Group") reach the modals via
+  `App.*`; the emptied `// SECTION: Groups` marker was removed, dropping the
+  section count to 48), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
@@ -193,7 +226,8 @@
   runs the Node unit tests ([geometry.test.js](geometry.test.js),
   [constants.test.js](constants.test.js), [report.test.js](report.test.js),
   [save-utils.test.js](save-utils.test.js), [idb.test.js](idb.test.js),
-  [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js)) via
+  [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js),
+  [line-metrics.test.js](line-metrics.test.js)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
   auto-skips its two en-CA-hyphen-dependent cases on a limited-ICU runtime and
@@ -206,15 +240,18 @@
   needs a server + Supabase/dev-auth secrets.
 - **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
   covers all the `.js` — the browser modules (`geometry.js`, `constants.js`,
-  `idb.js`, `format.js`, `icons.js`, `icon-render.js`, `save-utils.js`,
+  `idb.js`, `format.js`, `icons.js`, `icon-render.js`, `line-metrics.js`,
+  `save-utils.js`,
   `report.js`), the whole app (`app.js`), and the Node tooling (tests, specs +
   helpers, `scripts/`, configs).
   Now that the JS lives in `app.js` (not an inline `<script>`), the entire app is
   linted. The `app.js` group auto-derives the sibling modules' exports as
-  `readonly` globals (via `require()`, including `idb.js`, `format.js`, and
-  `icon-render.js`); the constants-only pure-module group (`idb.js` + `format.js`)
-  gets a constants-only global set, and `icon-render.js` gets its own icons-only
-  group (`icons.js` globals) -- in both cases not their own exports, which would
+  `readonly` globals (via `require()`, including `idb.js`, `format.js`,
+  `icon-render.js`, and `line-metrics.js`); the constants-only pure-module group
+  (`idb.js` + `format.js`)
+  gets a constants-only global set, `icon-render.js` gets its own icons-only
+  group (`icons.js` globals), and `line-metrics.js` gets a geometry-only group
+  (`geometry.js` globals) -- in all cases not their own exports, which would
   trip `no-redeclare`. A `features/*.js` group lints the registry feature files
   (browser globals + `module` readonly, `no-undef` error, `no-unused-vars` off).
   The `app.js` group
@@ -288,7 +325,8 @@ Rules to follow when adding/editing a feature file:
   `logUserEvent`, `renderPagesList`, `renderAnnotations`, `renderCountersList`,
   `renderLineTypesList`, `DROP_ICON_STYLES`, `TOOL`, `COLORS`,
   `populateQuickLineModal`, `SCALE_MODES`, `SCALE_PRESETS`, `ptDist`,
-  `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`). Some are
+  `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`, `deleteGroup`).
+  Some are
   "publish-only" — the function stays defined in app.js (used widely there) and
   is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
   `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`, `getUserCustomIcons`,
@@ -301,7 +339,7 @@ Rules to follow when adding/editing a feature file:
   Type's `populateQuickLineModal` plus the two constants `TOOL`/`COLORS`, and
   Scale's `getActiveAnnotations`, the geometry globals
   `ptDist`/`parseFraction`/`parseRealWorldLength`, plus the constants
-  `SCALE_MODES`/`SCALE_PRESETS`);
+  `SCALE_MODES`/`SCALE_PRESETS`, and Groups' `deleteGroup`);
   only the feature's own functions move out. Add any new dep a feature needs here. Leave the
   existing `window.*` report.js exports alone.
 - `features/<name>.js` is its own IIFE that does
@@ -311,6 +349,12 @@ Rules to follow when adding/editing a feature file:
   Read deps from `App.*` **inside** functions (at call time), never at module load.
 - **Deferred bindings**: call sites in `app.js` must use `() => App.fn()`, never
   `App.fn` captured before the feature file registers it.
+- **Core-function -> feature callbacks**: when a function that stays in `app.js`
+  must mutate state that has moved into a feature file (e.g. a private flag), the
+  feature registers a callback and the core function invokes it defensively:
+  `App.onX && App.onX()`. Example: `hideModal('groupModal')` calls
+  `App.onGroupModalHidden()` (features/groups.js) to reset the now-private
+  `openedGroupModalFromAssign` flag.
 
 ### Persisted settings (localStorage unless noted)
 

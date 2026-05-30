@@ -34,6 +34,8 @@ Implementation history (e.g. the sync-hardening work) lives in
 | [format.test.js](format.test.js) | Node `node:test` unit tests for [format.js](format.js) — `calendarDaysFromSignInToNowInZone` integer deltas (incl. year boundary / future), `filterUserActivityRows` match/case rules, `renderUserActivityAllUsersTableHtml` cells + escaping, `formatLastSignIn` relative buckets, `formatUserActivityDateTime`; the two en-CA-hyphen-dependent cases (`dateKeyInTimeZone`, `formatLastSignInUserActivity` Today) auto-skip on a limited-ICU runtime and run on full-ICU (browser-equivalent / CI Node 20); run with `npm run test:unit` |
 | [icon-render.js](icon-render.js) | Pure icon geometry / render-rule helpers extracted from app.js — the `CUSTOM_ICON_META` table (derived from `CUSTOM_ICONS`) plus `iconMetaFromList`, `iconViewBoxFromList`, `iconRenderVbRule`, `iconRenderCenterRule`, `iconViewBoxStringRule`, `iconSvgHtml`. Classic `<script src>` loaded after [icons.js](icons.js) (reads `CUSTOM_ICONS`/`VB_384_512_PATHS`/`FA_PATHS` by bare name; the top-level `CUSTOM_ICON_META` read is `typeof`-guarded so Node `require` stays load-safe) and before [app.js](app.js). Depends only on icons.js globals + args — no `state`/DOM/user-icon-cache. app.js keeps the cache-coupled lookups (`getCustomIconMeta`, `getCustomIconViewBox`, `iconRenderVb`, `iconRenderCenter`, `iconViewBoxString`, `renderIconHtml`) as same-named thin wrappers that inject `getEffectiveCustomIcons()`. Guarded CommonJS export footer so the primitives can be `require()`d by [icon-render.test.js](icon-render.test.js) |
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
+| [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
+| [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
 | [features/canvas-repair.js](features/canvas-repair.js) | First feature-file split of the `app.js` IIFE (the `window.App` registry pilot) — the Canvas Repair modal (`openCanvasRepairModal` + `applyCanvasRepair`). Its own classic-script IIFE loaded **after** [app.js](app.js) (and before [report.js](report.js)); reads shared `state`/helpers from `window.App` at call time and registers `App.openCanvasRepairModal`/`App.applyCanvasRepair` back onto it. app.js invokes them via deferred bindings (`() => App.fn()`). See "Feature files / `window.App` registry" below |
 | [canvas-repair.spec.js](canvas-repair.spec.js) | Playwright regression for the registry pilot — uploads `test-2pages.pdf`, adds a page-0 marker, asserts `window.App.openCanvasRepairModal`/`applyCanvasRepair` are functions and `App.state === window.state`, opens the modal + clicks `#canvasRepairApply` (no-op default mapping), and asserts the marker survives with no console / page errors; `npx playwright test canvas-repair.spec.js` |
 | [features/note.js](features/note.js) | Second feature-file split (`window.App` registry pilot #2) — the Note add/edit modal (`openNoteModal` + its `noteModalCancel`/`noteModalDone` button bindings). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openNoteModal`, and binds the modal's Cancel/Done at load. app.js's 5 inbound call sites (canvas click / dblclick / context-menu / touch handlers) call it via `App.openNoteModal(...)` |
@@ -58,20 +60,22 @@ Implementation history (e.g. the sync-hardening work) lives in
 | [choose-create-line-type.spec.js](choose-create-line-type.spec.js) | Playwright regression for pilot #12 — uploads `test-2pages.pdf`, asserts `window.App.showChooseLineTypeModal` + `showLineTypeTab` are functions, opens via the registry, switches to the Create tab and creates a line type (asserts `state.lineTypes` grew by 1, `state.activeLineTypeId` points at the new type, and the modal closed), reopens and exercises the Choose-list search + select (asserts the modal closes and `state.activeLineTypeId` matches the picked type); asserts no console / page errors; `npx playwright test choose-create-line-type.spec.js` |
 | [features/scale.js](features/scale.js) | Thirteenth feature-file split (`window.App` registry pilot #13) — the **Scale modal** (`#scaleModal`), opened by the Set Scale buttons / `S` hotkey and reused for per-page scale, scale-zone create, and scale-zone edit. `updateScalePlaceholder` + `openScaleModal` + `resetScaleModalZoneMode` + `applyScaleObjectToZoneOrPage` + `showScaleTab`, plus the `#setScale`/`#setScaleSidebar` openers and the `#scaleModalTabs`/`#scaleUnit`/`#scaleSelectOnPdf`/`#scalePresetsCancel`/`#scaleCustomApply`/`#scaleCancel`/`#scaleSet` handlers (which had lived down in the Counter-modal region). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openScaleModal` + `App.resetScaleModalZoneMode`, binds everything at load. **First split to route geometry.js globals + `SCALE_*` constants through the registry** — six new publish-only deps `SCALE_MODES`/`SCALE_PRESETS`/`ptDist`/`parseFraction`/`parseRealWorldLength`/`getActiveAnnotations` (stay in app.js, read via `App.*` so the `features/*.js` group's browser-only globals don't trip `no-undef`); `state`/`showModal`/`hideModal`/`updateUI`/`renderPdf`/`pushUndoSnapshot`/`markProjectDirty`/`uid`/`ensureActiveCanvas`/`showToast`/`TOOL` were already on `App`. The modal doubles as the scale-zone create/edit dialog (`scaleModalApplyTarget === 'zone'`), so `applyScaleObjectToZoneOrPage` moves with it; the four `openScaleModal` callers (canvas two-point finish + scale-zone context-menu Edit) and the Escape-key `resetScaleModalZoneMode` branch keep their zone-entry state/DOM setup inline and reach the modal via `App.*`. The toolbar tool buttons (`#measureBtn`/`#moveBtn`/`#quickLine`/`#undoBtn`/`#redoBtn`/`#polylineBtn`/`#highlightBtn`/`#multiplyZoneBtn`/`#scaleZoneBtn`/`#deleteZoneBtn`) that shared the grab-bag stay in app.js. **Renamed** the section marker `// SECTION: Scale modal` → `// SECTION: Toolbar tool buttons` (TOC stays 49) |
 | [scale.spec.js](scale.spec.js) | Playwright regression for pilot #13 — uploads `test-2pages.pdf`, asserts `window.App.openScaleModal` + `resetScaleModalZoneMode` are functions and `Array.isArray(App.SCALE_PRESETS)`, opens via the registry, clicks a preset and asserts `state.pages[currentPage].scale` was set + the modal closed, reopens and exercises `#scaleCustomApply` with a valid fraction + feet asserting the computed `pixelsPerUnit` + closed modal; asserts no console / page errors; `npx playwright test scale.spec.js` |
+| [features/groups.js](features/groups.js) | Fourteenth feature-file split (`window.App` registry pilot #14) and **first two-modal move** — the group create/edit modal (`#groupModal`) and the assign-item-to-group modal (`#groupAssignModal`). `openGroupModal` + `refreshGroupAssignButtons` + `openGroupAssignModal`, the three group-modal state flags (`pendingGroupEdit`/`pendingGroupAssignTarget`/`openedGroupModalFromAssign`, now private `let`s in the IIFE), and the `#addGroup` opener + `#groupModal*` / `#groupAssign*` handlers. Its own IIFE loaded **after** [app.js](app.js); registers `App.openGroupModal` + `App.openGroupAssignModal` + `App.onGroupModalHidden`. One new publish-only dep `App.deleteGroup` (the heavier group-deletion mutation, which clears the group off every annotation, stays in app.js); the rest (`state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`) were already on `App`. **First core-function → feature callback in the codebase**: the `hideModal('groupModal')` reset hook in app.js now calls `App.onGroupModalHidden()` instead of mutating the now-private `openedGroupModalFromAssign` directly. The `#showGroupColors` sidebar toggle stays in app.js; the two external callers (the groups-list Edit button in the render code, and the canvas right-click "Assign to Group") reach the modals via `App.*`. **Removed** the emptied `// SECTION: Groups` marker (TOC 49 → 48) |
+| [groups.spec.js](groups.spec.js) | Playwright regression for pilot #14 — uploads `test-2pages.pdf`, asserts `window.App.openGroupModal` + `openGroupAssignModal` + `onGroupModalHidden` are functions, creates a group via `#addGroup` → name/color → `#groupModalDone` (asserts `state.groups` grew + `state.activeGroupId` points at it), edits via `App.openGroupModal(group)`, and runs the assign flow (`App.openGroupAssignModal(item)` → pick a group → `#groupAssignDone` sets `item.group`); asserts no console / page errors; `npx playwright test groups.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
-| [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), and [icon-render.js](icon-render.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, and [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals) — in both cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
+| [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
 High level: the `<head>` of [index.html](index.html) loads `config.js`, the CDN
 libs (pdf.js, pdf-lib, html2canvas, jsPDF, supabase-js), `styles.css`,
-`icons.js`, `icon-render.js`, `geometry.js`, `constants.js`, `idb.js`,
-`format.js`, and `save-utils.js`. The body holds the app shell + every modal,
+`icons.js`, `icon-render.js`, `geometry.js`, `line-metrics.js`, `constants.js`,
+`idb.js`, `format.js`, and `save-utils.js`. The body holds the app shell + every modal,
 then loads `app.js` (the main JS IIFE — the bulk of the app logic), then the
 feature-file splits (`features/canvas-repair.js`, `features/note.js`,
 `features/zoom.js`, `features/manage-icons.js`,
 `features/multiply-zone-settings.js`, `features/export-pdfs.js`,
 `features/legend-settings.js`, `features/page-settings.js`,
 `features/counter-settings.js`, `features/line-type-settings.js`,
-`features/choose-create-line-type.js`, `features/scale.js`), followed by `report.js`. The CSS, icon data, pure icon-render rules, pure geometry/parse
+`features/choose-create-line-type.js`, `features/scale.js`, `features/groups.js`), followed by `report.js`. The CSS, icon data, pure icon-render rules, pure geometry/parse
 primitives, pure constant literals, the IndexedDB storage layer, pure
 date/time/text formatters, pure save/sync helpers, and finally the main IIFE
 itself were lifted out of `index.html` into `styles.css` / `icons.js` /
@@ -214,7 +218,15 @@ that marker → `// SECTION: Toolbar tool buttons` (rename, not removal, count s
 49); it now heads only the measure/move/zone tool buttons that shared it. This was
 the **first split to route geometry.js globals through the registry**
 (`ptDist`/`parseFraction`/`parseRealWorldLength`, alongside the `SCALE_*`
-constants and `getActiveAnnotations`).
+constants and `getActiveAnnotations`). Groups (pilot #14) moved **two** modals at
+once (`#groupModal` + `#groupAssignModal`) plus their three shared state flags
+into [features/groups.js](features/groups.js), and was the **first split to need
+a core-function → feature callback**: the `hideModal('groupModal')` reset hook in
+app.js now calls `App.onGroupModalHidden()` to clear the now-private
+`openedGroupModalFromAssign` flag (one new publish-only dep, `App.deleteGroup`,
+stays in app.js). It **emptied and removed** the `// SECTION: Groups` marker
+(removal, not rename), dropping the section count 49 → 48 — the second pilot to
+reduce the TOC (after Counter settings #10's 50 → 49).
 
 ## Section index (grep `// SECTION:`)
 
@@ -235,45 +247,44 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1134 - Dirty tracking & local session reset
 - L1349 - Checkout probe, hashing & PDF cache
 - L1596 - Math & Format Helpers
-- L2335 - Save Status modal
-- L2402 - Coordinate Helpers
-- L2414 - PDF Rendering
-- L3586 - UI Render Functions
-- L5631 - Modals & Handlers
-- L5782 - Prepare PDF modal
-- L6395 - Toolbar tool buttons
-- L6502 - Counter modal
-- L6879 - Quick Plumbing / Quick Count modals
-- L7322 - Quick Line modal
-- L7506 - Groups
-- L7605 - Line color & sidebar handlers
-- L7749 - Polyline modal & drawing
-- L7780 - Zoom bar & page navigation
-- L7819 - Canvas layers
-- L8022 - PDF download helpers & PipeTooling menu
-- L8097 - Copy summaries (PipeTooling / Email)
-- L8230 - PDF bundling (report / notes / highlights)
-- L8622 - Download current page
-- L8870 - Zone & page-action modal handlers
-- L8980 - User activity time formatting
-- L9138 - User Activity modal (admin)
-- L9206 - User Settings & Manage Users
-- L9378 - Manage Projects modal
-  - L9538 - Project Settings checkout & Save Status bell
-  - L9727 - Checkout expired recovery
-  - L9981 - Turn In
-  - L10483 - Share project & view links
-  - L10702 - Cloud project hydrate / copy / fork
-  - L10889 - Load Project modal
-- L12305 - Canvas Event Handlers
-- L12593 - Event Binding
-- L13346 - Manual save to cloud
-- L13795 - Auto-save
-- L14092 - Local backup (IndexedDB takeoff state)
-- L14307 - Checkout keep-alive
-- L14352 - App feature registry
-- L14413 - View-only mode
-- L14566 - Init / boot
+- L2307 - Save Status modal
+- L2374 - Coordinate Helpers
+- L2386 - PDF Rendering
+- L3558 - UI Render Functions
+- L5589 - Modals & Handlers
+- L5740 - Prepare PDF modal
+- L6353 - Toolbar tool buttons
+- L6460 - Counter modal
+- L6837 - Quick Plumbing / Quick Count modals
+- L7280 - Quick Line modal
+- L7448 - Line color & sidebar handlers
+- L7592 - Polyline modal & drawing
+- L7623 - Zoom bar & page navigation
+- L7662 - Canvas layers
+- L7865 - PDF download helpers & PipeTooling menu
+- L7940 - Copy summaries (PipeTooling / Email)
+- L8073 - PDF bundling (report / notes / highlights)
+- L8465 - Download current page
+- L8713 - Zone & page-action modal handlers
+- L8823 - User activity time formatting
+- L8981 - User Activity modal (admin)
+- L9049 - User Settings & Manage Users
+- L9221 - Manage Projects modal
+  - L9381 - Project Settings checkout & Save Status bell
+  - L9570 - Checkout expired recovery
+  - L9824 - Turn In
+  - L10326 - Share project & view links
+  - L10545 - Cloud project hydrate / copy / fork
+  - L10732 - Load Project modal
+- L12148 - Canvas Event Handlers
+- L12436 - Event Binding
+- L13189 - Manual save to cloud
+- L13638 - Auto-save
+- L13935 - Local backup (IndexedDB takeoff state)
+- L14150 - Checkout keep-alive
+- L14195 - App feature registry
+- L14257 - View-only mode
+- L14410 - Init / boot
 
 <!-- END SECTION TOC -->
 

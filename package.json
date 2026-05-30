@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build:icons": "node scripts/build-custom-icons.js",
+    "build:toc": "node scripts/build-toc.js",
     "test": "playwright test",
     "test:unit": "node --test",
     "precloudtest": "node scripts/generate-config.js",

@@ -6392,127 +6392,12 @@
     }
   };
 
-  function updateScalePlaceholder() {
-    const unit = document.getElementById('scaleUnit')?.value || 'ft';
-    const inp = document.getElementById('scaleValue');
-    if (!inp) return;
-    if (unit === 'ft') inp.placeholder = "e.g. 5'9\" or 5.75";
-    else if (unit === 'in') inp.placeholder = "e.g. 5'9\" or 69";
-    else inp.placeholder = 'e.g. 10';
-  }
-  // SECTION: Scale modal
-  function openScaleModal() {
-    const finishingTwoPoints = state.scalePointA && state.scalePointB;
-    const tabsEl = document.getElementById('scaleModalTabs');
-    const pointsPanel = document.getElementById('scalePointsPanel');
-    const presetsPanel = document.getElementById('scalePresetsPanel');
-    const selectOnPdfGroup = document.getElementById('scaleSelectOnPdfGroup');
-    const scaleInfo = document.getElementById('scaleInfo');
-    const lengthInputGroup = document.getElementById('scaleLengthInputGroup');
-    if (finishingTwoPoints) {
-      tabsEl.style.display = 'none';
-      presetsPanel.style.display = 'none';
-      pointsPanel.style.display = '';
-      selectOnPdfGroup.style.display = 'none';
-      if (lengthInputGroup) lengthInputGroup.style.display = '';
-      scaleInfo.textContent = 'You selected a line spanning ' + Math.round(ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
-      updateScalePlaceholder();
-    } else {
-      tabsEl.style.display = '';
-      selectOnPdfGroup.style.display = '';
-      if (lengthInputGroup) lengthInputGroup.style.display = 'none';
-      if (state.scaleModalApplyTarget === 'zone') {
-        if (state.pendingScaleZoneEdit != null) {
-          const page = state.pages[state.currentPage];
-          const ann = page && getActiveAnnotations(page);
-          const z = ann?.scaleZones?.[state.pendingScaleZoneEdit.zoneIndex];
-          const cur = z?.scale ? (z.scale.label || ((z.scale.unit || 'ft') + ' @ ' + (z.scale.pixelsPerUnit != null ? Number(z.scale.pixelsPerUnit).toFixed(2) : '?') + ' px/unit')) : '';
-          scaleInfo.textContent = cur ? ('Current: ' + cur + '. Choose a new scale below.') : 'Choose a scale for this zone.';
-        } else {
-          scaleInfo.textContent = 'Lines fully inside this zone will use the scale you choose below.';
-        }
-      } else {
-        scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
-      }
-      showScaleTab('presets');
-    }
-    showModal('scaleModal');
-  }
-  function resetScaleModalZoneMode() {
-    state.scaleModalApplyTarget = null;
-    state.pendingScaleZone = null;
-    state.pendingScaleZoneEdit = null;
-    const h2 = document.querySelector('#scaleModal h2');
-    if (h2) h2.textContent = 'Set Scale';
-  }
-  function applyScaleObjectToZoneOrPage(scaleObj) {
-    if (state.scaleModalApplyTarget !== 'zone') return false;
-    pushUndoSnapshot();
-    const edit = state.pendingScaleZoneEdit;
-    const pending = state.pendingScaleZone;
-    const page = state.pages[state.currentPage];
-    const canvas = page && ensureActiveCanvas(page);
-    resetScaleModalZoneMode();
-    hideModal('scaleModal');
-    state.tool = TOOL.NONE;
-    state.scaleMode = SCALE_MODES.NONE;
-    state.scalePointA = null;
-    state.scalePointB = null;
-    if (canvas) {
-      if (!canvas.annotations.scaleZones) canvas.annotations.scaleZones = [];
-      if (edit && canvas.annotations.scaleZones[edit.zoneIndex]) {
-        canvas.annotations.scaleZones[edit.zoneIndex].scale = { ...scaleObj };
-      } else if (pending) {
-        canvas.annotations.scaleZones.push({ x1: pending.x1, y1: pending.y1, x2: pending.x2, y2: pending.y2, scale: { ...scaleObj }, id: uid() });
-      }
-    }
-    markProjectDirty();
-    updateUI();
-    renderPdf();
-    return true;
-  }
-  function showScaleTab(tab) {
-    document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    document.getElementById('scalePointsPanel').style.display = tab === 'points' ? '' : 'none';
-    document.getElementById('scalePresetsPanel').style.display = tab === 'presets' ? '' : 'none';
-    if (tab === 'points') {
-      const hasTwoPoints = state.scalePointA && state.scalePointB;
-      const lengthInputGroup = document.getElementById('scaleLengthInputGroup');
-      if (lengthInputGroup) lengthInputGroup.style.display = hasTwoPoints ? '' : 'none';
-      if (hasTwoPoints) updateScalePlaceholder();
-    }
-    if (tab === 'presets') {
-      const list = document.getElementById('scalePresetsList');
-      list.innerHTML = '';
-      SCALE_PRESETS.forEach(p => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = p.label;
-        btn.onclick = () => {
-          const scaleObj = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
-          if (applyScaleObjectToZoneOrPage(scaleObj)) return;
-          pushUndoSnapshot();
-          const page = state.pages[state.currentPage];
-          if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
-          markProjectDirty();
-          hideModal('scaleModal');
-          updateUI();
-          renderPdf();
-        };
-        list.appendChild(btn);
-      });
-    }
-  }
-  const setScaleClick = () => {
-    resetScaleModalZoneMode();
-    state.scalePointA = null;
-    state.scalePointB = null;
-    state.scaleMode = SCALE_MODES.NONE;
-    state.tool = TOOL.NONE;
-    openScaleModal();
-  };
-  document.getElementById('setScale').onclick = setScaleClick;
-  document.getElementById('setScaleSidebar').onclick = setScaleClick;
+  // SECTION: Toolbar tool buttons
+  // The Scale modal (updateScalePlaceholder, openScaleModal,
+  // resetScaleModalZoneMode, applyScaleObjectToZoneOrPage, showScaleTab, the
+  // setScale/setScaleSidebar openers, and the #scale* handlers that were down in
+  // the Counter-modal region) moved to features/scale.js (window.App registry);
+  // reached via App.openScaleModal / App.resetScaleModalZoneMode at call time.
   document.getElementById('measureBtn').onclick = () => {
     if (!getPageScale(state.currentPage)) {
       showSetScaleFirstToast('Measure');
@@ -6912,73 +6797,9 @@
   };
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
-  document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
-  document.getElementById('scaleUnit').onchange = updateScalePlaceholder;
-  document.getElementById('scaleSelectOnPdf').onclick = () => {
-    hideModal('scaleModal');
-    state.tool = TOOL.SCALE;
-    state.scaleMode = SCALE_MODES.POINT_A;
-    state.scalePointA = null;
-    state.scalePointB = null;
-    updateUI();
-    renderPdf();
-  };
-  document.getElementById('scalePresetsCancel').onclick = () => {
-    if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
-    resetScaleModalZoneMode();
-    hideModal('scaleModal');
-    updateUI();
-  };
-  document.getElementById('scaleCustomApply').onclick = () => {
-    const fractionStr = document.getElementById('scaleCustomFraction').value;
-    const feetStr = document.getElementById('scaleCustomFeet').value;
-    const fractionInches = parseFraction(fractionStr);
-    const feet = parseFloat(feetStr);
-    if (!fractionInches || !feet || feet <= 0) {
-      showToast('Enter a valid fraction and feet');
-      return;
-    }
-    const pixelsPerUnit = (fractionInches * 72) / feet;
-    const fractionDisplay = String(fractionStr).trim();
-    const label = fractionDisplay + '" = ' + feet + ' ft';
-    const scaleObj = { pixelsPerUnit, unit: 'ft', label };
-    if (applyScaleObjectToZoneOrPage(scaleObj)) return;
-    pushUndoSnapshot();
-    const page = state.pages[state.currentPage];
-    if (page) page.scale = { pixelsPerUnit, unit: 'ft', label };
-    markProjectDirty();
-    hideModal('scaleModal');
-    updateUI();
-    renderPdf();
-  };
-  document.getElementById('scaleCancel').onclick = () => {
-    if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
-    resetScaleModalZoneMode();
-    hideModal('scaleModal');
-    updateUI();
-  };
-  document.getElementById('scaleSet').onclick = () => {
-    const unit = document.getElementById('scaleUnit').value;
-    const val = parseRealWorldLength(document.getElementById('scaleValue').value, unit);
-    if (!val || val <= 0 || !state.scalePointA || !state.scalePointB) {
-      if (!state.scalePointA || !state.scalePointB) return;
-      showToast('Enter a valid length');
-      return;
-    }
-    const scaleObj = { pixelsPerUnit: ptDist(state.scalePointA, state.scalePointB) / val, unit, label: null };
-    if (applyScaleObjectToZoneOrPage(scaleObj)) return;
-    pushUndoSnapshot();
-    const page = state.pages[state.currentPage];
-    if (page) page.scale = scaleObj;
-    markProjectDirty();
-    state.tool = TOOL.NONE;
-    state.scaleMode = SCALE_MODES.NONE;
-    state.scalePointA = null;
-    state.scalePointB = null;
-    hideModal('scaleModal');
-    updateUI();
-    renderPdf();
-  };
+  // The Scale modal handlers (#scaleModalTabs tabs, #scaleUnit, #scaleSelectOnPdf,
+  // #scalePresetsCancel, #scaleCustomApply, #scaleCancel, #scaleSet) moved to
+  // features/scale.js (window.App registry) alongside the scale-modal functions.
 
   const iconVbFor = (p) => iconViewBoxString(p);
   document.getElementById('addCounter').onclick = () => {
@@ -12378,7 +12199,7 @@
     state.pendingScaleZoneEdit = { zoneIndex: t.index };
     const h2 = document.querySelector('#scaleModal h2');
     if (h2) h2.textContent = 'Edit zone scale';
-    openScaleModal();
+    App.openScaleModal();
     state.ctxTarget = null;
   };
   document.getElementById('ctxDelete').onclick = () => {
@@ -12516,7 +12337,7 @@
       else if (state.scaleMode === SCALE_MODES.POINT_B) {
         state.scalePointB = pdf;
         document.getElementById('scaleValue').value = '';
-        openScaleModal();
+        App.openScaleModal();
       }
       renderPdf();
     } else if (state.tool === TOOL.MEASURE) {
@@ -12669,7 +12490,7 @@
             state.pendingScaleZoneEdit = null;
             const h2 = document.querySelector('#scaleModal h2');
             if (h2) h2.textContent = 'Scale for zone';
-            openScaleModal();
+            App.openScaleModal();
           }
         }
         state.scaleZoneStart = null;
@@ -13223,7 +13044,7 @@
             state.pendingScaleZoneEdit = null;
             const h2t = document.querySelector('#scaleModal h2');
             if (h2t) h2t.textContent = 'Scale for zone';
-            openScaleModal();
+            App.openScaleModal();
           }
         }
         state.scaleZoneStart = null;
@@ -13405,7 +13226,7 @@
         hideModal('chooseLineTypeModal');
       } else if (document.getElementById('scaleModal').classList.contains('visible')) {
         if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
-        resetScaleModalZoneMode();
+        App.resetScaleModalZoneMode();
         hideModal('scaleModal');
         updateUI();
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
@@ -14573,6 +14394,12 @@
   App.TOOL = TOOL;
   App.COLORS = COLORS;
   App.populateQuickLineModal = populateQuickLineModal;
+  App.SCALE_MODES = SCALE_MODES;
+  App.SCALE_PRESETS = SCALE_PRESETS;
+  App.ptDist = ptDist;
+  App.parseFraction = parseFraction;
+  App.parseRealWorldLength = parseRealWorldLength;
+  App.getActiveAnnotations = getActiveAnnotations;
 
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;

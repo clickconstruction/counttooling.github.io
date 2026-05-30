@@ -480,11 +480,8 @@
   let serverClockOffsetMs = 0;
   function serverNowMs() { return Date.now() + serverClockOffsetMs; }
   function updateServerClockFromRpc(rpcData) {
-    if (!rpcData) return;
-    const raw = rpcData.server_now;
-    if (!raw) return;
-    const t = typeof raw === 'string' ? new Date(raw).getTime() : Number(raw);
-    if (Number.isFinite(t)) serverClockOffsetMs = t - Date.now();
+    const off = computeClockOffsetMs(rpcData, Date.now());
+    if (off != null) serverClockOffsetMs = off;
   }
 
   const withTimeout = (promiseOrFactory, ms, label) => {
@@ -523,8 +520,7 @@
     }
     consecutiveAutoSaveFailures++;
     if (!firstAutoSaveFailureAt) firstAutoSaveFailureAt = Date.now();
-    const idx = Math.min(consecutiveAutoSaveFailures - 1, AUTOSAVE_BACKOFF_LEVELS_MS.length - 1);
-    nextAutoSaveAttemptAt = Date.now() + AUTOSAVE_BACKOFF_LEVELS_MS[idx];
+    nextAutoSaveAttemptAt = Date.now() + backoffDelayMs(consecutiveAutoSaveFailures, AUTOSAVE_BACKOFF_LEVELS_MS);
     if (consecutiveAutoSaveFailures >= AUTOSAVE_BANNER_THRESHOLD) updateSyncPausedBanner(true);
 
     if (consecutiveAutoSaveFailures === 3 && !autosaveMilestoneFiredAt.f3) {
@@ -607,8 +603,7 @@
     autoSaveLatencySamples.push(ms);
     if (autoSaveLatencySamples.length > AUTOSAVE_SLOW_WINDOW) autoSaveLatencySamples.shift();
     if (autoSaveLatencySamples.length < AUTOSAVE_SLOW_MIN_SAMPLES) return;
-    const sorted = autoSaveLatencySamples.slice().sort((a, b) => a - b);
-    const p95 = sorted[Math.floor(0.95 * (sorted.length - 1))];
+    const p95 = percentile(autoSaveLatencySamples, 0.95);
     if (p95 > AUTOSAVE_SLOW_MS && Date.now() - autosaveSlowEmittedAt > AUTOSAVE_SLOW_DEBOUNCE_MS) {
       autosaveSlowEmittedAt = Date.now();
       pushSaveEvent('autosave_slow', 'Cloud writes are slow', JSON.stringify({
@@ -654,17 +649,10 @@
     try { return JSON.stringify(ctx); } catch (_) { return ''; }
   }
 
-  function serializeSaveErrorForEvent(e) {
-    if (!e) return {};
-    return {
-      message: e.message || String(e),
-      name: e.name,
-      code: e.code,
-      status: e.status,
-      details: e.details,
-      hint: e.hint
-    };
-  }
+  // serializeSaveErrorForEvent + saveDebugSerializeError moved (deduped) to
+  // save-utils.js as the single pure serializeSaveError; formatSaveStatusErrDetail
+  // moved there too. All three are referenced here by bare name (save-utils
+  // globals).
 
   async function runRecoveryProbe(trigger) {
     if (recoveryProbeInFlight) return { ok: false, ms: 0, status: null, errMsg: 'in_flight' };
@@ -995,17 +983,6 @@
   function saveDebugRunId() {
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   }
-  function saveDebugSerializeError(e) {
-    if (!e) return {};
-    return {
-      message: e.message,
-      name: e.name,
-      code: e.code,
-      details: e.details,
-      hint: e.hint,
-      status: e.status
-    };
-  }
   function saveDebugLog(phase, payload) {
     if (!isSaveDebugEnabled()) return;
     const obj = payload && typeof payload === 'object' ? payload : {};
@@ -1023,7 +1000,7 @@
     if (msg.includes('timed out')) {
       saveDebugLog(context + '.timeout', { runId, note: 'The HTTP request may still complete server-side.', message: msg });
     } else {
-      saveDebugLog(context + '.error', Object.assign({ runId }, saveDebugSerializeError(e)));
+      saveDebugLog(context + '.error', Object.assign({ runId }, serializeSaveError(e)));
     }
   }
 
@@ -1052,11 +1029,6 @@
     pruneSaveStatusLog();
     saveStatusLog.push({ ts: Date.now(), kind: kind, message: message || '', detail: detail !== undefined && detail !== '' ? detail : undefined });
   }
-  function formatSaveStatusErrDetail(e) {
-    if (!e) return '';
-    try { return JSON.stringify(saveDebugSerializeError(e)); } catch (_) { return String((e && e.message) || e); }
-  }
-
   function getProjectSummaryForLogs() {
     try {
       const pages = (state && state.pages) || [];
@@ -6457,88 +6429,13 @@
     if (state.isViewer) return;
     App.openMultiplyZoneSettingsModal();
   };
-  // SECTION: Counter modal
-  function showCounterTab(tab) {
-    document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    document.getElementById('counterCreatePanel').style.display = tab === 'create' ? '' : 'none';
-    document.getElementById('counterChoosePanel').style.display = tab === 'choose' ? '' : 'none';
-    const qcPanel = document.getElementById('counterQuickCountPanel');
-    if (qcPanel) qcPanel.style.display = tab === 'quickcount' ? '' : 'none';
-    if (tab === 'choose') populateCounterChooseList(document.getElementById('counterModalSearchInput')?.value);
-    if (tab === 'quickcount') populateCounterQuickCountPanel();
-  }
-  function showCounterIconTab(tab) {
-    document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>
-      t.classList.toggle('active', t.dataset.iconTab === tab));
-    const iconPanel = document.getElementById('counterIconPanel');
-    const customPanel = document.getElementById('counterIconCustomPanel');
-    if (iconPanel) iconPanel.style.display = tab === 'icon' ? '' : 'none';
-    if (customPanel) customPanel.style.display = tab === 'custom' ? '' : 'none';
-  }
-  function populateCounterChooseList(query) {
-    const list = document.getElementById('counterChooseList');
-    const empty = document.getElementById('counterChooseEmpty');
-    list.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const q = (query || '').toLowerCase();
-    const filtered = q ? state.counters.filter(c => (c.name || '').toLowerCase().includes(q)) : state.counters;
-    if (!filtered.length) {
-      empty.style.display = 'block';
-      empty.textContent = q ? 'No counters match. Try Create Counter or Quick Count.' : 'Add a counter first using Create Counter.';
-      return;
-    }
-    empty.style.display = 'none';
-    filtered.forEach(c => {
-      const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
-      const div = document.createElement('div');
-      div.className = 'sidebar-item';
-      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span>';
-      div.onclick = () => {
-        state.activeCounterType = c.id;
-        state.tool = TOOL.COUNTER;
-        hideModal('counterModal');
-        state.pagesListCollapsed = true;
-        document.getElementById('pagesSection').classList.add('collapsed');
-        document.getElementById('pagesCollapseIcon').textContent = '▶';
-        updateUI();
-      };
-      list.appendChild(div);
-    });
-  }
-  document.getElementById('counterBtn').onclick = () => {
-    const modalSearchInput = document.getElementById('counterModalSearchInput');
-    if (modalSearchInput) { modalSearchInput.value = ''; }
-    showCounterTab('choose');
-    populateCounterChooseList();
-    requestAnimationFrame(() => { setTimeout(() => modalSearchInput?.focus(), 0); });
-    document.getElementById('counterName').value = '';
-    document.getElementById('counterIconSearch').value = '';
-    const grid = document.getElementById('counterIconGrid');
-    const icons = getOrderedIcons();
-    grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => { grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); });
-    const cr = document.getElementById('counterColorRow');
-    cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-    cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
-    showModal('counterModal');
-  };
-  document.getElementById('counterBtn').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    document.getElementById('countersSectionTitle').click();
-  };
-  document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
-  const counterModalSearchInput = document.getElementById('counterModalSearchInput');
-  if (counterModalSearchInput) {
-    counterModalSearchInput.oninput = counterModalSearchInput.onkeyup = () => populateCounterChooseList(counterModalSearchInput.value);
-    counterModalSearchInput.onkeydown = (e) => {
-      if (e.key === 'Enter') {
-        const first = document.querySelector('#counterChooseList .sidebar-item');
-        if (first) { first.click(); e.preventDefault(); }
-      }
-    };
-  }
-  document.getElementById('counterChooseCancel').onclick = () => hideModal('counterModal');
+  // SECTION: Tool sidebar buttons & legend overlay
+  // The Counter modal (showCounterTab, showCounterIconTab, populateCounterChooseList,
+  // the #counterBtn/.counter-tab/#counterModalSearchInput/#counterChooseCancel
+  // choose-tab handlers, and the #addCounter/.counter-icon-tab/#counterIconSearch/
+  // #counterCancel/#counterCreate create-tab handlers further below) moved to
+  // features/counter.js (window.App registry); reached via App.showCounterTab. The
+  // quickcount tab body populateCounterQuickCountPanel stays in app.js (Quick Count).
   document.getElementById('doneEditing').onclick = () => exitEditMode(true);
 
   document.getElementById('moveBtnSidebar').onclick = () => document.getElementById('moveBtn').click();
@@ -6638,79 +6535,9 @@
   // features/scale.js (window.App registry) alongside the scale-modal functions.
 
   const iconVbFor = (p) => iconViewBoxString(p);
-  document.getElementById('addCounter').onclick = () => {
-    showCounterTab('create');
-    showCounterIconTab('icon');
-    const icons = getOrderedIcons();
-    document.getElementById('counterName').value = getIconName(icons[0].value);
-    document.getElementById('counterIconSearch').value = '';
-    const grid = document.getElementById('counterIconGrid');
-    const customGrid = document.getElementById('counterIconGridCustom');
-    grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    const effectiveCustom = getEffectiveCustomIcons();
-    customGrid.innerHTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>' + effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected');
-      const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
-    });
-    customGrid.querySelectorAll('.icon-cell').forEach(c => {
-      c.onclick = () => {
-        if (c.dataset.upload) {
-          document.getElementById('customIconUploadInput').click();
-          return;
-        }
-        grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        c.classList.add('selected');
-        const path = c.dataset.path;
-        if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
-      };
-    });
-    const cr = document.getElementById('counterColorRow');
-    cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-    cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
-    showModal('counterModal');
-  };
-  document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>
-    t.onclick = () => showCounterIconTab(t.dataset.iconTab));
-  document.getElementById('counterIconSearch').oninput = () => {
-    const q = document.getElementById('counterIconSearch').value.toLowerCase();
-    const grid = document.getElementById('counterIconGrid');
-    const customGrid = document.getElementById('counterIconGridCustom');
-    const icons = getOrderedIcons();
-    const filtered = q ? icons.filter(ic => ic.terms.some(t => t.includes(q))) : icons;
-    const hadCustomSelected = customGrid.querySelector('.icon-cell.selected');
-    grid.innerHTML = filtered.map((ic, i) => '<div class="icon-cell' + (i === 0 && !hadCustomSelected ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected');
-      const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = getIconName(path);
-    });
-  };
-  document.getElementById('counterCancel').onclick = () => hideModal('counterModal');
-  document.getElementById('counterCreate').onclick = () => {
-    const name = document.getElementById('counterName').value.trim() || 'Counter';
-    const sel = document.querySelector('#counterIconGrid .icon-cell.selected') || document.querySelector('#counterIconGridCustom .icon-cell.selected');
-    const icon = sel ? sel.dataset.path : getOrderedIcons()[0].value;
-    const colorSel = document.querySelector('#counterColorRow .color-swatch.selected');
-    const color = colorSel ? colorSel.dataset.color : COLORS[2];
-    pushUndoSnapshot();
-    const newCounter = { id: uid(), name, icon, color };
-    state.counters.push(newCounter);
-    state.activeCounterType = newCounter.id;
-    state.tool = TOOL.COUNTER;
-    markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
-    hideModal('counterModal');
-    updateUI();
-  };
+  // The Counter modal create-tab handlers (#addCounter, .counter-icon-tab,
+  // #counterIconSearch, #counterCancel, #counterCreate) moved to
+  // features/counter.js (window.App registry) alongside the choose-tab handlers.
 
   // SECTION: Quick Plumbing / Quick Count modals
   function populatePlumModal() {
@@ -6831,7 +6658,7 @@
   }
   document.getElementById('plumBtn').onclick = () => {
     document.getElementById('counterBtn').click();
-    showCounterTab('quickcount');
+    App.showCounterTab('quickcount');
   };
   document.querySelectorAll('#plumModal .counter-icon-tab').forEach(t =>
     t.onclick = () => showPlumIconTab(t.dataset.plumIconTab));
@@ -9636,7 +9463,7 @@
       };
       const errDetail = (e) => {
         try {
-          return JSON.stringify(Object.assign(saveDebugSerializeError(e) || {}, {
+          return JSON.stringify(Object.assign(serializeSaveError(e) || {}, {
             elapsedMs: Date.now() - tTurnIn,
             stage: currentStage,
             attempt: checkInAttempt,
@@ -12783,7 +12610,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (document.getElementById('counterModal').classList.contains('visible') && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
-      showCounterTab('quickcount');
+      App.showCounterTab('quickcount');
       e.preventDefault();
       return;
     }
@@ -13690,7 +13517,7 @@
         'autosave_err',
         (e && e.message) || 'Autosave failed',
         autosaveEventDetail(Object.assign(
-          serializeSaveErrorForEvent(e),
+          serializeSaveError(e),
           {
             runId,
             elapsedMs,
@@ -14020,6 +13847,9 @@
   App.COLORS = COLORS;
   App.getLineModifiers = getLineModifiers;
   App.saveLineModifiers = saveLineModifiers;
+  App.getIconName = getIconName;
+  App.getEffectiveCustomIcons = getEffectiveCustomIcons;
+  App.populateCounterQuickCountPanel = populateCounterQuickCountPanel;
   App.SCALE_MODES = SCALE_MODES;
   App.SCALE_PRESETS = SCALE_PRESETS;
   App.ptDist = ptDist;

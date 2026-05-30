@@ -1,226 +1,476 @@
 # ClickCount — Code Map for AI Navigation
 
-Use this file to locate code when `index.html` exceeds context window limits. Update line ranges when making large structural changes.
+Use this file to locate code in the app. The HTML shell + every modal live in
+[index.html](index.html) (~2.1k lines); the entire app logic (the main JS IIFE)
+lives in [app.js](app.js) (~16.2k lines). The core data model and
+invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
+navigation map plus the catalog of features built on top of that core.
+Implementation history (e.g. the sync-hardening work) lives in
+[CHANGELOG.md](CHANGELOG.md).
 
-## File Overview
+> Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
+> is ~16k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> markers in the code and by the grep patterns in the Search Hints table below.
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| index.html | 1–1050 | HTML structure (head, body, modals) |
-| index.html | 15–260 | CSS (design tokens, layout, modals, sidebar-item.active, mobile, page-zoom-row) |
-| index.html | 1051–7466 | JavaScript (IIFE) |
-| report.js | 1–439 | Print report, Summary (line totals use `getLineLengthForTotals` for scale zones + multiply zones), getPipeToolingSummary(options), getEmailTextSummary(options) with `pageIndices` and `getAnnotations`; escapeHtml; uses globals from index.html |
+## Files
 
-## index.html Section Map
+| File | Purpose |
+|------|---------|
+| [index.html](index.html) | The app shell: HTML structure + every modal; `<head>` loads the CSS/CDN/module scripts, the body ends by loading `app.js` then `report.js`. No inline JS logic anymore (~2.1k lines) |
+| [app.js](app.js) | The entire app logic — the former inline `index.html` IIFE, extracted verbatim into a classic `<script src>` (`(function() { … })();`, ~16.2k lines). Resolves the sibling modules' values by bare name; exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
+| [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
+| [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals |
+| [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
+| [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in app.js); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
+| [geometry.test.js](geometry.test.js) | Node `node:test` + `node:assert` unit tests for the [geometry.js](geometry.js) primitives; run with `npm run test:unit` (no deps). Naming split: `*.test.js` = Node unit tests, `*.spec.js` = Playwright (see `testMatch` in [playwright.config.js](playwright.config.js)) |
+| [constants.test.js](constants.test.js) | Node `node:test` invariant tests for [constants.js](constants.js) (backoff arrays increasing & positive, timings/caps > 0, unique enum ids, valid hex colors, positive scale presets); run with `npm run test:unit` |
+| [report.js](report.js) | Loads after app.js. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals exposed by app.js via `window.*`. Its `window.*` attachment is guarded by `typeof window` and it has a guarded CommonJS export footer (`escapeHtml`, `pickScaleForLineType`) — both inert in the browser — so those pure helpers can be `require()`d by [report.test.js](report.test.js) |
+| [report.test.js](report.test.js) | Node `node:test` unit tests for [report.js](report.js)'s pure helpers — `escapeHtml` (null/undefined → `''`, entity escaping, `&`-first ordering, `String()` coercion) and `pickScaleForLineType` (preferred-unit selection via a `global.state` stub); run with `npm run test:unit` |
+| [save-utils.js](save-utils.js) | Pure helpers for the save/sync layer — `isTransientSaveError` (which save/turn-in errors merit one retry) and `getProjectCounts` (counter/line totals over a project `data` object, both legacy `annotations` and `canvases` shapes); classic `<script src>` loaded before the IIFE; no `state`/DOM dependency; guarded CommonJS export footer so the helpers can be `require()`d by [save-utils.test.js](save-utils.test.js) |
+| [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, plus `getProjectCounts` shape/sum cases); run with `npm run test:unit` |
+| [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
+| [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`) and runs the recommended set as warnings with `no-undef` re-raised to error. Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
-| Section | Lines | Contents |
-|---------|-------|----------|
-| Constants | 1047–1607 | TOOL, SCALE_MODES, uid, COLORS (9, no white), icon paths, SCALE_CROSSHAIR_PATH, COUNTER_BTN_DEFAULT_SVG, ICONS array |
-| State & makeAnnotations | 1608–1750 | state object (counterSettings, lineTypeSettings, legendSettings, multiplyZoneSettings, exportSettings, recentLineColors, pagesListCollapsed, pagesTitlesTruncated, touchPanStart, touchPanning, pendingCanvasLoad, isPanning, panStart), makeAnnotations(), undoStack, redoStack, pushUndoSnapshot, clearUndoStacks |
-| Math & Format Helpers | 1728–1977 | ptDist, polylineDistance, polygonArea, distToSegment, getPageScale, formatDist, formatArea, parseRealWorldLength, parseFraction |
-| Coordinate Helpers | 1978–1989 | getClientCoords, canvasRect, toCanvas, pdfPos, canvasToPdf, hitTest, renderIconHtml |
-| PDF Rendering | 1990–2340 | renderPdf, renderAnnotations (scale crosshair, quick line preview, line selection highlight, X markers for drops), getPageSize, fitZoom |
-| UI Render Functions | 2341–2939 | updateUI (scale-set, counterBtn/counterBtnSidebar dynamic icon, headerActiveLineType; headerActiveCounter cleared), renderPagesList, renderCountersList, renderLineTypesList, renderLinesList, renderSummary |
-| Modals & Handlers | 2940–5100 | PDF upload, scale, move, quick line, polyline, counter (Create/Choose tabs), line type, counterSettingsModal, lineTypeSettingsModal, lineColorModal, specificPagesModal, pipeToolingCopiedModal, noteModal (Add/Edit Note), multiplyZoneModal (Multiply Zone: preview text, multiplier input, Cancel/Apply), deleteZoneModal (Delete Zone: preview counts, Cancel/Delete; confirm before delete), multiplyZoneSettingsModal (Multiplier Settings: Show label on zones, default multiplier, label size, label position; opened by right-clicking multiply zone icon in header/sidebar; openMultiplyZoneSettingsModal), setScaleFirst toasts, chooseLineTypeModal (Choose | Create | Quick tabs; search; Shift+L), clearPageConfirmModal, deletePageConfirmModal, counterLineTypeDetailsModal, deleteCounterLineTypeConfirmModal, linePropertiesModal (Line Properties: read-only line type from `lineTypeId` — `#linePropertiesLineType`, centered; Name, Color, Start/End drop, +1/+10/-10/-1/Clear, Edit vertices for polylines), plumModal (Quick Plumbing: PLUM buttons hidden in sidebar; Name top, Add Counter header right; Size, Type with icon box, Material; Icon tabs; 3 rows), authModal, settingsModal (Project Settings), shareProjectModal (Share: add users by email, list/remove shares, View links: create, copy URL, access log, revoke), mySettingsModal (User Settings), adminPanelModal, manageUserModal (header all-activity icon, list/delete users, per-row activity), userActivityModal (admin: Events vs Summary, list_user_activity_for_admin / list_user_activity_summary_for_admin, Chicago time in modal only), manageProjectsModal (list/delete projects, Force turn-in per row), saveProjectModal (contents list: Canvas, PDF with size in MB from state.pdfBufferSize or pdfCache/storage.info; fallback when state.pages.length > 0; "Canvas only" when no PDF), loadProjectModal, loadAnnotationsModal, saveBeforeLoadModal, lastSessionRestoreModal (local backup first, key `'local'` when Open without save; cloud project when no local; proj.id `'local'` → state.currentProjectId null; on boot when last.projectId exists; proj.pdf_hash for cache when last.pdfHash null; download() with empty-blob check; hasIdbPdf requires pdfBlob.size > 0; Keep/Discard), summaryCountDetailModal (— by page), settingsAdvancedSection, macrosModal (Keyboard Shortcuts), customIconTipsModal (Custom Icon Tips; click Custom Icons label), preparePdfModal (Prepare PDF for Cloud: Project name, Page name collapsible, Prev/Next, Delete, Rotate, Undo; left: Cancel, Open; right: Download Trimmed PDF, Save and Open; Open awaits writeTakeoffStateBackup; per-page file size) |
-| Canvas Event Handlers | 5088–5220 | handleCanvasClick, handleCanvasDblClick, handleContextMenu; `showContextMenu` — `#contextMenu`, `#ctxTargetNameRow` (counter or line type name below Delete for markers / quick lines / polylines) |
-| Event Binding | 5221–5749 | updateContainerTransform, wheel zoom (debounced), touch (handleTouchAsCanvasTap for LINE/HIGHLIGHT/NOTE, preventDefault on touchend), keyboard (Escape, arrows: Left/Right page nav, Up/Down canvas layers when multiple; Enter; hotkeys M/S/C/L/J/P/D/H/N/R when not in input/textarea; D measure uses `getEffectiveScaleForLine` when both segment endpoints fall in the same `ann.scaleZones` entry; Ctrl+R Refresh) |
-| Init & Persistence | 5221–6948 | initSupabaseAuth, localStorage restore, save interval (5s backup), performAutoSave (5s when dirty), markProjectDirty, autoSaveDirty, lastSaveIncludedPdf, savePdfInProgress, pdfCachePut/Get, sha256Hex, clickcount-last-project restore (prompts Keep/Discard via lastSessionRestoreModal before restore), visibilitychange backup, backupDebounceTimer (1s after markProjectDirty), initViewOnlyMode, viewCacheGet/viewCachePut, window globals |
+High level: the `<head>` of [index.html](index.html) loads `config.js`, the CDN
+libs (pdf.js, pdf-lib, html2canvas, jsPDF, supabase-js), `styles.css`,
+`icons.js`, `geometry.js`, `constants.js`, and `save-utils.js`. The body holds
+the app shell + every modal, then loads `app.js` (the single JS IIFE — the whole
+app logic) followed by `report.js`. The CSS, icon data, pure geometry/parse
+primitives, pure constant literals, pure save/sync helpers, and finally the main
+IIFE itself were lifted out of `index.html` into `styles.css` / `icons.js` /
+`geometry.js` / `constants.js` / `save-utils.js` / `app.js` (no build step —
+plain `<link>` / `<script src>`). `app.js` resolves the module values by bare
+name (shared global lexical scope); `report.js` resolves `app.js`'s output via
+`window.*`.
+
+## Section index (grep `// SECTION:`)
+
+The JS in [app.js](app.js) is organized with `// SECTION:` comment markers. The
+live list with current `app.js` line numbers is generated by `npm run build:toc`
+(run it after adding or moving a `// SECTION:` marker;
+`node scripts/build-toc.js --check` fails if stale):
+
+<!-- BEGIN SECTION TOC (generated by scripts/build-toc.js - do not edit by hand) -->
+
+- L2 - Constants
+- L53 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
+- L151 - ICONS array lives in icons.js (see icon-data note above).
+- L352 - State
+- L580 - Sync recovery & client recycle
+- L927 - Global force reload
+- L1058 - Save Status log & envelope
+- L1143 - Dirty tracking & local session reset
+- L1358 - Checkout probe, hashing & PDF cache
+- L1836 - Math & Format Helpers
+- L2576 - Save Status modal
+- L2643 - Coordinate Helpers
+- L2655 - PDF Rendering
+- L3827 - UI Render Functions
+- L5917 - Modals & Handlers
+- L6068 - Prepare PDF modal
+- L6689 - Scale modal
+- L6903 - Counter modal
+- L7344 - Quick Plumbing / Quick Count modals
+- L7787 - Quick Line modal
+- L7971 - Groups
+- L8066 - Multiply Zone settings
+- L8525 - Zoom modal
+- L8681 - Canvas layers
+- L8886 - Export PDFs modal
+- L9262 - Copy summaries (PipeTooling / Email)
+- L9395 - PDF bundling (report / notes / highlights)
+- L9787 - Download current page
+- L10031 - Note modal
+- L10206 - User activity time formatting
+- L10433 - User Activity modal (admin)
+- L10501 - User Settings & Manage Users
+- L10664 - Canvas Repair
+- L10735 - Manage Icons modal
+- L10873 - Manage Projects modal
+  - L11033 - Project Settings checkout & Save Status bell
+  - L11222 - Checkout expired recovery
+  - L11476 - Turn In
+  - L11978 - Share project & view links
+  - L12197 - Cloud project hydrate / copy / fork
+  - L12384 - Load Project modal
+- L13820 - Canvas Event Handlers
+- L14108 - Event Binding
+- L14861 - Manual save to cloud
+- L15310 - Auto-save
+- L15607 - Local backup (IndexedDB takeoff state)
+- L15822 - Checkout keep-alive
+- L15875 - View-only mode
+- L16028 - Init / boot
+
+<!-- END SECTION TOC -->
+
+Annotated, in rough order:
+
+- Constants — `uid`, the `SUPABASE_*`/`supabase` setup, `getLineModifiers`/`getPlumbingModifiers` and friends, and the icon-derived consts (`CUSTOM_ICON_VIEWBOXES`, `CUSTOM_ICON_META`, etc.) stay here. The pure literals `TOOL`, `SCALE_MODES`, `COLORS`, `SCALE_PRESETS`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS` plus the autosave/checkout timing & threshold block, IndexedDB store names + caps, and assorted keys/URLs/TZ now live in [constants.js](constants.js); the icon path constants, `VB_384_512_PATHS`, `CUSTOM_ICONS`, and `ICONS` live in [icons.js](icons.js)
+- State — the `state` object, `makeAnnotations()`, module-level sync/checkout vars and tuning constants, `withTimeout`, `serverNowMs`/`updateServerClockFromRpc`
+- Sync recovery & client recycle — `runRecoveryProbe`, `runRecoveryProbeAndMaybeRecycle`, `recreateSupabaseClient`, `rawProjectsUpdate`/`rawProjectsInsert`/`rawCheckInProject`
+- Global force reload — `checkGlobalForceReload`, `doGlobalReloadNow`
+- Save Status log & envelope — `pushSaveEvent`, `buildSaveLogsEnvelope(WithSnapshots)`, `autosaveEventDetail`, `captureNetworkInfoDetail`
+- Dirty tracking & local session reset — `markProjectDirty`, `dirtyGeneration`, `resetLocalSessionState`, `resetAutosaveDegradedState`
+- Checkout probe, hashing & PDF cache — `probeCheckoutLock`, `sha256Hex`, `pdfCachePut`/`pdfCacheGet`, takeoff backup IDB helpers
+- Math & Format Helpers — the state-coupled helpers: `getPageScale`, `pickScaleForLineType`, `quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `formatDist`, `formatArea`, `rotateAnnotations` (the pure primitives `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers, `pointInRect`, zone locators, `parseFraction`, etc. live in [geometry.js](geometry.js)). The wrappers `formatDistFeetInchesFromReal` / `formatDistFeetInches` keep their `getPageScale` lookup + px fallback then delegate to `formatFeetInchesFromVal`, and `formatSaveTime` / `formatSaveTimeParts` / the `updateStatus` inline delegate to `formatAgo` (both pure helpers live in [geometry.js](geometry.js))
+- Save Status modal — `renderSaveStatusModalContent`, `openSaveStatusModal`
+- Coordinate Helpers — `getClientCoords`, `canvasRect`, `toCanvas`, `pdfPos`, `canvasToPdf`, `hitTest`, `isPointInPageBounds`
+- PDF Rendering — `renderPdf`, `renderAnnotations`, `renderAnnotationsToContext`, `drawDropMarker`, `drawGrid`, `drawLegend`
+- UI Render Functions — `updateUI`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderLinesList`, `renderSummary`, `computeFooterTotals`/`getFooterTotalsCached`
+- Modals & Handlers — the big modal/feature region; finer sub-markers below
+  - Prepare PDF modal — `openPreparePdfModal`, `commitPreparePdfToState`, `assertPdfWithinLimit`, `mergePdfBuffers`
+  - Scale modal — `openScaleModal`, `applyScaleObjectToZoneOrPage`, `resetScaleModalZoneMode`
+  - Counter modal — `showCounterTab`, `populateCounterChooseList`
+  - Quick Plumbing / Quick Count modals — `populatePlumModal`, `populateCounterQuickCountPanel`
+  - Quick Line modal — `populateQuickLineModal`, line modifiers
+  - Groups — `openGroupAssignModal`, group color helpers
+  - Multiply Zone settings — `openMultiplyZoneSettingsModal`
+  - Zoom modal — `showZoomModal`
+  - Canvas layers — `openAddCanvasModal`, `doAddCanvas`, canvas details
+  - Export PDFs modal — `openSpecificPagesModal`, `downloadSpecificPages`
+  - Copy summaries (PipeTooling / Email) — `doCopyPipeTooling`, `doCopyEmailSummary`
+  - PDF bundling (report / notes / highlights) — `addReportPagesToPdf`, `addNotesToPdf`, `addHighlightsToPdf`
+  - Download current page — `downloadCurrentPageAsPdf`, `downloadProjectPdf`
+  - Note modal — `openNoteModal`
+  - User activity time formatting — `formatLastSignIn`, `formatUserActivityDateTime`, `formatLastSignInUserActivity`
+  - User Activity modal (admin) — `openUserActivityModal`
+  - User Settings & Manage Users — `openMySettings`, `openManageUserModal`, `openAllUsersModal`, `deleteUser`
+  - Canvas Repair — `openCanvasRepairModal`, `applyCanvasRepair`
+  - Manage Icons modal — `openManageIconsModal`
+  - Manage Projects modal — `openManageProjectsModal`, `forceCheckInProjectFromManage`, `deleteProject`
+  - Project Settings checkout & Save Status bell — `updateSettingsCheckoutSection`, view-link copy
+  - Checkout expired recovery — `applyCheckoutExpiredRecoveryMode`, `openCheckoutExpiredRecoveryModal`, `reCheckOutAfterExpiry`, `tryAutoRecheckoutIfAllowed`
+  - Turn In — `doTurnIn`, `doTurnInAndHandleResult`, `tryTurnIn`, `handleEditStatusBannerClick`
+  - Share project & view links — `openShareProjectModal`
+  - Cloud project hydrate / copy / fork — `hydrateProjectFromCloudRow`, `openCopyProjectModal`, `forkCloudProjectToLocalWorkingCopy`
+  - Load Project modal — `openLoadProjectModal`, `renderLoadProjectListRows`, `getFilteredLoadProjects`
+- Canvas Event Handlers — `handleCanvasClick`, `handleCanvasDblClick`, `handleContextMenu`, `showContextMenu`
+- Event Binding — transform/zoom/pan, wheel, touch, keyboard hotkeys
+- Manual save to cloud — `performSaveProjectToCloud`
+- Auto-save — `performAutoSave`, `noteAutoSaveOutcome`, `recordAutosaveLatency`
+- Local backup (IndexedDB takeoff state) — `writeTakeoffStateBackup`, `writeTakeoffBackupToIndexedDB`
+- Checkout keep-alive — `checkoutKeepalive`
+- View-only mode — `initViewOnlyMode`, `viewCacheGet`/`viewCachePut`
+- Init / boot — `init()` IIFE, `initSupabaseAuth`, last-session restore
 
 ## Search Hints (grep patterns)
 
 | To find | Pattern |
 |---------|---------|
-| Section markers | `SECTION:` or `SECTION: PDF Rendering` |
-| PDF upload / size limit | `pdfInput` or `PDF_MAX_SIZE_BYTES` |
+| Section markers | `// SECTION:` |
+| Tool enum / modes | `const TOOL` or `SCALE_MODES` |
+| State shape / annotations | `const state = {` or `function makeAnnotations` |
+| PDF upload / size limit | `pdfInput` or `PDF_MAX_SIZE_BYTES` or `assertPdfWithinLimit` |
 | PDF render logic | `function renderPdf` |
-| Annotation drawing | `function renderAnnotations` |
-| Export PDFs | `specificPagesModal` or `renderAnnotationsToContext` |
-| Scale modal | `scaleModal` or `scaleSet` or `scaleCustomFraction` or `parseFraction` |
-| Out-of-bounds toast | `outOfBoundsModal` or `showOutOfBoundsToast` — toast when click is outside page bounds (Scale, Measure, Line, Highlight, Multiply Zone, Scale Zone, Delete Zone, Polyline) |
+| Annotation drawing | `function renderAnnotations` or `renderAnnotationsToContext` |
+| Out-of-bounds toast | `showOutOfBoundsToast` or `isPointInPageBounds` |
 | Scale crosshair | `SCALE_CROSSHAIR_PATH` |
 | Per-page scale | `getPageScale` or `page.scale` |
-| Counter creation | `counterBtn` or `addCounter`; `counterCreate` |
-| Counter settings | `counterSettingsModal` or `counterSettings` |
-| Line type settings | `lineTypeSettingsModal` or `lineTypeSettings` |
-| Line color modal | `lineColorModal` or `showLineColorModal` (Presets, color picker, Recent) |
-| Group modals | `groupModal` (Add/Edit Group; z-index 210), `groupAssignModal` (Assign to group; + Add group opens groupModal on top) |
-| Quick Plumbing | `plumModal` or `plumBtn` or `populatePlumModal`; PLUM buttons hidden in sidebar (`.sidebar-plum-row`) |
-| Line type creation | `addLineType` or `lineTypeCreate` |
+| Scale modal / custom fraction | `openScaleModal` or `parseFraction` or `applyScaleObjectToZoneOrPage` |
+| Counter creation / settings | `counterCreate` or `counterSettingsModal` or `showCounterTab` |
+| Line type creation / settings | `lineTypeCreate` or `lineTypeSettingsModal` or `chooseLineTypeModal` |
+| Line color modal | `showLineColorModal` or `applyLineColor` |
+| Group modals | `groupModal` or `groupAssignModal` or `openGroupAssignModal` |
+| Quick Plumbing | `plumModal` or `populatePlumModal` |
 | Polyline drawing | `drawingPolyline` or `finishPolyline` |
 | Line selection | `selectedLineId` or `selectedLinePageIdx` |
 | Canvas click handling | `handleCanvasClick` |
-| Measure tool / distance toast | `measureBtn`, `TOOL.MEASURE`, `handleCanvasClick`; on second click, synthetic `{ x1, y1, x2, y2 }` + `getEffectiveScaleForLine` when both points lie in the same scale zone; else page scale (`getPageScale`) |
-| Zoom/pan | `state.zoom` or `updateContainerTransform` or `lastRenderedZoom` |
+| Measure tool / distance toast | `TOOL.MEASURE` or `measureBtn`; same-zone uses `getEffectiveScaleForLine` |
+| Zoom / pan | `state.zoom` or `updateContainerTransform` or `showZoomModal` |
 | hitTest | `function hitTest` |
-| Canvas context menu | `contextMenu`, `handleContextMenu`, `showContextMenu`, `ctxTargetNameRow`, `state.ctxTarget` |
+| Context menu | `handleContextMenu` or `showContextMenu` or `ctxTargetNameRow` |
 | Coordinate conversion | `canvasToPdf` or `toCanvas` |
 | Rename | `startRename` |
-| Pages collapse | `pagesListCollapsed` or `pagesSection` |
-| Download current page | `downloadCurrentPageBtn` or `downloadCurrentPageAsPdf` |
-| Export dropdown (cloud up / cloud down, 28×28 SVG) | `exportDropdown`, `projectHasAnyCanvasMarkup()`; `#pdfInput` trigger when editor has no pages (no submenu; same as uploading PDF); `importCanvasAfterPdfModal` / `pendingImportCanvasAfterPdf` remain in pdf handler for completeness (no UI sets `pendingImportCanvasAfterPdf` from header — use PDF then Advanced/sidebar Import Canvas); viewer with no pages: hidden; with pages: Export PDF (when PDF in project), Export Canvas / Export Both only when markup exists; **Import Canvas** row when editor, PDF present, no markup (`data-action="import-canvas"` → `#importInput`); control hidden in export mode when no menu rows would show (no PDF + no markup) |
-| Export Canvas gating (Advanced + JSON) | `projectHasAnyCanvasMarkup` or `#advancedExport` or `exportBtn` click guard |
-| Mobile sidebar tools | `sidebar-tool-buttons` or `moveBtnSidebar` |
-| Mobile header tools | `sidebar-triggers` (Move, Counter, Line visible; Polyline hidden); `has-pdf` (body class; Upload PDF vs Set Scale slot) |
-| Header active type | `headerActiveLineType`; counter icon on `counterBtn`/`counterBtnSidebar` when counter selected; `headerActiveCounter` cleared |
-| Counter button dynamic icon | `counterBtn`, `counterBtnSidebar`, `COUNTER_BTN_DEFAULT_SVG`, `iconVbFor` |
-| Toggle switches | `toggle-switch`, `toggle-switch-knob`; used for Show group colors, Counter Settings (Show ring, Solid ring), Save Project Include PDF, Export PDFs (Bundle highlights, Bundle notes, Include report) |
-| CUSTOM_ICONS / bundled icons | `CUSTOM_ICONS` or `getEffectiveCustomIcons`; built from my-counters via `npm run build:icons`; see CUSTOM_ICONS.md |
-| Counter modal tabs | `counter-tab` or `counterChooseList` |
-| Page/zoom row | `page-zoom-row` |
-| Page rotation | `rotatePage90` or `rotatePage` or `page.rotation` |
-| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` or `counterLineTypeDetailsModal` |
+| Pages list / collapse / badges | `renderPagesList` or `pagesListCollapsed` or `badge-scale-set` / `badge-has-ann` |
+| Download current page | `downloadCurrentPageAsPdf` |
+| Export dropdown (cloud up/down) | `exportDropdown` or `projectHasAnyCanvasMarkup` |
+| Export Canvas (Advanced + JSON) | `exportBtn` or `advancedExport` |
+| Mobile sidebar / header tools | `sidebar-tool-buttons` or `sidebar-triggers` or `has-pdf` |
+| Header active type | `headerActiveLineType` or `COUNTER_BTN_DEFAULT_SVG` |
+| Toggle switches | `toggle-switch` or `toggle-switch-knob` |
+| Bundled icons | `CUSTOM_ICONS` or `getEffectiveCustomIcons`; built via `npm run build:icons` (see [CUSTOM_ICONS.md](CUSTOM_ICONS.md)) |
+| Custom icon upload | `customIconUploadInput` or `parseUploadedSvg` or `getUserCustomIcons` |
+| Page rotation | `rotatePage90` or `page.rotation` |
+| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` |
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
-| Dev auth bypass | `canUseDevAuth` or `devAuthSignIn`; `?devAuth=1` URL param (localhost) or "Sign in as test user" in auth modal; requires `DEV_AUTH_EMAIL` and `DEV_AUTH_PASSWORD` in config.js |
-| Save/Load project | `saveProjectModal` or `loadProjectModal` |
-| Share project | `shareProjectModal` or `openShareProjectModal`; invite-to-project Edge Function; Share modal includes View links section (create, list, copy URL, access log, revoke) |
-| Checkout | `check_out_project`, `check_in_project`, `force_check_in_project` RPCs; `state.isViewer`, `state.canCheckOut`; `subscribeToProjectCheckoutChanges`, `refreshProjectPermissions` for realtime |
+| Dev auth bypass | `canUseDevAuth` or `devAuthSignIn` (`?devAuth=1`, localhost) |
+| Save / Load project | `performSaveProjectToCloud` or `openLoadProjectModal` or `saveProjectModal` |
+| Share project / view links | `openShareProjectModal`; `invite-to-project` / `get-view-project` Edge Functions |
+| Checkout / turn in | `check_out_project` / `check_in_project` / `force_check_in_project`; `doTurnIn`; `state.isViewer` / `state.canCheckOut` |
+| Realtime checkout | `subscribeToProjectCheckoutChanges` or `refreshProjectPermissions` |
 | Save before load | `saveBeforeLoadModal` or `openLoadProjectModalOrPromptSave` |
-| Turn In | `tryTurnIn`, `doTurnIn` — canvas-only save (performAutoSave) + check_in_project; PDF upload skipped on turn-in; toast when PDF still local; per-stage instrumentation via local `progress(stage, label)` helper that calls `setTurnInProgress` AND `pushSaveEvent('turn_in_stage', label, {stage, elapsedMs})` for each of `pre_probe` / `local_backup` / `sync_to_cloud` / `release_lock` / `retry`; one `turn_in_start` event at entry carrying `{onLine, network, lastOk, failures, dirty, saveInProgress, projectId}`; `turn_in_ok` carries `{elapsedMs, attempts}`; `turn_in_err` and `turn_in_already_released` enriched with `{elapsedMs, stage, attempt, online, network}` so the Export logs payload reveals exactly which stage burned the timeout budget |
-| Pages title truncation | `formatPageTitleStartEnd`, `pagesTitlesTruncated` |
-| Last session restore | `lastSessionRestoreModal` or `pendingLastSessionRestore` or `doRestoreLastProject` — local backup key `'local'`; checked first; init requires only `last.projectId`; uses `proj.pdf_hash` for cache when `last.pdfHash` null; Supabase restore uses `download()` with empty-blob guard; doRestoreLastProject uses `userId` not `uid` (avoids shadowing) |
-| Load annotations (hash match) | `loadAnnotationsModal` or `loadAnnotationsList` or `loadAnnotationsSkip` |
-| Canvas-only load flow | `pendingCanvasLoad` |
-| PDF hash computation | `sha256Hex` |
+| Last session restore | `lastSessionRestoreModal` or `doRestoreLastProject` |
+| Load annotations (hash match) | `loadAnnotationsModal` or `loadAnnotationsList` |
+| Canvas-only load flow | `pendingCanvasLoad` or `openCanvasOnlyNeedsPdfModal` |
+| PDF hash | `sha256Hex` |
+| PDF IndexedDB cache | `pdfCachePut` or `pdfCacheGet` |
 | Status bar indicators | `updateStatus` or `statusBarDot` or `statusBarSquare` |
-| Status bar totals | `#statusTotals` span next to `#statusCoords` shows project-wide `[count | length unit]` (e.g. `[65 | 2,450 ft]`); `computeFooterTotals()` walks every page via `getMergedAnnotationsForPage` (multi-canvas-aware) and sums marker counts with `getMultiplyZoneForPoint` plus line lengths with `getLineLengthForTotals` (multiply zones + scale zones honoured); `getFooterTotalsCached()` returns a cached `{count, lengthReal, scale}` object — recomputes only when `footerTotalsDirty` flips true (set in `markProjectDirty` and every editing path through it, including undo/redo and clearPage) OR when `pageCount`/`counterCount`/`lineTypeCount` change between calls (auto-handles project load/close/import/Prepare PDF commit/viewer-load without needing per-site hooks); render hides the span when `state.pages.length === 0`; length unit chosen by `pickScaleForLineType` (matches legend/sidebar); `Number#toLocaleString()` for thousands separators; `.status-totals` CSS uses `font-variant-numeric: tabular-nums` so digits do not dance during fast cursor movement; cost on mousemove is O(1) cache hit |
-| Pages badges | `badge-scale-set` or `badge-has-ann` or `renderPagesList` |
-| Marked page nav | `getMarkedPageIndices` or `prevMarkedPage` or `nextMarkedPage` |
-| View links / initViewOnlyMode | `initViewOnlyMode` or `get-view-project` or `viewCacheGet` |
-| Auto-save | `performAutoSave` or `markProjectDirty` or `autoSaveDirty` or `suspendAutoSaveUntilCheckout`; `performAutoSave` acquires the `saveInProgress` mutex (try/finally) so concurrent autosave and manual-save runs serialize; `doTurnIn` and `saveBeforeLoadSave` clear `autoSaveDirty` BEFORE awaiting `performAutoSave` and restore it on failure so edits made during the await are not lost; `performSaveProjectToCloud` snapshots `wasDirty` and clears `autoSaveDirty` before its work (restores on failure) and on failure sets `lastCloudSaveAttemptFailed = true` + `updateSaveStatusIndicator()` so the bell turns yellow; PDF upload (`pdfInput`), Prepare PDF (`commitPreparePdfToState` callers), and Import Canvas (`importInput`) call `markProjectDirty` so the cloud reflects them; `performSaveProjectToCloud` recovers a detached `state.pdfBuffer` from `pdfCacheGet(currentProjectId, pdfHash)` (`pushSaveEvent('manual_save_recover', …)`) before failing with a clear error when `includePdf` is set but no buffer or cloud copy exists; `withTimeout` wraps every Supabase call in `performSaveProjectToCloud` (10 s for `pdf_hash` select and `storage.info`, 5 s for `pdfCachePut`, 30–60 s for inserts/updates/uploads); local `saveWithTimeout` helper removed in favor of global `withTimeout`; `takeoffBackupPut` is monotonic: reads the existing record first and aborts the txn (`saveDebugLog('takeoffBackup.skip_stale', …)`) when the incoming `lastModifiedAt` is older than what is already in IDB; custom-icon upload (`customIconUploadInput.onchange`) calls `markProjectDirty` after `saveUserCustomIcons` so new icons are picked up by the next autosave cycle; PDF merge (`pdfInput.onchange`) sums `buffersForMerge` byte sizes before invoking `mergePdfBuffers` and aborts with an alert (reverting `state.pages` to `startPageIdx` and pruning `activeCanvasIdByPage`) when the projected size would exceed `PDF_MAX_SIZE_BYTES`; manual-save `pdfCachePut` failure surfaces a one-shot `pushSaveEvent('manual_save_cache_warn', …)` gated by the module-level `pdfCacheWarnShown` flag (reset on sign-out) so a detached-buffer recovery risk is visible in the Save Status modal without log spam; force-turn-in flush in `refreshProjectPermissions` classifies the failed `performAutoSave` result into `force_turn_in_flush_blocked` (CHECKOUT_EXPIRED / CHECKOUT_NOT_OWNED / 42501 / "not owned" / "permission") vs `force_turn_in_flush_err` and keeps `autoSaveDirty = true` so the next checkout retries; `isTransientSaveError` plus a single 500 ms retry loop inside `saveInProgress` covers both `performAutoSave` and `performSaveProjectToCloud` (latter only when `originalProjectId` was set at entry, to avoid duplicate-insert hazard), emitting `autosave_retry` / `manual_save_retry`; `takeoffBackupPut` emits a one-shot `pushSaveEvent('takeoff_backup_warn', …)` gated by `takeoffBackupWarnShown` (reset on sign-out) when the IDB transaction throws so tab-crash-recovery breakage is visible; SaveProject modal blocks at a confirm when `!includePdf && state.pdfHash !== projects.pdf_hash` (`manual_save_canceled` on cancel, `manual_save_pdf_mismatch_accepted` on accept); `performSaveProjectToCloud` captures `prevPdfStoragePath` at entry and best-effort `storage.from('pdfs').remove([prevPdfStoragePath])` (`withTimeout`, 10 s) after a successful PDF replacement, logging `manual.save.pdf_cleanup_ok` or `_err`; `doTurnIn` is reentrancy-guarded by `turnInInProgress` (module-level), awaits `writeTakeoffStateBackup` before the save, and short-circuits with `pushSaveEvent('turn_in_save_in_progress', …)` + toast "Sync in progress, try again in a moment" when `autoSaveDirty && saveInProgress` at entry; on save failure inside `doTurnIn` it pushes `turn_in_blocked_by_save_err` (alongside the inner `autosave_err`) so the Save Status log shows the Turn In context; the `check_in_project` RPC is wrapped in a single 500 ms retry using `isTransientSaveError` (`turn_in_retry` event) and on success the response's `server_now` flows through `updateServerClockFromRpc`; `doTurnInAndHandleResult` detects "you do not have this project checked out" / `NOT_CHECKED_OUT` / `not_owned` in `result.error` and surfaces `turn_in_already_released` event + "You no longer hold the checkout - refreshing." toast + `refreshProjectPermissions()` instead of a generic failure toast; **Sync hardening (PR 1)** — `withTimeout(promiseOrFactory, ms, label)` now accepts either a plain promise (legacy) or a `(signal) => promise` factory and exposes `.controller` on the returned promise; the 7 Postgrest write call sites in `performAutoSave` (update + insert) and `performSaveProjectToCloud` (5 update/insert sites) use the factory form with `.abortSignal(signal)` so the underlying fetch is aborted when the timer fires, freeing dead HTTP/2 sockets that the browser would otherwise keep reusing; autosave update timeout dropped from 30 s to `AUTOSAVE_TIMEOUT_MS` (15 s) while manual-save timeouts remain 30 s / 60 s; `performAutoSave` captures `inFlightAutoSaveController` per request and nulls it in the outer `finally`; `noteAutoSaveOutcome(ok, err)` tracks `consecutiveAutoSaveFailures` / `firstAutoSaveFailureAt` / `nextAutoSaveAttemptAt`, applies capped backoff `AUTOSAVE_BACKOFF_LEVELS_MS = [5000, 15000, 30000, 60000]`, shows `#syncPausedBanner` at `AUTOSAVE_BANNER_THRESHOLD = 3` consecutive failures, and emits `autosave_recovered` (with `{ failures, durationMs }`) on first success after a failure run; autosave interval gates with `if (Date.now() < nextAutoSaveAttemptAt) return;` and logs `autosave.skip / reason: backoff` when debug enabled, so the loop stops hammering during outages; `#syncPausedBanner` (above the status bar, yellow-tinted) reads "Cloud sync paused - your work is saved locally. Reconnecting..." and the `#syncPausedBannerRetry` button invokes `retrySyncNow()` (aborts `inFlightAutoSaveController`, resets `nextAutoSaveAttemptAt = 0`, sets `autoSaveDirty = true`, refreshes session via `supabase.auth.getSession()`, emits `manual_sync_retry`); `visibilitychange -> hidden` aborts `inFlightAutoSaveController` unconditionally before the fire-and-forget pre-close save so the next save opens a fresh socket; both abort sites set `autoSaveAbortReason` (`'user_retry'` / `'hidden'`) before calling `controller.abort()` and the `performAutoSave` catch block detects the flag to suppress the failure path (no `consecutiveAutoSaveFailures` bump, no backoff, no `autosave_err` event, no yellow bell), with a belt-and-suspenders clear in the success path covering the rare success-with-late-abort race; **Sync hardening (PR 2)** — `runRecoveryProbe(trigger)` fires fire-and-forget at the 5th consecutive autosave failure (`AUTOSAVE_RECOVERY_THRESHOLD`) and on every `window.online` event when `consecutiveAutoSaveFailures > 0`; refreshes the JWT via `supabase.auth.getSession()` then issues a raw `fetch(SUPABASE_URL + '/rest/v1/projects?select=id&limit=1', { cache: 'no-store', signal: …, headers: { apikey, Authorization } })` with a 5 s `AbortController` timeout (`AUTOSAVE_RECOVERY_TIMEOUT_MS`) so the request bypasses the Supabase client connection pool and a dead H/2 socket is replaced; success resets `nextAutoSaveAttemptAt = 0` but leaves `consecutiveAutoSaveFailures` and the banner intact (a real save success drives those via `noteAutoSaveOutcome(true)`); `recoveryProbeInFlight` re-entrancy flag and `recoveryProbeFiredForFailureCount` per-failure-run dedupe; emits `autosave_recovery_probe` / `autosave_recovery_ok` / `autosave_recovery_err`; milestone events `autosave_failing_3` / `autosave_failing_5` / `autosave_failing_10` fire once per failure run (dedupe in `autosaveMilestoneFiredAt`, reset in `noteAutoSaveOutcome(true)` alongside `recoveryProbeFiredForFailureCount`); when `navigator.connection` is present (Chromium), `captureNetworkInfoDetail()` attaches `{ effectiveType, downlink, rtt, saveData }` as the milestone event detail; P8 `recordAutosaveLatency(updMs)` runs after each `projects.update` perfLog, pushes into `autoSaveLatencySamples` (capped at `AUTOSAVE_SLOW_WINDOW = 20` via `shift()` once full), and once `AUTOSAVE_SLOW_MIN_SAMPLES = 10` samples are present emits `autosave_slow` with `{ p95, n, latest }` when `p95 > AUTOSAVE_SLOW_MS = 1000` (debounced by `autosaveSlowEmittedAt` + `AUTOSAVE_SLOW_DEBOUNCE_MS = 60000`) |
-| Checkout keep-alive / lock probe | `probeCheckoutLock`, `checkoutKeepalive`, `CHECKOUT_KEEPALIVE_MS`, `CHECKOUT_NEAR_EXPIRY_MS`, `CHECKOUT_SOFT_GRACE_MS`, `suspendAutoSaveUntilCheckout`, `checkoutExpiredToastShown`, `CHECKOUT_EXPIRED_TOAST_MSG`; consolidated `visibilitychange` handler near the autosave interval (hidden: `lastHiddenAt`, backup, best-effort `performAutoSave`; visible: `getSession`, `probeCheckoutLock`, `refreshProjectPermissions`); `subscribeToProjectCheckoutChanges` is async, awaits `removeChannel` before re-subscribing, and gates every callback (postgres_changes handler, status callback, deferred reconnect timer) on a captured `projectsCheckoutGeneration` token so rapid project switches do not produce overlapping channels or stale `refreshProjectPermissions` calls; capped backoff reconnect (`projectsCheckoutReconnectTimer`, `projectsCheckoutReconnectAttempt`, `PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS` = 1s/3s/10s/30s); forces one `refreshProjectPermissions` on `SUBSCRIBED` to catch missed events; force-turn-in path in `refreshProjectPermissions` fires a best-effort `performAutoSave` flush before flipping to viewer, logs `pushSaveEvent('force_turn_in', …)`, and the toast warns when there were unsaved edits; `check_out_project` and `refresh_checkout_activity` RPCs (migration 038) return `server_now` and `checked_out_at` so the client tracks `serverClockOffsetMs` (via `updateServerClockFromRpc`) and uses `serverNowMs()` for all checkout-expiry math (`lockExpired` in `refreshProjectPermissions`, `ageMs` in `performAutoSave` and the SaveProject modal, `probeCheckoutLock`) - resilient to client clock skew; migration 039 adds a BEFORE UPDATE trigger on `public.projects` (`set_projects_updated_at`) so `updated_at` is server-set on every UPDATE, eliminating multi-tab races driven by skewed client clocks when comparing IDB takeoff backups against the cloud copy; migration 040 extends `check_in_project` and `force_check_in_project` to return `server_now` so every check-in (`doTurnIn`, `checkInCurrentProjectIfHeld` sign-out helper, `settingsForceCheckIn`, Manage Projects admin force turn-in) refreshes `serverClockOffsetMs` via `updateServerClockFromRpc` |
-| Save Status (bell + modal) | `saveStatusModal`, in-modal bell `saveStatusBtn`, header bell `saveStatusBtnHeader` (class `header-save-status-btn`), `pushSaveEvent`, `getCloudSaveSummary`, `updateSaveStatusIndicator`, `openSaveStatusModal`, `renderSaveStatusModalContent`, `saveStatusModalTickTimer` — both bells always visible in their context when signed in (in-modal: checkout section visible + current project; header: signed in to Supabase, hidden on mobile via CSS); default gray, `save-status-bell-attention` (yellow) on sync failure or `checkoutExpiredNeedsAttention`; `save-status-bell-offline` (dim gray) when `navigator.onLine === false`, with a distinct title/aria ("Save status — offline (changes saved locally)") so the user can distinguish "no network" from "save errored"; window-level `online`/`offline` listeners already push events and call `updateSaveStatusIndicator()`; 300s in-memory `saveStatusLog` (extends to 3600s when verbose mode is enabled); modal live-ticks every 5s while open to refresh ago labels; checkout expiry surfaces via one-shot toast + bell; modal actions row has **Verbose mode** checkbox (`#saveStatusVerboseToggle`, persisted via `localStorage.clickcount-debug-save` through `setSaveDebugEnabled` / `isSaveDebugEnabled`; when on, `saveDebugLog(phase, payload)` ALSO calls `pushSaveEvent('debug', phase, detailStr)` with detailStr capped at 4 KB so console-only diagnostics appear in the activity list), **Copy logs** (`#saveStatusCopyBtn`, clipboard write of `buildSaveLogsEnvelope()` JSON with execCommand fallback), and **Export logs** (`#saveStatusExportBtn`, downloads `clickcount-save-logs-{ISO}.json` via Blob + `URL.createObjectURL`); `buildSaveLogsEnvelope()` returns `{schema:'clickcount-save-logs/v1', capturedAt, user{email,isAdmin,isViewer}, browser{ua,platform,onLine,network}, timing{lastSuccessfulSupabaseCallAt, serverClockOffsetMs, consecutiveAutoSaveFailures, autoSaveDirty, saveInProgress, turnInInProgress, verbose, windowMs}, project, events: saveStatusLog.slice()}`; `getProjectSummaryForLogs()` returns counts only (counters/lines/multiplyZones/scaleZones/highlights/notes plus pageCount, pagesWithScale, isAdmin, isViewer) — never per-marker coords; Activity heading text flips between "Activity (last 5 minutes)" and "Activity (last 60 minutes)" via `getSaveStatusLogWindowMs()` |
-| Project Settings Advanced | `settingsAdvancedSection` or `settingsAddAdditionalPages` or `settingsLoadTestPdf` (localhost only) |
-| Prepare PDF modal | `preparePdfModal` or `openPreparePdfModal` or `commitPreparePdfToState` or `preparePdfDownload` or `downloadPdfBuffer`; Page name collapsible; Rotate (90°; `preparePdfRotatePage90`); per-page file size (`preparePdfPageBytes`); Download Trimmed PDF, Save and Open on right; `trimmedBuf.slice(0)` passed to getDocument to avoid buffer detachment; `state.pdfBufferSize` set before `pdfjsLib.getDocument()` because pdf.js detaches buffer |
-| Admin panel | `adminPanelModal` or `adminCreateUser` |
-| Manage User modal | `manageUserModal` or `openManageUserModal` or `deleteUser` or `manageUserModalAllActivityBtn` (header: all user activity) |
-| User Activity modal (admin) | `userActivityModal` or `openUserActivityModal` or `list_user_activity_for_admin` or `list_user_activity_summary_for_admin` or `USER_ACTIVITY_TZ` or `formatUserActivityDateTime` or `formatLastSignInUserActivity` or `state.userActivityViewMode` or `state.userActivityAllRowsCache` |
-| Manage Projects modal | `manageProjectsModal` or `openManageProjectsModal` or `deleteProject` or `forceCheckInProjectFromManage`; Force turn-in (admin) per checked-out row; opened via `settingsManageProjects` in Project Settings |
-| Manage Icons modal | `manageIconsModal` or `openManageIconsModal`; opened via `settingsManageIcons` in Project Settings; edit icon display names; Custom icons section with Edit/Delete selected for uploaded icons; `getIconName(path)` |
-| User Settings | `mySettingsModal` or `openMySettings` — email, change password, Artboard (Save, Load from Cloud, Export, Clear Artboard; counters, line types, plumbingModifiers, lineModifiers to user profile), Add User / Manage User (admin), All Users list (admin), Sign Out; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard`, `mySettingsClearAirboard` |
-| Project Settings gear | `settingsGearBtn` or `header-settings-gear` — top right on desktop; opens settingsModal |
-| Project Settings | `settingsModal` — Name / Upload / Save Project to Cloud, Load Project from Cloud, Close Project, Check out Project / Turn In Project / Force Turn In (admin only), Share, Add additional PDF pages, Download PDF, Advanced (collapsed) with Manage Icons, Export Canvas (when markup, editor only), Export PDF (when PDF in project; both available in view mode), Import Canvas (hidden in view mode), Canvas Repair (when PDF), Load test PDF (localhost only), Empty cache and hard reload (red danger) |
-| Export PDFs modal | `specificPagesModal` or `openSpecificPagesModal` — thumbnails, per-page marked/unmarked/exclude, bulk actions, Include takeoff report / Bundle highlights / Bundle notes with "— none to show" when no data |
-| Copy to PipeTooling | `forPipeToolingDropdown` or `getPipeToolingSummary` — dropdown (drop-up); options: This Canvas Only, All Visible Canvases, All Canvases; sidebar links use https://pipetooling.com |
-| Copy Summary (Email/Text) | `copySummaryTextDropdown` — dropdown with same options; pops up when no space below |
-| Copy view link button | `copyViewLinkBtn` — header left of gear; copies view link (creates if none); hidden when viewer |
-| Summary count detail modal | `summaryCountDetailModal` or `openSummaryCountDetailModal` — "— by page" breakdown with thumbnails when clicking count/line in Summary |
-| Legend / Summary overlay | `showLegendOverlay` or `legendSettingsModal` or `drawLegend` or `userResized` |
-| Multiply Zone settings | `openMultiplyZoneSettingsModal` or `multiplyZoneSettingsModal`; right-click `multiplyZoneBtn` or `multiplyZoneBtnSidebar` to open |
-| Grid overlay | `showGridOverlay` or `gridSettingsModal` or `drawGrid` or `snapToGrid`; modifiers: opacity, color, lineWidth, lineStyle, offsetX/Y, majorInterval, snapToGrid; drawGrid draws lines left/above and right/below origin; `resetGridOrigin()` on new document load (PDF upload, Prepare PDF commit, Load test PDF, Close project) |
-| Undo/Redo | `undoBtn`, `redoBtn` — bottom bar next to rotate; `undoStack`, `redoStack`, `pushUndoSnapshot`, `clearUndoStacks`; Ctrl+Z / Ctrl+Shift+Z |
-| Middle mouse pan | `e.button === 1`; `state.isPanning`, `state.panStart`; `moveCursorSvg` during pan |
-| Show Highlights / Show Notes | `bundleHighlights` or `bundleNotes` or `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
-| Note modal | `noteModal` — Add/Edit Note (textarea, Cancel/Done); double-click or context Edit to edit |
-| Choose Line Type modal | `chooseLineTypeModal` — tabs: Choose | Create | Quick (like Counter modal); search; Shift+L for Quick tab; L always opens modal |
-| Macros / Keyboard Shortcuts | `macrosModal` or `statusBarMacros` — modal listing M/S/C/L/J/P/D/H/X/N/R/Esc/arrows (Left/Right page, Up/Down canvas when multiple)/Enter/Ctrl+Z/Ctrl+Shift+Z/Ctrl+R; Shift+C (Quick tab when Counter modal open); Shift+L (Quick tab when Line modal open); D = Measure (zone scale when both points in same Scale Zone); X = Multiply Zone mode; Scale Zone = rotated Set Scale icon on `scaleZoneBtn` / `scaleZoneBtnSidebar` |
-| Custom icon upload | `customIconUploadInput`, `customIconTipsModal`, `getUserCustomIcons`, `saveUserCustomIcons`, `parseUploadedSvg`; Custom Icons grid has + Upload cell; Manage Icons Custom icons section: Edit/Delete selected; click "Custom Icons" label for tips |
-| Bundled custom icons | `CUSTOM_ICONS` — built from `my-counters/*.svg` via `npm run build:icons` (scripts/build-custom-icons.js); paste output into index.html; see CUSTOM_ICONS.md |
-| Line real-world length / scale zones | `getLineRealWorldLength`, `getLineLengthForTotals`, `getEffectiveScaleForLine`, `getScaleZoneForLine` |
-| Multiply Zone | `multiplyZoneBtn`, `multiplyZoneBtnSidebar`, `multiplyZoneModal`, `multiplyZoneSettingsModal`, `TOOL.MULTIPLY_ZONE`; two-click rectangle; `ann.multiplyZones`; `state.multiplyZoneSettings` (showLabelOnZone, defaultMultiplier, labelSize, labelPosition); `pointInRect`, `getMultiplyZoneForPoint`, `getMultiplyZoneForLine`, `countItemsInRect`; first containing zone wins; Summary/Report/Export use multiplied counts and lengths; context menu Edit multiplier, Delete; right-click icon opens multiplyZoneSettingsModal; `openMultiplyZoneSettingsModal`; X hotkey |
-| Scale Zone | `scaleZoneBtn`, `scaleZoneBtnSidebar`, `TOOL.SCALE_ZONE`, `ann.scaleZones`, `scaleModalApplyTarget`, `pendingScaleZone`, `pendingScaleZoneEdit`, `applyScaleObjectToZoneOrPage`; two-click rectangle; `getScaleZoneForLine`, `getEffectiveScaleForLine`; Measure distance toast uses effective scale when both measure endpoints fall in the same zone; context menu `ctxEditScaleZone` (Edit scale), Delete; `hitTest` type `scaleZone` after multiply zones; no overlap between scale zones; requires page scale; toolbar icon is Set Scale glyph rotated 180° |
-| Delete Zone | `deleteZoneBtn`, `deleteZoneBtnSidebar`, `deleteZoneModal`, `TOOL.DELETE_ZONE`, `collectItemsToDeleteInRect`, `performDeleteZone`; two-click rectangle; confirmation modal with counts before delete; deletes counters (center in rect), quick lines (both endpoints), polylines (first and last), highlights (center), notes (anchor), multiply zones (center), scale zones (center); dashed red preview; hidden for viewers |
-| Snap to H/V header button | `lineTypeSnapToHVHeaderBtn` — in header right of Polyline; visible when Line or Polyline tool selected; J hotkey |
+| Status bar / footer totals | `statusTotals` or `computeFooterTotals` or `getFooterTotalsCached` |
+| Marked page nav | `getMarkedPageIndices` or `prevMarkedPage` / `nextMarkedPage` |
+| View-only mode | `initViewOnlyMode` or `viewCacheGet` |
+| Auto-save | `performAutoSave` or `markProjectDirty` or `autoSaveDirty` or `suspendAutoSaveUntilCheckout` |
+| Save Status bell + modal | `saveStatusModal` or `pushSaveEvent` or `updateSaveStatusIndicator` or `buildSaveLogsEnvelope` |
+| Sync recovery / client recycle | `runRecoveryProbe` or `recreateSupabaseClient` or `rawProjectsUpdate` |
+| Checkout keep-alive / probe | `probeCheckoutLock` or `checkoutKeepalive` or `CHECKOUT_KEEPALIVE_MS` |
+| Checkout expired recovery | `openCheckoutExpiredRecoveryModal` or `tryAutoRecheckoutIfAllowed` or `handleBackgroundCheckoutExpired` |
+| Global force reload | `checkGlobalForceReload` or `doGlobalReloadNow` or `admin_trigger_global_reload` |
+| Local backup | `writeTakeoffStateBackup` or `takeoffBackupPut` / `takeoffBackupGet` |
+| Prepare PDF modal | `openPreparePdfModal` or `commitPreparePdfToState` |
+| Admin panel / users | `adminPanelModal` or `openManageUserModal` or `deleteUser` |
+| User Activity (admin) | `openUserActivityModal` or `list_user_activity_for_admin` or `USER_ACTIVITY_TZ` |
+| Manage Projects | `openManageProjectsModal` or `deleteProject` or `forceCheckInProjectFromManage` |
+| Manage Icons | `openManageIconsModal` |
+| User Settings / Artboard | `openMySettings` or `mySettingsSaveAirboard` |
+| Export PDFs modal | `openSpecificPagesModal` or `downloadSpecificPages` |
+| Copy to PipeTooling | `forPipeToolingDropdown` or `getPipeToolingSummary` |
+| Copy Summary (Email/Text) | `copySummaryTextDropdown` or `getEmailTextSummary` |
+| Summary count detail modal | `openSummaryCountDetailModal` |
+| Legend overlay | `showLegendOverlay` or `legendSettingsModal` or `drawLegend` |
+| Grid overlay | `showGridOverlay` or `gridSettingsModal` or `drawGrid` or `snapToGrid` |
+| Undo / Redo | `undoStack` or `redoStack` or `pushUndoSnapshot` |
+| Middle mouse pan | `state.isPanning` or `state.panStart` |
+| Show Highlights / Notes | `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
+| Note modal | `openNoteModal` |
+| Line real-world length / scale zones | `getLineRealWorldLength` or `getLineLengthForTotals` or `getEffectiveScaleForLine` |
+| Multiply Zone | `TOOL.MULTIPLY_ZONE` or `getMultiplyZoneForPoint` / `getMultiplyZoneForLine` |
+| Scale Zone | `TOOL.SCALE_ZONE` or `getScaleZoneForLine` or `scaleModalApplyTarget` |
+| Delete Zone | `TOOL.DELETE_ZONE` or `collectItemsToDeleteInRect` or `performDeleteZone` |
+| Snap to H/V | `lineTypeSnapToHVHeaderBtn` or `snapToHorizontalVertical` |
 
 ## Key Globals (used by report.js)
 
-These must remain on `window`: `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`, `renderIconHtml`, `getLineLengthPdfPts`, `getLineLengthForTotals`, `getMultiplyZoneForLine`, `getMergedAnnotationsForPage` (also `getLineRealWorldLength`, `getEffectiveScaleForLine` for inline scripts). Report.js also exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`, `getEmailTextSummary`. Both summary functions accept optional `options`: `{ pageIndices?: number[], getAnnotations?: (page) => annotations }`.
+These must remain on `window`: `state`, `makeAnnotations`, `ptDist`,
+`polylineDistance`, `formatDist`, `renderIconHtml`, `quickLineLength`,
+`getLineLengthPdfPts`, `getLineLengthForTotals`, `getLineRealWorldLength`,
+`getMultiplyZoneForLine`, `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`,
+`getMergedAnnotationsForPage`. [report.js](report.js) exposes back
+`buildReportHtml`, `printReport`, `getPipeToolingSummary`, `getEmailTextSummary`.
+Both summary functions accept optional `{ pageIndices?: number[], getAnnotations?: (page) => annotations }`.
 
 ## Data Flow
 
 ```
-Events → handlers → state updates → renderPdf() / renderAnnotations() / updateUI() → DOM
+Events -> handlers -> state updates -> renderPdf() / renderAnnotations() / updateUI() -> DOM
 ```
 
-- Annotations stored in PDF-space (zoom-independent)
-- Scale is per-page: `page.scale`; use `getPageScale(pageIdx)` to read
-- `canvasToPdf(x,y)` converts wrapper coords to PDF; `toCanvas(p)` converts PDF to canvas pixels (includes dpr)
+- Annotations stored in PDF-space (zoom-independent).
+- Scale is per-page: `page.scale`; read via `getPageScale(pageIdx)`.
+- `canvasToPdf(x,y)` converts wrapper coords to PDF; `toCanvas(p)` converts PDF to
+  canvas pixels (includes devicePixelRatio).
+- See [RECONSTITUTE.md](RECONSTITUTE.md) for the full data model and invariants.
 
 ## Layout
 
-- **Desktop header**: Logo and tools (Measure, Highlight, Note, Move, divider, Counter, Line, Polyline, divider, Snap to H/V when Line or Polyline selected) on left; divider left of Counters matches divider right of Polyline; spacer; cloud import/export control (`#exportDropdown`; 28×28 icons matching Share, view link, gear, print): cloud-upload when editor has no pages — click triggers `#pdfInput` directly (no menu); cloud-download when pages exist opens export menu — Canvas/Both require markup (`projectHasAnyCanvasMarkup()`), PDF row when PDF data exists; **Import Canvas** when editor and PDF and no markup; menu hidden when export mode would show no rows; hidden for viewer with no pages; Copy view link (left of gear) and settings gear (Project Settings) in top right when Supabase enabled; Download current page (yellow printer icon, 28×28, far right) when PDF loaded; primary buttons (Sign In, Save, Load, etc.) hidden in header, shown in status bar
-- **Mobile header** (max-width: 768px): Hamburger, Upload PDF (when no PDF, transparent/text-only) or Set Scale (when PDF and no scale), Measure, Highlight, Note, Move, Counter + active counter icon, Line + active line type color swatch (Polyline and Done Editing hidden); `body.has-pdf` toggled in updateUI; Set Scale hidden when scale set; "Line" not "Quick Line"; header z-index 250; settings gear hidden (access via sidebar logo)
-- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile; User and Project Settings buttons hidden on mobile as redundant), Upload PDF / Set Scale (button shows "Scale 1 ft = X" when set), Name / Upload / Save Project to Cloud / Load Project from Cloud (when Supabase enabled), Export Canvas / Import Canvas, Move / Counter / Quick Line / Polyline / Done Editing, Pages, Counters, Line Types, Lines, Summary, Show Report, Export PDFs, Copy to PipeTooling, Copy Summary (Email/Text), Show Highlights, Show Notes (when data exists), Clear Page
-- **Bottom bar** (page/zoom row): Page nav, zoom controls, rotate, Undo, Redo
-- **Status bar**: Dual indicators (circle=canvas, square=PDF), project/sync status, Sign In (when Supabase), Macros (keyboard shortcuts modal), Clear Page
-- **Touch**: Single-finger pan, pinch-to-zoom, long-press (500ms) for context menu; `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE, HIGHLIGHT, and NOTE modes (direct touch, no synthetic click); `preventDefault` on touchend to avoid ghost click double-placement; 25px movement threshold for LINE/POLYLINE taps
-- **Scale taps**: 400ms debounce to avoid double-tap on mobile
+- **Desktop header**: Logo + tools (Measure, Highlight, Note, Move, divider,
+  Counter, Line, Polyline, divider, Snap to H/V when Line/Polyline selected) on
+  the left; spacer; cloud import/export control (`#exportDropdown`, 28x28 icons):
+  cloud-upload when editor has no pages (click triggers `#pdfInput`),
+  cloud-download menu when pages exist (Canvas/Both gated by
+  `projectHasAnyCanvasMarkup()`, Export PDF when PDF present, Import Canvas when
+  editor + PDF + no markup); Copy view link, Save Status bell, settings gear top
+  right (when Supabase enabled); Download current page (yellow printer, far right)
+  when PDF loaded. Primary buttons (Sign In, Save, Load) live in the status bar.
+- **Mobile header** (max-width 768px): Hamburger, Upload PDF (no PDF) or Set Scale
+  (PDF, no scale), Measure, Highlight, Note, Move, Counter (+ active icon), Line
+  (+ color swatch); Polyline/Done Editing hidden; `body.has-pdf` toggled in
+  `updateUI`; settings gear hidden (access via sidebar logo).
+- **Sidebar** (slide-in): ClickCount logo + User/Settings icons (mobile), Upload
+  PDF / Set Scale, cloud project actions (Supabase), Export/Import Canvas, tools,
+  Pages, Counters, Line Types, Lines, Summary, Show Report, Export PDFs, Copy to
+  PipeTooling, Copy Summary, Show Highlights / Notes (when data), Clear Page.
+- **Bottom bar** (page/zoom row): Page nav, zoom controls, rotate, Undo, Redo.
+- **Status bar**: Dual indicators (circle = canvas sync, square = PDF sync),
+  project/sync status, footer totals `#statusTotals`, Sign In (Supabase), Macros,
+  Clear Page.
+- **Touch**: single-finger pan, pinch-to-zoom, long-press (500ms) context menu;
+  `touch-action: none` on canvas; `handleTouchAsCanvasTap` for LINE/HIGHLIGHT/NOTE;
+  `preventDefault` on touchend; 25px movement threshold for LINE/POLYLINE taps.
+- **Scale taps**: 400ms debounce to avoid double-tap on mobile.
 
-## Features Beyond Spec (RECONSTITUTE.md)
+## Features Beyond Spec
 
-- **Move button** — Header button toggles active when `state.tool === TOOL.NONE`; left of Line; visible in header on mobile
-- **Set Scale button** — Dynamic: "Set Scale" when no scale; "Scale" + "1 ft = X" when set; opens scale modal for current page; clicking clears scale marks and closes modal (restart); hidden in header when scale is set (desktop and mobile); on mobile: Upload PDF shown in header when no PDF; Set Scale shown when PDF loaded and no scale; sidebar button shows scale value when set (no separate scale display above it)
-- **Set Scale modal** — Tabs: Select two points, Architectural & Engineering (presets); Custom scale section at bottom of presets: fraction input (e.g. 1/4 or 0.25), feet input, Apply; `parseFraction(str)` parses fraction strings; full-width layout
-- **Per-page scale** — Each page has `page.scale`; Set Scale only affects current page; `getPageScale(pi)` helper
-- **Scale crosshair** — Plus icon at scale point A/B when setting scale
-- **Scale toasts** — "Set Scale first to use Quick Line" / "Set Scale first to use Polyline" (3s auto-dismiss, Escape to close)
-- **Choose Line Type modal** — L always opens modal; tabs: Choose | Create | Quick (like Counter modal); search in Choose tab; Shift+L for Quick tab; plumLineBtn opens with Quick tab active; empty state: "Add a line type first using **Create Line Type**"
-- **Counter modal** — Tabs: Choose Counter (default), Create Counter; Choose Counter lists existing counters to select; Create Counter for new counter; selected icon outlined with accent; color palette 9 colors (no white)
-- **Custom icon upload** — Custom Icons grid in Create Counter and Counter Details modals; + Upload cell triggers file input; SVG parsed for path/rect/circle/ellipse/line; user icons in IndexedDB `customIconPaths` (in-memory cache; one-time migration from localStorage); included in export/import; click "Custom Icons" label to open tips modal (simple shapes, single color, path-based, avoid transforms, square viewBox); Manage Icons modal has Custom icons section with Edit mode to select and Delete selected
-- **Line button restart** — When drawing a line (quickLineStart set), tap Line again to clear start point and restart
-- **Header active type** — Counter button and sidebar Counter button show the selected counter's icon and color (with black outline) when counter tool is active and a counter is chosen; otherwise default ellipse; `headerActiveCounter` span cleared (no longer used); line type color swatch next to Line when active (mobile)
-- **Page/zoom row** — Page nav and zoom bar in same row; zoom bar to the right of page bar
-- **Add line type first** — Shown in Choose Line Type modal when no line types exist
-- **Clear Page confirmation** — Modal "Are you sure?" with Cancel and Clear Page (danger)
-- **Export PDF** — Show Report dropdown (four options: this canvas only, all canvases on page, all plan pages current canvas, all pages and canvases; each opens report in new window); Export PDFs (modal: marker/line size sliders 25–150%, thumbnails, per-page marked/unmarked/exclude, bulk actions All Marked Up / All Not Marked Up / Exclude All, Include takeoff report / Bundle highlights / Bundle notes toggle switches with "— none to show" and disabled when no data); Copy to PipeTooling (dropdown, drop-up, yellow primary button; options: This Canvas Only [hidden when single page], All Visible Canvases, All Canvases; copies tab-delimited summary via `getPipeToolingSummary(options)`; fixture, count, page; counters and line types with `[unit] of [name]` format; shows "Copied to clipboard" toast); Copy Summary (Email/Text) (dropdown with same options; pops up when no space below); Show Highlights, Show Notes (open in new tab; hidden when no data); uses jsPDF; original page dimensions preserved; filenames: `takeoff-specific-pages_[project name].pdf`, `highlights-summary_[project name].pdf`, `notes-summary_[project name].pdf`
-- **Export dropdown** — `#exportDropdown` in header; cloud-upload in import mode (`!state.isViewer && pages.length===0`), cloud-download in export mode (`exportDropdownIconImport` / `exportDropdownIconExport`); SVGs 28×28 like other top-right header buttons; editor with no loaded pages: **click opens `#pdfInput`** (no menu — equivalent to Upload PDF); when pages exist: Export Canvas and Export Both only if `projectHasAnyCanvasMarkup()` (internally `pageHasAnyAnnotations`), Export PDF when PDF data exists; **Import Canvas** in export menu (editor only) when PDF exists and no markup — opens `#importInput`; Advanced **Export Canvas** (`#advancedExport`) and sidebar Import remain; `#exportDropdown` hidden in export mode when no rows would remain (no PDF + no markup); `exportBtn` JSON export no-ops without markup; hidden for viewer with no pages (`!isViewer || pages.length`)
-- **Download current page** — `#downloadCurrentPageBtn` in header (far right); yellow printer icon (28×28); direct download when single page and single canvas; dropdown when multiple canvases or multiple pages (This Canvas Only, All Canvases on Page, all plan pages with active canvas, all pages and canvases); visible in edit and view mode when PDF loaded; `downloadCurrentPageAsPdf()`; uses `renderAnnotationsToContext`, jsPDF; filenames include `takeoff-page{N}_{projectName}.pdf` variants
-- **Download PDF** — Project Settings "Download PDF" button downloads the current project's PDF as-is (from `state.pdfBuffer` or Supabase storage); Prepare PDF modal "Download Trimmed PDF" (right side) downloads the trimmed PDF (kept pages only; rotation stored in state on commit); `downloadProjectPdf()`, `downloadPdfBuffer()`
-- **Counter Settings** — Click "Counters" heading: icon size (12–96px), opacity, number size, outline (black SVG stroke), show ring (size, opacity, solid); Show ring and Solid ring use toggle switches; Ring section only visible when "Show ring around counters" on; solid ring default true; all persisted
-- **Line Type Settings** — Click "Line Types" heading: opacity, line size, drop X size (4–24px), drop icon (Circle default, X, Plus, Diamond, Triangle), Orient length with line direction toggle, Parallel ends (4–64px), Length label size (8–24px), Snap to horizontal/vertical toggle; snap icon in header (right of Polyline button; visible when Line or Polyline selected) and J hotkey toggle same setting
-- **Line Color modal** — Shared for Counters, Line Types, Lines: native color picker + recent colors (max 12); `showLineColorModal(currentColor, onApply)`
-- **Quick line color** — Lines sidebar: click swatch to change color; quick lines and polylines support per-line color
-- **Quick line preview** — Line renders from first click to second while placing
-- **Quick Line Escape** — First Escape removes first point; second Escape exits to Move mode
-- **Line selection highlight** — Click line in Lines sidebar: `selectedLineId`, `selectedLinePageIdx`; selected line drawn thicker with glow on canvas
-- **Rename** — Edit buttons on pages, lines; Escape cancels (reverts); arrow keys move cursor in input; counters and line types: edit pen opens counterLineTypeDetailsModal with Name field
-- **Line type layout** — Two-row: name on top, swatch + runs/length + edit on bottom
-- **Lines layout** — Name on top, length below (with drops e.g. "5 + 3 ft" when present), swatch + edit on bottom; click to select/highlight on canvas; edit pen or double-click opens Line Properties modal (shows read-only line type name under title, then per-line Name, color, drops)
-- **Canvas context menu** — `#contextMenu` on right-click (long-press on touch); `handleContextMenu` uses `hitTest` → `state.ctxTarget`; `showContextMenu` positions menu and toggles items; `#ctxTargetNameRow` below Delete shows resolved counter name (markers) or line type name (quick lines/polylines) via `state.counters` / `state.lineTypes`; hidden for notes, highlights, zones, legend hits; view mode skips menu
-- **Selection highlight** — `.sidebar-item.active` for selected counter, line type, line, and current page in Pages list
-- **Toggle switches** — `.toggle-switch` with `.toggle-switch-knob`; used for Show group colors (Groups section), Counter Settings (Show ring, Solid ring), Save Project Include PDF, Export PDFs (Bundle highlights, Bundle notes, Include report); button toggles hidden checkbox, syncs `aria-pressed`
-- **Highlight annotation** — Two-click low-opacity rectangular highlight on PDF; H hotkey; context Delete; Bundle Highlights PDF; `page.annotations.highlights`
-- **Page annotation notes** — Note tool (N hotkey); click to place, modal for text; red text; fixed-size on screen; resizable width (draggable handle) with text wrap; square size slider (left side) for font size; moveable after placement; anchor dot slightly left of text; double-click or context Edit to edit; context Delete; Notes section in Print Report; Bundle Notes PDF
-- **Hotkeys** — M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to horizontal/vertical), P (Polyline), D (Measure — two-click distance; toast uses scale from the enclosing Scale Zone when both clicks land in the same zone), H (Highlight), X (Multiply Zone), N (Note), R (Rotate page); Shift+C = Quick tab when Counter modal open; Shift+L = Quick tab when Line modal open; Ctrl+R / Cmd+R (Refresh); arrow keys: Left/Right = page nav, Up/Down = switch canvas layers (when page has multiple canvases; no-op when single); ignored when focus is in input/textarea/contenteditable (Escape still closes modals)
-- **Tool switching on click** — Clicking a line type switches to Quick Line mode; clicking a counter switches to Counter mode
-- **New counter/line type selected by default** — Newly created counter or line type becomes active immediately
-- **Macros** — Status bar "Macros" link opens Keyboard Shortcuts modal (M/S/C/L/J/P/D/H/N/R/Esc/arrows: Left/Right page, Up/Down canvas/Enter)
-- **Scale badge** — Page number in Pages: `.badge-scale-set` = yellow number when scale set; `.badge-has-ann` = yellow outline when page has counts, lines, notes, highlights, multiply zones, or scale zones
-- **Pages collapse** — Click "Pages" heading toggles `pagesListCollapsed`; `#pagesSection.collapsed` hides list; Pages section auto-collapses when user selects a counter or line type
-- **Sidebar collapse hit area** — Clicking the collapse icon (▼/▶) or the black space next to it minimizes the section; `.collapse-icon` in sidebar has expanded padding for larger hit area; Groups and Lines sections start minimized by default
-- **Pages title truncation** — Long page titles show start (ending in `...`) on line 1 and end (starting with `...`) on line 2; `formatPageTitleStartEnd`, `pagesTitlesTruncated` (default true); click "Pages" heading toggles truncation; persisted in localStorage
-- **Page edit/delete** — Edit (yellow icon) and delete (red icon) per page; delete shows confirmation modal with page name; edit icon hidden while editing
-- **Default project title** — On PDF upload, `state.currentProjectName` set from filename minus `.pdf`
-- **First page on upload** — When uploading PDF, first page of added PDF is selected by default
-- **Status bar** — Dual indicators: circle (dot) = canvas sync, square = PDF sync; each has a label next to it (e.g. "Canvas Synced with Cloud", "PDF Synced with Cloud", "PDF No PDF in project"); both use red/yellow/green/grey; messages: "Project not saved to cloud", "Upload PDF to start a project" (no PDF); Name / Upload / Save Project to Cloud / Load Project from Cloud; save progress during upload; show report, combined PDF hidden when no counts or lines; tool hints appended when in active tool mode
-- **Zoom** — Range 0.2–800%; CSS scale during wheel; debounced PDF re-render; translate3d for pan
-- **Marked page navigation** — ‹‹ and ›› buttons outside page nav; jump to previous/next page with annotations; yellow text and border when selectable
-- **Project Settings Advanced** — Collapsed by default; contains Load test PDF (localhost only), Manage Icons, Export Canvas (shown only when markup exists, editor only), Export PDF (when PDF in project; both available in view mode), Import Canvas (hidden in view mode), Canvas Repair (when PDF), Empty cache and hard reload (red danger; clears IndexedDB and localStorage, reloads page), Global force reload (admin) — calls `admin_trigger_global_reload(p_reason)` RPC (migration 041); on `system_settings.force_reload_after` UPDATE every signed-in tab fires the `system-settings-changes` realtime channel and shows the sticky `#globalReloadBanner` with manual Reload + Dismiss buttons; boot-time `checkGlobalForceReload` (called from initial sign-in branch and `SIGNED_IN`/`TOKEN_REFRESHED` paths in `onAuthStateChange`) compares server `value_ts` to `localStorage.clickcount-last-global-reload` and reloads via `doGlobalReloadNow` (writes stamp BEFORE `location.reload()`, deletes IndexedDB pdf cache and the same key list as Empty cache) when the server value is newer; view-link anonymous users skipped (no session)
-- **Add additional PDF pages** — In Project Settings when PDF uploaded; opens preparePdfModal (Prepare PDF for Cloud): Project name, Page name (collapsible dropdown minimized by default, icon ▶ at end, whole line clickable), Prev/Next, Delete, Rotate (90° per page), Undo; left: Cancel, Open; right: Download Trimmed PDF, Save and Open; per-page file size; commitPreparePdfToState; Upload PDF hidden in title bar
-- **Conditional sidebar visibility** — Show Highlights, Show Notes, Copy to PipeTooling, Copy Summary, Show Report, Export PDFs hidden when no data; "This Canvas Only" option hidden in both dropdowns when single page
-- **Export Options** — Yellow section title above Export PDFs in sidebar (`#exportOptionsSectionTitle`); Copy to /Tooling is the yellow (primary) button
-- **Load Project from Cloud** — `#loadProjectModal`: `#loadProjectFilters` with search, **Filters** toggle (`#loadProjectFiltersExtra` shows All projects / All roles / All owners selects), `loadProjectFiltersExpanded` in localStorage for panel open/closed; `getFilteredLoadProjects` / `renderLoadProjectListRows`; filters by `is_owner`, `my_access_role`, `owner_email` (admin, multiple owners), name search; compact styling; at 768px+ width, search row and filter selects lay out side-by-side; three selects stay on one row in the extra strip on desktop; `list_accessible_projects` returns `owner_email`, `my_access_role` (migration 036) plus existing columns (migration 030: `counter_count`, `line_count`)
-- **Supabase Phase 1 & 2** — Admin-provisioned auth (Sign In only), Add User / Manage User (admin creates and deletes accounts) in User Settings, Manage Projects (admin lists and deletes projects) in Project Settings, Name / Upload / Save Project to Cloud / Load Project from Cloud; save modal includes "Include PDF in this save" toggle and contents list (Canvas, PDF with size in MB); size from `state.pdfBufferSize` or pdfCache/storage.info; `state.pdfBufferSize` captured before getDocument since pdf.js detaches buffer; "Canvas only" badge for projects without PDF; project name on top in Manage/Load modals; Load Project row: counts badge (X cnt · Y ln), Canvas only badge when no PDF, Delete; save-before-load prompt when loading with unsaved changes; auto-save every 5 seconds when dirty (signed-in: Supabase; unsigned: localStorage); 5-second localStorage backup; PDF IndexedDB cache on save; last-project restore from `clickcount-last-project`; `profiles` and `projects` tables (`pdf_path`, `pdf_hash`, `size_bytes`); `pdfs` storage bucket; Edge Functions `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`, `invite-to-project`, `get-view-project`; RPC `list_users_for_admin`, `list_projects_for_admin`, `list_user_activity_for_admin`, `list_user_activity_summary_for_admin`; hash-based skip on upload; IndexedDB cache (10 projects, 500 MB); backup fetches `proj.pdf_hash` from Supabase when `last.pdfHash` is null, enabling cache lookup for last-project PDF; IndexedDB backup: local-only restore (key `'local'`) when Open without save; local backup checked first on boot; visibilitychange and debounced backup (1s after dirty) for annotation capture before tab close; config via `config.js` (SUPABASE_SETUP.md)
-- **Dev auth bypass** — `?devAuth=1` URL param (localhost) or "Sign in as test user" in auth modal; `canUseDevAuth()`, `devAuthSignIn()`; requires `DEV_AUTH_EMAIL` and `DEV_AUTH_PASSWORD` in config.js; for automated testing
-- **View links** — Share modal "View links" section: create, list, copy URL, access log, revoke; URL `?t=TOKEN`; `get-view-project` Edge Function (no JWT); email domain gate (clickplumbing.com); `viewCacheGet`/`viewCachePut` for IndexedDB; `viewLinkEmailModal`; `initViewOnlyMode(viewToken)` on boot when `?t=` present
-- **PDF size limit** — When Supabase is enabled, PDF uploads over 50 MB are rejected with an alert (Supabase storage limit)
-- **Artboard** — In User Settings (Supabase): Save Artboard, Load from Cloud, Export Artboard; saves counters, line types, plumbingModifiers (Quick Count Size/Type/Material), lineModifiers (Quick Line Size/Material) to user profile; `mySettingsSaveAirboard`, `mySettingsLoadAirboard`, `mySettingsExportAirboard`
-- **Page rotation** — Per-page `page.rotation` (0/90/180/270); rotate button (↻) in zoom bar next to zoom controls; `rotatePage90()`, `rotateAnnotations()`, `rotatePoint90CW()`; annotations transform on rotate; notes text rotates with page; persisted in save/load
-- **Counter/Line Type details modal** — Edit pen (✎) on counter or line type row opens `counterLineTypeDetailsModal`; Name (editable), Color (swatch), On pages (clickable jump), Delete (count=0 immediate; count>0 confirm + remove markers/lines); row click selects for placing; `openCounterLineTypeDetailsModal`, `performDeleteCounterLineType`
-- **Line drops** — Per-line `startDrop` and `endDrop` (page scale units) for vertical runs; X markers at endpoints when drop > 0; total length via `getLineLengthPdfPts`; Line Properties modal (edit pen or context menu "Line Properties"): read-only **Line type** line (`#linePropertiesLineType`, centered) from `lineTypeId` / `state.lineTypes` (em dash if type missing); Name, Color, Start drop, End drop, +1/+10/-10/-1/Clear buttons, Edit vertices for polylines; sidebar Lines list shows drops below length; persisted in save/load and export/import
-- **Mobile sidebar redundancy** — User and Project Settings buttons hidden on mobile (`#authBtnSidebar`, `#settingsSidebarBtn`); icons in sidebar logo provide same access
-- **Manage Projects Force turn-in** — Admin can force turn-in from Manage Projects modal per checked-out row; `list_projects_for_admin` returns `checked_out_by`, `checked_out_at`, `checked_out_email` (migration 025)
-- **Admin User Activity** — `userActivityModal` (admin): **Events** tab uses `list_user_activity_for_admin` plus `list_users_for_admin` for toolbar (user select, text filter on `state.userActivityAllRowsCache`); **Summary** tab uses `list_user_activity_summary_for_admin` (rolling 1d/7d/30d event counts, last sign-in). Header `manageUserModalAllActivityBtn` opens all-users activity; per-row activity icon opens single-user. In this modal only, times use `USER_ACTIVITY_TZ` (`America/Chicago`): `formatUserActivityDateTime` for event rows; `formatLastSignInUserActivity` for Summary last sign-in (calendar Today/Yesterday vs UTC rolling). Manage Users / All Users tables still use `formatLastSignIn` (browser-local). Summary subtitle notes day buckets are CST, not UTC.
-- **Realtime force turn-in notification** — When admin force turns in, user with project open gets toast "Project was turned in. You can check out to edit again." and UI switches to view mode via `refreshProjectPermissions`; `subscribeToProjectCheckoutChanges` on projects table
-- **Turn In** — Button labeled "Turn In Project"; always does canvas-only save (performAutoSave when dirty) + check_in_project; PDF upload skipped; toast when PDF still local ("PDF saved locally—use Name / Upload / Save Project to add it to the project"); if flush-before-turn-in hits checkout expiry (`CHECKOUT_EXPIRED`), Save Status bell + log (`pushSaveEvent('checkout_expired')`) + one-shot `CHECKOUT_EXPIRED_TOAST_MSG` (gated by `checkoutExpiredToastShown`) + `suspendAutoSaveUntilCheckout` halts the autosave loop until re-checkout; `withTimeout` on performAutoSave and check_in_project RPC to prevent hang
-- **Copy view link button** — Header button left of gear; copies most recent view link (creates if none); hidden when viewer; `.copied` class for feedback
-- **View link create permission** — Only owners and editors can create view links; copyViewLinkBtn and shareViewLinkCreate hidden when `state.isViewer`
-- **Canvas browsing in View mode** — Viewers can switch active canvas via pills and layers dropdown; change is local (no markProjectDirty); Add canvas and Edit canvas remain restricted
-- **Undo/Redo** — Last 5 moves in local memory; buttons in bottom bar next to rotate; Ctrl+Z / Ctrl+Shift+Z; cleared on load or when viewer
-- **Middle mouse pan** — Hold middle mouse button to pan regardless of active tool; move SVG cursor during pan
-- **Summary count detail modal** — Click count or line in sidebar Summary opens modal with page breakdown and thumbnails
-- **Summary legend overlay** — Overlay on canvas showing counters and line totals; `state.showLegendOverlay` (default true); legend button toggles; draggable via header bar; resizable via bottom-right grip (16×16 hit area); Legend Settings: bg/text opacity, color, Show border, Legend size (50–400%), Highlight resize area; `ann.legend` has `{ x, y, w, h, userResized? }`; `userResized` preserves manual size across renders; window mousemove/mouseup for resize/drag when cursor leaves canvas
-- **Grid overlay** — Overlay on canvas with spacing grid; `state.showGridOverlay` (default false); grid button toggles; when enabled, prompts for spacing in `gridSettingsModal`; `state.gridSettings` has `{ spacing, unit, offsetX, offsetY, opacity, color, lineWidth, lineStyle, majorInterval?, snapToGrid }`; modal layout: origin row (Set origin on page, Snap counters to grid); Line color, Major line every N lines; Line opacity and Line width in one row; line style (solid/dashed/dotted) centered; `drawGrid` draws in PDF-space using page scale, lines left/above and right/below origin; `snapToGrid(pdf, pageIdx)` snaps counter placement when enabled; grid is view-only (not exported to PDF); persisted in save/load; `resetGridOrigin()` clears offset when new document loaded (PDF upload, Prepare PDF commit, Load test PDF, Close project)
-- **Copy Summary (Email/Text)** — Export Options dropdown (`#copySummaryTextDropdown`) with options: This Canvas Only (hidden when single page), All Visible Canvases, All Canvases; copies counts and lines as plain text for email/paste via `getEmailTextSummary(options)`; menu pops up when no space below
-- **Footer totals** — `#statusTotals` span right after `#statusCoords` in the status bar shows `[N | L unit]` (e.g. `[65 | 2,450 ft]`) — total counter count and total line length across every page and every canvas, with multiply zones and scale zones already applied; cached behind `footerTotalsCache` / `footerTotalsDirty` flag set by `markProjectDirty`, plus an automatic size-change check on `pageCount`/`counterCount`/`lineTypeCount` so project load/close/import paths recompute without touching their mutation sites; hidden when no project loaded; `Number#toLocaleString()` for thousands separators; unit picked by `pickScaleForLineType` (matches legend/sidebar); `font-variant-numeric: tabular-nums` to prevent digit width jitter on mousemove
-- **Verbose save logging (Save Status modal)** — Checkbox in the Save Status modal actions row toggles `localStorage.clickcount-debug-save` via `setSaveDebugEnabled`; when on, every `saveDebugLog(phase, payload)` call tees into the in-modal activity log as kind `debug` (detail capped at 4 KB) and `pruneSaveStatusLog` retains 60 minutes instead of 5 (`SAVE_STATUS_LOG_VERBOSE_MS = 3600000` vs `SAVE_STATUS_LOG_MS = 300000`); activity heading text flips between "Activity (last 5 minutes)" and "Activity (last 60 minutes)"; survives reloads since the flag is in localStorage
-- **Export / Copy logs (Save Status modal)** — Two buttons in the modal actions row package the in-memory activity log plus a compact environment snapshot via `buildSaveLogsEnvelope()` (schema `clickcount-save-logs/v1`; includes user, browser UA/network info from `captureNetworkInfoDetail`, sync timing counters, `getProjectSummaryForLogs` counts-only summary, and the full `saveStatusLog`); Export downloads `clickcount-save-logs-{ISO}.json` via Blob + `URL.createObjectURL` + anchor click + revoke; Copy uses `navigator.clipboard.writeText` with a hidden-textarea + `execCommand('copy')` fallback for older browsers; per-Turn-In stage events (`turn_in_start`, `turn_in_stage` × N with elapsedMs, `turn_in_ok` / `turn_in_err` / `turn_in_already_released` enriched with `{elapsedMs, stage, attempt, online, network}`) make the exported envelope a complete timeline of a failing Turn In
+Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
+
+### Tools & drawing
+
+- **Move button** — toggles active when `state.tool === TOOL.NONE`.
+- **Set Scale button** — dynamic label: "Set Scale" -> "Scale 1 ft = X" when set;
+  clicking when set restarts. Hidden in header once scale is set.
+- **Set Scale modal** — tabs: Select two points, Architectural & Engineering
+  presets; Custom scale (fraction e.g. `1/4` or `0.25`, feet, Apply). In zone mode
+  (`scaleModalApplyTarget === 'zone'`) Apply writes `scaleZones[].scale` instead of
+  `page.scale`.
+- **Scale crosshair** — plus icon at scale point A/B.
+- **Set Scale first toasts** — for Quick Line / Polyline / Measure when no scale.
+- **Choose Line Type modal** — tabs Choose | Create | Quick; search; `L` opens
+  modal, `Shift+L` opens Quick tab.
+- **Counter modal** — tabs Choose Counter / Create Counter; 9-color palette (no
+  white); selected icon outlined.
+- **Line button / Quick Line restart** — tapping Line again clears the start point.
+- **Quick line preview** — line renders from first click to cursor while placing.
+- **Quick Line Escape** — first Escape removes first point; second exits to Move.
+- **Line selection highlight** — selected line drawn thicker with glow;
+  `selectedLineId` / `selectedLinePageIdx`.
+- **Line drops** — per-line `startDrop` / `endDrop` (page-scale units) for vertical
+  runs; X markers at endpoints when drop > 0; included in totals via
+  `getLineLengthPdfPts`; Line Properties modal (`#linePropertiesLineType` shows the
+  source line type) edits Name, Color, drops, +1/+10/-10/-1/Clear, polyline vertex
+  edit.
+- **Line types curveStyle** — `'straight'` (default) or `'arc'`; arc quick lines
+  render as quadratic Beziers and use arc length for totals; persisted in
+  save/load and export/import.
+- **Measure tool** (`D`) — two-click distance; toast uses the enclosing Scale
+  Zone's scale when both clicks fall in one zone, else page scale; available in
+  view mode.
+- **Multiply Zone tool** (`X`) — two-click rectangle; multiplies counts and line
+  lengths for items whose endpoints fall inside; `ann.multiplyZones`; first
+  containing zone wins; settings via right-click on the toolbar icon; hidden for
+  viewers.
+- **Scale Zone tool** — two-click rectangle with a per-zone `scale`; lines fully
+  inside use `getEffectiveScaleForLine`; requires page scale; no overlap; context
+  menu Edit scale / Delete; toolbar icon is the Set Scale glyph rotated 180.
+- **Delete Zone tool** — two-click rectangle; confirmation modal with counts;
+  deletes counters/lines/polylines/highlights/notes/zones whose anchor falls in the
+  rect; hidden for viewers.
+- **Highlight annotation** (`H`) — two-click low-opacity rectangle;
+  `page.annotations.highlights`.
+- **Note annotation** (`N`) — click to place, modal for text; red text; resizable
+  width and font size; moveable; double-click or context Edit to edit.
+- **Page rotation** (`R`) — per-page `page.rotation` (0/90/180/270); annotations
+  and notes transform; persisted.
+- **Snap to H/V** (`J`) — header toggle (right of Polyline when Line/Polyline
+  selected) and Line Type Settings; `snapToHorizontalVertical`.
+
+### Counters / line types / sidebar
+
+- **Counter Settings** — click "Counters" heading: icon size, opacity, number
+  size, outline, show ring (size, opacity, solid toggle); "Show only counters on
+  current page" filter. Ring section only visible when rings on.
+- **Line Type Settings** — click "Line Types" heading: opacity, line size, drop X
+  size + icon style, orient length with line direction, parallel ends, length
+  label size, snap to H/V, "show only line types/lines on current page".
+- **Counter button dynamic icon** — `counterBtn` / `counterBtnSidebar` show the
+  active counter's icon + color when Counter tool is active.
+- **Counter/Line Type details modal** — edit pen opens
+  `counterLineTypeDetailsModal` (Name, Color, On pages jump, Delete; count>0
+  confirms).
+- **Counter/Line Type row** — row click selects for placing.
+- **Custom icon upload** — Create Counter / Counter Details have a "+ Upload" cell;
+  SVG parsed for path/rect/circle/ellipse/line; stored per-user in IndexedDB
+  (`customIconPaths`), in-memory cache; included in export/import; "Custom Icons"
+  label opens the tips modal; Manage Icons has an Edit/Delete-selected section.
+- **Bundled custom icons** — SVGs in `my-counters/` -> `npm run build:icons` ->
+  paste into `CUSTOM_ICONS` in [icons.js](icons.js) (see [CUSTOM_ICONS.md](CUSTOM_ICONS.md)).
+- **Groups** — assign counters/lines to a group; `groupAssignModal` + `groupModal`
+  (Add/Edit); Show group colors toggle.
+- **Quick Plumbing / Quick Count / Quick Line** — modifier-driven quick creation
+  (Size / Type / Material; `plumbingModifiers`, `lineModifiers`); type-to-icon
+  mapping via `iconByType`.
+- **Sidebar collapse** — click collapse icon or adjacent space to minimize a
+  section; Groups and Lines start minimized.
+- **Pages title truncation** — long titles split start/end across two lines;
+  toggled by clicking the "Pages" heading; `pagesTitlesTruncated`.
+- **Pages badges** — `badge-scale-set` (yellow number when scale set),
+  `badge-has-ann` (yellow outline when the page has any annotation).
+- **Marked page navigation** — guillemet buttons jump to previous/next page with
+  annotations.
+
+### Output
+
+- **Show Report** — `#showReportDropdown` (this canvas / all canvases on page / all
+  plan pages current canvas / all pages and canvases); opens report in a new tab
+  via `printReport(mode)`; hidden when no counts/lines.
+- **Export PDFs** — `#specificPagesModal`: marker/line size sliders (25-150%),
+  Include takeoff report / Bundle highlights / Bundle notes toggles, per-page
+  marked/unmarked/exclude thumbnails, bulk actions; `downloadSpecificPages()`.
+- **Copy to PipeTooling** — `#forPipeToolingDropdown` (drop-up): This Canvas Only /
+  All Visible Canvases / All Canvases; tab-delimited via `getPipeToolingSummary`.
+- **Copy Summary (Email/Text)** — `#copySummaryTextDropdown`, same canvas options,
+  via `getEmailTextSummary`.
+- **Show Highlights / Show Notes** — open summaries in a new tab; toggles in the
+  Export PDFs modal bundle them into the PDF.
+- **Download current page** — `#downloadCurrentPageBtn` (yellow printer): direct
+  download for single page+canvas, otherwise a mode dropdown (this canvas / all
+  canvases on page / all pages current canvas / all pages and canvases);
+  `downloadCurrentPageAsPdf(mode)`.
+- **Download PDF** — Project Settings downloads the project PDF as-is; Prepare PDF
+  modal "Download Trimmed PDF" downloads kept pages.
+- **Export / Import Canvas** — JSON canvas export/import (Advanced + header export
+  dropdown + sidebar); export gated by `projectHasAnyCanvasMarkup()`.
+- **Summary count detail modal** — click a count/line in the Summary for a per-page
+  breakdown with thumbnails.
+- **Footer totals** — `#statusTotals` shows `[N | L unit]` across all pages and
+  canvases with multiply/scale zones applied; cached via `getFooterTotalsCached`.
+
+### Overlays
+
+- **Summary legend overlay** — `state.showLegendOverlay` (default true); draggable,
+  resizable; `legendSettingsModal` for appearance; `ann.legend` `{x,y,w,h,userResized?}`.
+- **Grid overlay** — `state.showGridOverlay` (default false); `gridSettingsModal`
+  (spacing, unit, origin, snap, color, major interval, opacity, width, style);
+  `drawGrid`; view-only (not exported); `resetGridOrigin()` on new document.
+
+### Canvas layers
+
+- **Multiple canvases per page** — each `page.canvases[]` is an overlay layer;
+  active layer per page in `state.activeCanvasIdByPage`; pills + layers dropdown;
+  Up/Down arrows switch layers; viewers can browse layers locally (no dirty).
+
+### Editing aids
+
+- **Undo/Redo** — last 5 moves in memory; `undoStack`/`redoStack`; Ctrl+Z /
+  Ctrl+Shift+Z; cleared on load/switch/viewer.
+- **Middle mouse pan** — hold middle button to pan regardless of tool.
+- **Canvas context menu** — `#contextMenu` on right-click / long-press;
+  `handleContextMenu` -> `hitTest` -> `state.ctxTarget`; `#ctxTargetNameRow` shows
+  the counter/line-type name below Delete; not available in view mode.
+- **Hotkeys** — M/S/C/L/J/P/D/H/X/N/R; Shift+C / Shift+L open Quick tabs; arrows:
+  Left/Right page nav (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z /
+  Ctrl+Shift+Z; Ctrl+R refresh; ignored while focus is in an input/textarea.
+- **Macros modal** — Keyboard Shortcuts reference, opened from Project Settings.
+
+### Cloud (Supabase)
+
+- **Supabase Phase 1 & 2** — admin-provisioned auth, projects + PDF storage; see
+  [SUPABASE_SETUP.md](SUPABASE_SETUP.md). Cloud features hidden when
+  `SUPABASE_ENABLED` is false. PDF uploads limited to 50 MB.
+- **Save / Load project** — `saveProjectModal` (contents list, Include PDF toggle,
+  size in MB); `loadProjectModal` via `list_accessible_projects` (search +
+  filters: Mine/Shared, role, admin owner dropdown; counts badge; Canvas-only
+  badge); save-before-load prompt.
+- **Auto-save** — every 5s when dirty (Supabase signed-in, else localStorage); 5s
+  localStorage backup for all users; PDF IndexedDB cache; last-project restore
+  prompts Keep/Discard. The save/sync system is heavily hardened against flaky
+  networks and wedged clients — see [CHANGELOG.md](CHANGELOG.md) for the full
+  detail. Key symbols: `performAutoSave`, `performSaveProjectToCloud`,
+  `markProjectDirty`, `noteAutoSaveOutcome`, `runRecoveryProbe`,
+  `recreateSupabaseClient`, raw-fetch fallbacks (`rawProjectsUpdate` /
+  `rawProjectsInsert` / `rawCheckInProject`).
+- **Save Status** — header bell + in-modal bell open `saveStatusModal`; gray
+  normally, yellow on sync failure or checkout expiry, dim when offline;
+  300s/3600s `saveStatusLog`; Verbose mode, Copy logs, Export logs
+  (`buildSaveLogsEnvelope`, schema `clickcount-save-logs/v1`).
+- **Sharing / checkout** — `project_shares`; one editor at a time via
+  checkout/turn-in; 30-minute inactivity expiry with keep-alive; admin force
+  turn-in; realtime notifications via `subscribeToProjectCheckoutChanges`.
+- **Checkout expired recovery** — recovery modal + silent auto-recheckout
+  (`tryAutoRecheckoutIfAllowed`, `handleBackgroundCheckoutExpired`); see CHANGELOG.
+- **View links** — `project_view_links` + `view_link_access_log`; Share modal
+  create/list/copy/access-log/revoke; `?t=TOKEN`; `get-view-project` Edge Function;
+  email domain gate; `initViewOnlyMode`.
+- **Artboard** — User Settings save/load counters, line types, and modifiers to the
+  user profile (`user_airboard`).
+- **Admin** — Add/Manage/All Users, Manage Projects (delete + force turn-in), User
+  Activity (Events + Summary, Chicago time), Global force reload
+  (`admin_trigger_global_reload`, `system_settings`).
+- **Dev auth bypass** — `?devAuth=1` (localhost) or "Sign in as test user";
+  requires `DEV_AUTH_EMAIL` / `DEV_AUTH_PASSWORD` in `config.js`.
+
+## Migrations naming
+
+`supabase/migrations/` contains two naming schemes: legacy numbered
+`NNN_name.sql` (001-041) and Supabase-CLI timestamped `YYYYMMDDHHMMSS_name.sql`.
+Apply in version order (numbered first, then timestamped); see
+[SUPABASE_SETUP.md](SUPABASE_SETUP.md) for per-migration notes. New migrations
+should be applied via the Supabase MCP `apply_migration` tool.

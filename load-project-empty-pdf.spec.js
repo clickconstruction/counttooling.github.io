@@ -17,17 +17,31 @@ test.describe('Load Project with empty PDF in storage', () => {
       return;
     }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
-    await page.waitForLoadState('networkidle');
 
-    // Intercept Supabase storage downloads and return 0-byte response
+    // Start from clean local state so no cached PDF / last-project restore
+    // interferes; the only PDF source then is the (intercepted) download.
+    await page.addInitScript(() => {
+      try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
+      try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+    });
+
+    // Neutralize the actual Supabase storage PDF *download* (GET of the object)
+    // so resolvePdfBufferForCloudProject sees a 0-byte blob. Leave info/sign/
+    // list/upload calls alone so the rest of the load flow still works.
     await page.route('**/storage/v1/object/**', async (route) => {
-      const url = route.request().url();
-      if (url.includes('download') || url.includes('object/public')) {
+      const req = route.request();
+      const url = req.url();
+      const isDownload = req.method() === 'GET'
+        && /\/storage\/v1\/object\/(authenticated\/)?pdfs\//.test(url)
+        && !url.includes('/info/');
+      if (isDownload) {
         return route.fulfill({ status: 200, body: Buffer.from([]), headers: { 'Content-Type': 'application/pdf' } });
       }
       return route.continue();
     });
+
+    await page.goto('/?devAuth=1');
+    await page.waitForLoadState('networkidle');
 
     // Open Project Settings then Load Project
     await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());
@@ -61,9 +75,10 @@ test.describe('Load Project with empty PDF in storage', () => {
     // Load Project modal should close
     await expect(page.locator('#loadProjectModal')).not.toHaveClass(/visible/, { timeout: 8000 });
 
-    // Toast should show our message
-    const toast = page.locator('#airboardToastModal.visible');
-    await expect(toast).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('#airboardToastText')).toContainText(/empty or missing|Upload your PDF/i);
+    // Empty/missing PDF now opens the canvas-only "Choose PDF" modal (not a toast)
+    const needsPdfModal = page.locator('#canvasOnlyNeedsPdfModal.visible');
+    await expect(needsPdfModal).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#canvasOnlyNeedsPdfTitle')).toContainText(/PDF is missing|annotations but no PDF/i);
+    await expect(page.locator('#canvasOnlyNeedsPdfChoose')).toBeVisible();
   });
 });

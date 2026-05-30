@@ -1,0 +1,147 @@
+// Node unit tests for the pure primitives in geometry.js.
+// Run with: npm run test:unit  (uses the built-in node:test runner; no deps)
+const test = require('node:test');
+const assert = require('node:assert');
+const g = require('./geometry.js');
+
+const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ~= ${b}`);
+
+test('ptDist', () => {
+  assert.strictEqual(g.ptDist({ x: 0, y: 0 }, { x: 3, y: 4 }), 5);
+  assert.strictEqual(g.ptDist({ x: 1, y: 1 }, { x: 1, y: 1 }), 0);
+});
+
+test('snapToHorizontalOrVertical', () => {
+  // mostly horizontal -> snap y to start
+  assert.deepStrictEqual(g.snapToHorizontalOrVertical(0, 0, 10, 2), { x: 10, y: 0 });
+  // mostly vertical -> snap x to start
+  assert.deepStrictEqual(g.snapToHorizontalOrVertical(0, 0, 2, 10), { x: 0, y: 10 });
+});
+
+test('polylineDistance open and closed', () => {
+  const pts = [{ x: 0, y: 0 }, { x: 0, y: 10 }, { x: 10, y: 10 }];
+  assert.strictEqual(g.polylineDistance(pts), 20);
+  assert.strictEqual(g.polylineDistance(pts, true), 20 + Math.sqrt(200));
+  assert.strictEqual(g.polylineDistance(null), 0);
+  assert.strictEqual(g.polylineDistance([{ x: 0, y: 0 }]), 0);
+});
+
+test('polygonArea', () => {
+  const square = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  assert.strictEqual(g.polygonArea(square), 100);
+  // winding direction should not matter (uses abs)
+  assert.strictEqual(g.polygonArea(square.slice().reverse()), 100);
+});
+
+test('distToSegment', () => {
+  const a = { x: 0, y: 0 }, b = { x: 10, y: 0 };
+  assert.strictEqual(g.distToSegment({ x: 5, y: 3 }, a, b), 3); // perpendicular
+  assert.strictEqual(g.distToSegment({ x: -4, y: 0 }, a, b), 4); // beyond start clamps to a
+  assert.strictEqual(g.distToSegment({ x: 0, y: 0 }, a, a), 0); // degenerate segment
+});
+
+test('quadratic bezier helpers', () => {
+  const p0 = { x: 0, y: 0 }, p1 = { x: 5, y: 0 }, p2 = { x: 10, y: 0 };
+  // collinear midpoint control -> the curve is the straight line, midpoint at t=0.5 is (5,0)
+  assert.deepStrictEqual(g.quadraticBezierPoint(0.5, p0, p1, p2), { x: 5, y: 0 });
+  // length is a 20-step polyline approximation (~10; slightly undershoots due to the
+  // float t-loop dropping the final step). Lock it as "approximately the chord length".
+  close(g.quadraticBezierLength(p0, p1, p2), 10, 0.6);
+  // control point is offset perpendicular to the chord
+  const ctrl = g.getQuadraticBezierControlPoint(p0, p2, 1);
+  assert.strictEqual(ctrl.x, 5);
+  close(Math.abs(ctrl.y), 10 * 0.15, 1e-9);
+  // distance from a point on the curve is ~0
+  assert.ok(g.distToQuadraticBezier({ x: 5, y: 0 }, p0, p1, p2) < 1e-6);
+});
+
+test('rotatePoint90CW', () => {
+  assert.deepStrictEqual(g.rotatePoint90CW({ x: 2, y: 3 }, 100, 50), { x: 50 - 3, y: 2 });
+});
+
+test('pointInRect inside, outside, edge (unordered corners)', () => {
+  assert.strictEqual(g.pointInRect({ x: 5, y: 5 }, 0, 0, 10, 10), true);
+  assert.strictEqual(g.pointInRect({ x: 50, y: 5 }, 0, 0, 10, 10), false);
+  assert.strictEqual(g.pointInRect({ x: 0, y: 0 }, 0, 0, 10, 10), true); // edge inclusive
+  assert.strictEqual(g.pointInRect({ x: 5, y: 5 }, 10, 10, 0, 0), true); // corners reversed
+});
+
+test('rectsOverlap', () => {
+  assert.strictEqual(g.rectsOverlap(0, 0, 10, 10, 5, 5, 15, 15), true);
+  assert.strictEqual(g.rectsOverlap(0, 0, 10, 10, 20, 20, 30, 30), false);
+  assert.strictEqual(g.rectsOverlap(0, 0, 10, 10, 10, 10, 20, 20), true); // touching corner
+});
+
+test('getMultiplyZoneForPoint', () => {
+  const ann = { multiplyZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, multiplier: 4 }] };
+  assert.strictEqual(g.getMultiplyZoneForPoint(ann, { x: 5, y: 5 }), 4);
+  assert.strictEqual(g.getMultiplyZoneForPoint(ann, { x: 50, y: 5 }), 1); // miss -> 1
+  assert.strictEqual(g.getMultiplyZoneForPoint({}, { x: 5, y: 5 }), 1); // no zones
+});
+
+test('getMultiplyZoneForLine requires both endpoints inside', () => {
+  const ann = { multiplyZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, multiplier: 3 }] };
+  assert.strictEqual(g.getMultiplyZoneForLine(ann, { x1: 1, y1: 1, x2: 9, y2: 9 }, false), 3);
+  assert.strictEqual(g.getMultiplyZoneForLine(ann, { x1: 1, y1: 1, x2: 99, y2: 9 }, false), 1); // one end out
+  // polyline form uses first/last point
+  assert.strictEqual(g.getMultiplyZoneForLine(ann, { points: [{ x: 2, y: 2 }, { x: 50, y: 50 }, { x: 8, y: 8 }] }, true), 3);
+});
+
+test('getScaleZoneForLine gates on a present scale and both endpoints', () => {
+  const withScale = { scaleZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, scale: { pixelsPerUnit: 2, unit: 'ft' } }] };
+  const noScale = { scaleZones: [{ x1: 0, y1: 0, x2: 10, y2: 10 }] };
+  assert.strictEqual(g.getScaleZoneForLine(withScale, { x1: 1, y1: 1, x2: 9, y2: 9 }, false), withScale.scaleZones[0]);
+  assert.strictEqual(g.getScaleZoneForLine(noScale, { x1: 1, y1: 1, x2: 9, y2: 9 }, false), null); // no scale on zone
+  assert.strictEqual(g.getScaleZoneForLine(withScale, { x1: 1, y1: 1, x2: 99, y2: 9 }, false), null); // one end out
+});
+
+test('formatLineLengthRealSum', () => {
+  assert.strictEqual(g.formatLineLengthRealSum(12.345, { pixelsPerUnit: 2, unit: 'ft' }), '12.35 ft');
+  assert.strictEqual(g.formatLineLengthRealSum(0, null), '0');
+  assert.strictEqual(g.formatLineLengthRealSum(7.6, null), '8 px');
+});
+
+test('parseRealWorldLength', () => {
+  // The first number is always parsed as FEET; `unit` only picks the output units.
+  close(g.parseRealWorldLength("3", 'ft'), 3);
+  close(g.parseRealWorldLength("3 6", 'ft'), 3 + 6 / 12); // 3 ft 6 in -> 3.5 ft
+  assert.strictEqual(g.parseRealWorldLength("18", 'in'), 18 * 12); // 18 ft expressed in inches
+  assert.strictEqual(g.parseRealWorldLength("1 6", 'in'), 1 * 12 + 6); // 1 ft 6 in -> 18 in
+  close(g.parseRealWorldLength("2.5", 'm'), 2.5); // non ft/in -> plain number
+  assert.strictEqual(g.parseRealWorldLength("", 'ft'), null);
+  assert.strictEqual(g.parseRealWorldLength("abc", 'm'), null);
+});
+
+test('parseFraction', () => {
+  assert.strictEqual(g.parseFraction('1/4'), 0.25);
+  assert.strictEqual(g.parseFraction('0.5'), 0.5);
+  assert.strictEqual(g.parseFraction('1/0'), null); // div by zero
+  assert.strictEqual(g.parseFraction('0'), null); // not > 0
+  assert.strictEqual(g.parseFraction(''), null);
+  assert.strictEqual(g.parseFraction('abc'), null);
+});
+
+test('formatAgo ladder boundaries', () => {
+  assert.strictEqual(g.formatAgo(0), 'Just now');
+  assert.strictEqual(g.formatAgo(59), 'Just now');
+  assert.strictEqual(g.formatAgo(60), '1min ago');
+  assert.strictEqual(g.formatAgo(3599), '59min ago');
+  assert.strictEqual(g.formatAgo(3600), '1hr ago');
+  assert.strictEqual(g.formatAgo(86399), '23hr ago');
+  assert.strictEqual(g.formatAgo(86400), '1d ago');
+  assert.strictEqual(g.formatAgo(2 * 86400), '2d ago');
+});
+
+test('formatFeetInchesFromVal', () => {
+  // ft: floor feet + rounded inches, with carry at 12"
+  assert.strictEqual(g.formatFeetInchesFromVal(5, 'ft'), `5'-0"`);
+  assert.strictEqual(g.formatFeetInchesFromVal(5.5, 'ft'), `5'-6"`);
+  assert.strictEqual(g.formatFeetInchesFromVal(5.99, 'ft'), `6'-0"`); // 11.88" rounds to 12 -> carry
+  // in: < 12 stays inches-only, >= 12 becomes ft-in
+  assert.strictEqual(g.formatFeetInchesFromVal(7, 'in'), `7"`);
+  assert.strictEqual(g.formatFeetInchesFromVal(18, 'in'), `1'-6"`);
+  // yd: value is in yards -> *3 feet
+  assert.strictEqual(g.formatFeetInchesFromVal(2, 'yd'), `6'-0"`);
+  // other unit: decimal fallback
+  assert.strictEqual(g.formatFeetInchesFromVal(2.5, 'm'), '2.50 m');
+});

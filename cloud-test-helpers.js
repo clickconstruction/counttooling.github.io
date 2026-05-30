@@ -56,13 +56,10 @@ async function ensureSignedInWithProject(page) {
   await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());
   await page.waitForSelector('#settingsModal.visible', { timeout: 3000 });
 
-  // Expand Advanced and click Load test PDF
-  const advancedSection = page.locator('#settingsAdvancedSection');
-  if (await advancedSection.evaluate((el) => el.classList.contains('collapsed'))) {
-    await page.locator('#settingsAdvancedHeader').click();
-    await page.waitForTimeout(200);
-  }
-  await page.locator('#settingsLoadTestPdf').click();
+  // Open the Advanced modal and click Load test PDF
+  await page.locator('#settingsAdvancedBtn').click();
+  await page.waitForSelector('#settingsAdvancedModal.visible', { timeout: 5000 });
+  await page.locator('#advancedLoadTestPdf').click();
 
   // Wait for Prepare PDF modal and click Save and Open
   await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });

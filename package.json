@@ -4,7 +4,11 @@
   "private": true,
   "scripts": {
     "build:icons": "node scripts/build-custom-icons.js",
+    "build:toc": "node scripts/build-toc.js",
+    "lint": "eslint . --max-warnings 0",
+    "check": "npm run lint && npm run test:unit && npm run build:toc -- --check",
     "test": "playwright test",
+    "test:unit": "node --test",
     "precloudtest": "node scripts/generate-config.js",
     "test:cloud": "npm run precloudtest && playwright test load-project-delete.spec.js load-project-empty-pdf.spec.js",
     "test:delete-page": "playwright test delete-page.spec.js",
@@ -15,6 +19,9 @@
     "test:custom-icon-paths": "playwright test custom-icon-paths-indexeddb.spec.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.49.0",
+    "eslint": "^9.39.4",
+    "globals": "^17.6.0"
   }
 }

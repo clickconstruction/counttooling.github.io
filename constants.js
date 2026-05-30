@@ -1,0 +1,144 @@
+/*
+ * constants.js - Pure, module-level constant literals for ClickCount, extracted
+ * verbatim from index.html.
+ *
+ * Loaded as a classic <script src="constants.js"> in <head>, BEFORE the main IIFE.
+ * These top-level `const` declarations live in the shared global lexical scope,
+ * so the main script in index.html resolves them by bare name.
+ *
+ * Everything here is a plain literal/object/array with no reference to `state`,
+ * `window`, `location`, the live `supabase` client, or icon data. Environment
+ * reads (SUPABASE_*, BACKUP_PDF_TO_INDEXEDDB, IS_DEV_HOST), icon-derived consts,
+ * and all function-local consts stay in index.html. No build step.
+ */
+
+// --- Domain enums & defaults ---
+const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9, DELETE_ZONE: 10, SCALE_ZONE: 11 };
+const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
+const PLUMBING_DEFAULTS = {
+  sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in'],
+  types: ['Tee', 'Coupling', '90', 'Reducer', 'Drop Ear', 'Male Adapter', 'Female Adapter', 'Ball Valve'],
+  materials: ['PEX', 'Brass', 'BI', 'Galv']
+};
+const LINE_DEFAULTS = {
+  sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in', '3in', '4in'],
+  materials: ['PEX', 'Brass', 'BI', 'Galv']
+};
+const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47','#2c3e50','#8b4513','#ff6b6b','#6366f1','#059669','#f59e0b','#0ea5e9','#7c3aed','#e11d48'];
+const SCALE_PRESETS = [
+  { label: '1/6" = 1\'', pixelsPerUnit: 12, unit: 'ft' },
+  { label: '1/16" = 1\'', pixelsPerUnit: 72 / 16, unit: 'ft' },
+  { label: '3/32" = 1\'', pixelsPerUnit: 72 * 3 / 32, unit: 'ft' },
+  { label: '1/8" = 1\'', pixelsPerUnit: 72 / 8, unit: 'ft' },
+  { label: '3/16" = 1\'', pixelsPerUnit: 72 * 3 / 16, unit: 'ft' },
+  { label: '1/4" = 1\'', pixelsPerUnit: 72 / 4, unit: 'ft' },
+  { label: '3/8" = 1\'', pixelsPerUnit: 72 * 3 / 8, unit: 'ft' },
+  { label: '1/2" = 1\'', pixelsPerUnit: 72 / 2, unit: 'ft' },
+  { label: '3/4" = 1\'', pixelsPerUnit: 72 * 3 / 4, unit: 'ft' },
+  { label: '1" = 1\'', pixelsPerUnit: 72, unit: 'ft' },
+  { label: '1 1/2" = 1\'', pixelsPerUnit: 72 * 1.5, unit: 'ft' },
+  { label: '3" = 1\'', pixelsPerUnit: 72 * 3, unit: 'ft' },
+  { label: '1" = 10\'', pixelsPerUnit: 72 / 10, unit: 'ft' },
+  { label: '1" = 20\'', pixelsPerUnit: 72 / 20, unit: 'ft' },
+  { label: '1" = 30\'', pixelsPerUnit: 72 / 30, unit: 'ft' },
+  { label: '1" = 40\'', pixelsPerUnit: 72 / 40, unit: 'ft' },
+  { label: '1" = 50\'', pixelsPerUnit: 72 / 50, unit: 'ft' },
+  { label: '1" = 60\'', pixelsPerUnit: 72 / 60, unit: 'ft' },
+  { label: '1" = 70\'', pixelsPerUnit: 72 / 70, unit: 'ft' },
+  { label: '1" = 80\'', pixelsPerUnit: 72 / 80, unit: 'ft' },
+  { label: '1" = 90\'', pixelsPerUnit: 72 / 90, unit: 'ft' },
+  { label: '1" = 100\'', pixelsPerUnit: 72 / 100, unit: 'ft' }
+];
+
+// --- Autosave / checkout timing & thresholds ---
+const AUTO_SAVE_INTERVAL_MS = 5000;
+const AUTOSAVE_TIMEOUT_MS = 15000;
+const STORAGE_INFO_TIMEOUT_MS = 3000;
+const CLIENT_PROBE_TIMEOUT_MS = 5000;
+const CLIENT_RECYCLE_COOLDOWN_MS = 30000;
+const DIRTY_SNAPSHOT_THRESHOLD_MS = 10 * 60 * 1000;
+const CHECK_IN_TIMEOUT_MS = 10000;
+const LONG_IDLE_PROBE_MS = 5 * 60 * 1000;
+const TURN_IN_STALENESS_MS = 5 * 60 * 1000;
+const AUTOSAVE_BACKOFF_LEVELS_MS = [5000, 15000, 30000, 60000];
+const AUTOSAVE_BANNER_THRESHOLD = 3;
+const AUTOSAVE_RECOVERY_THRESHOLD = 5;
+const AUTOSAVE_RECOVERY_TIMEOUT_MS = 5000;
+const AUTOSAVE_SLOW_MS = 1000;
+const AUTOSAVE_SLOW_WINDOW = 20;
+const AUTOSAVE_SLOW_DEBOUNCE_MS = 60000;
+const AUTOSAVE_SLOW_MIN_SAMPLES = 10;
+const GLOBAL_RELOAD_STAMP_KEY = 'clickcount-last-global-reload';
+const CHECKOUT_INACTIVITY_MS = 30 * 60 * 1000;
+const CHECKOUT_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
+const CHECKOUT_KEEPALIVE_MS = 10 * 60 * 1000;
+const CHECKOUT_NEAR_EXPIRY_MS = 5 * 60 * 1000;
+const CHECKOUT_SOFT_GRACE_MS = 60 * 1000;
+const AUTO_RECHECKOUT_MAX_PER_PROJECT = 3;
+const AUTO_RECHECKOUT_MIN_GAP_MS = 5000;
+const AUTO_RECHECKOUT_COOLDOWN_MS = 30 * 60 * 1000;
+const REFRESH_PERMISSIONS_TIMEOUT_MS = 8000;
+const PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS = [1000, 3000, 10000, 30000];
+const PDF_ONESHOT_BACKOFF_MS = 30000;
+
+// --- Activity / presence ---
+const ACTIVITY_HIGH_FREQ_MS = 60000;
+const ACTIVITY_PROJECT_SAVE_MS = 5 * 60 * 1000;
+
+// --- Save Status log & checkout messages ---
+const SAVE_STATUS_LOG_MS = 300000;
+const SAVE_STATUS_LOG_VERBOSE_MS = 3600000;
+const CHECKOUT_EXPIRED_SAVE_STATUS_MSG = 'Edit session expired; check out again to continue editing.';
+const CHECKOUT_EXPIRED_TOAST_MSG = 'Your edit session expired while idle. Check out again to keep editing.';
+
+// --- Global force reload stamps ---
+const PENDING_GLOBAL_RELOAD_STAMP_KEY = 'clickcount-pending-global-reload';
+
+// --- Undo/redo ---
+const UNDO_STACK_SIZE = 5;
+
+// --- IndexedDB store names & caps ---
+const PDF_CACHE_DB = 'clickcount-pdf-cache';
+const PDF_CACHE_STORE = 'pdfs';
+const PDF_CACHE_META_STORE = 'meta';
+const VIEW_PDFS_STORE = 'view_pdfs';
+const VIEW_PDFS_META_STORE = 'view_pdfs_meta';
+const TAKEOFF_BACKUP_STORE = 'takeoff_backup';
+const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
+const CUSTOM_ICONS_STORE = 'custom_icons';
+const SAVE_LOGS_SNAPSHOT_STORE = 'save_logs_snapshots';
+const PDF_CACHE_MAX_ENTRIES = 10;
+const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
+const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
+const TAKEOFF_BACKUP_MAX_BYTES = 200 * 1024 * 1024;
+const SAVE_LOGS_SNAPSHOT_MAX_ENTRIES = 10;
+const CUSTOM_ICONS_KEY = 'user';
+
+// --- PDF / misc ---
+const PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase storage limit)
+const LOAD_TEST_PDF_URL = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf';
+const USER_ACTIVITY_TZ = 'America/Chicago';
+
+// Node test harness only: in a classic browser <script> `module` is undefined,
+// so this is a no-op there and the declarations above stay plain globals.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    TOOL, SCALE_MODES, PLUMBING_DEFAULTS, LINE_DEFAULTS, COLORS, SCALE_PRESETS,
+    AUTO_SAVE_INTERVAL_MS, AUTOSAVE_TIMEOUT_MS, STORAGE_INFO_TIMEOUT_MS, CLIENT_PROBE_TIMEOUT_MS,
+    CLIENT_RECYCLE_COOLDOWN_MS, DIRTY_SNAPSHOT_THRESHOLD_MS, CHECK_IN_TIMEOUT_MS, LONG_IDLE_PROBE_MS,
+    TURN_IN_STALENESS_MS, AUTOSAVE_BACKOFF_LEVELS_MS, AUTOSAVE_BANNER_THRESHOLD, AUTOSAVE_RECOVERY_THRESHOLD,
+    AUTOSAVE_RECOVERY_TIMEOUT_MS, AUTOSAVE_SLOW_MS, AUTOSAVE_SLOW_WINDOW, AUTOSAVE_SLOW_DEBOUNCE_MS,
+    AUTOSAVE_SLOW_MIN_SAMPLES, GLOBAL_RELOAD_STAMP_KEY, CHECKOUT_INACTIVITY_MS, CHECKOUT_REFRESH_DEBOUNCE_MS,
+    CHECKOUT_KEEPALIVE_MS, CHECKOUT_NEAR_EXPIRY_MS, CHECKOUT_SOFT_GRACE_MS, AUTO_RECHECKOUT_MAX_PER_PROJECT,
+    AUTO_RECHECKOUT_MIN_GAP_MS, AUTO_RECHECKOUT_COOLDOWN_MS, REFRESH_PERMISSIONS_TIMEOUT_MS,
+    PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS, PDF_ONESHOT_BACKOFF_MS,
+    ACTIVITY_HIGH_FREQ_MS, ACTIVITY_PROJECT_SAVE_MS,
+    SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_EXPIRED_SAVE_STATUS_MSG, CHECKOUT_EXPIRED_TOAST_MSG,
+    PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE,
+    PDF_CACHE_DB, PDF_CACHE_STORE, PDF_CACHE_META_STORE, VIEW_PDFS_STORE, VIEW_PDFS_META_STORE,
+    TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE, CUSTOM_ICONS_STORE, SAVE_LOGS_SNAPSHOT_STORE,
+    PDF_CACHE_MAX_ENTRIES, PDF_CACHE_MAX_BYTES, TAKEOFF_BACKUP_MAX_ENTRIES, TAKEOFF_BACKUP_MAX_BYTES,
+    SAVE_LOGS_SNAPSHOT_MAX_ENTRIES, CUSTOM_ICONS_KEY,
+    PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ
+  };
+}

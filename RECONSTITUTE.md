@@ -23,9 +23,13 @@ real-world line lengths and produces reports/exports.
   `<link>` / `<script src>`: [index.html](index.html) holds the HTML shell,
   every modal, and the main JS IIFE; [styles.css](styles.css) holds all CSS;
   [icons.js](icons.js) is a classic script loaded before the IIFE that defines
-  the bundled icon data (`*_PATH` consts, `VB_384_512_PATHS`, `CUSTOM_ICONS`,
-  `ICONS`) in the shared global lexical scope; [report.js](report.js) loads
-  after it and reads globals exposed on `window`.
+  the bundled icon data (`*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`,
+  `RING_PATH`, `CUSTOM_ICONS`, `ICONS`) in the shared global lexical scope;
+  [geometry.js](geometry.js) is a classic script loaded before the IIFE that
+  defines pure math/geometry/parse primitives (`ptDist`, `polylineDistance`,
+  `pointInRect`, zone locators, `parseFraction`, etc.) with no `state`
+  dependency; [report.js](report.js) loads after it and reads globals exposed
+  on `window`.
 - Third-party libs via CDN: pdf.js (render), pdf-lib (PDF manipulation),
   html2canvas + jsPDF (report/PDF export), supabase-js (optional cloud).
 - Cloud (Supabase) is **optional**: gated by `SUPABASE_ENABLED`

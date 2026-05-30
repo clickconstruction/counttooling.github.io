@@ -18,8 +18,13 @@
   `<link>` / `<script src>` and sharing state through `window` globals and the
   shared global lexical scope — [index.html](index.html) (HTML shell + modals +
   the main JS IIFE), [styles.css](styles.css) (all CSS), [icons.js](icons.js)
-  (bundled icon data: `*_PATH` consts, `VB_384_512_PATHS`, `CUSTOM_ICONS`,
-  `ICONS`; classic script loaded before the IIFE), and [report.js](report.js).
+  (bundled icon data: `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`,
+  `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic script loaded before the IIFE),
+  [geometry.js](geometry.js) (pure math/geometry/parse primitives: `ptDist`,
+  `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers,
+  `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, zone locators,
+  `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`; classic
+  script loaded before the IIFE; no `state` dependency), and [report.js](report.js).
 - [report.js](report.js) loads after index.html and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
   `formatDist`, `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,

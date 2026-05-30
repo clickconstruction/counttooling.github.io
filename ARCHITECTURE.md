@@ -16,14 +16,16 @@ Implementation history (e.g. the sync-hardening work) lives in
 |------|---------|
 | [index.html](index.html) | The app: HTML structure + every modal, and the main JS IIFE |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
-| [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before the IIFE; values resolve in the shared global lexical scope |
+| [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before the IIFE; values resolve in the shared global lexical scope |
+| [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`; classic `<script src>` loaded before the IIFE; no `state` dependency |
 | [report.js](report.js) | Loads after index.html. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals from index.html |
 
 High level: the `<head>` of [index.html](index.html) loads `config.js`, the CDN
-libs (pdf.js, pdf-lib, html2canvas, jsPDF, supabase-js), `styles.css`, and
-`icons.js`. The body holds the app shell + every modal. The bulk is a single JS
-IIFE; `report.js` is included last. The icon-data and CSS were lifted out into
-`icons.js` / `styles.css` (no build step — plain `<link>` / `<script src>`).
+libs (pdf.js, pdf-lib, html2canvas, jsPDF, supabase-js), `styles.css`,
+`icons.js`, and `geometry.js`. The body holds the app shell + every modal. The
+bulk is a single JS IIFE; `report.js` is included last. The CSS, icon data, and
+pure geometry/parse primitives were lifted out into `styles.css` / `icons.js` /
+`geometry.js` (no build step — plain `<link>` / `<script src>`).
 
 ## Section index (grep `// SECTION:`)
 
@@ -38,7 +40,7 @@ In rough order:
 - Save Status log & envelope — `pushSaveEvent`, `buildSaveLogsEnvelope(WithSnapshots)`, `autosaveEventDetail`, `captureNetworkInfoDetail`
 - Dirty tracking & local session reset — `markProjectDirty`, `dirtyGeneration`, `resetLocalSessionState`, `resetAutosaveDegradedState`
 - Checkout probe, hashing & PDF cache — `probeCheckoutLock`, `sha256Hex`, `pdfCachePut`/`pdfCacheGet`, takeoff backup IDB helpers
-- Math & Format Helpers — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, `getPageScale`, `pickScaleForLineType`, scale-zone/line-length helpers, `formatDist`, `parseFraction`
+- Math & Format Helpers — the state-coupled helpers: `getPageScale`, `pickScaleForLineType`, `quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `formatDist`, `formatArea`, `rotateAnnotations` (the pure primitives `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers, `pointInRect`, zone locators, `parseFraction`, etc. live in [geometry.js](geometry.js))
 - Save Status modal — `renderSaveStatusModalContent`, `openSaveStatusModal`
 - Coordinate Helpers — `getClientCoords`, `canvasRect`, `toCanvas`, `pdfPos`, `canvasToPdf`, `hitTest`, `isPointInPageBounds`
 - PDF Rendering — `renderPdf`, `renderAnnotations`, `renderAnnotationsToContext`, `drawDropMarker`, `drawGrid`, `drawLegend`

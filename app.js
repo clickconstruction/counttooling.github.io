@@ -6613,8 +6613,13 @@
   }
   if (legendBtn) legendBtn.onclick = toggleLegendOverlay;
   if (legendBtnSidebar) legendBtnSidebar.onclick = () => legendBtn?.click();
-  const gridBtn = document.getElementById('gridBtn');
-  const gridBtnSidebar = document.getElementById('gridBtnSidebar');
+  // The Grid Settings modal (toggleGridOverlay + the gridBtn/gridBtnSidebar
+  // bindings + the #gridSettings* / #gridSetOriginOnPage / #gridClearOrigin /
+  // spacing-preset / line-style handlers) moved to features/grid.js (window.App
+  // registry); reached via App.toggleGridOverlay / the Grid buttons. The
+  // "set origin on page" handoff goes through state.gridOriginPickMode (handled by
+  // the canvas event handler). resetGridOrigin stays here (used by the prepare-PDF
+  // / page-setup flows, not the modal).
   function resetGridOrigin() {
     if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
     state.gridSettings.offsetX = 0;
@@ -6626,133 +6631,6 @@
     if (setGrp) setGrp.style.display = '';
     if (txt) txt.textContent = '—';
   }
-  function toggleGridOverlay() {
-    if (!state.pages.length) return;
-    if (state.showGridOverlay) {
-      state.showGridOverlay = false;
-      markProjectDirty();
-      renderPdf();
-      updateUI();
-      return;
-    }
-    if (!getPageScale(state.currentPage)) {
-      showSetScaleFirstToast('Grid overlay');
-      return;
-    }
-    let gs = state.gridSettings || { spacing: 3, unit: 'ft' };
-    if (gs.unit === 'in') {
-      gs = { ...gs, spacing: gs.spacing / 12, unit: 'ft' };
-      state.gridSettings = state.gridSettings ? { ...state.gridSettings, ...gs } : gs;
-    }
-    document.getElementById('gridSpacingValue').value = gs.spacing != null ? String(gs.spacing) : '3';
-    document.getElementById('gridSpacingUnit').value = gs.unit || 'ft';
-    const ox = gs.offsetX ?? 0, oy = gs.offsetY ?? 0;
-    const hasOrigin = ox !== 0 || oy !== 0;
-    const disp = document.getElementById('gridOriginDisplay');
-    const txt = document.getElementById('gridOriginText');
-    disp.style.display = hasOrigin ? '' : 'none';
-    document.getElementById('gridSetOriginFormGroup').style.display = hasOrigin ? 'none' : '';
-    txt.textContent = hasOrigin ? (ox.toFixed(2) + ', ' + oy.toFixed(2) + ' ' + (gs.unit || 'ft')) : '—';
-    document.getElementById('gridMajorInterval').value = gs.majorInterval != null && gs.majorInterval > 0 ? String(gs.majorInterval) : '';
-    const opacityPct = Math.round((gs.opacity ?? 0.35) * 100);
-    document.getElementById('gridOpacity').value = opacityPct;
-    document.getElementById('gridOpacityVal').textContent = opacityPct;
-    document.getElementById('gridColor').value = gs.color || '#e8c547';
-    document.getElementById('gridColorHex').textContent = (gs.color || '#e8c547').toLowerCase();
-    const lw = gs.lineWidth ?? 1;
-    document.getElementById('gridLineWidth').value = lw;
-    document.getElementById('gridLineWidthVal').textContent = lw;
-    document.getElementById('gridLineStyle').value = gs.lineStyle || 'solid';
-    document.querySelectorAll('.grid-line-style-opt').forEach(b => {
-      b.classList.toggle('selected', b.dataset.style === (gs.lineStyle || 'solid'));
-    });
-    const snapCb = document.getElementById('gridSnapToGrid');
-    const snapBtn = document.getElementById('gridSnapToGridBtn');
-    snapCb.checked = gs.snapToGrid === true;
-    snapBtn.setAttribute('aria-pressed', snapCb.checked);
-    document.getElementById('gridOpacity').oninput = () => { document.getElementById('gridOpacityVal').textContent = document.getElementById('gridOpacity').value; };
-    document.getElementById('gridLineWidth').oninput = () => { document.getElementById('gridLineWidthVal').textContent = document.getElementById('gridLineWidth').value; };
-    document.getElementById('gridColor').oninput = () => { document.getElementById('gridColorHex').textContent = document.getElementById('gridColor').value.toLowerCase(); };
-    snapBtn.onclick = (e) => {
-      e.preventDefault();
-      snapCb.checked = !snapCb.checked;
-      snapBtn.setAttribute('aria-pressed', snapCb.checked);
-    };
-    showModal('gridSettingsModal');
-  }
-  if (gridBtn) gridBtn.onclick = toggleGridOverlay;
-  if (gridBtnSidebar) gridBtnSidebar.onclick = () => gridBtn?.click();
-  document.getElementById('gridSettingsCancel').onclick = () => hideModal('gridSettingsModal');
-  document.getElementById('gridSetOriginOnPage').onclick = () => {
-    if (!getPageScale(state.currentPage)) {
-      showToast('Set Scale first');
-      return;
-    }
-    hideModal('gridSettingsModal');
-    state.gridOriginPickMode = true;
-    showToast('Click on the plan to set grid origin');
-    updateUI();
-  };
-  document.getElementById('gridClearOrigin').onclick = () => {
-    if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
-    state.gridSettings.offsetX = 0;
-    state.gridSettings.offsetY = 0;
-    document.getElementById('gridOriginDisplay').style.display = 'none';
-    document.getElementById('gridSetOriginFormGroup').style.display = '';
-    document.getElementById('gridOriginText').textContent = '—';
-    renderPdf();
-    updateUI();
-  };
-  document.querySelectorAll('.gridSpacingPreset').forEach(btn => {
-    btn.onclick = () => {
-      document.getElementById('gridSpacingValue').value = btn.dataset.spacing;
-      document.getElementById('gridSpacingUnit').value = btn.dataset.unit;
-    };
-  });
-  document.querySelectorAll('.grid-line-style-opt').forEach(btn => {
-    btn.onclick = () => {
-      document.getElementById('gridLineStyle').value = btn.dataset.style;
-      document.querySelectorAll('.grid-line-style-opt').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    };
-  });
-  document.getElementById('gridSettingsApply').onclick = () => {
-    const unit = document.getElementById('gridSpacingUnit').value;
-    const val = parseRealWorldLength(document.getElementById('gridSpacingValue').value, unit);
-    if (!val || val <= 0) {
-      showToast('Enter a valid spacing');
-      return;
-    }
-    if (!getPageScale(state.currentPage)) {
-      showToast('Set Scale first to use grid overlay');
-      return;
-    }
-    const offsetXVal = state.gridSettings?.offsetX ?? 0;
-    const offsetYVal = state.gridSettings?.offsetY ?? 0;
-    const majorInt = parseInt(document.getElementById('gridMajorInterval').value, 10);
-    const opacityVal = parseInt(document.getElementById('gridOpacity').value, 10) / 100;
-    const colorVal = document.getElementById('gridColor').value || '#e8c547';
-    const lineWidthVal = parseFloat(document.getElementById('gridLineWidth').value) || 1;
-    const lineStyleVal = document.getElementById('gridLineStyle').value || 'solid';
-    const snapToGridVal = document.getElementById('gridSnapToGrid').checked;
-    state.gridSettings = {
-      spacing: val,
-      unit,
-      offsetX: offsetXVal,
-      offsetY: offsetYVal,
-      opacity: opacityVal,
-      color: colorVal,
-      lineWidth: lineWidthVal,
-      lineStyle: lineStyleVal,
-      majorInterval: (majorInt > 0 ? majorInt : null),
-      snapToGrid: snapToGridVal
-    };
-    state.showGridOverlay = true;
-    hideModal('gridSettingsModal');
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  };
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 
   // The Scale modal handlers (#scaleModalTabs tabs, #scaleUnit, #scaleSelectOnPdf,
@@ -7277,108 +7155,12 @@
     updateUI();
   });
 
-  // SECTION: Quick Line modal
-  function populateQuickLineModal() {
-    const mods = getLineModifiers();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const sizeSel = document.getElementById('quickLineSize');
-    const materialSel = document.getElementById('quickLineMaterial');
-    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
-    materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
-    updateQuickLineNamePreview();
-    const swatchEl = document.getElementById('quickLineSwatch');
-    if (swatchEl) {
-      swatchEl.onclick = () => {
-        const mods = getLineModifiers();
-        showLineColorModal(mods.defaultColor || COLORS[2], (color) => {
-          mods.defaultColor = color;
-          saveLineModifiers(mods);
-          swatchEl.style.background = color;
-        });
-      };
-      swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
-    }
-    document.getElementById('quickLineRemoveSize').disabled = mods.sizes.length <= 1;
-    document.getElementById('quickLineRemoveMaterial').disabled = mods.materials.length <= 1;
-  }
-  function updateQuickLineNamePreview() {
-    const size = document.getElementById('quickLineSize').value;
-    const material = document.getElementById('quickLineMaterial').value;
-    const name = [size, material].filter(Boolean).join(' ');
-    const nameEl = document.getElementById('quickLineName');
-    if (nameEl) nameEl.value = name;
-    const swatchEl = document.getElementById('quickLineSwatch');
-    if (swatchEl) swatchEl.style.background = getLineModifiers().defaultColor || COLORS[2];
-  }
-  document.getElementById('plumLineBtn').onclick = () => {
-    populateQuickLineModal();
-    App.showLineTypeTab('quick');
-    showModal('chooseLineTypeModal');
-  };
-  document.getElementById('quickLineSize').onchange = updateQuickLineNamePreview;
-  document.getElementById('quickLineMaterial').onchange = updateQuickLineNamePreview;
-  function removeLineModifier(kind, selectId) {
-    const sel = document.getElementById(selectId);
-    const value = sel?.value;
-    if (!value) return;
-    const mods = getLineModifiers();
-    const arr = mods[kind];
-    if (arr.length <= 1) return;
-    const idx = arr.indexOf(value);
-    if (idx < 0) return;
-    arr.splice(idx, 1);
-    saveLineModifiers(mods);
-    populateQuickLineModal();
-    sel.value = arr[0] || arr[Math.max(0, idx - 1)];
-    updateQuickLineNamePreview();
-  }
-  document.getElementById('quickLineRemoveSize').onclick = () => removeLineModifier('sizes', 'quickLineSize');
-  document.getElementById('quickLineRemoveMaterial').onclick = () => removeLineModifier('materials', 'quickLineMaterial');
-  document.getElementById('quickLineAddSize').onclick = () => {
-    const v = prompt('Enter new size:');
-    if (v && v.trim()) {
-      const mods = getLineModifiers();
-      mods.sizes.push(v.trim());
-      saveLineModifiers(mods);
-      populateQuickLineModal();
-      document.getElementById('quickLineSize').value = v.trim();
-      updateQuickLineNamePreview();
-    }
-  };
-  document.getElementById('quickLineAddMaterial').onclick = () => {
-    const v = prompt('Enter new material:');
-    if (v && v.trim()) {
-      const mods = getLineModifiers();
-      mods.materials.push(v.trim());
-      saveLineModifiers(mods);
-      populateQuickLineModal();
-      document.getElementById('quickLineMaterial').value = v.trim();
-      updateQuickLineNamePreview();
-    }
-  };
-  document.getElementById('quickLineCancel').onclick = () => hideModal('chooseLineTypeModal');
-  document.getElementById('quickLineAdd').onclick = () => {
-    const size = document.getElementById('quickLineSize').value;
-    const material = document.getElementById('quickLineMaterial').value;
-    const computedName = [size, material].filter(Boolean).join(' ');
-    const nameInput = document.getElementById('quickLineName');
-    const name = (nameInput?.value?.trim() || computedName) || 'Line';
-    const mods = getLineModifiers();
-    const color = mods.defaultColor || COLORS[2];
-    const curveSel = document.querySelector('input[name="quickLineCurve"]:checked');
-    const curveStyle = curveSel ? curveSel.value : 'straight';
-    pushUndoSnapshot();
-    const newLt = { id: uid(), name, color, curveStyle };
-    state.lineTypes.push(newLt);
-    state.activeLineTypeId = newLt.id;
-    markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
-    hideModal('chooseLineTypeModal');
-    updateUI();
-  };
-
+  // SECTION: Add Line Type modal
+  // The Quick Line modal (populateQuickLineModal, updateQuickLineNamePreview,
+  // removeLineModifier + the #plumLineBtn opener and the #quickLine* handlers)
+  // moved to features/quick-line.js (window.App registry), which now registers
+  // App.populateQuickLineModal (consumed by features/choose-create-line-type.js).
+  // getLineModifiers/saveLineModifiers stay here (published as App.*).
   document.getElementById('addLineType').onclick = () => {
     document.getElementById('lineTypeName').value = '';
     const cr = document.getElementById('lineTypeColorRow');
@@ -14236,7 +14018,8 @@
   App.DROP_ICON_STYLES = DROP_ICON_STYLES;
   App.TOOL = TOOL;
   App.COLORS = COLORS;
-  App.populateQuickLineModal = populateQuickLineModal;
+  App.getLineModifiers = getLineModifiers;
+  App.saveLineModifiers = saveLineModifiers;
   App.SCALE_MODES = SCALE_MODES;
   App.SCALE_PRESETS = SCALE_PRESETS;
   App.ptDist = ptDist;
@@ -14244,6 +14027,8 @@
   App.parseRealWorldLength = parseRealWorldLength;
   App.getActiveAnnotations = getActiveAnnotations;
   App.deleteGroup = deleteGroup;
+  App.getPageScale = getPageScale;
+  App.showSetScaleFirstToast = showSetScaleFirstToast;
 
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;

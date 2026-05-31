@@ -205,6 +205,8 @@ module.exports = [
         jspdf: 'readonly',
         html2canvas: 'readonly',
         PDFLib: 'readonly',
+        // report.js global, resolved at export time (report.js loads after)
+        buildReportHtml: 'readonly',
       },
     },
     rules: {

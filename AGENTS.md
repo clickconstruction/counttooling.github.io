@@ -619,7 +619,17 @@ mode).
 - Save Status: a header bell and an in-modal bell open `saveStatusModal` (gray
   normally; yellow on sync failure or checkout expiry; dim when offline). The modal
   shows a rolling activity log with Verbose mode, Copy logs, and Export logs
-  (`buildSaveLogsEnvelope`, schema `clickcount-save-logs/v1`).
+  (`buildSaveLogsEnvelope`, schema `clickcount-save-logs/v1`). The export envelope
+  carries diagnostic context for user-reported save/sync errors: `tabSessionId`
+  (per-tab id), `timing` (token expiry `sessionExpiresAt`/`secondsToExpiry`,
+  degradation metrics `clientRecycles`/`autosaveLatencyP50`/`P95`/`degradedForMs`/
+  `nextAutoSaveAttemptInMs`), `project` (checkout ownership +
+  `dataJsonBytes`/`pdfBufferBytes`/`nearPdfCap`), `storage`
+  (`navigator.storage.estimate`) + `lastLocalBackup`, and `visibility` on autosave
+  events. Failed raw-fetch saves attach server request IDs via
+  `extractResponseDiagnostics` (`requestId`/`cfRay`/`retryAfter`/`serverDate`) -- but
+  those headers only surface if Supabase exposes them via `Access-Control-Expose-Headers`.
+  Every serialized error carries a `transient` triage flag (`isTransientSaveError`).
 - Sharing uses checkout/turn-in (one editor at a time, 30-minute inactivity expiry
   with keep-alive). Admins can force turn-in. Expiry surfaces a recovery modal with
   silent auto-recheckout under it. Symbols: `doTurnIn`,

@@ -309,6 +309,25 @@ expired recovery UX" work occupies that slot).
 - **Save Status verbose mode** — `localStorage.clickcount-debug-save` (via
   `setSaveDebugEnabled`) tees `saveDebugLog` into `saveStatusLog` as kind `debug`
   (4 KB cap) and extends the rolling window from 5 to 60 minutes.
+- **Save Status diagnostic enrichment** — the export envelope
+  (`buildSaveLogsEnvelope`, still schema `clickcount-save-logs/v1` — additive) gained
+  fields to make user-reported save/sync errors root-causable: `tabSessionId`;
+  `timing.sessionExpiresAt`/`secondsToExpiry` (JWT-expiry class on long-open tabs);
+  `timing.clientRecycles`/`autosaveLatencyP50`/`P95`/`autosaveLatencyN`/`degradedForMs`/
+  `nextAutoSaveAttemptInMs` (surfacing already-computed degradation); `project`
+  checkout ownership (`checkedOutBy`/`Email`/`At`/`AgoMs`, `canCheckOut`,
+  `projectOwnerId`, `loadedViaViewLink`) and payload sizing
+  (`dataJsonBytes`/`pdfBufferBytes`/`nearPdfCap`, computed export-time only);
+  `storage` (`navigator.storage.estimate`) + `lastLocalBackup` `{at, ok}`; and
+  `visibility` on autosave events. Failed raw-fetch saves attach server
+  request-correlation IDs (`serializeSaveError`'s pure sibling
+  `extractResponseDiagnostics` -> `requestId`/`cfRay`/`retryAfter`/`serverDate`) at
+  `rawProjectsUpdate`/`rawProjectsInsert`/`rawCheckInProject` + the recovery probe.
+  Caveat: those response headers are only readable when Supabase sends
+  `Access-Control-Expose-Headers` for them, so `requestId` can be null even when one
+  exists server-side. Every serialized error now carries a `transient` triage flag
+  (`isTransientSaveError`). New pure helpers `extractResponseDiagnostics` /
+  `secondsToExpiry` live in `save-utils.js` (unit-tested).
 - **Manual-save PDF-mismatch guard** — Save Project modal blocks at a confirm when
   `!includePdf && state.pdfHash !== projects.pdf_hash` (`manual_save_canceled` /
   `manual_save_pdf_mismatch_accepted`), preventing saving new-PDF annotations against

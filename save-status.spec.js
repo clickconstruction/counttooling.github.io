@@ -66,4 +66,25 @@ test.describe('window.App registry pilot - Save Status modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('export envelope carries the diagnostic enrichment fields', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const env = await page.evaluate(async () => await window.App.buildSaveLogsEnvelopeWithSnapshots());
+
+    // Schema stays v1 (additive); the new top-level + timing + project diagnostic
+    // keys are present.
+    expect(env.schema).toBe('clickcount-save-logs/v1');
+    expect(typeof env.tabSessionId).toBe('string');
+    expect(env.tabSessionId.length).toBeGreaterThan(0);
+    for (const k of ['sessionExpiresAt', 'secondsToExpiry', 'clientRecycles', 'autosaveLatencyP95', 'degradedForMs', 'nextAutoSaveAttemptInMs']) {
+      expect(k in env.timing).toBe(true);
+    }
+    // project is null until a project is loaded, but the key exists; lastLocalBackup
+    // is always attached by the async builder.
+    expect('project' in env).toBe(true);
+    expect(env.lastLocalBackup && typeof env.lastLocalBackup === 'object').toBe(true);
+    expect('ok' in env.lastLocalBackup).toBe(true);
+  });
 });

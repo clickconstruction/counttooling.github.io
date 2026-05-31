@@ -78,11 +78,14 @@ test('getProjectCounts: sums across multiple pages and canvases', () => {
   assert.deepStrictEqual(s.getProjectCounts(data), { counter_count: 6, line_count: 5 });
 });
 
-test('serializeSaveError: extracts the log-safe field set', () => {
+test('serializeSaveError: extracts the log-safe field set + transient flag', () => {
   const e = Object.assign(new Error('boom'), { code: 'X1', status: 500, details: 'd', hint: 'h' });
   assert.deepStrictEqual(s.serializeSaveError(e), {
-    message: 'boom', name: 'Error', code: 'X1', status: 500, details: 'd', hint: 'h',
+    // status 500 -> transient (worth one retry)
+    message: 'boom', name: 'Error', code: 'X1', status: 500, details: 'd', hint: 'h', transient: true,
   });
+  // a definite failure (401) is not transient
+  assert.strictEqual(s.serializeSaveError({ status: 401, message: 'unauthorized' }).transient, false);
 });
 
 test('serializeSaveError: null -> {}, message falls back to String(e)', () => {
@@ -129,4 +132,26 @@ test('percentile: p95 of a known array; empty -> null', () => {
   assert.strictEqual(s.percentile([42], 0.95), 42);
   assert.strictEqual(s.percentile([], 0.95), null);
   assert.strictEqual(s.percentile(null, 0.95), null);
+});
+
+test('extractResponseDiagnostics: pulls request-correlation headers via .get', () => {
+  const make = (map) => ({ get: (k) => (k in map ? map[k] : null) });
+  assert.deepStrictEqual(
+    s.extractResponseDiagnostics(make({ 'sb-request-id': 'req-1', 'cf-ray': 'ray-1', 'retry-after': '5', date: 'Sat, 30 May 2026 00:00:00 GMT' })),
+    { requestId: 'req-1', cfRay: 'ray-1', retryAfter: '5', serverDate: 'Sat, 30 May 2026 00:00:00 GMT' },
+  );
+  // falls back to x-request-id when sb-request-id is absent
+  assert.strictEqual(s.extractResponseDiagnostics(make({ 'x-request-id': 'req-2' })).requestId, 'req-2');
+  // absent headers / no .get / throwing .get -> all null, never throws
+  assert.deepStrictEqual(s.extractResponseDiagnostics(make({})), { requestId: null, cfRay: null, retryAfter: null, serverDate: null });
+  assert.deepStrictEqual(s.extractResponseDiagnostics(null), { requestId: null, cfRay: null, retryAfter: null, serverDate: null });
+  assert.deepStrictEqual(s.extractResponseDiagnostics({ get: () => { throw new Error('x'); } }), { requestId: null, cfRay: null, retryAfter: null, serverDate: null });
+});
+
+test('secondsToExpiry: epoch-seconds expiry relative to nowMs; missing -> null', () => {
+  const nowMs = 1_000_000_000_000; // -> 1_000_000_000 s
+  assert.strictEqual(s.secondsToExpiry(1_000_000_300, nowMs), 300); // 5 min out
+  assert.strictEqual(s.secondsToExpiry(1_000_000_000 - 60, nowMs), -60); // already expired
+  assert.strictEqual(s.secondsToExpiry(undefined, nowMs), null);
+  assert.strictEqual(s.secondsToExpiry('nope', nowMs), null);
 });

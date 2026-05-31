@@ -319,3 +319,135 @@ expired recovery UX" work occupies that slot).
   trimmed buffer onto `state.pdfBuffer`, appends pages, re-binds `pdfPage` refs to the
   merged document, enforces the 50MB ceiling, and resets `pdfStoragePath` / `pdfHash`
   so the next save re-uploads.
+
+---
+
+## Modularization
+
+A long-running effort to make the codebase more navigable by decomposing the one
+monolithic `app.js` IIFE without a build step (the app stays vanilla
+HTML/CSS/JS, classic `<script src>` only). `app.js` went from ~16.2k to ~13.7k
+lines via two complementary techniques. *Current* structure lives in
+[AGENTS.md](AGENTS.md) ("Tech constraints" / "`window.App` registry") and
+[ARCHITECTURE.md](ARCHITECTURE.md) ("Files" / "Feature files"); this section is
+the history and the rationale behind the patterns.
+
+### Pure-module extraction
+
+Self-contained math/data/format/storage helpers (no `state` / DOM / `window`
+dependency) were lifted into standalone classic scripts loaded **before**
+`app.js`, each ending in a guarded CommonJS export footer (inert in the browser,
+`require()`-able in Node) so a sibling `*.test.js` can unit-test it under
+`node --test`. Where a helper needed `state`-derived values, the pure function
+took them as arguments and `app.js` kept a same-named **thin wrapper** that
+resolves the value and delegates — so call sites (and the `report.js` `window.*`
+contract) never changed.
+
+- [geometry.js](geometry.js) — pure math/geometry/parse primitives (`ptDist`,
+  `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers,
+  `rotatePoint90CW`, zone locators, `parseRealWorldLength`, `formatAgo`, …).
+- [constants.js](constants.js) — module-level constant literals (`TOOL`,
+  `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`,
+  the autosave/checkout timing & threshold block, IndexedDB store names + caps,
+  Save Status log windows, …).
+- [idb.js](idb.js) — the IndexedDB storage layer (`openPdfCacheDb` + the
+  context-free `viewCache*` / `pdfCache*` / `takeoffBackup*` / save-logs
+  accessors + pure primitives); `app.js` keeps the state/logging-coupled
+  `takeoffBackupGet/Put`, `writeSaveLogsSnapshots`, `customIcons*` wrappers.
+  Unit-tested with the `fake-indexeddb` devDependency.
+- [format.js](format.js) — pure date/time/text formatters for the User Activity
+  UI (`formatLastSignIn`, `dateKeyInTimeZone`, `filterUserActivityRows`,
+  `renderUserActivityAllUsersTableHtml`, …); the DOM-coupled
+  `applyUserActivityFilter` / `populateUserActivityUserSelect` stay in `app.js`.
+- [icon-render.js](icon-render.js) — pure icon geometry / render-rule helpers
+  (`CUSTOM_ICON_META`, `iconMetaFromList`, `iconViewBoxFromList`,
+  `iconRenderVbRule`, `iconSvgHtml`, …); the user-icon-cache-coupled
+  `getCustomIconMeta`, `renderIconHtml`, … stay in `app.js` as wrappers that
+  inject `getEffectiveCustomIcons()`. Loaded after [icons.js](icons.js).
+- [line-metrics.js](line-metrics.js) — pure line length/geometry helpers mined
+  from the line-totals region (`getLineGeomPdfPts` and friends), taking
+  scale/zone inputs as arguments; `app.js` keeps the `window.*` wrappers
+  (`quickLineLength`, `getLineLengthForTotals`, …) consumed by `report.js`.
+- [save-utils.js](save-utils.js) — pure save/sync helpers. Started as
+  `isTransientSaveError` / `getProjectCounts`; later expanded with
+  `serializeSaveError`, `formatSaveStatusErrDetail`, `backoffDelayMs`,
+  `computeClockOffsetMs`, and `percentile`, consolidating error-serialization and
+  timing math that had been inline in the sync-hardening code.
+
+ESLint's flat config grew per-module global groups so each pure module sees only
+its own dependencies' exports as `readonly` (avoiding `no-redeclare`), and the
+`app.js` group auto-derives the sibling modules' exports as `readonly` globals.
+
+### `window.App` registry (feature-file splits)
+
+`app.js` is one big IIFE, so code moved to a separate `<script>` can't see its
+closure-locals by bare name. The bridge is a `window.App` registry: `app.js`
+publishes the shared surface near its tail (`App.state = state;
+App.renderPdf = renderPdf; …`), and each `features/<name>.js` is its own IIFE
+that reads deps from `App.*` **at call time** and registers its public entry
+points back onto `App`. Call sites in `app.js` use deferred arrows
+(`() => App.fn()`) so they never capture a binding before the feature file
+loads. Feature files load **after** `app.js` and **before** `report.js`.
+
+Patterns that emerged as the harder modals moved out:
+
+- **Publish-only deps** — a helper used widely in `app.js` stays defined there
+  and is merely exposed on `App` (only the feature's *own* functions relocate).
+- **Getter-accessor** — for engine-owned `let`s that get reassigned
+  (`saveStatusLog`, `checkoutExpiredNeedsAttention`, `supabase`), publish a
+  getter (`App.getX = () => x;`) so features always read the live value, never a
+  stale module-load snapshot.
+- **Deferred wrapper** — sloppy-mode hoisted block-scoped functions assigned at
+  runtime (e.g. `resetAutoRecheckoutCounter`) are published as
+  `App.fn = (...a) => fn(...a)` to defer lookup to call time.
+- **Bidirectional / callback registration** — when a moved modal and `app.js`
+  call each other, both sides register on `App` (or the feature exposes a
+  callback like `App.onGroupModalHidden`).
+
+The 19 feature files in load order, each with a `*.spec.js` Playwright
+regression (cloud-gated specs `test.skip` when Supabase secrets are absent):
+
+1. [features/canvas-repair.js](features/canvas-repair.js) — Canvas Repair modal
+   (first split; introduced the registry).
+2. [features/note.js](features/note.js) — Note add/edit modal.
+3. [features/zoom.js](features/zoom.js) — Zoom Settings modal.
+4. [features/manage-icons.js](features/manage-icons.js) — Manage Icons modal
+   (first multi-region move).
+5. [features/multiply-zone-settings.js](features/multiply-zone-settings.js) —
+   Multiply Zone settings modal.
+6. [features/export-pdfs.js](features/export-pdfs.js) — Export PDFs modal's
+   `specificPages*` cluster (largest single move; 9 publish-only deps).
+7. [features/legend-settings.js](features/legend-settings.js) — Summary Legend
+   settings modal.
+8. [features/page-settings.js](features/page-settings.js) — Page settings modal.
+9. [features/counter-settings.js](features/counter-settings.js) — Counter
+   settings modal (first two-region consolidation).
+10. [features/line-type-settings.js](features/line-type-settings.js) — Line Type
+    settings modal.
+11. [features/choose-create-line-type.js](features/choose-create-line-type.js) —
+    Choose/Create Line Type modal.
+12. [features/scale.js](features/scale.js) — Set Scale modal (per-page / zone
+    scale).
+13. [features/groups.js](features/groups.js) — Group + Group Assign modals
+    (bidirectional callback for modal-hidden).
+14. [features/grid.js](features/grid.js) — Grid overlay toggle + settings.
+15. [features/quick-line.js](features/quick-line.js) — Quick Line modal +
+    line-modifier preview.
+16. [features/counter.js](features/counter.js) — Counter modal (Choose/Create/
+    Icon tabs).
+17. [features/save-status.js](features/save-status.js) — Save Status modal UI
+    (getter-accessor + deferred-wrapper patterns).
+18. [features/manage-projects.js](features/manage-projects.js) — Manage Projects
+    admin modal (Supabase-gated).
+19. [features/user-admin.js](features/user-admin.js) — Manage-Users admin modals
+    (create/delete user, all-users; Supabase-gated).
+
+### Tooling
+
+`npm run check` (lint + `test:unit` + `build:toc --check`) runs on every push/PR
+via [.github/workflows/ci.yml](.github/workflows/ci.yml) (Node 20; Playwright is
+excluded since it needs a server + Supabase/dev-auth secrets). The
+[ARCHITECTURE.md](ARCHITECTURE.md) section index is regenerated from the
+`// SECTION:` markers by `npm run build:toc`
+([scripts/build-toc.js](scripts/build-toc.js)); section markers were renamed or
+removed as their code emptied out into feature files.

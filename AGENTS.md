@@ -24,10 +24,15 @@
   `features/page-settings.js`, `features/counter-settings.js`,
   `features/line-type-settings.js`, `features/choose-create-line-type.js`,
   `features/scale.js`, `features/groups.js`, `features/grid.js`,
-  `features/quick-line.js`, `features/counter.js`), then
+  `features/quick-line.js`, `features/counter.js`, `features/save-status.js`,
+  `features/manage-projects.js`, `features/user-admin.js`,
+  `features/load-project.js`, `features/prepare-pdf.js`,
+  `features/quick-modals.js`), then
   `report.js`),
-  [app.js](app.js) (the entire app logic — the former inline `index.html` IIFE,
-  extracted verbatim into a classic `<script src>`, ~16.2k lines; resolves the
+  [app.js](app.js) (the bulk of the app logic — the former inline `index.html`
+  IIFE, extracted into a classic `<script src>` and since slimmed from ~16.2k to
+  ~13.7k lines as the pure modules + the `window.App` feature-file splits were
+  pulled out; resolves the
   sibling modules' values by bare name and exposes its own helpers to `report.js`
   via `window.*` at the IIFE tail; linted with `no-undef` as error, the rest of
   the recommended set as warnings), [styles.css](styles.css) (all CSS),
@@ -267,7 +272,121 @@
   buttons, the `iconVbFor` global helper) stay in app.js; the many
   `#counterBtn.click()` DOM triggers keep working since the handler moves with the
   element; renamed the `// SECTION: Counter modal` marker to
-  `// SECTION: Tool sidebar buttons & legend overlay` (rename, count stays 48)), and
+  `// SECTION: Tool sidebar buttons & legend overlay` (rename, count stays 48)),
+  [features/save-status.js](features/save-status.js) (the eighteenth registry split
+  and first save/sync-domain UI split — the on-demand Save Status modal
+  (`#saveStatusModal`): `renderSaveStatusModalContent` + `openSaveStatusModal` +
+  the render helpers `escSaveStatusHtml`/`applySaveStatusSummaryBlock` + the bell
+  open buttons and `#saveStatusModalClose`/`#saveStatusModalDone`/
+  `#saveStatusVerboseToggle`/`#saveStatusExportBtn`/`#saveStatusCopyBtn` handlers,
+  with the modal's `saveStatusModalTickTimer` now a private `let`; registers
+  `App.openSaveStatusModal` + `App.renderSaveStatusModalContent`. The **hot-path
+  bell** `updateSaveStatusIndicator` (called from 25+ sites incl. updateUI) and the
+  whole save engine stay in app.js. Seven new publish-only deps
+  (`getCloudSaveSummary`, `pruneSaveStatusLog`, `getSaveStatusLogWindowMs`,
+  `isSaveDebugEnabled`, `setSaveDebugEnabled`, `buildSaveLogsEnvelopeWithSnapshots`,
+  `pushSaveEvent`) plus **two getter accessors** `App.getSaveStatusLog()` and
+  `App.isCheckoutExpiredAttention()` — used instead of value publishes because the
+  underlying app.js vars (`saveStatusLog`, reset to `[]`; `checkoutExpiredNeedsAttention`,
+  many   engine writers) are reassigned and a captured reference would go stale (the
+  getter-accessor pattern to reuse for the eventual SaveManager extraction);
+  reuses `showModal`/`hideModal`/`showToast`. The `#syncPausedBannerRetry` handler
+  stays in app.js. Removed the emptied `// SECTION: Save Status modal` marker,
+  dropping the section count to 47),
+  [features/manage-projects.js](features/manage-projects.js) (the nineteenth
+  registry split — the admin Manage Projects modal (`#manageProjectsModal`):
+  `openManageProjectsModal` (lists projects via the `list_projects_for_admin` RPC)
+  + the internal `forceCheckInProjectFromManage` (`force_check_in_project` RPC) +
+  `deleteProject` (`admin-delete-project` Edge Function) + the
+  `#manageProjectsModalClose` handler; registers `App.openManageProjectsModal`.
+  Cloud-coupled: it reaches the Supabase client via **`App.getSupabase()`** (the
+  second getter-accessor — `supabase` is reassigned by the client-recycle
+  `recreateSupabaseClient`, so a value publish would go stale). Five other new
+  publish-only deps — the env constants `SUPABASE_URL`/`SUPABASE_ANON_KEY` and the
+  engine helpers `updateServerClockFromRpc`/`clearCheckoutExpiredAttention`/
+  `resetAutoRecheckoutCounter` (the last published as a deferred wrapper since it
+  is a sloppy-mode hoisted block declaration); reuses
+  `state`/`showModal`/`hideModal`/`showToast`. The `#settingsManageProjects` opener
+  and the Escape-key close branch stay in app.js (the opener reaches it via
+  `App.openManageProjectsModal`); the auth/settings entry-button block that shared
+  the old grab-bag stays under the renamed marker
+  `// SECTION: Auth & settings entry buttons` (rename, count stays 47)),
+  [features/user-admin.js](features/user-admin.js) (the twentieth registry split —
+  the admin user-management modals: `openManageUserModal` (the user list +
+  delete + activity, via the `list_users_for_admin` RPC / `admin-list-users` Edge
+  Function), `openAllUsersModal` (read-only list), `deleteUser`
+  (`admin-delete-user`), plus the `#manageUsersBtn` create-user opener +
+  `#adminCreateForm` (`admin-create-user`) and the
+  `#adminPanelClose`/`#manageUserModalClose`/`#allUsersModalClose`/
+  `manageUserModalAllActivityBtn` handlers; registers `App.openManageUserModal` +
+  `App.openAllUsersModal`. Three new publish-only deps — `App.formatLastSignIn`
+  (a format.js global, lint-invisible to the features group), `App.USER_ACTIVITY_ICON_SVG`,
+  and `App.openUserActivityModal` (the User Activity modal **stays** in app.js;
+  the moved lists + the all-activity button reach it via `App.*`); reuses the
+  already-published `state`/`showModal`/`hideModal`/`SUPABASE_URL`/`SUPABASE_ANON_KEY`.
+  **My Settings** (`openMySettings`, which owns the airboard cloud-sync) stays in
+  app.js under the renamed marker `// SECTION: My Settings modal`; its
+  `#mySettingsManageUser`/`#mySettingsAllUsers` openers reach the feature via
+  `App.*`, and `#mySettingsManageUsers` opens the create-user panel via a DOM
+  `#manageUsersBtn` click. The moved handlers were interleaved with the User
+  Activity + Canvas Repair handlers (which stay) in the Event Binding region — no
+  marker change there (count stays 47)),
+  [features/load-project.js](features/load-project.js) (the twenty-first registry
+  split and the **most dependency-heavy** so far — the cloud Load Project modal
+  `openLoadProjectModal` (~585 lines: the project browser list, ownership/role
+  filters, per-row access panels + invite, copy/download/delete row actions, and
+  the project-load action). Registers `App.openLoadProjectModal`; the
+  save-before-load gate `openLoadProjectModalOrPromptSave` + the `#loadProject*`
+  bindings + Escape branch stay in app.js and call `App.openLoadProjectModal()`.
+  Because the project-load action is fused with the boot/engine path, the feature
+  reaches ~20 publish-only deps via `App.*` and re-reads `App.getSupabase()` in
+  the outer fn + each nested async helper (the client can be recycled). New
+  publish-only deps: `updateSaveStatusIndicator`, `canUseDevAuth`,
+  `deleteProjectAsOwner`, `openCopyProjectModalOrPromptSave`,
+  `hydrateProjectFromCloudRow`, `clearUndoStacks`,
+  `subscribeToProjectCheckoutChanges`, `checkInCurrentProjectIfHeld`,
+  `takeoffBackupGet`, `resolvePdfBufferForCloudProject`, `ensureGroupColors`,
+  `openCanvasOnlyNeedsPdfModal`, `buildPagesFromPdfArrayBufferAndProjectData`,
+  `backupDataToProjFormat`, `fitZoom`, `SUPABASE_URL`, plus four **setters**
+  (`setAutoSaveDirty`/`setLastModifiedAt`/`setLastLocalBackupAt`/`setLastSaveIncludedPdf`)
+  for engine `let`-state the load action resets (it cannot assign through the
+  registry otherwise). The leftover grab-bag under the old `// SECTION: Load
+  Project modal` marker was re-sectioned into 8 honest markers — Settings menu
+  actions & Airboard sync, My Settings password & Auth sign-in, Save Project
+  modal, Copy project modal, Checkout expired recovery modal wiring,
+  Save-before-load modal, Last-session restore prompt, User Activity filters &
+  view toggle — and the `Canvas Event Handlers` marker moved up to absorb the
+  stray `showContextMenu`),
+  [features/prepare-pdf.js](features/prepare-pdf.js) (the twenty-second registry
+  split — the Prepare PDF modal `openPreparePdfModal` + its preview/nav/render
+  helpers (`renderPreparePdfPreview`, `saveCurrentPageName`,
+  `updatePreparePdfControls`), `preparePdfRotatePage90`, `commitPreparePdfToState`,
+  `closePreparePdfModal`, and the `#preparePdf*` bindings. The ~9 private
+  `preparePdf*` state lets move **with** the feature as module-locals (no
+  setters). Registers `App.openPreparePdfModal` and re-assigns
+  `window.closePreparePdfModal` (inline-HTML/Escape use it). The PDF intake
+  pipeline (file upload, `loadTestPdf`, hashing) **stays** in app.js under the
+  renamed `// SECTION: PDF intake (upload, test PDF, hashing)` marker and opens
+  the modal via `App.openPreparePdfModal()`. Eight publish-only deps — the PDF
+  helpers `assertPdfWithinLimit`/`mergePdfBuffers`/`buildTrimmedPdfBuffer`/
+  `resetGridOrigin`, plus the Save-and-open flow's
+  `writeTakeoffStateBackup`/`downloadPdfBuffer`/`performSaveProjectToCloud`/
+  `isAuthError` (all outer-scope, no hoist trap); the `features/*.js` eslint group
+  gained the CDN-lib globals (`pdfjsLib`/`PDFLib`/`jspdf`/`html2canvas`). The two
+  interleaved sibling functions `openCanvasOnlyNeedsPdfModal` /
+  `updateCanvasOnlyNeedsPdfBanner` stay in app.js (extracted around)),
+  [features/quick-modals.js](features/quick-modals.js) (the twenty-third registry
+  split and the cleanest since the early modals — the Quick Plumbing
+  (`populatePlumModal` + icon-tab helpers + `removePlumbingModifier` + the
+  `#plumBtn` opener) and Quick Count (`populateCounterQuickCountPanel` + parallel
+  icon-tab helpers) clusters. No setters/flag-accessors, no private module state;
+  two new publish-only deps `getPlumbingModifiers`/`savePlumbingModifiers`.
+  Registers `App.populatePlumModal`, `App.populateCounterQuickCountPanel` (its
+  registration **moved here from app.js** — `features/counter.js`'s
+  `showCounterTab('quickcount')` calls it), and `App.updateCounterQuickCountNamePreview`
+  (the shared custom-icon-upload handler in app.js refreshes the Quick Count grid
+  via it); the modal calls back into `App.showCounterTab` — the bidirectional
+  Quick-Count↔counter coupling is mediated entirely by the registry), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
@@ -345,7 +464,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~16k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~13.7k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -366,7 +485,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~16k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~13.7k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").
@@ -388,8 +507,15 @@ Rules to follow when adding/editing a feature file:
   `parseFraction`, `parseRealWorldLength`, `getActiveAnnotations`, `deleteGroup`,
   `getPageScale`, `showSetScaleFirstToast`, `getLineModifiers`,
   `saveLineModifiers`, `getIconName`, `getEffectiveCustomIcons`,
-  `populateCounterQuickCountPanel`). (`populateQuickLineModal` is no longer
-  published here — it moved to `features/quick-line.js`, which registers it.)
+  `populateCounterQuickCountPanel`, `getCloudSaveSummary`, `pruneSaveStatusLog`,
+  `getSaveStatusLogWindowMs`, `isSaveDebugEnabled`, `setSaveDebugEnabled`,
+  `buildSaveLogsEnvelopeWithSnapshots`, `pushSaveEvent`, the getter accessors
+  `getSaveStatusLog`/`isCheckoutExpiredAttention`, `SUPABASE_URL`,
+  `SUPABASE_ANON_KEY`, `updateServerClockFromRpc`, `clearCheckoutExpiredAttention`,
+  `resetAutoRecheckoutCounter`, the `getSupabase` getter accessor,
+  `formatLastSignIn`, `USER_ACTIVITY_ICON_SVG`, `openUserActivityModal`).
+  (`populateQuickLineModal` is no
+  longer published here — it moved to `features/quick-line.js`, which registers it.)
   Some are
   "publish-only" — the function stays defined in app.js (used widely there) and
   is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
@@ -422,6 +548,20 @@ Rules to follow when adding/editing a feature file:
   `App.onX && App.onX()`. Example: `hideModal('groupModal')` calls
   `App.onGroupModalHidden()` (features/groups.js) to reset the now-private
   `openedGroupModalFromAssign` flag.
+- **Getter accessors for reassigned vars**: when a feature must *read* an app.js
+  var that gets **reassigned** (so `App.x = x` would capture a stale reference),
+  publish a getter instead: `App.getX = () => x;`. Example:
+  `App.getSaveStatusLog = () => saveStatusLog;` and
+  `App.isCheckoutExpiredAttention = () => checkoutExpiredNeedsAttention;`
+  (features/save-status.js) — the log array is reset to `[]` and the flag has many
+  engine writers. (A plain object/array that is only *mutated in place* can still
+  be a direct value publish; the getter is only needed when the binding itself is
+  reassigned.) Also `App.getSupabase = () => supabase;` (features/manage-projects.js)
+  — the `supabase` client is reassigned by the client-recycle machinery. A related
+  case: a function published before its declaration has executed (e.g. a
+  sloppy-mode hoisted block declaration like `resetAutoRecheckoutCounter`) should
+  be published as a deferred wrapper `App.fn = (...a) => fn(...a)` so the lookup
+  happens at call time.
 
 ### Persisted settings (localStorage unless noted)
 

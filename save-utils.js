@@ -57,8 +57,37 @@
       code: e.code,
       status: e.status,
       details: e.details,
-      hint: e.hint
+      hint: e.hint,
+      // Triage flag: was this worth one automatic retry, or a definite failure?
+      transient: isTransientSaveError(e)
     };
+  }
+
+  // Pull server/proxy request-correlation headers off a fetch Response's headers
+  // (or any object exposing `.get`). All best-effort: returns nulls when absent
+  // or when the header is not CORS-exposed (Access-Control-Expose-Headers), so a
+  // null requestId does not mean the request lacked one server-side.
+  function extractResponseDiagnostics(headers) {
+    const get = (name) => {
+      try {
+        return (headers && typeof headers.get === 'function') ? (headers.get(name) || null) : null;
+      } catch (_) { return null; }
+    };
+    return {
+      requestId: get('sb-request-id') || get('x-request-id') || get('x-sb-request-id'),
+      cfRay: get('cf-ray'),
+      retryAfter: get('retry-after'),
+      serverDate: get('date')
+    };
+  }
+
+  // Seconds until a Supabase session expiry (epoch seconds) relative to nowMs.
+  // Returns null when expiresAtEpochSec is missing/unparseable; can be negative
+  // (already expired) -- which is itself a useful save/sync diagnostic.
+  function secondsToExpiry(expiresAtEpochSec, nowMs) {
+    const exp = Number(expiresAtEpochSec);
+    if (!Number.isFinite(exp)) return null;
+    return Math.round(exp - nowMs / 1000);
   }
 
   // Compact JSON string of a serialized error for the Save Status detail field,
@@ -101,6 +130,7 @@
     module.exports = {
       isTransientSaveError, getProjectCounts,
       serializeSaveError, formatSaveStatusErrDetail, backoffDelayMs,
-      computeClockOffsetMs, percentile
+      computeClockOffsetMs, percentile,
+      extractResponseDiagnostics, secondsToExpiry
     };
   }

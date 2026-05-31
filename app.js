@@ -438,6 +438,7 @@
   let saveProgressMessage = '';
   let lastSaveIncludedPdf = false;
   let lastLocalBackupAt = null;
+  let lastLocalBackupOk = null;
   let pdfCacheWarnShown = false;
   let takeoffBackupWarnShown = false;
   let turnInInProgress = false;
@@ -564,7 +565,10 @@
     } catch (_) {}
   }
 
-  // SECTION: Sync recovery & client recycle
+  // Save/sync engine: this and the other `[sync]`-prefixed sections form the
+  // scattered save/sync subsystem. See ARCHITECTURE.md "Save/sync engine map"
+  // for the logical reading order.  (rg "SECTION: \[sync\]" app.js)
+  // SECTION: [sync] Sync recovery & client recycle
   async function runRecoveryProbeAndMaybeRecycle(trigger) {
     const probe = await runRecoveryProbe(trigger).catch(() => null);
     if (!probe || !probe.ok) return;
@@ -643,7 +647,8 @@
       failures: consecutiveAutoSaveFailures,
       online: (typeof navigator !== 'undefined') ? navigator.onLine : null,
       msSinceLastSuccess: lastSuccessfulSupabaseCallAt ? (Date.now() - lastSuccessfulSupabaseCallAt) : null,
-      network: captureNetworkInfoObj()
+      network: captureNetworkInfoObj(),
+      visibility: (typeof document !== 'undefined') ? document.visibilityState : null
     };
     if (extra && typeof extra === 'object') Object.assign(ctx, extra);
     try { return JSON.stringify(ctx); } catch (_) { return ''; }
@@ -666,7 +671,7 @@
       const controller = new AbortController();
       const timer = setTimeout(() => { try { controller.abort(); } catch (_) {} }, AUTOSAVE_RECOVERY_TIMEOUT_MS);
       const t0 = Date.now();
-      let ok = false, status = null, errMsg = null;
+      let ok = false, status = null, errMsg = null, diag = null;
       try {
         const res = await fetch(SUPABASE_URL + '/rest/v1/projects?select=id&limit=1', {
           method: 'GET',
@@ -679,6 +684,7 @@
         });
         status = res.status;
         ok = res.ok;
+        diag = extractResponseDiagnostics(res.headers);
       } catch (e) {
         errMsg = e?.message || String(e);
       } finally {
@@ -692,7 +698,7 @@
         lastSuccessfulSupabaseCallAt = Date.now();
       } else {
         saveDebugLog('autosave.recovery.err', { runId, ms, status, message: errMsg });
-        pushSaveEvent('autosave_recovery_err', 'Recovery probe failed', JSON.stringify({ ms, status, message: errMsg }));
+        pushSaveEvent('autosave_recovery_err', 'Recovery probe failed', JSON.stringify({ ms, status, message: errMsg, diag }));
       }
       return { ok, ms, status, errMsg };
     } finally {
@@ -825,6 +831,7 @@
       const e = new Error('Raw projects update failed: ' + res.status + (body ? (' ' + body.slice(0, 200)) : ''));
       e.status = res.status;
       e.code = 'RAW_UPDATE_HTTP_' + res.status;
+      e.diag = extractResponseDiagnostics(res.headers);
       throw e;
     }
     return { ok: true, status: res.status };
@@ -864,7 +871,7 @@
     } catch (_) {}
     if (!res.ok) {
       const message = (body && (body.message || body.error)) || ('HTTP ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
-      return { data: null, error: { message, status: res.status, code: (body && body.code) || ('RAW_INSERT_HTTP_' + res.status) } };
+      return { data: null, error: { message, status: res.status, code: (body && body.code) || ('RAW_INSERT_HTTP_' + res.status), diag: extractResponseDiagnostics(res.headers) } };
     }
     const row = Array.isArray(body) ? body[0] : body;
     return { data: row || null, error: null };
@@ -898,12 +905,13 @@
       const e = new Error('Raw check_in failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
       e.status = res.status;
       e.code = 'RAW_RPC_HTTP_' + res.status;
+      e.diag = extractResponseDiagnostics(res.headers);
       return { data: bodyJson, error: e };
     }
     return { data: bodyJson, error: null };
   }
 
-  // SECTION: Global force reload
+  // SECTION: [sync] Global force reload
   async function checkGlobalForceReload() {
     if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
     try {
@@ -1023,7 +1031,10 @@
     const cutoff = Date.now() - getSaveStatusLogWindowMs();
     while (saveStatusLog.length && saveStatusLog[0].ts < cutoff) saveStatusLog.shift();
   }
-  // SECTION: Save Status log & envelope
+  // SECTION: [sync] Save Status log & envelope
+  // Per-tab session id, stamped into the export envelope so concurrent tabs of
+  // the same project (a real save/sync race) are distinguishable in logs.
+  const TAB_SESSION_ID = uid();
   function pushSaveEvent(kind, message, detail) {
     if (!SUPABASE_ENABLED) return;
     pruneSaveStatusLog();
@@ -1042,6 +1053,17 @@
         highlights   += (a.highlights || []).length;
         notes        += (a.notes || []).length;
       });
+      // Payload sizing (export-time only -- never called per save event). An
+      // approximation of the cloud-save data blob, for "saves fail on big
+      // projects / large PDFs" diagnosis.
+      let dataJsonBytes = null;
+      try {
+        dataJsonBytes = JSON.stringify({
+          pages: pages.map(p => p.annotations || p.canvases || null),
+          counters: state.counters, lineTypes: state.lineTypes, groups: state.groups
+        }).length;
+      } catch (_) {}
+      const pdfBytes = (typeof state.pdfBufferSize === 'number') ? state.pdfBufferSize : null;
       return {
         projectId: state.currentProjectId,
         projectName: state.currentProjectName,
@@ -1049,7 +1071,19 @@
         pagesWithScale: pages.filter(p => p.scale && p.scale.feet > 0).length,
         counters, lines, multiplyZones, scaleZones, highlights, notes,
         isAdmin: !!state.isAdmin,
-        isViewer: !!state.isViewer
+        isViewer: !!state.isViewer,
+        // Checkout ownership (multi-user contention / expiry diagnosis)
+        checkedOutBy: state.checkedOutBy || null,
+        checkedOutEmail: state.checkedOutEmail || null,
+        checkedOutAt: state.checkedOutAt || null,
+        checkedOutAgoMs: state.checkedOutAt ? (Date.now() - new Date(state.checkedOutAt).getTime()) : null,
+        canCheckOut: !!state.canCheckOut,
+        projectOwnerId: state.projectOwnerId || null,
+        loadedViaViewLink: !!state.loadedViaViewLink,
+        // Payload sizing
+        dataJsonBytes,
+        pdfBufferBytes: pdfBytes,
+        nearPdfCap: (pdfBytes != null && typeof PDF_MAX_SIZE_BYTES === 'number') ? (pdfBytes > PDF_MAX_SIZE_BYTES * 0.9) : null
       };
     } catch (_) { return null; }
   }
@@ -1060,6 +1094,14 @@
       const snapshots = await readSaveLogsSnapshots(5);
       if (snapshots && snapshots.length) envelope.autoSnapshotEnvelopes = snapshots;
     } catch (_) {}
+    // Storage health -- catches "my work didn't recover" / private-mode / disk-full.
+    try {
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
+        const est = await navigator.storage.estimate();
+        envelope.storage = { usage: est.usage ?? null, quota: est.quota ?? null };
+      }
+    } catch (_) {}
+    envelope.lastLocalBackup = { at: lastLocalBackupAt, ok: lastLocalBackupOk };
     return envelope;
   }
 
@@ -1069,6 +1111,7 @@
     return {
       schema: 'clickcount-save-logs/v1',
       capturedAt: new Date().toISOString(),
+      tabSessionId: TAB_SESSION_ID,
       user: {
         email: userEmail,
         isAdmin: !!state.isAdmin,
@@ -1088,7 +1131,17 @@
         saveInProgress: (typeof saveInProgress !== 'undefined') ? saveInProgress : null,
         turnInInProgress: (typeof turnInInProgress !== 'undefined') ? turnInInProgress : null,
         verbose: isSaveDebugEnabled(),
-        windowMs: getSaveStatusLogWindowMs()
+        windowMs: getSaveStatusLogWindowMs(),
+        // Token expiry -- catches the JWT-expired 401 class on long-open tabs
+        sessionExpiresAt: (state.supabaseSession && state.supabaseSession.expires_at) || null,
+        secondsToExpiry: secondsToExpiry(state.supabaseSession && state.supabaseSession.expires_at, Date.now()),
+        // Degradation metrics (computed in the engine; surfaced here for export)
+        clientRecycles: (typeof clientRecycleCountThisRun !== 'undefined') ? clientRecycleCountThisRun : null,
+        autosaveLatencyP50: percentile(autoSaveLatencySamples, 0.5),
+        autosaveLatencyP95: percentile(autoSaveLatencySamples, 0.95),
+        autosaveLatencyN: (autoSaveLatencySamples && autoSaveLatencySamples.length) || 0,
+        degradedForMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0,
+        nextAutoSaveAttemptInMs: nextAutoSaveAttemptAt ? Math.max(0, nextAutoSaveAttemptAt - Date.now()) : 0
       },
       project: getProjectSummaryForLogs(),
       events: saveStatusLog.slice()
@@ -1103,7 +1156,7 @@
 
   let backupDebounceTimer = null;
   let dirtyGeneration = 0;
-  // SECTION: Dirty tracking & local session reset
+  // SECTION: [sync] Dirty tracking & local session reset
   function markProjectDirty() {
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
     const wasDirty = autoSaveDirty;
@@ -1318,7 +1371,7 @@
     } catch (_) {}
   }
 
-  // SECTION: Checkout probe, hashing & PDF cache
+  // SECTION: [sync] Checkout probe, hashing & PDF cache
   async function probeCheckoutLock(runId) {
     const userId = state.supabaseSession?.user?.id;
     if (!SUPABASE_ENABLED || !supabase || !state.currentProjectId || !userId) {
@@ -5302,7 +5355,7 @@
     return true;
   }
 
-  // SECTION: Checkout subscription & permission refresh
+  // SECTION: [sync] Checkout subscription & permission refresh
   let projectsCheckoutChannel = null;
   let projectsCheckoutReconnectTimer = null;
   let projectsCheckoutReconnectAttempt = 0;
@@ -7752,7 +7805,7 @@
       const hours = Math.round(minutes / 60);
       return '~' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
     }
-    // SECTION: Checkout expired recovery
+    // SECTION: [sync] Checkout expired recovery
     function applyCheckoutExpiredRecoveryMode(mode, ctx) {
       const modal = document.getElementById('checkoutExpiredRecoveryModal');
       if (!modal) return;
@@ -8006,7 +8059,7 @@
         backgroundCheckoutExpiredInFlight = false;
       }
     };
-    // SECTION: Turn In
+    // SECTION: [sync] Turn In
     async function doTurnIn() {
       if (turnInInProgress) {
         saveDebugLog('turnIn.skip', { reason: 'already_in_progress' });
@@ -8167,10 +8220,10 @@
                 data = r.data || null;
                 error = r.error || null;
                 if (!error) pushSaveEvent('turn_in_via_raw_fetch_ok', 'Raw-fetch check-in succeeded', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt }));
-                else pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in failed', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: error?.message, status: error?.status }));
+                else pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in failed', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: error?.message, status: error?.status, diag: error?.diag }));
               } catch (rawErr) {
                 error = rawErr;
-                pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in threw', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: rawErr?.message, status: rawErr?.status }));
+                pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in threw', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: rawErr?.message, status: rawErr?.status, diag: rawErr?.diag }));
               }
             } else {
               const r = await withTimeout(
@@ -10755,7 +10808,7 @@
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
   });
 
-  // SECTION: Manual save to cloud
+  // SECTION: [sync] Manual save to cloud
   async function performSaveProjectToCloud(opts) {
     const runId = saveDebugRunId();
     const { name, includePdf, pdfBuffer: optsPdfBuffer } = opts;
@@ -10897,7 +10950,7 @@
               const { data: row, error } = await withTimeout((signal) => rawProjectsInsert(insertPayload, signal), 60000, 'Save project');
               log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
               if (error) {
-                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (with PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t0, message: error.message, status: error.status, code: error.code, phase: 'with_pdf_new_project' }));
+                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (with PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t0, message: error.message, status: error.status, code: error.code, phase: 'with_pdf_new_project', diag: error.diag }));
                 throw error;
               }
               pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (with PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t0, projectId: row?.id, phase: 'with_pdf_new_project' }));
@@ -10983,7 +11036,7 @@
                   runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
                 }
               } catch (rawErr) {
-                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch manual save failed', autosaveEventDetail({ runId, ms: Date.now() - t3, message: rawErr?.message, status: rawErr?.status }));
+                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch manual save failed', autosaveEventDetail({ runId, ms: Date.now() - t3, message: rawErr?.message, status: rawErr?.status, diag: rawErr?.diag }));
                 throw rawErr;
               }
             } else {
@@ -11011,7 +11064,7 @@
             const { data: row, error } = await withTimeout((signal) => rawProjectsInsert(insertPayloadNoPdf, signal), 60000, 'Save project');
             log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
             if (error) {
-              pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (no PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t4, message: error.message, status: error.status, code: error.code, phase: 'no_pdf' }));
+              pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (no PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t4, message: error.message, status: error.status, code: error.code, phase: 'no_pdf', diag: error.diag }));
               throw error;
             }
             pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (no PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t4, projectId: row?.id, phase: 'no_pdf' }));
@@ -11204,7 +11257,7 @@
     }
   }
 
-  // SECTION: Auto-save
+  // SECTION: [sync] Auto-save
   async function performAutoSave(externalRunId) {
     const runId = externalRunId || saveDebugRunId();
     if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) {
@@ -11355,7 +11408,7 @@
             recordAutosaveLatency(updMs);
             if (opErr) {
               pushSaveEvent('autosave_request_end', useRawFetch ? 'Update failed (raw fetch)' : 'Update failed', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: false, message: opErr?.message, code: opErr?.code, status: opErr?.status }));
-              if (useRawFetch) pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch update failed', autosaveEventDetail({ runId, ms: updMs, message: opErr?.message, status: opErr?.status }));
+              if (useRawFetch) pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch update failed', autosaveEventDetail({ runId, ms: updMs, message: opErr?.message, status: opErr?.status, diag: opErr?.diag }));
               throw opErr;
             }
             pushSaveEvent('autosave_request_end', useRawFetch ? 'Update OK (raw fetch)' : 'Update OK', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: true }));
@@ -11391,7 +11444,7 @@
             perfLog('performAutoSave projects.insert', insMs, { dataSize, raw: true });
             if (error) {
               pushSaveEvent('autosave_request_end', 'Create failed (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: false, raw: true, message: error?.message, code: error?.code, status: error?.status }));
-              pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch autosave insert failed', autosaveEventDetail({ runId, ms: insMs, message: error?.message, status: error?.status, code: error?.code }));
+              pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch autosave insert failed', autosaveEventDetail({ runId, ms: insMs, message: error?.message, status: error?.status, code: error?.code, diag: error?.diag }));
               throw error;
             }
             const projectId = row?.id;
@@ -11501,7 +11554,7 @@
   }
 
   let takeoffBackupWriteInFlight = null;
-  // SECTION: Local backup (IndexedDB takeoff state)
+  // SECTION: [sync] Local backup (IndexedDB takeoff state)
   async function writeTakeoffStateBackup() {
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
     // If an in-flight write exists, wait for it to finish then start a fresh write so
@@ -11587,8 +11640,10 @@
     const pdfHash = state.pdfHash || null;
     const projectName = state.currentProjectName || null;
     const userId = state.supabaseSession?.user?.id || null;
+    lastLocalBackupOk = false;
     await takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastMod, projectName, userId);
     lastLocalBackupAt = new Date().toISOString();
+    lastLocalBackupOk = true;
   }
 
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
@@ -11716,7 +11771,7 @@
     }
   }, AUTO_SAVE_INTERVAL_MS);
 
-  // SECTION: Checkout keep-alive
+  // SECTION: [sync] Checkout keep-alive
   async function checkoutKeepalive() {
     if (!SUPABASE_ENABLED || !supabase) return;
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {

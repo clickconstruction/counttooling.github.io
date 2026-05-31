@@ -145,3 +145,29 @@ test('formatFeetInchesFromVal', () => {
   // other unit: decimal fallback
   assert.strictEqual(g.formatFeetInchesFromVal(2.5, 'm'), '2.50 m');
 });
+
+test('formatDist: decimal real-world length + px fallback', () => {
+  assert.strictEqual(g.formatDist(100, { pixelsPerUnit: 2, unit: 'ft' }), '50.00 ft');
+  assert.strictEqual(g.formatDist(15, { pixelsPerUnit: 3, unit: 'm' }), '5.00 m');
+  // no scale -> rounded pixels
+  assert.strictEqual(g.formatDist(100.4, null), '100 px');
+});
+
+test('formatArea: ppu^2 division + unit-squared suffix', () => {
+  assert.strictEqual(g.formatArea(400, { pixelsPerUnit: 2, unit: 'ft' }), '100.0 ft\u00b2');
+  assert.strictEqual(g.formatArea(900, { pixelsPerUnit: 3, unit: 'm' }), '100.0 m\u00b2');
+  // no scale -> rounded square pixels
+  assert.strictEqual(g.formatArea(49.6, null), '50 px\u00b2');
+});
+
+test('formatDistFeetInches: divides by ppu then delegates to formatFeetInchesFromVal', () => {
+  assert.strictEqual(g.formatDistFeetInches(120, { pixelsPerUnit: 2, unit: 'ft' }), `60'-0"`);
+  assert.strictEqual(g.formatDistFeetInches(11, { pixelsPerUnit: 1, unit: 'in' }), `11"`);
+  assert.strictEqual(g.formatDistFeetInches(100, null), '100 px');
+});
+
+test('formatDistFeetInchesFromReal: delegates with already-real value', () => {
+  assert.strictEqual(g.formatDistFeetInchesFromReal(5.5, { pixelsPerUnit: 2, unit: 'ft' }), `5'-6"`);
+  assert.strictEqual(g.formatDistFeetInchesFromReal(18, { pixelsPerUnit: 2, unit: 'in' }), `1'-6"`);
+  assert.strictEqual(g.formatDistFeetInchesFromReal(5.5, null), '6 px');
+});

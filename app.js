@@ -1008,7 +1008,7 @@
     return isSaveDebugEnabled() ? SAVE_STATUS_LOG_VERBOSE_MS : SAVE_STATUS_LOG_MS;
   }
   let saveStatusLog = [];
-  let saveStatusModalTickTimer = null;
+  // saveStatusModalTickTimer moved to features/save-status.js (private to the modal).
   let lastCloudSaveAttemptFailed = false;
   let checkoutExpiredNeedsAttention = false;
   let checkoutExpiredToastShown = false;
@@ -1602,11 +1602,6 @@
   window.getEffectiveScaleForLine = getEffectiveScaleForLine;
   window.getLineRealWorldLength = getLineRealWorldLength;
   window.getLineLengthForTotals = getLineLengthForTotals;
-  function formatDistFeetInchesFromReal(val, scale) {
-    scale = scale ?? getPageScale(state.currentPage);
-    if (!scale) return Math.round(val) + ' px';
-    return formatFeetInchesFromVal(val, scale.unit);
-  }
 
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) {
     let counterCount = 0, lineRunCount = 0, lengthRealSum = 0;
@@ -1728,23 +1723,9 @@
       .filter(({ p }) => pageHasAnyAnnotations(p))
       .map(({ i }) => i);
   }
-  function formatDist(pdfPts, scale) {
-    scale = scale ?? getPageScale(state.currentPage);
-    if (!scale) return Math.round(pdfPts) + ' px';
-    return (pdfPts / scale.pixelsPerUnit).toFixed(2) + ' ' + scale.unit;
-  }
-  function formatDistFeetInches(pdfPts, scale) {
-    scale = scale ?? getPageScale(state.currentPage);
-    if (!scale) return Math.round(pdfPts) + ' px';
-    const val = pdfPts / scale.pixelsPerUnit;
-    return formatFeetInchesFromVal(val, scale.unit);
-  }
-  function formatArea(sqPdfPts, scale) {
-    scale = scale ?? getPageScale(state.currentPage);
-    if (!scale) return Math.round(sqPdfPts) + ' px²';
-    const ppu = scale.pixelsPerUnit;
-    return (sqPdfPts / (ppu * ppu)).toFixed(1) + ' ' + scale.unit + '²';
-  }
+  // formatDist / formatDistFeetInches / formatDistFeetInchesFromReal / formatArea
+  // moved to geometry.js (pure; all callers pass `scale` explicitly). The old
+  // `scale ?? getPageScale(state.currentPage)` default was unused and was dropped.
 
   function rotateAnnotations(page, w, h) {
     const r = (pt) => rotatePoint90CW(pt, w, h);
@@ -2257,91 +2238,13 @@
     if (header)  { header.title  = title; header.setAttribute('aria-label',  aria); }
   }
 
-  function escSaveStatusHtml(s) {
-    return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function applySaveStatusSummaryBlock(rootEl, data, iconBase) {
-    if (!rootEl) return;
-    const iconEl = rootEl.querySelector('.save-status-summary-icon');
-    const agoEl  = rootEl.querySelector('.save-status-summary-ago');
-    const bodyEl = rootEl.querySelector('.save-status-summary-body');
-    if (iconEl) iconEl.className = 'save-status-summary-icon ' + iconBase + ' ' + iconBase + '-' + (data.state || 'grey');
-    if (agoEl)  agoEl.textContent = data.ago ? '(' + data.ago + ')' : '';
-    if (bodyEl) {
-      const parts = [];
-      if (data.status) parts.push(data.status);
-      if (data.clock) parts.push(data.clock);
-      bodyEl.textContent = parts.length === 2 ? parts.join(': ') : (parts[0] || '');
-    }
-  }
-
-  // SECTION: Save Status modal
-  function renderSaveStatusModalContent() {
-    pruneSaveStatusLog();
-    const sum = getCloudSaveSummary();
-    const listEl = document.getElementById('saveStatusEventList');
-    const headingEl = document.getElementById('saveStatusActivityHeading');
-    const verboseChk = document.getElementById('saveStatusVerboseToggle');
-    const windowMin = Math.round(getSaveStatusLogWindowMs() / 60000);
-    if (headingEl) headingEl.textContent = 'Activity (last ' + windowMin + ' minutes)';
-    if (verboseChk) verboseChk.checked = isSaveDebugEnabled();
-    const calloutEl = document.getElementById('saveStatusExpiredCallout');
-    if (calloutEl) calloutEl.style.display = checkoutExpiredNeedsAttention ? '' : 'none';
-    applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryCanvas'), sum.canvas, 'dot');
-    applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryPdf'),    sum.pdf,    'square');
-    if (listEl) {
-      const entries = saveStatusLog.slice().reverse();
-      if (!entries.length) {
-        listEl.innerHTML = '<p class="save-status-empty" style="color:var(--text2);font-size:0.9rem;">No save activity in the last ' + windowMin + ' minutes.</p>';
-      } else {
-        listEl.innerHTML = '';
-        entries.forEach((ev) => {
-          const d = new Date(ev.ts);
-          const agoMs = Date.now() - ev.ts;
-          const agoStr = agoMs < 1000 ? 'just now' : (agoMs < 60000 ? Math.floor(agoMs / 1000) + 's ago' : Math.floor(agoMs / 60000) + 'm ago');
-          const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-          const msg = ev.message || '';
-          const caretHtml = ev.detail ? '<span class="save-status-event-caret" aria-hidden="true"></span>' : '';
-          const rowHtml =
-            '<span class="save-status-event-time">' + escSaveStatusHtml(timeStr) + '</span>' +
-            '<span class="save-status-event-kind">' + escSaveStatusHtml(ev.kind) + '</span>' +
-            '<span class="save-status-event-msg" title="' + escSaveStatusHtml(msg) + '">' + escSaveStatusHtml(msg) + '</span>' +
-            caretHtml +
-            '<span class="save-status-event-ago">(' + escSaveStatusHtml(agoStr) + ')</span>';
-          let el;
-          if (ev.detail) {
-            const detStr = typeof ev.detail === 'string' ? ev.detail : JSON.stringify(ev.detail, null, 2);
-            el = document.createElement('details');
-            el.className = 'save-status-event';
-            el.innerHTML =
-              '<summary><span class="save-status-event-row">' + rowHtml + '</span></summary>' +
-              '<pre class="save-status-event-detail">' + escSaveStatusHtml(detStr) + '</pre>';
-          } else {
-            el = document.createElement('div');
-            el.className = 'save-status-event';
-            el.innerHTML = '<span class="save-status-event-row">' + rowHtml + '</span>';
-          }
-          listEl.appendChild(el);
-        });
-      }
-    }
-  }
-
-  function openSaveStatusModal() {
-    renderSaveStatusModalContent();
-    showModal('saveStatusModal');
-    if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
-    saveStatusModalTickTimer = setInterval(() => {
-      const modal = document.getElementById('saveStatusModal');
-      if (!modal || !modal.classList.contains('visible')) {
-        clearInterval(saveStatusModalTickTimer);
-        saveStatusModalTickTimer = null;
-        return;
-      }
-      renderSaveStatusModalContent();
-    }, 5000);
-  }
+  // The Save Status modal UI (renderSaveStatusModalContent, openSaveStatusModal,
+  // escSaveStatusHtml, applySaveStatusSummaryBlock, and the #saveStatus* modal
+  // handlers) moved to features/save-status.js (window.App registry); reached via
+  // App.openSaveStatusModal / the bell buttons. The hot-path bell
+  // (updateSaveStatusIndicator) and the save engine stay here; the modal reads
+  // engine state via publish-only deps + the App.getSaveStatusLog() /
+  // App.isCheckoutExpiredAttention() getter accessors.
 
   // SECTION: Coordinate Helpers
   function canvasPointFromEvent(e) {
@@ -4638,6 +4541,7 @@
     }
   }
 
+  // SECTION: Inline rename & polyline edit mode
   function onDoubleTapOrDblClick(el, handler) {
     if (!el) return;
     let lastTap = 0;
@@ -4751,6 +4655,7 @@
     renderPdf();
   }
 
+  // SECTION: Item detail & properties modals
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) {
     if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
@@ -5074,6 +4979,7 @@
     return true;
   }
 
+  // SECTION: Toasts & line color picker
   let airboardToastTimer = null;
   function showToast(msg, durationMs) {
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
@@ -5159,6 +5065,7 @@
     }
   }
 
+  // SECTION: Airboard cloud sync
   async function fetchUserAirboard() {
     const user = state.supabaseSession?.user;
     if (!supabase || !user) return null;
@@ -5191,6 +5098,7 @@
     return !error;
   }
 
+  // SECTION: Supabase RPC & presence heartbeat
   let presenceHeartbeatTimer = null;
   let presenceVisibilityTimer = null;
   const activityHighFreqLastAt = Object.create(null);
@@ -5229,6 +5137,8 @@
     presenceHeartbeatTimer = setInterval(touchPresence, 60000);
     document.addEventListener('visibilitychange', onPresenceVisibilityChange);
   }
+
+  // SECTION: User activity / event telemetry
   function logUserEvent(eventType, projectId, metadata) {
     if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
     if (eventType === 'counter_marker_added' || eventType === 'line_added') {
@@ -5271,6 +5181,7 @@
     logUserEvent('line_added', state.currentProjectId, { kind: kind, lineTypeId: state.activeLineTypeId || null, pageIndex: state.currentPage });
   }
 
+  // SECTION: Supabase auth & dev auth
   async function initSupabaseAuth() {
     if (!supabase) return;
     let session = null;
@@ -5391,6 +5302,7 @@
     return true;
   }
 
+  // SECTION: Checkout subscription & permission refresh
   let projectsCheckoutChannel = null;
   let projectsCheckoutReconnectTimer = null;
   let projectsCheckoutReconnectAttempt = 0;
@@ -5598,87 +5510,6 @@
     copied.forEach(p => out.addPage(p));
     return await out.save();
   }
-  let preparePdfPages = [];
-  let preparePdfBuffer = null;
-  let preparePdfPageBytes = {};
-  let preparePdfKeptIndices = [];
-  let preparePdfUndoStack = [];
-  let preparePdfCurrentIdx = 0;
-  let preparePdfDefaultName = 'Untitled';
-  let preparePdfEditMode = 'project';
-  // #7a: Distinguishes "fresh PDF project" (default) from "append pages to
-  // existing project". In append mode openPreparePdfModal hides the project
-  // name editor and commitPreparePdfToState merges the trimmed buffer onto
-  // state.pdfBuffer + appends new state.pages entries instead of replacing.
-  let preparePdfMode = 'project';
-  let preparePdfProjectName = 'Untitled';
-  function renderPreparePdfPreview() {
-    const canvas = document.getElementById('preparePdfCanvas');
-    const labelEl = document.getElementById('preparePdfPageLabel');
-    const kept = preparePdfKeptIndices;
-    if (!kept.length || !preparePdfPages.length) {
-      canvas.width = 0;
-      canvas.height = 0;
-      labelEl.textContent = 'No pages';
-      return;
-    }
-    const origIdx = kept[preparePdfCurrentIdx];
-    const page = preparePdfPages[origIdx];
-    if (!page || !page.pdfPage) {
-      canvas.width = 0;
-      canvas.height = 0;
-      labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length;
-      return;
-    }
-    const maxH = 400;
-    const rot = page.rotation ?? 0;
-    const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
-    const scale = Math.min(1, maxH / vp.height);
-    const viewport = page.pdfPage.getViewport({ scale, rotation: rot });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    canvas.style.maxWidth = '100%';
-    canvas.style.height = 'auto';
-    const wIn = (vp.width / 72).toFixed(1);
-    const hIn = (vp.height / 72).toFixed(1);
-    const fmt = (b) => (b / (1024 * 1024)) < 0.01 ? (b / 1024).toFixed(2) + ' KB' : (b / (1024 * 1024)).toFixed(2) + ' MB';
-    let sizeStr = '';
-    if (preparePdfBuffer) {
-      const totalBytes = preparePdfBuffer.byteLength;
-      const pageBytes = preparePdfPageBytes[origIdx];
-      if (pageBytes != null) {
-        sizeStr = ' — This page: ' + fmt(pageBytes) + ' — Total: ' + fmt(totalBytes);
-      } else {
-        sizeStr = ' — Total: ' + fmt(totalBytes);
-      }
-    }
-    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length + ' — ' + wIn + ' × ' + hIn + ' in' + sizeStr;
-    page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport });
-    const nameEl = document.getElementById('preparePdfName');
-    if (nameEl && preparePdfEditMode === 'page') nameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
-  }
-  function saveCurrentPageName() {
-    const kept = preparePdfKeptIndices;
-    if (!kept.length || preparePdfCurrentIdx >= kept.length) return;
-    const origIdx = kept[preparePdfCurrentIdx];
-    const page = preparePdfPages[origIdx];
-    if (!page) return;
-    const nameEl = document.getElementById('preparePdfName');
-    if (nameEl && preparePdfEditMode === 'page') page.label = (nameEl.value || '').trim() || ('Page ' + (preparePdfCurrentIdx + 1));
-  }
-  function updatePreparePdfControls() {
-    const kept = preparePdfKeptIndices;
-    document.getElementById('preparePdfUndo').disabled = preparePdfUndoStack.length === 0;
-    document.getElementById('preparePdfDelete').disabled = kept.length <= 1;
-    document.getElementById('preparePdfRotate').disabled = kept.length === 0;
-    document.getElementById('preparePdfPrev').disabled = preparePdfCurrentIdx <= 0;
-    document.getElementById('preparePdfNext').disabled = preparePdfCurrentIdx >= kept.length - 1;
-    document.getElementById('preparePdfDone').disabled = kept.length === 0;
-    const downloadEl = document.getElementById('preparePdfDownload');
-    if (downloadEl) downloadEl.disabled = kept.length === 0;
-    const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');
-    if (saveAndOpenEl) saveAndOpenEl.disabled = kept.length === 0;
-  }
   // C1: Open canvasOnlyNeedsPdfModal with optional context-specific copy.
   function openCanvasOnlyNeedsPdfModal(opts) {
     opts = opts || {};
@@ -5709,295 +5540,10 @@
     el.style.display = (needsPdf && !modalVisible) ? '' : 'none';
   }
 
-  // SECTION: Prepare PDF modal
-  function openPreparePdfModal(pages, buffer, defaultName, opts) {
-    opts = opts || {};
-    preparePdfMode = opts.mode === 'append' ? 'append' : 'project';
-    preparePdfPages = pages.map(p => ({ pdfPage: p.pdfPage, label: p.label, rotation: p.rotation ?? 0 }));
-    preparePdfBuffer = buffer;
-    preparePdfPageBytes = {};
-    preparePdfKeptIndices = pages.map((_, i) => i);
-    preparePdfUndoStack = [];
-    preparePdfCurrentIdx = 0;
-    preparePdfDefaultName = defaultName || 'Untitled';
-    preparePdfProjectName = preparePdfDefaultName;
-    preparePdfEditMode = 'project';
-    document.getElementById('preparePdfName').value = preparePdfProjectName;
-    document.getElementById('preparePdfProjectTab').classList.add('active');
-    document.getElementById('preparePdfPageTab').classList.remove('active');
-    // #7a: In append mode hide the project-name editor (we are not renaming
-    // the current project) and adjust the title/description.
-    const titleEl = document.getElementById('preparePdfTitle');
-    const descEl = document.getElementById('preparePdfDescription');
-    const nameRowEl = document.getElementById('preparePdfNameRow');
-    if (preparePdfMode === 'append') {
-      if (titleEl) titleEl.textContent = 'Add pages — ' + (state.currentProjectName || 'Untitled');
-      if (descEl) descEl.textContent = 'Remove unnecessary pages before adding them to the current project.';
-      if (nameRowEl) nameRowEl.style.display = 'none';
-    } else {
-      if (titleEl) titleEl.textContent = 'Prepare PDF for Cloud';
-      if (descEl) descEl.textContent = 'Name your project and remove unnecessary pages before saving.';
-      if (nameRowEl) nameRowEl.style.display = '';
-    }
-    renderPreparePdfPreview();
-    updatePreparePdfControls();
-    showModal('preparePdfModal');
-    (async function computePageSizes() {
-      if (typeof PDFLib === 'undefined' || !preparePdfBuffer) return;
-      const indices = [...preparePdfKeptIndices].sort((a, b) => a - b);
-      for (const i of indices) {
-        if (!preparePdfBuffer) return;
-        try {
-          const buf = await buildTrimmedPdfBuffer(preparePdfBuffer, [i]);
-          if (buf) preparePdfPageBytes[i] = buf.byteLength;
-        } catch (_) {}
-        if (document.getElementById('preparePdfModal')?.classList.contains('visible')) {
-          renderPreparePdfPreview();
-        }
-      }
-    })();
-  }
-  window.closePreparePdfModal = function closePreparePdfModal() {
-    preparePdfPages = [];
-    preparePdfBuffer = null;
-    preparePdfPageBytes = {};
-    preparePdfKeptIndices = [];
-    preparePdfUndoStack = [];
-    hideModal('preparePdfModal');
-  };
-  document.getElementById('preparePdfCancel').onclick = () => closePreparePdfModal();
-  (function() {
-    const projectTab = document.getElementById('preparePdfProjectTab');
-    const pageTab = document.getElementById('preparePdfPageTab');
-    const nameInput = document.getElementById('preparePdfName');
-    function switchToProject() {
-      saveCurrentPageName();
-      preparePdfEditMode = 'project';
-      nameInput.value = preparePdfProjectName;
-      nameInput.placeholder = 'Untitled';
-      projectTab.classList.add('active');
-      pageTab.classList.remove('active');
-    }
-    function switchToPage() {
-      preparePdfProjectName = (nameInput.value || '').trim() || preparePdfDefaultName;
-      preparePdfEditMode = 'page';
-      const kept = preparePdfKeptIndices;
-      const origIdx = kept.length && preparePdfCurrentIdx < kept.length ? kept[preparePdfCurrentIdx] : 0;
-      const page = preparePdfPages[origIdx];
-      nameInput.value = page?.label || ('Page ' + (preparePdfCurrentIdx + 1));
-      nameInput.placeholder = 'Page 1';
-      projectTab.classList.remove('active');
-      pageTab.classList.add('active');
-    }
-    projectTab.onclick = () => { if (preparePdfEditMode !== 'project') switchToProject(); };
-    pageTab.onclick = () => { if (preparePdfEditMode !== 'page') switchToPage(); };
-    nameInput.onblur = () => {
-      if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput.value || '').trim() || preparePdfDefaultName;
-      else saveCurrentPageName();
-    };
-  })();
-  document.getElementById('preparePdfUndo').onclick = () => {
-    if (preparePdfUndoStack.length === 0) return;
-    saveCurrentPageName();
-    const { index } = preparePdfUndoStack.pop();
-    preparePdfKeptIndices.push(index);
-    preparePdfKeptIndices.sort((a, b) => a - b);
-    const idxInKept = preparePdfKeptIndices.indexOf(index);
-    if (idxInKept >= 0 && idxInKept <= preparePdfCurrentIdx) preparePdfCurrentIdx = Math.min(preparePdfCurrentIdx + 1, preparePdfKeptIndices.length - 1);
-    renderPreparePdfPreview();
-    updatePreparePdfControls();
-  };
-  document.getElementById('preparePdfDelete').onclick = () => {
-    const kept = preparePdfKeptIndices;
-    if (kept.length <= 1) return;
-    saveCurrentPageName();
-    const removed = kept.splice(preparePdfCurrentIdx, 1)[0];
-    preparePdfUndoStack.push({ index: removed });
-    if (preparePdfCurrentIdx >= kept.length) preparePdfCurrentIdx = Math.max(0, kept.length - 1);
-    renderPreparePdfPreview();
-    updatePreparePdfControls();
-  };
-  document.getElementById('preparePdfPrev').onclick = () => {
-    if (preparePdfCurrentIdx > 0) {
-      saveCurrentPageName();
-      preparePdfCurrentIdx--;
-      renderPreparePdfPreview();
-      updatePreparePdfControls();
-    }
-  };
-  document.getElementById('preparePdfNext').onclick = () => {
-    if (preparePdfCurrentIdx < preparePdfKeptIndices.length - 1) {
-      saveCurrentPageName();
-      preparePdfCurrentIdx++;
-      renderPreparePdfPreview();
-      updatePreparePdfControls();
-    }
-  };
-  function preparePdfRotatePage90() {
-    const kept = preparePdfKeptIndices;
-    if (!kept.length) return;
-    const origIdx = kept[preparePdfCurrentIdx];
-    const page = preparePdfPages[origIdx];
-    if (!page || !page.pdfPage) return;
-    page.rotation = ((page.rotation ?? 0) + 90) % 360;
-    renderPreparePdfPreview();
-  }
-  document.getElementById('preparePdfRotate').onclick = preparePdfRotatePage90;
-  async function commitPreparePdfToState() {
-    try {
-    const nameInput = document.getElementById('preparePdfName');
-    if (preparePdfMode !== 'append') {
-      if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput?.value || '').trim() || preparePdfDefaultName;
-      else saveCurrentPageName();
-    } else {
-      // In append mode the project name is locked - keep page-label edits.
-      if (preparePdfEditMode === 'page') saveCurrentPageName();
-    }
-    const kept = preparePdfKeptIndices;
-    if (!kept.length || !preparePdfBuffer) return { ok: false };
-    const name = preparePdfMode === 'append'
-      ? (state.currentProjectName || preparePdfDefaultName)
-      : (preparePdfProjectName || preparePdfDefaultName);
-    const trimmedBuf = kept.length === preparePdfPages.length
-      ? preparePdfBuffer
-      : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
-    if (!trimmedBuf) return { ok: false };
-    const trimmedBufSize = trimmedBuf.byteLength ?? trimmedBuf.length ?? trimmedBuf.size ?? 0;
-    if (preparePdfMode === 'append') {
-      // #7a: Merge the new trimmed buffer onto the existing project buffer and
-      // append pages. Enforce the size ceiling on the MERGED result so we do
-      // not blow past the 50 MB cloud storage cap.
-      const existingBuf = state.pdfBuffer;
-      const existingSize = existingBuf ? (existingBuf.byteLength ?? existingBuf.length ?? 0) : 0;
-      // Pre-flight size check (worst-case sum) to avoid a wasted merge of a
-      // buffer that obviously cannot fit. The post-merge check below is the
-      // authoritative gate.
-      const projectedSize = existingSize + trimmedBufSize;
-      const preCheck = assertPdfWithinLimit(projectedSize, 'commitPreparePdfToState.append.pre');
-      if (preCheck && !preCheck.ok) {
-        try { alert(preCheck.message); } catch (_) {}
-        return { ok: false, error: preCheck.message };
-      }
-      if (!existingBuf) {
-        // Append mode requires the current project's PDF buffer to be in
-        // memory so we can merge onto it. Bail with a clear error rather than
-        // silently replacing the project's PDF (which would orphan existing
-        // page annotations).
-        const msg = 'Could not load the current PDF to merge new pages. Save the project, then try again.';
-        try { alert(msg); } catch (_) {}
-        return { ok: false, error: msg };
-      } else {
-        const mergedBuf = await mergePdfBuffers([existingBuf, trimmedBuf]);
-        if (!mergedBuf) return { ok: false, error: 'Failed to merge PDFs.' };
-        const mergedSize = mergedBuf.byteLength ?? mergedBuf.length ?? mergedBuf.size ?? 0;
-        const sizeCheck = assertPdfWithinLimit(mergedSize, 'commitPreparePdfToState.append.merged');
-        if (sizeCheck && !sizeCheck.ok) {
-          try { alert(sizeCheck.message); } catch (_) {}
-          return { ok: false, error: sizeCheck.message };
-        }
-        const mergedPdf = await pdfjsLib.getDocument(mergedBuf.slice(0)).promise;
-        const startIdx = state.pages.length;
-        const totalPages = mergedPdf.numPages;
-        const newPages = [];
-        for (let i = startIdx; i < totalPages; i++) {
-          const pdfPage = await mergedPdf.getPage(i + 1);
-          const keptOrigIdx = kept[i - startIdx];
-          const label = preparePdfPages[keptOrigIdx]?.label || ('Page ' + (i + 1));
-          const rotation = preparePdfPages[keptOrigIdx]?.rotation ?? 0;
-          const canvasId = uid();
-          newPages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation });
-          state.activeCanvasIdByPage[i] = canvasId;
-        }
-        // Re-bind existing state.pages to the merged pdf so all pages share a
-        // single pdfjs document. This avoids holding the old detached buffer.
-        for (let i = 0; i < startIdx; i++) {
-          if (state.pages[i]) state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
-        }
-        state.pages = state.pages.concat(newPages);
-        state.pdfBuffer = mergedBuf;
-        state.pdfBufferSize = mergedSize;
-        // Pdf binary changed: clear the hash so the next manual save triggers
-        // an upload. KEEP state.pdfStoragePath set to the previous cloud path
-        // so performSaveProjectToCloud can clean it up via its prevPdfStoragePath
-        // remove(). The path is replaced with the new uploaded path on save.
-        state.pdfHash = null;
-      }
-      preparePdfPages = [];
-      preparePdfBuffer = null;
-      preparePdfKeptIndices = [];
-      preparePdfUndoStack = [];
-      return { ok: true, name, pdfBuffer: state.pdfBuffer, appended: true };
-    }
-    const sizeCheck = assertPdfWithinLimit(trimmedBufSize, 'commitPreparePdfToState');
-    if (sizeCheck && !sizeCheck.ok) {
-      try { alert(sizeCheck.message); } catch (_) {}
-      return { ok: false, error: sizeCheck.message };
-    }
-    const pdf = await pdfjsLib.getDocument(trimmedBuf.slice(0)).promise;
-    const numPages = pdf.numPages;
-    state.pages = [];
-    state.activeCanvasIdByPage = {};
-    for (let i = 0; i < numPages; i++) {
-      const pdfPage = await pdf.getPage(i + 1);
-      const origIdx = kept[i];
-      const label = preparePdfPages[origIdx]?.label || ('Page ' + (i + 1));
-      const rotation = preparePdfPages[origIdx]?.rotation ?? 0;
-      const canvasId = uid();
-      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation });
-      state.activeCanvasIdByPage[i] = canvasId;
-    }
-    state.pdfBuffer = trimmedBuf;
-    state.pdfBufferSize = trimmedBufSize;
-    state.pdfStoragePath = null;
-    state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
-    state.currentPage = 0;
-    preparePdfPages = [];
-    preparePdfBuffer = null;
-    preparePdfKeptIndices = [];
-    preparePdfUndoStack = [];
-    resetGridOrigin();
-    return { ok: true, name, pdfBuffer: trimmedBuf };
-    } catch (e) {
-      console.error('[Prepare PDF]', e);
-      return { ok: false };
-    }
-  }
-  document.getElementById('preparePdfDone').onclick = async () => {
-    const r = await commitPreparePdfToState();
-    if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
-    hideModal('preparePdfModal');
-    markProjectDirty();
-    updateUI();
-    requestAnimationFrame(() => { fitZoom(); renderPdf(); });
-    await writeTakeoffStateBackup();
-  };
-  document.getElementById('preparePdfDownload').onclick = async () => {
-    const kept = preparePdfKeptIndices;
-    if (!kept.length || !preparePdfBuffer) return;
-    const trimmedBuf = kept.length === preparePdfPages.length
-      ? preparePdfBuffer
-      : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
-    if (!trimmedBuf) { alert('Failed to build PDF.'); return; }
-    const name = preparePdfProjectName || preparePdfDefaultName;
-    downloadPdfBuffer(trimmedBuf, sanitizeForFilename(name) + '.pdf');
-  };
-  document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
-    const r = await commitPreparePdfToState();
-    if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
-    hideModal('preparePdfModal');
-    markProjectDirty();
-    updateUI();
-    requestAnimationFrame(() => { fitZoom(); renderPdf(); });
-    const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
-    if (!saveResult.ok) {
-      if (isAuthError(saveResult.error)) {
-        showToast('Refresh the page to sync.', 4000);
-      } else {
-        const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
-        showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
-      }
-    }
-  };
+  // openPreparePdfModal + the modal's preview/nav/commit + #preparePdf* bindings
+  // moved to features/prepare-pdf.js (App.openPreparePdfModal). What remains here
+  // is the PDF intake pipeline (file upload, test PDF, hashing) that feeds it.
+  // SECTION: PDF intake (upload, test PDF, hashing)
   async function loadTestPdf() {
     // A2: When a project is already loaded, refuse to clobber its name/buffer.
     // The Advanced "Load test PDF" entry point is a dev fixture and should not
@@ -6020,7 +5566,7 @@
         const canvasId = uid();
         pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       }
-      openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
+      App.openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
       state.pages = [];
       state.activeCanvasIdByPage = {};
       resetGridOrigin();
@@ -6086,7 +5632,7 @@
         alert('Failed to read uploaded PDF.');
         return;
       }
-      openPreparePdfModal(newPages, newBuf, state.currentProjectName || 'Untitled', { mode: 'append' });
+      App.openPreparePdfModal(newPages, newBuf, state.currentProjectName || 'Untitled', { mode: 'append' });
       return;
     }
     const importBothFollowUp = pendingImportCanvasAfterPdf;
@@ -6306,7 +5852,7 @@
         });
         showModal('loadAnnotationsModal');
       } else if (startPageIdx === 0) {
-        openPreparePdfModal(state.pages, state.pdfBuffer, state.currentProjectName);
+        App.openPreparePdfModal(state.pages, state.pdfBuffer, state.currentProjectName);
         state.pages = [];
         state.activeCanvasIdByPage = {};
         state.pdfBuffer = null;
@@ -6539,448 +6085,9 @@
   // #counterIconSearch, #counterCancel, #counterCreate) moved to
   // features/counter.js (window.App registry) alongside the choose-tab handlers.
 
-  // SECTION: Quick Plumbing / Quick Count modals
-  function populatePlumModal() {
-    const mods = getPlumbingModifiers();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const sizeSel = document.getElementById('plumSize');
-    const typeSel = document.getElementById('plumType');
-    const materialSel = document.getElementById('plumMaterial');
-    sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
-    typeSel.innerHTML = mods.types.map(t => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
-    materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
-    const icons = getOrderedIcons();
-    const grid = document.getElementById('plumIconGrid');
-    grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-      document.querySelectorAll('#plumIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
-      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected');
-      updatePlumNamePreview();
-    });
-    const effectiveCustom = getEffectiveCustomIcons();
-    const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
-    const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    const customGrid = document.getElementById('plumIconGridCustom');
-    customGrid.innerHTML = uploadCell + iconCells;
-    customGrid.querySelectorAll('.icon-cell').forEach(c => {
-      c.onclick = () => {
-        if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-        document.querySelectorAll('#plumIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-        customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        c.classList.add('selected');
-        updatePlumNamePreview();
-      };
-    });
-    showPlumIconTab('icon');
-    updatePlumNamePreview();
-    updatePlumTypeIconBox();
-    applyPlumIconForType();
-    const swatchEl = document.getElementById('plumNameRowSwatch');
-    if (swatchEl) {
-      swatchEl.onclick = () => {
-        const mods = getPlumbingModifiers();
-        showLineColorModal(mods.defaultColor || COLORS[2], (color) => {
-          mods.defaultColor = color;
-          savePlumbingModifiers(mods);
-          swatchEl.style.background = color;
-          updatePlumNamePreview();
-        });
-      };
-      swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
-    }
-    document.getElementById('plumRemoveSize').disabled = mods.sizes.length <= 1;
-    document.getElementById('plumRemoveType').disabled = mods.types.length <= 1;
-    document.getElementById('plumRemoveMaterial').disabled = mods.materials.length <= 1;
-  }
-  function getPlumEffectiveIconPath() {
-    const sel = document.querySelector('#plumIconGrid .icon-cell.selected') || document.querySelector('#plumIconGridCustom .icon-cell.selected');
-    if (sel?.dataset.path) return sel.dataset.path;
-    const type = document.getElementById('plumType')?.value;
-    const mods = getPlumbingModifiers();
-    const path = mods.iconByType?.[type];
-    if (path) return path;
-    return getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value;
-  }
-  function updatePlumNamePreview() {
-    const size = document.getElementById('plumSize').value;
-    const type = document.getElementById('plumType').value;
-    const material = document.getElementById('plumMaterial').value;
-    const name = [size, material, type].filter(Boolean).join(' ');
-    const nameEl = document.getElementById('plumNamePreview');
-    if (nameEl) nameEl.value = name;
-    const iconEl = document.getElementById('plumNameRowIcon');
-    if (iconEl) {
-      const path = getPlumEffectiveIconPath();
-      const color = getPlumbingModifiers().defaultColor || COLORS[2];
-      iconEl.innerHTML = path ? '<svg viewBox="' + iconVbFor(path) + '" width="20" height="20"><path fill="' + color + '" d="' + path + '"/></svg>' : '';
-    }
-    const swatchEl = document.getElementById('plumNameRowSwatch');
-    if (swatchEl) swatchEl.style.background = getPlumbingModifiers().defaultColor || COLORS[2];
-  }
-  function updatePlumTypeIconBox() {
-    const box = document.getElementById('plumTypeIconBox');
-    if (!box) return;
-    const type = document.getElementById('plumType').value;
-    const mods = getPlumbingModifiers();
-    const iconByType = mods.iconByType || {};
-    const path = iconByType[type];
-    const iconExists = path && (getOrderedIcons().some(ic => ic.value === path) || getEffectiveCustomIcons().some(ic => ic.value === path));
-    if (path && iconExists) {
-      box.innerHTML = '<svg viewBox="' + iconVbFor(path) + '"><path fill="var(--accent)" d="' + path + '"/></svg>';
-      box.classList.add('has-icon');
-      box.title = 'Click to use selected icon for ' + type;
-    } else {
-      box.innerHTML = '<span class="plum-type-icon-placeholder">?</span>';
-      box.classList.remove('has-icon');
-      box.title = 'Select an icon below, then click to set for ' + type;
-    }
-  }
-  function applyPlumIconForType() {
-    const type = document.getElementById('plumType').value;
-    const mods = getPlumbingModifiers();
-    const path = mods.iconByType && mods.iconByType[type];
-    if (!path) return;
-    const allCells = document.querySelectorAll('#plumIconGrid .icon-cell[data-path], #plumIconGridCustom .icon-cell[data-path]');
-    const cell = Array.from(allCells).find(c => c.dataset.path === path);
-    if (cell) {
-      const inCustom = cell.closest('#plumIconGridCustom');
-      showPlumIconTab(inCustom ? 'custom' : 'icon');
-      document.querySelectorAll('#plumIconGrid .icon-cell, #plumIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
-      cell.classList.add('selected');
-    }
-  }
-  function showPlumIconTab(tab) {
-    document.querySelectorAll('#plumModal .counter-icon-tab').forEach(t =>
-      t.classList.toggle('active', t.dataset.plumIconTab === tab));
-    document.getElementById('plumIconPanel').style.display = tab === 'icon' ? '' : 'none';
-    document.getElementById('plumIconCustomPanel').style.display = tab === 'custom' ? '' : 'none';
-  }
-  document.getElementById('plumBtn').onclick = () => {
-    document.getElementById('counterBtn').click();
-    App.showCounterTab('quickcount');
-  };
-  document.querySelectorAll('#plumModal .counter-icon-tab').forEach(t =>
-    t.onclick = () => showPlumIconTab(t.dataset.plumIconTab));
-  document.getElementById('plumSize').onchange = updatePlumNamePreview;
-  document.getElementById('plumType').onchange = () => {
-    updatePlumNamePreview();
-    updatePlumTypeIconBox();
-    applyPlumIconForType();
-  };
-  document.getElementById('plumMaterial').onchange = updatePlumNamePreview;
-  const plumTypeIconBoxClick = () => {
-    const sel = document.querySelector('#plumIconGrid .icon-cell.selected') || document.querySelector('#plumIconGridCustom .icon-cell.selected');
-    const path = sel && sel.dataset.path;
-    if (!path) return;
-    const type = document.getElementById('plumType').value;
-    const mods = getPlumbingModifiers();
-    mods.iconByType = mods.iconByType || {};
-    mods.iconByType[type] = path;
-    savePlumbingModifiers(mods);
-    updatePlumTypeIconBox();
-    updatePlumNamePreview();
-  };
-  document.getElementById('plumTypeIconBox').onclick = plumTypeIconBoxClick;
-  document.getElementById('plumTypeIconBox').onkeydown = (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); plumTypeIconBoxClick(); }
-  };
-  function removePlumbingModifier(kind, plumSelectId, qcSelectId) {
-    const plumEl = document.getElementById(plumSelectId);
-    const qcEl = document.getElementById(qcSelectId);
-    const qcPanel = document.getElementById('counterQuickCountPanel');
-    const qcVisible = qcPanel && qcPanel.style.display !== 'none';
-    const sel = qcVisible && qcEl ? qcEl : (plumEl || qcEl);
-    const value = sel?.value;
-    if (!value) return;
-    const mods = getPlumbingModifiers();
-    const arr = mods[kind];
-    if (arr.length <= 1) return;
-    const idx = arr.indexOf(value);
-    if (idx < 0) return;
-    arr.splice(idx, 1);
-    if (kind === 'types' && mods.iconByType) delete mods.iconByType[value];
-    savePlumbingModifiers(mods);
-    populatePlumModal();
-    populateCounterQuickCountPanel();
-    const newVal = arr[0] || arr[Math.max(0, idx - 1)];
-    const plumSel = document.getElementById(plumSelectId);
-    const qcSel = document.getElementById(qcSelectId);
-    if (plumSel) plumSel.value = newVal;
-    if (qcSel) qcSel.value = newVal;
-    updatePlumNamePreview();
-    updateCounterQuickCountNamePreview();
-    updatePlumTypeIconBox();
-    updateCounterQuickCountTypeIconBox();
-  }
-  document.getElementById('plumRemoveSize').onclick = () => removePlumbingModifier('sizes', 'plumSize', 'counterQuickCountSize');
-  document.getElementById('plumRemoveType').onclick = () => removePlumbingModifier('types', 'plumType', 'counterQuickCountType');
-  document.getElementById('plumRemoveMaterial').onclick = () => removePlumbingModifier('materials', 'plumMaterial', 'counterQuickCountMaterial');
-  document.getElementById('plumAddSize').onclick = () => {
-    const v = prompt('Enter new size:');
-    if (v && v.trim()) {
-      const mods = getPlumbingModifiers();
-      mods.sizes.push(v.trim());
-      savePlumbingModifiers(mods);
-      populatePlumModal();
-      document.getElementById('plumSize').value = v.trim();
-      updatePlumNamePreview();
-    }
-  };
-  document.getElementById('plumAddType').onclick = () => {
-    const v = prompt('Enter new type:');
-    if (v && v.trim()) {
-      const mods = getPlumbingModifiers();
-      mods.types.push(v.trim());
-      savePlumbingModifiers(mods);
-      populatePlumModal();
-      document.getElementById('plumType').value = v.trim();
-      updatePlumNamePreview();
-    }
-  };
-  document.getElementById('plumAddMaterial').onclick = () => {
-    const v = prompt('Enter new material:');
-    if (v && v.trim()) {
-      const mods = getPlumbingModifiers();
-      mods.materials.push(v.trim());
-      savePlumbingModifiers(mods);
-      populatePlumModal();
-      document.getElementById('plumMaterial').value = v.trim();
-      updatePlumNamePreview();
-    }
-  };
-  document.getElementById('plumCancel').onclick = () => hideModal('plumModal');
-  document.getElementById('plumAdd').onclick = () => {
-    const size = document.getElementById('plumSize').value;
-    const type = document.getElementById('plumType').value;
-    const material = document.getElementById('plumMaterial').value;
-    const computedName = [size, material, type].filter(Boolean).join(' ');
-    const nameInput = document.getElementById('plumNamePreview');
-    const name = (nameInput?.value?.trim() || computedName) || 'Plumbing';
-    const sel = document.querySelector('#plumIconGrid .icon-cell.selected') || document.querySelector('#plumIconGridCustom .icon-cell.selected');
-    const icon = sel ? sel.dataset.path : (getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value);
-    const mods = getPlumbingModifiers();
-    pushUndoSnapshot();
-    const newCounter = { id: uid(), name, icon, color: mods.defaultColor || COLORS[2] };
-    state.counters.push(newCounter);
-    state.activeCounterType = newCounter.id;
-    state.tool = TOOL.COUNTER;
-    markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
-    hideModal('plumModal');
-    updateUI();
-  };
-
-  function getCounterQuickCountEffectiveIconPath() {
-    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
-    if (sel?.dataset.path) return sel.dataset.path;
-    const type = document.getElementById('counterQuickCountType')?.value;
-    const mods = getPlumbingModifiers();
-    const path = mods.iconByType?.[type];
-    if (path) return path;
-    return getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value;
-  }
-  function updateCounterQuickCountNamePreview() {
-    const size = document.getElementById('counterQuickCountSize')?.value;
-    const type = document.getElementById('counterQuickCountType')?.value;
-    const material = document.getElementById('counterQuickCountMaterial')?.value;
-    const name = [size, material, type].filter(Boolean).join(' ');
-    const nameEl = document.getElementById('counterQuickCountName');
-    if (nameEl) nameEl.value = name;
-    const iconEl = document.getElementById('counterQuickCountIcon');
-    if (iconEl) {
-      const path = getCounterQuickCountEffectiveIconPath();
-      const color = getPlumbingModifiers().defaultColor || COLORS[2];
-      iconEl.innerHTML = path ? '<svg viewBox="' + iconVbFor(path) + '" width="20" height="20"><path fill="' + color + '" d="' + path + '"/></svg>' : '';
-    }
-    const swatchEl = document.getElementById('counterQuickCountSwatch');
-    if (swatchEl) swatchEl.style.background = getPlumbingModifiers().defaultColor || COLORS[2];
-  }
-  function updateCounterQuickCountTypeIconBox() {
-    const box = document.getElementById('counterQuickCountTypeIconBox');
-    if (!box) return;
-    const type = document.getElementById('counterQuickCountType')?.value;
-    const mods = getPlumbingModifiers();
-    const iconByType = mods.iconByType || {};
-    const path = iconByType[type];
-    const iconExists = path && (getOrderedIcons().some(ic => ic.value === path) || getEffectiveCustomIcons().some(ic => ic.value === path));
-    if (path && iconExists) {
-      box.innerHTML = '<svg viewBox="' + iconVbFor(path) + '"><path fill="var(--accent)" d="' + path + '"/></svg>';
-      box.classList.add('has-icon');
-      box.title = 'Click to use selected icon for ' + type;
-    } else {
-      box.innerHTML = '<span class="plum-type-icon-placeholder">?</span>';
-      box.classList.remove('has-icon');
-      box.title = 'Select an icon below, then click to set for ' + type;
-    }
-  }
-  function applyCounterQuickCountIconForType() {
-    const type = document.getElementById('counterQuickCountType')?.value;
-    const mods = getPlumbingModifiers();
-    const path = mods.iconByType && mods.iconByType[type];
-    if (!path) return;
-    const allCells = document.querySelectorAll('#counterQuickCountIconGrid .icon-cell[data-path], #counterQuickCountIconGridCustom .icon-cell[data-path]');
-    const cell = Array.from(allCells).find(c => c.dataset.path === path);
-    if (cell) {
-      const inCustom = cell.closest('#counterQuickCountIconGridCustom');
-      showCounterQuickCountIconTab(inCustom ? 'custom' : 'icon');
-      document.querySelectorAll('#counterQuickCountIconGrid .icon-cell, #counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
-      cell.classList.add('selected');
-    }
-  }
-  function showCounterQuickCountIconTab(tab) {
-    document.querySelectorAll('#counterQuickCountPanel .counter-icon-tab').forEach(t =>
-      t.classList.toggle('active', t.dataset.counterQuickcountIconTab === tab));
-    document.getElementById('counterQuickCountIconPanel').style.display = tab === 'icon' ? '' : 'none';
-    document.getElementById('counterQuickCountIconCustomPanel').style.display = tab === 'custom' ? '' : 'none';
-  }
-  function populateCounterQuickCountPanel() {
-    const mods = getPlumbingModifiers();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const sizeSel = document.getElementById('counterQuickCountSize');
-    const typeSel = document.getElementById('counterQuickCountType');
-    const materialSel = document.getElementById('counterQuickCountMaterial');
-    if (sizeSel) sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
-    if (typeSel) typeSel.innerHTML = mods.types.map(t => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
-    if (materialSel) materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
-    const icons = getOrderedIcons();
-    const grid = document.getElementById('counterQuickCountIconGrid');
-    if (grid) {
-      grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-      grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-        document.querySelectorAll('#counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
-        grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        c.classList.add('selected');
-        updateCounterQuickCountNamePreview();
-      });
-    }
-    const effectiveCustom = getEffectiveCustomIcons();
-    const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
-    const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-    const customGrid = document.getElementById('counterQuickCountIconGridCustom');
-    if (customGrid) {
-      customGrid.innerHTML = uploadCell + iconCells;
-      customGrid.querySelectorAll('.icon-cell').forEach(c => {
-        c.onclick = () => {
-          if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-          document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          c.classList.add('selected');
-          updateCounterQuickCountNamePreview();
-        };
-      });
-    }
-    showCounterQuickCountIconTab('icon');
-    updateCounterQuickCountNamePreview();
-    updateCounterQuickCountTypeIconBox();
-    applyCounterQuickCountIconForType();
-    const swatchEl = document.getElementById('counterQuickCountSwatch');
-    if (swatchEl) {
-      swatchEl.onclick = () => {
-        const mods = getPlumbingModifiers();
-        showLineColorModal(mods.defaultColor || COLORS[2], (color) => {
-          mods.defaultColor = color;
-          savePlumbingModifiers(mods);
-          swatchEl.style.background = color;
-          updateCounterQuickCountNamePreview();
-        });
-      };
-      swatchEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatchEl.click(); } };
-    }
-    const rmSize = document.getElementById('counterQuickCountRemoveSize');
-    const rmType = document.getElementById('counterQuickCountRemoveType');
-    const rmMaterial = document.getElementById('counterQuickCountRemoveMaterial');
-    if (rmSize) rmSize.disabled = mods.sizes.length <= 1;
-    if (rmType) rmType.disabled = mods.types.length <= 1;
-    if (rmMaterial) rmMaterial.disabled = mods.materials.length <= 1;
-  }
-  document.querySelectorAll('#counterQuickCountPanel .counter-icon-tab').forEach(t =>
-    t.onclick = () => showCounterQuickCountIconTab(t.dataset.counterQuickcountIconTab));
-  document.getElementById('counterQuickCountSize')?.addEventListener('change', updateCounterQuickCountNamePreview);
-  document.getElementById('counterQuickCountType')?.addEventListener('change', () => {
-    updateCounterQuickCountNamePreview();
-    updateCounterQuickCountTypeIconBox();
-    applyCounterQuickCountIconForType();
-  });
-  document.getElementById('counterQuickCountMaterial')?.addEventListener('change', updateCounterQuickCountNamePreview);
-  const counterQuickCountTypeIconBoxClick = () => {
-    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
-    const path = sel && sel.dataset.path;
-    if (!path) return;
-    const type = document.getElementById('counterQuickCountType')?.value;
-    const mods = getPlumbingModifiers();
-    mods.iconByType = mods.iconByType || {};
-    mods.iconByType[type] = path;
-    savePlumbingModifiers(mods);
-    updateCounterQuickCountTypeIconBox();
-    updateCounterQuickCountNamePreview();
-  };
-  const counterQuickCountTypeIconBox = document.getElementById('counterQuickCountTypeIconBox');
-  if (counterQuickCountTypeIconBox) {
-    counterQuickCountTypeIconBox.onclick = counterQuickCountTypeIconBoxClick;
-    counterQuickCountTypeIconBox.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); counterQuickCountTypeIconBoxClick(); } };
-  }
-  document.getElementById('counterQuickCountRemoveSize')?.addEventListener('click', () => removePlumbingModifier('sizes', 'plumSize', 'counterQuickCountSize'));
-  document.getElementById('counterQuickCountRemoveType')?.addEventListener('click', () => removePlumbingModifier('types', 'plumType', 'counterQuickCountType'));
-  document.getElementById('counterQuickCountRemoveMaterial')?.addEventListener('click', () => removePlumbingModifier('materials', 'plumMaterial', 'counterQuickCountMaterial'));
-  document.getElementById('counterQuickCountAddSize')?.addEventListener('click', () => {
-    const v = prompt('Enter new size:');
-    if (v && v.trim()) {
-      const mods = getPlumbingModifiers();
-      mods.sizes.push(v.trim());
-      savePlumbingModifiers(mods);
-      populateCounterQuickCountPanel();
-      document.getElementById('counterQuickCountSize').value = v.trim();
-      updateCounterQuickCountNamePreview();
-    }
-  });
-  document.getElementById('counterQuickCountAddType')?.addEventListener('click', () => {
-    const v = prompt('Enter new type:');
-    if (v && v.trim()) {
-      const mods = getPlumbingModifiers();
-      mods.types.push(v.trim());
-      savePlumbingModifiers(mods);
-      populateCounterQuickCountPanel();
-      document.getElementById('counterQuickCountType').value = v.trim();
-      updateCounterQuickCountNamePreview();
-    }
-  });
-  document.getElementById('counterQuickCountAddMaterial')?.addEventListener('click', () => {
-    const v = prompt('Enter new material:');
-    if (v && v.trim()) {
-      const mods = getPlumbingModifiers();
-      mods.materials.push(v.trim());
-      savePlumbingModifiers(mods);
-      populateCounterQuickCountPanel();
-      document.getElementById('counterQuickCountMaterial').value = v.trim();
-      updateCounterQuickCountNamePreview();
-    }
-  });
-  document.getElementById('counterQuickCountCancel')?.addEventListener('click', () => hideModal('counterModal'));
-  document.getElementById('counterQuickCountAdd')?.addEventListener('click', () => {
-    const size = document.getElementById('counterQuickCountSize')?.value;
-    const type = document.getElementById('counterQuickCountType')?.value;
-    const material = document.getElementById('counterQuickCountMaterial')?.value;
-    const computedName = [size, material, type].filter(Boolean).join(' ');
-    const nameInput = document.getElementById('counterQuickCountName');
-    const name = (nameInput?.value?.trim() || computedName) || 'Plumbing';
-    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
-    const icon = sel ? sel.dataset.path : (getEffectiveCustomIcons()[0]?.value || getOrderedIcons()[0]?.value);
-    const mods = getPlumbingModifiers();
-    pushUndoSnapshot();
-    const newCounter = { id: uid(), name, icon, color: mods.defaultColor || COLORS[2] };
-    state.counters.push(newCounter);
-    state.activeCounterType = newCounter.id;
-    state.tool = TOOL.COUNTER;
-    markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
-    hideModal('counterModal');
-    updateUI();
-  });
+  // The Quick Plumbing + Quick Count modals (populatePlumModal,
+  // populateCounterQuickCountPanel, removePlumbingModifier, the icon-tab helpers,
+  // and the #plumBtn opener) moved to features/quick-modals.js.
 
   // SECTION: Add Line Type modal
   // The Quick Line modal (populateQuickLineModal, updateQuickLineNamePreview,
@@ -8008,7 +7115,7 @@
             document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
             counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
             c.classList.add('selected');
-            updateCounterQuickCountNamePreview();
+            App.updateCounterQuickCountNamePreview();
           };
         });
         const newIconCellQC = Array.from(counterQuickCountCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
@@ -8016,7 +7123,7 @@
           document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
           counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
           newIconCellQC.classList.add('selected');
-          updateCounterQuickCountNamePreview();
+          App.updateCounterQuickCountNamePreview();
         }
       }
       if (detailsCustomGrid) {
@@ -8655,7 +7762,7 @@
     loadUserActivityAllUsersContent();
   }
 
-  // SECTION: User Settings & Manage Users
+  // SECTION: My Settings modal
   function openMySettings() {
     const user = state.supabaseSession?.user;
     if (!user) { document.getElementById('authBtn').click(); return; }
@@ -8668,155 +7775,14 @@
     showModal('mySettingsModal');
   }
 
-  function openManageUserModal() {
-    const listEl = document.getElementById('manageUserList');
-    const session = state.supabaseSession;
-    if (!session?.access_token) return;
-    listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
-    hideModal('mySettingsModal');
-    showModal('manageUserModal');
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY };
-    function fetchAndRender() {
-      function tryEdgeFn() {
-        fetch(SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers })
-          .then(async (res) => {
-            let data;
-            try { data = await res.json(); } catch (_) { data = {}; }
-            if (res.ok && data.users) renderList(data.users);
-            else listEl.innerHTML = '<p style="color:var(--red);">' + ((data && data.error) || ('HTTP ' + res.status)).replace(/</g, '&lt;') + '</p>';
-          }).catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
-      }
-      const rpcCtrl = new AbortController();
-      setTimeout(() => rpcCtrl.abort(), 6000);
-      fetch(SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}', signal: rpcCtrl.signal })
-        .then(async (res) => {
-          let data;
-          try { data = await res.json(); } catch (_) { data = {}; }
-          if (res.ok && Array.isArray(data)) { renderList(data); return; }
-          tryEdgeFn();
-        }).catch(() => tryEdgeFn());
-    }
-    function renderList(users) {
-      if (!users || users.length === 0) {
-        listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
-        return;
-      }
-      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      const currentId = session.user?.id;
-      listEl.innerHTML = users.map((u) => {
-        const isSelf = u.id === currentId;
-        return '<div class="settings-user-row" data-user-id="' + esc(u.id) + '">' +
-          '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
-          '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-          '<span class="settings-user-last" title="Last sign-in">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
-          '<span class="settings-user-last" title="Last active">' + formatLastSignIn(u.last_seen_at) + '</span>' +
-          '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + USER_ACTIVITY_ICON_SVG + '</button>' +
-          '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
-          '</div>';
-      }).join('');
-      listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
-        btn.onclick = () => openUserActivityModal(btn.dataset.userId, btn.dataset.email);
-      });
-      listEl.querySelectorAll('.settings-user-delete:not([disabled])').forEach((btn) => {
-        btn.onclick = () => deleteUser(btn.dataset.userId, btn.dataset.email, btn);
-      });
-    }
-    fetchAndRender();
-  }
-
-  function openAllUsersModal() {
-    if (!state.isAdmin) return;
-    const listEl = document.getElementById('allUsersList');
-    const session = state.supabaseSession;
-    if (!session?.access_token) {
-      listEl.innerHTML = '<p style="color:var(--red);">Not authenticated. Please sign in again.</p>';
-      hideModal('mySettingsModal');
-      showModal('allUsersModal');
-      return;
-    }
-    listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
-    hideModal('mySettingsModal');
-    showModal('allUsersModal');
-    function renderUsers(list) {
-      if (!list || list.length === 0) {
-        listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
-        return;
-      }
-      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      listEl.innerHTML = list.map((u) =>
-        '<div class="settings-user-row">' +
-        '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
-        '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-        '<span class="settings-user-last" title="Last sign-in">' + formatLastSignIn(u.last_sign_in_at) + '</span>' +
-        '<span class="settings-user-last" title="Last active">' + formatLastSignIn(u.last_seen_at) + '</span>' +
-        '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + USER_ACTIVITY_ICON_SVG + '</button>' +
-        '</div>'
-      ).join('');
-      listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
-        btn.onclick = () => openUserActivityModal(btn.dataset.userId, btn.dataset.email);
-      });
-    }
-    function showErr(msg, hint) {
-      listEl.innerHTML = '<p style="color:var(--red);">' + (msg + '').replace(/</g, '&lt;') + '</p>' +
-        (hint ? '<p style="font-size:12px;color:var(--text3);margin-top:8px;">' + hint + '</p>' : '');
-    }
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY };
-    function tryEdgeFn() {
-      const ctrl = new AbortController();
-      setTimeout(() => ctrl.abort(), 10000);
-      fetch(SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers, signal: ctrl.signal })
-        .then(async (res) => {
-          let data;
-          try { data = await res.json(); } catch (_) { data = {}; }
-          if (res.ok && data.users) renderUsers(data.users);
-          else showErr((data && data.error) || ('HTTP ' + res.status), 'Deploy: supabase functions deploy admin-list-users --no-verify-jwt');
-        }).catch((e) => showErr((e && e.name === 'AbortError') ? 'Request timed out' : (e && e.message)));
-    }
-    const rpcCtrl = new AbortController();
-    setTimeout(() => rpcCtrl.abort(), 6000);
-    fetch(SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: '{}',
-      signal: rpcCtrl.signal
-    }).then(async (res) => {
-      let data;
-      try { data = await res.json(); } catch (_) { data = {}; }
-      if (res.ok && Array.isArray(data)) { renderUsers(data); return; }
-      tryEdgeFn();
-    }).catch(() => tryEdgeFn());
-  }
-
-  async function deleteUser(userId, email, btnEl) {
-    if (!confirm('Delete ' + (email || userId) + '? This cannot be undone.')) return;
-    const session = state.supabaseSession;
-    if (!session?.access_token) return;
-    btnEl.disabled = true;
-    btnEl.textContent = 'Deleting…';
-    try {
-      const res = await fetch(SUPABASE_URL + '/functions/v1/admin-delete-user', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId: userId })
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        const row = btnEl.closest('.settings-user-row');
-        row.remove();
-        if (!document.getElementById('manageUserList').querySelector('.settings-user-row')) {
-          document.getElementById('manageUserList').innerHTML = '<p style="color:var(--text3);">No users</p>';
-        }
-      } else {
-        alert(data.error || 'Delete failed');
-        btnEl.disabled = false;
-        btnEl.textContent = 'Delete';
-      }
-    } catch (e) {
-      alert(e.message || 'Delete failed');
-      btnEl.disabled = false;
-      btnEl.textContent = 'Delete';
-    }
-  }
+  // The admin Manage-Users modals (openManageUserModal, openAllUsersModal,
+  // deleteUser, the #manageUsersBtn create-user opener + #adminCreateForm, and the
+  // manageUser/allUsers/adminPanel close handlers) moved to features/user-admin.js
+  // (window.App registry); reached via App.openManageUserModal /
+  // App.openAllUsersModal. openMySettings (My Settings + airboard) and the User
+  // Activity modal stay here; the feature reaches User Activity via
+  // App.openUserActivityModal + reuses App.formatLastSignIn/USER_ACTIVITY_ICON_SVG/
+  // SUPABASE_URL/SUPABASE_ANON_KEY.
 
   // Canvas Repair lives in features/canvas-repair.js (window.App registry pilot);
   // openCanvasRepairModal / applyCanvasRepair are reached via App.* at call time.
@@ -8827,131 +7793,14 @@
   // getOrderedIcons/iconVbFor/getUserCustomIcons/saveUserCustomIcons/showToast
   // stay here and are published on App.
 
-  // SECTION: Manage Projects modal
-  function openManageProjectsModal() {
-    const listEl = document.getElementById('manageProjectsList');
-    const session = state.supabaseSession;
-    if (!session?.access_token) return;
-    listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
-    hideModal('mySettingsModal');
-    showModal('manageProjectsModal');
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY };
-    const formatSizeMb = function (bytes) {
-      if (bytes == null || bytes < 0) return '';
-      const mb = bytes / (1024 * 1024);
-      return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
-    };
-    fetch(SUPABASE_URL + '/rest/v1/rpc/list_projects_for_admin', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' })
-      .then(async (res) => {
-        let data;
-        try { data = await res.json(); } catch (_) { data = {}; }
-        if (!res.ok) {
-          listEl.innerHTML = '<p style="color:var(--red);">' + ((data && data.message) || ('HTTP ' + res.status)).replace(/</g, '&lt;') + '</p>';
-          return;
-        }
-        if (!Array.isArray(data) || data.length === 0) {
-          listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>';
-          return;
-        }
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        listEl.innerHTML = data.map((p) => {
-          const sizeStr = formatSizeMb(p.size_bytes);
-          const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';
-          const metaLine1 = [esc(p.owner_email || '—'), dateStr, sizeStr].filter(Boolean).join(' · ');
-          const metaLine2Parts = [];
-          const countStr = (p.counter_count != null || p.line_count != null)
-            ? [p.counter_count != null ? p.counter_count + ' counters' : null, p.line_count != null ? p.line_count + ' lines' : null].filter(Boolean).join(' · ')
-            : '';
-          if (countStr) metaLine2Parts.push(countStr);
-          if (p.checked_out_email) metaLine2Parts.push('Checked out by ' + esc(p.checked_out_email));
-          const metaLine2 = metaLine2Parts.join(' · ');
-          const canvasOnlyBadge = !p.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
-          const showForceCheckIn = state.isAdmin && (p.checked_out_by || p.checked_out_email);
-          const forceCheckInBtn = showForceCheckIn
-            ? '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in (admin)</button>'
-            : '';
-          return '<div class="settings-user-row settings-project-row" data-project-id="' + esc(p.id) + '">' +
-            '<div class="settings-project-info">' +
-            '<span class="settings-project-name" title="' + esc(p.name) + '">' + esc(p.name || 'Untitled') + '</span>' +
-            '<div class="settings-project-meta">' + metaLine1 + '</div>' +
-            (metaLine2 ? '<div class="settings-project-meta">' + metaLine2 + '</div>' : '') +
-            '</div>' +
-            '<div class="settings-project-actions">' +
-            (canvasOnlyBadge ? '<div class="settings-project-badges">' + canvasOnlyBadge + '</div>' : '') +
-            forceCheckInBtn +
-            '<button type="button" class="settings-user-delete" data-project-id="' + esc(p.id) + '" data-project-name="' + esc(p.name || 'Untitled') + '">Delete</button>' +
-            '</div>' +
-            '</div>';
-        }).join('');
-        listEl.querySelectorAll('.settings-user-delete').forEach((btn) => {
-          btn.onclick = () => deleteProject(btn.dataset.projectId, btn.dataset.projectName, btn);
-        });
-        listEl.querySelectorAll('.settings-project-force-checkin').forEach((btn) => {
-          btn.onclick = () => forceCheckInProjectFromManage(btn.dataset.projectId, btn);
-        });
-      })
-      .catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
-  }
-
-  async function forceCheckInProjectFromManage(projectId, btnEl) {
-    if (!supabase) return;
-    btnEl.disabled = true;
-    const origText = btnEl.textContent;
-    btnEl.textContent = 'Turning in…';
-    try {
-      const { data, error } = await supabase.rpc('force_check_in_project', { p_project_id: projectId });
-      updateServerClockFromRpc(data);
-      const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-      if (result.ok) {
-        if (state.currentProjectId === projectId) {
-          try { clearCheckoutExpiredAttention(); } catch (_) {}
-          try { resetAutoRecheckoutCounter(projectId); } catch (_) {}
-        }
-        showToast('Project force turned in.');
-        openManageProjectsModal();
-      } else {
-        showToast(result.error || 'Failed to force turn-in', 3000);
-        btnEl.disabled = false;
-        btnEl.textContent = origText;
-      }
-    } catch (e) {
-      showToast(e.message || 'Failed to force turn-in', 3000);
-      btnEl.disabled = false;
-      btnEl.textContent = origText;
-    }
-  }
-
-  async function deleteProject(projectId, name, btnEl) {
-    if (!confirm('Delete project "' + (name || projectId) + '"? This cannot be undone.')) return;
-    const session = state.supabaseSession;
-    if (!session?.access_token) return;
-    btnEl.disabled = true;
-    btnEl.textContent = 'Deleting…';
-    try {
-      const res = await fetch(SUPABASE_URL + '/functions/v1/admin-delete-project', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: projectId })
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        const row = btnEl.closest('.settings-user-row');
-        row.remove();
-        if (!document.getElementById('manageProjectsList').querySelector('.settings-user-row')) {
-          document.getElementById('manageProjectsList').innerHTML = '<p style="color:var(--text3);">No projects</p>';
-        }
-      } else {
-        alert(data.error || 'Delete failed');
-        btnEl.disabled = false;
-        btnEl.textContent = 'Delete';
-      }
-    } catch (e) {
-      alert(e.message || 'Delete failed');
-      btnEl.disabled = false;
-      btnEl.textContent = 'Delete';
-    }
-  }
-
+  // SECTION: Auth & settings entry buttons
+  // The Manage Projects modal (openManageProjectsModal, forceCheckInProjectFromManage,
+  // deleteProject, and the #manageProjectsModalClose handler) moved to
+  // features/manage-projects.js (window.App registry); reached via
+  // App.openManageProjectsModal. It reads the supabase client through
+  // App.getSupabase() (reassigned by client recycle) + the publish-only
+  // App.SUPABASE_URL/SUPABASE_ANON_KEY/updateServerClockFromRpc/
+  // clearCheckoutExpiredAttention/resetAutoRecheckoutCounter.
   if (SUPABASE_ENABLED) {
     document.getElementById('authBtn').onclick = () => {
       if (state.supabaseSession?.user) {
@@ -9072,71 +7921,12 @@
       };
     }
     document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
-    const saveStatusBtnEl = document.getElementById('saveStatusBtn');
-    if (saveStatusBtnEl) saveStatusBtnEl.onclick = () => openSaveStatusModal();
-    const saveStatusHeaderBtnEl = document.getElementById('saveStatusBtnHeader');
-    if (saveStatusHeaderBtnEl) saveStatusHeaderBtnEl.onclick = () => openSaveStatusModal();
+    // The Save Status bell open buttons (#saveStatusBtn/#saveStatusBtnHeader) and
+    // the #saveStatusModalClose/#saveStatusModalDone/#saveStatusVerboseToggle/
+    // #saveStatusExportBtn/#saveStatusCopyBtn handlers moved to
+    // features/save-status.js (window.App registry). #syncPausedBannerRetry stays.
     const syncPausedBannerRetryEl = document.getElementById('syncPausedBannerRetry');
     if (syncPausedBannerRetryEl) syncPausedBannerRetryEl.onclick = () => { retrySyncNow(); };
-    const saveStatusModalCloseEl = document.getElementById('saveStatusModalClose');
-    if (saveStatusModalCloseEl) saveStatusModalCloseEl.onclick = () => {
-      if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
-      hideModal('saveStatusModal');
-    };
-    const saveStatusModalDoneEl = document.getElementById('saveStatusModalDone');
-    if (saveStatusModalDoneEl) saveStatusModalDoneEl.onclick = () => {
-      if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
-      hideModal('saveStatusModal');
-    };
-    const saveStatusVerboseToggleEl = document.getElementById('saveStatusVerboseToggle');
-    if (saveStatusVerboseToggleEl) saveStatusVerboseToggleEl.onchange = (e) => {
-      const on = !!e.target.checked;
-      setSaveDebugEnabled(on);
-      pushSaveEvent(on ? 'verbose_on' : 'verbose_off', on ? 'Verbose logging enabled' : 'Verbose logging disabled');
-      renderSaveStatusModalContent();
-    };
-    const saveStatusExportBtnEl = document.getElementById('saveStatusExportBtn');
-    if (saveStatusExportBtnEl) saveStatusExportBtnEl.onclick = async () => {
-      try {
-        const envelope = await buildSaveLogsEnvelopeWithSnapshots();
-        const json = JSON.stringify(envelope, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const ts = new Date().toISOString().replace(/[:.]/g, '-');
-        a.href = url;
-        a.download = 'clickcount-save-logs-' + ts + '.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 1000);
-        showToast('Logs exported');
-      } catch (err) {
-        showToast('Export failed: ' + (err && err.message || 'unknown'));
-      }
-    };
-    const saveStatusCopyBtnEl = document.getElementById('saveStatusCopyBtn');
-    if (saveStatusCopyBtnEl) saveStatusCopyBtnEl.onclick = async () => {
-      try {
-        const envelope = await buildSaveLogsEnvelopeWithSnapshots();
-        const json = JSON.stringify(envelope, null, 2);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(json);
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = json;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
-        }
-        showToast('Logs copied to clipboard');
-      } catch (err) {
-        showToast('Copy failed: ' + (err && err.message || 'unknown'));
-      }
-    };
     async function checkInCurrentProjectIfHeld() {
       if (!state.currentProjectId || !supabase || state.checkedOutBy !== state.supabaseSession?.user?.id) return;
       try {
@@ -10125,6 +8915,7 @@
       showModal('copyProjectModal');
       if (inp) setTimeout(function () { inp.focus(); inp.select && inp.select(); }, 0);
     }
+    // eslint-disable-next-line no-unused-vars -- published on App for features/load-project.js
     function openCopyProjectModalOrPromptSave(proj) {
       if (!autoSaveDirty) {
         pendingCopyProject = null;
@@ -10152,6 +8943,7 @@
     // opts: { reusePdfHash?: string|null, reusePdfStoragePath?: string|null,
     //         source?: 'load_project'|'load_annotations'|'restore_last' }
     // SECTION: Cloud project hydrate / copy / fork
+    // eslint-disable-next-line no-unused-vars -- published on App for features/load-project.js
     function hydrateProjectFromCloudRow(proj, opts) {
       opts = opts || {};
       state.pendingCanvasLoad = null;
@@ -10321,7 +9113,7 @@
     function openLoadProjectModalOrPromptSave() {
       if (!autoSaveDirty) {
         pendingCopyProject = null;
-        openLoadProjectModal().catch(e => {
+        App.openLoadProjectModal().catch(e => {
           console.error('[Load Project]', e);
           showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
         });
@@ -10338,593 +9130,15 @@
       if (saveBtn) saveBtn.style.display = '';
       showModal('saveBeforeLoadModal');
     }
-    // SECTION: Load Project modal
-    async function openLoadProjectModal() {
-      const listEl = document.getElementById('loadProjectList');
-      const emptyEl = document.getElementById('loadProjectEmpty');
-      const filtersBarInit = document.getElementById('loadProjectFilters');
-      if (filtersBarInit) filtersBarInit.style.display = 'none';
-      listEl.innerHTML = '';
-      emptyEl.style.display = 'none';
-      try {
-        if (!supabase) {
-          listEl.innerHTML = '<p style="color:var(--red);">Cloud not configured.</p>';
-          showModal('loadProjectModal');
-          return;
-        }
-        let user = state.supabaseSession?.user;
-        if (!user) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            state.supabaseSession = session;
-            user = session?.user;
-          } catch (e) {
-            if (e?.name === 'AuthApiError' || (e?.message && (e.message.includes('Refresh Token') || e.message.includes('refresh_token')))) {
-              await supabase.auth.signOut();
-              state.supabaseSession = null;
-            }
-          }
-          updateUI();
-          updateSaveStatusIndicator();
-        }
-        if (!user) {
-          const authDevBypassWrapEl = document.getElementById('authDevBypassWrap');
-          if (authDevBypassWrapEl) authDevBypassWrapEl.style.display = canUseDevAuth() ? 'block' : 'none';
-          showModal('authModal');
-          return;
-        }
-        const { data: projects, error } = await supabase.rpc('list_accessible_projects');
-        if (error) {
-          listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects.</p>';
-          showModal('loadProjectModal');
-          return;
-        }
-        if (!projects || projects.length === 0) {
-          const filtersBarEmpty = document.getElementById('loadProjectFilters');
-          if (filtersBarEmpty) filtersBarEmpty.style.display = 'none';
-          emptyEl.style.display = 'block';
-          showModal('loadProjectModal');
-          return;
-        }
-        const projectsAll = projects;
-        const formatSizeMb = function (bytes) {
-          if (bytes == null || bytes < 0) return '';
-          const mb = bytes / (1024 * 1024);
-          return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
-        };
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const loadProjectAccessCache = Object.create(null);
-        function fillLoadProjectAccessPanel(panel, rows, escFn) {
-          if (!rows || rows.length === 0) {
-            panel.innerHTML = '<div class="load-project-access-empty" style="color:var(--text3);">No users listed.</div>';
-            return;
-          }
-          let html = '<ul class="load-project-access-list">';
-          for (let ai = 0; ai < rows.length; ai++) {
-            const r = rows[ai];
-            html += '<li><span class="load-project-access-email">' + escFn(r.email || '—') + '</span> <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:10px;">' + escFn(r.role || '') + '</span></li>';
-          }
-          html += '</ul>';
-          panel.innerHTML = html;
-        }
-        async function fetchLoadProjectAccessIntoPanel(accessPanel, proj) {
-          if (loadProjectAccessCache[proj.id]) {
-            fillLoadProjectAccessPanel(accessPanel, loadProjectAccessCache[proj.id], esc);
-            return;
-          }
-          if (!supabase) {
-            accessPanel.innerHTML = '<div class="load-project-access-error" style="color:var(--red);">Cloud not configured.</div>';
-            return;
-          }
-          accessPanel.innerHTML = '<div class="load-project-access-loading">Loading…</div>';
-          try {
-            const { data, error } = await supabase.rpc('list_project_shares', { p_project_id: proj.id });
-            if (error) {
-              accessPanel.innerHTML = '<div class="load-project-access-error" style="color:var(--red);">' + esc(error.message || 'Failed to load') + '</div>';
-              showToast(error.message || 'Could not load access list.', 4000);
-              return;
-            }
-            loadProjectAccessCache[proj.id] = data || [];
-            fillLoadProjectAccessPanel(accessPanel, loadProjectAccessCache[proj.id], esc);
-          } catch (err) {
-            accessPanel.innerHTML = '<div class="load-project-access-error" style="color:var(--red);">' + esc(err.message || 'Failed') + '</div>';
-            showToast(err.message || 'Could not load access list.', 4000);
-          }
-        }
-        async function populateLoadProjectUserSelect(userSelect, proj) {
-          const wrap = userSelect.closest('.load-project-access-add-wrap');
-          const addErrEl = wrap ? wrap.querySelector('.load-project-access-add-error') : null;
-          if (addErrEl) {
-            addErrEl.style.display = 'none';
-            addErrEl.textContent = '';
-          }
-          userSelect.innerHTML = '<option value="">Select a user…</option>';
-          if (!supabase) {
-            const o = document.createElement('option');
-            o.value = '';
-            o.disabled = true;
-            o.textContent = 'Cloud not configured';
-            userSelect.appendChild(o);
-            userSelect.disabled = true;
-            return;
-          }
-          userSelect.disabled = false;
-          try {
-            const { data, error } = await supabase.rpc('list_users_for_project_invite', { p_project_id: proj.id });
-            if (error) {
-              if (addErrEl) {
-                addErrEl.textContent = error.message || 'Could not load users';
-                addErrEl.style.display = 'block';
-              }
-              showToast(error.message || 'Could not load users for invite.', 4000);
-              return;
-            }
-            userSelect.innerHTML = '<option value="">Select a user…</option>';
-            if (data && data.length > 0) {
-              for (let ui = 0; ui < data.length; ui++) {
-                const u = data[ui];
-                const opt = document.createElement('option');
-                opt.value = (u.email || '').toLowerCase();
-                opt.textContent = u.email || u.id;
-                userSelect.appendChild(opt);
-              }
-            }
-          } catch (err) {
-            if (addErrEl) {
-              addErrEl.textContent = err.message || 'Could not load users';
-              addErrEl.style.display = 'block';
-            }
-            showToast(err.message || 'Could not load users for invite.', 4000);
-          }
-        }
-        function downloadLoadProjectCanvasJson(data, filename) {
-          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-        function getFilteredLoadProjects() {
-          let filtered = projectsAll.slice();
-          const ownEl = document.getElementById('loadProjectFilterOwnership');
-          const roleEl = document.getElementById('loadProjectFilterRole');
-          const ownerEl = document.getElementById('loadProjectFilterOwnerEmail');
-          const searchEl = document.getElementById('loadProjectFilterSearch');
-          if (ownEl && ownEl.value === 'mine') filtered = filtered.filter(function (p) { return p.is_owner; });
-          else if (ownEl && ownEl.value === 'shared') filtered = filtered.filter(function (p) { return !p.is_owner; });
-          if (roleEl && roleEl.value) filtered = filtered.filter(function (p) { return (p.my_access_role || '') === roleEl.value; });
-          if (state.isAdmin && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
-          if (searchEl) {
-            const q = (searchEl.value || '').trim().toLowerCase();
-            if (q) filtered = filtered.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1; });
-          }
-          return filtered;
-        }
-        async function renderLoadProjectListRows() {
-          listEl.innerHTML = '';
-          const filtered = getFilteredLoadProjects();
-          if (filtered.length === 0) {
-            listEl.innerHTML = '<p class="load-project-no-match" style="color:var(--text2);margin:0;">No projects match filters.</p>';
-            showModal('loadProjectModal');
-            return;
-          }
-          let loadProjectInProgress = false;
-          for (let i = 0; i < filtered.length; i++) {
-            const proj = filtered[i];
-          let sizeBytes = proj.size_bytes;
-          if (sizeBytes == null && proj.pdf_path) {
-            try {
-              const { data: info } = await supabase.storage.from('pdfs').info(proj.pdf_path);
-              const sz = info && (info.metadata?.size ?? info.size);
-              sizeBytes = (proj.data ? JSON.stringify(proj.data).length : 0) + (typeof sz === 'number' && sz >= 0 ? sz : 0);
-            } catch (_) { sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0; }
-          } else if (sizeBytes == null) {
-            sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0;
-          }
-          const div = document.createElement('div');
-          div.className = 'load-project-item';
-          const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
-          const sizeStr = formatSizeMb(sizeBytes);
-          const canvasOnlyBadge = !proj.pdf_path ? '<button type="button" class="badge load-project-canvas-download" title="Download canvas (.json)" aria-label="Download canvas">Canvas only</button>' : '';
-          const countsBadge = (proj.counter_count != null || proj.line_count != null) && (proj.counter_count > 0 || proj.line_count > 0)
-            ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">' + [proj.counter_count > 0 ? (proj.counter_count + ' cnt') : null, proj.line_count > 0 ? (proj.line_count + ' ln') : null].filter(Boolean).join(' · ') + '</span>'
-            : '';
-          let lockBadge = '';
-          if (proj.can_edit) lockBadge = ' <span class="badge" style="background:var(--green);color:var(--bg);font-size:11px;">You\'re editing</span>';
-          else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>';
-          else if (proj.can_check_out) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Available</span>';
-          const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
-          const metaParts = [date, sizeStr].filter(Boolean);
-          const meta = esc(metaParts.join(' · ')) + lockBadge + ownerBadge;
-          const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 640"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
-          const deleteBtnHtml = proj.is_owner ? '<button type="button" class="load-project-delete" title="Delete from cloud" aria-label="Delete">' + trashSvg + '</button>' : '';
-          const copyNewBtnHtml = proj.pdf_path ? '<button type="button" class="load-project-copy-new" title="Open a local copy. Save to cloud from Project Settings when ready.">Copy to new</button>' : '';
-          const actionsHtml = (countsBadge || canvasOnlyBadge || copyNewBtnHtml || deleteBtnHtml) ? '<div class="load-project-actions">' + countsBadge + canvasOnlyBadge + copyNewBtnHtml + deleteBtnHtml + '</div>' : '';
-          const adminAccessHtml = state.isAdmin
-            ? '<div class="load-project-admin-access">' +
-              '<div class="load-project-access-header">' +
-              '<button type="button" class="load-project-access-toggle" aria-expanded="true" aria-controls="loadProjectAccess_' + proj.id + '">' +
-              '<span class="load-project-access-chevron" aria-hidden="true">▼</span> Who has access' +
-              '</button>' +
-              '<div class="load-project-access-add-wrap">' +
-              '<div class="load-project-access-add">' +
-              '<select class="load-project-access-user-select" aria-label="User to add">' +
-              '<option value="">Select a user…</option>' +
-              '</select>' +
-              '<select class="load-project-access-role-select" aria-label="Role for new user">' +
-              '<option value="viewer">Viewer</option>' +
-              '<option value="editor">Editor</option>' +
-              '</select>' +
-              '<button type="button" class="load-project-access-add-btn">Add</button>' +
-              '</div>' +
-              '<div class="load-project-access-add-error" style="display:none;"></div>' +
-              '</div>' +
-              '</div>' +
-              '<div id="loadProjectAccess_' + proj.id + '" class="load-project-access-panel"></div>' +
-              '</div>'
-            : '';
-          div.innerHTML = '<div class="load-project-row-main">' +
-            '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' +
-            actionsHtml + '</div>' + adminAccessHtml;
-          const deleteBtn = div.querySelector('.load-project-delete');
-          if (deleteBtn) {
-            deleteBtn.onclick = async (e) => {
-              e.stopPropagation();
-              if (!confirm('Delete "' + (proj.name || 'Untitled') + '" from cloud? This cannot be undone.')) return;
-              try {
-                await deleteProjectAsOwner(proj.id, proj.pdf_path);
-                div.remove();
-                for (let pi = projectsAll.length - 1; pi >= 0; pi--) {
-                  if (projectsAll[pi].id === proj.id) { projectsAll.splice(pi, 1); break; }
-                }
-                if (!projectsAll.length) {
-                  const filtersBarDel = document.getElementById('loadProjectFilters');
-                  if (filtersBarDel) filtersBarDel.style.display = 'none';
-                  listEl.innerHTML = '';
-                  emptyEl.style.display = 'block';
-                } else {
-                  void renderLoadProjectListRows();
-                }
-                if (state.currentProjectId === proj.id) {
-                  clearUndoStacks();
-                  state.pages = [];
-                  state.currentProjectId = null;
-                  subscribeToProjectCheckoutChanges(null);
-                  state.currentProjectName = null;
-                  state.pdfBuffer = null;
-                  state.pdfBufferSize = 0;
-                  state.pdfStoragePath = null;
-                  state.pdfHash = null;
-                  state.projectOwnerId = null;
-                  state.lastSavedAt = null;
-                  lastLocalBackupAt = null;
-                  state.checkedOutBy = null;
-                  state.checkedOutAt = null;
-                  state.checkedOutEmail = null;
-                  state.isViewer = false;
-                  state.canCheckOut = false;
-                  try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-                  try { clearCheckoutExpiredAttention(); } catch (_) {}
-                  updateUI();
-                }
-              } catch (err) {
-                showToast(err?.message || 'Failed to delete project', 4000);
-              }
-            };
-          }
-          const canvasDlBtn = div.querySelector('.load-project-canvas-download');
-          if (canvasDlBtn) {
-            canvasDlBtn.onclick = async (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              if (!supabase) {
-                showToast('Cloud not configured.', 3000);
-                return;
-              }
-              try {
-                const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
-                if (error) {
-                  showToast(error.message || 'Could not load canvas data.', 4000);
-                  return;
-                }
-                if (!full || full.data == null) {
-                  showToast('No canvas data for this project.', 4000);
-                  return;
-                }
-                downloadLoadProjectCanvasJson(full.data, sanitizeForFilename(proj.name || 'Untitled') + '.json');
-              } catch (err) {
-                showToast(err?.message || 'Download failed.', 4000);
-              }
-            };
-          }
-          const copyNewBtn = div.querySelector('.load-project-copy-new');
-          if (copyNewBtn) {
-            copyNewBtn.onclick = function (e) {
-              e.stopPropagation();
-              e.preventDefault();
-              openCopyProjectModalOrPromptSave(proj);
-            };
-          }
-          if (state.isAdmin) {
-            const toggleBtn = div.querySelector('.load-project-access-toggle');
-            const accessPanel = div.querySelector('.load-project-access-panel');
-            const addWrap = div.querySelector('.load-project-access-add-wrap');
-            if (addWrap) {
-              addWrap.addEventListener('click', function (e) { e.stopPropagation(); });
-            }
-            if (toggleBtn && accessPanel) {
-              toggleBtn.onclick = async function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
-                const chev = toggleBtn.querySelector('.load-project-access-chevron');
-                if (expanded) {
-                  toggleBtn.setAttribute('aria-expanded', 'false');
-                  accessPanel.hidden = true;
-                  if (chev) chev.textContent = '▶';
-                  return;
-                }
-                toggleBtn.setAttribute('aria-expanded', 'true');
-                accessPanel.hidden = false;
-                if (chev) chev.textContent = '▼';
-                await fetchLoadProjectAccessIntoPanel(accessPanel, proj);
-              };
-              const addBtn = div.querySelector('.load-project-access-add-btn');
-              const userSelect = div.querySelector('.load-project-access-user-select');
-              const roleSel = div.querySelector('.load-project-access-role-select');
-              const addErrEl = div.querySelector('.load-project-access-add-error');
-              if (addBtn && userSelect && roleSel) {
-                addBtn.onclick = async function (e) {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  if (addErrEl) {
-                    addErrEl.style.display = 'none';
-                    addErrEl.textContent = '';
-                  }
-                  const email = (userSelect.value || '').trim().toLowerCase();
-                  if (!email) {
-                    if (addErrEl) {
-                      addErrEl.textContent = 'Select a user';
-                      addErrEl.style.display = 'block';
-                    }
-                    return;
-                  }
-                  if (!supabase) {
-                    showToast('Cloud not configured.', 3000);
-                    return;
-                  }
-                  addBtn.disabled = true;
-                  try {
-                    const res = await fetch((typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/invite-to-project', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (state.supabaseSession?.access_token || '') },
-                      body: JSON.stringify({ project_id: proj.id, email: email, role: roleSel.value || 'viewer' })
-                    });
-                    const data = await res.json();
-                    if (data.ok) {
-                      delete loadProjectAccessCache[proj.id];
-                      userSelect.value = '';
-                      await fetchLoadProjectAccessIntoPanel(accessPanel, proj);
-                      showToast('Added ' + (data.email || email));
-                    } else {
-                      const msg = data.error || 'Failed to add user';
-                      if (addErrEl) {
-                        addErrEl.textContent = msg;
-                        addErrEl.style.display = 'block';
-                      }
-                      showToast(msg, 4000);
-                    }
-                  } catch (err) {
-                    const msg = err.message || 'Failed to add user';
-                    if (addErrEl) {
-                      addErrEl.textContent = msg;
-                      addErrEl.style.display = 'block';
-                    }
-                    showToast(msg, 4000);
-                  } finally {
-                    addBtn.disabled = false;
-                  }
-                };
-              }
-              void fetchLoadProjectAccessIntoPanel(accessPanel, proj);
-              if (userSelect) void populateLoadProjectUserSelect(userSelect, proj);
-            }
-          }
-          const rowMain = div.querySelector('.load-project-row-main');
-          const loadRowClick = async () => {
-          if (loadProjectInProgress) return;
-          loadProjectInProgress = true;
-          div.classList.add('loading');
-          listEl.classList.add('loading');
-          const metaEl = div.querySelector('.load-project-meta');
-          const origMeta = metaEl ? metaEl.textContent : '';
-          if (metaEl) metaEl.textContent = 'Loading…';
-          try {
-          // A1: Clear any stale pendingCanvasLoad from a previous canvas-only
-          // load whose file picker the user dismissed, so it can't apply to
-          // the project we're about to open.
-          state.pendingCanvasLoad = null;
-          if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
-          let d = proj.data || {};
-          try {
-            const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
-            if (!error && full && full.data) d = full.data;
-          } catch (_) {}
-          const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-          const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
-          const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
-          if (proj.pdf_path) {
-            try {
-              const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
-              if (!buf) {
-                  /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
-                  state.pdfStoragePath = null;
-                  state.pdfBuffer = null;
-                  state.pdfBufferSize = 0;
-                  state.pages = [];
-                  state.counters = Array.isArray(d.counters) ? d.counters : [];
-                  state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-                  state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-                  if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-                  if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-                  if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-                  if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-                  if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-                  if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-                  if (d.gridSettings) state.gridSettings = d.gridSettings;
-                  reconcileOrphanedCountersAndLineTypes();
-                  clearUndoStacks();
-                  hydrateProjectFromCloudRow(proj, { reusePdfHash: null, source: 'load_project' });
-                  // The cloud PDF object is empty/missing even though pdf_path
-                  // is set; correct the status-bar indicator so the user sees
-                  // the project as missing its PDF (matches original behavior
-                  // before the helper extraction).
-                  lastSaveIncludedPdf = false;
-                  // hydrateProjectFromCloudRow clears pendingCanvasLoad, but this
-                  // path needs it set so the next PDF upload knows which project
-                  // these annotations belong to.
-                  state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
-                  hideModal('loadProjectModal');
-                  state.sidebarReorderModeActive = false;
-                  // C1: Replaced the toast + auto-pdfInput.click() pair with a
-                  // dedicated modal so the user has a clear next action.
-                  openCanvasOnlyNeedsPdfModal({ reason: 'pdf_missing' });
-                  return;
-              }
-              await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
-              state.pdfStoragePath = proj.pdf_path;
-              state.pdfBuffer = null;
-              state.pdfBufferSize = 0;
-            } catch (e) {
-              listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
-              return;
-            }
-          } else {
-            state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: backupDataToProjFormat(useIdbBackup && idbBackup.data ? idbBackup.data : d), pdf_hash: proj.pdf_hash || null };
-            state.pdfStoragePath = null;
-            state.pdfBuffer = null;
-            state.pdfBufferSize = 0;
-            state.pages = [];
-            const canvasData = useIdbBackup && idbBackup.data ? idbBackup.data : d;
-            state.counters = Array.isArray(canvasData.counters) ? canvasData.counters : [];
-            state.lineTypes = Array.isArray(canvasData.lineTypes) ? canvasData.lineTypes : [];
-            state.groups = ensureGroupColors(Array.isArray(canvasData.groups) ? canvasData.groups : []);
-            if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
-            if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
-            if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
-            if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
-            if (canvasData.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...canvasData.multiplyZoneSettings };
-            if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
-            if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
-            reconcileOrphanedCountersAndLineTypes();
-            clearUndoStacks();
-            autoSaveDirty = false;
-            lastModifiedAt = 0;
-          }
-          // B1: Capture pendingCanvasLoad that the no-PDF branch above set, so
-          // the helper does not clear it. (For the with-PDF path this is null.)
-          const preservedPendingCanvasLoad = state.pendingCanvasLoad;
-          hydrateProjectFromCloudRow(proj, { source: 'load_project' });
-          if (preservedPendingCanvasLoad) state.pendingCanvasLoad = preservedPendingCanvasLoad;
-          hideModal('loadProjectModal');
-          state.sidebarReorderModeActive = false;
-          if (!proj.pdf_path) {
-            // C1: Replaced the toast + auto-pdfInput.click() pair with a
-            // dedicated modal so the user has a clear next action.
-            openCanvasOnlyNeedsPdfModal({ reason: 'no_pdf_stored' });
-          }
-          fitZoom();
-          updateUI();
-          } finally {
-            loadProjectInProgress = false;
-            div.classList.remove('loading');
-            listEl.classList.remove('loading');
-            if (metaEl) metaEl.textContent = origMeta;
-          }
-        };
-          if (rowMain) rowMain.onclick = loadRowClick;
-          listEl.appendChild(div);
-        }
-        showModal('loadProjectModal');
-        }
-        const filtersBarEl = document.getElementById('loadProjectFilters');
-        if (filtersBarEl) {
-          filtersBarEl.style.display = 'flex';
-          const ownEl2 = document.getElementById('loadProjectFilterOwnership');
-          const roleEl2 = document.getElementById('loadProjectFilterRole');
-          const searchEl2 = document.getElementById('loadProjectFilterSearch');
-          const ownerWrap2 = document.getElementById('loadProjectFilterOwnerWrap');
-          const ownerEmailSel2 = document.getElementById('loadProjectFilterOwnerEmail');
-          if (ownEl2) ownEl2.value = '';
-          if (roleEl2) roleEl2.value = '';
-          if (searchEl2) searchEl2.value = '';
-          let ownerEmailsUnique = [];
-          if (state.isAdmin) {
-            const seenO = Object.create(null);
-            for (let ei = 0; ei < projectsAll.length; ei++) {
-              const emo = projectsAll[ei].owner_email;
-              if (emo && !seenO[emo]) { seenO[emo] = true; ownerEmailsUnique.push(emo); }
-            }
-            ownerEmailsUnique.sort();
-          }
-          if (ownerWrap2) ownerWrap2.style.display = (state.isAdmin && ownerEmailsUnique.length > 1) ? 'inline-flex' : 'none';
-          if (ownerEmailSel2) {
-            ownerEmailSel2.innerHTML = '<option value="">All owners</option>';
-            if (state.isAdmin) {
-              for (let ej = 0; ej < ownerEmailsUnique.length; ej++) {
-                const opto = document.createElement('option');
-                opto.value = ownerEmailsUnique[ej];
-                opto.textContent = ownerEmailsUnique[ej];
-                ownerEmailSel2.appendChild(opto);
-              }
-            }
-          }
-          const onFilterChange = function () { void renderLoadProjectListRows(); };
-          if (ownEl2) ownEl2.onchange = onFilterChange;
-          if (roleEl2) roleEl2.onchange = onFilterChange;
-          if (ownerEmailSel2) ownerEmailSel2.onchange = onFilterChange;
-          if (searchEl2) searchEl2.oninput = onFilterChange;
-          const filtersExtraEl = document.getElementById('loadProjectFiltersExtra');
-          const filtersToggleBtn = document.getElementById('loadProjectFiltersToggle');
-          if (filtersExtraEl && filtersToggleBtn) {
-            function applyLoadProjectFiltersPanelExpanded(isExp) {
-              if (isExp) {
-                filtersExtraEl.removeAttribute('hidden');
-                filtersToggleBtn.setAttribute('aria-expanded', 'true');
-              } else {
-                filtersExtraEl.setAttribute('hidden', '');
-                filtersToggleBtn.setAttribute('aria-expanded', 'false');
-              }
-            }
-            let expandedDefault;
-            try {
-              const stored = localStorage.getItem('loadProjectFiltersExpanded');
-              if (stored === 'true') expandedDefault = true;
-              else if (stored === 'false') expandedDefault = false;
-              else expandedDefault = !window.matchMedia('(max-width: 768px)').matches;
-            } catch (_) {
-              expandedDefault = !window.matchMedia('(max-width: 768px)').matches;
-            }
-            applyLoadProjectFiltersPanelExpanded(expandedDefault);
-            filtersToggleBtn.onclick = function (e) {
-              e.preventDefault();
-              e.stopPropagation();
-              const expand = filtersExtraEl.hasAttribute('hidden');
-              applyLoadProjectFiltersPanelExpanded(expand);
-              try { localStorage.setItem('loadProjectFiltersExpanded', expand ? 'true' : 'false'); } catch (_) {}
-            };
-          }
-        }
-        await renderLoadProjectListRows();
-      } catch (e) {
-        console.error('[Load Project]', e);
-        listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects: ' + (e?.message || 'Unknown error') + '</p>';
-        showModal('loadProjectModal');
-        showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
-      }
-    }
+    // openLoadProjectModal moved to features/load-project.js (App.openLoadProjectModal);
+    // the save-before-load gate + #loadProject* bindings stay in app.js.
+    // in-block load-helper publish: these async fns are block-scoped (not
+    // Annex-B hoisted), so publish them here where they are in scope for
+    // features/load-project.js. window.App is reused by the tail registry.
+    (window.App = window.App || {}).checkInCurrentProjectIfHeld = checkInCurrentProjectIfHeld;
+    window.App.resolvePdfBufferForCloudProject = resolvePdfBufferForCloudProject;
+    window.App.buildPagesFromPdfArrayBufferAndProjectData = buildPagesFromPdfArrayBufferAndProjectData;
+    // SECTION: Settings menu actions & Airboard sync
     document.getElementById('settingsLoadProject').onclick = () => {
       hideModal('settingsModal');
       openLoadProjectModalOrPromptSave();
@@ -10942,7 +9156,7 @@
       updateUI();
       renderPdf();
     };
-    document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); openManageProjectsModal(); };
+    document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); App.openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); openShareProjectModal(); };
     document.getElementById('mySettingsSignOut').onclick = async () => { hideModal('mySettingsModal'); await checkInCurrentProjectIfHeld(); supabase.auth.signOut(); updateUI(); updateSaveStatusIndicator(); };
     document.getElementById('mySettingsModalClose').onclick = () => hideModal('mySettingsModal');
@@ -11001,8 +9215,9 @@
       showToast('Artboard cleared');
     };
     document.getElementById('mySettingsManageUsers').onclick = () => { hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };
-    document.getElementById('mySettingsManageUser').onclick = () => openManageUserModal();
-    document.getElementById('mySettingsAllUsers').onclick = () => openAllUsersModal();
+    document.getElementById('mySettingsManageUser').onclick = () => App.openManageUserModal();
+    document.getElementById('mySettingsAllUsers').onclick = () => App.openAllUsersModal();
+    // SECTION: My Settings password & Auth sign-in
     document.getElementById('mySettingsPasswordForm').onsubmit = async (e) => {
       e.preventDefault();
       const newPw = document.getElementById('mySettingsNewPassword').value;
@@ -11055,6 +9270,7 @@
       updateSaveStatusIndicator();
     };
 
+    // SECTION: Save Project modal
     document.getElementById('saveProjectBtn').onclick = async () => {
       document.getElementById('saveProjectName').value = state.currentProjectName || 'Untitled';
       document.getElementById('saveProjectError').style.display = 'none';
@@ -11257,6 +9473,7 @@
       copyProjectModalTarget = null;
       hideModal('copyProjectModal');
     };
+    // SECTION: Copy project modal
     document.getElementById('copyProjectModalConfirm').onclick = async () => {
       const proj = copyProjectModalTarget;
       const inp = document.getElementById('copyProjectNameInput');
@@ -11280,6 +9497,7 @@
       }
     };
     document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
+    // SECTION: Checkout expired recovery modal wiring
     (function wireCheckoutExpiredRecoveryModal() {
       const modal = document.getElementById('checkoutExpiredRecoveryModal');
       if (!modal) return;
@@ -11352,7 +9570,7 @@
         } finally {
           recheckBtn.disabled = false;
           recheckBtn.textContent = origText;
-          renderSaveStatusModalContent();
+          App.renderSaveStatusModalContent();
         }
       };
       if (exportBtn) exportBtn.onclick = () => {
@@ -11363,6 +9581,7 @@
         } catch (_) { showToast('Export failed', 3000); }
       };
     })();
+    // SECTION: Save-before-load modal
     document.getElementById('saveBeforeLoadCancel').onclick = () => {
       pendingCopyProject = null;
       hideModal('saveBeforeLoadModal');
@@ -11372,7 +9591,7 @@
       const p = pendingCopyProject;
       pendingCopyProject = null;
       if (p) openCopyProjectModal(p);
-      else openLoadProjectModal();
+      else App.openLoadProjectModal();
     };
     document.getElementById('saveBeforeLoadSave').onclick = async () => {
       const cancelBtn = document.getElementById('saveBeforeLoadCancel');
@@ -11390,7 +9609,7 @@
         const p = pendingCopyProject;
         pendingCopyProject = null;
         if (p) openCopyProjectModal(p);
-        else openLoadProjectModal();
+        else App.openLoadProjectModal();
       } else {
         if (result.error?.code === 'CHECKOUT_EXPIRED') {
           pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
@@ -11437,6 +9656,7 @@
     document.getElementById('canvasOnlyNeedsPdfBannerChoose').onclick = () => {
       try { document.getElementById('pdfInput').click(); } catch (_) {}
     };
+    // SECTION: Last-session restore prompt
     document.getElementById('lastSessionRestoreKeep').onclick = async () => {
       const p = pendingLastSessionRestore;
       if (!p) { hideModal('lastSessionRestoreModal'); return; }
@@ -11460,22 +9680,11 @@
       await takeoffBackupDelete(proj.id);
       updateUI();
     };
-    document.getElementById('manageUsersBtn').onclick = () => {
-      document.getElementById('adminCreateEmail').value = '';
-      document.getElementById('adminCreatePassword').value = '';
-      document.getElementById('adminCreateError').style.display = 'none';
-      document.getElementById('adminCreateSuccess').style.display = 'none';
-      showModal('adminPanelModal');
-    };
-    document.getElementById('manageUsersBtnSidebar').onclick = () => document.getElementById('manageUsersBtn').click();
-    document.getElementById('adminPanelClose').onclick = () => hideModal('adminPanelModal');
-    document.getElementById('manageUserModalClose').onclick = () => hideModal('manageUserModal');
-    const manageUserModalAllActivityBtn = document.getElementById('manageUserModalAllActivityBtn');
-    if (manageUserModalAllActivityBtn) {
-      manageUserModalAllActivityBtn.innerHTML = USER_ACTIVITY_ICON_SVG;
-      manageUserModalAllActivityBtn.onclick = () => openUserActivityModal(null, null);
-    }
-    document.getElementById('allUsersModalClose').onclick = () => hideModal('allUsersModal');
+    // The admin Manage-Users handlers (#manageUsersBtn create-user opener,
+    // #manageUsersBtnSidebar, #adminPanelClose, #manageUserModalClose,
+    // manageUserModalAllActivityBtn, #allUsersModalClose, #adminCreateForm below)
+    // moved to features/user-admin.js (window.App registry).
+    // SECTION: User Activity filters & view toggle
     document.getElementById('userActivityModalClose').onclick = () => hideModal('userActivityModal');
     const userActivityUserSelect = document.getElementById('userActivityUserSelect');
     if (userActivityUserSelect) {
@@ -11519,48 +9728,13 @@
         loadUserActivityAllUsersContent();
       };
     }
-    document.getElementById('manageProjectsModalClose').onclick = () => hideModal('manageProjectsModal');
+    // #manageProjectsModalClose moved to features/manage-projects.js.
     // manageIconsModalClose / manageIconsCancel / manageIconsSave handlers live
     // in features/manage-icons.js (window.App registry).
     document.getElementById('canvasRepairModalClose').onclick = () => hideModal('canvasRepairModal');
     document.getElementById('canvasRepairCancel').onclick = () => hideModal('canvasRepairModal');
     document.getElementById('canvasRepairApply').onclick = () => App.applyCanvasRepair();
-    document.getElementById('adminCreateForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('adminCreateEmail').value.trim();
-      const password = document.getElementById('adminCreatePassword').value;
-      const errEl = document.getElementById('adminCreateError');
-      const successEl = document.getElementById('adminCreateSuccess');
-      errEl.style.display = 'none';
-      successEl.style.display = 'none';
-      if (!email || !password) {
-        errEl.textContent = 'Email and password required';
-        errEl.style.display = 'block';
-        return;
-      }
-      const session = state.supabaseSession;
-      if (!session?.access_token) return;
-      try {
-        const res = await fetch(SUPABASE_URL + '/functions/v1/admin-create-user', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const json = await res.json();
-        if (!res.ok) {
-          errEl.textContent = json.error || 'Create failed';
-          errEl.style.display = 'block';
-          return;
-        }
-        successEl.textContent = 'User created. Share the password with them.';
-        successEl.style.display = 'block';
-        document.getElementById('adminCreateEmail').value = '';
-        document.getElementById('adminCreatePassword').value = '';
-      } catch (e) {
-        errEl.textContent = e.message || 'Create failed';
-        errEl.style.display = 'block';
-      }
-    };
+    // #adminCreateForm (create-user) moved to features/user-admin.js.
   }
 
   document.getElementById('ctxEdit').onclick = () => {
@@ -11698,6 +9872,7 @@
     updateUI();
   };
 
+  // SECTION: Canvas Event Handlers
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
@@ -11754,7 +9929,6 @@
     menu.classList.add('visible');
   }
 
-  // SECTION: Canvas Event Handlers
   function handleCanvasClick(e) {
     if (!state.pages.length) return;
     if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE) return;
@@ -13798,7 +11972,6 @@
   window.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
   window.ptDist = ptDist;
   window.polylineDistance = polylineDistance;
-  window.formatDist = formatDist;
   window.renderIconHtml = renderIconHtml;
 
   // SECTION: App feature registry
@@ -13847,9 +12020,66 @@
   App.COLORS = COLORS;
   App.getLineModifiers = getLineModifiers;
   App.saveLineModifiers = saveLineModifiers;
+  App.getPlumbingModifiers = getPlumbingModifiers;
+  App.savePlumbingModifiers = savePlumbingModifiers;
   App.getIconName = getIconName;
   App.getEffectiveCustomIcons = getEffectiveCustomIcons;
-  App.populateCounterQuickCountPanel = populateCounterQuickCountPanel;
+  // populatePlumModal + populateCounterQuickCountPanel are registered from
+  // features/quick-modals.js (counter.js calls App.populateCounterQuickCountPanel).
+  App.getCloudSaveSummary = getCloudSaveSummary;
+  App.pruneSaveStatusLog = pruneSaveStatusLog;
+  App.getSaveStatusLogWindowMs = getSaveStatusLogWindowMs;
+  App.isSaveDebugEnabled = isSaveDebugEnabled;
+  App.setSaveDebugEnabled = setSaveDebugEnabled;
+  App.buildSaveLogsEnvelopeWithSnapshots = buildSaveLogsEnvelopeWithSnapshots;
+  App.pushSaveEvent = pushSaveEvent;
+  App.getSaveStatusLog = () => saveStatusLog;
+  App.isCheckoutExpiredAttention = () => checkoutExpiredNeedsAttention;
+  App.SUPABASE_URL = SUPABASE_URL;
+  App.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+  App.updateServerClockFromRpc = updateServerClockFromRpc;
+  App.clearCheckoutExpiredAttention = clearCheckoutExpiredAttention;
+  // resetAutoRecheckoutCounter is a sloppy-mode block-scoped function hoisted to
+  // the IIFE scope at runtime; wrap so the lookup defers to call time.
+  App.resetAutoRecheckoutCounter = (projectId) => resetAutoRecheckoutCounter(projectId);
+  App.getSupabase = () => supabase;
+  App.formatLastSignIn = formatLastSignIn;
+  App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;
+  App.openUserActivityModal = openUserActivityModal;
+  App.updateSaveStatusIndicator = updateSaveStatusIndicator;
+  App.canUseDevAuth = canUseDevAuth;
+  App.deleteProjectAsOwner = deleteProjectAsOwner;
+  App.openCopyProjectModalOrPromptSave = openCopyProjectModalOrPromptSave;
+  App.hydrateProjectFromCloudRow = hydrateProjectFromCloudRow;
+  // Load Project modal deep deps (features/load-project.js): the project-load
+  // action is fused with the boot/engine path, so it reaches these internals.
+  App.SUPABASE_URL = SUPABASE_URL;
+  App.clearUndoStacks = clearUndoStacks;
+  App.subscribeToProjectCheckoutChanges = subscribeToProjectCheckoutChanges;
+  App.takeoffBackupGet = takeoffBackupGet;
+  App.ensureGroupColors = ensureGroupColors;
+  App.openCanvasOnlyNeedsPdfModal = openCanvasOnlyNeedsPdfModal;
+  App.backupDataToProjFormat = backupDataToProjFormat;
+  App.fitZoom = fitZoom;
+  // Prepare PDF modal deps (features/prepare-pdf.js).
+  App.assertPdfWithinLimit = assertPdfWithinLimit;
+  App.mergePdfBuffers = mergePdfBuffers;
+  App.buildTrimmedPdfBuffer = buildTrimmedPdfBuffer;
+  App.resetGridOrigin = resetGridOrigin;
+  App.writeTakeoffStateBackup = writeTakeoffStateBackup;
+  App.downloadPdfBuffer = downloadPdfBuffer;
+  App.performSaveProjectToCloud = performSaveProjectToCloud;
+  App.isAuthError = isAuthError;
+  // NB: the three async, block-scoped load helpers (checkInCurrentProjectIfHeld,
+  // resolvePdfBufferForCloudProject, buildPagesFromPdfArrayBufferAndProjectData)
+  // are NOT Annex-B hoisted to this scope, so they are published from inside the
+  // `if (SUPABASE_ENABLED)` block instead (search "in-block load-helper publish").
+  // Setters for engine let-state the load action resets (cannot assign through
+  // the registry otherwise).
+  App.setAutoSaveDirty = (v) => { autoSaveDirty = v; };
+  App.setLastModifiedAt = (v) => { lastModifiedAt = v; };
+  App.setLastLocalBackupAt = (v) => { lastLocalBackupAt = v; };
+  App.setLastSaveIncludedPdf = (v) => { lastSaveIncludedPdf = v; };
   App.SCALE_MODES = SCALE_MODES;
   App.SCALE_PRESETS = SCALE_PRESETS;
   App.ptDist = ptDist;

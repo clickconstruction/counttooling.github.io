@@ -189,6 +189,31 @@
     return (val).toFixed(2) + ' ' + unit;
   }
 
+  // Format a PDF-point distance into a decimal real-world length using a scale
+  // object ({ pixelsPerUnit, unit }); falls back to pixels when scale is absent.
+  // (The state-derived default scale is resolved by callers, not here.)
+  function formatDist(pdfPts, scale) {
+    if (!scale) return Math.round(pdfPts) + ' px';
+    return (pdfPts / scale.pixelsPerUnit).toFixed(2) + ' ' + scale.unit;
+  }
+  // Format a PDF-point distance into feet-inches via formatFeetInchesFromVal.
+  function formatDistFeetInches(pdfPts, scale) {
+    if (!scale) return Math.round(pdfPts) + ' px';
+    const val = pdfPts / scale.pixelsPerUnit;
+    return formatFeetInchesFromVal(val, scale.unit);
+  }
+  // Format an already-real-world value into feet-inches.
+  function formatDistFeetInchesFromReal(val, scale) {
+    if (!scale) return Math.round(val) + ' px';
+    return formatFeetInchesFromVal(val, scale.unit);
+  }
+  // Format a squared-PDF-point area into real-world area (unit squared).
+  function formatArea(sqPdfPts, scale) {
+    if (!scale) return Math.round(sqPdfPts) + ' px²';
+    const ppu = scale.pixelsPerUnit;
+    return (sqPdfPts / (ppu * ppu)).toFixed(1) + ' ' + scale.unit + '²';
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -198,6 +223,7 @@
       rotatePoint90CW, pointInRect, rectsOverlap,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
       formatLineLengthRealSum, parseRealWorldLength, parseFraction,
-      formatAgo, formatFeetInchesFromVal
+      formatAgo, formatFeetInchesFromVal,
+      formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea
     };
   }

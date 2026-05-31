@@ -200,6 +200,11 @@ module.exports = [
       globals: {
         ...globals.browser,
         module: 'readonly',
+        // CDN libraries loaded via <script> in index.html before app.js
+        pdfjsLib: 'readonly',
+        jspdf: 'readonly',
+        html2canvas: 'readonly',
+        PDFLib: 'readonly',
       },
     },
     rules: {
@@ -276,6 +281,12 @@ module.exports = [
         closePreparePdfModal: 'readonly',
         hydrateProjectFromCloudRow: 'readonly',
         resetAutoRecheckoutCounter: 'readonly',
+        // Sync block-scoped fn (Annex B.3.3 hoist), published at the tail
+        // registry for features/load-project.js. The async block fns
+        // (checkInCurrentProjectIfHeld / resolvePdfBufferForCloudProject /
+        // buildPagesFromPdfArrayBufferAndProjectData) are NOT hoisted and are
+        // published in-block instead, so they need no global here.
+        openCopyProjectModalOrPromptSave: 'readonly',
       },
     },
     rules: {

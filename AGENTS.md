@@ -31,7 +31,7 @@
   `report.js`),
   [app.js](app.js) (the bulk of the app logic — the former inline `index.html`
   IIFE, extracted into a classic `<script src>` and since slimmed from ~16.2k to
-  ~13.7k lines as the pure modules + the `window.App` feature-file splits were
+  ~12.2k lines as the pure modules + the `window.App` feature-file splits were
   pulled out; resolves the
   sibling modules' values by bare name and exposes its own helpers to `report.js`
   via `window.*` at the IIFE tail; linted with `no-undef` as error, the rest of
@@ -356,7 +356,11 @@
   modal, Copy project modal, Checkout expired recovery modal wiring,
   Save-before-load modal, Last-session restore prompt, User Activity filters &
   view toggle — and the `Canvas Event Handlers` marker moved up to absorb the
-  stray `showContextMenu`),
+  stray `showContextMenu`. The modal header also has an admin-only **Advanced**
+  toggle (`#loadProjectAdvancedToggle`, persisted via `loadProjectAdvanced`) that
+  shows/hides every row's "Who has access" block (`.load-project-admin-access`)
+  by toggling a `hide-access` class on `#loadProjectList`; default OFF =
+  hidden),
   [features/prepare-pdf.js](features/prepare-pdf.js) (the twenty-second registry
   split — the Prepare PDF modal `openPreparePdfModal` + its preview/nav/render
   helpers (`renderPreparePdfPreview`, `saveCurrentPageName`,
@@ -477,7 +481,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~13.7k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~12.2k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -498,7 +502,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~13.7k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~12.2k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").

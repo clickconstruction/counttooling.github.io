@@ -1775,7 +1775,15 @@
   </div>
   <div class="modal-overlay" id="loadProjectModal">
     <div class="modal-card modal-card-fullscreen">
-      <h2>Load Project from Cloud</h2>
+      <div class="load-project-modal-header">
+        <h2>Load Project from Cloud</h2>
+        <span id="loadProjectAdvancedWrap" class="load-project-advanced-wrap" style="display:none;">
+          <span class="load-project-advanced-label">Advanced</span>
+          <button type="button" class="toggle-switch" id="loadProjectAdvancedToggle" aria-pressed="false" title="Show access controls">
+            <span class="toggle-switch-knob"></span>
+          </button>
+        </span>
+      </div>
       <p class="form-group load-project-modal-intro">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
       <div id="loadProjectFilters" class="load-project-filters form-group" style="display:none;">
         <div class="load-project-filters-top">

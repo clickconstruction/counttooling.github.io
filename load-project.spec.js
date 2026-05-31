@@ -33,6 +33,15 @@ test.describe('window.App registry pilot - Load Project modal', () => {
     expect(threw).toBe(false);
     await page.waitForTimeout(200);
 
+    // The admin-only "Advanced" access toggle exists in the modal header and is
+    // hidden until shown for an admin session; the hide-access CSS rule is wired.
+    const toggle = await page.evaluate(() => {
+      const wrap = document.getElementById('loadProjectAdvancedWrap');
+      const btn = document.getElementById('loadProjectAdvancedToggle');
+      return { wrapHidden: !!wrap && wrap.style.display === 'none', isToggle: !!btn && btn.classList.contains('toggle-switch') };
+    });
+    expect(toggle).toEqual({ wrapHidden: true, isToggle: true });
+
     expect(errors).toEqual([]);
   });
 

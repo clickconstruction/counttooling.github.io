@@ -585,7 +585,8 @@ Rules to follow when adding/editing a feature file:
 `recentLineColors`, `iconNames`, `iconOrder`, `pageScales`, `zoomSettings`,
 `groupColorDisplay`, `pagesTitlesTruncated`, `hideUnmarkedPagesFromSidebar`,
 `counterSearch`, `lineTypeSearch`, `linesSearch`, `linesTypeExpanded`,
-`loadProjectFiltersExpanded`, `plumbingModifiers` (includes `iconByType`),
+`loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
+Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`),
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode).

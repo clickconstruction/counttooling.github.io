@@ -813,6 +813,10 @@
     #loadProjectList .load-project-access-list { list-style: none; margin: 0; padding: 0; }
     #loadProjectList .load-project-access-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 0; font-family: 'DM Mono', monospace; font-size: 0.78rem; }
     #loadProjectList .load-project-access-email { word-break: break-all; }
+    #loadProjectModal .load-project-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    #loadProjectModal .load-project-advanced-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    #loadProjectModal .load-project-advanced-label { color: var(--text2); font-size: 0.85rem; }
+    #loadProjectList.hide-access .load-project-admin-access { display: none; }
     #loadProjectModal .load-project-modal-intro { margin-bottom: 8px; color: var(--text2); font-size: 0.88rem; line-height: 1.35; }
     #loadProjectModal .load-project-filters.form-group { margin-bottom: 8px; }
     #loadProjectModal .load-project-filters { display: flex; flex-direction: column; align-items: stretch; gap: 6px; max-width: 100%; box-sizing: border-box; }

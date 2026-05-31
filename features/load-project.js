@@ -602,6 +602,23 @@
             };
           }
         }
+        // Advanced toggle (admin-only): shows/hides every row's "Who has access"
+        // block (.load-project-admin-access) via a class on the list. Default OFF
+        // -> hidden. Set before the render so there is no flash.
+        const advWrap = document.getElementById('loadProjectAdvancedWrap');
+        const advBtn = document.getElementById('loadProjectAdvancedToggle');
+        if (advWrap) advWrap.style.display = state.isAdmin ? '' : 'none';
+        if (advBtn) {
+          const advanced = state.isAdmin && localStorage.getItem('loadProjectAdvanced') === 'true';
+          advBtn.setAttribute('aria-pressed', advanced ? 'true' : 'false');
+          listEl.classList.toggle('hide-access', !advanced);
+          advBtn.onclick = () => {
+            const on = advBtn.getAttribute('aria-pressed') !== 'true';
+            advBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            listEl.classList.toggle('hide-access', !on);
+            try { localStorage.setItem('loadProjectAdvanced', on ? 'true' : 'false'); } catch (_) {}
+          };
+        }
         await renderLoadProjectListRows();
       } catch (e) {
         console.error('[Load Project]', e);

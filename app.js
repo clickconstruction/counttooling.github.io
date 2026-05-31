@@ -1112,6 +1112,17 @@
       schema: 'clickcount-save-logs/v1',
       capturedAt: new Date().toISOString(),
       tabSessionId: TAB_SESSION_ID,
+      projectRef: (typeof SUPABASE_URL === 'string' ? ((SUPABASE_URL.match(/^https?:\/\/([^.]+)\./) || [])[1] || null) : null),
+      // Triage note for anyone -- especially an AI/LLM -- handed an exported copy
+      // of these logs: these are CLIENT-side save/sync telemetry events. To
+      // root-cause a failure, cross-reference each error event against THIS
+      // project's Supabase server logs (Supabase MCP `get_logs` with service
+      // "api", or the dashboard Logs Explorer) by timestamp + path + status_code
+      // (and tabSessionId / user.email). The authoritative server request id
+      // (sb-request-id) is recorded server-side but is NOT browser-readable here
+      // (it is omitted from Access-Control-Expose-Headers), so it will be absent
+      // from these events -- get it from the server logs, not from here.
+      analysisNote: 'Client-side save/sync telemetry. To root-cause a failure, cross-reference each error event with this project\'s Supabase server logs (Supabase MCP get_logs service:"api", or the dashboard Logs Explorer) by timestamp + path + status_code (and tabSessionId / user.email). The authoritative sb-request-id lives in the server logs, not here (it is not browser-readable due to CORS). projectRef is included above.',
       user: {
         email: userEmail,
         isAdmin: !!state.isAdmin,

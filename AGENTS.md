@@ -630,6 +630,13 @@ mode).
   `extractResponseDiagnostics` (`requestId`/`cfRay`/`retryAfter`/`serverDate`) -- but
   those headers only surface if Supabase exposes them via `Access-Control-Expose-Headers`.
   Every serialized error carries a `transient` triage flag (`isTransientSaveError`).
+  The envelope also carries `projectRef` + an `analysisNote` so that exported logs
+  are self-describing: **when handed exported save logs, cross-reference each
+  failure event with the project's Supabase server logs (Supabase MCP `get_logs`
+  service `"api"`, or the dashboard Logs Explorer) by timestamp + path +
+  `status_code` (and `tabSessionId`/`user.email`)** -- the authoritative
+  `sb-request-id` lives server-side and is not browser-readable (CORS), so it is
+  absent from the client events.
 - Sharing uses checkout/turn-in (one editor at a time, 30-minute inactivity expiry
   with keep-alive). Admins can force turn-in. Expiry surfaces a recovery modal with
   silent auto-recheckout under it. Symbols: `doTurnIn`,

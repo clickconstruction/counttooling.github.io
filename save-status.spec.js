@@ -78,6 +78,11 @@ test.describe('window.App registry pilot - Save Status modal', () => {
     expect(env.schema).toBe('clickcount-save-logs/v1');
     expect(typeof env.tabSessionId).toBe('string');
     expect(env.tabSessionId.length).toBeGreaterThan(0);
+    // Self-describing triage note so exported logs tell an AI to cross-reference
+    // Supabase get_logs.
+    expect(typeof env.analysisNote).toBe('string');
+    expect(env.analysisNote).toMatch(/get_logs/);
+    expect('projectRef' in env).toBe(true);
     for (const k of ['sessionExpiresAt', 'secondsToExpiry', 'clientRecycles', 'autosaveLatencyP95', 'degradedForMs', 'nextAutoSaveAttemptInMs']) {
       expect(k in env.timing).toBe(true);
     }

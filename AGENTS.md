@@ -27,7 +27,7 @@
   `features/quick-line.js`, `features/counter.js`, `features/save-status.js`,
   `features/manage-projects.js`, `features/user-admin.js`,
   `features/load-project.js`, `features/prepare-pdf.js`,
-  `features/quick-modals.js`), then
+  `features/quick-modals.js`, `features/pdf-bundle.js`), then
   `report.js`),
   [app.js](app.js) (the bulk of the app logic — the former inline `index.html`
   IIFE, extracted into a classic `<script src>` and since slimmed from ~16.2k to
@@ -386,7 +386,20 @@
   `showCounterTab('quickcount')` calls it), and `App.updateCounterQuickCountNamePreview`
   (the shared custom-icon-upload handler in app.js refreshes the Quick Count grid
   via it); the modal calls back into `App.showCounterTab` — the bidirectional
-  Quick-Count↔counter coupling is mediated entirely by the registry), and
+  Quick-Count↔counter coupling is mediated entirely by the registry),
+  [features/pdf-bundle.js](features/pdf-bundle.js) (the twenty-fourth registry
+  split — the PDF-bundling helpers `addReportPagesToPdf`, `addNotesToPdf`,
+  `addHighlightsToPdf`, `hasAnyHighlights`, `hasAnyNotes` (report/notes/highlights
+  → jsPDF). Notably these were **already all on `App`** (publish-only for
+  `features/export-pdfs.js`), so the split **re-homes** their registrations from
+  app.js to the feature; `export-pdfs.js` keeps working via `App.*`. One new
+  publish-only dep `wrapNoteText`; deps `renderAnnotationsToContext`/
+  `getPageCanvases`/`getActiveAnnotations` already on `App`; `buildReportHtml`
+  (report.js) + `html2canvas` (CDN) are runtime globals resolved at export time
+  (added `buildReportHtml` to the `features/*.js` eslint globals). app.js's 6
+  internal callers (updateUI bundle-button visibility + the Copy-summaries export
+  path) convert to `App.*`; the interleaved `importCanvasAfterPdf`/`clearPage`
+  modals stay), and
   [report.js](report.js).
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,

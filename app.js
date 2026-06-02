@@ -911,6 +911,44 @@
     return { data: bodyJson, error: null };
   }
 
+  // Raw-fetch twin of supabase.rpc('list_accessible_projects'), and it exists for
+  // the same reason rawCheckInProject does: when the supabase-js client wedges
+  // after a long background/sleep, raw fetch to the same REST endpoint still
+  // returns in well under a second. Mirrors rawCheckInProject's return contract.
+  async function rawListAccessibleProjects(signal) {
+    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase not configured');
+    }
+    const accessToken = state.supabaseSession?.access_token || '';
+    if (!accessToken) throw new Error('No access token for raw list_accessible_projects');
+    const url = SUPABASE_URL + '/rest/v1/rpc/list_accessible_projects';
+    const res = await fetch(url, {
+      method: 'POST',
+      cache: 'no-store',
+      signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: '{}'
+    });
+    let bodyJson = null;
+    let bodyText = '';
+    try {
+      bodyText = await res.text();
+      if (bodyText) bodyJson = JSON.parse(bodyText);
+    } catch (_) {}
+    if (!res.ok) {
+      const e = new Error('Raw list_accessible_projects failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      e.status = res.status;
+      e.code = 'RAW_RPC_HTTP_' + res.status;
+      e.diag = extractResponseDiagnostics(res.headers);
+      return { data: bodyJson, error: e };
+    }
+    return { data: bodyJson, error: null };
+  }
+
   // SECTION: [sync] Global force reload
   async function checkGlobalForceReload() {
     if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
@@ -1043,15 +1081,23 @@
   function getProjectSummaryForLogs() {
     try {
       const pages = (state && state.pages) || [];
-      let counters = 0, lines = 0, multiplyZones = 0, scaleZones = 0, highlights = 0, notes = 0;
+      // Count across the current per-page `canvases[].annotations` shape (with a
+      // fallback to the legacy per-page `annotations` shape), using the field
+      // names the app actually writes (counterMarkers / quickLines / polylines).
+      // The old code read `a.counts` / `a.lines` off `p.annotations`, which never
+      // exist in the canvases shape -- so every count logged as 0 even on full
+      // projects. counters/lines reuse getProjectCounts so the two never drift.
+      const { counter_count: counters, line_count: lines } = getProjectCounts({ pages });
+      let multiplyZones = 0, scaleZones = 0, highlights = 0, notes = 0;
       pages.forEach(p => {
-        const a = p.annotations || {};
-        counters     += (a.counts || []).length;
-        lines        += (a.lines || []).length;
-        multiplyZones += (a.multiplyZones || []).length;
-        scaleZones   += (a.scaleZones || []).length;
-        highlights   += (a.highlights || []).length;
-        notes        += (a.notes || []).length;
+        const canvases = p?.canvases || (p?.annotations ? [{ annotations: p.annotations }] : []);
+        canvases.forEach(c => {
+          const a = c?.annotations || {};
+          multiplyZones += (a.multiplyZones || []).length;
+          scaleZones    += (a.scaleZones || []).length;
+          highlights    += (a.highlights || []).length;
+          notes         += (a.notes || []).length;
+        });
       });
       // Payload sizing (export-time only -- never called per save event). An
       // approximation of the cloud-save data blob, for "saves fail on big
@@ -5439,13 +5485,17 @@
     const prevWasCheckedOut = state.checkedOutBy === state.supabaseSession?.user?.id;
     let projects = null;
     let error = null;
+    // When the supabase-js client has wedged recently (a frequent post-sleep /
+    // post-background failure mode), skip it and hit the REST endpoint with raw
+    // fetch -- which keeps returning sub-second while supabase-js hangs to the
+    // full timeout. Same pattern Turn In uses for check_in_project.
+    const sbJsRecentlyBad = () => lastSupabaseJsFailureAt > 0 && Date.now() - lastSupabaseJsFailureAt < 5 * 60 * 1000;
     for (let attempt = 0; attempt < 2; attempt++) {
+      const useRaw = sbJsRecentlyBad() || attempt > 0;
       try {
-        const r = await withTimeout(
-          supabase.rpc('list_accessible_projects'),
-          REFRESH_PERMISSIONS_TIMEOUT_MS,
-          'list_accessible_projects'
-        );
+        const r = useRaw
+          ? await withTimeout((signal) => rawListAccessibleProjects(signal), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects')
+          : await withTimeout(supabase.rpc('list_accessible_projects'), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects');
         projects = r.data;
         error = r.error;
       } catch (e) {
@@ -5453,6 +5503,12 @@
         error = e;
       }
       if (!error && projects) break;
+      // A supabase-js timeout/error here is the most reliable "client is wedged"
+      // signal we get -- record it so other sync paths (Turn In) proactively
+      // prefer raw fetch instead of each eating a full timeout first. Previously
+      // these 10+/hour timeouts were dropped on the floor, so Turn In had no idea
+      // the client was wedged and hung the full check-in timeout before retrying.
+      if (error && !useRaw) noteSupabaseJsFailure('list_accessible_projects', error);
       if (attempt === 0) await new Promise(r2 => setTimeout(r2, 500));
     }
     if (error || !projects) {

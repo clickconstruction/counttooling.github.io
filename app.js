@@ -10707,15 +10707,17 @@
   });
 
   document.addEventListener('keydown', (e) => {
-    if (document.getElementById('counterModal').classList.contains('visible') && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
-      App.showCounterTab('quickcount');
-      e.preventDefault();
-      return;
-    }
-    if (document.getElementById('chooseLineTypeModal').classList.contains('visible') && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
-      App.showLineTypeTab('quick');
-      e.preventDefault();
-      return;
+    if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
+      if (document.getElementById('counterModal').classList.contains('visible')) {
+        App.showCounterTab('quickcount');
+        e.preventDefault();
+        return;
+      }
+      if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
+        App.showLineTypeTab('quick');
+        e.preventDefault();
+        return;
+      }
     }
     if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     if (e.key === ' ') {

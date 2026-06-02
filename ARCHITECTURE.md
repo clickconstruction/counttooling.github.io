@@ -737,7 +737,7 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Canvas context menu** — `#contextMenu` on right-click / long-press;
   `handleContextMenu` -> `hitTest` -> `state.ctxTarget`; `#ctxTargetNameRow` shows
   the counter/line-type name below Delete; not available in view mode.
-- **Hotkeys** — M/S/C/L/J/P/D/H/X/N/R; Shift+C / Shift+L open Quick tabs; arrows:
+- **Hotkeys** — M/S/C/L/J/P/D/H/X/N/R; Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows:
   Left/Right page nav (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z /
   Ctrl+Shift+Z; Ctrl+R refresh; ignored while focus is in an input/textarea.
 - **Macros modal** — Keyboard Shortcuts reference, opened from Project Settings.

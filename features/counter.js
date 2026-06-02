@@ -13,8 +13,8 @@
  *
  * The "quickcount" tab body (populateCounterQuickCountPanel) stays in app.js with
  * the Quick Plumbing / Quick Count section: showCounterTab calls it via
- * App.populateCounterQuickCountPanel, and the Quick Count code + the Shift+C
- * hotkey reach this tab via App.showCounterTab('quickcount') (same bidirectional
+ * App.populateCounterQuickCountPanel, and the Quick Count code + Shift+Q
+ * Shift+Q hotkey reach this tab via App.showCounterTab('quickcount') (same bidirectional
  * shape as the Quick Line <-> Choose/Create handoff).
  *
  * Scope is the Counter modal only. The interleaved neighbors that shared the old

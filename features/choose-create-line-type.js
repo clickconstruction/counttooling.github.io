@@ -19,7 +19,7 @@
  * separate concerns that share the same former grab-bag section. The Quick tab
  * body (populateQuickLineModal) and the Quick Line apply flow stay in app.js and
  * are reached via App.populateQuickLineModal. The two app.js call sites
- * (#quickLine.onclick and the Shift+L hotkey) reach this modal via
+ * (#quickLine.onclick and Shift+Q when this modal is open) reach this modal via
  * App.showChooseLineTypeModal / App.showLineTypeTab at call time.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.

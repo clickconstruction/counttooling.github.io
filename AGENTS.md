@@ -652,7 +652,7 @@ mode).
 
 M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to H/V), P
 (Polyline), D (Measure), H (Highlight), X (Multiply Zone), N (Note), R (Rotate
-page); Shift+C / Shift+L open Quick tabs; arrows: Left/Right page nav
+page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z
 undo/redo; Ctrl+R refresh. Ignored when focus is in an input/textarea/contenteditable.
 

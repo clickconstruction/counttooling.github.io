@@ -581,6 +581,24 @@
     }
   }
 
+  // Proactively recycle a wedged supabase-js client on a long-idle return. The
+  // raw-fetch recovery probe can pass (the network is fine) while the supabase-js
+  // client is wedged after sleep/background -- then every .rpc/.from in the wake
+  // path hangs to its full timeout (probeCheckoutLock 10s, refreshProjectPermissions
+  // 8s x2). runRecoveryProbeAndMaybeRecycle never fires here because an idle user
+  // has zero autosave failures, so detection has to be an ACTIVE probe rather than
+  // a failure count. Probe the client and, if it's wedged, recreate it BEFORE the
+  // wake's checkout/permissions refresh runs. Returns true iff a recycle happened.
+  async function recycleClientIfWedgedOnIdleReturn(trigger) {
+    if (!SUPABASE_ENABLED || !supabase) return false;
+    const clientProbe = await runSupabaseClientProbe(trigger).catch(() => null);
+    if (clientProbe && clientProbe.ok) return false;
+    // probe failed (recorded via noteSupabaseJsFailure) or threw -> looks wedged.
+    // recreateSupabaseClient is cooldown- and in-flight-guarded internally.
+    const reason = (clientProbe ? 'idle_return_client_wedged:' : 'idle_return_client_probe_threw:') + trigger;
+    return await recreateSupabaseClient(reason).catch(() => false);
+  }
+
   function updateSyncPausedBanner(show) {
     const el = document.getElementById('syncPausedBanner');
     if (!el) return;
@@ -11756,6 +11774,15 @@
           sessionRefreshOk = true;
         }
       } catch (_) {}
+      // After a long idle, replace a wedged supabase-js client before the checkout
+      // and permissions refreshes below try to use it (each is a .rpc that would
+      // otherwise hang to its full timeout on a wedged client). Runs only on the
+      // long-idle path; the JWT was just refreshed above, so a probe failure here
+      // means a genuine wedge rather than an expired token.
+      let clientRecycled = false;
+      if (hiddenForMs > LONG_IDLE_PROBE_MS) {
+        clientRecycled = await recycleClientIfWedgedOnIdleReturn('long_idle_return').catch(() => false);
+      }
       let probeResult = null;
       const userId = state.supabaseSession?.user?.id;
       if (state.currentProjectId && userId && state.checkedOutBy === userId && !state.isViewer && !suspendAutoSaveUntilCheckout) {
@@ -11776,7 +11803,7 @@
       if (state.currentProjectId) {
         try { await refreshProjectPermissions(); permsRefreshed = true; } catch (_) {}
       }
-      saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, probeResult, permsRefreshed });
+      saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, clientRecycled, probeResult, permsRefreshed });
       updateUI();
     });
   }

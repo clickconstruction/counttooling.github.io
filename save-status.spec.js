@@ -92,4 +92,39 @@ test.describe('window.App registry pilot - Save Status modal', () => {
     expect(env.lastLocalBackup && typeof env.lastLocalBackup === 'object').toBe(true);
     expect('ok' in env.lastLocalBackup).toBe(true);
   });
+
+  test('export project summary counts the real canvases[].annotations shape', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Regression: getProjectSummaryForLogs used to read `p.annotations.counts` /
+    // `.lines`, which never exist in the current per-page `canvases[].annotations`
+    // shape -- so a full project exported as counters:0/lines:0 (exactly what the
+    // 6/1 BONILLA LAW FIRM log showed). Inject a canvases-shaped project and assert
+    // the summary reports the real counts (counterMarkers / quickLines / polylines).
+    const project = await page.evaluate(async () => {
+      window.App.state.currentProjectId = 'test-project';
+      window.App.state.pages = [{
+        canvases: [{ annotations: {
+          counterMarkers: { a: [{}, {}], b: [{}] }, // 3 counters
+          quickLines: [{}],                          // +1
+          polylines: [{}, {}],                       // +2 -> 3 lines
+          multiplyZones: [{}],
+          scaleZones: [],
+          highlights: [{}, {}],
+          notes: [{}]
+        } }]
+      }];
+      const env = await window.App.buildSaveLogsEnvelopeWithSnapshots();
+      return env.project;
+    });
+
+    expect(project).not.toBeNull();
+    expect(project.pageCount).toBe(1);
+    expect(project.counters).toBe(3);
+    expect(project.lines).toBe(3);
+    expect(project.multiplyZones).toBe(1);
+    expect(project.highlights).toBe(2);
+    expect(project.notes).toBe(1);
+  });
 });

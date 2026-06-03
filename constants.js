@@ -80,6 +80,10 @@ const AUTO_RECHECKOUT_COOLDOWN_MS = 30 * 60 * 1000;
 const REFRESH_PERMISSIONS_TIMEOUT_MS = 8000;
 const PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS = [1000, 3000, 10000, 30000];
 const PDF_ONESHOT_BACKOFF_MS = 30000;
+// Background autosave-tick first-PDF uploads of LARGE files back off much harder
+// so they don't burn a long upload every few seconds; explicit Save / Turn In
+// (which pass ignoreBackoff) carry the big upload instead.
+const PDF_ONESHOT_LARGE_BACKOFF_MS = 5 * 60 * 1000;
 
 // --- Activity / presence ---
 const ACTIVITY_HIGH_FREQ_MS = 60000;
@@ -107,6 +111,7 @@ const TAKEOFF_BACKUP_STORE = 'takeoff_backup';
 const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
 const CUSTOM_ICONS_STORE = 'custom_icons';
 const SAVE_LOGS_SNAPSHOT_STORE = 'save_logs_snapshots';
+const PDF_UPLOAD_RESUME_STORE = 'pdf_upload_resume';
 const PDF_CACHE_MAX_ENTRIES = 10;
 const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
 const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
@@ -116,6 +121,17 @@ const CUSTOM_ICONS_KEY = 'user';
 
 // --- PDF / misc ---
 const PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase storage limit)
+// PDF upload timeout budget. A fixed 60s timeout is far too short for a
+// multi-megabyte PDF on a slow uplink (it falsely fails Turn In), so the upload
+// timeout is sized from the byte count at an assumed conservative throughput,
+// floored at BASE and capped at MAX. See pdfUploadTimeoutMs in save-utils.js.
+const PDF_UPLOAD_TIMEOUT_BASE_MS = 60000;           // floor for any upload
+const PDF_UPLOAD_ASSUMED_BPS = 100 * 1024;          // ~100 KB/s conservative uplink (bytes/sec)
+const PDF_UPLOAD_TIMEOUT_SLACK_MS = 15000;          // fixed slack added to the size-based budget
+const PDF_UPLOAD_TIMEOUT_MAX_MS = 8 * 60 * 1000;    // cap (covers the 50 MB limit at the assumed rate)
+const PDF_UPLOAD_VERIFY_ATTEMPTS = 3;               // storage.info() polls after an upload timeout
+const PDF_UPLOAD_VERIFY_GAP_MS = 4000;              // spacing between verify polls
+const PDF_RESUMABLE_THRESHOLD_BYTES = 8 * 1024 * 1024; // use resumable/TUS upload above this size
 const LOAD_TEST_PDF_URL = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf';
 const USER_ACTIVITY_TZ = 'America/Chicago';
 
@@ -131,14 +147,18 @@ if (typeof module !== 'undefined' && module.exports) {
     AUTOSAVE_SLOW_MIN_SAMPLES, GLOBAL_RELOAD_STAMP_KEY, CHECKOUT_INACTIVITY_MS, CHECKOUT_REFRESH_DEBOUNCE_MS,
     CHECKOUT_KEEPALIVE_MS, CHECKOUT_NEAR_EXPIRY_MS, CHECKOUT_SOFT_GRACE_MS, AUTO_RECHECKOUT_MAX_PER_PROJECT,
     AUTO_RECHECKOUT_MIN_GAP_MS, AUTO_RECHECKOUT_COOLDOWN_MS, REFRESH_PERMISSIONS_TIMEOUT_MS,
-    PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS, PDF_ONESHOT_BACKOFF_MS,
+    PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS, PDF_ONESHOT_BACKOFF_MS, PDF_ONESHOT_LARGE_BACKOFF_MS,
     ACTIVITY_HIGH_FREQ_MS, ACTIVITY_PROJECT_SAVE_MS,
     SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_EXPIRED_SAVE_STATUS_MSG, CHECKOUT_EXPIRED_TOAST_MSG,
     PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE,
     PDF_CACHE_DB, PDF_CACHE_STORE, PDF_CACHE_META_STORE, VIEW_PDFS_STORE, VIEW_PDFS_META_STORE,
     TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE, CUSTOM_ICONS_STORE, SAVE_LOGS_SNAPSHOT_STORE,
+    PDF_UPLOAD_RESUME_STORE,
     PDF_CACHE_MAX_ENTRIES, PDF_CACHE_MAX_BYTES, TAKEOFF_BACKUP_MAX_ENTRIES, TAKEOFF_BACKUP_MAX_BYTES,
     SAVE_LOGS_SNAPSHOT_MAX_ENTRIES, CUSTOM_ICONS_KEY,
-    PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ
+    PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ,
+    PDF_UPLOAD_TIMEOUT_BASE_MS, PDF_UPLOAD_ASSUMED_BPS, PDF_UPLOAD_TIMEOUT_SLACK_MS,
+    PDF_UPLOAD_TIMEOUT_MAX_MS, PDF_UPLOAD_VERIFY_ATTEMPTS, PDF_UPLOAD_VERIFY_GAP_MS,
+    PDF_RESUMABLE_THRESHOLD_BYTES
   };
 }

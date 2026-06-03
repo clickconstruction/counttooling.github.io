@@ -29,7 +29,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [report.test.js](report.test.js) | Node `node:test` unit tests for [report.js](report.js)'s pure helpers — `escapeHtml` (null/undefined → `''`, entity escaping, `&`-first ordering, `String()` coercion) and `pickScaleForLineType` (preferred-unit selection via a `global.state` stub); run with `npm run test:unit` |
 | [save-utils.js](save-utils.js) | Pure helpers for the save/sync layer — `isTransientSaveError` (which save/turn-in errors merit one retry), `getProjectCounts` (counter/line totals over a project `data` object, both legacy `annotations` and `canvases` shapes), plus the pure-mined set: `serializeSaveError` (the **deduped** error serializer that replaced app.js's near-identical `serializeSaveErrorForEvent` + `saveDebugSerializeError`), `formatSaveStatusErrDetail`, `backoffDelayMs` (auto-save backoff level for a failure count), `computeClockOffsetMs` (server/local skew from an RPC `server_now`), and `percentile` (p95 of latency samples). Classic `<script src>` loaded before the IIFE; no `state`/DOM dependency — app.js keeps the state-coupled callers (`updateServerClockFromRpc`, the backoff line, `recordAutosaveLatency`) that delegate to these. Guarded CommonJS export footer so the helpers can be `require()`d by [save-utils.test.js](save-utils.test.js) |
 | [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, `getProjectCounts` shape/sum cases, plus the pure-mined helpers: `serializeSaveError` fields/null/`String(e)` fallback, `formatSaveStatusErrDetail`, `backoffDelayMs` clamp, `computeClockOffsetMs` string/numeric/null, and `percentile` p95/empty); run with `npm run test:unit` |
-| [idb.js](idb.js) | IndexedDB storage layer extracted from app.js — the single `openPdfCacheDb` (one DB `clickcount-pdf-cache` v5, 8 stores) plus the context-free accessors `viewCache*`, `pdfCache*` (LRU), `takeoffBackupDelete`, `readSaveLogsSnapshots`, and the pure primitives `idbTakeoffBackupGetRaw`, `idbTakeoffBackupPut` (eviction + stale-skip, returns a status), `idbPutSaveLogsSnapshot` (put + prune), `idbCustomIconsGet`/`idbCustomIconsPut`. Classic `<script src>` loaded after [constants.js](constants.js) (whose store-name/cap globals it reads by bare name) and before [app.js](app.js). Depends only on constants + `indexedDB` + args — no `state`/loggers; the state/logging concerns stay in app.js as same-named thin wrappers (`takeoffBackupGet`, `takeoffBackupPut`, `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`). Guarded CommonJS export footer so the primitives can be `require()`d by [idb.test.js](idb.test.js) |
+| [idb.js](idb.js) | IndexedDB storage layer extracted from app.js — the single `openPdfCacheDb` (one DB `clickcount-pdf-cache` v6, 9 stores) plus the context-free accessors `viewCache*`, `pdfCache*` (LRU), `takeoffBackupDelete`, `readSaveLogsSnapshots`, the resumable-upload URL store accessors `idbPdfUploadResume*` (get-all / get-by-fingerprint / put / delete / delete-by-fingerprint — backs tus's `UrlStorage` for cross-reload resume of large PDF uploads), and the pure primitives `idbTakeoffBackupGetRaw`, `idbTakeoffBackupPut` (eviction + stale-skip, returns a status), `idbPutSaveLogsSnapshot` (put + prune), `idbCustomIconsGet`/`idbCustomIconsPut`. Classic `<script src>` loaded after [constants.js](constants.js) (whose store-name/cap globals it reads by bare name) and before [app.js](app.js). Depends only on constants + `indexedDB` + args — no `state`/loggers; the state/logging concerns stay in app.js as same-named thin wrappers (`takeoffBackupGet`, `takeoffBackupPut`, `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`). Guarded CommonJS export footer so the primitives can be `require()`d by [idb.test.js](idb.test.js) |
 | [idb.test.js](idb.test.js) | Node `node:test` unit tests for [idb.js](idb.js) using `fake-indexeddb` (a fresh `IDBFactory` per test) — pdf-cache hash-mismatch + byte-cap LRU eviction, takeoff-backup round-trip + stale-skip + delete, custom-icon legacy→per-user migration, and save-logs-snapshot prune/newest-first ordering; run with `npm run test:unit` |
 | [format.js](format.js) | Pure date/time/text formatters extracted from app.js — `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`, `formatLastSignInUserActivity`, `formatUserActivityDateTime`, `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`. Classic `<script src>` loaded after [constants.js](constants.js) (reads `USER_ACTIVITY_TZ` by bare name) and before [app.js](app.js); no `state`/DOM dependency (the DOM-coupled User Activity modal code — `applyUserActivityFilter`, `populateUserActivityUserSelect` — stays in app.js). Guarded CommonJS export footer so the formatters can be `require()`d by [format.test.js](format.test.js) |
 | [format.test.js](format.test.js) | Node `node:test` unit tests for [format.js](format.js) — `calendarDaysFromSignInToNowInZone` integer deltas (incl. year boundary / future), `filterUserActivityRows` match/case rules, `renderUserActivityAllUsersTableHtml` cells + escaping, `formatLastSignIn` relative buckets, `formatUserActivityDateTime`; the two en-CA-hyphen-dependent cases (`dateKeyInTimeZone`, `formatLastSignInUserActivity` Today) auto-skip on a limited-ICU runtime and run on full-ICU (browser-equivalent / CI Node 20); run with `npm run test:unit` |
@@ -324,54 +324,54 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2377 - Coordinate Helpers
 - L2389 - PDF Rendering
 - L3561 - UI Render Functions
-- L4672 - Inline rename & polyline edit mode
-- L4786 - Item detail & properties modals
-- L5110 - Toasts & line color picker
-- L5196 - Airboard cloud sync
-- L5229 - Supabase RPC & presence heartbeat
-- L5269 - User activity / event telemetry
-- L5312 - Supabase auth & dev auth
-- L5433 - [sync] Checkout subscription & permission refresh
-- L5611 - Modals & Handlers
-- L5684 - PDF intake (upload, test PDF, hashing)
-- L6009 - Toolbar tool buttons
-- L6116 - Tool sidebar buttons & legend overlay
-- L6230 - Add Line Type modal
-- L6302 - Line color & sidebar handlers
-- L6446 - Polyline modal & drawing
-- L6477 - Zoom bar & page navigation
-- L6516 - Canvas layers
-- L6719 - PDF download helpers & PipeTooling menu
-- L6794 - Copy summaries (PipeTooling / Email)
-- L6929 - Import-canvas-after-PDF & Clear Page modals
-- L7105 - Download current page
-- L7353 - Zone & page-action modal handlers
-- L7463 - User activity time formatting
-- L7621 - User Activity modal (admin)
-- L7689 - My Settings modal
-- L7720 - Auth & settings entry buttons
-  - L7763 - Project Settings checkout & Save Status bell
-  - L7893 - [sync] Checkout expired recovery
-  - L8147 - [sync] Turn In
-  - L8649 - Share project & view links
-  - L8869 - Cloud project hydrate / copy / fork
-  - L9065 - Settings menu actions & Airboard sync
-  - L9144 - My Settings password & Auth sign-in
-  - L9197 - Save Project modal
-  - L9400 - Copy project modal
-  - L9424 - Checkout expired recovery modal wiring
-  - L9508 - Save-before-load modal
-  - L9583 - Last-session restore prompt
-  - L9611 - User Activity filters & view toggle
-- L9799 - Canvas Event Handlers
-- L10143 - Event Binding
-- L10898 - [sync] Manual save to cloud
-- L11347 - [sync] Auto-save
-- L11644 - [sync] Local backup (IndexedDB takeoff state)
-- L11870 - [sync] Checkout keep-alive
-- L11914 - App feature registry
-- L12037 - View-only mode
-- L12190 - Init / boot
+- L4680 - Inline rename & polyline edit mode
+- L4794 - Item detail & properties modals
+- L5118 - Toasts & line color picker
+- L5204 - Airboard cloud sync
+- L5237 - Supabase RPC & presence heartbeat
+- L5277 - User activity / event telemetry
+- L5320 - Supabase auth & dev auth
+- L5441 - [sync] Checkout subscription & permission refresh
+- L5619 - Modals & Handlers
+- L5692 - PDF intake (upload, test PDF, hashing)
+- L6017 - Toolbar tool buttons
+- L6124 - Tool sidebar buttons & legend overlay
+- L6238 - Add Line Type modal
+- L6310 - Line color & sidebar handlers
+- L6454 - Polyline modal & drawing
+- L6485 - Zoom bar & page navigation
+- L6524 - Canvas layers
+- L6727 - PDF download helpers & PipeTooling menu
+- L6802 - Copy summaries (PipeTooling / Email)
+- L6937 - Import-canvas-after-PDF & Clear Page modals
+- L7113 - Download current page
+- L7361 - Zone & page-action modal handlers
+- L7471 - User activity time formatting
+- L7629 - User Activity modal (admin)
+- L7697 - My Settings modal
+- L7728 - Auth & settings entry buttons
+  - L7771 - Project Settings checkout & Save Status bell
+  - L7901 - [sync] Checkout expired recovery
+  - L8155 - [sync] Turn In
+  - L8668 - Share project & view links
+  - L8888 - Cloud project hydrate / copy / fork
+  - L9084 - Settings menu actions & Airboard sync
+  - L9163 - My Settings password & Auth sign-in
+  - L9216 - Save Project modal
+  - L9419 - Copy project modal
+  - L9443 - Checkout expired recovery modal wiring
+  - L9527 - Save-before-load modal
+  - L9602 - Last-session restore prompt
+  - L9630 - User Activity filters & view toggle
+- L9818 - Canvas Event Handlers
+- L10162 - Event Binding
+- L10917 - [sync] Manual save to cloud
+- L11542 - [sync] Auto-save
+- L11839 - [sync] Local backup (IndexedDB takeoff state)
+- L12065 - [sync] Checkout keep-alive
+- L12109 - App feature registry
+- L12232 - View-only mode
+- L12385 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -395,6 +395,20 @@ next to the settings modal it drives, and the autosave loop sits near boot. Its
 - Save paths: `[sync] Manual save to cloud` (`performSaveProjectToCloud`) and
   `[sync] Auto-save` (the 5s dirty loop, `performAutoSave`).
 - Local fallback: `[sync] Local backup (IndexedDB takeoff state)`.
+- PDF upload (in `[sync] Manual save to cloud`): `uploadPdfToStorage` is the single
+  entry point — it routes large PDFs (`> PDF_RESUMABLE_THRESHOLD_BYTES`) through
+  the resumable/TUS `uploadPdfResumable` (chunked, progress via the module-level
+  `onPdfUploadProgress` sink, cross-reload resume via the `pdf_upload_resume` IDB
+  store, cancellable via tus) and smaller PDFs through a single standard upload
+  with a size-aware timeout (`pdfUploadTimeoutMs` in save-utils.js; storage-js
+  `upload()` takes no `AbortSignal`, so the timeout only bounds the wait); either
+  way a transient failure runs the `confirmPdfUploaded` (storage `.info()`) verify
+  net before surfacing, which reconciles a request that completed server-side
+  after the client stopped waiting. `uploadLocalPdfToCloudIfNeeded` keeps uploading
+  large first-PDFs from the background autosave tick but cannot tight-loop (the
+  `pdfOneShotUploadInFlight` guard + resumable resume + size-aware timeout + a
+  5-min `PDF_ONESHOT_LARGE_BACKOFF_MS` failure backoff). See CHANGELOG "Sync
+  hardening" PR 13 (Phase C) + PR 14 (Phase D).
 
 History/rationale for this subsystem lives in [CHANGELOG.md](CHANGELOG.md)
 ("Sync hardening").

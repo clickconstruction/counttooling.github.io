@@ -116,6 +116,23 @@
     return t - localNowMs;
   }
 
+  // Size-aware timeout (ms) for a PDF upload. A fixed 60s timeout is far too
+  // short for a multi-megabyte PDF on a slow uplink, which falsely fails Turn In;
+  // size the timeout from the byte count at an assumed conservative throughput
+  // (plus fixed slack), floored at `baseMs` and clamped to `maxMs`. `opts` carries
+  // the tunable constants so there is a single source of truth in constants.js;
+  // the defaults mirror them so the helper is usable standalone (and testable).
+  function pdfUploadTimeoutMs(bytes, opts) {
+    opts = opts || {};
+    const base = opts.baseMs != null ? opts.baseMs : 60000;
+    const bps = opts.assumedBps != null ? opts.assumedBps : 100 * 1024;
+    const slack = opts.slackMs != null ? opts.slackMs : 15000;
+    const max = opts.maxMs != null ? opts.maxMs : 8 * 60 * 1000;
+    const n = Number(bytes);
+    const sizeBudget = (Number.isFinite(n) && n > 0 && bps > 0) ? (n / bps) * 1000 + slack : 0;
+    return Math.min(Math.max(base, sizeBudget), max);
+  }
+
   // The p-th percentile (0..1) of a numeric sample array using nearest-rank on a
   // sorted copy. Returns null for an empty/invalid array.
   function percentile(samples, p) {
@@ -130,7 +147,7 @@
     module.exports = {
       isTransientSaveError, getProjectCounts,
       serializeSaveError, formatSaveStatusErrDetail, backoffDelayMs,
-      computeClockOffsetMs, percentile,
+      computeClockOffsetMs, percentile, pdfUploadTimeoutMs,
       extractResponseDiagnostics, secondsToExpiry
     };
   }

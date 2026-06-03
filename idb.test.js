@@ -95,6 +95,26 @@ test('customIcons: legacy key migrates to per-user key once', async () => {
   assert.strictEqual(legacyGone.data, null);
 });
 
+test('pdfUploadResume: put, lookup-by-fingerprint, delete, and clear-by-fingerprint', async () => {
+  await idb.idbPdfUploadResumePut({ urlStorageKey: 'k1', fingerprint: 'fp-A', uploadUrl: 'https://u/1' });
+  await idb.idbPdfUploadResumePut({ urlStorageKey: 'k2', fingerprint: 'fp-A', uploadUrl: 'https://u/2' });
+  await idb.idbPdfUploadResumePut({ urlStorageKey: 'k3', fingerprint: 'fp-B', uploadUrl: 'https://u/3' });
+  const a = await idb.idbPdfUploadResumeGetByFingerprint('fp-A');
+  assert.deepStrictEqual(a.map((e) => e.urlStorageKey).sort(), ['k1', 'k2']);
+  assert.strictEqual((await idb.idbPdfUploadResumeGetAll()).length, 3);
+  // single delete
+  await idb.idbPdfUploadResumeDelete('k1');
+  assert.strictEqual((await idb.idbPdfUploadResumeGetByFingerprint('fp-A')).length, 1);
+  // clear all entries for a fingerprint (e.g. on upload success)
+  await idb.idbPdfUploadResumeDeleteByFingerprint('fp-A');
+  assert.strictEqual((await idb.idbPdfUploadResumeGetByFingerprint('fp-A')).length, 0);
+  // a different fingerprint is untouched
+  assert.strictEqual((await idb.idbPdfUploadResumeGetByFingerprint('fp-B')).length, 1);
+  // a put without a urlStorageKey is a guarded no-op
+  const res = await idb.idbPdfUploadResumePut({ fingerprint: 'fp-C' });
+  assert.strictEqual(res.skipped, true);
+});
+
 test('saveLogsSnapshots: prunes to the max and returns newest-first', async () => {
   const total = SAVE_LOGS_SNAPSHOT_MAX_ENTRIES + 2;
   // capturedAt is an ISO string in production (new Date().toISOString()), so the

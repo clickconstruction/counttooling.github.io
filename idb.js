@@ -13,12 +13,13 @@
  * same-named thin wrappers that call the pure primitives exported here. No build
  * step.
  *
- * Single IndexedDB database (clickcount-pdf-cache, version 5) with 8 stores:
+ * Single IndexedDB database (clickcount-pdf-cache, version 6) with 9 stores:
  *   pdfs / meta            - cloud PDF cache (LRU)
  *   view_pdfs / *_meta     - view-link PDF cache
  *   takeoff_backup / *_meta- tab-crash recovery backups (LRU)
  *   custom_icons           - per-user custom icon SVGs
  *   save_logs_snapshots    - rolling save-log envelopes
+ *   pdf_upload_resume      - tus/resumable PDF upload URLs (cross-reload resume)
  */
 
 // In a classic browser <script> this reads the optional window flag; in Node
@@ -27,7 +28,7 @@ const BACKUP_PDF_TO_INDEXEDDB = (typeof window !== 'undefined' && typeof window.
 
 function openPdfCacheDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(PDF_CACHE_DB, 5);
+    const req = indexedDB.open(PDF_CACHE_DB, 6);
     req.onerror = () => reject(req.error);
     req.onsuccess = () => resolve(req.result);
     req.onupgradeneeded = (e) => {
@@ -55,6 +56,9 @@ function openPdfCacheDb() {
       }
       if (!db.objectStoreNames.contains(SAVE_LOGS_SNAPSHOT_STORE)) {
         db.createObjectStore(SAVE_LOGS_SNAPSHOT_STORE, { keyPath: 'capturedAt' });
+      }
+      if (!db.objectStoreNames.contains(PDF_UPLOAD_RESUME_STORE)) {
+        db.createObjectStore(PDF_UPLOAD_RESUME_STORE, { keyPath: 'urlStorageKey' });
       }
     };
   });
@@ -318,6 +322,59 @@ async function idbCustomIconsPut(key, arr) {
   } catch (_) { /* ignore */ }
 }
 
+// --- Resumable (tus) PDF upload URL storage ---
+// Backs tus-js-client's UrlStorage interface so an interrupted large-PDF upload
+// can resume after a page reload (instead of restarting from byte 0). Entries are
+// keyed by `urlStorageKey` and carry the upload `fingerprint` (project+pdf_hash)
+// so they can be looked up / cleared. The store is tiny (one in-flight upload per
+// project), so fingerprint lookups scan the small set rather than indexing.
+
+async function idbPdfUploadResumeGetAll() {
+  try {
+    const db = await openPdfCacheDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(PDF_UPLOAD_RESUME_STORE, 'readonly');
+      const req = tx.objectStore(PDF_UPLOAD_RESUME_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (_) { return []; }
+}
+
+async function idbPdfUploadResumeGetByFingerprint(fingerprint) {
+  const all = await idbPdfUploadResumeGetAll();
+  return all.filter((e) => e && e.fingerprint === fingerprint);
+}
+
+// Store an upload entry. `entry` must carry `urlStorageKey` + `fingerprint`.
+async function idbPdfUploadResumePut(entry) {
+  if (!entry || !entry.urlStorageKey) return { ok: false, skipped: true };
+  try {
+    const db = await openPdfCacheDb();
+    const tx = db.transaction(PDF_UPLOAD_RESUME_STORE, 'readwrite');
+    tx.objectStore(PDF_UPLOAD_RESUME_STORE).put(entry);
+    await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e }; }
+}
+
+async function idbPdfUploadResumeDelete(urlStorageKey) {
+  try {
+    const db = await openPdfCacheDb();
+    const tx = db.transaction(PDF_UPLOAD_RESUME_STORE, 'readwrite');
+    tx.objectStore(PDF_UPLOAD_RESUME_STORE).delete(urlStorageKey);
+    await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+  } catch (_) { /* ignore */ }
+}
+
+// Clear every stored resume entry for a fingerprint (e.g. on upload success).
+async function idbPdfUploadResumeDeleteByFingerprint(fingerprint) {
+  try {
+    const matches = await idbPdfUploadResumeGetByFingerprint(fingerprint);
+    for (const m of matches) await idbPdfUploadResumeDelete(m.urlStorageKey);
+  } catch (_) { /* ignore */ }
+}
+
 // Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
@@ -328,5 +385,7 @@ if (typeof module !== 'undefined' && module.exports) {
     idbTakeoffBackupGetRaw, idbTakeoffBackupPut, takeoffBackupDelete,
     idbPutSaveLogsSnapshot, readSaveLogsSnapshots,
     idbCustomIconsGet, idbCustomIconsPut,
+    idbPdfUploadResumeGetAll, idbPdfUploadResumeGetByFingerprint,
+    idbPdfUploadResumePut, idbPdfUploadResumeDelete, idbPdfUploadResumeDeleteByFingerprint,
   };
 }

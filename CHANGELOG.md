@@ -289,6 +289,68 @@ expired recovery UX" work occupies that slot).
 - Localhost-only `IS_DEV_HOST` block adds `console.assert` self-tests for
   `isTransientSaveError` so the regex regression cannot reappear silently.
 
+### PR 13 — Large-PDF upload: size-aware, abortable, verify-backed (Phase C)
+
+- Root cause from a user's exported save logs (cross-referenced with the
+  project's Supabase storage logs): a ~24 MB first-PDF upload hit the fixed 60s
+  `withTimeout` on `supabase.storage.from('pdfs').upload(...)`, the once-only
+  retry doubled it (~140s), and Turn In blocked on `turn_in_blocked_by_save_err`
+  — yet the storage logs showed the object actually landing ~4.5 min later (a
+  request the client had already abandoned, since the old timeout passed a plain
+  promise and never aborted, so retries could stack a second concurrent upload).
+- `pdfUploadTimeoutMs(bytes, opts)` (pure, in [save-utils.js](save-utils.js))
+  sizes the upload timeout from the byte count at an assumed conservative uplink
+  (`PDF_UPLOAD_ASSUMED_BPS`), floored at `PDF_UPLOAD_TIMEOUT_BASE_MS` (60s) and
+  clamped to `PDF_UPLOAD_TIMEOUT_MAX_MS` (8 min). 24 MB now budgets ~4.3 min.
+- storage-js `upload()` does not accept an `AbortSignal` (only `list`/`download`
+  take `FetchParameters`), so the standard path cannot cancel an in-flight
+  request; the size-aware timeout only bounds how long the client *waits*, and
+  `confirmPdfUploaded` reconciles a request that completed server-side after the
+  wait. Genuine cancellation (and resume) for large PDFs comes from the
+  resumable/TUS path in PR 14, not from the standard upload.
+- `uploadPdfToStorage()` wraps the upload with a **verify-after-timeout** safety
+  net: on a transient failure it polls `confirmPdfUploaded()` (storage `.info()`,
+  `PDF_UPLOAD_VERIFY_ATTEMPTS` × `PDF_UPLOAD_VERIFY_GAP_MS`) and, if the object
+  is present with the expected byte size, treats the save as succeeded (computing
+  `pdf_hash` from the local buffer) rather than re-uploading. Emits
+  `pdf_upload_verified_after_timeout`.
+- Autosave throttling: `uploadLocalPdfToCloudIfNeeded('autosave_tick')` keeps
+  uploading large first-PDFs in the background (so a PDF opened via "Open" without
+  an explicit Save/Turn In still reaches the cloud), but a *failed* large upload
+  now backs off `PDF_ONESHOT_LARGE_BACKOFF_MS` (5 min) instead of 30s. Combined
+  with the `pdfOneShotUploadInFlight` guard (no overlapping ticks), the resumable
+  path (PR 14, resumes rather than restarts), and the size-aware timeout, this
+  removes the tight 5s retry loop that stranded William's 24 MB PDF without
+  stranding the PDF for autosave-only sessions.
+- New unit coverage: `pdfUploadTimeoutMs` (save-utils.test.js) + the timeout-budget
+  invariants (constants.test.js).
+
+### PR 14 — Resumable (TUS) PDF upload + progress + cross-reload resume (Phase D)
+
+- Large PDFs (`> PDF_RESUMABLE_THRESHOLD_BYTES`, default 8 MB) now upload via the
+  resumable/TUS protocol against Supabase Storage's
+  `/storage/v1/upload/resumable` endpoint (chunked at the required 6 MB), instead
+  of a single PUT. `tus-js-client` is loaded via CDN ([index.html](index.html));
+  smaller PDFs keep the Phase C standard path.
+- `uploadPdfResumable(storagePath, blob, { fingerprint, onProgress, signal })`
+  wraps `tus.Upload` with `authorization`/`apikey`/`x-upsert` headers and
+  `bucketName`/`objectName`/`contentType` metadata; `uploadPdfToStorage()` routes
+  by size and still runs the `confirmPdfUploaded()` verify net on any failure.
+- Determinate progress: byte progress flows through a module-level
+  `onPdfUploadProgress` sink into the manual-save status line ("Uploading PDF…
+  NN%") and the Turn In banner, fixing the "feels stuck" perception on slow links.
+- Cross-reload resume: an interrupted upload resumes from the last acked chunk
+  after a page reload. tus's `UrlStorage` is backed by a new IndexedDB store
+  `pdf_upload_resume` (DB `clickcount-pdf-cache` bumped v5 -> v6, now 9 stores;
+  helpers `idbPdfUploadResume*` in [idb.js](idb.js)), keyed by a
+  project-id + content-hash fingerprint so a resume never attaches to a stale
+  partial upload of different PDF content; entries are cleared on success.
+- New coverage: the `pdf_upload_resume` store round-trip ([idb.test.js](idb.test.js))
+  and a non-cloud Playwright smoke ([pdf-upload.spec.js](pdf-upload.spec.js))
+  asserting the tus CDN library loads and the resume store round-trips in a real
+  browser. The large-file resumable upload itself needs a signed-in cloud session
+  + slow link, so it stays a manual smoke.
+
 ---
 
 ## Other notable historical detail

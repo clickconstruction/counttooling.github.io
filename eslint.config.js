@@ -273,6 +273,7 @@ module.exports = [
         html2canvas: 'readonly',
         supabase: 'readonly',
         PDFLib: 'readonly',
+        tus: 'readonly',
         // IIFE-internal helpers that are reachable everywhere at runtime but
         // which eslint-scope cannot see from every call site, so they read as
         // no-undef. closePreparePdfModal is assigned to window (resolves via

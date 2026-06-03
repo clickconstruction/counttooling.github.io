@@ -3919,10 +3919,18 @@
     renderGroupsList();
     renderLinesList();
     renderSummary();
+    // App.hasAnyHighlights / hasAnyNotes are registered by features/pdf-bundle.js,
+    // which loads AFTER app.js. updateUI is a hot path that can run during boot
+    // before that feature <script> executes: supabase-js emits INITIAL_SESSION to
+    // the onAuthStateChange callback (which calls updateUI) within the microtask
+    // checkpoint right after app.js's <script>, ahead of the parser reaching the
+    // feature scripts. Guard defensively per the registry idiom (App.fn && App.fn()).
+    // At that point no annotations exist yet, so a hidden default is correct; the
+    // next updateUI (post-load / on any state change) reflects the real state.
     const bundleBtn = document.getElementById('bundleHighlights');
-    if (bundleBtn) bundleBtn.style.display = App.hasAnyHighlights() ? '' : 'none';
+    if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
     const bundleNotesBtn = document.getElementById('bundleNotes');
-    if (bundleNotesBtn) bundleNotesBtn.style.display = App.hasAnyNotes() ? '' : 'none';
+    if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
     const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
     const ptBtn = document.getElementById('forPipeToolingDropdown');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
@@ -8224,7 +8232,18 @@
             return { ok: false, error: 'Sync in progress, try again in a moment' };
           }
           progress('sync_to_cloud', 'Uploading PDF to cloud…');
-          const pdfResult = await uploadLocalPdfToCloudIfNeeded('turn_in', { ignoreBackoff: true });
+          // Show determinate upload progress in the Turn In banner (resumable
+          // path emits byte progress; the standard path stays on the plain label).
+          onPdfUploadProgress = (sent, total) => {
+            const pct = (total > 0) ? Math.min(100, Math.floor((sent / total) * 100)) : 0;
+            setTurnInProgress('Uploading PDF to cloud\u2026 ' + pct + '%');
+          };
+          let pdfResult;
+          try {
+            pdfResult = await uploadLocalPdfToCloudIfNeeded('turn_in', { ignoreBackoff: true });
+          } finally {
+            onPdfUploadProgress = null;
+          }
           if (pdfResult && pdfResult.skipped) {
             // No usable PDF buffer in memory or cache (detached + unrecoverable),
             // or some other skip. Don't strand the user: fall back to a
@@ -10896,6 +10915,162 @@
   });
 
   // SECTION: [sync] Manual save to cloud
+
+  // Module-level progress sink for the active PDF upload. A flow that wants the
+  // byte-level upload progress (e.g. Turn In, to show a percentage in its banner)
+  // sets this before kicking off a save and clears it after; the upload helpers
+  // invoke it. Null when nobody is listening.
+  let onPdfUploadProgress = null;
+
+  // Poll storage.info() to confirm an object actually landed after an upload that
+  // timed out / aborted client-side (the underlying request can still complete
+  // server-side). Returns true when the object exists with the expected byte size.
+  async function confirmPdfUploaded(storagePath, expectedBytes) {
+    if (!supabase || !(expectedBytes > 0)) return false;
+    for (let i = 0; i < PDF_UPLOAD_VERIFY_ATTEMPTS; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, PDF_UPLOAD_VERIFY_GAP_MS));
+      try {
+        const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(storagePath), STORAGE_INFO_TIMEOUT_MS, 'Storage info');
+        const sz = info && (info.metadata?.size ?? info.size);
+        if (typeof sz === 'number' && sz === expectedBytes) return true;
+      } catch (_) { /* keep polling */ }
+    }
+    return false;
+  }
+
+  // True when the resumable/TUS path can be used (large file + library loaded).
+  function canUseResumableUpload(bytes) {
+    return bytes > PDF_RESUMABLE_THRESHOLD_BYTES &&
+      typeof tus !== 'undefined' && tus && typeof tus.Upload === 'function' && tus.isSupported;
+  }
+
+  // Resumable PDF upload via tus against Supabase Storage's resumable endpoint.
+  // Chunked (6 MB, required by Supabase), reports byte progress via opts.onProgress,
+  // honors opts.signal for abort, and resumes from a prior interrupted upload for
+  // the same fingerprint (persisted in IndexedDB, so it survives a page reload).
+  // Resolves { ok: true } or rejects with the tus error. opts: { fingerprint,
+  // onProgress, signal }.
+  async function uploadPdfResumable(storagePath, blob, opts) {
+    opts = opts || {};
+    if (typeof tus === 'undefined' || typeof tus.Upload !== 'function') throw new Error('Resumable upload library not loaded');
+    const token = state.supabaseSession?.access_token;
+    if (!token) throw new Error('Not signed in');
+    const fingerprint = 'clickcount-pdf::' + (opts.fingerprint || storagePath);
+    // tus UrlStorage backed by IndexedDB (cross-reload resume).
+    const idbUrlStorage = {
+      addUpload: async (fp, upload) => {
+        const urlStorageKey = 'tus::' + fp + '::' + Date.now();
+        await idbPdfUploadResumePut({
+          urlStorageKey, fingerprint: fp,
+          uploadUrl: upload.uploadUrl || null,
+          size: upload.size != null ? upload.size : null,
+          metadata: upload.metadata || null,
+          creationTime: upload.creationTime || new Date().toISOString(),
+          parallelUploadUrls: upload.parallelUploadUrls || null
+        });
+        return urlStorageKey;
+      },
+      removeUpload: async (urlStorageKey) => { await idbPdfUploadResumeDelete(urlStorageKey); },
+      findAllUploads: async () => { return await idbPdfUploadResumeGetAll(); },
+      findUploadsByFingerprint: async (fp) => { return await idbPdfUploadResumeGetByFingerprint(fp); }
+    };
+    return await new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (fn, arg) => { if (!settled) { settled = true; fn(arg); } };
+      const upload = new tus.Upload(blob, {
+        endpoint: SUPABASE_URL + '/storage/v1/upload/resumable',
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: {
+          authorization: 'Bearer ' + token,
+          apikey: SUPABASE_ANON_KEY,
+          'x-upsert': 'true'
+        },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        chunkSize: 6 * 1024 * 1024,
+        fingerprint: () => Promise.resolve(fingerprint),
+        urlStorage: idbUrlStorage,
+        metadata: {
+          bucketName: 'pdfs',
+          objectName: storagePath,
+          contentType: 'application/pdf',
+          cacheControl: '3600'
+        },
+        onError: (err) => finish(reject, err),
+        onProgress: (sent, total) => { if (typeof opts.onProgress === 'function') { try { opts.onProgress(sent, total); } catch (_) {} } },
+        onSuccess: () => { idbPdfUploadResumeDeleteByFingerprint(fingerprint).catch(() => {}); finish(resolve, { ok: true }); }
+      });
+      if (opts.signal) {
+        if (opts.signal.aborted) { try { upload.abort(); } catch (_) {} finish(reject, new DOMException('Aborted', 'AbortError')); return; }
+        opts.signal.addEventListener('abort', () => { try { upload.abort(); } catch (_) {} finish(reject, new DOMException('Aborted', 'AbortError')); }, { once: true });
+      }
+      // Resume a prior interrupted upload for this fingerprint if one exists.
+      upload.findPreviousUploads().then((prev) => {
+        if (prev && prev.length) { try { upload.resumeFromPreviousUpload(prev[0]); } catch (_) {} }
+        upload.start();
+      }).catch(() => { upload.start(); });
+    });
+  }
+
+  // Upload a PDF to the `pdfs` bucket. Large files (> PDF_RESUMABLE_THRESHOLD_BYTES)
+  // go through the resumable/TUS path (chunked, progress, cross-reload resume, and
+  // genuinely cancellable via tus); smaller files use a single standard upload with
+  // a size-aware timeout (so a slow PDF is not falsely failed). NOTE: storage-js
+  // `upload()` does not accept an AbortSignal, so the standard path cannot cancel an
+  // in-flight request -- the timeout only bounds how long we WAIT, and the
+  // verify-after-timeout net (confirmPdfUploaded) reconciles an upload that actually
+  // completed server-side after the client gave up. Either path runs that verify net
+  // on a transient failure before surfacing. Returns { ok, ms, timeoutMs, viaVerify,
+  // resumable } or throws. ctx: { runId, timeoutMs, onProgress, fingerprint }.
+  async function uploadPdfToStorage(storagePath, pdfToUpload, ctx) {
+    ctx = ctx || {};
+    const bytes = pdfToUpload.byteLength || pdfToUpload.size || 0;
+    const timeoutMs = ctx.timeoutMs || pdfUploadTimeoutMs(bytes, {
+      baseMs: PDF_UPLOAD_TIMEOUT_BASE_MS, assumedBps: PDF_UPLOAD_ASSUMED_BPS,
+      slackMs: PDF_UPLOAD_TIMEOUT_SLACK_MS, maxMs: PDF_UPLOAD_TIMEOUT_MAX_MS
+    });
+    const t1 = Date.now();
+    if (canUseResumableUpload(bytes)) {
+      try {
+        const blob = (typeof Blob !== 'undefined' && pdfToUpload instanceof Blob) ? pdfToUpload : new Blob([pdfToUpload], { type: 'application/pdf' });
+        await uploadPdfResumable(storagePath, blob, { fingerprint: ctx.fingerprint || storagePath, onProgress: ctx.onProgress, signal: ctx.signal });
+        return { ok: true, ms: Date.now() - t1, timeoutMs, resumable: true };
+      } catch (e) {
+        // The upload may have completed server-side even though tus reported an
+        // error / was aborted; the object's presence is authoritative.
+        const confirmed = await confirmPdfUploaded(storagePath, bytes).catch(() => false);
+        if (confirmed) {
+          pushSaveEvent('pdf_upload_verified_after_timeout', 'PDF upload confirmed via storage info after error', JSON.stringify({ path: storagePath, bytes, ms: Date.now() - t1, resumable: true, runId: ctx.runId }));
+          return { ok: true, ms: Date.now() - t1, timeoutMs, viaVerify: true, resumable: true };
+        }
+        throw e;
+      }
+    }
+    try {
+      // storage-js upload() is not cancellable (no AbortSignal param), so pass a
+      // plain promise; withTimeout bounds the wait and verify-after-timeout below
+      // reconciles a request that completed server-side after we stopped waiting.
+      const { error: uploadErr } = await withTimeout(
+        supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }),
+        timeoutMs, 'PDF upload'
+      );
+      if (uploadErr) throw uploadErr;
+      return { ok: true, ms: Date.now() - t1, timeoutMs };
+    } catch (e) {
+      // A timeout/network error does not prove the object failed to land: the
+      // request may have finished server-side just as the client gave up.
+      // Verify via storage.info() before surfacing a failure.
+      if (isTransientSaveError(e)) {
+        const confirmed = await confirmPdfUploaded(storagePath, bytes).catch(() => false);
+        if (confirmed) {
+          pushSaveEvent('pdf_upload_verified_after_timeout', 'PDF upload confirmed via storage info after timeout', JSON.stringify({ path: storagePath, bytes, ms: Date.now() - t1, timeoutMs, runId: ctx.runId }));
+          return { ok: true, ms: Date.now() - t1, timeoutMs, viaVerify: true };
+        }
+      }
+      throw e;
+    }
+  }
+
   async function performSaveProjectToCloud(opts) {
     const runId = saveDebugRunId();
     const { name, includePdf, pdfBuffer: optsPdfBuffer } = opts;
@@ -10940,6 +11115,14 @@
     autoSaveDirty = false;
     updateStatus();
     const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
+    // Determinate upload progress: drives the local status line and forwards to
+    // any module-level listener (e.g. Turn In's banner). Only the resumable/TUS
+    // path actually emits byte progress; the standard upload is a no-op here.
+    const onUploadProgress = (sent, total) => {
+      const pct = (total > 0) ? Math.min(100, Math.floor((sent / total) * 100)) : 0;
+      setProgress('Uploading PDF... ' + pct + '%');
+      if (typeof onPdfUploadProgress === 'function') { try { onPdfUploadProgress(sent, total); } catch (_) {} }
+    };
     const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
     const data = {
       version: 1,
@@ -11056,16 +11239,20 @@
               await tick();
               const storagePath = user.id + '/' + projectId + '/document.pdf';
               log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
-              saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: 60000, attempt: manualSaveAttempt });
-              const t1 = Date.now();
-              const { error: uploadErr } = await withTimeout(supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }), 60000, 'PDF upload');
-              log('Upload done', { duration: Date.now() - t1 + 'ms', error: uploadErr?.message });
-              if (uploadErr) throw uploadErr;
-              saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1 });
-              pdfPath = storagePath;
-              await tick();
+              // Hash before the upload so it can key the resumable-upload
+              // fingerprint (project + content), so a resume after reload never
+              // attaches to a stale partial upload of different PDF content. Reused
+              // below as pdf_hash / cachePdfHash to avoid a second hash pass.
               const newHash = await sha256Hex(pdfToUpload);
+              const uploadTimeoutMs = pdfUploadTimeoutMs(pdfToUpload.byteLength, { baseMs: PDF_UPLOAD_TIMEOUT_BASE_MS, assumedBps: PDF_UPLOAD_ASSUMED_BPS, slackMs: PDF_UPLOAD_TIMEOUT_SLACK_MS, maxMs: PDF_UPLOAD_TIMEOUT_MAX_MS });
+              saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: uploadTimeoutMs, attempt: manualSaveAttempt });
+              const t1 = Date.now();
+              const uploadOutcome = await uploadPdfToStorage(storagePath, pdfToUpload, { runId, timeoutMs: uploadTimeoutMs, onProgress: onUploadProgress, fingerprint: projectId + '::' + newHash });
+              log('Upload done', { duration: Date.now() - t1 + 'ms', viaVerify: !!uploadOutcome.viaVerify, resumable: !!uploadOutcome.resumable });
+              saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1, viaVerify: !!uploadOutcome.viaVerify, resumable: !!uploadOutcome.resumable });
+              pdfPath = storagePath;
               cachePdfHash = newHash;
+              await tick();
               setProgress('Uploading project...');
               await tick();
               log('Updating project with pdf_path and pdf_hash...');
@@ -11311,6 +11498,14 @@
     // Turn In passes ignoreBackoff so an explicit user action is not blocked by
     // a prior background tick's failure backoff window.
     if (!opts.ignoreBackoff && Date.now() < pdfOneShotNextAttemptAt) return { skipped: true, reason: 'backoff' };
+    // Large first-PDF uploads still run from the background autosave tick (so a
+    // PDF opened via "Open", without an explicit Save/Turn In, still reaches the
+    // cloud), but they cannot tight-loop: the pdfOneShotUploadInFlight guard
+    // prevents overlapping ticks, the resumable/TUS path resumes rather than
+    // restarts, the size-aware timeout avoids premature failure, and a failed
+    // large upload backs off PDF_ONESHOT_LARGE_BACKOFF_MS (5 min) rather than 30s.
+    const pdfBytesApprox = (state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length)) || state.pdfBufferSize || 0;
+    const isLargePdf = pdfBytesApprox > PDF_RESUMABLE_THRESHOLD_BYTES;
     // Verify a usable PDF buffer is reachable before invoking the cloud save so
     // we don't trip performSaveProjectToCloud's detached-PDF error path (which
     // flips the save-status bell to a failure state). pdf.js detaches the
@@ -11331,12 +11526,12 @@
         pushSaveEvent('pdf_oneshot_upload_ok', 'Local PDF uploaded to cloud', JSON.stringify({ reason }));
         pdfOneShotNextAttemptAt = 0;
       } else {
-        pdfOneShotNextAttemptAt = Date.now() + PDF_ONESHOT_BACKOFF_MS;
+        pdfOneShotNextAttemptAt = Date.now() + (isLargePdf ? PDF_ONESHOT_LARGE_BACKOFF_MS : PDF_ONESHOT_BACKOFF_MS);
         pushSaveEvent('pdf_oneshot_upload_err', 'Local PDF upload failed', JSON.stringify({ reason, message: result?.error?.message, code: result?.error?.code }));
       }
       return result || { ok: false };
     } catch (e) {
-      pdfOneShotNextAttemptAt = Date.now() + PDF_ONESHOT_BACKOFF_MS;
+      pdfOneShotNextAttemptAt = Date.now() + (isLargePdf ? PDF_ONESHOT_LARGE_BACKOFF_MS : PDF_ONESHOT_BACKOFF_MS);
       pushSaveEvent('pdf_oneshot_upload_err', 'Local PDF upload threw', JSON.stringify({ reason, message: e?.message }));
       return { ok: false, error: e };
     } finally {

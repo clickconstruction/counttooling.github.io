@@ -134,6 +134,25 @@ test('percentile: p95 of a known array; empty -> null', () => {
   assert.strictEqual(s.percentile(null, 0.95), null);
 });
 
+test('pdfUploadTimeoutMs: floor for small files, size-scaled for large, clamped at max', () => {
+  const opts = { baseMs: 60000, assumedBps: 100 * 1024, slackMs: 15000, maxMs: 8 * 60 * 1000 };
+  // tiny file -> base floor
+  assert.strictEqual(s.pdfUploadTimeoutMs(1000, opts), 60000);
+  // 24 MB -> above the floor, below the cap (the William incident size)
+  const big = s.pdfUploadTimeoutMs(24 * 1024 * 1024, opts);
+  assert.ok(big > 60000 && big < 8 * 60 * 1000, `24MB budget in range (got ${big})`);
+  // ~24 MB at 100 KB/s ~= 245.76s + 15s slack ~= 260760 ms
+  assert.strictEqual(big, Math.round((24 * 1024 * 1024 / (100 * 1024)) * 1000 + 15000));
+  // 200 MB -> clamped to the max ceiling
+  assert.strictEqual(s.pdfUploadTimeoutMs(200 * 1024 * 1024, opts), 8 * 60 * 1000);
+  // invalid / zero -> base floor
+  assert.strictEqual(s.pdfUploadTimeoutMs(0, opts), 60000);
+  assert.strictEqual(s.pdfUploadTimeoutMs(NaN, opts), 60000);
+  assert.strictEqual(s.pdfUploadTimeoutMs(-5, opts), 60000);
+  // defaults (no opts) mirror the constants and still floor small files
+  assert.strictEqual(s.pdfUploadTimeoutMs(1000), 60000);
+});
+
 test('extractResponseDiagnostics: pulls request-correlation headers via .get', () => {
   const make = (map) => ({ get: (k) => (k in map ? map[k] : null) });
   assert.deepStrictEqual(

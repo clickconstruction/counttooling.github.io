@@ -71,6 +71,15 @@ test('domain default arrays are non-empty', () => {
   }
 });
 
+test('PDF upload timeout budget is sane (max >= base, positive rate/slack/attempts/threshold)', () => {
+  assert.ok(c.PDF_UPLOAD_TIMEOUT_MAX_MS >= c.PDF_UPLOAD_TIMEOUT_BASE_MS, 'max >= base');
+  assert.ok(c.PDF_UPLOAD_ASSUMED_BPS > 0, 'assumed bps > 0');
+  assert.ok(c.PDF_UPLOAD_TIMEOUT_SLACK_MS > 0, 'slack > 0');
+  assert.ok(Number.isInteger(c.PDF_UPLOAD_VERIFY_ATTEMPTS) && c.PDF_UPLOAD_VERIFY_ATTEMPTS > 0, 'verify attempts > 0');
+  assert.ok(c.PDF_RESUMABLE_THRESHOLD_BYTES > 0 && c.PDF_RESUMABLE_THRESHOLD_BYTES <= c.PDF_MAX_SIZE_BYTES, 'resumable threshold within cap');
+  assert.ok(c.PDF_ONESHOT_LARGE_BACKOFF_MS > c.PDF_ONESHOT_BACKOFF_MS, 'large-PDF backoff is longer than the default');
+});
+
 test('near-expiry and soft-grace stay within the inactivity window', () => {
   // The keep-alive math assumes these are smaller than the full inactivity timeout.
   assert.ok(c.CHECKOUT_NEAR_EXPIRY_MS < c.CHECKOUT_INACTIVITY_MS);

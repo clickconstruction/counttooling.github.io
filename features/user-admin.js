@@ -38,6 +38,16 @@
   const escHtml = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const TRANSFER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 9l-4-4v3H8v2h9v3l4-4zM3 15l4 4v-3h9v-2H7v-3l-4 4z"/></svg>';
   const KEY_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12.65 10A5.99 5.99 0 0 0 7 6a6 6 0 0 0 0 12 5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
+  const EVENT_LABELS = {
+    session_start: 'Signed in', project_open: 'Opened project', project_save: 'Saved project',
+    export_pdf: 'Exported PDF', export_canvas: 'Exported canvas',
+    counter_marker_added: 'Placed counter', line_added: 'Drew line'
+  };
+  const BREAKDOWN_ROWS = [
+    ['Counters placed', 'counters_added'], ['Lines drawn', 'lines_added'],
+    ['Project saves', 'project_saves'], ['Project opens', 'project_opens'],
+    ['PDF exports', 'exports_pdf'], ['Canvas exports', 'exports_canvas'], ['Sessions', 'sessions']
+  ];
   const projectCountNote = (u) => (u && u.project_count != null) ? ('Owns ' + u.project_count + ' project' + (u.project_count === 1 ? '' : 's') + '.') : '';
 
   function populateUserSelect(selectEl, excludeId) {
@@ -100,10 +110,10 @@
           '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
           '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
           '<span class="settings-user-count">' + (u.project_count == null ? '' : (u.project_count > 0 ? '<button type="button" class="settings-user-count-link" title="View projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + u.project_count + '</button>' : '0')) + '</span>' +
-          '<span class="settings-user-dates">' +
+          '<button type="button" class="settings-user-dates settings-user-dates-btn" title="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' +
             '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
             '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
-          '</span>' +
+          '</button>' +
           '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + KEY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + TRANSFER_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
@@ -111,7 +121,10 @@
           '</div>';
       }).join('');
       listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
-        btn.onclick = () => App.openUserActivityModal(btn.dataset.userId, btn.dataset.email);
+        btn.onclick = () => openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
+      });
+      listEl.querySelectorAll('.settings-user-dates-btn').forEach((btn) => {
+        btn.onclick = () => openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
       });
       listEl.querySelectorAll('.settings-user-set-password').forEach((btn) => {
         btn.onclick = () => openSetPasswordModal(btn.dataset.userId, btn.dataset.email);
@@ -169,7 +182,7 @@
         '</div>'
       ).join('');
       listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
-        btn.onclick = () => App.openUserActivityModal(btn.dataset.userId, btn.dataset.email);
+        btn.onclick = () => openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
       });
     }
     function showErr(msg, hint) {
@@ -385,6 +398,83 @@
   };
   document.getElementById('manageUsersBtnSidebar').onclick = () => document.getElementById('manageUsersBtn').click();
   document.getElementById('adminPanelClose').onclick = () => App.hideModal('adminPanelModal');
+  // Rich per-user activity overview (clicking the dates cell or the heart icon). Pulls one
+  // aggregated jsonb from user_activity_detail_for_admin and renders summary + timeline.
+  function openUserActivityOverview(userId, email) {
+    if (!App.state.isAdmin) return;
+    const session = App.state.supabaseSession;
+    const body = document.getElementById('uaoBody');
+    document.getElementById('uaoSubtitle').textContent = email || userId || '';
+    body.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+    App.showModal('userActivityOverviewModal');
+    if (!session?.access_token) { body.innerHTML = '<p style="color:var(--red);">Not authenticated.</p>'; return; }
+    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+    fetch(App.SUPABASE_URL + '/rest/v1/rpc/user_activity_detail_for_admin', { method: 'POST', headers, body: JSON.stringify({ p_user_id: userId }) })
+      .then(async (res) => {
+        let d; try { d = await res.json(); } catch (_) { d = null; }
+        if (!res.ok || !d || typeof d !== 'object') {
+          const msg = (d && (d.message || d.error || d.hint)) || ('HTTP ' + res.status);
+          body.innerHTML = '<p style="color:var(--red);">' + escHtml(String(msg)) + '</p>';
+          return;
+        }
+        body.innerHTML = renderActivityHeader(d, email) + renderActivityTiles(d) + renderActivityWindows(d) + renderActivityBreakdown(d) + renderActivityTimeline(d);
+      })
+      .catch((e) => { body.innerHTML = '<p style="color:var(--red);">' + escHtml((e && e.message) || 'Network error') + '</p>'; });
+  }
+  function uaoTile(num, label) {
+    return '<div class="ua-tile"><div class="ua-tile-num">' + (num || 0) + '</div><div class="ua-tile-label">' + label + '</div></div>';
+  }
+  function renderActivityHeader(d, email) {
+    const member = d.member_since ? App.formatUserActivityDateTime(d.member_since) : '—';
+    const n = d.project_count || 0;
+    return '<div class="ua-overview-header">' +
+      '<div><span style="font-weight:600;">' + escHtml(d.email || email || '') + '</span> <span class="ua-role-pill">' + escHtml(d.role || 'User') + '</span></div>' +
+      '<div style="color:var(--text3);font-size:0.85rem;margin-top:4px;">Member since ' + escHtml(member) +
+      ' · Owns ' + n + ' project' + (n === 1 ? '' : 's') +
+      ' · Last sign-in ' + escHtml(App.formatLastSignIn(d.last_sign_in_at)) +
+      ' · Last active ' + escHtml(App.formatLastSignIn(d.last_seen_at)) + '</div></div>';
+  }
+  function renderActivityTiles(d) {
+    const b = d.breakdown || {};
+    return '<div class="ua-tiles">' +
+      uaoTile(d.total_events, 'Total events') +
+      uaoTile(d.active_days_30d, 'Active days (30d)') +
+      uaoTile(b.counters_added, 'Counters placed') +
+      uaoTile(b.lines_added, 'Lines drawn') +
+      uaoTile((b.exports_pdf || 0) + (b.exports_canvas || 0), 'Exports') +
+      '</div>';
+  }
+  function renderActivityWindows(d) {
+    return '<div class="ua-windows">' +
+      '<span>Today <b>' + (d.events_1d || 0) + '</b></span>' +
+      '<span>7 days <b>' + (d.events_7d || 0) + '</b></span>' +
+      '<span>30 days <b>' + (d.events_30d || 0) + '</b></span>' +
+      '<span>' + (d.distinct_projects_touched || 0) + ' projects touched</span>' +
+      '</div>';
+  }
+  function renderActivityBreakdown(d) {
+    const b = d.breakdown || {};
+    const rows = BREAKDOWN_ROWS.map((r) => [r[0], b[r[1]] || 0]).filter((r) => r[1] > 0).sort((a, c) => c[1] - a[1]);
+    if (!rows.length) return '';
+    return '<div class="ua-section-title">What they do</div><div class="ua-breakdown">' +
+      rows.map((r) => '<div class="ua-breakdown-row"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>').join('') + '</div>';
+  }
+  function renderActivityTimeline(d) {
+    const items = Array.isArray(d.recent) ? d.recent : [];
+    const title = '<div class="ua-section-title">Recent activity</div>';
+    if (!items.length) return title + '<p style="color:var(--text3);">No activity recorded.</p>';
+    return title + '<div class="settings-users-list" style="max-height:none;">' + items.map((it) => {
+      const label = EVENT_LABELS[it.event_type] || it.event_type;
+      const proj = it.project_name ? ' · ' + escHtml(it.project_name) : '';
+      const when = it.created_at ? App.formatUserActivityDateTime(it.created_at) : '';
+      return '<div class="settings-user-row settings-project-row">' +
+        '<div class="settings-project-info">' +
+        '<span class="settings-project-name">' + escHtml(label) + proj + '</span>' +
+        '<div class="settings-project-meta">' + escHtml(when) + '</div>' +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
   document.getElementById('manageUserModalClose').onclick = () => App.hideModal('manageUserModal');
   document.querySelectorAll('input[name="deleteUserMode"]').forEach((r) => {
     r.onchange = () => {
@@ -399,6 +489,7 @@
   document.getElementById('setPasswordCancel').onclick = () => App.hideModal('setPasswordModal');
   document.getElementById('setPasswordForm').onsubmit = (e) => { e.preventDefault(); submitSetPassword(); };
   document.getElementById('userProjectsClose').onclick = () => App.hideModal('userProjectsModal');
+  document.getElementById('uaoClose').onclick = () => App.hideModal('userActivityOverviewModal');
   const manageUserModalAllActivityBtn = document.getElementById('manageUserModalAllActivityBtn');
   if (manageUserModalAllActivityBtn) {
     manageUserModalAllActivityBtn.innerHTML = App.USER_ACTIVITY_ICON_SVG;

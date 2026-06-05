@@ -12243,6 +12243,7 @@
   App.resetAutoRecheckoutCounter = (projectId) => resetAutoRecheckoutCounter(projectId);
   App.getSupabase = () => supabase;
   App.formatLastSignIn = formatLastSignIn;
+  App.formatUserActivityDateTime = formatUserActivityDateTime;
   App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;
   App.openUserActivityModal = openUserActivityModal;
   App.updateSaveStatusIndicator = updateSaveStatusIndicator;

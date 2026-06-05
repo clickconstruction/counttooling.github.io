@@ -116,7 +116,7 @@
           '</button>' +
           '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + KEY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + TRANSFER_ICON_SVG + '</button>' +
-          '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
+          '<button type="button" class="settings-user-activity" aria-label="View activity" title="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
           '</div>';
       }).join('');
@@ -178,7 +178,7 @@
         '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
         '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
         '</span>' +
-        '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
+        '<button type="button" class="settings-user-activity" aria-label="View activity" title="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
         '</div>'
       ).join('');
       listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {

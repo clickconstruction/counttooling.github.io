@@ -1690,20 +1690,64 @@
     </div>
   </div>
   <div class="modal-overlay" id="manageUserModal">
-    <div class="modal-card">
+    <div class="modal-card modal-card-large user-list-modal">
       <div class="manage-users-modal-header">
         <h2>Manage Users</h2>
         <button type="button" id="manageUserModalAllActivityBtn" class="manage-users-header-activity-btn" aria-label="View activity for all users"></button>
       </div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Select a user to delete. You cannot delete yourself.</p>
-      <div id="manageUserList" class="settings-users-list"></div>
+      <div id="manageUserList" class="settings-users-list" style="max-height:64vh;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="manageUserModalClose">Close</button>
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="deleteUserConfirmModal">
+    <div class="modal-card">
+      <h2>Delete User</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Delete:</p>
+      <p id="deleteUserName" style="margin:0 0 8px 0;font-weight:500;"></p>
+      <p id="deleteUserCountNote" style="margin:0 0 16px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;color:var(--text);">
+          <input type="radio" name="deleteUserMode" value="delete" checked style="width:auto;padding:0;background:none;border:none;"> Delete this user's projects too
+        </label>
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;color:var(--text);">
+          <input type="radio" name="deleteUserMode" value="reassign" style="width:auto;padding:0;background:none;border:none;"> Reassign their projects to another user
+        </label>
+      </div>
+      <div class="form-group" id="deleteUserReassignGroup" style="display:none;margin-left:24px;">
+        <label>Reassign to</label>
+        <select id="deleteUserReassignSelect"></select>
+      </div>
+      <p id="deleteUserError" style="color:var(--red);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+      <div class="actions">
+        <button type="button" id="deleteUserCancel">Cancel</button>
+        <button type="button" id="deleteUserConfirmBtn" class="danger">Delete User</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="transferProjectsModal">
+    <div class="modal-card">
+      <h2>Transfer Projects</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Move all projects owned by:</p>
+      <p id="transferFromName" style="margin:0 0 8px 0;font-weight:500;"></p>
+      <p id="transferCountNote" style="margin:0 0 16px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div class="form-group">
+        <label>Transfer to</label>
+        <select id="transferToSelect"></select>
+      </div>
+      <p id="transferError" style="color:var(--red);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+      <div class="actions">
+        <button type="button" id="transferCancel">Cancel</button>
+        <button type="button" id="transferConfirmBtn">Transfer</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="allUsersModal">
-    <div class="modal-card modal-card-large">
+    <div class="modal-card modal-card-large user-list-modal">
       <h2>All Users</h2>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">All users in the system.</p>
       <div id="allUsersList" class="settings-users-list" style="max-height:60vh;"></div>

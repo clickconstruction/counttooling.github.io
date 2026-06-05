@@ -3,10 +3,13 @@
  * app.js IIFE as the twentieth feature-file split under the window.App registry
  * pattern. Three admin modals move together: the Manage User list
  * (#manageUserModal: list users via the list_users_for_admin RPC /
- * admin-list-users Edge Function, per-row Delete + activity), the read-only All
- * Users list (#allUsersModal), and the Create User panel (#adminPanelModal:
- * admin-create-user Edge Function). Delete uses the admin-delete-user Edge
- * Function.
+ * admin-list-users Edge Function, per-row Transfer + Delete + activity, with an
+ * owned-project count column), the read-only All Users list (#allUsersModal), and
+ * the Create User panel (#adminPanelModal: admin-create-user Edge Function).
+ * Delete opens #deleteUserConfirmModal offering delete-projects-too OR
+ * reassign-then-delete (admin-delete-user Edge Function, optional reassignToUserId).
+ * The per-row Transfer action opens #transferProjectsModal (admin-reassign-projects
+ * Edge Function) to move a user's projects to someone else without deleting them.
  *
  * Loaded as a classic <script src="features/user-admin.js"> AFTER app.js. Its own
  * IIFE: it reaches the cross-cutting state + helpers through the shared window.App
@@ -27,6 +30,21 @@
  */
 (function() {
   const App = (window.App = window.App || {});
+
+  // Latest admin user list (incl. project_count), captured by the Manage Users render so
+  // the delete/transfer dialogs can populate their dropdowns + counts without a refetch.
+  let lastUsers = [];
+  let pendingDeleteUserId = null, pendingDeleteBtn = null, pendingTransferUserId = null;
+  const escHtml = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const TRANSFER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 9l-4-4v3H8v2h9v3l4-4zM3 15l4 4v-3h9v-2H7v-3l-4 4z"/></svg>';
+  const projectCountNote = (u) => (u && u.project_count != null) ? ('Owns ' + u.project_count + ' project' + (u.project_count === 1 ? '' : 's') + '.') : '';
+
+  function populateUserSelect(selectEl, excludeId) {
+    const others = (lastUsers || []).filter((u) => u.id !== excludeId);
+    if (!others.length) { selectEl.innerHTML = '<option value="">No other users</option>'; return; }
+    selectEl.innerHTML = '<option value="">Select a user…</option>' +
+      others.map((u) => '<option value="' + escHtml(u.id) + '">' + escHtml(u.email || u.id) + '</option>').join('');
+  }
 
   function openManageUserModal() {
     const state = App.state;
@@ -58,25 +76,42 @@
         }).catch(() => tryEdgeFn());
     }
     function renderList(users) {
+      lastUsers = users || [];
       if (!users || users.length === 0) {
         listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
         return;
       }
       const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       const currentId = session.user?.id;
-      listEl.innerHTML = users.map((u) => {
+      const headerHtml = '<div class="settings-user-row settings-user-header">' +
+        '<span class="settings-user-email">User</span>' +
+        '<span class="settings-user-role">Role</span>' +
+        '<span class="settings-user-count">Projects</span>' +
+        '<span class="settings-user-dates"><span>Last sign-in</span><span>Last active</span></span>' +
+        '<span class="settings-user-transfer-head"></span>' +
+        '<span class="settings-user-activity-head"></span>' +
+        '<span class="settings-user-delete-head"></span>' +
+        '</div>';
+      listEl.innerHTML = headerHtml + users.map((u) => {
         const isSelf = u.id === currentId;
         return '<div class="settings-user-row" data-user-id="' + esc(u.id) + '">' +
           '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
           '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-          '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
-          '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
+          '<span class="settings-user-count">' + (u.project_count == null ? '' : u.project_count) + '</span>' +
+          '<span class="settings-user-dates">' +
+            '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
+            '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
+          '</span>' +
+          '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + TRANSFER_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
           '</div>';
       }).join('');
       listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
         btn.onclick = () => App.openUserActivityModal(btn.dataset.userId, btn.dataset.email);
+      });
+      listEl.querySelectorAll('.settings-user-transfer').forEach((btn) => {
+        btn.onclick = () => openTransferModal(btn.dataset.userId, btn.dataset.email);
       });
       listEl.querySelectorAll('.settings-user-delete:not([disabled])').forEach((btn) => {
         btn.onclick = () => deleteUser(btn.dataset.userId, btn.dataset.email, btn);
@@ -105,12 +140,22 @@
         return;
       }
       const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      listEl.innerHTML = list.map((u) =>
+      const headerHtml = '<div class="settings-user-row settings-user-header">' +
+        '<span class="settings-user-email">User</span>' +
+        '<span class="settings-user-role">Role</span>' +
+        '<span class="settings-user-count">Projects</span>' +
+        '<span class="settings-user-dates"><span>Last sign-in</span><span>Last active</span></span>' +
+        '<span class="settings-user-activity-head"></span>' +
+        '</div>';
+      listEl.innerHTML = headerHtml + list.map((u) =>
         '<div class="settings-user-row">' +
         '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
         '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
+        '<span class="settings-user-count">' + (u.project_count == null ? '' : u.project_count) + '</span>' +
+        '<span class="settings-user-dates">' +
         '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
         '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
+        '</span>' +
         '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
         '</div>'
       ).join('');
@@ -149,34 +194,99 @@
     }).catch(() => tryEdgeFn());
   }
 
-  async function deleteUser(userId, email, btnEl) {
-    if (!confirm('Delete ' + (email || userId) + '? This cannot be undone.')) return;
+  // Opens the delete dialog (delete-with-projects vs reassign-then-delete). The actual
+  // request fires from submitDeleteUser when the admin confirms.
+  function deleteUser(userId, email, btnEl) {
+    pendingDeleteUserId = userId;
+    pendingDeleteBtn = btnEl;
+    const u = (lastUsers || []).find((x) => x.id === userId);
+    document.getElementById('deleteUserName').textContent = email || userId;
+    document.getElementById('deleteUserCountNote').textContent = projectCountNote(u);
+    document.querySelectorAll('input[name="deleteUserMode"]').forEach((r) => { r.checked = r.value === 'delete'; });
+    document.getElementById('deleteUserReassignGroup').style.display = 'none';
+    const errEl = document.getElementById('deleteUserError'); errEl.style.display = 'none'; errEl.textContent = '';
+    populateUserSelect(document.getElementById('deleteUserReassignSelect'), userId);
+    const confirmBtn = document.getElementById('deleteUserConfirmBtn');
+    confirmBtn.disabled = false; confirmBtn.textContent = 'Delete User';
+    App.showModal('deleteUserConfirmModal');
+  }
+
+  function openTransferModal(userId, email) {
+    pendingTransferUserId = userId;
+    const u = (lastUsers || []).find((x) => x.id === userId);
+    document.getElementById('transferFromName').textContent = email || userId;
+    document.getElementById('transferCountNote').textContent = projectCountNote(u);
+    populateUserSelect(document.getElementById('transferToSelect'), userId);
+    const errEl = document.getElementById('transferError'); errEl.style.display = 'none'; errEl.textContent = '';
+    const btn = document.getElementById('transferConfirmBtn'); btn.disabled = false; btn.textContent = 'Transfer';
+    App.showModal('transferProjectsModal');
+  }
+
+  async function submitDeleteUser() {
+    const mode = document.querySelector('input[name="deleteUserMode"]:checked')?.value || 'delete';
+    const errEl = document.getElementById('deleteUserError');
+    errEl.style.display = 'none';
+    const body = { targetUserId: pendingDeleteUserId };
+    if (mode === 'reassign') {
+      const to = document.getElementById('deleteUserReassignSelect').value;
+      if (!to) { errEl.textContent = 'Choose a user to reassign to.'; errEl.style.display = 'block'; return; }
+      body.reassignToUserId = to;
+    }
     const session = App.state.supabaseSession;
     if (!session?.access_token) return;
-    btnEl.disabled = true;
-    btnEl.textContent = 'Deleting…';
+    const confirmBtn = document.getElementById('deleteUserConfirmBtn');
+    confirmBtn.disabled = true; confirmBtn.textContent = mode === 'reassign' ? 'Reassigning…' : 'Deleting…';
     try {
       const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-delete-user', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId: userId })
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        const row = btnEl.closest('.settings-user-row');
-        row.remove();
-        if (!document.getElementById('manageUserList').querySelector('.settings-user-row')) {
-          document.getElementById('manageUserList').innerHTML = '<p style="color:var(--text3);">No users</p>';
+        App.hideModal('deleteUserConfirmModal');
+        if (pendingDeleteBtn) { const row = pendingDeleteBtn.closest('.settings-user-row'); if (row) row.remove(); }
+        lastUsers = (lastUsers || []).filter((x) => x.id !== pendingDeleteUserId);
+        const lst = document.getElementById('manageUserList');
+        if (lst && !lst.querySelector('.settings-user-row:not(.settings-user-header)')) {
+          lst.innerHTML = '<p style="color:var(--text3);">No users</p>';
         }
       } else {
-        alert(data.error || 'Delete failed');
-        btnEl.disabled = false;
-        btnEl.textContent = 'Delete';
+        errEl.textContent = data.error || 'Delete failed'; errEl.style.display = 'block';
+        confirmBtn.disabled = false; confirmBtn.textContent = 'Delete User';
       }
     } catch (e) {
-      alert(e.message || 'Delete failed');
-      btnEl.disabled = false;
-      btnEl.textContent = 'Delete';
+      errEl.textContent = (e && e.message) || 'Delete failed'; errEl.style.display = 'block';
+      confirmBtn.disabled = false; confirmBtn.textContent = 'Delete User';
+    }
+  }
+
+  async function submitTransfer() {
+    const to = document.getElementById('transferToSelect').value;
+    const errEl = document.getElementById('transferError');
+    errEl.style.display = 'none';
+    if (!to) { errEl.textContent = 'Choose a user to transfer to.'; errEl.style.display = 'block'; return; }
+    const session = App.state.supabaseSession;
+    if (!session?.access_token) return;
+    const btn = document.getElementById('transferConfirmBtn');
+    btn.disabled = true; btn.textContent = 'Transferring…';
+    try {
+      const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-reassign-projects', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromUserId: pendingTransferUserId, toUserId: to })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        App.hideModal('transferProjectsModal');
+        openManageUserModal(); // refresh so both users' counts update
+      } else {
+        errEl.textContent = data.error || 'Transfer failed'; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Transfer';
+      }
+    } catch (e) {
+      errEl.textContent = (e && e.message) || 'Transfer failed'; errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Transfer';
     }
   }
 
@@ -190,6 +300,16 @@
   document.getElementById('manageUsersBtnSidebar').onclick = () => document.getElementById('manageUsersBtn').click();
   document.getElementById('adminPanelClose').onclick = () => App.hideModal('adminPanelModal');
   document.getElementById('manageUserModalClose').onclick = () => App.hideModal('manageUserModal');
+  document.querySelectorAll('input[name="deleteUserMode"]').forEach((r) => {
+    r.onchange = () => {
+      const mode = document.querySelector('input[name="deleteUserMode"]:checked')?.value;
+      document.getElementById('deleteUserReassignGroup').style.display = mode === 'reassign' ? '' : 'none';
+    };
+  });
+  document.getElementById('deleteUserCancel').onclick = () => App.hideModal('deleteUserConfirmModal');
+  document.getElementById('deleteUserConfirmBtn').onclick = () => submitDeleteUser();
+  document.getElementById('transferCancel').onclick = () => App.hideModal('transferProjectsModal');
+  document.getElementById('transferConfirmBtn').onclick = () => submitTransfer();
   const manageUserModalAllActivityBtn = document.getElementById('manageUserModalAllActivityBtn');
   if (manageUserModalAllActivityBtn) {
     manageUserModalAllActivityBtn.innerHTML = App.USER_ACTIVITY_ICON_SVG;

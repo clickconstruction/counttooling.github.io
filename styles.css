@@ -905,6 +905,13 @@
     .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
+    /* Manage Users: tighten the three action icons (set-password / transfer / activity) into a
+       button group. The same negative margin is applied to the matching header spacers so the
+       Role/Projects/dates columns stay aligned between the header and the rows. */
+    #manageUserModal .settings-user-transfer,
+    #manageUserModal .settings-user-activity,
+    #manageUserModal .settings-user-header .settings-user-transfer-head,
+    #manageUserModal .settings-user-header .settings-user-activity-head { margin-left: -8px; }
     /* Per-user activity overview modal */
     .ua-overview-header { padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
     .ua-role-pill { display: inline-block; font-size: 0.7rem; color: var(--accent); border: 1px solid var(--border2); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }

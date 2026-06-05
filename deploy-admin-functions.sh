@@ -8,5 +8,6 @@ supabase functions deploy admin-list-users --no-verify-jwt
 supabase functions deploy admin-create-user --no-verify-jwt
 supabase functions deploy admin-delete-user --no-verify-jwt
 supabase functions deploy admin-reassign-projects --no-verify-jwt
+supabase functions deploy admin-set-password --no-verify-jwt
 supabase functions deploy admin-delete-project --no-verify-jwt
 echo "Done."

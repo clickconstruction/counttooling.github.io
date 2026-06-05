@@ -34,9 +34,10 @@
   // Latest admin user list (incl. project_count), captured by the Manage Users render so
   // the delete/transfer dialogs can populate their dropdowns + counts without a refetch.
   let lastUsers = [];
-  let pendingDeleteUserId = null, pendingDeleteBtn = null, pendingTransferUserId = null;
+  let pendingDeleteUserId = null, pendingDeleteBtn = null, pendingTransferUserId = null, pendingSetPwUserId = null;
   const escHtml = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const TRANSFER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 9l-4-4v3H8v2h9v3l4-4zM3 15l4 4v-3h9v-2H7v-3l-4 4z"/></svg>';
+  const KEY_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12.65 10A5.99 5.99 0 0 0 7 6a6 6 0 0 0 0 12 5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
   const projectCountNote = (u) => (u && u.project_count != null) ? ('Owns ' + u.project_count + ' project' + (u.project_count === 1 ? '' : 's') + '.') : '';
 
   function populateUserSelect(selectEl, excludeId) {
@@ -88,6 +89,7 @@
         '<span class="settings-user-role">Role</span>' +
         '<span class="settings-user-count">Projects</span>' +
         '<span class="settings-user-dates"><span>Last sign-in</span><span>Last active</span></span>' +
+        '<span class="settings-user-set-password-head"></span>' +
         '<span class="settings-user-transfer-head"></span>' +
         '<span class="settings-user-activity-head"></span>' +
         '<span class="settings-user-delete-head"></span>' +
@@ -97,11 +99,12 @@
         return '<div class="settings-user-row" data-user-id="' + esc(u.id) + '">' +
           '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
           '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-          '<span class="settings-user-count">' + (u.project_count == null ? '' : u.project_count) + '</span>' +
+          '<span class="settings-user-count">' + (u.project_count == null ? '' : (u.project_count > 0 ? '<button type="button" class="settings-user-count-link" title="View projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + u.project_count + '</button>' : '0')) + '</span>' +
           '<span class="settings-user-dates">' +
             '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
             '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
           '</span>' +
+          '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + KEY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + TRANSFER_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-activity" aria-label="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
@@ -110,8 +113,14 @@
       listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
         btn.onclick = () => App.openUserActivityModal(btn.dataset.userId, btn.dataset.email);
       });
+      listEl.querySelectorAll('.settings-user-set-password').forEach((btn) => {
+        btn.onclick = () => openSetPasswordModal(btn.dataset.userId, btn.dataset.email);
+      });
       listEl.querySelectorAll('.settings-user-transfer').forEach((btn) => {
         btn.onclick = () => openTransferModal(btn.dataset.userId, btn.dataset.email);
+      });
+      listEl.querySelectorAll('.settings-user-count-link').forEach((btn) => {
+        btn.onclick = () => openUserProjectsModal(btn.dataset.userId, btn.dataset.email);
       });
       listEl.querySelectorAll('.settings-user-delete:not([disabled])').forEach((btn) => {
         btn.onclick = () => deleteUser(btn.dataset.userId, btn.dataset.email, btn);
@@ -222,6 +231,83 @@
     App.showModal('transferProjectsModal');
   }
 
+  function openSetPasswordModal(userId, email) {
+    pendingSetPwUserId = userId;
+    document.getElementById('setPasswordUserName').textContent = email || userId;
+    document.getElementById('setPasswordNew').value = '';
+    document.getElementById('setPasswordConfirm').value = '';
+    const errEl = document.getElementById('setPasswordError'); errEl.style.display = 'none'; errEl.textContent = '';
+    const okEl = document.getElementById('setPasswordSuccess'); okEl.style.display = 'none'; okEl.textContent = '';
+    const btn = document.getElementById('setPasswordConfirmBtn'); btn.disabled = false; btn.textContent = 'Set Password';
+    App.showModal('setPasswordModal');
+  }
+
+  async function submitSetPassword() {
+    const newPw = document.getElementById('setPasswordNew').value;
+    const confirmPw = document.getElementById('setPasswordConfirm').value;
+    const errEl = document.getElementById('setPasswordError');
+    const okEl = document.getElementById('setPasswordSuccess');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+    if (!newPw || newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; errEl.style.display = 'block'; return; }
+    if (newPw !== confirmPw) { errEl.textContent = 'Passwords do not match'; errEl.style.display = 'block'; return; }
+    const session = App.state.supabaseSession;
+    if (!session?.access_token) return;
+    const btn = document.getElementById('setPasswordConfirmBtn');
+    btn.disabled = true; btn.textContent = 'Setting…';
+    try {
+      const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-set-password', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: pendingSetPwUserId, newPassword: newPw })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        okEl.textContent = 'Password updated. Share it with the user.'; okEl.style.display = 'block';
+        document.getElementById('setPasswordNew').value = '';
+        document.getElementById('setPasswordConfirm').value = '';
+      } else {
+        errEl.textContent = data.error || 'Failed to set password'; errEl.style.display = 'block';
+      }
+    } catch (e) {
+      errEl.textContent = (e && e.message) || 'Failed to set password'; errEl.style.display = 'block';
+    }
+    btn.disabled = false; btn.textContent = 'Set Password';
+  }
+
+  // Read-only: lists a single user's owned projects (name + last edit date), filtered
+  // from the admin project list. Opened by clicking the project count in Manage Users.
+  async function openUserProjectsModal(userId, email) {
+    const listEl = document.getElementById('userProjectsList');
+    document.getElementById('userProjectsSubtitle').textContent = email || userId || '';
+    listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
+    App.showModal('userProjectsModal');
+    const session = App.state.supabaseSession;
+    if (!session?.access_token) { listEl.innerHTML = '<p style="color:var(--red);">Not authenticated.</p>'; return; }
+    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+    try {
+      const res = await fetch(App.SUPABASE_URL + '/rest/v1/rpc/list_projects_for_admin', { method: 'POST', headers, body: '{}' });
+      let data; try { data = await res.json(); } catch (_) { data = null; }
+      if (!res.ok || !Array.isArray(data)) {
+        listEl.innerHTML = '<p style="color:var(--red);">' + (((data && (data.message || data.error)) || ('HTTP ' + res.status)) + '').replace(/</g, '&lt;') + '</p>';
+        return;
+      }
+      const mine = data.filter((p) => p.user_id === userId)
+        .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+      document.getElementById('userProjectsSubtitle').textContent = (email || userId || '') + ' — ' + mine.length + ' project' + (mine.length === 1 ? '' : 's');
+      if (!mine.length) { listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>'; return; }
+      listEl.innerHTML = mine.map((p) =>
+        '<div class="settings-user-row settings-project-row">' +
+        '<div class="settings-project-info">' +
+        '<span class="settings-project-name" title="' + escHtml(p.name) + '">' + escHtml(p.name || 'Untitled') + '</span>' +
+        '<div class="settings-project-meta">' + (p.updated_at ? 'Last edited ' + escHtml(new Date(p.updated_at).toLocaleString()) : 'No edit date') + '</div>' +
+        '</div>' +
+        '</div>'
+      ).join('');
+    } catch (e) {
+      listEl.innerHTML = '<p style="color:var(--red);">' + (((e && e.message) || 'Network error') + '').replace(/</g, '&lt;') + '</p>';
+    }
+  }
+
   async function submitDeleteUser() {
     const mode = document.querySelector('input[name="deleteUserMode"]:checked')?.value || 'delete';
     const errEl = document.getElementById('deleteUserError');
@@ -310,6 +396,9 @@
   document.getElementById('deleteUserConfirmBtn').onclick = () => submitDeleteUser();
   document.getElementById('transferCancel').onclick = () => App.hideModal('transferProjectsModal');
   document.getElementById('transferConfirmBtn').onclick = () => submitTransfer();
+  document.getElementById('setPasswordCancel').onclick = () => App.hideModal('setPasswordModal');
+  document.getElementById('setPasswordForm').onsubmit = (e) => { e.preventDefault(); submitSetPassword(); };
+  document.getElementById('userProjectsClose').onclick = () => App.hideModal('userProjectsModal');
   const manageUserModalAllActivityBtn = document.getElementById('manageUserModalAllActivityBtn');
   if (manageUserModalAllActivityBtn) {
     manageUserModalAllActivityBtn.innerHTML = App.USER_ACTIVITY_ICON_SVG;

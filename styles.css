@@ -896,6 +896,8 @@
     .user-list-modal .settings-user-set-password:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
     .user-list-modal .settings-user-set-password svg { width: 18px; height: 18px; display: block; }
     .user-list-modal .settings-user-dates { width: 86px; flex: none; display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
+    #manageUserModal .settings-user-dates-btn { border: none; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
+    #manageUserModal .settings-user-dates-btn:hover { background: rgba(232, 197, 71, 0.14); }
     .user-list-modal .settings-user-delete { width: 68px; flex: none; text-align: center; }
     .user-list-modal .settings-user-header { position: sticky; top: 0; z-index: 1; background: var(--surface); border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 2px 12px 6px; margin-bottom: 6px; }
     .user-list-modal .settings-user-header span { color: var(--text3); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: visible; }
@@ -903,6 +905,18 @@
     .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
+    /* Per-user activity overview modal */
+    .ua-overview-header { padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .ua-role-pill { display: inline-block; font-size: 0.7rem; color: var(--accent); border: 1px solid var(--border2); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
+    .ua-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .ua-tile { border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; text-align: center; }
+    .ua-tile-num { font-size: 1.4rem; font-weight: 600; color: var(--text); }
+    .ua-tile-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--text3); margin-top: 2px; }
+    .ua-windows { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--text2); font-size: 0.85rem; margin-bottom: 14px; }
+    .ua-section-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); font-weight: 600; margin: 0 0 6px; }
+    .ua-breakdown { margin-bottom: 16px; }
+    .ua-breakdown-row { display: flex; justify-content: space-between; padding: 4px 2px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    .ua-breakdown-row span:last-child { color: var(--text2); font-variant-numeric: tabular-nums; }
     .settings-users-list .settings-project-force-checkin { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-project-force-checkin:hover { background: var(--surface3); color: var(--text); }
     .settings-users-list .settings-project-force-checkin:disabled { opacity: 0.5; cursor: not-allowed; }

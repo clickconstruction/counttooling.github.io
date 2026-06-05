@@ -89,9 +89,7 @@
     const icons = App.getOrderedIcons();
     grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => { grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); });
-    const cr = document.getElementById('counterColorRow');
-    cr.innerHTML = App.COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-    cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
+    App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
     App.showModal('counterModal');
   };
   document.getElementById('counterBtn').oncontextmenu = (e) => {
@@ -143,9 +141,7 @@
         if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
       };
     });
-    const cr = document.getElementById('counterColorRow');
-    cr.innerHTML = App.COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-    cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
+    App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
     App.showModal('counterModal');
   };
   document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>
@@ -172,11 +168,11 @@
     const name = document.getElementById('counterName').value.trim() || 'Counter';
     const sel = document.querySelector('#counterIconGrid .icon-cell.selected') || document.querySelector('#counterIconGridCustom .icon-cell.selected');
     const icon = sel ? sel.dataset.path : App.getOrderedIcons()[0].value;
-    const colorSel = document.querySelector('#counterColorRow .color-swatch.selected');
-    const color = colorSel ? colorSel.dataset.color : App.COLORS[2];
+    const color = document.getElementById('counterColorRow').dataset.selectedColor || App.COLORS[2];
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color };
     state.counters.push(newCounter);
+    App.pushRecentColor(color);
     state.activeCounterType = newCounter.id;
     state.tool = App.TOOL.COUNTER;
     App.markProjectDirty();

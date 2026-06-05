@@ -135,6 +135,23 @@ const PDF_RESUMABLE_THRESHOLD_BYTES = 8 * 1024 * 1024; // use resumable/TUS uplo
 const LOAD_TEST_PDF_URL = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf';
 const USER_ACTIVITY_TZ = 'America/Chicago';
 
+// --- Pure helpers ---
+// Recent-color list update, shared by the Create Counter / Create Line Type
+// pickers and the edit color picker (showLineColorModal/applyLineColor). Pure:
+// depends only on its args, no state/DOM. Skips colors that are already in the
+// preset palette (those are always visible, so they don't belong in "Recent"),
+// dedupes case-insensitively, newest-first, capped at RECENT_COLORS_MAX. Returns
+// a new array; never mutates `list`.
+const RECENT_COLORS_MAX = 12;
+function nextRecentColors(list, color, presets) {
+  const base = (Array.isArray(list) ? list : []).slice(0, RECENT_COLORS_MAX);
+  if (typeof color !== 'string' || !color) return base;
+  const c = color.toLowerCase();
+  const presetSet = (Array.isArray(presets) ? presets : []).map(p => String(p).toLowerCase());
+  if (presetSet.includes(c)) return base;
+  return [c].concat(base.filter(x => String(x).toLowerCase() !== c)).slice(0, RECENT_COLORS_MAX);
+}
+
 // Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
@@ -159,6 +176,7 @@ if (typeof module !== 'undefined' && module.exports) {
     PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ,
     PDF_UPLOAD_TIMEOUT_BASE_MS, PDF_UPLOAD_ASSUMED_BPS, PDF_UPLOAD_TIMEOUT_SLACK_MS,
     PDF_UPLOAD_TIMEOUT_MAX_MS, PDF_UPLOAD_VERIFY_ATTEMPTS, PDF_UPLOAD_VERIFY_GAP_MS,
-    PDF_RESUMABLE_THRESHOLD_BYTES
+    PDF_RESUMABLE_THRESHOLD_BYTES,
+    RECENT_COLORS_MAX, nextRecentColors
   };
 }

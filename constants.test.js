@@ -86,3 +86,49 @@ test('near-expiry and soft-grace stay within the inactivity window', () => {
   assert.ok(c.CHECKOUT_SOFT_GRACE_MS < c.CHECKOUT_INACTIVITY_MS);
   assert.ok(c.CHECKOUT_KEEPALIVE_MS < c.CHECKOUT_INACTIVITY_MS);
 });
+
+const PRESETS = ['#e85447', '#4a9eff', '#e8c547'];
+
+test('nextRecentColors: a preset color is never added to recents', () => {
+  assert.deepStrictEqual(c.nextRecentColors([], '#4a9eff', PRESETS), []);
+  assert.deepStrictEqual(c.nextRecentColors(['#123456'], '#e85447', PRESETS), ['#123456']);
+});
+
+test('nextRecentColors: an off-palette color is unshifted to the front', () => {
+  assert.deepStrictEqual(c.nextRecentColors([], '#123456', PRESETS), ['#123456']);
+  assert.deepStrictEqual(c.nextRecentColors(['#abcdef'], '#123456', PRESETS), ['#123456', '#abcdef']);
+});
+
+test('nextRecentColors: an existing color moves to the front without growing the list', () => {
+  assert.deepStrictEqual(
+    c.nextRecentColors(['#111111', '#222222', '#333333'], '#333333', PRESETS),
+    ['#333333', '#111111', '#222222']
+  );
+});
+
+test('nextRecentColors: dedupe is case-insensitive and the stored value is lowercased', () => {
+  assert.deepStrictEqual(c.nextRecentColors(['#abcdef'], '#ABCDEF', PRESETS), ['#abcdef']);
+  assert.deepStrictEqual(c.nextRecentColors([], '#AB12CD', PRESETS), ['#ab12cd']);
+});
+
+test('nextRecentColors: caps the list at RECENT_COLORS_MAX, dropping the oldest', () => {
+  const max = c.RECENT_COLORS_MAX;
+  const full = Array.from({ length: max }, (_, i) => '#0000' + String(i).padStart(2, '0'));
+  const out = c.nextRecentColors(full, '#ffffff', PRESETS);
+  assert.strictEqual(out.length, max);
+  assert.strictEqual(out[0], '#ffffff');
+  assert.ok(!out.includes(full[full.length - 1]), 'oldest entry was dropped');
+});
+
+test('nextRecentColors: falsy/invalid color returns the list unchanged (capped)', () => {
+  assert.deepStrictEqual(c.nextRecentColors(['#123456'], '', PRESETS), ['#123456']);
+  assert.deepStrictEqual(c.nextRecentColors(['#123456'], null, PRESETS), ['#123456']);
+  assert.deepStrictEqual(c.nextRecentColors(['#123456'], 42, PRESETS), ['#123456']);
+});
+
+test('nextRecentColors: tolerates a non-array list and never mutates the input', () => {
+  assert.deepStrictEqual(c.nextRecentColors(undefined, '#123456', PRESETS), ['#123456']);
+  const input = ['#abcdef'];
+  c.nextRecentColors(input, '#123456', PRESETS);
+  assert.deepStrictEqual(input, ['#abcdef'], 'input list was not mutated');
+});

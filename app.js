@@ -408,6 +408,13 @@
     const le = localStorage.getItem('linesTypeExpanded');
     state.linesTypeExpanded = le ? JSON.parse(le) : {};
   } catch (_) {}
+  try {
+    const rc = localStorage.getItem('recentLineColors');
+    const parsed = rc ? JSON.parse(rc) : null;
+    if (Array.isArray(parsed) && parsed.every(x => typeof x === 'string')) {
+      state.recentLineColors = parsed.slice(0, RECENT_COLORS_MAX);
+    }
+  } catch (_) {}
 
   function getGroupColor(groupId) {
     const g = (state.groups || []).find(x => x.id === groupId);
@@ -5193,12 +5200,74 @@
   function applyLineColor(color) {
     if (state.pendingLineColorApply) {
       state.pendingLineColorApply(color);
-      state.recentLineColors = [color].concat((state.recentLineColors || []).filter(c => c !== color)).slice(0, 12);
+      pushRecentColor(color);
       state.pendingLineColorApply = null;
       hideModal('lineColorModal');
       updateUI();
       renderPdf();
     }
+  }
+  // Commit a chosen color to the shared Recent list (state.recentLineColors) and
+  // persist it app-wide in localStorage. Only off-palette (custom) colors are
+  // recorded; preset colors are skipped by nextRecentColors since they are always
+  // shown. Shared by applyLineColor (edit picker) and the Create Counter / Create
+  // Line Type pickers via App.pushRecentColor.
+  function pushRecentColor(color) {
+    state.recentLineColors = nextRecentColors(state.recentLineColors, color, COLORS);
+    try { localStorage.setItem('recentLineColors', JSON.stringify(state.recentLineColors)); } catch (_) {}
+  }
+  // Render the inline color picker used by the Create Counter / Create Line Type
+  // modals: the 18 preset swatches, a native <input type="color"> custom picker,
+  // and a Recent-colors row. The single source of truth for the chosen value is
+  // the presets row's dataset.selectedColor (lowercase hex). Clicking any preset
+  // or recent swatch, or committing the custom input, updates that value and
+  // re-rings the matching swatch by value. Recents are NOT committed here (only
+  // on Create), so cancelling never pollutes the Recent list.
+  function setupCreateColorPicker(opts) {
+    const presetsRow = document.getElementById(opts.presetsRowId);
+    const customInput = document.getElementById(opts.customInputId);
+    const recentRow = document.getElementById(opts.recentRowId);
+    const recentGroup = document.getElementById(opts.recentGroupId);
+    if (!presetsRow) return;
+    const initial = (opts.defaultColor || COLORS[2]).toLowerCase();
+
+    function ring(color) {
+      const c = (color || '').toLowerCase();
+      [presetsRow, recentRow].forEach(row => {
+        if (!row) return;
+        row.querySelectorAll('.color-swatch').forEach(s =>
+          s.classList.toggle('selected', (s.dataset.color || '').toLowerCase() === c));
+      });
+    }
+    function select(color) {
+      const c = (color || '').toLowerCase();
+      presetsRow.dataset.selectedColor = c;
+      if (customInput) customInput.value = c;
+      ring(c);
+    }
+
+    presetsRow.innerHTML = COLORS.map(c =>
+      '<span class="color-swatch" data-color="' + c + '" style="background:' + c + '" title="' + c + '"></span>'
+    ).join('');
+    presetsRow.querySelectorAll('.color-swatch').forEach(s => { s.onclick = () => select(s.dataset.color); });
+
+    if (recentRow) {
+      recentRow.innerHTML = '';
+      (state.recentLineColors || []).forEach(c => {
+        const s = document.createElement('span');
+        s.className = 'color-swatch';
+        s.style.background = c;
+        s.dataset.color = c;
+        s.title = c;
+        s.onclick = () => select(c);
+        recentRow.appendChild(s);
+      });
+    }
+    if (recentGroup) recentGroup.style.display = (state.recentLineColors || []).length ? '' : 'none';
+
+    if (customInput) customInput.onchange = () => select(customInput.value);
+
+    select(initial);
   }
 
   // SECTION: Airboard cloud sync
@@ -6243,21 +6312,19 @@
   // getLineModifiers/saveLineModifiers stay here (published as App.*).
   document.getElementById('addLineType').onclick = () => {
     document.getElementById('lineTypeName').value = '';
-    const cr = document.getElementById('lineTypeColorRow');
-    cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-    cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
+    setupCreateColorPicker({ presetsRowId: 'lineTypeColorRow', customInputId: 'lineTypeColorCustom', recentRowId: 'lineTypeColorRecent', recentGroupId: 'lineTypeColorRecentGroup' });
     showModal('lineTypeModal');
   };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
   document.getElementById('lineTypeCreate').onclick = () => {
     const name = document.getElementById('lineTypeName').value.trim() || 'Line';
-    const colorSel = document.querySelector('#lineTypeColorRow .color-swatch.selected');
-    const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    const color = document.getElementById('lineTypeColorRow').dataset.selectedColor || COLORS[2];
     const curveSel = document.querySelector('input[name="lineTypeCurve"]:checked');
     const curveStyle = curveSel ? curveSel.value : 'straight';
     pushUndoSnapshot();
     const newLt = { id: uid(), name, color, curveStyle };
     state.lineTypes.push(newLt);
+    pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
     markProjectDirty();
     state.pagesListCollapsed = true;
@@ -12126,6 +12193,8 @@
   App.renderPdf = renderPdf;
   App.updateUI = updateUI;
   App.showLineColorModal = showLineColorModal;
+  App.pushRecentColor = pushRecentColor;
+  App.setupCreateColorPicker = setupCreateColorPicker;
   App.ensureActiveCanvas = ensureActiveCanvas;
   App.getMaxZoom = getMaxZoom;
   App.getWheelZoomSpeed = getWheelZoomSpeed;

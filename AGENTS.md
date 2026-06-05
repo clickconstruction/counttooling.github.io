@@ -50,7 +50,10 @@
   [constants.js](constants.js) (pure module-level constant literals: `TOOL`,
   `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`,
   the autosave/checkout timing & threshold block, IndexedDB store names + caps,
-  Save Status log windows, checkout messages, keys/URLs/TZ; classic script loaded
+  Save Status log windows, checkout messages, keys/URLs/TZ; plus the one pure
+  helper `nextRecentColors(list, color, presets)` + its `RECENT_COLORS_MAX` cap —
+  the recent-color list update shared by the create pickers and the edit color
+  picker; classic script loaded
   before app.js; no `state`/`window`/icon dependency -- env reads (`SUPABASE_*`,
   `BACKUP_PDF_TO_INDEXEDDB`, `IS_DEV_HOST`), icon-derived consts, and
   function-local consts stay in app.js; same guarded CommonJS footer so
@@ -513,7 +516,8 @@ Rules to follow when adding/editing a feature file:
   then `App.state = state; App.renderPdf = renderPdf; …` (currently also `uid`,
   `makeAnnotations`, `applyRotationDeltaToAnnotations`,
   `reconcileOrphanedCountersAndLineTypes`, `pushUndoSnapshot`, `markProjectDirty`,
-  `showModal`, `hideModal`, `updateUI`, `showLineColorModal`, `ensureActiveCanvas`,
+  `showModal`, `hideModal`, `updateUI`, `showLineColorModal`, `pushRecentColor`,
+  `setupCreateColorPicker`, `ensureActiveCanvas`,
   `getMaxZoom`, `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`,
   `getUserCustomIcons`, `saveUserCustomIcons`, `showToast`, `getPageCanvases`,
   `renderAnnotationsToContext`, `addReportPagesToPdf`, `addHighlightsToPdf`,
@@ -586,7 +590,10 @@ Rules to follow when adding/editing a feature file:
 `lengthLabelSize`, `snapToHorizontalVertical`, `showOnlyLinesOnCurrentPage`),
 `legendSettings`, `multiplyZoneSettings`, `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),
-`recentLineColors`, `iconNames`, `iconOrder`, `pageScales`, `zoomSettings`,
+`recentLineColors` (shared recent-color list, written by `pushRecentColor` —
+custom/off-palette colors only, presets skipped; consumed by the edit color
+picker and the Create Counter / Create Line Type pickers), `iconNames`,
+`iconOrder`, `pageScales`, `zoomSettings`,
 `groupColorDisplay`, `pagesTitlesTruncated`, `hideUnmarkedPagesFromSidebar`,
 `counterSearch`, `lineTypeSearch`, `linesSearch`, `linesTypeExpanded`,
 `loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
@@ -659,7 +666,17 @@ undo/redo; Ctrl+R refresh. Ignored when focus is in an input/textarea/contentedi
 ### Shared UI patterns
 
 - **Line color modal**: `showLineColorModal(currentColor, onApply)` — used for
-  Counters, Line Types, Groups, Lines (Presets / picker / Recent).
+  editing Counters, Line Types, Groups, Lines (Presets / picker / Recent).
+- **Inline create color picker**: `setupCreateColorPicker({ presetsRowId,
+  customInputId, recentRowId, recentGroupId, defaultColor })` — the Presets /
+  custom `<input type="color">` / Recent picker embedded in the three create
+  surfaces: Create Counter (`#counterColorRow`), the Add Line Type modal opened by
+  the sidebar "+ Add" (`#lineTypeColorRow`, app.js), and the Quick-Line Create-tab
+  panel (`#createLineTypeColorRow`, features/choose-create-line-type.js).
+  Selection is value-based: the chosen color lives on
+  the presets row's `dataset.selectedColor`. Recents commit only on Create, via
+  `pushRecentColor(color)` (shared list `state.recentLineColors`, custom-only,
+  localStorage-persisted; `nextRecentColors` is the pure core in constants.js).
 - **Toggle switches**: `.toggle-switch` + `.toggle-switch-knob` — used for Show
   group colors, Counter Settings (Show ring, Solid ring), Save Project Include PDF,
   Export PDFs (Bundle highlights/notes, Include report).

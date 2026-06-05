@@ -36,9 +36,7 @@
     if (tab === 'choose') populateChooseLineTypeList(document.getElementById('lineTypeModalSearchInput')?.value);
     else if (tab === 'create') {
       document.getElementById('createLineTypeName').value = '';
-      const cr = document.getElementById('createLineTypeColorRow');
-      cr.innerHTML = App.COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
-      cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
+      App.setupCreateColorPicker({ presetsRowId: 'createLineTypeColorRow', customInputId: 'createLineTypeColorCustom', recentRowId: 'createLineTypeColorRecent', recentGroupId: 'createLineTypeColorRecentGroup' });
     } else if (tab === 'quick') App.populateQuickLineModal();
   }
   function populateChooseLineTypeList(filter) {
@@ -94,13 +92,13 @@
   document.getElementById('createLineTypeCreate').onclick = () => {
     const state = App.state;
     const name = document.getElementById('createLineTypeName').value.trim() || 'Line';
-    const colorSel = document.querySelector('#createLineTypeColorRow .color-swatch.selected');
-    const color = colorSel ? colorSel.dataset.color : App.COLORS[2];
+    const color = document.getElementById('createLineTypeColorRow').dataset.selectedColor || App.COLORS[2];
     const curveSel = document.querySelector('input[name="createLineTypeCurve"]:checked');
     const curveStyle = curveSel ? curveSel.value : 'straight';
     App.pushUndoSnapshot();
     const newLt = { id: App.uid(), name, color, curveStyle };
     state.lineTypes.push(newLt);
+    App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
     App.markProjectDirty();
     App.hideModal('chooseLineTypeModal');

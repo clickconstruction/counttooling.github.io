@@ -461,20 +461,69 @@
     return '<div class="ua-section-title">What they do</div><div class="ua-breakdown">' +
       rows.map((r) => '<div class="ua-breakdown-row"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>').join('') + '</div>';
   }
+  const UA_TZ = 'America/Chicago'; // matches USER_ACTIVITY_TZ
+  function uaDayKey(iso) { return new Intl.DateTimeFormat('en-CA', { timeZone: UA_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)); }
+  function uaTime(iso) { return new Intl.DateTimeFormat('en-US', { timeZone: UA_TZ, hour: 'numeric', minute: '2-digit' }).format(new Date(iso)); }
+  function uaTimeRange(startIso, endIso) {
+    const a = uaTime(startIso), b = uaTime(endIso);
+    if (a === b) return b;
+    if (a.slice(-2) === b.slice(-2)) return a.slice(0, -3) + '–' + b; // share AM/PM
+    return a + ' – ' + b;
+  }
+  function uaDayLabel(key, todayKey, yestKey, sampleIso) {
+    if (key === todayKey) return 'Today';
+    if (key === yestKey) return 'Yesterday';
+    return new Intl.DateTimeFormat('en-US', { timeZone: UA_TZ, weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(sampleIso));
+  }
+  function uaActionLabel(type, n) {
+    switch (type) {
+      case 'counter_marker_added': return n > 1 ? ('Placed ' + n + ' counters') : 'Placed a counter';
+      case 'line_added': return n > 1 ? ('Drew ' + n + ' lines') : 'Drew a line';
+      case 'project_save': return n > 1 ? ('Saved project ×' + n) : 'Saved project';
+      case 'project_open': return n > 1 ? ('Opened project ×' + n) : 'Opened project';
+      case 'export_pdf': return n > 1 ? ('Exported PDF ×' + n) : 'Exported PDF';
+      case 'export_canvas': return n > 1 ? ('Exported canvas ×' + n) : 'Exported canvas';
+      case 'session_start': return n > 1 ? ('Signed in ×' + n) : 'Signed in';
+      default: return (EVENT_LABELS[type] || type) + (n > 1 ? (' ×' + n) : '');
+    }
+  }
+  // Day-grouped, run-collapsed feed: turns a flat dump of micro-events into a readable
+  // digest ("Placed 22 counters · Lobby · 9:12–9:31 AM" under Today/Yesterday headers).
   function renderActivityTimeline(d) {
     const items = Array.isArray(d.recent) ? d.recent : [];
     const title = '<div class="ua-section-title">Recent activity</div>';
     if (!items.length) return title + '<p style="color:var(--text3);">No activity recorded.</p>';
-    return title + '<div class="settings-users-list" style="max-height:none;">' + items.map((it) => {
-      const label = EVENT_LABELS[it.event_type] || it.event_type;
-      const proj = it.project_name ? ' · ' + escHtml(it.project_name) : '';
-      const when = it.created_at ? App.formatUserActivityDateTime(it.created_at) : '';
-      return '<div class="settings-user-row settings-project-row">' +
-        '<div class="settings-project-info">' +
-        '<span class="settings-project-name">' + escHtml(label) + proj + '</span>' +
-        '<div class="settings-project-meta">' + escHtml(when) + '</div>' +
-        '</div></div>';
-    }).join('') + '</div>';
+    const now = Date.now();
+    const todayKey = uaDayKey(new Date(now).toISOString());
+    const yestKey = uaDayKey(new Date(now - 86400000).toISOString());
+    const days = []; const byKey = {};
+    for (const it of items) { // items are newest-first
+      const k = uaDayKey(it.created_at);
+      if (!byKey[k]) { byKey[k] = { key: k, items: [] }; days.push(byKey[k]); }
+      byKey[k].items.push(it);
+    }
+    let body = '';
+    for (const day of days) {
+      body += '<div class="ua-day-header">' + escHtml(uaDayLabel(day.key, todayKey, yestKey, day.items[0].created_at)) + '</div>';
+      const runs = []; // collapse consecutive same action+project within the day
+      for (const it of day.items) {
+        const last = runs[runs.length - 1];
+        const pid = it.project_id || null;
+        if (last && last.type === it.event_type && last.projectId === pid) { last.count++; last.startIso = it.created_at; }
+        else runs.push({ type: it.event_type, projectId: pid, projectName: it.project_name || null, count: 1, startIso: it.created_at, endIso: it.created_at });
+      }
+      for (const run of runs) {
+        const proj = run.projectName ? ' · ' + escHtml(run.projectName) : '';
+        const when = run.count > 1 ? uaTimeRange(run.startIso, run.endIso) : uaTime(run.endIso);
+        const quiet = run.type === 'session_start' ? ' ua-event-quiet' : '';
+        body += '<div class="settings-user-row settings-project-row' + quiet + '">' +
+          '<div class="settings-project-info">' +
+          '<span class="settings-project-name">' + escHtml(uaActionLabel(run.type, run.count)) + proj + '</span>' +
+          '<div class="settings-project-meta">' + escHtml(when) + '</div>' +
+          '</div></div>';
+      }
+    }
+    return title + '<div class="settings-users-list" style="max-height:none;">' + body + '</div>';
   }
 
   document.getElementById('manageUserModalClose').onclick = () => App.hideModal('manageUserModal');

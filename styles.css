@@ -917,6 +917,9 @@
     .ua-breakdown { margin-bottom: 16px; }
     .ua-breakdown-row { display: flex; justify-content: space-between; padding: 4px 2px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
     .ua-breakdown-row span:last-child { color: var(--text2); font-variant-numeric: tabular-nums; }
+    .ua-day-header { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text2); font-weight: 700; margin: 12px 0 4px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .ua-day-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .ua-event-quiet .settings-project-name { color: var(--text3); font-weight: 400; }
     .settings-users-list .settings-project-force-checkin { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-project-force-checkin:hover { background: var(--surface3); color: var(--text); }
     .settings-users-list .settings-project-force-checkin:disabled { opacity: 0.5; cursor: not-allowed; }

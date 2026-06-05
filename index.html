@@ -1746,6 +1746,40 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="setPasswordModal">
+    <div class="modal-card">
+      <h2>Set Password</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Set a new password for:</p>
+      <p id="setPasswordUserName" style="margin:0 0 16px 0;font-weight:500;"></p>
+      <form id="setPasswordForm">
+        <input type="text" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
+        <div class="form-group">
+          <label>New password</label>
+          <input type="password" id="setPasswordNew" placeholder="New password" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Confirm new password</label>
+          <input type="password" id="setPasswordConfirm" placeholder="Confirm" autocomplete="new-password">
+        </div>
+        <p id="setPasswordError" style="color:var(--red);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+        <p id="setPasswordSuccess" style="color:var(--green);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+        <div class="actions">
+          <button type="button" id="setPasswordCancel">Close</button>
+          <button type="submit" id="setPasswordConfirmBtn">Set Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="userProjectsModal">
+    <div class="modal-card modal-card-large">
+      <h2>Projects</h2>
+      <p id="userProjectsSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div id="userProjectsList" class="settings-users-list" style="max-height:60vh;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="userProjectsClose">Close</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="allUsersModal">
     <div class="modal-card modal-card-large user-list-modal">
       <h2>All Users</h2>

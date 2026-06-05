@@ -401,7 +401,9 @@
   // Rich per-user activity overview (clicking the dates cell or the heart icon). Pulls one
   // aggregated jsonb from user_activity_detail_for_admin and renders summary + timeline.
   function openUserActivityOverview(userId, email) {
-    if (!App.state.isAdmin) return;
+    // Admins can view anyone; a regular user may view only their own (My Activity).
+    const myId = App.state.supabaseSession?.user?.id;
+    if (!App.state.isAdmin && userId !== myId) return;
     const session = App.state.supabaseSession;
     const body = document.getElementById('uaoBody');
     document.getElementById('uaoSubtitle').textContent = email || userId || '';
@@ -490,6 +492,13 @@
   document.getElementById('setPasswordForm').onsubmit = (e) => { e.preventDefault(); submitSetPassword(); };
   document.getElementById('userProjectsClose').onclick = () => App.hideModal('userProjectsModal');
   document.getElementById('uaoClose').onclick = () => App.hideModal('userActivityOverviewModal');
+  const mySettingsMyActivityBtn = document.getElementById('mySettingsMyActivity');
+  if (mySettingsMyActivityBtn) mySettingsMyActivityBtn.onclick = () => {
+    const u = App.state.supabaseSession?.user;
+    if (!u) return;
+    App.hideModal('mySettingsModal');
+    openUserActivityOverview(u.id, u.email);
+  };
   const manageUserModalAllActivityBtn = document.getElementById('manageUserModalAllActivityBtn');
   if (manageUserModalAllActivityBtn) {
     manageUserModalAllActivityBtn.innerHTML = App.USER_ACTIVITY_ICON_SVG;

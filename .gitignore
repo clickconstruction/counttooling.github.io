@@ -4,3 +4,4 @@ config.local.js
 node_modules/
 playwright-report/
 test-results/
+.claude/launch.json

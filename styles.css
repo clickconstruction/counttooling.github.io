@@ -882,6 +882,20 @@
     .settings-users-list .settings-user-delete { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--red); color: white; border: none; border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-user-delete:hover { opacity: 0.9; }
     .settings-users-list .settings-user-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* Manage / All Users tables: fixed columns under a labeled header; sign-in + last-active stacked in one column */
+    .user-list-modal .settings-user-email { min-width: 0; white-space: nowrap; }
+    .user-list-modal .settings-user-role { width: 42px; flex: none; }
+    .user-list-modal .settings-user-count { width: 62px; flex: none; color: var(--text3); font-size: 0.85rem; text-align: center; }
+    .user-list-modal .settings-user-transfer { flex: none; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--accent); }
+    .user-list-modal .settings-user-transfer:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
+    .user-list-modal .settings-user-transfer svg { width: 18px; height: 18px; display: block; }
+    .user-list-modal .settings-user-dates { width: 86px; flex: none; display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
+    .user-list-modal .settings-user-delete { width: 68px; flex: none; text-align: center; }
+    .user-list-modal .settings-user-header { position: sticky; top: 0; z-index: 1; background: var(--surface); border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 2px 12px 6px; margin-bottom: 6px; }
+    .user-list-modal .settings-user-header span { color: var(--text3); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: visible; }
+    .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
+    .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
+    .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
     .settings-users-list .settings-project-force-checkin { flex-shrink: 0; padding: 4px 10px; font-size: 0.8rem; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
     .settings-users-list .settings-project-force-checkin:hover { background: var(--surface3); color: var(--text); }
     .settings-users-list .settings-project-force-checkin:disabled { opacity: 0.5; cursor: not-allowed; }

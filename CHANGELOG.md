@@ -532,3 +532,57 @@ excluded since it needs a server + Supabase/dev-auth secrets). The
 `// SECTION:` markers by `npm run build:toc`
 ([scripts/build-toc.js](scripts/build-toc.js)); section markers were renamed or
 removed as their code emptied out into feature files.
+
+## Manage Users — admin toolkit + self-service activity
+
+A batch of admin user-management features built on top of the
+[features/user-admin.js](features/user-admin.js) split. All client work is in
+`features/user-admin.js` + `index.html` + `styles.css`; cloud pieces are Edge
+Functions and RPCs. Live-verified (incl. a no-leak security check on each RPC/Edge
+Function) and shipped via PRs #2–#9.
+
+### Table & layout
+- Manage Users / All Users became a real table: a sticky **header row**, a stacked
+  **last-sign-in / last-active** column (one column, two lines), and an owned-
+  **Projects** count column. `list_users_for_admin()` gained `project_count`
+  (migration `…_list_users_for_admin_project_count`). The Manage Users modal was
+  widened (`#manageUserModal .modal-card` → 780px) and the per-row action icons
+  (Set Password / Transfer / activity) tightened into a button group (negative
+  margins mirrored onto the header spacers to keep columns aligned).
+
+### Reassign / Transfer ownership
+- `supabase/functions/_shared/reassignProjects.ts` — the shared engine: for every
+  project owned by `fromUserId`, **move the owner-scoped PDF storage object**
+  (`{ownerId}/{projectId}/document.pdf`) and update `projects.user_id` + `pdf_path`,
+  then reassign inherited view links (`project_view_links.created_by`, scoped to
+  moved projects) and delete now-redundant share rows. Storage-move-then-DB
+  ordering + idempotent retry; throws to abort so a user is **never deleted on
+  partial failure**.
+- `admin-delete-user` gained an optional `reassignToUserId` (reassign before delete;
+  delete-only path unchanged when omitted). `admin-reassign-projects` is a new
+  standalone **Transfer ownership** function. Client: a delete dialog
+  (`#deleteUserConfirmModal`, delete-projects vs reassign) and a per-row Transfer
+  dialog (`#transferProjectsModal`).
+
+### Set password
+- `admin-set-password` Edge Function (`updateUserById({ password })`, admin-gated,
+  min 6). Per-row key icon → `#setPasswordModal`.
+
+### Projects modal
+- Clicking a user's Projects count opens `#userProjectsModal` (name + last-edited),
+  filtered client-side from the existing `list_projects_for_admin` RPC.
+
+### Activity overview + My Activity
+- `user_activity_detail_for_admin(uuid)` RPC — one security-definer call returns a
+  jsonb with identity/presence, all-time totals, per-event-type breakdown, rolling
+  1d/7d/30d windows, active-days (CST), distinct projects, and a recent timeline
+  with resolved project names. A `guard` CTE is the single auth choke point;
+  relaxed to **self-or-admin** (a non-admin can read only their own — verified no
+  leak), recent feed widened 40 → 200.
+- `#userActivityOverviewModal` (`openUserActivityOverview`): summary card + stat
+  tiles + a **day-grouped, run-collapsed** Recent-activity feed (consecutive
+  identical actions merged into counted rows with a time range, e.g. "Placed 22
+  counters · Lobby · 1:56–2:17 PM", under Today/Yesterday/date headers; sign-ins
+  quieted). Opened from a row's stacked dates cell or heart icon, and — for the
+  signed-in user — from **My Activity** in User Settings (`#mySettingsMyActivity`).
+  `app.js` publishes `App.formatUserActivityDateTime` for the feed.

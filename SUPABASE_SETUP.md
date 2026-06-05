@@ -106,12 +106,16 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **20260327120000_user_activity_summary_for_admin.sql** — Adds RPC `list_user_activity_summary_for_admin()` returning per-user rows: `user_id`, `email`, `last_sign_in_at`, rolling event counts (`events_1d`, `events_7d`, `events_30d`) from `user_activity`. Used by the User Activity modal **Summary** tab (admin).
 
+**20260605000000_list_users_for_admin_project_count.sql** — Drops and recreates `list_users_for_admin()` with an added `project_count` (owned projects) column. Powers the **Projects** column in Manage Users / All Users (clicking the count opens a per-user Projects list, filtered from `list_projects_for_admin`).
+
+**20260606000000…002000_user_activity_detail_for_admin.sql** — Adds the per-user activity RPC `user_activity_detail_for_admin(uuid)` returning a single jsonb: identity/presence (email, role, member-since, last sign-in/seen, project count), all-time totals, per-event-type breakdown, rolling 1d/7d/30d windows, active days (CST), distinct projects touched, and the recent timeline (with resolved project names). Security-definer; a `guard` CTE is the single auth choke point. Applied in three steps: admin-only (`…000000`), guard relaxed to **self-or-admin** so a user can view their own (`…001000`), and the recent feed widened 40 → 200 events (`…002000`). Powers the **Activity overview** modal (admin: click a user row's stacked dates or heart icon; self: User Settings → **My Activity**). The client renders it as a summary card + stat tiles + a day-grouped, run-collapsed feed.
+
 ### Migration file naming
 
 `supabase/migrations/` contains two naming schemes:
 
 - **Legacy numbered** — `NNN_name.sql` (e.g. `001_initial_schema.sql` … `041_global_force_reload.sql`). Many of the early ones also have a Supabase-CLI **timestamped** twin (e.g. `20260301171417_001_initial_schema.sql`) with the same content; these are duplicates of the numbered files.
-- **Timestamped** — `YYYYMMDDHHMMSS_name.sql`. The newest features that have no numbered twin are `20260326230000_user_presence_and_activity.sql` and `20260327120000_user_activity_summary_for_admin.sql`.
+- **Timestamped** — `YYYYMMDDHHMMSS_name.sql`. The newest features that have no numbered twin are the activity/presence ones (`20260326230000_user_presence_and_activity.sql`, `20260327120000_user_activity_summary_for_admin.sql`) and the Manage-Users additions (`20260605000000_list_users_for_admin_project_count.sql` and the `…_user_activity_detail_for_admin` series).
 
 On a **fresh** database, apply each distinct migration once, in version order (leading number, then timestamp); do not apply both a numbered file and its timestamped twin. On an **existing** database, use `list_migrations` (MCP) first to see what is already recorded and only apply what is missing. New migrations should be added via the Supabase MCP `apply_migration` tool.
 
@@ -119,7 +123,7 @@ On a **fresh** database, apply each distinct migration once, in version order (l
 
 Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gateway does not reject requests; each function validates auth in-code via `getUser()`.
 
-**Option A: Supabase MCP** (if available): Use the MCP server to deploy `admin-create-user`, `admin-delete-user`, `admin-delete-project`, and `admin-list-users`.
+**Option A: Supabase MCP** (if available): Use the MCP server to deploy `admin-create-user`, `admin-delete-user`, `admin-delete-project`, `admin-list-users`, `admin-reassign-projects`, and `admin-set-password`.
 
 **Option B: Supabase CLI**:
 
@@ -127,11 +131,15 @@ Admin functions use `verify_jwt = false` in `supabase/config.toml` so the gatewa
 supabase link   # link to your project
 supabase functions deploy admin-create-user
 supabase functions deploy admin-delete-user
+supabase functions deploy admin-reassign-projects
+supabase functions deploy admin-set-password
 supabase functions deploy admin-delete-project
 supabase functions deploy admin-list-users
 supabase functions deploy invite-to-project
 supabase functions deploy get-view-project
 ```
+
+(Or run `./deploy-admin-functions.sh`, which deploys the admin functions with `--no-verify-jwt`.)
 
 **401 on admin functions / CORS on invite-to-project:** The gateway verifies JWT by default and can reject valid tokens (and block CORS preflight). `config.toml` sets `verify_jwt = false` for admin functions, `invite-to-project`, and `get-view-project`. Deploy with:
 
@@ -140,10 +148,14 @@ supabase link --project-ref YOUR_PROJECT_REF   # ref = part before .supabase.co 
 supabase functions deploy admin-list-users --no-verify-jwt
 supabase functions deploy admin-create-user --no-verify-jwt
 supabase functions deploy admin-delete-user --no-verify-jwt
+supabase functions deploy admin-reassign-projects --no-verify-jwt
+supabase functions deploy admin-set-password --no-verify-jwt
 supabase functions deploy admin-delete-project --no-verify-jwt
 supabase functions deploy invite-to-project --no-verify-jwt
 supabase functions deploy get-view-project --no-verify-jwt
 ```
+
+`admin-reassign-projects` (standalone Transfer ownership) and `admin-set-password` share the same in-code admin check and the `_shared/reassignProjects.ts` ownership-move engine that `admin-delete-user`'s optional reassign uses.
 
 Each function still validates auth in-code via `getUser()` (except `get-view-project`, which is unauthenticated and validates domain server-side).
 
@@ -185,8 +197,9 @@ on conflict (user_id) do update set is_admin = true;
 - **Name / Upload / Save Project to Cloud** — When logged in, click "Name / Upload / Save Project to Cloud", enter name. The PDF is uploaded to Storage when you save (if you uploaded one).
 - **Load Project** — When logged in, click "Load Project", select from list. Projects with stored PDFs load the PDF automatically. Legacy projects (no PDF): upload your PDF first, then load. Use search and filters (Show: All / Mine / Shared; My access: Owner / Editor / Viewer / Admin; admins with multiple owners can filter by owner). Filters strip can be collapsed via **Filters** (preference in `localStorage` key `loadProjectFiltersExpanded`).
 - **Add User** (admin only) — In User Settings, create new users with email + password; share password with user. Admin-created users are auto-confirmed and can sign in immediately. If an existing user sees "Email not confirmed", confirm them in Dashboard > Authentication > Users (or run `update auth.users set email_confirmed_at = now() where email = 'user@example.com';` in SQL Editor).
-- **Manage User** (admin only) — In User Settings, open Manage User to list all users and delete accounts (cannot delete yourself).
-- **All Users** (admin only) — In User Settings, view all users with role and last sign-in.
+- **Manage User** (admin only) — In User Settings, open Manage User to list all users with role, an owned-**Projects** count, and last sign-in / last active. Per-row actions: **Set password** (🔑, reset any user's password via `admin-set-password`), **Transfer projects** (⇄, move all of a user's projects to someone else via `admin-reassign-projects`), **View activity** (♥, opens the activity overview), and **Delete**. Delete opens a dialog offering to either delete the user's projects too or **reassign** them to another user first (`admin-delete-user` with `reassignToUserId`). Click a user's **Projects** count to see their project list (name + last-edited), or their stacked **dates** cell / heart icon to open the **Activity overview**. Reassign/transfer moves the project rows *and* their owner-scoped PDF storage objects, preserves inherited view links, and clears redundant shares. You cannot delete yourself.
+- **All Users** (admin only) — In User Settings, view all users with role, project count, last sign-in / last active, and per-row **View activity**.
+- **My Activity** — In User Settings, any signed-in user can open **My Activity** to see their own activity overview (member-since, total events, counters/lines/exports, active days, rolling windows, and a day-grouped recent-activity feed). Backed by `user_activity_detail_for_admin` (self-or-admin guard).
 - **Manage Projects** (admin only) — In Project Settings, open Manage Projects to list all projects across users and delete any project (removes project and stored PDF).
 - **Share** — In Project Settings, open Share to add users by email (viewer or editor). Any project member can add users. Editors can check out to edit; one editor at a time. Turn in releases the lock. 30-minute inactivity expiry (lock extends on edits/saves). System admins can force turn-in any project.
 - **View links** — In Share modal, view links section: Create view link (copy URL), list links, Access log (email, timestamp), Revoke. Recipients open the link, enter email (clickplumbing.com domain required), view plans. No sign-in. Cached in IndexedDB for repeat mobile visits.

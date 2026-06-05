@@ -333,7 +333,18 @@
   `App.*`, and `#mySettingsManageUsers` opens the create-user panel via a DOM
   `#manageUsersBtn` click. The moved handlers were interleaved with the User
   Activity + Canvas Repair handlers (which stay) in the Event Binding region — no
-  marker change there (count stays 47)),
+  marker change there (count stays 47); **since extended** with the Manage Users
+  table (owned-`project_count` column + role + stacked last-sign-in/last-active),
+  per-row **Set Password** (🔑, `admin-set-password`), **Transfer projects** (⇄,
+  `admin-reassign-projects`) and a delete dialog that can **reassign** the user's
+  projects before deleting (`admin-delete-user` `reassignToUserId`); clicking the
+  count opens `#userProjectsModal` (per-user project list from
+  `list_projects_for_admin`); clicking the dates cell or heart icon opens the rich
+  `#userActivityOverviewModal` (one `user_activity_detail_for_admin` jsonb →
+  summary card + stat tiles + a day-grouped, run-collapsed feed); reads
+  `App.formatUserActivityDateTime`. **My Activity** (User Settings →
+  `#mySettingsMyActivity`) opens the same overview for the signed-in user — the
+  RPC guard is **self-or-admin** so non-admins can view only their own),
   [features/load-project.js](features/load-project.js) (the twenty-first registry
   split and the **most dependency-heavy** so far — the cloud Load Project modal
   `openLoadProjectModal` (~585 lines: the project browser list, ownership/role
@@ -473,8 +484,11 @@
 - Supabase is **optional** (gated by `SUPABASE_ENABLED`). When enabled it provides
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
   storage bucket, several RPCs, and Edge Functions (`admin-create-user`,
-  `admin-delete-user`, `admin-delete-project`, `admin-list-users`,
-  `invite-to-project`, `get-view-project`). Config via `config.js` (see
+  `admin-delete-user` (optional `reassignToUserId`), `admin-reassign-projects`,
+  `admin-set-password`, `admin-delete-project`, `admin-list-users`,
+  `invite-to-project`, `get-view-project`; `admin-reassign-projects` +
+  `admin-delete-user` share the `_shared/reassignProjects.ts` ownership-move
+  engine). Config via `config.js` (see
   [SUPABASE_SETUP.md](SUPABASE_SETUP.md)). PDF uploads capped at 50 MB.
 - **Supabase migrations**: when creating or modifying files in
   `supabase/migrations/`, apply them via the Supabase MCP `apply_migration` tool
@@ -534,7 +548,8 @@ Rules to follow when adding/editing a feature file:
   `getSaveStatusLog`/`isCheckoutExpiredAttention`, `SUPABASE_URL`,
   `SUPABASE_ANON_KEY`, `updateServerClockFromRpc`, `clearCheckoutExpiredAttention`,
   `resetAutoRecheckoutCounter`, the `getSupabase` getter accessor,
-  `formatLastSignIn`, `USER_ACTIVITY_ICON_SVG`, `openUserActivityModal`).
+  `formatLastSignIn`, `formatUserActivityDateTime`, `USER_ACTIVITY_ICON_SVG`,
+  `openUserActivityModal`).
   (`populateQuickLineModal` is no
   longer published here — it moved to `features/quick-line.js`, which registers it.)
   Some are

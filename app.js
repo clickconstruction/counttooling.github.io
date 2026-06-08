@@ -6852,6 +6852,7 @@
         forPipeToolingMenu.classList.remove('visible');
         if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
       } else {
+        prefetchExportViewLink();
         forPipeToolingMenu.style.left = '';
         forPipeToolingMenu.style.right = '';
         forPipeToolingMenu.classList.add('visible');
@@ -6867,19 +6868,86 @@
     };
   }
   // SECTION: Copy summaries (PipeTooling / Email)
+  // Build the public view-link URL for a token (origin + path + ?t=token).
+  function buildViewLinkUrl(token) {
+    const base = window.location.origin + (window.location.pathname || '/');
+    return base + (base.includes('?') ? '&' : '?') + 't=' + token;
+  }
+  // Reuse the project's existing view link, or create one. Resolves to the URL
+  // or rejects. Shared by the header Share button and the /Tooling export.
+  async function getOrCreateViewLinkUrl() {
+    if (!state.currentProjectId || !supabase) throw new Error('No project');
+    let token;
+    const { data: links, error: linksErr } = await supabase.rpc('list_view_links', { p_project_id: state.currentProjectId });
+    if (!linksErr && links && links.length > 0) {
+      token = links[0].token;
+    } else {
+      const { data, error } = await supabase.rpc('create_view_link', { p_project_id: state.currentProjectId, p_name: null, p_expires_at: null });
+      if (error) throw new Error(error.message);
+      if (data && data.ok && data.token) token = data.token;
+      else throw new Error((data && data.error) || 'Failed to create');
+    }
+    if (!token) throw new Error('No view link');
+    return buildViewLinkUrl(token);
+  }
+  // Cached view-link URL for the "Copy to /Tooling" export. Prefetched when the
+  // dropdown opens so the clipboard write can stay inside the user gesture
+  // (Safari/Firefox revoke clipboard permission across an await).
+  let exportViewLinkUrl = null;
+  let exportViewLinkProjectId = null;
+  function canExportViewLink() {
+    return !!(SUPABASE_ENABLED && supabase && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink);
+  }
+  function prefetchExportViewLink() {
+    if (!canExportViewLink()) { exportViewLinkUrl = null; exportViewLinkProjectId = null; return; }
+    if (exportViewLinkUrl && exportViewLinkProjectId === state.currentProjectId) return;
+    const pid = state.currentProjectId;
+    getOrCreateViewLinkUrl().then((url) => {
+      if (state.currentProjectId === pid) { exportViewLinkUrl = url; exportViewLinkProjectId = pid; }
+    }).catch(() => { /* best-effort; doCopyPipeTooling retries inline */ });
+  }
   async function doCopyPipeTooling(getAnnFn, pageIndices) {
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
-    const text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
+    let text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
     if (!text) {
       alert('No items to summarize. Add counters or line types first.');
       return;
     }
+    // Append a project view link so importing tools (PipeTooling / TakeoffTooling)
+    // can link the bid back to the source takeoff. Importers detect it by scanning
+    // the pasted text for a counttooling URL with a ?t=<token>.
+    let noLinkToast = null;
+    if (SUPABASE_ENABLED) {
+      if (canExportViewLink()) {
+        let url = (exportViewLinkUrl && exportViewLinkProjectId === state.currentProjectId) ? exportViewLinkUrl : null;
+        if (!url) {
+          try {
+            url = await getOrCreateViewLinkUrl();
+            exportViewLinkUrl = url;
+            exportViewLinkProjectId = state.currentProjectId;
+          } catch (_) {
+            noLinkToast = 'Counts copied, but the view link could not be created.';
+          }
+        }
+        if (url) text += '\n\nView link:\t' + url;
+      } else if (!state.currentProjectId) {
+        noLinkToast = 'Counts copied. Save the project to the cloud to include a view link.';
+      } else if (!state.supabaseSession?.user) {
+        noLinkToast = 'Counts copied. Sign in to include a view link.';
+      } else if (state.loadedViaViewLink) {
+        noLinkToast = 'Counts copied. View-only sessions cannot create a share link.';
+      }
+    }
     try {
       await navigator.clipboard.writeText(text);
-      showModal('pipeToolingCopiedModal');
-      setTimeout(() => hideModal('pipeToolingCopiedModal'), 1500);
+      if (noLinkToast) {
+        showToast(noLinkToast);
+      } else {
+        showModal('pipeToolingCopiedModal');
+        setTimeout(() => hideModal('pipeToolingCopiedModal'), 1500);
+      }
     } catch (err) {
       alert('Could not copy to clipboard: ' + (err.message || err));
     }
@@ -7866,20 +7934,8 @@
     }
     async function copyOrCreateViewLinkToClipboard(btn) {
       if (!state.currentProjectId || !supabase) return;
-      let token;
       try {
-        const { data: links, error: linksErr } = await supabase.rpc('list_view_links', { p_project_id: state.currentProjectId });
-        if (!linksErr && links && links.length > 0) {
-          token = links[0].token;
-        } else {
-          const { data, error } = await supabase.rpc('create_view_link', { p_project_id: state.currentProjectId, p_name: null, p_expires_at: null });
-          if (error) throw new Error(error.message);
-          if (data && data.ok && data.token) token = data.token;
-          else throw new Error((data && data.error) || 'Failed to create');
-        }
-        if (!token) throw new Error('No view link');
-        const base = window.location.origin + (window.location.pathname || '/');
-        const url = base + (base.includes('?') ? '&' : '?') + 't=' + token;
+        const url = await getOrCreateViewLinkUrl();
         await navigator.clipboard.writeText(url);
         showToast('View link copied to clipboard');
         if (btn) {
@@ -8834,7 +8890,7 @@
                 const tok = this.dataset.token;
                 if (!confirm('Revoke this view link? It will stop working immediately.')) return;
                 const { data: res } = await supabase.rpc('revoke_view_link', { p_token: tok });
-                if (res && res.ok) openShareProjectModal();
+                if (res && res.ok) { exportViewLinkUrl = null; exportViewLinkProjectId = null; openShareProjectModal(); }
                 else showToast((res && res.error) || 'Failed to revoke');
               };
               viewLinksListEl.appendChild(div);

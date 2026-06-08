@@ -586,3 +586,35 @@ Function) and shipped via PRs #2–#9.
   quieted). Opened from a row's stacked dates cell or heart icon, and — for the
   signed-in user — from **My Activity** in User Settings (`#mySettingsMyActivity`).
   `app.js` publishes `App.formatUserActivityDateTime` for the feed.
+
+## Copy to /Tooling — embedded view link
+
+The **Copy to PipeTooling** export (`doCopyPipeTooling`) appends the project's
+**view link** as a trailing `View link:\t<url>` footer after the tab-delimited
+count rows, so importing tools (PipeTooling / TakeoffTooling) can link the pasted
+bid back to the source takeoff. Importers detect it by scanning the paste for a
+counttooling `?t=<token>` URL — format-agnostic, so the label/placement can change
+without breaking the contract.
+
+- **Shared link helper** — extracted `getOrCreateViewLinkUrl()` (reuse the
+  project's newest `list_view_links` token, else `create_view_link`) +
+  `buildViewLinkUrl(token)` (`origin + path + ?t=token`) out of the header Share
+  button. `copyOrCreateViewLinkToClipboard` now calls them, and the export reuses
+  the same path — a project's link is shared, not minted fresh per export.
+- **Gesture-safe clipboard** — `navigator.clipboard.writeText` needs transient
+  user activation, which an `await` before the write can forfeit on Safari/Firefox.
+  `prefetchExportViewLink()` runs when the `#forPipeTooling` dropdown opens (itself
+  a gesture), caching the URL per `currentProjectId` so the option-click write
+  stays synchronous. An inline `await` is the fallback if the prefetch hasn't
+  resolved yet.
+- **No-link cases** — when no link is possible the counts still copy and a context
+  toast explains why: project not saved to cloud, signed out, or opened via a view
+  link (view-only sessions can't mint a share link). The whole block is gated on
+  `SUPABASE_ENABLED`, so the non-cloud build stays silent.
+- **Cache hygiene** — revoking a view link in the Share modal clears the export
+  prefetch cache (`exportViewLinkUrl` / `exportViewLinkProjectId`) so a stale,
+  revoked token is never handed out; the per-project key also guards against
+  carrying a link across a project switch.
+- **Importer side** (PipeTooling / TakeoffTooling, separate repos) must detect +
+  store the URL and strip the footer line; until then a not-yet-updated grid shows
+  one stray trailing row.

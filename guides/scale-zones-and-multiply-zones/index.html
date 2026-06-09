@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Scale zones and multiply zones — CountTooling</title>
+  <meta name="description" content="Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.">
+  <link rel="canonical" href="https://counttooling.com/guides/scale-zones-and-multiply-zones/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CountTooling">
+  <meta property="og:title" content="Scale zones and multiply zones — CountTooling">
+  <meta property="og:description" content="Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.">
+  <meta property="og:url" content="https://counttooling.com/guides/scale-zones-and-multiply-zones/">
+  <meta property="og:image" content="https://counttooling.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Scale zones and multiply zones — CountTooling">
+  <meta name="twitter:description" content="Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.">
+  <meta name="twitter:image" content="https://counttooling.com/og-image.png">
+  <meta name="theme-color" content="#17171a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/marketing.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Scale zones and multiply zones",
+  "description": "Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.",
+  "image": "https://counttooling.com/og-image.png",
+  "datePublished": "2026-06-09",
+  "dateModified": "2026-06-09",
+  "author": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "url": "https://counttooling.com/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://counttooling.com/icons/icon-512.png"
+    }
+  },
+  "mainEntityOfPage": "https://counttooling.com/guides/scale-zones-and-multiply-zones/"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://counttooling.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://counttooling.com/guides/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Scale zones and multiply zones",
+      "item": "https://counttooling.com/guides/scale-zones-and-multiply-zones/"
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap site-header-wrap">
+      <a class="logo" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8c547"/><g fill="none" stroke="#161617" stroke-width="30" stroke-linecap="round"><circle cx="256" cy="256" r="118"/><line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/><line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/></g><circle cx="256" cy="256" r="34" fill="#161617"/></svg><span>CountTooling</span></a>
+      <nav class="site-nav">
+        <a href="/guides/">Guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Scale zones and multiply zones</span></nav>
+    <article class="article">
+      <h1>Scale zones and multiply zones</h1>
+      <p class="article-meta">Last updated Jun 9, 2026</p>
+      <div class="prose">
+<p>Real plan sets aren&#39;t always one clean scale per sheet. Two tools handle the awkward cases without making you re-do the whole page.</p>
+<h2>Scale zones — for multi-scale sheets</h2>
+<p>A sheet often has the main plan at one scale and a blown-up detail or isometric at another. A <strong>scale zone</strong> lets a region carry its own scale:</p>
+<ol>
+<li>Draw a scale-zone rectangle around the detail.</li>
+<li>Give that zone its own scale (the same way you&#39;d <a href="/guides/setting-the-scale/">set the page scale</a>).</li>
+</ol>
+<p>Any line fully inside the zone is measured with the zone&#39;s scale; everything else uses the page scale. The <strong>Measure</strong> tool respects it too, so a quick check inside the detail comes out right.</p>
+<h2>Multiply zones — for repeated areas</h2>
+<p>When the same layout repeats — typical floors, identical units, a row of matching rooms — you don&#39;t want to count it ten times by hand. A <strong>multiply zone</strong> does it for you:</p>
+<ol>
+<li>Draw a multiply-zone rectangle around the area.</li>
+<li>Set how many times it repeats.</li>
+</ol>
+<p>Every counter and line whose anchor falls inside is multiplied by that factor in the totals. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten.</p>
+<h2>Good to know</h2>
+<ul>
+<li>Scale zones can&#39;t overlap — each region gets one scale.</li>
+<li>A multiply zone changes the <strong>totals</strong>, not the marks on the sheet, so the plan stays readable.</li>
+<li>Both are visual boundaries you can edit or delete later from their right-click menu.</li>
+</ul>
+<p>These two tools are what make CountTooling practical on messy, real-world plan sets — see them in context in <a href="/guides/how-to-do-a-pdf-takeoff/">How to do a takeoff from a PDF</a>.</p>
+      </div>
+      <div class="article-foot">
+        <a class="back-link" href="/guides/">← All guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 CountTooling</span>
+      <span class="fam">
+        Part of the Tooling family:
+        <a href="/guides/">Guides</a>
+        <a href="https://pipetooling.com/" rel="noopener">PipeTooling</a>
+        <a href="https://takeofftooling.com/" rel="noopener">TakeoffTooling</a>
+        <a href="/app/">Open the app</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

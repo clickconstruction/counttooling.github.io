@@ -2,7 +2,7 @@
 title: Doing a plumbing takeoff
 description: Count fixtures, measure pipe runs, and price plumbing work straight off the plan PDF — custom counters, scale zones, and exports built for plumbing estimating.
 updated: 2026-06-09
-order: 2
+order: 9
 category: By trade
 ---
 

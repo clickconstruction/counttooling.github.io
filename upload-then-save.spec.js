@@ -12,7 +12,7 @@ test.describe('Upload PDF then sign in then save', () => {
     const pdfPath = path.join(__dirname, 'test-2pages.pdf');
 
     // 1. Open app WITHOUT devAuth (user not signed in)
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // 2. Upload PDF while not signed in

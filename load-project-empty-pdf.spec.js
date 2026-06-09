@@ -40,7 +40,7 @@ test.describe('Load Project with empty PDF in storage', () => {
       return route.continue();
     });
 
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     // Open Project Settings then Load Project

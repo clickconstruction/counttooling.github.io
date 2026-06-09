@@ -13,15 +13,16 @@
  * fresh SW, precache the new asset set, and purge the old cache on activate. The app's
  * admin "global force reload" also clears these caches as a backstop.
  */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
-// index.html, plus the vendored libs/fonts/icons and the manifest. config.local.js is
-// intentionally excluded (gitignored / localhost-only — would 404 the install).
+// app/index.html, plus the vendored libs/fonts/icons and the manifest. config.local.js is
+// intentionally excluded (gitignored / localhost-only — would 404 the install). The app
+// lives at /app/ (the marketing site at / is plain static HTML, outside the SW scope).
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
+  '/app/',
+  '/app/index.html',
   '/config.js',
   '/styles.css',
   '/manifest.webmanifest',
@@ -136,8 +137,8 @@ async function networkFirst(req) {
     throw new Error('no-response');
   } catch {
     return (await cache.match(req))
-      || (await cache.match('/index.html'))
-      || (await cache.match('/'))
+      || (await cache.match('/app/index.html'))
+      || (await cache.match('/app/'))
       || new Response('Offline', { status: 503, statusText: 'Offline' });
   }
 }

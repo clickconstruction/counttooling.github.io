@@ -12,7 +12,7 @@ test.describe('Add additional PDF pages - canvas jump fix', () => {
     const firstPdfPath = path.join(__dirname, 'test-2pages.pdf');
     const secondPdfPath = path.join(__dirname, 'test-page.pdf');
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // 1. Upload first PDF (2 pages)

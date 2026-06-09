@@ -19,7 +19,7 @@ test.describe('window.App registry pilot - Load Project modal', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     expect(await page.evaluate(() => typeof window.App?.openLoadProjectModal)).toBe('function');
@@ -60,7 +60,7 @@ test.describe('window.App registry pilot - Load Project modal', () => {
       page.on('pageerror', (err) => { errors.push(err.message); });
 
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page.goto('/?devAuth=1');
+      await page.goto('/app/?devAuth=1');
       await page.waitForLoadState('networkidle');
       // Wait for the session to settle so openLoadProjectModal passes its gate.
       await page.waitForFunction(() => !!window.state?.supabaseSession?.access_token, { timeout: 10000 });

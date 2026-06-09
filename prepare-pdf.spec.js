@@ -10,7 +10,7 @@ const path = require('path');
 
 test.describe('window.App registry pilot - Prepare PDF modal', () => {
   test('registry wired: App.openPreparePdfModal is a function', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     expect(await page.evaluate(() => typeof window.App?.openPreparePdfModal)).toBe('function');
     expect(await page.evaluate(() => typeof window.closePreparePdfModal)).toBe('function');
@@ -25,7 +25,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     page.on('console', (msg) => { if (msg.type() === 'error' && !isBenignRenderRace(msg.text())) errors.push(msg.text()); });
     page.on('pageerror', (err) => { if (!isBenignRenderRace(err.message)) errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // Load a 2-page PDF (the default upload renders pages directly).

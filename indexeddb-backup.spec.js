@@ -77,7 +77,7 @@ test.describe('IndexedDB Backup', () => {
       return;
     }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
@@ -115,7 +115,7 @@ test.describe('IndexedDB Backup', () => {
       window.BACKUP_PDF_TO_INDEXEDDB = false;
     });
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
@@ -149,7 +149,7 @@ test.describe('IndexedDB Backup', () => {
       return;
     }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
@@ -184,7 +184,7 @@ test.describe('IndexedDB Backup', () => {
       return;
     }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
@@ -234,7 +234,7 @@ test.describe('IndexedDB Backup', () => {
       return;
     }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);

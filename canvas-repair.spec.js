@@ -20,7 +20,7 @@ test.describe('window.App registry pilot - Canvas Repair', () => {
 
     const pdfPath = path.join(__dirname, 'test-2pages.pdf');
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // 1. Upload a 2-page PDF.

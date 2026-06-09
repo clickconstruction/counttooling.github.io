@@ -14,7 +14,7 @@ const SAMPLE_ICON = {
 test.describe('customIconPaths IndexedDB', () => {
   test('add and persist to IndexedDB', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // Add custom icon via saveUserCustomIcons (exposed on window for localhost)
@@ -60,7 +60,7 @@ test.describe('customIconPaths IndexedDB', () => {
     }, [SAMPLE_ICON]);
 
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // Verify icons loaded from migration
@@ -86,7 +86,7 @@ test.describe('customIconPaths IndexedDB', () => {
 
   test('delete clears IndexedDB', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // Add then remove

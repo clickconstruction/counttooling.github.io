@@ -8,7 +8,7 @@ const path = require('path');
 
 test.describe('window.App registry pilot - PDF bundling helpers', () => {
   test('registry wired: the 5 bundling helpers are functions on App', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     const types = await page.evaluate(() => ({
       addReportPagesToPdf: typeof window.App?.addReportPagesToPdf,
@@ -31,7 +31,7 @@ test.describe('window.App registry pilot - PDF bundling helpers', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });

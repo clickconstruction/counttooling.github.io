@@ -6,7 +6,7 @@ test.describe('PDF page delete', () => {
   test('deleting a page updates sidebar and PDF view', async ({ page }) => {
     const pdfPath = path.join(__dirname, 'test-2pages.pdf');
 
-    await page.goto('/');
+    await page.goto('/app/');
 
     // Upload PDF via file input
     const fileInput = page.locator('#pdfInput');

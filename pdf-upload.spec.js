@@ -17,7 +17,7 @@ test.describe('robust PDF upload', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     const tusInfo = await page.evaluate(() => ({
@@ -37,7 +37,7 @@ test.describe('robust PDF upload', () => {
   });
 
   test('pdf_upload_resume IndexedDB store round-trips (real browser)', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     const result = await page.evaluate(async () => {

@@ -792,3 +792,30 @@ organic lever; out of scope).
 - **Regression** — [seo.spec.js](seo.spec.js): the tags/JSON-LD/og-image on `/` (indexable),
   and the noindex on `?t=`/`?devAuth=1`. Local only.
 - **Follow-up (no code):** verify the domain in Google Search Console + submit the sitemap.
+
+## SEO — Tier 2: relocate app to /app/, marketing landing at / (Phase 1)
+
+Tier 1 was technical hygiene; the real organic lever is indexable content. But `/` was the
+auth-gated app (a crawler saw an empty canvas). Phase 1 makes room: the **app moves to
+`/app/`** and **`/` becomes a static marketing landing**. (Phase 2 builds out the full
+landing + a guides section.) Admin-provisioned, so the landing's CTA is just "Open the app".
+
+- **App relocated** — `index.html` → `app/index.html`; its `<script>`/`<link>` refs switched
+  to **root-absolute** (`/config.js`, `/vendor/*`, `/features/*`, `/app.js`, …) so the shared
+  assets stay at repo root and only the HTML moved. The app shell is now `noindex` with a
+  `/app/` canonical (the landing owns public SEO); pdf.js `workerSrc` was already root-absolute.
+- **Service worker scoped to `/app/`** — `register('/sw.js', { scope: '/app/' })`; precache
+  `/` + `/index.html` → `/app/` + `/app/index.html`; nav fallback → `/app/index.html`;
+  `CACHE_VERSION` `v1`→`v2`. The marketing site at `/` is plain/network-served (lightweight,
+  great CWV). Manifest `id`/`start_url`/`scope` → `/app/`, icons root-absolute.
+- **Backward-compat** — new view links already target `/app/?t=` (built from `location.pathname`);
+  the landing has a blocking head script that forwards old `/?t=` and `/?devAuth=1` to `/app/`,
+  plus a one-time unregister of any stale root-scoped service worker.
+- **Minimal landing** at `/` (superseded by the Phase 2 generator): branded hero + feature
+  list + "Open the app" CTA, carrying the canonical/OG/JSON-LD moved off the app shell.
+- **Tests** — the ~17 app specs (and `cloud-test-helpers.js`) `goto('/')`→`goto('/app/')`;
+  `pwa.spec.js` asserts the `/app/` scope + new precache paths; `seo.spec.js` now tests the
+  landing at `/` and the `?t=`/`?devAuth=1` → `/app/` forwards.
+- **Verified:** `npm run check` green; the full local Playwright suite (51 tests) passes; the
+  app boots online + offline at `/app/` (SW scope `…/app/`, cache `…-v2`); `/` serves the
+  landing; old `/?t=`/`/?devAuth=1` forward to `/app/`.

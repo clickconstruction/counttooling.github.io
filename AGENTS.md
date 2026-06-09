@@ -14,6 +14,16 @@
 ## Tech constraints
 
 - Vanilla HTML, CSS, JavaScript. No build step; static deployment.
+- **PWA / offline**: the app is an installable PWA. Third-party libs (pdf.js + worker,
+  pdf-lib, html2canvas, jsPDF, supabase-js, tus) and fonts are **vendored locally** in
+  `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is
+  same-origin except Supabase. [sw.js](sw.js) precaches the whole shell for offline use;
+  [manifest.webmanifest](manifest.webmanifest) + head meta make it installable. **Bump
+  `CACHE_VERSION` in [sw.js](sw.js) on every deploy that changes a precached asset** (no
+  build step → manual cache-bust; the admin global-force-reload is the backstop). When you
+  add/rename a shell file (a `features/*.js`, a `vendor/*` lib, a font), update both the
+  index.html tag **and** `PRECACHE_URLS` in sw.js. Regen icons with `npm run build:pwa-icons`.
+  See ARCHITECTURE.md "PWA / offline".
 - Static assets, no bundler: the app is split across a few files loaded via
   `<link>` / `<script src>` and sharing state through `window` globals and the
   shared global lexical scope — [index.html](index.html) (HTML shell + modals,

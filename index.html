@@ -5,9 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>CountTooling — PDF Takeoff Tool</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <!-- PWA: installable + offline (see sw.js). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#17171a">
+  <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CountTooling">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css">
   <script src="config.js"></script>
   <script>
     // Local-only dev overrides (e.g. DEV_AUTH_EMAIL / DEV_AUTH_PASSWORD for the
@@ -17,12 +23,13 @@
       document.write('<scr' + 'ipt src="config.local.js"><\/scr' + 'ipt>');
     }
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js"></script>
+  <!-- Vendored locally (was CDN) so the app is same-origin and fully offline-cacheable. Version-pinned in the filename. -->
+  <script src="vendor/pdf.min-3.11.174.js"></script>
+  <script defer src="vendor/pdf-lib-1.17.1.min.js"></script>
+  <script defer src="vendor/html2canvas-1.4.1.min.js"></script>
+  <script defer src="vendor/jspdf.umd-2.5.1.min.js"></script>
+  <script src="vendor/supabase-js-2.108.0.min.js"></script>
+  <script defer src="vendor/tus-js-client-4.3.1.min.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script src="icons.js"></script>
   <script src="icon-render.js"></script>

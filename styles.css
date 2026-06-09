@@ -18,6 +18,9 @@
       /* Top safe-area inset (iOS notch / status bar). Resolves to 0 on devices
          without an inset; non-zero requires viewport-fit=cover on the meta tag. */
       --safe-top: env(safe-area-inset-top, 0px);
+      /* Bottom safe-area inset (iOS home indicator) — matters in installed/standalone
+         PWA mode. Resolves to 0 elsewhere; applied to the bottom status bar. */
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; }
@@ -392,7 +395,7 @@
     .page-nav-marked-btn:disabled { opacity: 0.5; color: var(--text3); border-color: var(--border); cursor: default; }
     .polyline-finish-bar { display: none; padding: 8px; background: var(--surface2); border-top: 1px solid var(--border); gap: 8px; }
     .polyline-finish-bar.visible { display: flex; }
-    .status-bar { padding: 4px 12px; font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .status-bar { padding: 4px 12px calc(4px + var(--safe-bottom)); font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .sync-paused-banner {
       display: flex;
       align-items: center;

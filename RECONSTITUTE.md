@@ -30,8 +30,11 @@ real-world line lengths and produces reports/exports.
   `pointInRect`, zone locators, `parseFraction`, etc.) with no `state`
   dependency; [report.js](report.js) loads after it and reads globals exposed
   on `window`.
-- Third-party libs via CDN: pdf.js (render), pdf-lib (PDF manipulation),
-  html2canvas + jsPDF (report/PDF export), supabase-js (optional cloud).
+- Third-party libs are **vendored locally** in `/vendor/` (version-pinned filenames),
+  not loaded from a CDN: pdf.js + its worker (render), pdf-lib (PDF manipulation),
+  html2canvas + jsPDF (report/PDF export), supabase-js (optional cloud), tus-js-client
+  (resumable upload). Fonts are self-hosted in `/vendor/fonts/`. This keeps the app
+  same-origin so the service worker ([sw.js](sw.js)) can cache it for full offline use.
 - Cloud (Supabase) is **optional**: gated by `SUPABASE_ENABLED`
   (`SUPABASE_URL` + `SUPABASE_ANON_KEY` present in `config.js`). With cloud off,
   the app is a fully functional local tool.

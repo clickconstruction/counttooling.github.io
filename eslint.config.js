@@ -93,7 +93,7 @@ const projectGlobals = {
 
 module.exports = [
   {
-    ignores: ['node_modules/', 'playwright-report/', 'test-results/', 'config*.js', 'eslint.config.js'],
+    ignores: ['node_modules/', 'playwright-report/', 'test-results/', 'config*.js', 'eslint.config.js', 'vendor/'],
   },
   js.configs.recommended,
   {
@@ -212,6 +212,20 @@ module.exports = [
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // sw.js — the PWA service worker; its own ServiceWorkerGlobalScope (self,
+    // caches, clients, skipWaiting, FetchEvent, ...), not the window globals.
+    files: ['sw.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.serviceworker },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
       eqeqeq: ['warn', 'always', { null: 'ignore' }],
     },
   },

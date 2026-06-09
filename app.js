@@ -1,6 +1,6 @@
   (function() {
   // SECTION: Constants
-  if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min-3.11.174.js';
 
   const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || '';
   const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) || '';
@@ -999,6 +999,9 @@
     try { localStorage.setItem(PENDING_GLOBAL_RELOAD_STAMP_KEY, stamp); } catch (_) {}
     try { pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
     try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
+    // PWA: best-effort clear the service-worker caches too, so the offline
+    // fallback also refreshes. Fire-and-forget — must NOT block location.reload().
+    try { if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {}); } catch (_) {}
     const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
     for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
     location.reload();
@@ -12673,6 +12676,13 @@
 
   // SECTION: Init / boot
   (async function init() {
+    // PWA: register the service worker (offline shell + cached PDF/lib assets).
+    // Registered for every entry path, including the view-link branch below.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
     const urlParams = new URLSearchParams(window.location.search || '');
     const viewToken = urlParams.get('t');
     if (viewToken && SUPABASE_ENABLED && SUPABASE_URL) {
@@ -12700,6 +12710,15 @@
     // PR 11: resolve auth BEFORE applying takeoff backup so backups tied to a
     // previous user are not briefly visible on the canvas of the new user.
     await initSupabaseAuth();
+    // PWA: best-effort request that the OS keep our IndexedDB (PDF cache +
+    // takeoff backups) from being evicted under storage pressure — that data is
+    // the offline corpus. Granted more readily once a session exists.
+    try {
+      if (navigator.storage && navigator.storage.persist) {
+        const alreadyPersisted = navigator.storage.persisted && await navigator.storage.persisted();
+        if (!alreadyPersisted) await navigator.storage.persist();
+      }
+    } catch (_) {}
     // Load custom icons AFTER auth so customIconsCurrentKey() resolves to the
     // signed-in user's key (PR 7 per-user split). If signed-out, falls back to
     // the legacy 'user' key with automatic migration on first signed-in load.

@@ -819,3 +819,33 @@ landing + a guides section.) Admin-provisioned, so the landing's CTA is just "Op
 - **Verified:** `npm run check` green; the full local Playwright suite (51 tests) passes; the
   app boots online + offline at `/app/` (SW scope `…/app/`, cache `…-v2`); `/` serves the
   landing; old `/?t=`/`/?devAuth=1` forward to `/app/`.
+
+## SEO — Tier 2: evergreen Help/Guides section at /guides/ (Markdown-authored)
+
+The real organic lever is indexable content. This adds a **Help/Guides section at `/guides/`**
+the owner fills with help articles by **writing Markdown and running one build command** — no
+per-article HTML/SEO boilerplate, output stays pure static HTML.
+
+- **Authoring** — drop `content/guides/<slug>.md` with front-matter (title, description,
+  updated, order, category), run `npm run build:guides`, commit the `.md` + generated files.
+  Steps documented in `content/guides/README.md`.
+- **Generator** — `scripts/build-guides.js` (mirrors `build-toc.js`): renders each article via
+  a shared `layout()`/`head()`/`header()`/`footer()` (static nav/SEO — crawlable), builds the
+  `/guides/` index, and regenerates `sitemap.xml`. Output is deterministic (dates from
+  front-matter), so the `--check` mode is stable; `npm run check` now runs
+  `build:guides -- --check` to fail CI if the committed HTML is stale. Uses **`marked`** (new
+  build-time-only devDependency; ESM-only → loaded via dynamic `import()` from the CommonJS
+  script). The deployed site stays pure static HTML.
+- **Per-page SEO** — each article: unique title/description, self-canonical, OG `article` +
+  Twitter (reusing `og-image.png`), and `Article` + `BreadcrumbList` JSON-LD; the index gets
+  `CollectionPage` + `BreadcrumbList`. Real internal links (home ↔ guides ↔ app, breadcrumbs).
+- **Shared `marketing.css`** — extracted the landing's inline styles into a top-level
+  `marketing.css` (brand tokens + base + article **prose** styles) used by both the landing
+  and the guides; the landing now links it and gained a **"Guides"** nav + footer link.
+- **Seed content** — two real articles (`how-to-do-a-pdf-takeoff`, `plumbing-takeoff`) drafted
+  from actual features, as a copy template.
+- **Tests** — `guides.test.js` (Node, **in CI**): every generated page has one self-canonical
+  + parseable JSON-LD, every internal link resolves, and the sitemap matches the pages.
+  `guides.spec.js` (Playwright, local): the index + an article render with correct SEO/JSON-LD
+  and working links. Verified: `npm run check` green (105 unit tests); both specs pass; the
+  index + article render on-brand and the landing is unchanged after the CSS extraction.

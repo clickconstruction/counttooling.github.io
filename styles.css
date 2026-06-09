@@ -15,11 +15,17 @@
       --green: #47c88e;
       --yellow: #e8b84a;
       --purple: #a47fff;
+      /* Top safe-area inset (iOS notch / status bar). Resolves to 0 on devices
+         without an inset; non-zero requires viewport-fit=cover on the meta tag. */
+      --safe-top: env(safe-area-inset-top, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; padding-top: env(safe-area-inset-top); }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; }
     .app { display: flex; flex-direction: column; height: 100vh; }
-    .header { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 250; }
+    /* Header reserves the top safe-area as padding so its surface fills the notch
+       strip while the controls sit below it (in reach). Height grows by the same
+       inset; fixed overlays below offset their top by calc(52px + --safe-top). */
+    .header { height: calc(52px + var(--safe-top)); display: flex; align-items: center; gap: 8px; padding: var(--safe-top) 12px 0; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 250; }
     .header .logo { font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); margin-right: 8px; }
     .header .logo.logo-btn { background: none; border: none; cursor: pointer; padding: 0; font: inherit; font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--accent); }
     .header .logo.logo-btn:hover { opacity: 0.85; }
@@ -177,18 +183,18 @@
     body.header-collapsed .header .spacer { flex: 0; min-width: 0; }
     body.header-collapsed.has-pdf .header .consolidated-mobile { display: none !important; }
     body.header-collapsed.has-pdf .header #headerBurger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; color: var(--text); }
-    body.header-collapsed .right-menu { display: block; position: fixed; right: 0; top: 52px; bottom: 0; width: min(82vw, 320px); background: var(--surface); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.2s; overflow-y: auto; padding-right: env(safe-area-inset-right); }
+    body.header-collapsed .right-menu { display: block; position: fixed; right: 0; top: calc(52px + var(--safe-top)); bottom: 0; width: min(82vw, 320px); background: var(--surface); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.2s; overflow-y: auto; padding-right: env(safe-area-inset-right); }
     body.header-collapsed.right-menu-open .right-menu { transform: translateX(0); }
-    body.header-collapsed .right-menu-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    body.header-collapsed .right-menu-backdrop { display: none; position: fixed; top: calc(52px + var(--safe-top)); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
     body.header-collapsed.right-menu-open .right-menu-backdrop { display: block; }
     @media (max-width: 768px) {
-      .sidebar { position: fixed; left: 0; top: 52px; bottom: 0; z-index: 100; transform: translateX(-100%); padding-left: env(safe-area-inset-left); }
+      .sidebar { position: fixed; left: 0; top: calc(52px + var(--safe-top)); bottom: 0; z-index: 100; transform: translateX(-100%); padding-left: env(safe-area-inset-left); }
       body.sidebar-open .sidebar { transform: translateX(0); }
-      .sidebar-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+      .sidebar-backdrop { display: none; position: fixed; top: calc(52px + var(--safe-top)); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
       body.sidebar-open .sidebar-backdrop { display: block; }
-      .right-menu { display: block; position: fixed; right: 0; top: 52px; bottom: 0; width: min(82vw, 320px); background: var(--surface); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.2s; overflow-y: auto; padding-right: env(safe-area-inset-right); }
+      .right-menu { display: block; position: fixed; right: 0; top: calc(52px + var(--safe-top)); bottom: 0; width: min(82vw, 320px); background: var(--surface); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.2s; overflow-y: auto; padding-right: env(safe-area-inset-right); }
       body.right-menu-open .right-menu { transform: translateX(0); }
-      .right-menu-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+      .right-menu-backdrop { display: none; position: fixed; top: calc(52px + var(--safe-top)); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
       body.right-menu-open .right-menu-backdrop { display: block; }
       .zoom-bar button { width: 44px; height: 44px; }
       .zoom-bar #zoomOut { display: none; }

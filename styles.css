@@ -109,17 +109,17 @@
     .quick-line-desktop { display: inline; }
     @media (max-width: 768px) { .quick-line-desktop { display: none; } .quick-line-mobile { display: inline; } }
     @media (max-width: 768px) {
-      .header .hamburger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; border-radius: 0; font-size: 1.25rem; }
+      .header .hamburger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; border-radius: 0; color: var(--text); }
       .header .hamburger:hover { background: transparent; }
       .header .logo { display: none; }
       .header .divider.sidebar-triggers { display: none; }
-      .header .header-tools-tight .sidebar-triggers svg { width: 20px; height: 20px; }
-      .header .header-tools-tight #lineTypeSnapToHVHeaderBtn svg { width: 18px; height: 18px; }
       .header #copyViewLinkBtn { display: none; }
       .header #settingsGearBtn { display: none; }
       .header #saveStatusBtnHeader { display: none !important; }
       .header #headerShareBtn { display: none; }
       .header #headerShareBtn.in-view-mode { display: inline-flex; }
+      body.has-pdf .header #headerBurger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; color: var(--text); }
+      body.has-pdf .header .consolidated-mobile { display: none !important; }
       .header #headerEditStatusBanner { display: none !important; }
       .header #polylineBtn { display: none; }
       .header #doneEditing { display: none; }
@@ -156,11 +156,40 @@
     }
     .main { display: flex; flex: 1; overflow: hidden; }
     .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; transition: transform 0.2s, width 0.2s; }
+    /* Right-side mobile burger drawer (consolidates header PDF actions on phones). Hidden on desktop. */
+    .header #headerBurger { display: none; }
+    .right-menu, .right-menu-backdrop { display: none; }
+    .right-menu-list { display: flex; flex-direction: column; padding: 8px 0; }
+    .right-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 12px 16px; text-align: left; background: none; border: none; color: var(--text); font: inherit; font-size: 0.95rem; cursor: pointer; }
+    .right-menu-item:hover { background: var(--surface2); }
+    .right-menu-icon { width: 22px; height: 22px; flex-shrink: 0; }
+    .right-menu-label { flex: 1; min-width: 0; white-space: pre-line; }
+    .right-menu-section { padding: 10px 16px 4px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); }
+    /* Desktop overflow → compact header. JS adds body.header-collapsed when the
+       header row is too wide for the viewport (desktop only; mobile uses the media
+       query below). The left tools scroll horizontally and the right PDF actions
+       collapse into the #headerBurger drawer (same drawer as mobile); Settings /
+       save-status stay visible as icons. */
+    body.header-collapsed .header .logo { display: none; }
+    body.header-collapsed .header-tools-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex: 1; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; }
+    body.header-collapsed .header-tools-scroll::-webkit-scrollbar { display: none; }
+    body.header-collapsed .header-tools-scroll > * { flex-shrink: 0; }
+    body.header-collapsed .header .spacer { flex: 0; min-width: 0; }
+    body.header-collapsed.has-pdf .header .consolidated-mobile { display: none !important; }
+    body.header-collapsed.has-pdf .header #headerBurger { display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; background: transparent; border: none; color: var(--text); }
+    body.header-collapsed .right-menu { display: block; position: fixed; right: 0; top: 52px; bottom: 0; width: min(82vw, 320px); background: var(--surface); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.2s; overflow-y: auto; padding-right: env(safe-area-inset-right); }
+    body.header-collapsed.right-menu-open .right-menu { transform: translateX(0); }
+    body.header-collapsed .right-menu-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    body.header-collapsed.right-menu-open .right-menu-backdrop { display: block; }
     @media (max-width: 768px) {
       .sidebar { position: fixed; left: 0; top: 52px; bottom: 0; z-index: 100; transform: translateX(-100%); padding-left: env(safe-area-inset-left); }
       body.sidebar-open .sidebar { transform: translateX(0); }
       .sidebar-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
       body.sidebar-open .sidebar-backdrop { display: block; }
+      .right-menu { display: block; position: fixed; right: 0; top: 52px; bottom: 0; width: min(82vw, 320px); background: var(--surface); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.2s; overflow-y: auto; padding-right: env(safe-area-inset-right); }
+      body.right-menu-open .right-menu { transform: translateX(0); }
+      .right-menu-backdrop { display: none; position: fixed; top: 52px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+      body.right-menu-open .right-menu-backdrop { display: block; }
       .zoom-bar button { width: 44px; height: 44px; }
       .zoom-bar #zoomOut { display: none; }
       .zoom-bar #zoomIn { display: none; }
@@ -1001,6 +1030,7 @@
     .download-page-menu.visible { display: block !important; }
     .download-page-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
     .download-page-option:hover { background: var(--surface2); }
+    .download-page-option .dl-qual { display: block; }
     .export-dropdown { display: inline-flex; }
     .export-dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 300; min-width: 220px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
     .export-dropdown-menu.visible { display: block !important; }

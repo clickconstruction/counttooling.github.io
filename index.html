@@ -4,6 +4,49 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>CountTooling — PDF Takeoff Tool</title>
+  <!-- SEO -->
+  <meta name="description" content="Do construction & plumbing takeoffs right in your browser — count fixtures, measure runs, and export reports from any plan PDF.">
+  <link rel="canonical" href="https://counttooling.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CountTooling">
+  <meta property="og:title" content="CountTooling — PDF Takeoff Tool">
+  <meta property="og:description" content="Do construction & plumbing takeoffs right in your browser — count fixtures, measure runs, and export reports from any plan PDF.">
+  <meta property="og:url" content="https://counttooling.com/">
+  <meta property="og:image" content="https://counttooling.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="CountTooling — PDF takeoff tool">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CountTooling — PDF Takeoff Tool">
+  <meta name="twitter:description" content="Do construction & plumbing takeoffs right in your browser — count fixtures, measure runs, and export reports from any plan PDF.">
+  <meta name="twitter:image" content="https://counttooling.com/og-image.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "CountTooling",
+    "url": "https://counttooling.com/",
+    "description": "Do construction & plumbing takeoffs right in your browser — count fixtures, measure runs, and export reports from any plan PDF.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "image": "https://counttooling.com/og-image.png",
+    "sameAs": ["https://pipetooling.com/", "https://takeofftooling.com/"]
+  }
+  </script>
+  <script>
+    // SEO: keep private/utility URLs out of the search index — view links (?t=) carry
+    // customer takeoffs; ?devAuth=1 is a localhost bypass. Crawlers honor a JS-injected
+    // robots meta. The clean URL stays indexable (no static robots tag).
+    (function () {
+      var sp = new URLSearchParams(window.location.search || '');
+      if (sp.has('t') || sp.get('devAuth') === '1') {
+        var m = document.createElement('meta');
+        m.name = 'robots';
+        m.content = 'noindex, nofollow';
+        document.head.appendChild(m);
+      }
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
   <!-- PWA: installable + offline (see sw.js). -->
   <link rel="manifest" href="manifest.webmanifest">

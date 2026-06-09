@@ -618,3 +618,101 @@ without breaking the contract.
 - **Importer side** (PipeTooling / TakeoffTooling, separate repos) must detect +
   store the URL and strip the footer line; until then a not-yet-updated grid shows
   one stray trailing row.
+
+## Hide marks — bare-drawing toggle
+
+A header **eye toggle** (`#hideMarksBtn`) lets anyone peel the takeoff overlay off
+the drawing and bring it back — built for view-link recipients reading plans on a
+phone, but available to editors too.
+
+- All marks (counters, lines, polylines, highlights, notes, the summary legend)
+  render onto a single overlay canvas (`annCanvas`) layered over the PDF canvas —
+  no DOM mark layers — so hiding is one cheap operation. `toggleHideMarks` flips
+  `state.hideMarks`; `renderAnnotations` sizes + clears the overlay then
+  **early-returns** when the flag is set, leaving the bare PDF visible. Toggling
+  back repaints in full. It's **purely visual** — the annotation data is never
+  touched, and exports/reports draw through `renderAnnotationsToContext`, so
+  they're unaffected.
+- The button sits in the top header next to Share, **shown to everyone** once a PDF
+  is loaded (not `supabase-only`, not viewer-gated). Tap to toggle; the icon swaps
+  **eye ⇄ eye-slash** and the button takes an `.active` state via
+  `updateHideMarksButton` (called from `updateUI`); `aria-pressed` + title
+  ("Hide marks" / "Show marks") track state.
+- **Persistence:** the flag survives page/sheet changes and zoom automatically
+  (every render checks it). For **view-link sessions** it also survives reloads —
+  `state.viewToken` is captured in `initViewOnlyMode`, the preference is restored
+  from `localStorage` (`view:hideMarks:<token>`) before the first paint, and saved
+  on each toggle. Editor (non-view) sessions are session-only, defaulting to shown.
+- **Regression test** — [hide-marks.spec.js](hide-marks.spec.js): loads a 2-page PDF,
+  injects a counter with 5 markers, and asserts at the **pixel level** that the
+  `#annCanvas` overlay is painted when shown and fully transparent when hidden, plus
+  the eye ⇄ eye-slash icon swap, aria/title state, that the marker data survives the
+  toggle, and that the hidden state persists across page navigation.
+
+## Mobile right-side burger menu
+
+On mobile the header was crowded with icon buttons. When a PDF is loaded on a phone
+(`@media (max-width: 768px)`), four secondary header controls — **Hide marks**,
+**Share**, **Download current page**, **Export project** — are now folded into a new
+**right-side slide-in drawer** (`#headerBurger`), decluttering the header. Desktop is
+unchanged.
+
+- **Drawer mechanics mirror the left sidebar** — `#headerBurger` toggles
+  `body.right-menu-open`; `#rightMenu` slides in from the right (`transform:
+  translateX(100%)→0`) over a `#rightMenuBackdrop`, structurally cloned from the
+  existing `#hamburger`/`#sidebarBackdrop`/`.sidebar` pattern. Burger visibility is
+  **pure CSS** gated on the existing `body.has-pdf` class inside the mobile media
+  query — no new JS show/hide.
+- **Rows reuse desktop logic, no duplication** — `updateBurgerMenu()` (called at the
+  end of `updateUI()`, after the option-visibility block) rebuilds `#rightMenuList`
+  from the **currently-visible** `.download-page-option` / `.export-dropdown-option`
+  buttons (whose `style.display` updateUI already computes), so the flattened list
+  matches desktop exactly — including the single-page "smart" collapse (only the
+  `this-canvas` download option is visible → one Download row) and the export gating.
+  Each row **dispatches the original (CSS-hidden) control's click**: Download/Export
+  options → their own `.click()`; Marks → `#hideMarksBtn`; Share → `#sidebarLogoShare`
+  (editor → Share modal) or `#headerShareBtn` (signed-in view-link viewer → copy link).
+  Each row also **clones its source control's `<svg>`** (eye / yellow printer / export
+  glyph) into a leading icon (sized via `.right-menu-icon`), so the drawer is visually
+  scannable and matches the header — no duplicated icon data.
+  Dispatching clicks (rather than calling the functions) also sidesteps a scope split
+  — `openShareProjectModal` lives in a deeper closure than `updateUI`.
+- **Hiding the originals** — the four header controls carry a shared
+  `consolidated-mobile` class; `body.has-pdf .header .consolidated-mobile { display:none
+  !important }` (in the mobile media query) suppresses them on mobile, the `!important`
+  overriding the inline `style.display` updateUI writes (and the now-redundant
+  `#headerShareBtn.in-view-mode` rule). The DOM elements stay put — only their header
+  rendering is hidden — so updateUI's logic and the drawer's row-building still read them.
+- **Regression test** — [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) at a
+  390px viewport: burger gated on a loaded PDF; the four controls hidden; expected rows
+  + sections; the Marks row flips `state.hideMarks` and closes the drawer; the label
+  reflects state on reopen; backdrop closes it; a single-page PDF collapses Download to
+  one row; and a desktop-viewport case asserting the burger stays hidden and the header
+  dropdowns stay visible.
+
+### Desktop header overflow → compact mode
+
+The same consolidation now also kicks in on **desktop** when the header is too narrow
+to fit everything. Previously, below ~1080px the right-side header icons (eye / export /
+download, widened further by the new eye button) were pushed past the right edge with
+`overflow-x: visible` and **no way to scroll to them** — they were simply unreachable.
+
+- **Overflow detection, oscillation-free** — `updateHeaderCollapsed()` runs on `resize`
+  (rAF-throttled) and from `updateUI`. It measures the header in its **expanded** state
+  — removes `body.header-collapsed`, reads `header.scrollWidth > header.clientWidth`,
+  then re-adds the class if overflowing (all synchronous, so no flicker). Because the
+  decision is always made against the *expanded* natural width, collapsing can't change
+  the input and the toggle never oscillates at the boundary. On mobile (≤768px) it's a
+  no-op — the media query still drives mobile.
+- **Full compact layout** — CSS gated on `body.header-collapsed` makes `.header-tools-scroll`
+  horizontally scrollable + collapses the spacer (so the left tools scroll instead of
+  pushing the right cluster off), hides the `consolidated-mobile` right actions, shows
+  `#headerBurger`, and enables the **same right slide-in drawer** as mobile. Settings /
+  save-status stay visible as icons (and are also reachable via the desktop sidebar /
+  status bar), so nothing is lost. The rules are duplicated from (not shared with) the
+  mobile media query so mobile stays pure-CSS and unaffected.
+- **Regression test** — [header-overflow.spec.js](header-overflow.spec.js): at 820px
+  (desktop, narrow) the header collapses, the burger is visible **within** the viewport
+  (not cut off), the right PDF icons are hidden, and the drawer opens with the actions;
+  at 1400px it stays normal (no burger, dropdowns visible); and resizing wide↔narrow
+  toggles it both ways.

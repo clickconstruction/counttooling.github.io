@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Private view-link URLs (counttooling.com/?t=...) and the dev bypass (?devAuth=1) are
+# kept out of the index via a noindex meta tag, not disallowed here — crawlers must be
+# able to fetch them to see that directive.
+
+Sitemap: https://counttooling.com/sitemap.xml

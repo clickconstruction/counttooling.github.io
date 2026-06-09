@@ -1,6 +1,6 @@
   (function() {
   // SECTION: Constants
-  if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min-3.11.174.js';
 
   const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || '';
   const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) || '';

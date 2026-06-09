@@ -216,6 +216,20 @@ module.exports = [
     },
   },
   {
+    // sw.js — the PWA service worker; its own ServiceWorkerGlobalScope (self,
+    // caches, clients, skipWaiting, FetchEvent, ...), not the window globals.
+    files: ['sw.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.serviceworker },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
     // report.js consumes the cross-file project globals enumerated above.
     files: ['report.js'],
     languageOptions: {

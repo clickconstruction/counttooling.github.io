@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build:icons": "node scripts/build-custom-icons.js",
+    "build:pwa-icons": "node scripts/build-pwa-icons.js",
     "build:toc": "node scripts/build-toc.js",
     "lint": "eslint . --max-warnings 0",
     "check": "npm run lint && npm run test:unit && npm run build:toc -- --check",

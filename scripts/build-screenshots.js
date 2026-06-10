@@ -53,6 +53,12 @@ async function drawOverlays(page, items, accent) {
       const el = document.createElement('div');
       if (it.type === 'box') {
         el.style.cssText = `position:absolute;left:${it.x}px;top:${it.y}px;width:${it.w}px;height:${it.h}px;border:3px solid ${accent};border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.45);`;
+        if (it.label) {
+          const lab = document.createElement('div');
+          lab.textContent = it.label;
+          lab.style.cssText = `position:absolute;left:${it.x}px;top:${it.y - 30}px;background:${accent};color:#161617;font:600 15px/1 'DM Sans',system-ui,sans-serif;padding:6px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);`;
+          root.appendChild(lab);
+        }
       } else {
         el.textContent = String(it.n);
         el.style.cssText = `position:absolute;left:${it.x - 17}px;top:${it.y - 17}px;width:34px;height:34px;border-radius:50%;background:${accent};color:#161617;font:700 19px/34px 'DM Sans',system-ui,sans-serif;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.5);`;
@@ -136,6 +142,57 @@ const SHOTS = [
       { n: 3, sel: '#specificPagesModal >> text=Download' },
     ],
   },
+
+  // Scale zone vs multiply zone — concept boxes on the bare plan.
+  {
+    name: 'zones',
+    clip: '#canvasWrapper',
+    async setup(page) {
+      await page.evaluate(() => { window.App.fitZoom(); window.App.renderPdf(); });
+      await page.waitForTimeout(250);
+    },
+    boxes: [
+      { rect: { x: 0.12, y: 0.14, w: 0.64, h: 0.29 }, label: 'Multiply zone ×3' },
+      { rect: { x: 0.345, y: 0.43, w: 0.165, h: 0.29 }, label: 'Scale zone' },
+    ],
+  },
+
+  // Counter create dialog — name, color, custom icon.
+  {
+    name: 'counter-create',
+    clip: '#counterModal',
+    async setup(page) {
+      // Use the real opener (#addCounter) so the icon grid + color picker populate.
+      await page.evaluate(() => { const b = document.querySelector('#addCounter'); if (b) b.click(); });
+      await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+      await page.evaluate(() => window.App.showCounterTab && window.App.showCounterTab('create'));
+      await page.waitForTimeout(300);
+    },
+    callouts: [
+      { n: 1, sel: '#counterModal >> text=Name' },
+      { n: 2, sel: '#counterModal >> text=Custom Icons' },
+      { n: 3, sel: '#counterModal >> text=Color' },
+    ],
+  },
+
+  // Choose / Create Line Type dialog.
+  {
+    name: 'line-types',
+    clip: '#chooseLineTypeModal',
+    async setup(page) {
+      await page.evaluate(() => {
+        window.App.showChooseLineTypeModal && window.App.showChooseLineTypeModal();
+        window.App.showLineTypeTab && window.App.showLineTypeTab('create');
+      });
+      await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(250);
+    },
+    callouts: [
+      { n: 1, sel: '#chooseLineTypeModal >> text=Name' },
+      { n: 2, sel: '#chooseLineTypeModal >> text=Display' },
+      { n: 3, sel: '#chooseLineTypeModal >> text=Color' },
+    ],
+  },
 ];
 
 async function loadApp(page, baseUrl) {
@@ -163,18 +220,18 @@ async function loadApp(page, baseUrl) {
       const items = [];
       for (const c of shot.callouts || []) {
         if (c.sel) {
-          const b = await page.locator(c.sel).boundingBox().catch(() => null);
+          const b = await page.locator(c.sel).first().boundingBox().catch(() => null);
           if (!b) { console.warn(`  ! ${shot.name}: callout target ${c.sel} not found, skipping #${c.n}`); continue; }
           items.push({ type: 'badge', n: c.n, x: b.x, y: b.y });
         } else { items.push({ type: 'badge', n: c.n, x: clip.x + c.x, y: clip.y + c.y }); }
       }
       for (const bx of shot.boxes || []) {
         if (bx.sel) {
-          const b = await page.locator(bx.sel).boundingBox().catch(() => null);
-          if (b) items.push({ type: 'box', x: b.x - 4, y: b.y - 4, w: b.width + 8, h: b.height + 8 });
+          const b = await page.locator(bx.sel).first().boundingBox().catch(() => null);
+          if (b) items.push({ type: 'box', label: bx.label, x: b.x - 4, y: b.y - 4, w: b.width + 8, h: b.height + 8 });
         } else {
           const r = bx.rect;
-          items.push({ type: 'box', x: clip.x + r.x * clip.width, y: clip.y + r.y * clip.height, w: r.w * clip.width, h: r.h * clip.height });
+          items.push({ type: 'box', label: bx.label, x: clip.x + r.x * clip.width, y: clip.y + r.y * clip.height, w: r.w * clip.width, h: r.h * clip.height });
         }
       }
       await drawOverlays(page, items, ACCENT);

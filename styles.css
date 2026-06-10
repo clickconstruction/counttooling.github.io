@@ -23,8 +23,14 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow: hidden; }
-    .app { display: flex; flex-direction: column; height: 100vh; }
+    /* Lock the app shell to the dynamic viewport. On iOS Safari, 100vh is the *large*
+       viewport (toolbars hidden); on refresh the toolbars are shown, so 100vh exceeds
+       the visible area and the window can scroll — pushing the in-flow header up under
+       the status bar. 100dvh tracks the visible height (100vh stays as the fallback for
+       older browsers); html/body scroll-lock + overscroll-behavior close the gap. */
+    html { height: 100%; overflow: hidden; overscroll-behavior: none; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; min-height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+    .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
     /* Header reserves the top safe-area as padding so its surface fills the notch
        strip while the controls sit below it (in reach). Height grows by the same
        inset; fixed overlays below offset their top by calc(52px + --safe-top). */

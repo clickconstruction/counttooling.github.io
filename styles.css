@@ -365,6 +365,7 @@
     .canvas-container .pdf-canvas { z-index: 0; }
     .canvas-container .ann-canvas { z-index: 1; pointer-events: none; }
     .canvas-container .ann-canvas.interactive { pointer-events: auto; }
+    .canvas-wrapper .aim-loupe { position: absolute; left: 0; top: 0; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; display: none; z-index: 240; background: #fff; will-change: transform; }
     .page-zoom-row { display: flex; align-items: center; gap: 0; background: var(--surface); border-top: 1px solid var(--border); }
     .page-zoom-row .page-nav { flex: 1; }
     .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; flex-shrink: 0; }

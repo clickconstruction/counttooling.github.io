@@ -369,6 +369,8 @@
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
+    aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
+    vertexDragStart: null, vertexDragMoved: false,
     lastScaleTapTime: 0,
     currentProjectId: null,
     currentProjectName: null,
@@ -1989,6 +1991,7 @@
   const canvasContainer = document.getElementById('canvasContainer');
   const pdfCanvas = document.getElementById('pdfCanvas');
   const annCanvas = document.getElementById('annCanvas');
+  const aimLoupe = document.getElementById('aimLoupe');
 
   const dpr = () => window.devicePixelRatio || 1;
   function toCanvas(p) { const scale = state.zoom * dpr(); return { x: p.x * scale, y: p.y * scale }; }
@@ -2267,7 +2270,8 @@
         }
         mode = projectSegment + ' - ' + lastSavedSegment;
         let toolHint = '';
-        if (state.tool === TOOL.SCALE || state.tool === TOOL.MEASURE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
+        if (state.tool === TOOL.MEASURE) toolHint = state.aiming ? 'Hold + drag to aim; release to place' : (state.scaleMode === SCALE_MODES.POINT_A ? 'Tap first point (or hold to aim)' : 'Tap second point (or hold to aim)');
+        else if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
         else if (state.tool === TOOL.LINE) toolHint = state.quickLineStart ? 'Tap end point' : 'Tap start point';
         else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
         else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
@@ -2554,6 +2558,46 @@
         ctx.fill(new Path2D(SCALE_CROSSHAIR_PATH));
         ctx.restore();
       });
+    }
+    // Live Measure preview (mobile loupe aim + desktop hover): a dashed rubber band
+    // to the moving second point, and the first-point crosshair while aiming. Scoped
+    // to MEASURE so the Scale tool's appearance is unchanged.
+    if (state.tool === TOOL.MEASURE) {
+      const drawScaleCrosshairGlyph = (ptPdf) => {
+        const p = toCanvas(ptPdf);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(24 / 640, 24 / 640);
+        ctx.translate(-320, -320);
+        ctx.fillStyle = '#e8c547';
+        ctx.fill(new Path2D(SCALE_CROSSHAIR_PATH));
+        ctx.restore();
+      };
+      const moving = state.aiming ? state.aimPoint : state.mousePos;
+      if (state.scaleMode === SCALE_MODES.POINT_B && state.scalePointA && !state.scalePointB && moving) {
+        const a = toCanvas(state.scalePointA), m = toCanvas(moving);
+        ctx.save();
+        ctx.strokeStyle = '#e8c547'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+        ctx.restore();
+        drawScaleCrosshairGlyph(moving);
+      } else if (state.aiming && state.aimPoint && !state.scalePointA) {
+        drawScaleCrosshairGlyph(state.aimPoint);
+      }
+    }
+    // Generic aim crosshair for the other aiming flows (Line / Polyline placement,
+    // and vertex drag in Part B) — the loupe shows the magnified target; this marks
+    // it on the page too. Measure draws its own yellow crosshair above.
+    if (state.aiming && state.aimPoint && state.tool !== TOOL.MEASURE) {
+      const m = toCanvas(state.aimPoint), r = 10 * dpr();
+      ctx.save();
+      ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 1.5 * dpr(); ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(m.x - r, m.y); ctx.lineTo(m.x + r, m.y);
+      ctx.moveTo(m.x, m.y - r); ctx.lineTo(m.x, m.y + r);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(m.x, m.y, 3 * dpr(), 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
     }
     const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
     const lw = lts.lineSize || 2;
@@ -6143,6 +6187,7 @@
   };
   document.getElementById('measureBtnSidebar').onclick = () => document.getElementById('measureBtn').click();
   document.getElementById('moveBtn').onclick = () => {
+    if (state.aiming || state.aimPressTimer) cancelAiming();
     state.tool = TOOL.NONE;
     state.quickLineStart = null;
     state.highlightStart = null;
@@ -10159,6 +10204,83 @@
     menu.classList.add('visible');
   }
 
+  // Commit one Quick Line point (start, then end). Shared by the desktop click path,
+  // the mobile tap path (handleTouchAsCanvasTap), and the loupe-release path — so all
+  // three apply identical snap (H/V) + bounds handling. Callers render + updateUI.
+  function commitLinePoint(pdf) {
+    const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
+    if (!state.quickLineStart) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      state.quickLineStart = pdf;
+    } else {
+      let x2 = pdf.x, y2 = pdf.y;
+      if (state.lineTypeSettings.snapToHorizontalVertical) {
+        const end = snapToHorizontalOrVertical(state.quickLineStart.x, state.quickLineStart.y, pdf.x, pdf.y);
+        x2 = end.x; y2 = end.y;
+        if (!isPointInPageBounds({ x: x2, y: y2 })) {
+          const clamped = clampPointToPageBounds({ x: x2, y: y2 });
+          x2 = clamped.x; y2 = clamped.y;
+        }
+      } else {
+        if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      }
+      pushUndoSnapshot();
+      const page = state.pages[state.currentPage];
+      const canvas = page && ensureActiveCanvas(page);
+      if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
+      logLineAddedEvent('quick');
+      state.quickLineStart = null;
+      markProjectDirty();
+    }
+  }
+
+  // Commit one in-progress Polyline vertex. Shared by the desktop click + loupe-release
+  // paths (same snap-to-previous-axis + bounds). Callers render + updateUI.
+  function commitPolylinePoint(pdf) {
+    if (!state.drawingPolyline) return;
+    let pt = pdf;
+    if (state.drawingPolyline.points.length >= 1 && state.lineTypeSettings.snapToHorizontalVertical) {
+      const prev = state.drawingPolyline.points[state.drawingPolyline.points.length - 1];
+      pt = snapToHorizontalOrVertical(prev.x, prev.y, pdf.x, pdf.y);
+      if (!isPointInPageBounds(pt)) pt = clampPointToPageBounds(pt);
+    } else {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+    }
+    pushUndoSnapshot();
+    state.drawingPolyline.points.push(pt);
+    markProjectDirty();
+  }
+
+  // Commit one Measure point (point A, then point B -> distance toast). Shared by
+  // the desktop click path and the mobile loupe-release path. opts.fromAim bypasses
+  // the 400ms double-tap guard (a deliberate press-and-hold easily exceeds 400ms).
+  function commitMeasurePoint(pdf, opts) {
+    opts = opts || {};
+    if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+    const now = Date.now();
+    if (!opts.fromAim && now - state.lastScaleTapTime < 400) return;
+    state.lastScaleTapTime = now;
+    if (state.scaleMode === SCALE_MODES.POINT_A) {
+      state.scalePointA = pdf;
+      state.scaleMode = SCALE_MODES.POINT_B;
+    } else if (state.scaleMode === SCALE_MODES.POINT_B) {
+      state.scalePointB = pdf;
+      const dist = ptDist(state.scalePointA, state.scalePointB);
+      const page = state.pages[state.currentPage];
+      const ann = page ? getActiveAnnotations(page) : null;
+      const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
+      const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
+      const formatted = formatDistFeetInches(dist, effScale);
+      showToast('Distance: ' + formatted, 5000);
+      state.scalePointA = null;
+      state.scalePointB = null;
+      state.scaleMode = SCALE_MODES.NONE;
+      state.tool = TOOL.NONE;
+    }
+    renderPdf();
+    updateUI();
+  }
+
   function handleCanvasClick(e) {
     if (!state.pages.length) return;
     if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE) return;
@@ -10197,65 +10319,13 @@
       }
       renderPdf();
     } else if (state.tool === TOOL.MEASURE) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      const now = Date.now();
-      if (now - state.lastScaleTapTime < 400) return;
-      state.lastScaleTapTime = now;
-      if (state.scaleMode === SCALE_MODES.POINT_A) { state.scalePointA = pdf; state.scaleMode = SCALE_MODES.POINT_B; }
-      else if (state.scaleMode === SCALE_MODES.POINT_B) {
-        state.scalePointB = pdf;
-        const dist = ptDist(state.scalePointA, state.scalePointB);
-        const page = state.pages[state.currentPage];
-        const ann = page ? getActiveAnnotations(page) : null;
-        const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
-        const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
-        const formatted = formatDistFeetInches(dist, effScale);
-        showToast('Distance: ' + formatted, 5000);
-        state.scalePointA = null;
-        state.scalePointB = null;
-        state.scaleMode = SCALE_MODES.NONE;
-        state.tool = TOOL.NONE;
-      }
-      renderPdf();
+      commitMeasurePoint(pdf);
     } else if (state.tool === TOOL.LINE) {
-      const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
-      if (!state.quickLineStart) {
-        if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-        state.quickLineStart = pdf;
-      } else {
-        let x2 = pdf.x, y2 = pdf.y;
-        if (state.lineTypeSettings.snapToHorizontalVertical) {
-          const end = snapToHorizontalOrVertical(state.quickLineStart.x, state.quickLineStart.y, pdf.x, pdf.y);
-          x2 = end.x; y2 = end.y;
-          if (!isPointInPageBounds({ x: x2, y: y2 })) {
-            const clamped = clampPointToPageBounds({ x: x2, y: y2 });
-            x2 = clamped.x; y2 = clamped.y;
-          }
-        } else {
-          if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-        }
-        pushUndoSnapshot();
-        const page = state.pages[state.currentPage];
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
-        logLineAddedEvent('quick');
-        state.quickLineStart = null;
-        markProjectDirty();
-      }
+      commitLinePoint(pdf);
       renderAnnotations();
       updateUI();
     } else if (state.tool === TOOL.POLYLINE && state.drawingPolyline) {
-      let pt = pdf;
-      if (state.drawingPolyline.points.length >= 1 && state.lineTypeSettings.snapToHorizontalVertical) {
-        const prev = state.drawingPolyline.points[state.drawingPolyline.points.length - 1];
-        pt = snapToHorizontalOrVertical(prev.x, prev.y, pdf.x, pdf.y);
-        if (!isPointInPageBounds(pt)) pt = clampPointToPageBounds(pt);
-      } else {
-        if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      }
-      pushUndoSnapshot();
-      state.drawingPolyline.points.push(pt);
-      markProjectDirty();
+      commitPolylinePoint(pdf);
       renderAnnotations();
       updateUI();
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
@@ -10448,6 +10518,121 @@
 
   // SECTION: Event Binding
   const cWrapper = document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper');
+
+  // SECTION: Aim loupe (mobile press-hold precise placement)
+  // Press-and-hold on a placement tool summons a magnifier loupe + an offset
+  // crosshair that track the finger; lifting commits the point at the crosshair
+  // (not the raw fingertip). A quick tap is unaffected (instant placement).
+  const AIM_PRESS_MS = 280;            // shorter than the 500ms context-menu long-press
+  const AIM_OFFSET_LOGICAL_PX = 44;    // crosshair sits this far ABOVE the fingertip
+  const LOUPE_MAGNIFY = 2.5;
+  const LOUPE_DIAMETER_LOGICAL = 120;
+
+  // Which tools support press-hold-aim: Measure, Quick Line, and an in-progress Polyline.
+  function isAimingTool() {
+    return state.tool === TOOL.MEASURE || state.tool === TOOL.LINE || (state.tool === TOOL.POLYLINE && !!state.drawingPolyline);
+  }
+
+  // Commit the aimed point through the active tool's normal commit path (so snap +
+  // bounds are identical to a tap). Used by the touchend loupe-release handler.
+  function commitAimPoint(pdf) {
+    if (state.tool === TOOL.MEASURE) { commitMeasurePoint(pdf, { fromAim: true }); return; }
+    if (state.tool === TOOL.LINE) { commitLinePoint(pdf); renderAnnotations(); updateUI(); return; }
+    if (state.tool === TOOL.POLYLINE && state.drawingPolyline) { commitPolylinePoint(pdf); renderAnnotations(); updateUI(); }
+  }
+
+  // Finger client coords -> wrapper-logical -> PDF, offset upward so the target
+  // clears the finger, then clamped to the page so the crosshair is always placeable.
+  function updateAimFromClient(c) {
+    const rect = (cWrapper || pdfCanvas).getBoundingClientRect();
+    const fingerPdf = canvasToPdf(c.x - rect.left, c.y - rect.top);
+    const aim = clampPointToPageBounds({ x: fingerPdf.x, y: fingerPdf.y - AIM_OFFSET_LOGICAL_PX / state.zoom });
+    state.aimPoint = aim;
+    state.mousePos = aim;     // so the rubber band + status coords follow the crosshair
+    state.aimClient = c;
+  }
+
+  function hideAimLoupe() { if (aimLoupe) aimLoupe.style.display = 'none'; }
+
+  function cancelAiming() {
+    if (state.aimPressTimer) { clearTimeout(state.aimPressTimer); state.aimPressTimer = null; }
+    state.aiming = false;
+    state.aimPoint = null;
+    state.aimClient = null;
+    state.aimRafPending = false;
+    hideAimLoupe();
+    renderAnnotations();
+    updateUI();
+  }
+
+  // Abort an in-progress EDIT_POLY vertex drag (e.g. a 2nd finger lands -> pinch),
+  // restoring the vertex to where it was grabbed.
+  function abortVertexDrag() {
+    if (state.draggingVertexIdx !== null && state.editingPolyline && state.vertexDragStart && state.editingPolyline.points[state.draggingVertexIdx]) {
+      state.editingPolyline.points[state.draggingVertexIdx] = state.vertexDragStart;
+    }
+    state.draggingVertexIdx = null;
+    state.vertexDragStart = null;
+    state.vertexDragMoved = false;
+    hideAimLoupe();
+    state.aimPoint = null;
+    state.aimClient = null;
+    renderAnnotations();
+  }
+
+  function enterAiming(c) {
+    state.aiming = true;
+    updateAimFromClient(c);
+    drawAimLoupe();
+    renderAnnotations();
+    updateUI();
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_) { /* haptics optional */ } }
+  }
+
+  // Draw the magnifier: sample a small source rect (around the crosshair) from
+  // pdfCanvas + annCanvas, magnified into the dedicated #aimLoupe canvas. Source
+  // coords MUST come from toCanvas() (device px) to align with the canvas buffers.
+  function drawAimLoupe() {
+    // Driven explicitly during aiming and during EDIT_POLY vertex drag; callers
+    // hide it on release, so gating on aimPoint/aimClient is sufficient.
+    if (!aimLoupe || !state.aimPoint || !state.aimClient) return;
+    const ratio = dpr();
+    const devSize = Math.round(LOUPE_DIAMETER_LOGICAL * ratio);
+    if (aimLoupe.width !== devSize) {
+      aimLoupe.width = devSize;
+      aimLoupe.height = devSize;
+      aimLoupe.style.width = LOUPE_DIAMETER_LOGICAL + 'px';
+      aimLoupe.style.height = LOUPE_DIAMETER_LOGICAL + 'px';
+    }
+    const lctx = aimLoupe.getContext('2d');
+    lctx.clearRect(0, 0, aimLoupe.width, aimLoupe.height);
+    const center = toCanvas(state.aimPoint);     // device px, aligns with pdfCanvas/annCanvas buffers
+    const srcSize = devSize / LOUPE_MAGNIFY;
+    const sx = center.x - srcSize / 2, sy = center.y - srcSize / 2;
+    lctx.imageSmoothingEnabled = true;
+    try {
+      lctx.drawImage(pdfCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
+      lctx.drawImage(annCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
+    } catch (_) { /* source rect partly off-canvas — drawImage clips */ }
+    const cxp = aimLoupe.width / 2, cyp = aimLoupe.height / 2, rr = 14 * ratio;
+    lctx.strokeStyle = '#e8c547'; lctx.lineWidth = 1.5 * ratio;
+    lctx.beginPath();
+    lctx.moveTo(cxp - rr, cyp); lctx.lineTo(cxp + rr, cyp);
+    lctx.moveTo(cxp, cyp - rr); lctx.lineTo(cxp, cyp + rr);
+    lctx.stroke();
+    // Position in logical wrapper px, pinned away from the finger, clamped on-screen.
+    const rect = (cWrapper || pdfCanvas).getBoundingClientRect();
+    const fingerLx = state.aimClient.x - rect.left, fingerLy = state.aimClient.y - rect.top;
+    const size = LOUPE_DIAMETER_LOGICAL, gap = 20;
+    let lx = fingerLx - size - gap, ly = fingerLy - size - gap;
+    if (lx < 4) lx = fingerLx + gap;
+    if (ly < 4) ly = fingerLy + gap;
+    lx = Math.max(4, Math.min(rect.width - size - 4, lx));
+    ly = Math.max(4, Math.min(rect.height - size - 4, ly));
+    aimLoupe.style.transform = 'translate3d(' + lx + 'px,' + ly + 'px,0)';
+    aimLoupe.style.display = 'block';
+  }
+
   let lastRenderedZoom = 1.0;
   let wheelZoomCommitTimer = null;
   let pinchZoomPending = false;
@@ -10726,17 +10911,37 @@
 
   (cWrapper || pdfCanvas).addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
+      if (state.aiming || state.aimPressTimer) cancelAiming();
+      if (state.draggingVertexIdx !== null) abortVertexDrag();   // 2nd finger -> pinch, not drag
       state.pinchStartDistance = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       state.pinchStartZoom = state.zoom;
     } else if (e.touches.length === 1) {
       const c = getClientCoords(e);
       state.touchPanStart = { x: c.x, y: c.y, panX: state.pan.x, panY: state.pan.y };
-      state.longPressTimer = setTimeout(() => {
-        state.longPressFired = true;
-        const ev = new MouseEvent('contextmenu', { clientX: c.x, clientY: c.y, bubbles: true });
-        (cWrapper || pdfCanvas).dispatchEvent(ev);
-      }, 500);
       state.longPressStart = c;
+      if (isAimingTool()) {
+        // Press-and-hold summons the aim loupe; suppress the context-menu long-press.
+        state.aimPressTimer = setTimeout(() => { state.aimPressTimer = null; enterAiming(c); }, AIM_PRESS_MS);
+      } else {
+        // EDIT_POLY: grab a vertex under the finger for touch dragging (mouse parity).
+        if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
+          const pt = canvasPointFromEvent(e);
+          const pdfPt = canvasToPdf(pt.x, pt.y);
+          const r = 16 / state.zoom;   // a touch fatter than the mouse hit radius (12)
+          const idx = (state.editingPolyline.points || []).findIndex(p => ptDist(pdfPt, p) < r);
+          if (idx >= 0) {
+            state.draggingVertexIdx = idx;
+            state.vertexDragStart = { x: state.editingPolyline.points[idx].x, y: state.editingPolyline.points[idx].y };
+            state.vertexDragMoved = false;
+          }
+        }
+        // Keep the 500ms long-press (context menu / delete-vertex) available.
+        state.longPressTimer = setTimeout(() => {
+          state.longPressFired = true;
+          const ev = new MouseEvent('contextmenu', { clientX: c.x, clientY: c.y, bubbles: true });
+          (cWrapper || pdfCanvas).dispatchEvent(ev);
+        }, 500);
+      }
     }
   }, { passive: true });
 
@@ -10765,7 +10970,36 @@
       }
     } else if (e.touches.length === 1 && state.touchPanStart) {
       const c = getClientCoords(e);
+      if (state.aiming) {
+        e.preventDefault();
+        updateAimFromClient(c);
+        if (!state.aimRafPending) {
+          state.aimRafPending = true;
+          requestAnimationFrame(() => { state.aimRafPending = false; drawAimLoupe(); renderAnnotations(); });
+        }
+        return;
+      }
+      // EDIT_POLY: drag the grabbed vertex (with the loupe), touch parity with mouse.
+      // Skip if a long-press already fired a delete (draggingVertexIdx would be stale).
+      if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null && state.editingPolyline &&
+          !state.longPressFired && state.draggingVertexIdx < (state.editingPolyline.points || []).length) {
+        e.preventDefault();
+        if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }  // a drag, not a delete-hold
+        state.vertexDragMoved = true;
+        const pt = canvasPointFromEvent(e);
+        const pdf = canvasToPdf(pt.x, pt.y);
+        state.editingPolyline.points[state.draggingVertexIdx] = pdf;   // no snap/bounds, matching mouse
+        state.aimPoint = pdf;     // loupe reveals the vertex under the finger
+        state.aimClient = c;
+        if (!state.aimRafPending) {
+          state.aimRafPending = true;
+          requestAnimationFrame(() => { state.aimRafPending = false; drawAimLoupe(); renderAnnotations(); });
+        }
+        return;
+      }
       const moved = ptDist(state.touchPanStart, c) > 10;
+      // A drag before the hold fires cancels precision mode (so a quick tap still places).
+      if (state.aimPressTimer && moved) { clearTimeout(state.aimPressTimer); state.aimPressTimer = null; }
       if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart)) && moved) {
         if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
         const pt = canvasPointFromEvent(e);
@@ -10794,30 +11028,7 @@
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
     if (state.tool === TOOL.LINE) {
-      const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
-      if (!state.quickLineStart) {
-        if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-        state.quickLineStart = pdf;
-      } else {
-        let x2 = pdf.x, y2 = pdf.y;
-        if (state.lineTypeSettings.snapToHorizontalVertical) {
-          const end = snapToHorizontalOrVertical(state.quickLineStart.x, state.quickLineStart.y, pdf.x, pdf.y);
-          x2 = end.x; y2 = end.y;
-          if (!isPointInPageBounds({ x: x2, y: y2 })) {
-            const clamped = clampPointToPageBounds({ x: x2, y: y2 });
-            x2 = clamped.x; y2 = clamped.y;
-          }
-        } else {
-          if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-        }
-        pushUndoSnapshot();
-        const page = state.pages[state.currentPage];
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
-        logLineAddedEvent('quick');
-        state.quickLineStart = null;
-        markProjectDirty();
-      }
+      commitLinePoint(pdf);
       renderAnnotations();
       updateUI();
       return;
@@ -10959,6 +11170,45 @@
       if (state.pinchStartDistance != null) commitPinchZoom();
       state.pinchStartDistance = null;
     }
+    if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null) {
+      // Release a dragged polyline vertex. (A long-press delete is handled by the
+      // context-menu path; here we just finalize the drag.)
+      e.preventDefault();
+      if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+      if (state.vertexDragMoved) markProjectDirty();
+      state.draggingVertexIdx = null;
+      state.vertexDragStart = null;
+      state.vertexDragMoved = false;
+      state.longPressFired = false;
+      hideAimLoupe();
+      state.aimPoint = null;
+      state.aimClient = null;
+      renderAnnotations();
+      state.touchPanStart = null;
+      return;
+    }
+    if (state.aiming) {
+      // Lift to commit the point at the crosshair (not the raw fingertip).
+      e.preventDefault();
+      const committed = state.aimPoint;
+      cancelAiming();
+      if (committed) commitAimPoint(committed);
+      state.touchPanStart = null;
+      return;
+    }
+    if (state.aimPressTimer) {
+      // Released before the hold fired -> quick tap = instant placement, as today.
+      clearTimeout(state.aimPressTimer);
+      state.aimPressTimer = null;
+      if (e.changedTouches && e.changedTouches.length) {
+        e.preventDefault();
+        const c = getClientCoords(e);
+        const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
+        (cWrapper || pdfCanvas).dispatchEvent(ev);
+      }
+      state.touchPanStart = null;
+      return;
+    }
     if (state.touchPanning) {
       state.touchPanning = false;
       state.touchPanStart = null;
@@ -10981,6 +11231,14 @@
     }
     state.touchPanStart = null;
   }, { passive: false });
+
+  (cWrapper || pdfCanvas).addEventListener('touchcancel', () => {
+    if (state.aiming || state.aimPressTimer) cancelAiming();
+    if (state.draggingVertexIdx !== null) abortVertexDrag();
+    if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+    state.touchPanStart = null;
+    state.touchPanning = false;
+  }, { passive: true });
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.context-menu') && !e.target.closest('#contextMenu')) document.getElementById('contextMenu').classList.remove('visible');

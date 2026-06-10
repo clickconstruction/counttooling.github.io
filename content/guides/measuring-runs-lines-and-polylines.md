@@ -3,6 +3,7 @@ title: Measuring runs with lines and polylines
 description: Trace pipe, conduit, and other linear runs to get real lengths off the plan — straight lines, multi-segment polylines, arcs, drops, and the Measure tool.
 updated: 2026-06-09
 order: 4
+icon: line
 category: Measuring
 ---
 

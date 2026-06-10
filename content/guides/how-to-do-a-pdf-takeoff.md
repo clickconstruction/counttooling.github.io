@@ -3,6 +3,7 @@ title: How to do a takeoff from a PDF
 description: Step-by-step — upload a plan PDF, set the scale, count fixtures, measure runs, and export a report, all in your browser with CountTooling.
 updated: 2026-06-09
 order: 1
+icon: measure
 category: Getting started
 ---
 

@@ -3,6 +3,7 @@ title: Counting fixtures with counters
 description: Place point counts on a plan with custom icons and colors, keep a live tally, and organize them into groups — the heart of any takeoff.
 updated: 2026-06-09
 order: 3
+icon: counter
 category: Counting
 ---
 

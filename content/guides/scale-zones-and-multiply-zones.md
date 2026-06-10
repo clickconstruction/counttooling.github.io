@@ -3,6 +3,7 @@ title: Scale zones and multiply zones
 description: Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
 updated: 2026-06-09
 order: 5
+icon: scale-zone
 category: Working with plans
 ---
 

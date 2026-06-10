@@ -3,7 +3,7 @@
 
 /* Brand tokens — mirror of styles.css :root; keep in sync. */
 :root {
-  --bg: #0f0f11; --surface: #17171a; --surface2: #1e1e22; --border: #2e2e36;
+  --bg: #0f0f11; --surface: #17171a; --surface2: #1e1e22; --border: #2e2e36; --border2: #3a3a44;
   --accent: #e8c547; --text: #f0ede8; --text2: #9e9b96; --text3: #5e5c58;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,6 +42,29 @@ a { color: inherit; }
 .strip b { color: var(--text); font-weight: 600; }
 .cta-band { text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 48px 24px; margin: 24px 0; }
 .cta-band h2 { margin-bottom: 20px; }
+.band-phone { margin-top: 18px; color: var(--text2); font-size: 0.95rem; }
+
+/* Hero product screenshot + phone CTA */
+.hero-shot { display: block; width: 980px; max-width: 100%; height: auto; margin: 48px auto 0; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 12px 44px rgba(0, 0, 0, 0.5); }
+.hero-phone { margin-top: 18px; color: var(--text2); font-size: 0.95rem; }
+.hero-phone a, .band-phone a, .site-footer a[href^="tel:"] { color: var(--accent); text-decoration: none; font-weight: 600; }
+.hero-phone a:hover, .band-phone a:hover { text-decoration: underline; }
+
+/* Testimonials */
+.testimonials { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.quote { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 0; }
+.quote p { color: var(--text); font-size: 1.02rem; line-height: 1.6; margin: 0 0 14px; }
+.quote cite { color: var(--accent); font-style: normal; font-weight: 600; font-size: 0.9rem; }
+
+/* FAQ accordion (native <details>, no JS) */
+.faq { max-width: 760px; margin: 0 auto; }
+.faq details { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; padding: 0 18px; }
+.faq summary { cursor: pointer; padding: 16px 28px 16px 0; font-weight: 600; list-style: none; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: '+'; position: absolute; right: 0; top: 14px; color: var(--accent); font-size: 1.4rem; line-height: 1; }
+.faq details[open] summary::after { content: '\2212'; }
+.faq details p { color: var(--text2); margin: 0 0 16px; line-height: 1.6; }
+.faq details a { color: var(--accent); }
 
 /* Guides index */
 .breadcrumb { color: var(--text3); font-size: 0.85rem; padding: 10px 0 0; }
@@ -55,6 +78,10 @@ a { color: inherit; }
 .guide-card { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; text-decoration: none; color: var(--text); transition: border-color 0.15s; }
 .guide-card:hover { border-color: var(--accent); }
 .guide-card h2 { font-size: 1.15rem; margin-bottom: 6px; }
+.guide-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.guide-card-head h2 { margin: 0; }
+.guide-ico { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; padding: 9px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; color: var(--accent); }
+.guide-ico svg { width: 100%; height: 100%; display: block; fill: currentColor; }
 .guide-card p { color: var(--text2); font-size: 0.95rem; margin-bottom: 10px; }
 .guide-meta { color: var(--text3); font-size: 0.8rem; font-family: 'DM Mono', monospace; }
 

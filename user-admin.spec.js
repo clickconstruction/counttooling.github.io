@@ -17,7 +17,7 @@ test.describe('window.App registry pilot - admin Manage-Users modals', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     const wired = await page.evaluate(() => ({
@@ -53,7 +53,7 @@ test.describe('window.App registry pilot - admin Manage-Users modals', () => {
       page.on('pageerror', (err) => { errors.push(err.message); });
 
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page.goto('/?devAuth=1');
+      await page.goto('/app/?devAuth=1');
       await page.waitForLoadState('networkidle');
       await page.waitForFunction(() => !!window.state?.supabaseSession?.access_token, { timeout: 10000 });
 

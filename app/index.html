@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>CountTooling — PDF Takeoff Tool</title>
+  <!-- App shell. noindex — the marketing landing at / owns the public SEO/OG/JSON-LD;
+       this thin app surface shouldn't compete with it. Served at /app/. -->
+  <meta name="robots" content="noindex">
+  <link rel="canonical" href="https://counttooling.com/app/">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+  <!-- PWA: installable + offline (see /sw.js); scoped to /app/. -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#17171a">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CountTooling">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <script src="/config.js"></script>
+  <script>
+    // Local-only dev overrides (e.g. DEV_AUTH_EMAIL / DEV_AUTH_PASSWORD for the
+    // dev-auth bypass). config.local.js is gitignored and only loaded on
+    // localhost, so test credentials never get committed or deployed.
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      document.write('<scr' + 'ipt src="/config.local.js"><\/scr' + 'ipt>');
+    }
+  </script>
+  <!-- Vendored locally (was CDN) so the app is same-origin and fully offline-cacheable. Version-pinned in the filename. -->
+  <script src="/vendor/pdf.min-3.11.174.js"></script>
+  <script defer src="/vendor/pdf-lib-1.17.1.min.js"></script>
+  <script defer src="/vendor/html2canvas-1.4.1.min.js"></script>
+  <script defer src="/vendor/jspdf.umd-2.5.1.min.js"></script>
+  <script src="/vendor/supabase-js-2.108.0.min.js"></script>
+  <script defer src="/vendor/tus-js-client-4.3.1.min.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/icons.js"></script>
+  <script src="/icon-render.js"></script>
+  <script src="/geometry.js"></script>
+  <script src="/line-metrics.js"></script>
+  <script src="/constants.js"></script>
+  <script src="/idb.js"></script>
+  <script src="/format.js"></script>
+  <script src="/save-utils.js"></script>
+</head>
+<body>
+  <script>
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY && String(window.SUPABASE_URL).includes('supabase')) {
+      document.body.classList.add('supabase-enabled');
+    }
+  </script>
+  <div id="globalReloadBanner" class="global-reload-banner" style="display:none;">
+    <span id="globalReloadBannerText">Reload required for update.</span>
+    <button type="button" id="globalReloadBannerReload" class="global-reload-banner-btn">Reload</button>
+    <button type="button" id="globalReloadBannerDismiss" class="global-reload-banner-btn-secondary" aria-label="Dismiss">×</button>
+  </div>
+  <div class="app">
+    <header class="header">
+      <button class="hamburger" id="hamburger" aria-label="Menu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M96 192C96 174.3 110.3 160 128 160L512 160C529.7 160 544 174.3 544 192C544 209.7 529.7 224 512 224L128 224C110.3 224 96 209.7 96 192zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 448C544 465.7 529.7 480 512 480L128 480C110.3 480 96 465.7 96 448C96 430.3 110.3 416 128 416L512 416C529.7 416 544 430.3 544 448z"/></svg></button>
+      <div class="header-tools-scroll">
+      <button type="button" class="logo logo-btn" id="headerLogo" aria-label="Toggle sidebar">CountTooling</button>
+      <span class="divider header-primary-divider"></span>
+      <button id="uploadPdf" class="header-primary-btn">Upload PDF</button>
+      <input type="file" id="pdfInput" accept=".pdf" multiple>
+      <span class="divider header-primary-divider"></span>
+      <span class="header-tools-tight">
+        <button id="setScale" class="sidebar-triggers" title="Set Scale" aria-label="Set Scale">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>
+        </button>
+        <button id="moveBtn" class="sidebar-triggers" title="Move" aria-label="Move">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
+        </button>
+        <button id="measureBtn" class="sidebar-triggers" title="Measure distance" aria-label="Measure">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
+        </button>
+        <button id="highlightBtn" class="sidebar-triggers" title="Highlight" aria-label="Highlight">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg>
+        </button>
+        <button id="multiplyZoneBtn" class="sidebar-triggers" title="Multiply Zone (right-click for settings)" aria-label="Multiply Zone">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM224 128L416 128C433.7 128 448 142.3 448 160L448 192C448 209.7 433.7 224 416 224L224 224C206.3 224 192 209.7 192 192L192 160C192 142.3 206.3 128 224 128zM240 296C240 309.3 229.3 320 216 320C202.7 320 192 309.3 192 296C192 282.7 202.7 272 216 272C229.3 272 240 282.7 240 296zM320 320C306.7 320 296 309.3 296 296C296 282.7 306.7 272 320 272C333.3 272 344 282.7 344 296C344 309.3 333.3 320 320 320zM448 296C448 309.3 437.3 320 424 320C410.7 320 400 309.3 400 296C400 282.7 410.7 272 424 272C437.3 272 448 282.7 448 296zM216 416C202.7 416 192 405.3 192 392C192 378.7 202.7 368 216 368C229.3 368 240 378.7 240 392C240 405.3 229.3 416 216 416zM344 392C344 405.3 333.3 416 320 416C306.7 416 296 405.3 296 392C296 378.7 306.7 368 320 368C333.3 368 344 378.7 344 392zM424 416C410.7 416 400 405.3 400 392C400 378.7 410.7 368 424 368C437.3 368 448 378.7 448 392C448 405.3 437.3 416 424 416zM192 488C192 474.7 202.7 464 216 464L328 464C341.3 464 352 474.7 352 488C352 501.3 341.3 512 328 512L216 512C202.7 512 192 501.3 192 488zM424 464C437.3 464 448 474.7 448 488C448 501.3 437.3 512 424 512C410.7 512 400 501.3 400 488C400 474.7 410.7 464 424 464z"/></svg>
+        </button>
+        <!-- Scale Zone: Font Awesome “scale” glyph, 180° vs Set Scale; https://fontawesome.com/license/free -->
+        <button id="scaleZoneBtn" class="sidebar-triggers" title="Scale Zone (region-specific scale)" aria-label="Scale Zone">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg>
+        </button>
+        <button id="deleteZoneBtn" class="sidebar-triggers" title="Delete area" aria-label="Delete area">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>
+        </button>
+        <button id="noteBtn" class="sidebar-triggers" title="Note" aria-label="Note">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
+        </button>
+        <button id="legendBtn" class="sidebar-triggers" title="Summary legend" aria-label="Legend">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 160zM160 160L160 224L224 224L224 160L160 160zM480 160L288 160L288 224L480 224L480 160zM160 288L160 352L224 352L224 288L160 288zM480 288L288 288L288 352L480 352L480 288zM160 416L160 480L224 480L224 416L160 416zM480 416L288 416L288 480L480 480L480 416z"/></svg>
+        </button>
+          <button id="gridBtn" class="sidebar-triggers" title="Grid overlay" aria-label="Grid">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M480 160L480 288L352 288L352 160L480 160zM480 352L480 480L352 480L352 352L480 352zM288 288L160 288L160 160L288 160L288 288zM160 352L288 352L288 480L160 480L160 352zM160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96z"/></svg>
+        </button>
+        <span class="divider sidebar-triggers"></span>
+        <button id="counterBtn" class="sidebar-triggers" title="Counter (right-click for settings)" aria-label="Counter">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
+        </button>
+        <span id="headerActiveCounter" class="header-active-type"></span>
+        <button id="quickLine" class="sidebar-triggers" title="Quick Line (right-click for Line Type settings)" aria-label="Quick Line">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg>
+        </button>
+        <span id="headerActiveLineType" class="header-active-type"></span>
+        <button id="polylineBtn" class="sidebar-triggers" title="Polyline (right-click for Line Type settings)" aria-label="Polyline">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
+        </button>
+        <button type="button" id="lineTypeSnapToHVHeaderBtn" class="sidebar-triggers sidebar-snap-icon-btn" title="Snap to horizontal/vertical" aria-pressed="false" style="display:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg>
+        </button>
+      </span>
+      <span class="divider sidebar-triggers"></span>
+      <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
+      </div>
+      <span class="spacer"></span>
+      <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
+      <button id="saveStatusBtnHeader" class="header-settings-gear sidebar-triggers supabase-only header-save-status-btn" style="display:none;" aria-label="Save status" title="Save status">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg>
+      </button>
+      <button id="hideMarksBtn" class="header-settings-gear sidebar-triggers consolidated-mobile" style="display:none;" aria-label="Hide marks" aria-pressed="false" title="Hide marks">
+        <svg id="hideMarksIconShow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M320 184C262.7 184 220.6 218 194.4 248.3C174.4 271.4 162 294.1 156.8 304.4C154.3 309.4 151.9 314.1 151.9 320C151.9 325.9 154.2 330.6 156.8 335.6C162 345.9 174.4 368.6 194.4 391.7C220.6 422 262.6 456 320 456C377.4 456 419.4 422 445.6 391.7C465.6 368.6 478 345.9 483.2 335.6C485.7 330.6 488.1 325.9 488.1 320C488.1 314.1 485.8 309.4 483.2 304.4C478 294.1 465.6 271.4 445.6 248.3C419.4 218 377.4 184 320 184zM256 320C256 284.7 284.7 256 320 256C355.3 256 384 284.7 384 320C384 355.3 355.3 384 320 384C284.7 384 256 355.3 256 320z"/></svg>
+        <svg id="hideMarksIconHide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true" style="display:none;"><path fill="currentColor" d="M320 184C262.7 184 220.6 218 194.4 248.3C174.4 271.4 162 294.1 156.8 304.4C154.3 309.4 151.9 314.1 151.9 320C151.9 325.9 154.2 330.6 156.8 335.6C162 345.9 174.4 368.6 194.4 391.7C220.6 422 262.6 456 320 456C377.4 456 419.4 422 445.6 391.7C465.6 368.6 478 345.9 483.2 335.6C485.7 330.6 488.1 325.9 488.1 320C488.1 314.1 485.8 309.4 483.2 304.4C478 294.1 465.6 271.4 445.6 248.3C419.4 218 377.4 184 320 184zM256 320C256 284.7 284.7 256 320 256C355.3 256 384 284.7 384 320C384 355.3 355.3 384 320 384C284.7 384 256 355.3 256 320z"/><path fill="currentColor" d="M108 135L135 108L532 505L505 532Z"/></svg>
+      </button>
+      <button id="headerShareBtn" class="header-settings-gear sidebar-triggers supabase-only consolidated-mobile" aria-label="Share" title="Share">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
+      </button>
+      <button id="copyViewLinkBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Copy view link" title="Copy view link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
+      </button>
+      <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Project Settings" title="Project Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
+      </button>
+      <button id="authBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Sign In</button>
+      <button id="saveProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Name / Upload / Save Project to Cloud</button>
+      <button id="loadProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Load Project from Cloud</button>
+      <button id="manageUsersBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Manage Users</button>
+      <button id="exportBtn" class="header-primary-btn replaced-by-status-bar">Export</button>
+      <button id="importBtn" class="header-primary-btn replaced-by-status-bar">Import</button>
+      <input type="file" id="importInput" accept=".json">
+      <input type="file" id="customIconUploadInput" accept=".svg,image/svg+xml">
+      <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
+      <div class="export-dropdown consolidated-mobile" id="exportDropdown" style="position:relative;display:none;">
+        <button id="exportDropdownBtn" class="header-settings-gear sidebar-triggers" aria-label="Export" title="Export project">
+          <svg id="exportDropdownIconImport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" style="display:none" aria-hidden="true"><path fill="currentColor" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM337 255C327.6 245.6 312.4 245.6 303.1 255L231.1 327C221.7 336.4 221.7 351.6 231.1 360.9C240.5 370.2 255.7 370.3 265 360.9L296 329.9L296 432C296 445.3 306.7 456 320 456C333.3 456 344 445.3 344 432L344 329.9L375 360.9C384.4 370.3 399.6 370.3 408.9 360.9C418.2 351.5 418.3 336.3 408.9 327L336.9 255z"/></svg>
+          <svg id="exportDropdownIconExport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
+        </button>
+        <div class="export-dropdown-menu" id="exportDropdownMenu" style="display:none;">
+          <div id="exportDropdownExportContent">
+            <button type="button" class="export-dropdown-option" data-action="canvas">Export Canvas</button>
+            <button type="button" class="export-dropdown-option" data-action="pdf">Export PDF</button>
+            <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
+            <button type="button" class="export-dropdown-option" data-action="import-canvas">Import Canvas</button>
+          </div>
+        </div>
+      </div>
+      <div class="download-page-dropdown consolidated-mobile" id="downloadCurrentPageDropdown" style="position:relative;display:none;">
+        <button id="downloadCurrentPageBtn" class="header-settings-gear sidebar-triggers" aria-label="Download current page" title="Download current page as marked PDF">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="var(--yellow)" d="M128 128C128 92.7 156.7 64 192 64L405.5 64C422.5 64 438.8 70.7 450.8 82.7L493.3 125.2C505.3 137.2 512 153.5 512 170.5L512 208L128 208L128 128zM64 320C64 284.7 92.7 256 128 256L512 256C547.3 256 576 284.7 576 320L576 416C576 433.7 561.7 448 544 448L512 448L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 448L96 448C78.3 448 64 433.7 64 416L64 320zM192 480L192 512L448 512L448 416L192 416L192 480zM520 336C520 322.7 509.3 312 496 312C482.7 312 472 322.7 472 336C472 349.3 482.7 360 496 360C509.3 360 520 349.3 520 336z"/></svg>
+        </button>
+        <div class="download-page-menu" id="downloadCurrentPageMenu" style="display:none;">
+          <button type="button" class="download-page-option" data-mode="this-canvas">Print Current Page <span class="dl-qual">(Current Canvas)</span></button>
+          <button type="button" class="download-page-option" data-mode="all-canvases">Print All Canvases on Page</button>
+          <button type="button" class="download-page-option" data-mode="all-pages">Print All Plan Pages <span class="dl-qual">(Current Canvas)</span></button>
+          <button type="button" class="download-page-option" data-mode="all-pages-canvases">Print All Pages <span class="dl-qual">(All Canvases)</span></button>
+        </div>
+      </div>
+      <button class="header-burger" id="headerBurger" aria-label="More actions" aria-haspopup="menu" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M96 192C96 174.3 110.3 160 128 160L512 160C529.7 160 544 174.3 544 192C544 209.7 529.7 224 512 224L128 224C110.3 224 96 209.7 96 192zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 448C544 465.7 529.7 480 512 480L128 480C110.3 480 96 465.7 96 448C96 430.3 110.3 416 128 416L512 416C529.7 416 544 430.3 544 448z"/></svg>
+      </button>
+    </header>
+    <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
+      <span>Drag Counters and Lines by their left colors to re-order.</span>
+      <button type="button" id="sidebarReorderFinish" class="sidebar-btn-inline sidebar-reorder-finish-btn">Finish reordering</button>
+    </div>
+    <div class="main">
+      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+      <div class="right-menu-backdrop" id="rightMenuBackdrop"></div>
+      <aside class="right-menu" id="rightMenu" aria-hidden="true">
+        <div class="right-menu-list" id="rightMenuList"></div>
+      </aside>
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <span class="sidebar-logo-title">CountTooling</span>
+          <div class="sidebar-logo-icons supabase-only">
+            <button type="button" class="sidebar-logo-icon" id="sidebarLogoUser" aria-label="User" title="User">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M320 312C386.3 312 440 258.3 440 192C440 125.7 386.3 72 320 72C253.7 72 200 125.7 200 192C200 258.3 253.7 312 320 312zM290.3 368C191.8 368 112 447.8 112 546.3C112 562.7 125.3 576 141.7 576L498.3 576C514.7 576 528 562.7 528 546.3C528 447.8 448.2 368 349.7 368L290.3 368z"/></svg>
+            </button>
+            <button type="button" class="sidebar-logo-icon supabase-only" id="sidebarLogoShare" style="display:none;" aria-label="Share" title="Share">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96zM464 224C464 259.3 435.3 288 400 288C384.6 288 370.5 282.6 359.4 273.5L274.1 320L359.4 366.5C370.4 357.4 384.6 352 400 352C435.3 352 464 380.7 464 416C464 451.3 435.3 480 400 480C364.7 480 336 451.3 336 416C336 413.5 336.1 411.1 336.4 408.7L254.5 364C242.8 376.3 226.3 384 208 384C172.7 384 144 355.3 144 320C144 284.7 172.7 256 208 256C226.3 256 242.8 263.7 254.5 276L336.4 231.3C336.1 228.9 336 226.4 336 224C336 188.7 364.7 160 400 160C435.3 160 464 188.7 464 224z"/></svg>
+            </button>
+            <button type="button" class="sidebar-logo-icon" id="sidebarLogoGear" aria-label="Project Settings" title="Project Settings">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="sidebarCheckoutBanner" class="sidebar-checkout-banner supabase-only"></div>
+        <div class="sidebar-section sidebar-header-buttons">
+          <button id="uploadPdfSidebar" class="sidebar-btn">Upload PDF</button>
+          <button id="setScaleSidebar" class="sidebar-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg> Set Scale</button>
+          <button id="authBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Sign In</button>
+          <button id="settingsSidebarBtn" class="sidebar-btn supabase-only" style="display:none;">Project Settings</button>
+          <button id="saveProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Name / Upload / Save Project to Cloud</button>
+          <button id="loadProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Load Project from Cloud</button>
+          <button id="manageUsersBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Manage Users</button>
+          <button id="exportBtnSidebar" class="sidebar-btn">Export</button>
+          <button id="importBtnSidebar" class="sidebar-btn">Import</button>
+        </div>
+        <div class="sidebar-section sidebar-tool-buttons">
+          <button id="measureBtnSidebar" class="sidebar-btn" title="Measure distance">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
+            Measure
+          </button>
+          <button id="highlightBtnSidebar" class="sidebar-btn" title="Highlight">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg>
+            Highlight
+          </button>
+          <button id="multiplyZoneBtnSidebar" class="sidebar-btn" title="Multiply Zone (right-click for settings)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM224 128L416 128C433.7 128 448 142.3 448 160L448 192C448 209.7 433.7 224 416 224L224 224C206.3 224 192 209.7 192 192L192 160C192 142.3 206.3 128 224 128zM240 296C240 309.3 229.3 320 216 320C202.7 320 192 309.3 192 296C192 282.7 202.7 272 216 272C229.3 272 240 282.7 240 296zM320 320C306.7 320 296 309.3 296 296C296 282.7 306.7 272 320 272C333.3 272 344 282.7 344 296C344 309.3 333.3 320 320 320zM448 296C448 309.3 437.3 320 424 320C410.7 320 400 309.3 400 296C400 282.7 410.7 272 424 272C437.3 272 448 282.7 448 296zM216 416C202.7 416 192 405.3 192 392C192 378.7 202.7 368 216 368C229.3 368 240 378.7 240 392C240 405.3 229.3 416 216 416zM344 392C344 405.3 333.3 416 320 416C306.7 416 296 405.3 296 392C296 378.7 306.7 368 320 368C333.3 368 344 378.7 344 392zM424 416C410.7 416 400 405.3 400 392C400 378.7 410.7 368 424 368C437.3 368 448 378.7 448 392C448 405.3 437.3 416 424 416zM192 488C192 474.7 202.7 464 216 464L328 464C341.3 464 352 474.7 352 488C352 501.3 341.3 512 328 512L216 512C202.7 512 192 501.3 192 488zM424 464C437.3 464 448 474.7 448 488C448 501.3 437.3 512 424 512C410.7 512 400 501.3 400 488C400 474.7 410.7 464 424 464z"/></svg>
+            Multiply
+          </button>
+          <button id="scaleZoneBtnSidebar" class="sidebar-btn" title="Scale Zone (region-specific scale)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg>
+            Scale zone
+          </button>
+          <button id="deleteZoneBtnSidebar" class="sidebar-btn" title="Delete area">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>
+            Delete area
+          </button>
+          <button id="noteBtnSidebar" class="sidebar-btn" title="Note">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg>
+            Note
+          </button>
+          <button id="legendBtnSidebar" class="sidebar-btn" title="Summary legend">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 160zM160 160L160 224L224 224L224 160L160 160zM480 160L288 160L288 224L480 224L480 160zM160 288L160 352L224 352L224 288L160 288zM480 288L288 288L288 352L480 352L480 288zM160 416L160 480L224 480L224 416L160 416zM480 416L288 416L288 480L480 480L480 416z"/></svg>
+            Legend
+          </button>
+          <button id="gridBtnSidebar" class="sidebar-btn" title="Grid overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22"><path fill="currentColor" d="M480 160L480 288L352 288L352 160L480 160zM480 352L480 480L352 480L352 352L480 352zM288 288L160 288L160 160L288 160L288 288zM160 352L288 352L288 480L160 480L160 352zM160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96z"/></svg>
+            Grid
+          </button>
+          <button id="moveBtnSidebar" class="sidebar-btn" title="Move">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg>
+            Move
+          </button>
+          <button id="counterBtnSidebar" class="sidebar-btn" title="Counter (right-click for settings)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>
+            Counter
+          </button>
+          <button id="quickLineSidebar" class="sidebar-btn sidebar-btn-icon-above" title="Quick Line (right-click for Line Type settings)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg>
+            <span class="quick-line-desktop">Quick Line</span><span class="quick-line-mobile">Line</span>
+          </button>
+          <button id="polylineBtnSidebar" class="sidebar-btn" title="Polyline (right-click for Line Type settings)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
+            Polyline
+          </button>
+          <button id="doneEditingSidebar" class="sidebar-btn sidebar-btn-primary" style="display:none;">Done Editing</button>
+        </div>
+        <div class="sidebar-section scale-display-desktop" id="sidebarScaleDisplaySection">
+          <div id="sidebarScaleDisplay" class="sidebar-scale-display"></div>
+        </div>
+        <div class="sidebar-section" id="pagesSection">
+          <h3 id="pagesSectionTitle" class="section-settings" title="Page settings; click arrow to collapse">Pages <span class="collapse-icon" id="pagesCollapseIcon">▼</span></h3>
+          <div id="pagesList"></div>
+        </div>
+        <div class="sidebar-section" id="countersSection">
+          <div class="sidebar-section-header-row">
+            <h3 id="countersSectionTitle" class="section-settings" title="Counter settings">Counters <span class="collapse-icon" id="countersCollapseIcon" title="Click to collapse">▼</span></h3>
+            <button id="addCounter" class="sidebar-btn-inline" title="Add counter">+ Add</button>
+          </div>
+          <div class="sidebar-plum-row">
+            <button id="plumBtn" class="sidebar-btn-inline" title="Quick add counter">PLUM</button>
+          </div>
+          <div class="sidebar-search-row">
+            <input type="text" id="counterSearchInput" placeholder="Search counters..." class="sidebar-search-input">
+            <button type="button" class="sidebar-search-filter-btn" id="counterShowOnlyOnPageInlineBtn" aria-pressed="false" title="Show only counters on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M73.4 73.4C85.9 60.9 106.1 60.9 118.6 73.4L192 146.7L192 128C192 110.3 206.3 96 224 96C241.7 96 256 110.3 256 128L256 224C256 241.7 241.7 256 224 256L128 256C110.3 256 96 241.7 96 224C96 206.3 110.3 192 128 192L146.7 192L73.3 118.6C60.9 106.1 60.9 85.9 73.4 73.4zM264 320C264 289.1 289.1 264 320 264C350.9 264 376 289.1 376 320C376 350.9 350.9 376 320 376C289.1 376 264 350.9 264 320zM566.6 118.6L493.3 192L512 192C529.7 192 544 206.3 544 224C544 241.7 529.7 256 512 256L416 256C398.3 256 384 241.7 384 224L384 128C384 110.3 398.3 96 416 96C433.7 96 448 110.3 448 128L448 146.7L521.4 73.3C533.9 60.8 554.2 60.8 566.7 73.3C579.2 85.8 579.2 106.1 566.7 118.6zM521.3 566.6L448 493.3L448 512C448 529.7 433.7 544 416 544C398.3 544 384 529.7 384 512L384 416C384 398.3 398.3 384 416 384L512 384C529.7 384 544 398.3 544 416C544 433.7 529.7 448 512 448L493.3 448L566.7 521.4C579.2 533.9 579.2 554.2 566.7 566.7C554.2 579.2 533.9 579.2 521.4 566.7zM73.4 521.4L146.7 448L128 448C110.3 448 96 433.7 96 416C96 398.3 110.3 384 128 384L224 384C241.7 384 256 398.3 256 416L256 512C256 529.7 241.7 544 224 544C206.3 544 192 529.7 192 512L192 493.3L118.6 566.7C106.1 579.2 85.8 579.2 73.3 566.7C60.8 554.2 60.8 533.9 73.3 521.4z"/></svg></button>
+          </div>
+          <div id="countersList"></div>
+        </div>
+        <div class="sidebar-section" id="lineTypesSection">
+          <div class="sidebar-section-header-row">
+            <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span></h3>
+            <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
+          </div>
+          <div class="sidebar-plum-row">
+            <button id="plumLineBtn" class="sidebar-btn-inline" title="Quick add line type">PLUM</button>
+          </div>
+          <div class="sidebar-search-row">
+            <input type="text" id="lineTypeSearchInput" placeholder="Search line types..." class="sidebar-search-input">
+            <button type="button" class="sidebar-search-filter-btn" id="lineTypeShowOnlyOnPageInlineBtn" aria-pressed="false" title="Show only line types on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M73.4 73.4C85.9 60.9 106.1 60.9 118.6 73.4L192 146.7L192 128C192 110.3 206.3 96 224 96C241.7 96 256 110.3 256 128L256 224C256 241.7 241.7 256 224 256L128 256C110.3 256 96 241.7 96 224C96 206.3 110.3 192 128 192L146.7 192L73.3 118.6C60.9 106.1 60.9 85.9 73.4 73.4zM264 320C264 289.1 289.1 264 320 264C350.9 264 376 289.1 376 320C376 350.9 350.9 376 320 376C289.1 376 264 350.9 264 320zM566.6 118.6L493.3 192L512 192C529.7 192 544 206.3 544 224C544 241.7 529.7 256 512 256L416 256C398.3 256 384 241.7 384 224L384 128C384 110.3 398.3 96 416 96C433.7 96 448 110.3 448 128L448 146.7L521.4 73.3C533.9 60.8 554.2 60.8 566.7 73.3C579.2 85.8 579.2 106.1 566.7 118.6zM521.3 566.6L448 493.3L448 512C448 529.7 433.7 544 416 544C398.3 544 384 529.7 384 512L384 416C384 398.3 398.3 384 416 384L512 384C529.7 384 544 398.3 544 416C544 433.7 529.7 448 512 448L493.3 448L566.7 521.4C579.2 533.9 579.2 554.2 566.7 566.7C554.2 579.2 533.9 579.2 521.4 566.7zM73.4 521.4L146.7 448L128 448C110.3 448 96 433.7 96 416C96 398.3 110.3 384 128 384L224 384C241.7 384 256 398.3 256 416L256 512C256 529.7 241.7 544 224 544C206.3 544 192 529.7 192 512L192 493.3L118.6 566.7C106.1 579.2 85.8 579.2 73.3 566.7C60.8 554.2 60.8 533.9 73.3 521.4z"/></svg></button>
+          </div>
+          <div id="lineTypesList"></div>
+          <div class="sidebar-section collapsed sidebar-subsection" id="linesSection">
+            <h3 id="linesSectionTitle" class="section-settings" title="Click to expand">Lines <span class="collapse-icon" id="linesCollapseIcon">▶</span></h3>
+            <div class="sidebar-search-row">
+              <input type="text" id="linesSearchInput" placeholder="Search lines..." class="sidebar-search-input">
+              <button type="button" class="sidebar-search-filter-btn" id="linesShowOnlyOnPageBtn" aria-pressed="false" title="Show only lines on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M73.4 73.4C85.9 60.9 106.1 60.9 118.6 73.4L192 146.7L192 128C192 110.3 206.3 96 224 96C241.7 96 256 110.3 256 128L256 224C256 241.7 241.7 256 224 256L128 256C110.3 256 96 241.7 96 224C96 206.3 110.3 192 128 192L146.7 192L73.3 118.6C60.9 106.1 60.9 85.9 73.4 73.4zM264 320C264 289.1 289.1 264 320 264C350.9 264 376 289.1 376 320C376 350.9 350.9 376 320 376C289.1 376 264 350.9 264 320zM566.6 118.6L493.3 192L512 192C529.7 192 544 206.3 544 224C544 241.7 529.7 256 512 256L416 256C398.3 256 384 241.7 384 224L384 128C384 110.3 398.3 96 416 96C433.7 96 448 110.3 448 128L448 146.7L521.4 73.3C533.9 60.8 554.2 60.8 566.7 73.3C579.2 85.8 579.2 106.1 566.7 118.6zM521.3 566.6L448 493.3L448 512C448 529.7 433.7 544 416 544C398.3 544 384 529.7 384 512L384 416C384 398.3 398.3 384 416 384L512 384C529.7 384 544 398.3 544 416C544 433.7 529.7 448 512 448L493.3 448L566.7 521.4C579.2 533.9 579.2 554.2 566.7 566.7C554.2 579.2 533.9 579.2 521.4 566.7zM73.4 521.4L146.7 448L128 448C110.3 448 96 433.7 96 416C96 398.3 110.3 384 128 384L224 384C241.7 384 256 398.3 256 416L256 512C256 529.7 241.7 544 224 544C206.3 544 192 529.7 192 512L192 493.3L118.6 566.7C106.1 579.2 85.8 579.2 73.3 566.7C60.8 554.2 60.8 533.9 73.3 521.4z"/></svg></button>
+            </div>
+            <div id="linesList"></div>
+          </div>
+        </div>
+        <div class="sidebar-section collapsed" id="groupsSection">
+          <div class="sidebar-section-header-row">
+            <h3 id="groupsSectionTitle" class="section-settings" title="Click to expand">Groups <span class="collapse-icon" id="groupsCollapseIcon">▶</span></h3>
+            <button id="addGroup" class="sidebar-btn-inline" title="Add group">+ Add</button>
+          </div>
+          <div id="groupsList"></div>
+          <div id="showGroupColorsLabel" class="form-group">
+            <span style="color:var(--text2);">Show group colors</span>
+            <button type="button" class="toggle-switch" id="showGroupColorsBtn" aria-pressed="false" title="Show group colors">
+              <span class="toggle-switch-knob"></span>
+            </button>
+            <input type="checkbox" id="showGroupColorsCheckbox" hidden>
+          </div>
+        </div>
+        <div class="sidebar-section" id="summarySection">
+          <h3 id="summarySectionTitle" class="section-settings" title="Click to collapse">Summary <span class="collapse-icon" id="summaryCollapseIcon">▼</span></h3>
+          <div id="summaryList"></div>
+        </div>
+        <div class="sidebar-section">
+          <h3 id="exportOptionsSectionTitle" class="section-settings">Export Options</h3>
+          <div class="show-report-dropdown" id="showReportDropdown" style="position:relative;">
+            <button id="printReport" class="sidebar-btn">Show Report</button>
+            <div class="show-report-menu" id="showReportMenu" style="display:none;">
+              <button type="button" class="show-report-option" data-mode="this-canvas">Takeoff Report for this Canvas Only</button>
+              <button type="button" class="show-report-option" data-mode="all-canvases-on-page">Takeoff Report for all Canvases on Page</button>
+              <button type="button" class="show-report-option" data-mode="all-pages-current-canvas">Takeoff Report for all Plan Pages (Current Canvas)</button>
+              <button type="button" class="show-report-option" data-mode="all-pages-canvases">Takeoff Report for all Pages and Canvases</button>
+            </div>
+          </div>
+          <button id="specificPages" class="sidebar-btn">Export PDFs</button>
+          <div class="show-report-dropdown" id="forPipeToolingDropdown" style="position:relative;">
+            <button id="forPipeTooling" class="sidebar-btn sidebar-btn-primary">Copy to /Tooling</button>
+            <div class="show-report-menu" id="forPipeToolingMenu" style="display:none;">
+              <button type="button" class="pipe-tooling-option" data-mode="this-canvas">This Canvas Only</button>
+              <button type="button" class="pipe-tooling-option" data-mode="visible">All Visible Canvases</button>
+              <button type="button" class="pipe-tooling-option" data-mode="all">All Canvases</button>
+            </div>
+          </div>
+          <div class="sidebar-tooling-links">
+            <a href="/" title="CountTooling home">Home</a>
+            <a href="https://pipetooling.com/bids?tab=counts" target="_blank" rel="noopener noreferrer">PipeTooling</a>
+            <a href="https://takeofftooling.com/" target="_blank" rel="noopener noreferrer">TakeoffTooling</a>
+          </div>
+          <div class="show-report-dropdown" id="copySummaryTextDropdown" style="position:relative;">
+            <button id="copySummaryText" class="sidebar-btn">Copy Summary (Email/Text)</button>
+            <div class="show-report-menu" id="copySummaryTextMenu" style="display:none;">
+              <button type="button" class="copy-summary-option" data-mode="this-canvas">This Canvas Only</button>
+              <button type="button" class="copy-summary-option" data-mode="visible">All Visible Canvases</button>
+              <button type="button" class="copy-summary-option" data-mode="all">All Canvases</button>
+            </div>
+          </div>
+          <button id="bundleHighlights" class="sidebar-btn">Show Highlights</button>
+          <button id="bundleNotes" class="sidebar-btn">Show Notes</button>
+        </div>
+        <div class="sidebar-section sidebar-clear-page">
+          <button id="clearPageSidebar" class="sidebar-btn danger">Clear Page</button>
+        </div>
+      </aside>
+      <div class="canvas-area">
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <div class="canvas-container" id="canvasContainer">
+            <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
+            <canvas id="annCanvas" class="ann-canvas"></canvas>
+          </div>
+        </div>
+        <div class="page-zoom-row">
+          <div class="page-nav">
+            <button id="prevMarkedPage" class="page-nav-marked-btn" title="Previous marked page">‹‹</button>
+            <span class="page-nav-inner">
+              <button id="prevPage">‹</button>
+              <span id="pageInfo">Page 0 of 0</span>
+              <button id="nextPage">›</button>
+            </span>
+            <button id="nextMarkedPage" class="page-nav-marked-btn" title="Next marked page">››</button>
+          </div>
+          <div id="canvasSwitcher" class="canvas-switcher">
+            <span id="canvasCurrentName" class="canvas-current-name"></span>
+            <button id="canvasLayersBtn" class="canvas-layers-btn canvas-layers-mobile-only" title="Canvases" aria-label="Canvases">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20"><path fill="currentColor" d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg>
+            </button>
+            <span id="canvasIndexDisplay" class="canvas-index-display"></span>
+            <div id="canvasPills" class="canvas-pills"></div>
+            <button id="addCanvasBtn" class="sidebar-btn-inline" title="Add canvas">+</button>
+          </div>
+          <div class="zoom-bar">
+            <button id="zoomOut">−</button>
+            <span class="zoom-pct" id="zoomPct" title="Click to adjust zoom settings">100%</span>
+            <button id="zoomIn">+</button>
+            <button id="zoomFit" title="Fit">⊡</button>
+            <button id="rotatePage" title="Rotate 90° right">↻</button>
+            <button id="undoBtn" title="Undo" aria-label="Undo" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z"/></svg>
+            </button>
+            <button id="redoBtn" title="Redo" aria-label="Redo" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320zM451.3 331.3L347.3 435.3C342.7 439.9 335.8 441.2 329.9 438.8C324 436.4 320 430.5 320 424L320 368L224 368C206.3 368 192 353.7 192 336L192 304C192 286.3 206.3 272 224 272L320 272L320 216C320 209.5 323.9 203.7 329.9 201.2C335.9 198.7 342.8 200.1 347.3 204.7L451.3 308.7C457.5 314.9 457.5 325.1 451.3 331.3z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="polyline-finish-bar" id="polylineFinishBar">
+          <button id="finishPolyline">Finish</button>
+          <button id="closePolygon">Close Polygon</button>
+        </div>
+        <div id="syncPausedBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
+          <span class="sync-paused-banner-msg">Cloud sync paused - your work is saved locally. Reconnecting...</span>
+          <button type="button" id="syncPausedBannerRetry" class="sync-paused-banner-retry">Retry now</button>
+        </div>
+        <div id="canvasOnlyNeedsPdfBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
+          <span class="sync-paused-banner-msg">This project has saved annotations but no PDF. Choose a PDF to view them.</span>
+          <button type="button" id="canvasOnlyNeedsPdfBannerChoose" class="sync-paused-banner-retry">Choose PDF</button>
+        </div>
+        <div class="status-bar">
+          <span class="status-indicator-group">
+            <span class="dot dot-green" id="statusBarDot"></span>
+            <span id="statusCanvasLabel" class="status-indicator-label"></span>
+          </span>
+          <span class="status-indicator-group supabase-only" id="statusPdfGroup" style="display:none;">
+            <span class="square square-grey" id="statusBarSquare"></span>
+            <span id="statusPdfLabel" class="status-indicator-label"></span>
+          </span>
+          <span id="statusMode">Ready</span>
+          <span id="statusCoords">—</span>
+          <span id="statusTotals" class="status-totals" style="display:none;"></span>
+          <div class="status-bar-actions" id="statusBarActions">
+            <span class="status-bar-link status-bar-desktop-only" id="statusBarMacros">macros</span>
+            <span class="status-bar-sep supabase-only status-bar-desktop-only" id="statusBarMacrosSep">|</span>
+            <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="scaleModal">
+    <div class="modal-card">
+      <h2>Set Scale</h2>
+      <div id="scaleModalTabs" class="counter-modal-tabs">
+        <button class="counter-tab" data-tab="points">Select two points</button>
+        <button class="counter-tab active" data-tab="presets">Architectural & Engineering</button>
+      </div>
+      <div id="scalePointsPanel" class="counter-tab-panel" style="display:none;">
+        <p id="scaleInfo" class="form-group">You selected a line spanning 0 pdf-pts.</p>
+        <div id="scaleLengthInputGroup" style="display:none;">
+          <div class="form-group">
+            <label>Real-world length</label>
+            <input type="text" id="scaleValue" placeholder="e.g. 5'9&quot; or 5.75">
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <select id="scaleUnit">
+              <option value="ft">ft</option>
+              <option value="in">in</option>
+              <option value="m">m</option>
+              <option value="cm">cm</option>
+              <option value="yd">yd</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="scaleSelectOnPdfGroup">
+          <button type="button" class="settings-menu-btn" id="scaleSelectOnPdf">Select on PDF</button>
+        </div>
+        <div class="actions">
+          <button id="scaleCancel">Cancel</button>
+          <button id="scaleSet">Set Scale</button>
+        </div>
+      </div>
+      <div id="scalePresetsPanel" class="counter-tab-panel">
+        <div id="scalePresetsList" class="scale-presets-list"></div>
+        <div class="form-group scale-custom-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <label>Custom scale</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;">
+            <input type="text" id="scaleCustomFraction" placeholder="1/4 or 0.25" style="flex:1;min-width:80px;">
+            <span> inch = </span>
+            <input type="number" id="scaleCustomFeet" placeholder="1" min="0.01" step="0.1" style="flex:1;min-width:60px;">
+            <span> ft</span>
+            <button type="button" id="scaleCustomApply" class="settings-menu-btn">Apply</button>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:16px;">
+          <button id="scalePresetsCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="counterModal">
+    <div class="modal-card">
+      <div class="counter-modal-search-row">
+        <input type="text" id="counterModalSearchInput" placeholder="Search counters..." autocomplete="off">
+      </div>
+      <div class="counter-modal-tabs">
+        <button class="counter-tab active" data-tab="choose">Choose</button>
+        <button class="counter-tab" data-tab="create">Create</button>
+        <button class="counter-tab" data-tab="quickcount" title="Quick (Shift+Q)">Quick<span class="counter-tab-shortcut">⇧Q</span></button>
+      </div>
+      <div id="counterCreatePanel" class="counter-tab-panel" style="display:none;">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="counterName" placeholder="e.g. Water Closet">
+        </div>
+        <div class="form-group">
+          <div class="counter-icon-tabs">
+            <button class="counter-icon-tab active" data-icon-tab="icon">Icon</button>
+            <button class="counter-icon-tab" data-icon-tab="custom">Custom Icons</button>
+          </div>
+          <div id="counterIconSearchGroup" class="counter-icon-search-group" style="display:none;">
+            <label>Search icon</label>
+            <input type="text" id="counterIconSearch" placeholder="Search...">
+          </div>
+          <div id="counterIconPanel" class="counter-icon-panel">
+            <div class="icon-grid" id="counterIconGrid"></div>
+          </div>
+          <div id="counterIconCustomPanel" class="counter-icon-panel" style="display:none;">
+            <label id="counterCustomIconsLabel" style="cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
+            <div class="icon-grid" id="counterIconGridCustom"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-row" id="counterColorRow"></div>
+          <input type="color" id="counterColorCustom" style="width:100%;height:48px;cursor:pointer;margin-top:8px;">
+          <div id="counterColorRecentGroup" style="margin-top:8px;display:none;">
+            <label>Recent</label>
+            <div class="color-row" id="counterColorRecent"></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="counterCancel">Cancel</button>
+          <button id="counterCreate">Create Counter</button>
+        </div>
+      </div>
+      <div id="counterChoosePanel" class="counter-tab-panel">
+        <div id="counterChooseList" class="counter-choose-list"></div>
+        <p id="counterChooseEmpty" class="counter-choose-empty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">Add a counter first using Create Counter.</p>
+        <div class="actions" style="margin-top:16px;">
+          <button id="counterChooseCancel">Cancel</button>
+        </div>
+      </div>
+      <div id="counterQuickCountPanel" class="counter-tab-panel" style="display:none;">
+        <div class="form-group">
+          <div class="plum-name-row sidebar-item">
+            <span id="counterQuickCountIcon" class="icon-svg" aria-hidden="true"></span>
+            <input type="text" id="counterQuickCountName" class="plum-name-input" placeholder="e.g. 1/2&quot; Copper Pipe">
+            <span id="counterQuickCountSwatch" class="swatch" role="button" tabindex="0" title="Change color"></span>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Size</label>
+          <div class="plum-select-btn-row">
+            <select id="counterQuickCountSize"></select>
+            <button type="button" id="counterQuickCountRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
+            <button type="button" id="counterQuickCountAddSize" class="plum-add-btn" title="Add size">+</button>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Type</label>
+          <div class="plum-select-btn-row">
+            <div class="plum-type-icon-box" id="counterQuickCountTypeIconBox" title="Select an icon below, then click to set for this type" role="button" tabindex="0"></div>
+            <select id="counterQuickCountType"></select>
+            <button type="button" id="counterQuickCountRemoveType" class="plum-remove-btn" title="Remove type">−</button>
+            <button type="button" id="counterQuickCountAddType" class="plum-add-btn" title="Add type">+</button>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Material</label>
+          <div class="plum-select-btn-row">
+            <select id="counterQuickCountMaterial"></select>
+            <button type="button" id="counterQuickCountRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
+            <button type="button" id="counterQuickCountAddMaterial" class="plum-add-btn" title="Add material">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="counter-icon-tabs">
+            <button class="counter-icon-tab active" data-counter-quickcount-icon-tab="icon">Icon</button>
+            <button class="counter-icon-tab" data-counter-quickcount-icon-tab="custom">Custom Icons</button>
+          </div>
+          <div id="counterQuickCountIconPanel" class="counter-icon-panel">
+            <div class="icon-grid plum-icon-grid" id="counterQuickCountIconGrid"></div>
+          </div>
+          <div id="counterQuickCountIconCustomPanel" class="counter-icon-panel" style="display:none;">
+            <label id="counterQuickCountCustomIconsLabel" style="cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
+            <div class="icon-grid plum-icon-grid" id="counterQuickCountIconGridCustom"></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="counterQuickCountCancel">Cancel</button>
+          <button type="button" id="counterQuickCountAdd" class="plum-header-add-btn">Add Counter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="plumModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Quick Count</h2>
+        <button type="button" id="plumAdd" class="plum-header-add-btn">Add Counter</button>
+      </div>
+      <div class="form-group">
+        <div class="plum-name-row sidebar-item">
+          <span id="plumNameRowIcon" class="icon-svg" aria-hidden="true"></span>
+          <input type="text" id="plumNamePreview" class="plum-name-input" placeholder="e.g. 1/2&quot; Copper Pipe">
+          <span id="plumNameRowSwatch" class="swatch" role="button" tabindex="0" title="Change color"></span>
+        </div>
+      </div>
+      <div class="form-group plum-modifier-row">
+        <label>Size</label>
+        <div class="plum-select-btn-row">
+          <select id="plumSize"></select>
+          <button type="button" id="plumRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
+          <button type="button" id="plumAddSize" class="plum-add-btn" title="Add size">+</button>
+        </div>
+      </div>
+      <div class="form-group plum-modifier-row">
+        <label>Type</label>
+        <div class="plum-select-btn-row">
+          <div class="plum-type-icon-box" id="plumTypeIconBox" title="Select an icon below, then click to set for this type" role="button" tabindex="0"></div>
+          <select id="plumType"></select>
+          <button type="button" id="plumRemoveType" class="plum-remove-btn" title="Remove type">−</button>
+          <button type="button" id="plumAddType" class="plum-add-btn" title="Add type">+</button>
+        </div>
+      </div>
+      <div class="form-group plum-modifier-row">
+        <label>Material</label>
+        <div class="plum-select-btn-row">
+          <select id="plumMaterial"></select>
+          <button type="button" id="plumRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
+          <button type="button" id="plumAddMaterial" class="plum-add-btn" title="Add material">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="counter-icon-tabs">
+          <button class="counter-icon-tab active" data-plum-icon-tab="icon">Icon</button>
+          <button class="counter-icon-tab" data-plum-icon-tab="custom">Custom Icons</button>
+        </div>
+        <div id="plumIconPanel" class="counter-icon-panel">
+          <div class="icon-grid plum-icon-grid" id="plumIconGrid"></div>
+        </div>
+        <div id="plumIconCustomPanel" class="counter-icon-panel" style="display:none;">
+          <label id="plumCustomIconsLabel" style="cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
+          <div class="icon-grid plum-icon-grid" id="plumIconGridCustom"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="plumCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="lineTypeModal">
+    <div class="modal-card">
+      <h2>Create Line Type</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="lineTypeName" placeholder="e.g. Pipe">
+      </div>
+      <div class="form-group">
+        <label>Display</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="lineTypeCurve" value="straight" checked> Straight
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="lineTypeCurve" value="arc"> Curved
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-row" id="lineTypeColorRow"></div>
+        <input type="color" id="lineTypeColorCustom" style="width:100%;height:48px;cursor:pointer;margin-top:8px;">
+        <div id="lineTypeColorRecentGroup" style="margin-top:8px;display:none;">
+          <label>Recent</label>
+          <div class="color-row" id="lineTypeColorRecent"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="lineTypeCancel">Cancel</button>
+        <button id="lineTypeCreate">Create Line Type</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="polylineModal">
+    <div class="modal-card">
+      <h2>New Polyline</h2>
+      <div class="form-group">
+        <label>Line Type</label>
+        <select id="polylineLineType"></select>
+        <a href="#" id="polylineNewLineType" style="font-size:0.85rem;color:var(--accent);">Create new line type</a>
+      </div>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="polylineName" placeholder="e.g. Main run">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-row" id="polylineColorRow"></div>
+      </div>
+      <div class="actions">
+        <button id="polylineCancel">Cancel</button>
+        <button id="polylineStart">Start Drawing</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="counterSettingsModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Counter Settings</h2>
+        <span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">Reorder Artboard</span>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Only counters with markers on the current page appear in the sidebar">Show only counters on current page</span>
+        <button type="button" class="toggle-switch" id="counterShowOnlyOnPageBtn" aria-pressed="false" title="Show only counters on current page">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="counterShowOnlyOnPage" hidden>
+      </div>
+      <div class="form-group">
+        <label>Icon size: <span id="counterSizeVal">22</span>px</label>
+        <input type="range" id="counterSize" min="12" max="96" value="22" step="2">
+      </div>
+      <div class="form-group">
+        <label>Opacity: <span id="counterOpacityVal">100</span>%</label>
+        <input type="range" id="counterOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="form-group">
+        <label>Outline: <span id="counterOutlineVal">0</span>px</label>
+        <input type="range" id="counterOutline" min="0" max="6" value="0" step="1">
+      </div>
+      <div class="form-group">
+        <label>Number size: <span id="counterNumberSizeVal">10</span>px</label>
+        <input type="range" id="counterNumberSize" min="8" max="32" value="10" step="1">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Show ring around counters</span>
+        <button type="button" class="toggle-switch" id="counterShowRingsBtn" aria-pressed="false" title="Show ring around counters">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="counterShowRings" hidden>
+      </div>
+      <div id="counterRingSection">
+        <div class="form-group counter-ring-options">
+          <label>Ring size: <span id="counterRingSizeVal">100</span>%</label>
+          <input type="range" id="counterRingSize" min="50" max="200" value="100" step="5">
+        </div>
+        <div class="form-group counter-ring-options">
+          <label>Ring opacity: <span id="counterRingOpacityVal">100</span>%</label>
+          <input type="range" id="counterRingOpacity" min="20" max="100" value="100" step="5">
+        </div>
+        <div class="form-group counter-ring-options" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <span>Solid ring</span>
+          <button type="button" class="toggle-switch" id="counterRingSolidBtn" aria-pressed="false" title="Solid ring">
+            <span class="toggle-switch-knob"></span>
+          </button>
+          <input type="checkbox" id="counterRingSolid" hidden>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="counterSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="pageSettingsModal">
+    <div class="modal-card">
+      <h2>Page Settings</h2>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Truncate long titles</span>
+        <button type="button" class="toggle-switch" id="pageSettingsTruncateBtn" aria-pressed="true" title="Truncate long page titles">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="pageSettingsTruncate" checked hidden>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Unmarked pages remain accessible via arrow keys">Hide unmarked pages from sidebar</span>
+        <button type="button" class="toggle-switch" id="pageSettingsHideUnmarkedBtn" aria-pressed="false" title="Hide unmarked pages from sidebar">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="pageSettingsHideUnmarked" hidden>
+      </div>
+      <div class="actions">
+        <button id="pageSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="zoomModal">
+    <div class="modal-card">
+      <h2>Zoom Settings</h2>
+      <div class="form-group">
+        <label>Maximum zoom for this project: <span id="zoomMaxVal">800</span>%</label>
+        <input type="range" id="zoomMax" min="100" max="800" value="800" step="50">
+      </div>
+      <div class="form-group">
+        <label>Mousewheel zoom speed (all projects): <span id="zoomSpeedVal">1.0</span>x</label>
+        <input type="range" id="zoomSpeed" min="50" max="200" value="100" step="10">
+      </div>
+      <div class="actions">
+        <button id="zoomModalClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="lineTypeSettingsModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Line Type Settings</h2>
+        <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">reorder artboard</span>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Only line types with lines on the current page appear in the sidebar">Show only line types on current page</span>
+        <button type="button" class="toggle-switch" id="lineTypeShowOnlyOnPageBtn" aria-pressed="false" title="Show only line types on current page">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="lineTypeShowOnlyOnPage" hidden>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Snap to horizontal/vertical</span>
+        <button type="button" class="toggle-switch" id="lineTypeSnapToHVBtn" aria-pressed="false" title="Constrain lines to horizontal or vertical when placing">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="lineTypeSnapToHV" hidden>
+      </div>
+      <div class="form-group">
+        <label>Line width: <span id="lineTypeSizeVal">2</span>px</label>
+        <input type="range" id="lineTypeSize" min="1" max="8" value="2" step="1">
+      </div>
+      <div class="form-group">
+        <label>Opacity: <span id="lineTypeOpacityVal">100</span>%</label>
+        <input type="range" id="lineTypeOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="line-type-settings-group">
+        <h3 class="line-type-settings-section-header">Line Drop Settings</h3>
+        <div class="form-group">
+          <label>Drop X size: <span id="lineTypeDropXSizeVal">10</span>px</label>
+          <input type="range" id="lineTypeDropXSize" min="4" max="24" value="10" step="1">
+        </div>
+        <div class="form-group">
+          <label>Drop icon</label>
+          <div class="icon-grid icon-grid-drop" id="lineTypeDropIconGrid"></div>
+        </div>
+      </div>
+      <div class="line-type-settings-group">
+        <h3 class="line-type-settings-section-header">Show Length Settings</h3>
+        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <span>Orient length with line direction</span>
+          <button type="button" class="toggle-switch" id="lineTypeOrientLengthBtn" aria-pressed="true" title="Rotate length label to align with line">
+            <span class="toggle-switch-knob"></span>
+          </button>
+          <input type="checkbox" id="lineTypeOrientLength" checked hidden>
+        </div>
+        <div class="form-group">
+          <label>Parallel ends: <span id="lineTypeParallelEndsVal">10</span>px</label>
+          <input type="range" id="lineTypeParallelEnds" min="4" max="64" value="10" step="1">
+        </div>
+        <div class="form-group">
+          <label>Length label size: <span id="lineTypeLengthLabelVal">12</span>px</label>
+          <input type="range" id="lineTypeLengthLabel" min="8" max="24" value="12" step="1">
+        </div>
+      </div>
+      <div class="actions">
+        <button id="lineTypeSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="legendSettingsModal">
+    <div class="modal-card">
+      <h2>Summary Legend</h2>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Show border</span>
+        <button type="button" class="toggle-switch" id="legendShowBorderBtn" aria-pressed="true" title="Show border around legend">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="legendShowBorder" checked hidden>
+      </div>
+      <div class="form-group">
+        <label>Background color</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="color" id="legendBgColor" value="#ffffff" style="width:48px;height:32px;cursor:pointer;padding:0;border:1px solid var(--border);border-radius:4px;">
+          <span id="legendBgColorHex" style="font-family:monospace;font-size:0.9rem;color:var(--text2);">#ffffff</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Background opacity: <span id="legendBgOpacityVal">100</span>%</label>
+        <input type="range" id="legendBgOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="form-group">
+        <label>Text opacity: <span id="legendTextOpacityVal">100</span>%</label>
+        <input type="range" id="legendTextOpacity" min="20" max="100" value="100" step="5">
+      </div>
+      <div class="form-group">
+        <label>Legend size: <span id="legendScaleVal">100</span>%</label>
+        <input type="range" id="legendScale" min="50" max="400" value="100" step="5">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Show a highlight over the resize grip area">Highlight resize area</span>
+        <button type="button" class="toggle-switch" id="legendShowResizeHighlightBtn" aria-pressed="false" title="Highlight resize area">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="legendShowResizeHighlight" hidden>
+      </div>
+      <div class="actions">
+        <button id="legendSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="multiplyZoneSettingsModal">
+    <div class="modal-card">
+      <h2>Multiply Zone Settings</h2>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Show label on zones</span>
+        <button type="button" class="toggle-switch" id="multiplyZoneSettingsShowLabelBtn" aria-pressed="true" title="Show multiplier label on zones">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="multiplyZoneSettingsShowLabel" checked hidden>
+      </div>
+      <div class="form-group">
+        <label for="multiplyZoneSettingsDefaultMult">Default multiplier</label>
+        <input type="number" id="multiplyZoneSettingsDefaultMult" min="1" value="2">
+      </div>
+      <div class="form-group">
+        <label>Label size: <span id="multiplyZoneSettingsLabelSizeVal">14</span></label>
+        <input type="range" id="multiplyZoneSettingsLabelSize" min="8" max="24" value="14" step="1">
+      </div>
+      <div class="form-group">
+        <label for="multiplyZoneSettingsLabelPosition">Label position</label>
+        <select id="multiplyZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+          <option value="center">Center</option>
+          <option value="top-left">Top-left</option>
+          <option value="top-right">Top-right</option>
+          <option value="bottom-left">Bottom-left</option>
+          <option value="bottom-right">Bottom-right</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button id="multiplyZoneSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="gridSettingsModal">
+    <div class="modal-card">
+      <h2>Grid overlay</h2>
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+          <label for="gridSpacingValue" style="margin:0;">Space between lines</label>
+          <div style="display:flex;gap:16px;">
+          <button type="button" class="gridSpacingPreset" data-spacing="10" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">10ft</button>
+          <button type="button" class="gridSpacingPreset" data-spacing="3" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">3ft</button>
+          <button type="button" class="gridSpacingPreset" data-spacing="1" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">1ft</button>
+        </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <input type="text" id="gridSpacingValue" placeholder="e.g. 3 or 1'-0&quot;" style="flex:1;min-width:0;">
+          <select id="gridSpacingUnit" style="flex:1;min-width:0;">
+            <option value="ft">ft</option>
+            <option value="in">in</option>
+            <option value="m">m</option>
+            <option value="cm">cm</option>
+            <option value="yd">yd</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-origin-snap-row">
+        <div style="flex:1;min-width:0;">
+          <div class="form-group" id="gridOriginDisplay" style="display:none;">
+            <label style="display:none;">Origin</label>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span id="gridOriginText" style="display:none;color:var(--text2);">—</span>
+              <button type="button" class="settings-menu-btn" id="gridClearOrigin">Origin set, click to reset</button>
+            </div>
+          </div>
+          <div class="form-group" id="gridSetOriginFormGroup">
+            <button type="button" class="settings-menu-btn" id="gridSetOriginOnPage">Set origin on page (optional)</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <span style="display:block;margin-bottom:4px;">Snap counters</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span>to grid</span>
+            <button type="button" class="toggle-switch" id="gridSnapToGridBtn" aria-pressed="false" title="Snap counters to grid">
+              <span class="toggle-switch-knob"></span>
+            </button>
+            <input type="checkbox" id="gridSnapToGrid" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="grid-major-color-row">
+        <div class="form-group">
+          <label>Line color</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" id="gridColor" value="#e8c547" style="width:48px;height:32px;cursor:pointer;padding:0;border:1px solid var(--border);border-radius:4px;">
+            <span id="gridColorHex" style="font-family:monospace;font-size:0.9rem;color:var(--text2);">#e8c547</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Major line every N lines</label>
+          <input type="number" id="gridMajorInterval" min="0" placeholder="none">
+        </div>
+      </div>
+      <div class="grid-opacity-width-row">
+        <div class="form-group">
+          <label>Line opacity: <span id="gridOpacityVal">35</span>%</label>
+          <input type="range" id="gridOpacity" min="10" max="100" value="35" step="5">
+        </div>
+        <div class="form-group">
+          <label>Line width: <span id="gridLineWidthVal">1</span> px</label>
+          <input type="range" id="gridLineWidth" min="0.5" max="3" value="1" step="0.25">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Line style</label>
+        <div class="grid-line-style-options" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <button type="button" class="grid-line-style-opt" data-style="solid" title="Solid">
+            <svg width="60" height="14" viewBox="0 0 60 14"><line x1="4" y1="7" x2="56" y2="7" stroke="currentColor" stroke-width="2"/></svg>
+            <span>Solid</span>
+          </button>
+          <button type="button" class="grid-line-style-opt" data-style="dashed" title="Dashed">
+            <svg width="60" height="14" viewBox="0 0 60 14"><line x1="4" y1="7" x2="56" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4"/></svg>
+            <span>Dashed</span>
+          </button>
+          <button type="button" class="grid-line-style-opt" data-style="dotted" title="Dotted">
+            <svg width="60" height="14" viewBox="0 0 60 14"><line x1="4" y1="7" x2="56" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray="2 2"/></svg>
+            <span>Dotted</span>
+          </button>
+        </div>
+        <input type="hidden" id="gridLineStyle" value="solid">
+      </div>
+      <div class="actions">
+        <button id="gridSettingsCancel">Cancel</button>
+        <button id="gridSettingsApply">Apply</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="specificPagesModal">
+    <div class="modal-card modal-card-large">
+      <h2>Export PDFs</h2>
+      <p class="form-group specific-pages-intro" style="color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
+      <div class="specific-pages-scale-row">
+        <div class="form-group">
+          <label>Marker size: <span id="specificPagesMarkerScaleVal">75</span>%</label>
+          <input type="range" id="specificPagesMarkerScale" min="25" max="150" value="75" step="5">
+        </div>
+        <div class="form-group">
+          <label>Line width: <span id="specificPagesLineScaleVal">75</span>%</label>
+          <input type="range" id="specificPagesLineScale" min="25" max="150" value="75" step="5">
+        </div>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <span>Include takeoff report<span id="specificPagesIncludeReportNone" class="specific-pages-none-msg"></span></span>
+        <button type="button" class="toggle-switch" id="specificPagesIncludeReportBtn" aria-pressed="true" title="Include takeoff report">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="specificPagesIncludeReport" checked hidden>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <span>Bundle highlights to PDF<span id="specificPagesBundleHighlightsNone" class="specific-pages-none-msg"></span></span>
+        <button type="button" class="toggle-switch" id="specificPagesBundleHighlightsBtn" aria-pressed="true" title="Bundle highlights to PDF">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="specificPagesBundleHighlights" checked hidden>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <span>Bundle notes to PDF<span id="specificPagesBundleNotesNone" class="specific-pages-none-msg"></span></span>
+        <button type="button" class="toggle-switch" id="specificPagesBundleNotesBtn" aria-pressed="true" title="Bundle notes to PDF">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="specificPagesBundleNotes" checked hidden>
+      </div>
+      <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
+      <div class="specific-pages-bulk-actions">
+        <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
+        <button type="button" id="specificPagesAllUnmarked" class="bulk-unmarked">All Not Marked Up</button>
+        <button type="button" id="specificPagesAllExclude" class="bulk-exclude">Exclude All</button>
+        <button type="button" id="specificPagesAllCanvases" class="bulk-all-canvases">All Canvases with Marks</button>
+      </div>
+      <div class="specific-pages-carousel">
+        <button type="button" class="specific-pages-nav specific-pages-nav-prev" aria-label="Previous pages" title="Previous pages">‹</button>
+        <div id="specificPagesGrid" class="specific-pages-grid"></div>
+        <button type="button" class="specific-pages-nav specific-pages-nav-next" aria-label="Next pages" title="Next pages">›</button>
+      </div>
+      <div class="actions">
+        <button id="specificPagesCancel">Cancel</button>
+        <button id="specificPagesDownload">Download</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="lineColorModal">
+    <div class="modal-card">
+      <h2>Choose Color</h2>
+      <div class="form-group">
+        <label>Presets</label>
+        <div class="color-row" id="lineColorPresets"></div>
+      </div>
+      <div class="form-group">
+        <label>Choose color</label>
+        <input type="color" id="lineColorCustom" style="width:100%;height:48px;cursor:pointer;">
+      </div>
+      <div class="form-group" id="lineColorRecentGroup">
+        <label>Recent</label>
+        <div class="color-row" id="lineColorRecent"></div>
+      </div>
+      <div class="actions">
+        <button id="lineColorCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="setScaleFirstModal">
+    <div class="modal-card modal-card-toast">
+      <p id="setScaleFirstText" style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="outOfBoundsModal">
+    <div class="modal-card modal-card-toast">
+      <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="pipeToolingCopiedModal">
+    <div class="modal-card modal-card-toast">
+      <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="importCanvasAfterPdfModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Import canvas</h2>
+        <button type="button" class="modal-close-btn" id="importCanvasAfterPdfModalClose" aria-label="Close">×</button>
+      </div>
+      <p style="margin:0 0 1rem;font-size:0.95rem;color:var(--text2);">PDF loaded. Choose a canvas export (.json) to apply annotations.</p>
+      <div class="actions">
+        <button type="button" id="importCanvasAfterPdfCancel">Cancel</button>
+        <button type="button" class="btn-yellow" id="importCanvasAfterPdfChoose">Choose canvas file…</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="airboardToastModal">
+    <div class="modal-card modal-card-toast">
+      <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="macrosModal">
+    <div class="modal-card macros-modal-card">
+      <div class="modal-card-header">
+        <h2>Keyboard Shortcuts</h2>
+        <button type="button" class="modal-close-btn" id="macrosModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="macros-modal-body">
+        <table class="macros-table">
+          <tr><th></th><th>Key</th><th>Action</th></tr>
+          <tr><td colspan="3" class="macros-section-header">Navigation</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">◀</span></td><td><kbd title="Left arrow">←</kbd></td><td>Previous page</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">▶</span></td><td><kbd title="Right arrow">→</kbd></td><td>Next page</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↕</span></td><td><kbd title="Up arrow">↑</kbd> <kbd title="Down arrow">↓</kbd></td><td>Switch canvas (when multiple canvases)</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">◀</span></td><td><kbd>Shift</kbd>+<kbd>←</kbd></td><td>Previous marked page</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">▶</span></td><td><kbd>Shift</kbd>+<kbd>→</kbd></td><td>Next marked page</td></tr>
+          <tr><td colspan="3" class="macros-section-header">Tools</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M342.6 73.4C330.1 60.9 309.8 60.9 297.3 73.4L233.3 137.4C224.1 146.6 221.4 160.3 226.4 172.3C231.4 184.3 243.1 192 256 192L288 192L288 288L192 288L192 256C192 243.1 184.2 231.4 172.2 226.4C160.2 221.4 146.5 224.2 137.3 233.3L73.3 297.3C60.8 309.8 60.8 330.1 73.3 342.6L137.3 406.6C146.5 415.8 160.2 418.5 172.2 413.5C184.2 408.5 192 396.9 192 384L192 352L288 352L288 448L256 448C243.1 448 231.4 455.8 226.4 467.8C221.4 479.8 224.2 493.5 233.3 502.7L297.3 566.7C309.8 579.2 330.1 579.2 342.6 566.7L406.6 502.7C415.8 493.5 418.5 479.8 413.5 467.8C408.5 455.8 396.9 448 384 448L352 448L352 352L448 352L448 384C448 396.9 455.8 408.6 467.8 413.6C479.8 418.6 493.5 415.8 502.7 406.7L566.7 342.7C579.2 330.2 579.2 309.9 566.7 297.4L502.7 233.4C493.5 224.2 479.8 221.5 467.8 226.5C455.8 231.5 448 243.1 448 256L448 288L352 288L352 192L384 192C396.9 192 408.6 184.2 413.6 172.2C418.6 160.2 415.8 146.5 406.7 137.3L342.7 73.3z"/></svg></td><td><kbd>M</kbd></td><td>Move mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg></td><td><kbd>S</kbd></td><td>Set Scale</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg></td><td><kbd>C</kbd></td><td>Counter mode</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Shift</kbd>+<kbd>Q</kbd></td><td>Quick tab (when Counter or Line Type modal open)</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg></td><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg></td><td><kbd>J</kbd></td><td>Toggle snap to horizontal/vertical</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg></td><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg></td><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↻</span></td><td><kbd>R</kbd></td><td>Rotate page</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg></td><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
+          <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">×</span></td><td><kbd>X</kbd></td><td>Multiply Zone mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg></td><td>—</td><td>Scale Zone (rotated Scale icon in header/sidebar)</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg></td><td><kbd>N</kbd></td><td>Note mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320zM451.3 331.3L347.3 435.3C342.7 439.9 335.8 441.2 329.9 438.8C324 436.4 320 430.5 320 424L320 368L224 368C206.3 368 192 353.7 192 336L192 304C192 286.3 206.3 272 224 272L320 272L320 216C320 209.5 323.9 203.7 329.9 201.2C335.9 198.7 342.8 200.1 347.3 204.7L451.3 308.7C457.5 314.9 457.5 325.1 451.3 331.3z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Refresh</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Space</kbd></td><td>Toggle sidebar (desktop)</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Esc</kbd></td><td>Close modal / Cancel</td></tr>
+          <tr><td class="macros-icon-cell"></td><td><kbd>Enter</kbd></td><td>Finish polyline / Exit edit mode</td></tr>
+        </table>
+        <div class="macros-scroll-hint-wrap">
+          <p class="macros-scroll-hint">Scroll for more</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="customIconTipsModal">
+    <div class="modal-card" style="max-width:420px;">
+      <h2>Custom Icon Tips</h2>
+      <p style="color:var(--text2);font-size:0.95rem;line-height:1.5;margin:0 0 16px 0;">What makes a great icon for upload:</p>
+      <ul style="margin:0 0 16px 0;padding-left:20px;color:var(--text2);font-size:0.9rem;line-height:1.6;">
+        <li><strong>Simple shapes</strong> — Icons are shown small; clear outlines work best</li>
+        <li><strong>Single color</strong> — Your icon is tinted by the counter color</li>
+        <li><strong>Path-based SVG</strong> — Use path, rect, circle, ellipse, or line elements</li>
+        <li><strong>Avoid transforms</strong> — Rotate or scale in your editor before export</li>
+        <li><strong>Square viewBox</strong> — e.g. 0 0 24 24 or 0 0 64 64</li>
+      </ul>
+      <div class="actions">
+        <button id="customIconTipsClose">Got it</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="chooseLineTypeModal">
+    <div class="modal-card">
+      <div class="counter-modal-search-row">
+        <input type="text" id="lineTypeModalSearchInput" placeholder="Search line types..." autocomplete="off">
+      </div>
+      <div class="line-type-modal-tabs">
+        <button class="line-type-tab active" data-tab="choose">Choose</button>
+        <button class="line-type-tab" data-tab="create">Create</button>
+        <button class="line-type-tab" data-tab="quick" title="Quick (Shift+Q)">Quick<span class="counter-tab-shortcut">⇧Q</span></button>
+      </div>
+      <div id="chooseLineTypePanel" class="line-type-tab-panel">
+        <p class="form-group" style="margin-bottom:12px;color:var(--text2);">Choose a line type for Quick Line:</p>
+        <div id="chooseLineTypeList" class="choose-line-type-list"></div>
+        <p id="chooseLineTypeEmpty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">Add a line type first using <strong>Create</strong> or <strong>Quick</strong>.</p>
+        <div class="actions" style="margin-top:16px;">
+          <button id="chooseLineTypeCancel">Cancel</button>
+        </div>
+      </div>
+      <div id="createLineTypePanel" class="line-type-tab-panel" style="display:none;">
+        <h2>Create Line Type</h2>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="createLineTypeName" placeholder="e.g. Pipe">
+        </div>
+        <div class="form-group">
+          <label>Display</label>
+          <div style="display:flex;gap:16px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="createLineTypeCurve" value="straight" checked> Straight
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="createLineTypeCurve" value="arc"> Curved
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-row" id="createLineTypeColorRow"></div>
+          <input type="color" id="createLineTypeColorCustom" style="width:100%;height:48px;cursor:pointer;margin-top:8px;">
+          <div id="createLineTypeColorRecentGroup" style="margin-top:8px;display:none;">
+            <label>Recent</label>
+            <div class="color-row" id="createLineTypeColorRecent"></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="createLineTypeCancel">Cancel</button>
+          <button id="createLineTypeCreate">Create Line Type</button>
+        </div>
+      </div>
+      <div id="chooseLineTypeQuickPanel" class="line-type-tab-panel" style="display:none;">
+        <div class="form-group">
+          <div class="plum-name-row sidebar-item">
+            <input type="text" id="quickLineName" class="plum-name-input" placeholder="e.g. 1/2&quot; PEX">
+            <span id="quickLineSwatch" class="swatch" role="button" tabindex="0" title="Change color"></span>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Size</label>
+          <div class="plum-select-btn-row">
+            <select id="quickLineSize"></select>
+            <button type="button" id="quickLineRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
+            <button type="button" id="quickLineAddSize" class="plum-add-btn" title="Add size">+</button>
+          </div>
+        </div>
+        <div class="form-group plum-modifier-row">
+          <label>Material</label>
+          <div class="plum-select-btn-row">
+            <select id="quickLineMaterial"></select>
+            <button type="button" id="quickLineRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
+            <button type="button" id="quickLineAddMaterial" class="plum-add-btn" title="Add material">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Display</label>
+          <div style="display:flex;gap:16px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="quickLineCurve" value="straight" checked> Straight
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="quickLineCurve" value="arc"> Curved
+            </label>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="quickLineCancel">Cancel</button>
+          <button type="button" id="quickLineAdd" class="plum-header-add-btn">Add Line Type</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal-card">
+      <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 id="noteModalTitle">Add Note</h2>
+        <span id="noteModalColorSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;flex-shrink:0;" title="Note color"></span>
+      </div>
+      <div class="form-group">
+        <textarea id="noteModalText" rows="5" placeholder="Enter note text..."></textarea>
+      </div>
+      <div class="actions">
+        <button id="noteModalCancel">Cancel</button>
+        <button id="noteModalDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="multiplyZoneModal">
+    <div class="modal-card">
+      <h2>Multiply Zone</h2>
+      <p id="multiplyZonePreview" class="form-group" style="margin-bottom:12px;color:var(--text2);">In this area: 0 counter(s), 0 line run(s) (0 ft)</p>
+      <div class="form-group">
+        <label>Enter multiplier</label>
+        <input type="number" id="multiplyZoneMultiplier" min="1" step="1" value="2" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="actions">
+        <button id="multiplyZoneCancel">Cancel</button>
+        <button id="multiplyZoneApply">Apply</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deleteZoneModal">
+    <div class="modal-card">
+      <h2>Delete in this area?</h2>
+      <p id="deleteZonePreview" class="form-group" style="margin-bottom:12px;color:var(--text2);"></p>
+      <div class="actions">
+        <button id="deleteZoneCancel">Cancel</button>
+        <button id="deleteZoneConfirm" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="linePropertiesModal">
+    <div class="modal-card">
+      <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Line Properties</h2>
+        <span id="linePropertiesSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
+      </div>
+      <p id="linePropertiesLineType" style="margin:0 0 12px 0;font-size:0.9rem;color:var(--text2);line-height:1.35;text-align:center;"></p>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="linePropertiesName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group">
+        <label>Start drop</label>
+        <input type="number" id="linePropertiesStartDrop" min="0" step="1" placeholder="0" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" id="linePropertiesStartDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
+          <button type="button" id="linePropertiesStartDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
+          <button type="button" id="linePropertiesStartDropMinus10" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 10">-10</button>
+          <button type="button" id="linePropertiesStartDropMinus1" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 1">-1</button>
+          <button type="button" id="linePropertiesClearStartDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear start drop">Clear</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>End drop</label>
+        <input type="number" id="linePropertiesEndDrop" min="0" step="1" placeholder="0" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" id="linePropertiesEndDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
+          <button type="button" id="linePropertiesEndDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
+          <button type="button" id="linePropertiesEndDropMinus10" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 10">-10</button>
+          <button type="button" id="linePropertiesEndDropMinus1" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 1">-1</button>
+          <button type="button" id="linePropertiesClearEndDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear end drop">Clear</button>
+        </div>
+      </div>
+      <div class="form-group" id="linePropertiesEditVerticesGroup" style="display:none;">
+        <button type="button" id="linePropertiesEditVertices" class="settings-menu-btn">Edit vertices</button>
+      </div>
+      <div class="actions">
+        <button id="linePropertiesClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="clearPageConfirmModal">
+    <div class="modal-card">
+      <h2>Clear Page</h2>
+      <p id="clearPageConfirmMessage" style="margin:0 0 24px 0;color:var(--text2);">Are you sure?</p>
+      <div class="actions">
+        <button id="clearPageCancel">Cancel</button>
+        <button id="clearPageConfirm" class="danger">Clear Page</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deletePageConfirmModal">
+    <div class="modal-card">
+      <h2>Delete Page</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Are you sure you want to delete:</p>
+      <p id="deletePageName" style="margin:0 0 16px 0;font-weight:500;"></p>
+      <p style="margin:0 0 24px 0;color:var(--text2);">All annotations will be lost and you will have to re-upload the page to add it back without annotations.</p>
+      <div class="actions">
+        <button id="deletePageCancel">Cancel</button>
+        <button id="deletePageConfirm" class="danger">Delete Page</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="counterLineTypeDetailsModal">
+    <div class="modal-card">
+      <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 id="counterLineTypeDetailsTitle">Counter / Line</h2>
+        <span id="counterLineTypeDetailsSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
+      </div>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="counterLineTypeDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group" id="counterLineTypeDetailsIconGroup" style="display:none;">
+        <label>Icon</label>
+        <div class="icon-grid" id="counterLineTypeDetailsIconGrid"></div>
+        <div id="counterLineTypeDetailsCustomIconsGroup">
+          <label id="counterLineTypeDetailsCustomIconsLabel" style="display:block;margin-top:12px;cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
+          <div class="icon-grid" id="counterLineTypeDetailsIconGridCustom"></div>
+        </div>
+      </div>
+      <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
+        <label>Display</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="counterLineTypeDetailsCurve" value="straight"> Straight
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="counterLineTypeDetailsCurve" value="arc"> Curved
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>On pages</label>
+        <div id="counterLineTypeDetailsPages" class="counter-line-type-pages-list"></div>
+      </div>
+      <div class="actions">
+        <button id="counterLineTypeDetailsDelete" class="danger">Delete</button>
+        <button id="counterLineTypeDetailsClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deleteCounterLineTypeConfirmModal">
+    <div class="modal-card">
+      <h2>Delete <span id="deleteCounterLineTypeName"></span>?</h2>
+      <p id="deleteCounterLineTypeMessage" style="margin:0 0 24px 0;color:var(--text2);"></p>
+      <div class="actions">
+        <button id="deleteCounterLineTypeCancel">Cancel</button>
+        <button id="deleteCounterLineTypeConfirm" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal-card">
+      <h2 id="groupModalTitle">Add Group</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="groupModalName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div id="groupModalColorRow" class="color-row"></div>
+      </div>
+      <div class="actions">
+        <button id="groupModalDelete" class="danger" style="display:none;">Delete</button>
+        <button id="groupModalCancel">Cancel</button>
+        <button id="groupModalDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="groupAssignModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Assign to group</h2>
+        <button type="button" id="groupAssignAddGroup" style="background:none;border:none;color:var(--accent);font-size:0.9rem;cursor:pointer;padding:4px 8px;margin:-4px -4px -4px 8px;border-radius:4px;">+ Add group</button>
+      </div>
+      <div class="form-group">
+        <label>Group</label>
+        <div id="groupAssignButtons" class="group-assign-buttons"></div>
+      </div>
+      <div class="actions">
+        <button id="groupAssignCancel">Cancel</button>
+        <button id="groupAssignDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2 id="settingsTitle">Project Settings</h2>
+        <button type="button" class="modal-close-btn" id="settingsModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="settings-menu">
+        <button type="button" class="settings-menu-btn btn-yellow" id="settingsSaveProject">Name / Upload / Save Project to Cloud</button>
+        <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add additional PDF pages</button>
+        <button type="button" class="settings-menu-btn" id="settingsDownloadPdf" style="display:none;">Download PDF</button>
+        <div class="settings-close-checkout-row" style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;">
+          <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
+          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;align-self:stretch;">Check out Project</button>
+          <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;align-self:stretch;">Force turn-in (admin)</button>
+        </div>
+        <div id="settingsCheckoutSection" class="settings-checkout-section" style="display:none;">
+          <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <p id="settingsCheckoutStatus" class="settings-checkout-status" style="margin:0;font-size:0.9rem;color:var(--text2);flex:1;min-width:0;"></p>
+            <button type="button" class="save-status-bell-btn" id="saveStatusBtn" style="display:none;" aria-label="Save status" title="Save status"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg></button>
+            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Turn In Project</button>
+          </div>
+        </div>
+        <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
+        <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
+        <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
+        <div class="settings-menu-links-row">
+          <span class="settings-menu-link" id="settingsMacros">macros</span>
+          <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
+        </div>
+        <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="saveStatusModal" style="z-index:210;">
+    <div class="modal-card" style="width:96vw;max-width:820px;">
+      <div class="modal-card-header">
+        <h2>Save Status</h2>
+        <button type="button" class="modal-close-btn" id="saveStatusModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="save-status-modal-body" style="padding:0 1rem 1rem;">
+        <div id="saveStatusExpiredCallout" class="save-status-expired-callout" style="display:none;">
+          <div class="save-status-expired-callout-title">Edit session expired</div>
+          <div class="save-status-expired-callout-body">Your edits are safe locally but won't sync until you re-check out.</div>
+          <div class="save-status-expired-callout-actions">
+            <button type="button" id="saveStatusExpiredRecheckout" class="btn-yellow">Re-check out and save</button>
+            <button type="button" id="saveStatusExpiredExport">Export local backup</button>
+          </div>
+        </div>
+        <div id="saveStatusSummaryCanvas" class="save-status-summary-block">
+          <span class="save-status-summary-icon dot dot-grey"></span>
+          <span class="save-status-summary-label">Canvas</span>
+          <span class="save-status-summary-sep" aria-hidden="true">|</span>
+          <span class="save-status-summary-body"></span>
+          <span class="save-status-summary-ago"></span>
+        </div>
+        <div id="saveStatusSummaryPdf" class="save-status-summary-block">
+          <span class="save-status-summary-icon square square-grey"></span>
+          <span class="save-status-summary-label">PDF</span>
+          <span class="save-status-summary-sep" aria-hidden="true">|</span>
+          <span class="save-status-summary-body"></span>
+          <span class="save-status-summary-ago"></span>
+        </div>
+        <h3 id="saveStatusActivityHeading" style="font-size:0.9rem;margin:4px 0 8px;color:var(--text2);font-weight:600;">Activity (last 5 minutes)</h3>
+        <div id="saveStatusEventList" class="save-status-event-list"></div>
+      </div>
+      <div class="actions">
+        <label class="save-status-verbose-toggle" style="margin-right:auto;font-size:0.9rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="saveStatusVerboseToggle" /> Verbose mode
+        </label>
+        <button type="button" id="saveStatusCopyBtn">Copy logs</button>
+        <button type="button" id="saveStatusExportBtn">Export logs</button>
+        <button type="button" id="saveStatusModalDone">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="settingsAdvancedModal" style="z-index:210;">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Advanced</h2>
+        <button type="button" class="modal-close-btn" id="settingsAdvancedModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="settings-menu">
+        <button type="button" class="settings-menu-btn" id="advancedLoadTestPdf" style="display:none;">Load test PDF</button>
+        <button type="button" class="settings-menu-btn" id="advancedManageIcons">Manage Icons</button>
+        <button type="button" class="settings-menu-btn btn-yellow" id="advancedExport">Export Canvas</button>
+        <button type="button" class="settings-menu-btn btn-yellow" id="advancedExportPdf" style="display:none;">Export PDF</button>
+        <button type="button" class="settings-menu-btn" id="advancedImport">Import Canvas</button>
+        <button type="button" class="settings-menu-btn" id="advancedCanvasRepair" style="display:none;">Canvas Repair</button>
+        <button type="button" class="settings-menu-btn danger" id="advancedEmptyCacheReload" title="Clear app cache and reload the page">Empty cache and hard reload</button>
+        <button type="button" class="settings-menu-btn danger" id="advancedGlobalForceReload" style="display:none;" title="Force a hard reload on every signed-in user">Global force reload (admin)</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="canvasRepairModal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-card-header">
+        <h2>Canvas Repair</h2>
+        <button type="button" class="modal-close-btn" id="canvasRepairModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Reassign annotations to PDF pages and fix rotation when the canvas is on the wrong page or rotated incorrectly.</p>
+      <div class="form-group" style="max-height:50vh;overflow-y:auto;">
+        <table class="canvas-repair-table" id="canvasRepairTable">
+          <thead>
+            <tr><th>PDF Page</th><th>Annotations from</th><th>Rotation</th></tr>
+          </thead>
+          <tbody id="canvasRepairBody"></tbody>
+        </table>
+      </div>
+      <div class="form-group">
+        <button type="button" class="settings-menu-btn" id="canvasRepairResetRotations">Reset all rotations to 0°</button>
+      </div>
+      <div class="actions">
+        <button type="button" id="canvasRepairCancel">Cancel</button>
+        <button type="button" id="canvasRepairApply">Apply</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="manageIconsModal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-card-header">
+        <h2>Manage Icons</h2>
+        <button type="button" class="modal-close-btn" id="manageIconsModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Edit display names for each icon. These names appear in reports and when creating counters.</p>
+      <div id="manageIconsList" class="manage-icons-list"></div>
+      <div id="manageIconsCustomSection" class="manage-icons-custom-section" style="display:none;">
+        <h3>Custom icons (uploaded)</h3>
+        <div id="manageIconsCustomList" class="manage-icons-list"></div>
+        <div class="manage-icons-custom-actions">
+          <button type="button" id="manageIconsEditToggle" class="manage-icons-btn manage-icons-btn-edit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="currentColor" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7z"/></svg>
+            <span>Edit</span>
+          </button>
+          <button type="button" id="manageIconsDeleteSelected" class="manage-icons-btn manage-icons-btn-delete danger" style="display:none;" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>
+            <span>Delete selected</span>
+          </button>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="manageIconsCancel">Cancel</button>
+        <button type="button" id="manageIconsSave">Save</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="mySettingsModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>User Settings</h2>
+        <button type="button" class="modal-close-btn" id="mySettingsModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <p id="mySettingsEmail" class="form-group" style="margin:0;font-weight:500;"></p>
+      </div>
+      <div class="form-group supabase-only">
+        <button type="button" class="settings-menu-btn" id="mySettingsMyActivity">My Activity</button>
+      </div>
+      <div class="form-group settings-password-section collapsed" id="mySettingsPasswordSection">
+        <h3 class="settings-advanced-header" id="mySettingsPasswordHeader" title="Click to expand">Password <span class="collapse-icon" id="mySettingsPasswordCollapseIcon">▶</span></h3>
+        <div class="settings-password-content">
+          <form id="mySettingsPasswordForm">
+            <input type="text" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
+            <div class="form-group">
+              <label>New password</label>
+              <input type="password" id="mySettingsNewPassword" placeholder="New password" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label>Confirm new password</label>
+              <input type="password" id="mySettingsConfirmPassword" placeholder="Confirm" autocomplete="new-password">
+            </div>
+            <p id="mySettingsPasswordError" class="form-group" style="color:var(--red);display:none;"></p>
+            <p id="mySettingsPasswordSuccess" class="form-group" style="color:var(--green);display:none;"></p>
+            <div class="actions">
+              <button type="submit" id="mySettingsChangePassword">Change Password</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="form-group" id="mySettingsManageUsersSection" style="display:none;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="settings-menu-btn" id="mySettingsManageUsers">Add User</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsManageUser">Manage User</button>
+          <button type="button" class="settings-menu-btn" id="mySettingsAllUsers">All Users</button>
+        </div>
+      </div>
+      <div class="form-group supabase-only settings-artboard-section collapsed" id="mySettingsAirboardSection">
+        <h3 class="settings-advanced-header" id="mySettingsAirboardHeader" title="Click to expand">Artboard <span class="collapse-icon" id="mySettingsAirboardCollapseIcon">▶</span></h3>
+        <div class="settings-artboard-content">
+          <p class="form-group" style="margin:0 0 8px 0;color:var(--text2);font-size:0.9rem;">Save your counters and line types to your account. They will be restored when you sign in on any device.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Artboard</button>
+            <button type="button" class="settings-menu-btn" id="mySettingsLoadAirboard">Load from Cloud</button>
+            <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Artboard</button>
+            <button type="button" class="settings-menu-btn danger" id="mySettingsClearAirboard">Clear Artboard</button>
+          </div>
+          <p id="mySettingsAirboardStatus" class="form-group" style="margin:8px 0 0 0;font-size:0.85rem;color:var(--text3);"></p>
+        </div>
+      </div>
+      <div class="form-group">
+        <button type="button" class="settings-menu-btn danger" id="mySettingsSignOut">Sign Out</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card">
+      <h2>Sign In</h2>
+      <form id="authForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+        </div>
+        <p id="authError" class="form-group" style="color:var(--red);display:none;"></p>
+        <div class="actions">
+          <button type="button" id="authCancel">Cancel</button>
+          <button type="submit" id="authSignIn">Sign In</button>
+        </div>
+        <p id="authDevBypassWrap" class="form-group" style="display:none;margin-top:12px;">
+          <button type="button" id="authDevBypass" class="settings-menu-link" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:0.9rem;">Sign in as test user</button>
+        </p>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="adminPanelModal">
+    <div class="modal-card">
+      <h2>Manage Users</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Create new user accounts. Share the password with the user. To list or delete users, use Supabase Dashboard.</p>
+      <form id="adminCreateForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="adminCreateEmail" placeholder="user@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="adminCreatePassword" placeholder="Temporary password" autocomplete="new-password">
+        </div>
+        <p id="adminCreateError" class="form-group" style="color:var(--red);display:none;"></p>
+        <p id="adminCreateSuccess" class="form-group" style="color:var(--green);display:none;"></p>
+        <div class="actions">
+          <button type="button" id="adminPanelClose">Close</button>
+          <button type="submit" id="adminCreateUser">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="manageUserModal">
+    <div class="modal-card modal-card-large user-list-modal">
+      <div class="manage-users-modal-header">
+        <h2>Manage Users</h2>
+        <button type="button" id="manageUserModalAllActivityBtn" class="manage-users-header-activity-btn" aria-label="View activity for all users"></button>
+      </div>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Select a user to delete. You cannot delete yourself.</p>
+      <div id="manageUserList" class="settings-users-list" style="max-height:64vh;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="manageUserModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deleteUserConfirmModal">
+    <div class="modal-card">
+      <h2>Delete User</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Delete:</p>
+      <p id="deleteUserName" style="margin:0 0 8px 0;font-weight:500;"></p>
+      <p id="deleteUserCountNote" style="margin:0 0 16px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;color:var(--text);">
+          <input type="radio" name="deleteUserMode" value="delete" checked style="width:auto;padding:0;background:none;border:none;"> Delete this user's projects too
+        </label>
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;color:var(--text);">
+          <input type="radio" name="deleteUserMode" value="reassign" style="width:auto;padding:0;background:none;border:none;"> Reassign their projects to another user
+        </label>
+      </div>
+      <div class="form-group" id="deleteUserReassignGroup" style="display:none;margin-left:24px;">
+        <label>Reassign to</label>
+        <select id="deleteUserReassignSelect"></select>
+      </div>
+      <p id="deleteUserError" style="color:var(--red);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+      <div class="actions">
+        <button type="button" id="deleteUserCancel">Cancel</button>
+        <button type="button" id="deleteUserConfirmBtn" class="danger">Delete User</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="transferProjectsModal">
+    <div class="modal-card">
+      <h2>Transfer Projects</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Move all projects owned by:</p>
+      <p id="transferFromName" style="margin:0 0 8px 0;font-weight:500;"></p>
+      <p id="transferCountNote" style="margin:0 0 16px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div class="form-group">
+        <label>Transfer to</label>
+        <select id="transferToSelect"></select>
+      </div>
+      <p id="transferError" style="color:var(--red);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+      <div class="actions">
+        <button type="button" id="transferCancel">Cancel</button>
+        <button type="button" id="transferConfirmBtn">Transfer</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="setPasswordModal">
+    <div class="modal-card">
+      <h2>Set Password</h2>
+      <p style="margin:0 0 8px 0;color:var(--text2);">Set a new password for:</p>
+      <p id="setPasswordUserName" style="margin:0 0 16px 0;font-weight:500;"></p>
+      <form id="setPasswordForm">
+        <input type="text" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
+        <div class="form-group">
+          <label>New password</label>
+          <input type="password" id="setPasswordNew" placeholder="New password" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Confirm new password</label>
+          <input type="password" id="setPasswordConfirm" placeholder="Confirm" autocomplete="new-password">
+        </div>
+        <p id="setPasswordError" style="color:var(--red);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+        <p id="setPasswordSuccess" style="color:var(--green);display:none;margin:0 0 12px 0;font-size:0.9rem;"></p>
+        <div class="actions">
+          <button type="button" id="setPasswordCancel">Close</button>
+          <button type="submit" id="setPasswordConfirmBtn">Set Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-overlay" id="userProjectsModal">
+    <div class="modal-card modal-card-large">
+      <h2>Projects</h2>
+      <p id="userProjectsSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div id="userProjectsList" class="settings-users-list" style="max-height:60vh;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="userProjectsClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="allUsersModal">
+    <div class="modal-card modal-card-large user-list-modal">
+      <h2>All Users</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">All users in the system.</p>
+      <div id="allUsersList" class="settings-users-list" style="max-height:60vh;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="allUsersModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="userActivityModal">
+    <div class="modal-card modal-card-large">
+      <div class="user-activity-modal-header">
+        <h2 id="userActivityModalTitle">User activity</h2>
+        <div id="userActivityModalViewToggle" class="user-activity-view-toggle user-activity-view-toggle-hidden" role="group" aria-label="View mode">
+          <button type="button" id="userActivityViewEventsBtn" class="user-activity-view-btn" aria-pressed="true">Events</button>
+          <button type="button" id="userActivityViewSummaryBtn" class="user-activity-view-btn" aria-pressed="false">Summary</button>
+        </div>
+      </div>
+      <p class="form-group" id="userActivityModalSubtitle" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;"></p>
+      <div id="userActivityToolbar" class="user-activity-toolbar user-activity-toolbar-hidden">
+        <div class="user-activity-toolbar-row">
+          <div class="form-group user-activity-toolbar-field">
+            <label for="userActivityUserSelect">User</label>
+            <select id="userActivityUserSelect" aria-describedby="userActivityUserListHint"></select>
+          </div>
+          <div class="form-group user-activity-toolbar-field user-activity-toolbar-filter">
+            <label for="userActivityFilterInput">Filter</label>
+            <div class="user-activity-filter-wrap">
+              <input type="search" id="userActivityFilterInput" placeholder="Filter by email or event…" autocomplete="off">
+              <button type="button" id="userActivityFilterClear" class="user-activity-filter-clear">Clear</button>
+            </div>
+          </div>
+        </div>
+        <p id="userActivityUserListHint" class="form-group" style="display:none;margin:8px 0 0;font-size:0.8rem;color:var(--text3);"></p>
+      </div>
+      <div id="userActivityList" class="settings-users-list" style="max-height:55vh;overflow-y:auto;font-size:0.85rem;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="userActivityModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="userActivityOverviewModal">
+    <div class="modal-card modal-card-large">
+      <h2>User activity</h2>
+      <p id="uaoSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
+      <div id="uaoBody" style="max-height:64vh;overflow-y:auto;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="uaoClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="manageProjectsModal">
+    <div class="modal-card modal-card-large">
+      <h2>Manage Projects</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">View and delete projects. Deletion removes the project and its stored PDF.</p>
+      <div id="manageProjectsList" class="settings-users-list"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button type="button" id="manageProjectsModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="saveProjectModal">
+    <div class="modal-card">
+      <h2>Name / Upload / Save Project to Cloud</h2>
+      <div class="form-group">
+        <label>Project name</label>
+        <input type="text" id="saveProjectName" placeholder="Untitled">
+      </div>
+      <div class="form-group" id="saveProjectWhatWillBeSaved">
+        <label class="save-contents-label" id="saveProjectContentsLabel">Contents</label>
+        <div class="save-contents-list" id="saveProjectContentsList">
+          <div class="save-contents-row save-contents-fixed">
+            <span class="save-contents-name">Canvas</span>
+            <span class="save-contents-badge">included</span>
+          </div>
+          <div class="save-contents-row save-contents-toggle" id="saveProjectIncludePdfLabel">
+            <span class="save-contents-name">PDF (<span id="saveProjectPdfSize">0.00</span> MB)</span>
+            <button type="button" class="toggle-switch" id="saveProjectIncludePdfBtn" aria-pressed="true" title="Include PDF in save">
+              <span class="toggle-switch-knob"></span>
+            </button>
+            <input type="checkbox" id="saveProjectIncludePdf" checked hidden>
+          </div>
+        </div>
+        <p id="saveProjectNoPdfMessage" class="save-contents-no-pdf">Canvas only. Upload a PDF first to include it in saves.</p>
+      </div>
+      <p id="saveProjectError" class="form-group" style="color:var(--red);display:none;"></p>
+      <div id="saveProjectProgress" class="save-project-progress" style="display:none;">
+        <ul id="saveProjectChecklist"></ul>
+      </div>
+      <div class="actions">
+        <button type="button" id="saveProjectCancel">Cancel</button>
+        <button type="button" id="saveProjectDo">Save</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="loadProjectModal">
+    <div class="modal-card modal-card-fullscreen">
+      <div class="load-project-modal-header">
+        <h2>Load Project from Cloud</h2>
+        <span id="loadProjectAdvancedWrap" class="load-project-advanced-wrap" style="display:none;">
+          <span class="load-project-advanced-label">Advanced</span>
+          <button type="button" class="toggle-switch" id="loadProjectAdvancedToggle" aria-pressed="false" title="Show access controls">
+            <span class="toggle-switch-knob"></span>
+          </button>
+        </span>
+      </div>
+      <p class="form-group load-project-modal-intro">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
+      <div id="loadProjectFilters" class="load-project-filters form-group" style="display:none;">
+        <div class="load-project-filters-top">
+          <input type="search" id="loadProjectFilterSearch" placeholder="Search by name…" autocomplete="off" aria-label="Search projects by name" class="load-project-filter-search" />
+          <button type="button" id="loadProjectFiltersToggle" class="load-project-filters-toggle" aria-expanded="true" aria-controls="loadProjectFiltersExtra">Filters</button>
+        </div>
+        <div id="loadProjectFiltersExtra" class="load-project-filters-extra">
+          <select id="loadProjectFilterOwnership" class="load-project-filter-select" aria-label="Filter by ownership">
+            <option value="">All projects</option>
+            <option value="mine">Mine</option>
+            <option value="shared">Shared with me</option>
+          </select>
+          <select id="loadProjectFilterRole" class="load-project-filter-select" aria-label="Filter by my access role">
+            <option value="">All roles</option>
+            <option value="owner">Owner</option>
+            <option value="editor">Editor</option>
+            <option value="viewer">Viewer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <span id="loadProjectFilterOwnerWrap" class="load-project-filter-owner-wrap" style="display:none;">
+            <select id="loadProjectFilterOwnerEmail" class="load-project-filter-select" aria-label="Filter by project owner"></select>
+          </span>
+        </div>
+      </div>
+      <div id="loadProjectList" class="form-group"></div>
+      <p id="loadProjectEmpty" class="form-group" style="color:var(--text2);display:none;">No projects yet. Save your first project to get started.</p>
+      <div class="actions">
+        <button id="loadProjectCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="copyProjectModal">
+    <div class="modal-card">
+      <h2>Copy project</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Opens a local working copy. Save to cloud from Project Settings when you are ready.</p>
+      <div class="form-group">
+        <label for="copyProjectNameInput">Project name</label>
+        <input type="text" id="copyProjectNameInput" placeholder="Untitled" autocomplete="off" style="width:100%;box-sizing:border-box;padding:8px 12px;font-size:1rem;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+      </div>
+      <div class="actions">
+        <button type="button" id="copyProjectModalCancel">Cancel</button>
+        <button type="button" class="btn-yellow" id="copyProjectModalConfirm">Open copy</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="summaryCountDetailModal">
+    <div class="modal-card modal-card-summary-detail">
+      <div class="modal-card-header">
+        <h2 id="summaryCountDetailTitle">Count by Page</h2>
+        <button type="button" class="modal-close-btn" id="summaryCountDetailClose" aria-label="Close">×</button>
+      </div>
+      <div id="summaryCountDetailList" class="form-group" style="max-height:60vh;overflow-y:auto;"></div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="shareProjectModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Share Project</h2>
+        <button type="button" class="modal-close-btn" id="shareProjectModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Add users by email. Viewers can view only; editors can check out to edit.</p>
+      <div id="shareProjectList" class="form-group" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div class="form-group">
+        <label>Select user</label>
+        <select id="shareProjectUserSelect" style="width:100%;padding:8px 12px;font-size:1rem;box-sizing:border-box;margin-bottom:12px;">
+          <option value="">Select a user...</option>
+        </select>
+        <div style="display:flex;gap:8px;align-items:stretch;">
+          <div style="flex:1;">
+            <label>Role</label>
+            <select id="shareProjectRole" style="width:100%;padding:8px 12px;font-size:1rem;box-sizing:border-box;">
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+            </select>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <label style="visibility:hidden;pointer-events:none;">Add</label>
+            <button type="button" class="settings-menu-btn btn-yellow" id="shareProjectAdd" style="min-width:0;text-align:center;padding:8px 12px;">Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" id="shareViewLinksSection" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px;" id="shareViewLinksHeader">
+          <h3 style="font-size:1rem;margin:0;">View links</h3>
+          <span id="shareViewLinksCollapseIcon">▶</span>
+        </div>
+        <div id="shareViewLinksContent" class="collapsed">
+          <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (clickplumbing.com) to view.</p>
+          <button type="button" class="settings-menu-btn btn-yellow" id="shareViewLinkCreate" style="margin-bottom:12px;">Create view link</button>
+          <div id="shareViewLinksList" style="max-height:160px;overflow-y:auto;"></div>
+        </div>
+      </div>
+      <p id="shareProjectError" class="form-group" style="color:var(--red);display:none;"></p>
+    </div>
+  </div>
+  <div class="modal-overlay" id="saveBeforeLoadModal">
+    <div class="modal-card">
+      <h2>Unsaved Changes</h2>
+      <p style="margin:0 0 24px 0;color:var(--text2);">You have unsaved changes. Save before loading another project?</p>
+      <div class="actions">
+        <button id="saveBeforeLoadCancel">Cancel</button>
+        <button id="saveBeforeLoadDiscard">Don't Save</button>
+        <button id="saveBeforeLoadSave">Save now</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="checkoutExpiredRecoveryModal" style="z-index:220;">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-card-header">
+        <h2 id="checkoutExpiredRecoveryTitle">Edit session expired</h2>
+        <button type="button" class="modal-close-btn" id="checkoutExpiredRecoveryClose" aria-label="Close">×</button>
+      </div>
+      <div style="padding:0 1rem 1rem;">
+        <p id="checkoutExpiredRecoveryBody" style="margin:0 0 12px 0;color:var(--text2);">Your edit session expired while idle. Your edits are still safe in this browser. Re-check out to save them to the cloud.</p>
+        <p id="checkoutExpiredRecoveryAge" style="margin:0 0 16px 0;color:var(--text2);font-size:0.85rem;font-style:italic;display:none;"></p>
+        <p id="checkoutExpiredRecoveryError" style="margin:0 0 16px 0;color:var(--red);font-size:0.9rem;display:none;"></p>
+      </div>
+      <div class="actions" style="flex-wrap:wrap;gap:8px;">
+        <button type="button" id="checkoutExpiredRecoveryDiscard" class="danger" style="margin-right:auto;">Discard local edits and reload</button>
+        <button type="button" id="checkoutExpiredRecoveryCancel">Cancel</button>
+        <button type="button" id="checkoutExpiredRecoveryExport">Export local backup</button>
+        <button type="button" id="checkoutExpiredRecoveryRecheckout" class="btn-yellow">Re-check out and save</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="lastSessionRestoreModal">
+    <div class="modal-card">
+      <h2>Project from Last Session</h2>
+      <p id="lastSessionRestoreMessage" style="margin:0 0 24px 0;color:var(--text2);">You have a project from your last session. What would you like to do?</p>
+      <div class="actions">
+        <button id="lastSessionRestoreKeep">Keep and Open</button>
+        <button id="lastSessionRestoreDiscard" class="danger">Discard</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="loadAnnotationsModal">
+    <div class="modal-card">
+      <h2>Load Annotations</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">You have saved annotations for this PDF. Load them?</p>
+      <div id="loadAnnotationsList" class="form-group" style="max-height:200px;overflow-y:auto;"></div>
+      <div class="actions">
+        <button id="loadAnnotationsSkip">Skip</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="canvasOnlyNeedsPdfModal">
+    <div class="modal-card">
+      <h2 id="canvasOnlyNeedsPdfTitle">This project has annotations but no PDF</h2>
+      <p class="form-group" id="canvasOnlyNeedsPdfBody" style="margin-bottom:16px;color:var(--text2);font-size:0.95rem;line-height:1.4;">
+        Choose a PDF to view the saved counters, lines, and notes. The PDF will be attached to this project the next time you save.
+      </p>
+      <div class="actions">
+        <button id="canvasOnlyNeedsPdfSkip">Skip for now</button>
+        <button id="canvasOnlyNeedsPdfChoose" class="btn-yellow">Choose PDF...</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="preparePdfModal">
+    <div class="modal-card" style="max-width:520px;">
+      <h2 id="preparePdfTitle">Prepare PDF for Cloud</h2>
+      <p class="form-group" id="preparePdfDescription" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
+      <div class="form-group prepare-pdf-name-row" id="preparePdfNameRow">
+        <div class="prepare-pdf-name-tabs">
+          <span class="prepare-pdf-name-tab active" id="preparePdfProjectTab" data-mode="project">Project name</span>
+          <span class="prepare-pdf-name-tab" id="preparePdfPageTab" data-mode="page">&gt; Page Name</span>
+        </div>
+        <input type="text" id="preparePdfName" placeholder="Untitled" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="form-group">
+        <label id="preparePdfPageLabel">Page 1 of 1</label>
+        <div id="preparePdfPreviewWrap" style="max-height:400px;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;min-height:200px;">
+          <canvas id="preparePdfCanvas"></canvas>
+        </div>
+      </div>
+      <div class="form-group prepare-pdf-controls">
+        <div class="prepare-pdf-nav">
+          <button type="button" id="preparePdfPrev">‹ Prev</button>
+          <button type="button" id="preparePdfNext">Next ›</button>
+        </div>
+        <div class="prepare-pdf-actions-row">
+          <button type="button" id="preparePdfDelete" class="prepare-pdf-delete">Delete</button>
+          <button type="button" id="preparePdfRotate" class="prepare-pdf-rotate" title="Rotate 90°">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M545.7 304.1C528.1 302.9 512.8 316.1 511.5 333.8C508.2 380.8 487.9 423.2 456.7 454.8L425 423C418.1 416.1 407.8 414.1 398.8 417.8C389.8 421.5 384 430.3 384 440L384 552C384 565.3 394.7 576 408 576L520 576C529.7 576 538.5 570.2 542.2 561.2C545.9 552.2 543.9 541.9 537 535L502 500C543.7 457.8 570.9 401.2 575.4 338.2C576.6 320.6 563.4 305.3 545.7 304zM103 105L138 140C96.3 182.2 69.1 238.8 64.6 301.8C63.4 319.4 76.6 334.7 94.3 336C112 337.3 127.2 324 128.5 306.3C131.8 259.3 152.1 216.9 183.3 185.3L215 217C221.9 223.9 232.2 225.9 241.2 222.2C250.2 218.5 256 209.7 256 200L256 88C256 74.7 245.3 64 232 64L120 64C110.3 64 101.5 69.8 97.8 78.8C94.1 87.8 96.2 98.1 103 105zM304 94.3C302.8 111.9 316 127.2 333.7 128.5C380.7 131.8 423.1 152.1 454.7 183.3L423 215C416.1 221.9 414.1 232.2 417.8 241.2C421.5 250.2 430.3 256 440 256L552 256C565.3 256 576 245.3 576 232L576 120C576 110.3 570.2 101.5 561.2 97.8C552.2 94.1 541.9 96.2 535 103L500 138C457.8 96.3 401.2 69.1 338.2 64.6C320.6 63.4 305.3 76.6 304 94.3zM105 537L140 502C182.2 543.7 238.8 570.9 301.8 575.4C319.4 576.6 334.7 563.4 336 545.7C337.3 528 324 512.8 306.3 511.5C259.3 508.2 216.9 487.9 185.3 456.7L217 425C223.9 418.1 225.9 407.8 222.2 398.8C218.5 389.8 209.7 384 200 384L88 384C74.7 384 64 394.7 64 408L64 520C64 529.7 69.8 538.5 78.8 542.2C87.8 545.9 98.1 543.8 105 537z"/></svg>
+            Rotate
+          </button>
+          <button type="button" id="preparePdfUndo" class="prepare-pdf-undo" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M88 256L232 256C241.7 256 250.5 250.2 254.2 241.2C257.9 232.2 255.9 221.9 249 215L202.3 168.3C277.6 109.7 386.6 115 455.8 184.2C530.8 259.2 530.8 380.7 455.8 455.7C380.8 530.7 259.3 530.7 184.3 455.7C174.1 445.5 165.3 434.4 157.9 422.7C148.4 407.8 128.6 403.4 113.7 412.9C98.8 422.4 94.4 442.2 103.9 457.1C113.7 472.7 125.4 487.5 139 501C239 601 401 601 501 501C601 401 601 239 501 139C406.8 44.7 257.3 39.3 156.7 122.8L105 71C98.1 64.2 87.8 62.1 78.8 65.8C69.8 69.5 64 78.3 64 88L64 232C64 245.3 74.7 256 88 256z"/></svg>
+            Undo
+          </button>
+        </div>
+      </div>
+      <div class="actions prepare-pdf-actions">
+        <div class="prepare-pdf-actions-left">
+          <button type="button" id="preparePdfCancel">Cancel</button>
+          <button type="button" id="preparePdfDone">Open</button>
+          <button type="button" id="preparePdfSaveAndOpen" class="btn-yellow">Save and Open</button>
+        </div>
+        <div class="prepare-pdf-actions-right">
+          <button type="button" id="preparePdfDownload">Download Trimmed PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="viewLinkEmailModal">
+    <div class="modal-card">
+      <h2>View Plans</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Enter your email to view these plans.</p>
+      <div class="form-group">
+        <input type="email" id="viewLinkEmailInput" placeholder="you@clickplumbing.com" style="width:100%;min-width:240px;padding:8px 12px;font-size:1rem;box-sizing:border-box;margin-bottom:12px;">
+      </div>
+      <p id="viewLinkEmailError" class="form-group" style="color:var(--red);display:none;"></p>
+      <div class="actions">
+        <button type="button" id="viewLinkEmailCancel">Cancel</button>
+        <button type="button" id="viewLinkEmailSubmit" class="btn-yellow">Continue</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="addCanvasModal">
+    <div class="modal-card">
+      <h2>Add Canvas</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Choose the type of canvas to add.</p>
+      <div class="form-group" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <button type="button" id="addCanvasModalNew" class="group-assign-btn add-canvas-mode-btn">New empty layer</button>
+        <button type="button" id="addCanvasModalDuplicate" class="group-assign-btn add-canvas-mode-btn">Duplicate current layer</button>
+      </div>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="addCanvasModalName" placeholder="Layer 2">
+      </div>
+      <div class="actions">
+        <button type="button" id="addCanvasModalCancel">Cancel</button>
+        <button type="button" id="addCanvasModalCreate" class="btn-yellow">Create</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="canvasDetailsModal">
+    <div class="modal-card">
+      <h2>Edit Layer</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="canvasDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="actions">
+        <button type="button" id="canvasDetailsDelete" class="danger">Delete</button>
+        <button type="button" id="canvasDetailsClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="deleteCanvasConfirmModal">
+    <div class="modal-card">
+      <h2>Delete <span id="deleteCanvasName"></span>?</h2>
+      <p id="deleteCanvasMessage" style="margin:0 0 24px 0;color:var(--text2);">This canvas and its annotations will be removed. This cannot be undone.</p>
+      <div class="actions">
+        <button id="deleteCanvasCancel">Cancel</button>
+        <button id="deleteCanvasConfirm" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+  <div class="canvas-menu" id="canvasMenu">
+    <div id="canvasMenuList"></div>
+    <button type="button" id="canvasMenuAdd" class="canvas-menu-add">+ Add canvas</button>
+  </div>
+  <div class="zoom-overlay" id="zoomOverlay">
+    <button type="button" id="zoomOverlayMinus" class="zoom-overlay-btn" title="Zoom out" aria-label="Zoom out">−</button>
+    <button type="button" id="zoomOverlayPlus" class="zoom-overlay-btn" title="Zoom in" aria-label="Zoom in">+</button>
+  </div>
+  <div class="context-menu" id="contextMenu">
+    <button id="ctxEdit" style="display:none;">Edit</button>
+    <button id="ctxLineProperties" style="display:none;">Line Properties<span class="context-menu-subtitle">[color, name, drops]</span></button>
+    <button id="ctxShowLength" style="display:none;">Show Length</button>
+    <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
+    <button id="ctxEditMultiplyZone" style="display:none;">Edit multiplier</button>
+    <button id="ctxEditScaleZone" style="display:none;">Edit scale</button>
+    <button class="danger" id="ctxDelete">Delete</button>
+    <div id="ctxTargetNameRow" class="context-menu-target-name" aria-hidden="true"></div>
+  </div>
+  <script src="/app.js"></script>
+  <script src="/features/canvas-repair.js"></script>
+  <script src="/features/note.js"></script>
+  <script src="/features/zoom.js"></script>
+  <script src="/features/manage-icons.js"></script>
+  <script src="/features/multiply-zone-settings.js"></script>
+  <script src="/features/export-pdfs.js"></script>
+  <script src="/features/legend-settings.js"></script>
+  <script src="/features/page-settings.js"></script>
+  <script src="/features/counter-settings.js"></script>
+  <script src="/features/line-type-settings.js"></script>
+  <script src="/features/choose-create-line-type.js"></script>
+  <script src="/features/scale.js"></script>
+  <script src="/features/groups.js"></script>
+  <script src="/features/grid.js"></script>
+  <script src="/features/quick-line.js"></script>
+  <script src="/features/counter.js"></script>
+  <script src="/features/save-status.js"></script>
+  <script src="/features/manage-projects.js"></script>
+  <script src="/features/user-admin.js"></script>
+  <script src="/features/load-project.js"></script>
+  <script src="/features/prepare-pdf.js"></script>
+  <script src="/features/quick-modals.js"></script>
+  <script src="/features/pdf-bundle.js"></script>
+  <script src="/report.js"></script>
+</body>
+</html>

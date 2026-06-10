@@ -17,7 +17,7 @@ test.describe('Load Project delete own projects', () => {
       return;
     }
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
 
     // Wait for app to load
     await page.waitForLoadState('networkidle');

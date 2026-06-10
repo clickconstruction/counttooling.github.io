@@ -23,7 +23,7 @@ test.describe('Desktop header overflow → compact mode', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.setViewportSize({ width: 820, height: 820 }); // desktop (>768px) but narrow
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
 
@@ -50,7 +50,7 @@ test.describe('Desktop header overflow → compact mode', () => {
 
   test('wide desktop stays normal: no burger, right icons visible', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
@@ -61,7 +61,7 @@ test.describe('Desktop header overflow → compact mode', () => {
 
   test('resizing wide → narrow collapses, narrow → wide restores', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);

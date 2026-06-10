@@ -12677,10 +12677,11 @@
   // SECTION: Init / boot
   (async function init() {
     // PWA: register the service worker (offline shell + cached PDF/lib assets).
-    // Registered for every entry path, including the view-link branch below.
+    // Scoped to /app/ — the app lives there; the marketing site at / is plain static
+    // HTML, outside the SW. Registered for every entry path, incl. the view-link branch.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register('/sw.js', { scope: '/app/' }).catch(() => {});
       });
     }
     const urlParams = new URLSearchParams(window.location.search || '');

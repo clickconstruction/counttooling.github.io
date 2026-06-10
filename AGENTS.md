@@ -14,7 +14,12 @@
 ## Tech constraints
 
 - Vanilla HTML, CSS, JavaScript. No build step; static deployment.
-- **PWA / offline**: the app is an installable PWA. Third-party libs (pdf.js + worker,
+- **Site layout**: the app shell is `app/index.html`, served at **`/app/`** (its `<script>`/
+  `<link>` refs are **root-absolute** `/...` so the shared assets stay at repo root). The
+  site **root `/` is a static marketing landing** (`index.html`) — plain HTML, no app JS,
+  outside the service-worker scope; it forwards old `/?t=`/`?devAuth=1` links to `/app/`.
+  Playwright app specs `goto('/app/')`; `seo.spec.js` tests the landing at `/`.
+- **PWA / offline**: the app is an installable PWA (scoped to `/app/`). Third-party libs (pdf.js + worker,
   pdf-lib, html2canvas, jsPDF, supabase-js, tus) and fonts are **vendored locally** in
   `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is
   same-origin except Supabase. [sw.js](sw.js) precaches the whole shell for offline use;

@@ -51,15 +51,27 @@ test.describe('SEO (Tier 1)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('private view-link URL (?t=) gets a noindex robots meta', async ({ page }) => {
+  // Backward-compat: old share/view links were counttooling.com/?t=... The landing
+  // forwards them (and the localhost ?devAuth=1 bypass) to the app at /app/, which is
+  // itself noindex — so private takeoffs never get indexed under the marketing root.
+  test('private view-link URL (?t=) is forwarded to /app/', async ({ page }) => {
     await page.goto('/?t=faketoken123');
-    const robots = await content(page, 'meta[name="robots"]');
-    expect(robots).toMatch(/noindex/i);
+    await page.waitForURL(/\/app\//, { timeout: 5000 });
+    expect(page.url()).toContain('/app/');
+    expect(page.url()).toContain('t=faketoken123');
   });
 
-  test('dev bypass URL (?devAuth=1) gets a noindex robots meta', async ({ page }) => {
+  test('dev bypass URL (?devAuth=1) is forwarded to /app/', async ({ page }) => {
     await page.goto('/?devAuth=1');
+    await page.waitForURL(/\/app\//, { timeout: 5000 });
+    expect(page.url()).toContain('/app/');
+    expect(page.url()).toContain('devAuth=1');
+  });
+
+  test('the app shell at /app/ is noindex (landing owns SEO)', async ({ page }) => {
+    await page.goto('/app/');
     const robots = await content(page, 'meta[name="robots"]');
     expect(robots).toMatch(/noindex/i);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://counttooling.com/app/');
   });
 });

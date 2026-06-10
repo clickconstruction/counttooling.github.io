@@ -14,7 +14,7 @@ test.describe('window.App registry pilot - Quick modals', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     expect(await page.evaluate(() => typeof window.App?.populatePlumModal)).toBe('function');
@@ -42,7 +42,7 @@ test.describe('window.App registry pilot - Quick modals', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // counter.js's showCounterTab('quickcount') calls App.populateCounterQuickCountPanel

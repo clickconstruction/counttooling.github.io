@@ -13,7 +13,7 @@
 async function ensureSignedInWithProject(page) {
   try {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/?devAuth=1');
+    await page.goto('/app/?devAuth=1');
     await page.waitForLoadState('networkidle');
 
     // Open Project Settings

@@ -19,7 +19,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // 1. Registry contract.
@@ -68,7 +68,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
   });
 
   test('export envelope carries the diagnostic enrichment fields', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     const env = await page.evaluate(async () => await window.App.buildSaveLogsEnvelopeWithSnapshots());
@@ -94,7 +94,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
   });
 
   test('export project summary counts the real canvases[].annotations shape', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // Regression: getProjectSummaryForLogs used to read `p.annotations.counts` /

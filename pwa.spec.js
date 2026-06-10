@@ -25,11 +25,11 @@ async function waitForSW(page) {
 
 test.describe('PWA', () => {
   test('manifest is linked, parseable, and has sized + maskable icons', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', 'manifest.webmanifest');
-    const manifest = await page.evaluate(() => fetch('manifest.webmanifest').then((r) => r.json()));
+    await page.goto('/app/');
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+    const manifest = await page.evaluate(() => fetch('/manifest.webmanifest').then((r) => r.json()));
     expect(manifest.name).toBeTruthy();
-    expect(manifest.start_url).toBe('/');
+    expect(manifest.start_url).toBe('/app/');
     expect(manifest.display).toBe('standalone');
     const sizes = manifest.icons.map((i) => i.sizes);
     expect(sizes).toContain('192x192');
@@ -43,7 +43,7 @@ test.describe('PWA', () => {
   });
 
   test('PWA head meta tags are present', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#17171a');
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
@@ -51,7 +51,7 @@ test.describe('PWA', () => {
   });
 
   test('service worker registers and precaches the app shell', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     expect(await waitForSW(page)).toBe(true);
     const cache = await page.evaluate(async () => {
@@ -65,7 +65,7 @@ test.describe('PWA', () => {
         count: paths.length,
         hasWorker: paths.includes('/vendor/pdf.worker.min-3.11.174.js'),
         hasApp: paths.includes('/app.js'),
-        hasShellHtml: paths.includes('/index.html') || paths.includes('/'),
+        hasShellHtml: paths.includes('/app/index.html') || paths.includes('/app/'),
       };
     });
     expect(cache).not.toBeNull();
@@ -73,6 +73,9 @@ test.describe('PWA', () => {
     expect(cache.hasApp).toBe(true);
     expect(cache.hasShellHtml).toBe(true);
     expect(cache.count).toBeGreaterThan(50);
+    // The SW is scoped to /app/ (the marketing site at / is outside it).
+    const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+    expect(scope.replace(/\/$/, '')).toMatch(/\/app$/);
   });
 
   test('app boots and renders a PDF offline from the SW cache', async ({ page, context }) => {
@@ -83,7 +86,7 @@ test.describe('PWA', () => {
 
     // Warm the SW: load online, wait until active, reload so the page is SW-controlled
     // and the precache is populated.
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     expect(await waitForSW(page)).toBe(true);
     await page.reload();

@@ -26,7 +26,7 @@ test.describe('Mobile right-side burger menu', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.setViewportSize(MOBILE);
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
     // 1. Burger hidden before a PDF is loaded.
@@ -77,7 +77,7 @@ test.describe('Mobile right-side burger menu', () => {
 
   test('single-page PDF collapses Download to one row', async ({ page }) => {
     await page.setViewportSize(MOBILE);
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
@@ -89,7 +89,7 @@ test.describe('Mobile right-side burger menu', () => {
 
   test('desktop is unaffected: burger hidden, header dropdowns visible', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });

@@ -16,7 +16,7 @@ There are three ways to set it — **①** two points, **②** a preset, or **�
 
 The most reliable way is to calibrate against something you know:
 
-1. Pick the **Set Scale** tool.
+1. Pick the **Set Scale** [[set-scale]] tool.
 2. Click two points a known distance apart — a dimension line, a door width, a grid spacing.
 3. Enter the real-world length (for example `3'` or `10 ft`).
 

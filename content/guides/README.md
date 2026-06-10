@@ -34,6 +34,16 @@ file becomes a page at `https://counttooling.com/guides/<filename-without-.md>/`
 4. **Commit the `.md` AND the generated files** (`guides/**` and `sitemap.xml`). CI runs
    `npm run build:guides -- --check` and fails if you forgot to regenerate.
 
+## Inline button icons
+
+To show a toolbar button's icon inline in the text, use a `[[name]]` shortcode — the
+generator swaps it for the app's real icon (extracted from `app/index.html`, so they always
+match). For example: `Pick the **Set Scale** [[set-scale]] tool.`
+
+Available names: `set-scale`, `move`, `measure`, `highlight`, `multiply-zone`, `scale-zone`,
+`delete-area`, `note`, `legend`, `grid`, `counter`, `line`, `polyline`, `hide-marks`. (Add a
+new one by extending `ICON_BTN` in `scripts/build-guides.js` with the button's id.)
+
 ## Front-matter fields
 
 | Field | Required | Notes |

@@ -6,7 +6,7 @@ order: 3
 category: Counting
 ---
 
-A **counter** is a point symbol you stamp on the plan — a water closet, a light fixture, a sprinkler head. Each click adds one to the tally, so counting a sheet is just clicking each item.
+A **counter** [[counter]] is a point symbol you stamp on the plan — a water closet, a light fixture, a sprinkler head. Each click adds one to the tally, so counting a sheet is just clicking each item.
 
 ![Counters placed on each restroom fixture, with the running tally shown in the sidebar — Water Closet and Lavatory totals update as you click.](/guides/img/counting.png)
 
@@ -32,7 +32,7 @@ On a dense plan it's easy to lose track. A few things help:
 ## Fixing mistakes
 
 - Misclick? **Undo** (Ctrl+Z) steps back through your last moves.
-- Placed the wrong type? Switch to the **Move** tool to select and delete a mark, or right-click it for options.
+- Placed the wrong type? Switch to the **Move** [[move]] tool to select and delete a mark, or right-click it for options.
 - Need to rename or recolor a whole type after the fact? Open its details from the sidebar and every placed mark updates at once.
 
 When the counts are done, [measure the runs](/guides/measuring-runs-lines-and-polylines/) and then [pull a report](/guides/reports-and-exports/).

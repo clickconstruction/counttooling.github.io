@@ -10,7 +10,7 @@ A takeoff is only useful once it's numbers someone can price or check. CountTool
 
 ## See the totals as you work
 
-- **Legend** — the on-canvas summary shows your counts and lengths by type, right on the plan. It's draggable and resizable, so park it wherever it doesn't cover your work.
+- **Legend** [[legend]] — the on-canvas summary shows your counts and lengths by type, right on the plan. It's draggable and resizable, so park it wherever it doesn't cover your work.
 - **Footer totals** — the status bar keeps a running `[count | length]` across every page and canvas, with multiply and scale zones already applied.
 
 ## Show Report
@@ -41,6 +41,6 @@ You can export specific pages, just the marked ones, or the whole set.
 
 ## Reading the bare drawing
 
-Need to hand someone the plan without the takeoff on top? The **Hide marks** (eye) toggle peels the overlay off so the drawing reads clean, then brings it back with another tap — it's purely visual and never touches your data.
+Need to hand someone the plan without the takeoff on top? The **Hide marks** [[hide-marks]] toggle peels the overlay off so the drawing reads clean, then brings it back with another tap — it's purely visual and never touches your data.
 
 To share the live takeoff instead of a file, see [Sharing and view links](/guides/sharing-and-view-links/).

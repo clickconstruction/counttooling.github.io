@@ -12,7 +12,7 @@ Real plan sets aren't always one clean scale per sheet. Two tools handle the awk
 
 ## Scale zones — for multi-scale sheets
 
-A sheet often has the main plan at one scale and a blown-up detail or isometric at another. A **scale zone** lets a region carry its own scale:
+A sheet often has the main plan at one scale and a blown-up detail or isometric at another. A **scale zone** [[scale-zone]] lets a region carry its own scale:
 
 1. Draw a scale-zone rectangle around the detail.
 2. Give that zone its own scale (the same way you'd [set the page scale](/guides/setting-the-scale/)).
@@ -21,7 +21,7 @@ Any line fully inside the zone is measured with the zone's scale; everything els
 
 ## Multiply zones — for repeated areas
 
-When the same layout repeats — typical floors, identical units, a row of matching rooms — you don't want to count it ten times by hand. A **multiply zone** does it for you:
+When the same layout repeats — typical floors, identical units, a row of matching rooms — you don't want to count it ten times by hand. A **multiply zone** [[multiply-zone]] does it for you:
 
 1. Draw a multiply-zone rectangle around the area.
 2. Set how many times it repeats.

@@ -64,6 +64,7 @@ const ICON_BTN = {
   'multiply-zone': 'multiplyZoneBtn', 'scale-zone': 'scaleZoneBtn', 'delete-area': 'deleteZoneBtn',
   note: 'noteBtn', legend: 'legendBtn', grid: 'gridBtn', counter: 'counterBtn',
   line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn',
+  'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn',
 };
 function loadIcons() {
   const html = fs.readFileSync(APP_HTML, 'utf8');
@@ -71,18 +72,22 @@ function loadIcons() {
   for (const [name, id] of Object.entries(ICON_BTN)) {
     const btn = new RegExp(`<button id="${id}"([^>]*)>([\\s\\S]*?)</button>`).exec(html);
     if (!btn) { console.warn(`icon: button #${id} not found in app/index.html`); continue; }
-    const svg = /<svg[^>]*viewBox="0 0 640 640"[^>]*>([\s\S]*?)<\/svg>/.exec(btn[2]);
+    const svg = /<svg[^>]*\bviewBox="([^"]*)"[^>]*>([\s\S]*?)<\/svg>/.exec(btn[2]);
     if (!svg) { console.warn(`icon: svg for #${id} not found`); continue; }
     const titleM = /\btitle="([^"]*)"/.exec(btn[1]);
-    icons[name] = { title: (titleM ? titleM[1] : name).split('(')[0].trim(), inner: svg[1].trim() };
+    icons[name] = { title: (titleM ? titleM[1] : name).split('(')[0].trim(), viewBox: svg[1], inner: svg[2].trim() };
   }
   return icons;
+}
+// Render an extracted icon as a labeled chip/badge <span> with the given class.
+function iconSpan(ic, cls) {
+  return `<span class="${cls}" role="img" aria-label="${escAttr(ic.title)}" title="${escAttr(ic.title)}"><svg viewBox="${ic.viewBox}" aria-hidden="true">${ic.inner}</svg></span>`;
 }
 function applyIcons(md, icons) {
   return md.replace(/\[\[([a-z-]+)\]\]/g, (full, name) => {
     const ic = icons[name];
     if (!ic) { console.warn(`unknown icon shortcode [[${name}]]`); return full; }
-    return `<span class="ico" role="img" aria-label="${escAttr(ic.title)}" title="${escAttr(ic.title)}"><svg viewBox="0 0 640 640" aria-hidden="true">${ic.inner}</svg></span>`;
+    return iconSpan(ic, 'ico');
   });
 }
 
@@ -198,7 +203,7 @@ ${a.bodyHtml}
 function indexPage(articles) {
   const crumbs = [{ name: 'Home', url: '/' }, { name: 'Guides', url: '/guides/' }];
   const cards = articles.map((a) => `        <a class="guide-card" href="/guides/${a.slug}/">
-          <h2>${escHtml(a.title)}</h2>
+          <div class="guide-card-head">${a.iconHtml}<h2>${escHtml(a.title)}</h2></div>
           <p>${escHtml(a.description)}</p>
           <span class="guide-meta">Updated ${escHtml(fmtDate(a.updated))}</span>
         </a>`).join('\n');
@@ -240,9 +245,15 @@ function sitemap(articles) {
     const raw = fs.readFileSync(path.join(CONTENT_DIR, file), 'utf8');
     const { meta, body } = parseFrontMatter(raw);
     if (!meta.title || !meta.description) throw new Error(`content/guides/${file}: front-matter needs "title" and "description"`);
+    let iconHtml = '';
+    if (meta.icon) {
+      const ic = icons[meta.icon];
+      if (ic) iconHtml = iconSpan(ic, 'guide-ico');
+      else console.warn(`content/guides/${file}: unknown icon "${meta.icon}"`);
+    }
     return {
       slug: file.replace(/\.md$/, ''),
-      title: meta.title, h1: meta.h1, description: meta.description,
+      title: meta.title, h1: meta.h1, description: meta.description, iconHtml,
       updated: meta.updated || '', order: meta.order ? Number(meta.order) : 999,
       category: meta.category || '', bodyHtml: marked.parse(applyIcons(body, icons)).trim(),
     };

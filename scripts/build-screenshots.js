@@ -56,7 +56,9 @@ async function drawOverlays(page, items, accent) {
         if (it.label) {
           const lab = document.createElement('div');
           lab.textContent = it.label;
-          lab.style.cssText = `position:absolute;left:${it.x}px;top:${it.y - 30}px;background:${accent};color:#161617;font:600 15px/1 'DM Sans',system-ui,sans-serif;padding:6px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);`;
+          // Place the label above the box, but drop it below if that would clip past the top edge.
+          const labTop = it.y - 30 < 2 ? it.y + it.h + 8 : it.y - 30;
+          lab.style.cssText = `position:absolute;left:${it.x}px;top:${labTop}px;background:${accent};color:#161617;font:600 15px/1 'DM Sans',system-ui,sans-serif;padding:6px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);`;
           root.appendChild(lab);
         }
       } else {
@@ -100,8 +102,31 @@ async function takeoffSetup(page) {
 // callouts: [{ n, sel?, x?, y? }]  (sel → anchored to that element; else x/y are
 //           relative to the clip box). boxes: [{ sel?, rect? }].
 const SHOTS = [
+  // Marketing landing hero: the whole app with a takeoff on it (no callouts) → /img/.
+  { name: 'landing-hero', dir: 'img', clip: '.app', setup: takeoffSetup },
+
   // The plan with a takeoff on it — clean hero (markup + legend speak for themselves).
   { name: 'plan-takeoff', clip: '#canvasWrapper', setup: takeoffSetup },
+
+  // Offline/installing guide: the header save-&-sync indicator, highlighted.
+  {
+    name: 'offline-save-status',
+    clip: '.app',
+    async setup(page) {
+      await takeoffSetup(page);
+      // The save/sync indicator only shows for signed-in cloud users — surface it so the
+      // shot depicts the signed-in (sync-capable) state the offline guide describes.
+      await page.evaluate(() => {
+        const b = document.querySelector('#saveStatusBtnHeader');
+        if (b) { b.style.display = 'inline-flex'; b.classList.remove('supabase-only'); }
+      });
+      await page.waitForTimeout(120);
+    },
+    boxes: [{ sel: '#saveStatusBtnHeader', label: 'Save & sync status' }],
+  },
+
+  // Offline/installing guide: the whole app on a tablet (portrait viewport).
+  { name: 'on-a-tablet', clip: '.app', viewport: { width: 1024, height: 1366 }, setup: takeoffSetup },
 
   // The same takeoff, framed to show the live tally in the sidebar.
   {
@@ -207,11 +232,14 @@ async function loadApp(page, baseUrl) {
 (async () => {
   if (!fs.existsSync(PLAN)) { console.error('Missing samples/sample-plan.pdf — run `npm run build:sample-plan` first.'); process.exit(1); }
   fs.mkdirSync(OUT_DIR, { recursive: true });
+  // Optional CLI args = shot name(s) to (re)build; default builds all.
+  const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+  const shots = only.length ? SHOTS.filter((s) => only.includes(s.name)) : SHOTS;
   const { server, port } = await startServer();
   const baseUrl = `http://127.0.0.1:${port}`;
   const browser = await chromium.launch();
   try {
-    for (const shot of SHOTS) {
+    for (const shot of shots) {
       const page = await browser.newPage({ viewport: shot.viewport || { width: 1380, height: 900 }, deviceScaleFactor: 2 });
       await loadApp(page, baseUrl);
       if (shot.setup) await shot.setup(page);
@@ -236,14 +264,17 @@ async function loadApp(page, baseUrl) {
       }
       await drawOverlays(page, items, ACCENT);
       await page.waitForTimeout(80);
-      const out = path.join(OUT_DIR, shot.name + '.png');
+      const relDir = shot.dir || 'guides/img';
+      const dir = path.join(ROOT, relDir);
+      fs.mkdirSync(dir, { recursive: true });
+      const out = path.join(dir, shot.name + '.png');
       await page.screenshot({ path: out, clip });
       await page.close();
-      console.log('  wrote guides/img/' + shot.name + '.png');
+      console.log('  wrote ' + relDir + '/' + shot.name + '.png');
     }
   } finally {
     await browser.close();
     server.close();
   }
-  console.log(`Generated ${SHOTS.length} screenshot(s).`);
+  console.log(`Generated ${shots.length} screenshot(s).`);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -3,6 +3,7 @@ title: Setting the scale on a plan
 description: Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.
 updated: 2026-06-09
 order: 2
+icon: set-scale
 category: Getting started
 ---
 

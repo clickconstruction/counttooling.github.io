@@ -3,6 +3,7 @@ title: Sharing takeoffs and view links
 description: Work together without stepping on each other — share projects with viewers or editors, check out to edit, and send email-gated view-only links that need no sign-in.
 updated: 2026-06-09
 order: 7
+icon: share
 category: Collaboration
 ---
 

@@ -45,6 +45,16 @@ test.describe('SEO (Tier 1)', () => {
     const status = await page.evaluate(() => fetch('/og-image.png').then((r) => r.status));
     expect(status).toBe(200);
 
+    // Landing conversion + proof elements: a working hero screenshot, a phone CTA, real
+    // testimonials, an FAQ accordion, and FAQPage structured data.
+    const heroOk = await page.locator('img.hero-shot').first().evaluate((el) => el.complete && el.naturalWidth > 0);
+    expect(heroOk).toBe(true);
+    await expect(page.locator('a[href^="tel:"]').first()).toBeVisible();
+    expect(await page.locator('.quote').count()).toBeGreaterThanOrEqual(3);
+    expect(await page.locator('.faq details').count()).toBeGreaterThan(3);
+    const faqLd = await page.locator('script[type="application/ld+json"]').allTextContents();
+    expect(faqLd.map((t) => JSON.parse(t)['@type'])).toContain('FAQPage');
+
     // Clean URL is indexable: no robots meta at all
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
 

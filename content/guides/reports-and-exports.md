@@ -3,6 +3,7 @@ title: Reports, exports, and sending a takeoff onward
 description: Turn your marked-up plan into numbers and deliverables — the on-canvas legend, Show Report, Export PDF, Copy to PipeTooling, and email summaries.
 updated: 2026-06-09
 order: 6
+icon: legend
 category: Output
 ---
 

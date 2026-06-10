@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Setting the scale on a plan — CountTooling</title>
+  <meta name="description" content="Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.">
+  <link rel="canonical" href="https://counttooling.com/guides/setting-the-scale/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CountTooling">
+  <meta property="og:title" content="Setting the scale on a plan — CountTooling">
+  <meta property="og:description" content="Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.">
+  <meta property="og:url" content="https://counttooling.com/guides/setting-the-scale/">
+  <meta property="og:image" content="https://counttooling.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Setting the scale on a plan — CountTooling">
+  <meta name="twitter:description" content="Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.">
+  <meta name="twitter:image" content="https://counttooling.com/og-image.png">
+  <meta name="theme-color" content="#17171a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/marketing.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Setting the scale on a plan",
+  "description": "Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.",
+  "image": "https://counttooling.com/og-image.png",
+  "datePublished": "2026-06-09",
+  "dateModified": "2026-06-09",
+  "author": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "url": "https://counttooling.com/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://counttooling.com/icons/icon-512.png"
+    }
+  },
+  "mainEntityOfPage": "https://counttooling.com/guides/setting-the-scale/"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://counttooling.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://counttooling.com/guides/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Setting the scale on a plan",
+      "item": "https://counttooling.com/guides/setting-the-scale/"
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap site-header-wrap">
+      <a class="logo" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8c547"/><g fill="none" stroke="#161617" stroke-width="30" stroke-linecap="round"><circle cx="256" cy="256" r="118"/><line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/><line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/></g><circle cx="256" cy="256" r="34" fill="#161617"/></svg><span>CountTooling</span></a>
+      <nav class="site-nav">
+        <a href="/guides/">Guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Setting the scale on a plan</span></nav>
+    <article class="article">
+      <h1>Setting the scale on a plan</h1>
+      <p class="article-meta">Last updated Jun 9, 2026</p>
+      <div class="prose">
+<p>Scale is what turns pixels on a PDF into real feet and inches. Until you set it, CountTooling can count fixtures but can&#39;t measure runs. Scale is <strong>per page</strong>, so each sheet can have its own.</p>
+<h2>Set scale from two points</h2>
+<p>The most reliable way is to calibrate against something you know:</p>
+<ol>
+<li>Pick the <strong>Set Scale</strong> tool.</li>
+<li>Click two points a known distance apart — a dimension line, a door width, a grid spacing.</li>
+<li>Enter the real-world length (for example <code>3&#39;</code> or <code>10 ft</code>).</li>
+</ol>
+<p>CountTooling works out the scale from those two points, so it stays accurate even if the PDF was exported at an odd size.</p>
+<h2>Use a preset</h2>
+<p>If the sheet is drawn at a standard ratio, skip the two-point step and pick a preset:</p>
+<ul>
+<li><strong>Architectural</strong> — <code>1/4&quot; = 1&#39;</code>, <code>1/8&quot; = 1&#39;</code>, and the rest of the common set.</li>
+<li><strong>Engineering</strong> — <code>1&quot; = 20&#39;</code>, <code>1&quot; = 40&#39;</code>, and so on.</li>
+</ul>
+<h2>Enter a custom scale</h2>
+<p>You can also type a scale directly — a fraction like <code>1/4</code> or a decimal like <code>0.25</code> — and apply it. Useful when you know the ratio but don&#39;t have a dimension to click.</p>
+<h2>Tips</h2>
+<ul>
+<li>The scale badge on each page in the sidebar turns yellow once a scale is set, so you can see at a glance which sheets are calibrated.</li>
+<li>If a single sheet mixes scales (a detail blown up in the corner), you don&#39;t have to re-scale the whole page — see <a href="/guides/scale-zones-and-multiply-zones/">Scale zones and multiply zones</a>.</li>
+<li>Try to measure something before you trust a takeoff. If a known 3-foot door reads as 4 feet, your scale is off — reset it and pick cleaner points.</li>
+</ul>
+<p>Once the scale is set, you&#39;re ready to <a href="/guides/measuring-runs-lines-and-polylines/">measure runs</a>.</p>
+      </div>
+      <div class="article-foot">
+        <a class="back-link" href="/guides/">← All guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 CountTooling</span>
+      <span class="fam">
+        Part of the Tooling family:
+        <a href="/guides/">Guides</a>
+        <a href="https://pipetooling.com/" rel="noopener">PipeTooling</a>
+        <a href="https://takeofftooling.com/" rel="noopener">TakeoffTooling</a>
+        <a href="/app/">Open the app</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

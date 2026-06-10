@@ -19,6 +19,16 @@
   site **root `/` is a static marketing landing** (`index.html`) — plain HTML, no app JS,
   outside the service-worker scope; it forwards old `/?t=`/`?devAuth=1` links to `/app/`.
   Playwright app specs `goto('/app/')`; `seo.spec.js` tests the landing at `/`.
+- **Marketing site & /guides/ (Help)**: the landing (`index.html`) and the evergreen Help
+  section at `/guides/` are plain static HTML sharing `marketing.css` (mirror of the
+  styles.css `:root` tokens; **not** the app's styles.css). Guide articles are authored as
+  **Markdown** in `content/guides/<slug>.md` (front-matter: title/description/updated/order);
+  `npm run build:guides` renders `guides/<slug>/index.html` + `guides/index.html` and
+  regenerates `sitemap.xml` (uses the `marked` devDep; loaded via dynamic `import()` since
+  it's ESM-only). It's a committed-artifact generator like `build:toc` — `npm run check`
+  includes `build:guides -- --check` (fails if the committed HTML is stale). Authoring steps:
+  `content/guides/README.md`. Tests: `guides.test.js` (Node, CI — SEO/link/sitemap integrity)
+  + `guides.spec.js` (Playwright, local).
 - **PWA / offline**: the app is an installable PWA (scoped to `/app/`). Third-party libs (pdf.js + worker,
   pdf-lib, html2canvas, jsPDF, supabase-js, tus) and fonts are **vendored locally** in
   `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is

@@ -6,9 +6,10 @@
     "build:icons": "node scripts/build-custom-icons.js",
     "build:pwa-icons": "node scripts/build-pwa-icons.js",
     "build:og-image": "node scripts/build-og-image.js",
+    "build:guides": "node scripts/build-guides.js",
     "build:toc": "node scripts/build-toc.js",
     "lint": "eslint . --max-warnings 0",
-    "check": "npm run lint && npm run test:unit && npm run build:toc -- --check",
+    "check": "npm run lint && npm run test:unit && npm run build:toc -- --check && npm run build:guides -- --check",
     "test": "playwright test",
     "test:unit": "node --test",
     "precloudtest": "node scripts/generate-config.js",
@@ -25,6 +26,7 @@
     "@playwright/test": "^1.49.0",
     "eslint": "^9.39.4",
     "fake-indexeddb": "^6.2.5",
-    "globals": "^17.6.0"
+    "globals": "^17.6.0",
+    "marked": "^18.0.5"
   }
 }

@@ -8,6 +8,8 @@ category: Getting started
 
 A takeoff is just a structured count and measurement of what's on a drawing. With CountTooling you do it straight on the PDF — no printing, no exporting to another tool first. Here's the whole workflow.
 
+![A finished takeoff in CountTooling — counters on every fixture, a measured waste line, and a live legend tallying the counts and lengths.](/guides/img/plan-takeoff.png)
+
 ## 1. Upload your plan PDF
 
 Open the app and drop in your plan set. Each page becomes a sheet you can mark up. If a sheet came in sideways, rotate it so it reads the right way up.

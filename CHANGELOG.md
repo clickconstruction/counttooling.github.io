@@ -849,3 +849,24 @@ per-article HTML/SEO boilerplate, output stays pure static HTML.
   `guides.spec.js` (Playwright, local): the index + an article render with correct SEO/JSON-LD
   and working links. Verified: `npm run check` green (105 unit tests); both specs pass; the
   index + article render on-brand and the landing is unchanged after the CSS extraction.
+
+### Guides — annotated screenshots
+
+The text-only guides now carry **generated, annotated screenshots** (reproducible, not
+hand-captured). The blocker was the blank sample PDF, so two new committed-artifact generators:
+
+- **`scripts/build-sample-plan.js`** (`npm run build:sample-plan`) renders an inline SVG
+  commercial floor plan (rooms, restroom fixtures, doors, dimensions, title block) to
+  `samples/sample-plan.pdf` via Playwright `page.pdf()` — a realistic, non-confidential backdrop.
+- **`scripts/build-screenshots.js`** (`npm run build:screenshots`) is self-contained (a tiny
+  zero-dep static server + Playwright): it drives the real app at `/app/`, loads the sample plan,
+  injects a takeoff (counters on each fixture as fractions of the real PDF page size, a measured
+  line, a page scale, the legend), opens dialogs, overlays **numbered callout badges + highlight
+  boxes anchored to real DOM elements**, and writes `guides/img/*.png` (2× for crispness). Shots
+  are declared in a `SHOTS` manifest. Initial set: a plan-with-takeoff hero, a sidebar-tally
+  "counting" shot, and annotated **Set Scale** + **Export PDFs** dialogs — wired into the
+  matching articles with ①②③ steps.
+- Both are manual (browser; PNG pixels aren't deterministic) → **not** in `npm run check`, like
+  `build:og-image`. `marketing.css .prose img` frames/centers images; `guides.test.js`
+  link-integrity fails CI if an article references a missing image; `guides.spec.js` asserts an
+  article's screenshot actually loads. Authoring documented in `content/guides/README.md`.

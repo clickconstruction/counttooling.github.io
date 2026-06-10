@@ -8,6 +8,8 @@ category: Measuring
 
 Once the [scale is set](/guides/setting-the-scale/), CountTooling can turn any line you draw into a real-world length. That's your linear takeoff — pipe, conduit, trim, anything that runs.
 
+![A measured run drawn across the plan; its real length appears in the legend alongside the counts.](/guides/img/plan-takeoff.png)
+
 ## Straight lines
 
 The **Line** tool is a two-click straight run: click the start, click the end. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.

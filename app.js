@@ -12720,6 +12720,13 @@
         if (!alreadyPersisted) await navigator.storage.persist();
       }
     } catch (_) {}
+    // Arriving from the landing's "Already have access? Sign in" CTA (/app/?signin=1):
+    // open the sign-in modal, unless already signed in.
+    try {
+      if (urlParams.get('signin') === '1' && SUPABASE_ENABLED && !state.supabaseSession?.user) {
+        document.getElementById('authBtn')?.click();
+      }
+    } catch (_) {}
     // Load custom icons AFTER auth so customIconsCurrentKey() resolves to the
     // signed-in user's key (PR 7 per-user split). If signed-out, falls back to
     // the legacy 'user' key with automatic migration on first signed-in load.

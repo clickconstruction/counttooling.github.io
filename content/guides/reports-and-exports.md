@@ -24,6 +24,8 @@ Open **Show Report** for the full breakdown in a new tab. You can scope it to:
 
 ## Export a marked-up PDF
 
+![The Export PDFs dialog: ① set marker and line sizes, ② choose whether to include the report and bundle highlights/notes, then ③ download.](/guides/img/export-pdfs.png)
+
 **Export PDF** produces a deliverable with your markup baked in. You control:
 
 - marker and line **size** (so marks read at print scale),

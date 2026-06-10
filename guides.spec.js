@@ -52,6 +52,11 @@ test.describe('Guides', () => {
     expect(await page.locator('.prose h2').count()).toBeGreaterThan(1);
     expect(await page.locator('.prose ul li').count()).toBeGreaterThan(0);
 
+    // The article shows a screenshot, and it actually loads
+    const img = page.locator('.prose img').first();
+    await expect(img).toHaveCount(1);
+    expect(await img.evaluate((el) => el.complete && el.naturalWidth > 0)).toBe(true);
+
     // Breadcrumb + Article JSON-LD
     await expect(page.locator('nav.breadcrumb')).toContainText('Guides');
     const types = await page.locator('script[type="application/ld+json"]').allTextContents();

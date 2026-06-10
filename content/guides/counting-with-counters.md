@@ -8,12 +8,16 @@ category: Counting
 
 A **counter** is a point symbol you stamp on the plan — a water closet, a light fixture, a sprinkler head. Each click adds one to the tally, so counting a sheet is just clicking each item.
 
+![Counters placed on each restroom fixture, with the running tally shown in the sidebar — Water Closet and Lavatory totals update as you click.](/guides/img/counting.png)
+
 ## Make a counter type
 
 Before you count, set up the type you're counting:
 
 - Give it a **name** and a **color** so it stands out on a busy sheet.
 - Choose an **icon** — pick from the built-in set or **upload your own SVG** for a symbol that matches your trade.
+
+![The Create Counter dialog: ① name the counter, ② pick a built-in icon or upload your own, and ③ choose a color.](/guides/img/counter-create.png)
 
 Then select the counter and start clicking. The running total updates as you go, and it adds up across every sheet and canvas in the project — not just the page you're on.
 

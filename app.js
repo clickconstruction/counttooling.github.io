@@ -370,6 +370,7 @@
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
+    aimOffsetPx: 0, aimMouseDownClient: null, justFinishedLoupe: false,
     vertexDragStart: null, vertexDragMoved: false,
     lastScaleTapTime: 0,
     currentProjectId: null,
@@ -10338,11 +10339,14 @@
     updateUI();
   }
 
-  function handleCanvasClick(e) {
+  // pdfOverride: when set (loupe-release path), place at that exact PDF point instead
+  // of deriving it from the event — lets the aim loupe reuse every tool's commit branch.
+  function handleCanvasClick(e, pdfOverride) {
     if (!state.pages.length) return;
     if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE) return;
-    const pt = canvasPointFromEvent(e);
-    const pdf = canvasToPdf(pt.x, pt.y);
+    let pdf;
+    if (pdfOverride) { pdf = pdfOverride; }
+    else { const pt = canvasPointFromEvent(e); pdf = canvasToPdf(pt.x, pt.y); }
     state.mousePos = pdf;
     if (state.gridOriginPickMode) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
@@ -10366,7 +10370,7 @@
     if (state.tool === TOOL.SCALE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const now = Date.now();
-      if (now - state.lastScaleTapTime < 400) return;
+      if (!pdfOverride && now - state.lastScaleTapTime < 400) return;   // bypass double-tap guard on aim
       state.lastScaleTapTime = now;
       if (state.scaleMode === SCALE_MODES.POINT_A) { state.scalePointA = pdf; state.scaleMode = SCALE_MODES.POINT_B; }
       else if (state.scaleMode === SCALE_MODES.POINT_B) {
@@ -10586,24 +10590,46 @@
   const LOUPE_DIAMETER_LOGICAL = 120;
 
   // Which tools support press-hold-aim: Measure, Quick Line, and an in-progress Polyline.
+  // Tools that support press-hold-aim (loupe). All point-placement tools qualify;
+  // TOOL.NONE (pan) and EDIT_POLY (its own vertex-drag loupe) are excluded.
   function isAimingTool() {
-    return state.tool === TOOL.MEASURE || state.tool === TOOL.LINE || (state.tool === TOOL.POLYLINE && !!state.drawingPolyline);
+    if (state.gridOriginPickMode) return true;
+    switch (state.tool) {
+      case TOOL.MEASURE:
+      case TOOL.SCALE:
+      case TOOL.LINE:
+      case TOOL.COUNTER:
+      case TOOL.HIGHLIGHT:
+      case TOOL.MULTIPLY_ZONE:
+      case TOOL.SCALE_ZONE:
+      case TOOL.DELETE_ZONE:
+      case TOOL.NOTE:
+        return true;
+      case TOOL.POLYLINE:
+        return !!state.drawingPolyline;
+      default:
+        return false;
+    }
   }
 
   // Commit the aimed point through the active tool's normal commit path (so snap +
-  // bounds are identical to a tap). Used by the touchend loupe-release handler.
+  // bounds are identical to a tap/click). Measure keeps the fromAim guard-bypass; every
+  // other tool is routed through handleCanvasClick's branch for that tool.
   function commitAimPoint(pdf) {
     if (state.tool === TOOL.MEASURE) { commitMeasurePoint(pdf, { fromAim: true }); return; }
-    if (state.tool === TOOL.LINE) { commitLinePoint(pdf); renderAnnotations(); updateUI(); return; }
-    if (state.tool === TOOL.POLYLINE && state.drawingPolyline) { commitPolylinePoint(pdf); renderAnnotations(); updateUI(); }
+    handleCanvasClick(null, pdf);
   }
 
-  // Finger client coords -> wrapper-logical -> PDF, offset upward so the target
-  // clears the finger, then clamped to the page so the crosshair is always placeable.
-  function updateAimFromClient(c) {
+  // Client coords -> wrapper-logical -> PDF, offset upward by state.aimOffsetPx so a
+  // finger doesn't cover the target (0 for mouse — the cursor doesn't occlude), then
+  // clamped to the page so the crosshair is always placeable. opts.offsetPx (set at
+  // enterAiming) is sticky so the per-move tracker reuses the right offset.
+  function updateAimFromClient(c, opts) {
+    if (opts && typeof opts.offsetPx === 'number') state.aimOffsetPx = opts.offsetPx;
+    const offset = state.aimOffsetPx || 0;
     const rect = (cWrapper || pdfCanvas).getBoundingClientRect();
     const fingerPdf = canvasToPdf(c.x - rect.left, c.y - rect.top);
-    const aim = clampPointToPageBounds({ x: fingerPdf.x, y: fingerPdf.y - AIM_OFFSET_LOGICAL_PX / state.zoom });
+    const aim = clampPointToPageBounds({ x: fingerPdf.x, y: fingerPdf.y - offset / state.zoom });
     state.aimPoint = aim;
     state.mousePos = aim;     // so the rubber band + status coords follow the crosshair
     state.aimClient = c;
@@ -10617,6 +10643,8 @@
     state.aimPoint = null;
     state.aimClient = null;
     state.aimRafPending = false;
+    state.aimOffsetPx = 0;
+    state.aimMouseDownClient = null;
     hideAimLoupe();
     renderAnnotations();
     updateUI();
@@ -10637,9 +10665,9 @@
     renderAnnotations();
   }
 
-  function enterAiming(c) {
+  function enterAiming(c, opts) {
     state.aiming = true;
-    updateAimFromClient(c);
+    updateAimFromClient(c, { offsetPx: (opts && opts.mouse) ? 0 : AIM_OFFSET_LOGICAL_PX });
     drawAimLoupe();
     renderAnnotations();
     updateUI();
@@ -10772,6 +10800,12 @@
       const pdfPt = canvasToPdf(pt.x, pt.y);
       const r = 12 / state.zoom;
       state.draggingVertexIdx = pts.findIndex(p => ptDist(pdfPt, p) < r);
+    } else if (isAimingTool() && !(state.isViewer && state.tool !== TOOL.MEASURE)) {
+      // Left press-and-hold on a placement tool summons the aim loupe (desktop parity
+      // with mobile). A quick click (release before AIM_PRESS_MS) still places instantly.
+      const c = { x: e.clientX, y: e.clientY };
+      state.aimMouseDownClient = c;
+      state.aimPressTimer = setTimeout(() => { state.aimPressTimer = null; enterAiming(c, { mouse: true }); }, AIM_PRESS_MS);
     }
   });
 
@@ -10779,6 +10813,18 @@
     const pt = canvasPointFromEvent(e);
     const pdf = canvasToPdf(pt.x, pt.y);
     state.mousePos = pdf;
+    if (state.aiming) {
+      const c = { x: e.clientX, y: e.clientY };
+      updateAimFromClient(c);   // reuses the stored offset (0 for mouse)
+      if (!state.aimRafPending) {
+        state.aimRafPending = true;
+        requestAnimationFrame(() => { state.aimRafPending = false; drawAimLoupe(); renderAnnotations(); });
+      }
+      return;
+    }
+    if (state.aimPressTimer && state.aimMouseDownClient && ptDist({ x: e.clientX, y: e.clientY }, state.aimMouseDownClient) > 6) {
+      clearTimeout(state.aimPressTimer); state.aimPressTimer = null;   // moved before the hold fired
+    }
     if (state.isPanning && state.panStart) {
       state.pan = { x: e.clientX - state.panStart.x, y: e.clientY - state.panStart.y };
       updateContainerTransform();
@@ -10840,7 +10886,8 @@
       if (state.isPanning && state.panStart) {
         annCanvas.style.cursor = 'url(' + moveCursorSvg + ') 12 12, move';
       } else {
-        annCanvas.style.cursor = (t && t.type === 'legendResize') ? 'se-resize' : (t && (t.type === 'legendDrag' || t.type === 'legend')) ? 'move' : (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : '';
+        const overUi = t && (t.type === 'legendResize' || t.type === 'legendDrag' || t.type === 'legend' || t.type === 'noteResize' || t.type === 'noteFontSize' || t.type === 'note');
+        annCanvas.style.cursor = (t && t.type === 'legendResize') ? 'se-resize' : (t && (t.type === 'legendDrag' || t.type === 'legend')) ? 'move' : (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : (!overUi && isAimingTool()) ? 'crosshair' : '';
       }
     }
     updateStatus();
@@ -10857,6 +10904,22 @@
       return;
     }
     if (e.button !== 0) return;
+    if (state.aiming) {
+      // Release to commit at the crosshair; hide the loupe FIRST so any modal opens
+      // cleanly, then suppress the trailing native click.
+      const committed = state.aimPoint;
+      cancelAiming();
+      if (committed) commitAimPoint(committed);
+      state.justFinishedLoupe = true;
+      state.aimMouseDownClient = null;
+      return;
+    }
+    if (state.aimPressTimer) {
+      // Released before the hold fired -> quick click = instant placement: clear the
+      // timer and let the native click reach handleCanvasClick (no suppression).
+      clearTimeout(state.aimPressTimer); state.aimPressTimer = null;
+      state.aimMouseDownClient = null;
+    }
     if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
     if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
     if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
@@ -10881,6 +10944,8 @@
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
+    if (state.aiming || state.aimPressTimer) cancelAiming();
+    state.aimMouseDownClient = null;
     state.isPanning = false;
     state.panStart = null;
     state.resizingNoteIdx = null;
@@ -10922,10 +10987,11 @@
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
-    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; return; }
+    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; return; }
     state.justFinishedResize = false;
     state.justFinishedDragNote = false;
     state.justFinishedLegendResize = false;
+    state.justFinishedLoupe = false;
     handleCanvasClick(e);
   });
 

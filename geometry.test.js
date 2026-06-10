@@ -171,3 +171,52 @@ test('formatDistFeetInchesFromReal: delegates with already-real value', () => {
   assert.strictEqual(g.formatDistFeetInchesFromReal(18, { pixelsPerUnit: 2, unit: 'in' }), `1'-6"`);
   assert.strictEqual(g.formatDistFeetInchesFromReal(5.5, null), '6 px');
 });
+
+test('clampEffectiveDpr: below the cap returns the real dpr unchanged', () => {
+  // small page, modest zoom — well under any cap
+  assert.strictEqual(g.clampEffectiveDpr({ pageW: 612, pageH: 792, zoom: 1, dpr: 2, maxDim: 8192, maxArea: 16777216 }), 2);
+  assert.strictEqual(g.clampEffectiveDpr({ pageW: 612, pageH: 792, zoom: 2, dpr: 1, maxDim: 8192, maxArea: 16777216 }), 1);
+});
+
+test('clampEffectiveDpr: dimension-limited -> buffer side pinned at maxDim', () => {
+  // wide page * high zoom * dpr would blow past maxDim on the width axis
+  const pageW = 2000, pageH = 1000, zoom = 4, dpr = 3, maxDim = 8192, maxArea = 1e12;
+  const eff = g.clampEffectiveDpr({ pageW, pageH, zoom, dpr, maxDim, maxArea });
+  close(pageW * zoom * eff, maxDim, 1e-6);            // long axis exactly at the cap
+  assert.ok(eff < dpr);
+});
+
+test('clampEffectiveDpr: area-limited -> buffer area pinned at maxArea', () => {
+  // dims individually under maxDim but the product exceeds maxArea
+  const pageW = 1500, pageH = 1500, zoom = 3, dpr = 3, maxDim = 100000, maxArea = 16777216;
+  const eff = g.clampEffectiveDpr({ pageW, pageH, zoom, dpr, maxDim, maxArea });
+  const bw = pageW * zoom * eff, bh = pageH * zoom * eff;
+  close(bw * bh, maxArea, 1);
+  assert.ok(eff < dpr);
+});
+
+test('clampEffectiveDpr: never exceeds the real dpr', () => {
+  // tiny page where the caps would "allow" a huge eff — still clamped to dpr
+  const eff = g.clampEffectiveDpr({ pageW: 10, pageH: 10, zoom: 1, dpr: 2, maxDim: 8192, maxArea: 16777216 });
+  assert.strictEqual(eff, 2);
+});
+
+test('clampEffectiveDpr: degenerate inputs floor above 0', () => {
+  assert.strictEqual(g.clampEffectiveDpr({ pageW: 0, pageH: 100, zoom: 1, dpr: 2, maxDim: 8192, maxArea: 16777216 }), 2);
+  const eff = g.clampEffectiveDpr({ pageW: 1e9, pageH: 1e9, zoom: 1000, dpr: 3, maxDim: 8192, maxArea: 16777216 });
+  assert.ok(eff >= 0.01 && eff < 1);
+});
+
+test('clampEffectiveDpr: monotonic — more zoom never grows the clamped buffer', () => {
+  const base = { pageW: 2000, pageH: 1400, dpr: 3, maxDim: 8192, maxArea: 16777216 };
+  let prevBuffer = 0;
+  for (const zoom of [0.5, 1, 2, 4, 8, 16]) {
+    const eff = g.clampEffectiveDpr({ ...base, zoom });
+    const longSide = Math.max(base.pageW, base.pageH) * zoom * eff;
+    assert.ok(longSide <= base.maxDim + 1e-6, `zoom ${zoom}: ${longSide} <= ${base.maxDim}`);
+    const area = (base.pageW * zoom * eff) * (base.pageH * zoom * eff);
+    assert.ok(area <= base.maxArea + 1, `zoom ${zoom}: area ${area} <= ${base.maxArea}`);
+    prevBuffer = area;
+  }
+  assert.ok(prevBuffer > 0);
+});

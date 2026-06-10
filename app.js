@@ -1994,7 +1994,61 @@
   const aimLoupe = document.getElementById('aimLoupe');
 
   const dpr = () => window.devicePixelRatio || 1;
-  function toCanvas(p) { const scale = state.zoom * dpr(); return { x: p.x * scale, y: p.y * scale }; }
+
+  // Canvas-size cap: at extreme zoom, pageW*zoom*dpr can exceed the browser's max
+  // canvas dimension/area (iOS Safari is strictest, area-limited) and the canvas
+  // silently renders blank/black. We clamp the render-path device-pixel-ratio to an
+  // "effective" value so the buffer always fits. dpr only affects bitmap sharpness —
+  // it cancels out of every on-screen size — so layout/positions/fonts are unchanged
+  // and the bitmap merely softens past the cap (never blank). A few constant-pixel
+  // features (line widths, marker dots) draw slightly larger only *beyond* the cap,
+  // i.e. only where the canvas used to go black — benign.
+  let currentEffDpr = window.devicePixelRatio || 1;     // refreshed by renderPdf + renderAnnotations
+  const FALLBACK_MAX_DIM = 8192;
+  const FALLBACK_MAX_AREA = 16777216;                   // ~4096^2 — safe for old iOS Safari
+  let _canvasCaps = null;
+  function getCanvasCaps() { return _canvasCaps || { maxDim: FALLBACK_MAX_DIM, maxArea: FALLBACK_MAX_AREA }; }
+  function setCanvasCaps(caps) { _canvasCaps = caps; }   // override (debug / tests)
+
+  // One-time probe of the device's real max canvas size: binary-search the largest
+  // canvas whose far-corner pixel reads back. Detached canvases, freed after each test.
+  function detectMaxCanvasArea() {
+    try {
+      const readsBack = (w, h) => {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const g = c.getContext('2d');
+        let ok = false;
+        if (g) {
+          g.fillStyle = '#fff';
+          g.fillRect(w - 1, h - 1, 1, 1);
+          try { ok = g.getImageData(w - 1, h - 1, 1, 1).data[3] === 255; } catch (_) { ok = false; }
+        }
+        c.width = 0; c.height = 0;
+        return ok;
+      };
+      let lo = 1024, hi = 16384, maxDim = 1024;
+      while (lo <= hi) { const mid = (lo + hi) >> 1; if (readsBack(mid, mid)) { maxDim = mid; lo = mid + 1; } else hi = mid - 1; }
+      const stripW = Math.min(maxDim, 4096);
+      lo = 1024; hi = 16384; let bestH = 1024;
+      while (lo <= hi) { const mid = (lo + hi) >> 1; if (readsBack(stripW, mid)) { bestH = mid; lo = mid + 1; } else hi = mid - 1; }
+      const margin = 0.95;
+      _canvasCaps = { maxDim: Math.floor(maxDim * margin), maxArea: Math.floor(stripW * bestH * margin) };
+    } catch (_) {
+      _canvasCaps = null;   // fall back to conservative constants
+    }
+  }
+
+  // Clamped device-pixel-ratio for rendering `page` at `zoom` (keeps the buffer under
+  // the detected cap). Uses the scale-1, rotation-correct page dimensions.
+  function effectiveDpr(page, zoom) {
+    if (!page || !page.pdfPage) return window.devicePixelRatio || 1;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    const caps = getCanvasCaps();
+    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea: caps.maxArea });
+  }
+
+  function toCanvas(p) { const scale = state.zoom * currentEffDpr; return { x: p.x * scale, y: p.y * scale }; }
 
   function canvasToPdf(canvasX, canvasY) {
     return { x: (canvasX - state.pan.x) / state.zoom, y: (canvasY - state.pan.y) / state.zoom };
@@ -2082,7 +2136,7 @@
       if (ptDist(pos, fontSizeHandle) <= r) return { type: 'noteFontSize', index: i };
       if (ptDist(pos, widthHandle) <= r) return { type: 'noteResize', index: i };
       const fontSize = n.fontSize || 14;
-      const scale = state.zoom * dpr();
+      const scale = state.zoom * currentEffDpr;   // match the drawn note font (effDpr-clamped)
       const font = fontSize * scale + 'px DM Sans';
       const { lines } = wrapNoteText(n.text, w * scale, font, fontSize * scale);
       const heightPdf = lines.length * fontSize;
@@ -2423,7 +2477,9 @@
     pdfRenderPending = false;
     pdfRenderId++;
     const thisRenderId = pdfRenderId;
-    const scale = state.zoom * (window.devicePixelRatio || 1);
+    const eff = effectiveDpr(page, state.zoom);   // clamped dpr so the buffer fits the canvas cap
+    currentEffDpr = eff;
+    const scale = state.zoom * eff;
     const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
     if (!pdfOffscreenCanvas) pdfOffscreenCanvas = document.createElement('canvas');
     pdfOffscreenCanvas.width = viewport.width;
@@ -2439,8 +2495,8 @@
       updateContainerTransform();
       pdfCanvas.width = viewport.width;
       pdfCanvas.height = viewport.height;
-      pdfCanvas.style.width = viewport.width / (window.devicePixelRatio || 1) + 'px';
-      pdfCanvas.style.height = viewport.height / (window.devicePixelRatio || 1) + 'px';
+      pdfCanvas.style.width = viewport.width / eff + 'px';     // = pageW*zoom CSS px (clamp-independent)
+      pdfCanvas.style.height = viewport.height / eff + 'px';
       pdfCanvas.getContext('2d').drawImage(pdfOffscreenCanvas, 0, 0);
       renderAnnotations();
       if (pdfRenderPending) renderPdf();
@@ -2534,6 +2590,7 @@
   function renderAnnotations() {
     const page = state.pages[state.currentPage];
     if (!page) return;
+    currentEffDpr = effectiveDpr(page, state.zoom);   // match the (possibly clamped) pdfCanvas buffer
     annCanvas.width = pdfCanvas.width;
     annCanvas.height = pdfCanvas.height;
     annCanvas.style.width = pdfCanvas.style.width;
@@ -2589,14 +2646,14 @@
     // and vertex drag in Part B) — the loupe shows the magnified target; this marks
     // it on the page too. Measure draws its own yellow crosshair above.
     if (state.aiming && state.aimPoint && state.tool !== TOOL.MEASURE) {
-      const m = toCanvas(state.aimPoint), r = 10 * dpr();
+      const m = toCanvas(state.aimPoint), r = 10 * currentEffDpr;
       ctx.save();
-      ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 1.5 * dpr(); ctx.setLineDash([]);
+      ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 1.5 * currentEffDpr; ctx.setLineDash([]);
       ctx.beginPath();
       ctx.moveTo(m.x - r, m.y); ctx.lineTo(m.x + r, m.y);
       ctx.moveTo(m.x, m.y - r); ctx.lineTo(m.x, m.y + r);
       ctx.stroke();
-      ctx.beginPath(); ctx.arc(m.x, m.y, 3 * dpr(), 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(m.x, m.y, 3 * currentEffDpr, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
     const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
@@ -2664,7 +2721,7 @@
         const effScale = getEffectiveScaleForLine(ann, q, false, state.currentPage);
         const realLen = getLineRealWorldLength(q, state.currentPage, false, ann);
         const label = formatDistFeetInchesFromReal(realLen, effScale);
-        const fontSize = (lts.lengthLabelSize ?? 12) * z * dpr();
+        const fontSize = (lts.lengthLabelSize ?? 12) * z * currentEffDpr;
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
@@ -2766,7 +2823,7 @@
         const effScale = getEffectiveScaleForLine(ann, poly, true, state.currentPage);
         const realLen = getLineRealWorldLength(poly, state.currentPage, true, ann);
         const label = formatDistFeetInchesFromReal(realLen, effScale);
-        const fontSize = (lts.lengthLabelSize ?? 12) * z * dpr();
+        const fontSize = (lts.lengthLabelSize ?? 12) * z * currentEffDpr;
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
@@ -2813,7 +2870,7 @@
       if (zoneW >= 30 && zoneH >= 20 && state.multiplyZoneSettings?.showLabelOnZone !== false) {
         const label = '×' + (zone.multiplier ?? 1);
         const center = toCanvas({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
-        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * z * dpr();
+        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * z * currentEffDpr;
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
@@ -2859,7 +2916,7 @@
       const label = (sc && sc.label) ? sc.label : ((sc && sc.unit) ? ((sc.pixelsPerUnit ? (1 / sc.pixelsPerUnit).toFixed(2) : '?') + ' ' + sc.unit + '/pt') : 'Scale');
       if (zoneW >= 30 && zoneH >= 20 && label) {
         const center = toCanvas({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
-        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * z * dpr();
+        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * z * currentEffDpr;
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width;
         const pad = 4;
@@ -2877,7 +2934,7 @@
       if (!n.text) return;
       const w = n.width || 150;
       const fontSize = n.fontSize || 14;
-      const scale = z * dpr();
+      const scale = z * currentEffDpr;
       const font = fontSize * scale + 'px DM Sans';
       const lineHeight = fontSize * scale;
       const { lines } = wrapNoteText(n.text, w * scale, font, lineHeight);
@@ -3038,11 +3095,11 @@
         const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
         ann.legend = { x: vp.width - 110, y: 16, w: 100, h: 56 };
       }
-      const scale = state.zoom * dpr();
+      const scale = state.zoom * currentEffDpr;
       drawLegend(ctx, page, state.currentPage, ann, scale, toCanvas);
     }
     if (state.showGridOverlay) {
-      const scale = state.zoom * dpr();
+      const scale = state.zoom * currentEffDpr;
       drawGrid(ctx, page, state.currentPage, scale, toCanvas);
     }
   }
@@ -12676,6 +12733,9 @@
   App.ensureActiveCanvas = ensureActiveCanvas;
   App.getMaxZoom = getMaxZoom;
   App.getWheelZoomSpeed = getWheelZoomSpeed;
+  App.getCanvasCaps = getCanvasCaps;
+  App.setCanvasCaps = setCanvasCaps;
+  App.effectiveDpr = effectiveDpr;
   App.getOrderedIcons = getOrderedIcons;
   App.iconVbFor = iconVbFor;
   App.getUserCustomIcons = getUserCustomIcons;
@@ -12934,6 +12994,9 @@
 
   // SECTION: Init / boot
   (async function init() {
+    // Probe the device's max canvas size once, before any PDF render, so high-zoom
+    // renders are clamped to a size the browser can actually rasterize (no black screen).
+    detectMaxCanvasArea();
     // PWA: register the service worker (offline shell + cached PDF/lib assets).
     // Scoped to /app/ — the app lives there; the marketing site at / is plain static
     // HTML, outside the SW. Registered for every entry path, incl. the view-link branch.

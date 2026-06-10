@@ -214,6 +214,19 @@
     return (sqPdfPts / (ppu * ppu)).toFixed(1) + ' ' + scale.unit + '²';
   }
 
+  // Largest device-pixel-ratio we can render the page bitmap at without the canvas
+  // buffer (pageW*zoom*eff × pageH*zoom*eff device px) exceeding the browser's max
+  // canvas dimension/area — past which the canvas silently renders blank/black.
+  // Because dpr only affects bitmap sharpness (it cancels out of every on-screen
+  // size), clamping it keeps layout/positions/fonts identical and only softens the
+  // bitmap beyond the cap. Never returns more than the real dpr; floored above 0.
+  function clampEffectiveDpr({ pageW, pageH, zoom, dpr, maxDim, maxArea }) {
+    const w = pageW * zoom, h = pageH * zoom;   // CSS px — independent of the effDpr we pick
+    if (!(w > 0) || !(h > 0)) return Math.max(0.01, dpr);
+    const eff = Math.min(dpr, maxDim / w, maxDim / h, Math.sqrt(maxArea / (w * h)));
+    return Math.max(0.01, Math.min(eff, dpr));
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -224,6 +237,7 @@
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
       formatLineLengthRealSum, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
-      formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea
+      formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
+      clampEffectiveDpr
     };
   }

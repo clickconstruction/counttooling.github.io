@@ -8,6 +8,8 @@ category: Working with plans
 
 Real plan sets aren't always one clean scale per sheet. Two tools handle the awkward cases without making you re-do the whole page.
 
+![A plan with two regions marked: a multiply zone around a set of typical rooms, and a scale zone around a detail that's drawn at a different scale.](/guides/img/zones.png)
+
 ## Scale zones — for multi-scale sheets
 
 A sheet often has the main plan at one scale and a blown-up detail or isometric at another. A **scale zone** lets a region carry its own scale:

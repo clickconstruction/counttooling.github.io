@@ -8,6 +8,10 @@ category: Getting started
 
 Scale is what turns pixels on a PDF into real feet and inches. Until you set it, CountTooling can count fixtures but can't measure runs. Scale is **per page**, so each sheet can have its own.
 
+![The Set Scale dialog showing the three ways to calibrate: ① pick two known points, ② choose an architectural or engineering preset, or ③ type a custom scale.](/guides/img/set-scale.png)
+
+There are three ways to set it — **①** two points, **②** a preset, or **③** a custom value.
+
 ## Set scale from two points
 
 The most reliable way is to calibrate against something you know:

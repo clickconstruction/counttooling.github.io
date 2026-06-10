@@ -45,6 +45,23 @@ file becomes a page at `https://counttooling.com/guides/<filename-without-.md>/`
 | `category` | optional | Label for grouping (informational for now). |
 | `h1` | optional | Overrides the on-page H1 if it should differ from `title`. |
 
+## Adding screenshots / visuals
+
+Article images live in `guides/img/` and are referenced with normal Markdown:
+`![alt text](/guides/img/<name>.png)`. They're **generated** (not hand-captured) so they
+stay reproducible and on-brand:
+
+- The backdrop is a synthetic floor plan: `npm run build:sample-plan` → `samples/sample-plan.pdf`
+  (rarely needs rerunning).
+- The screenshots come from `scripts/build-screenshots.js`, which drives the real app
+  headlessly, lays a sample takeoff on the plan, opens dialogs, overlays **numbered callouts**,
+  and writes `guides/img/*.png`. To add or change a shot, edit the `SHOTS` array in that script,
+  then run `npm run build:screenshots` and commit the new PNG(s).
+- Number your article steps to match the ①②③ callouts in the image.
+- These build steps need a browser and aren't deterministic at the pixel level, so they're **not**
+  in `npm run check` (same as `build:og-image`). The committed PNGs are the source of truth; the
+  link-integrity test fails CI only if an article references an image that doesn't exist.
+
 ## Notes
 
 - Write content from the app's **real** features only — don't invent capabilities.

@@ -6,6 +6,8 @@
     "build:icons": "node scripts/build-custom-icons.js",
     "build:pwa-icons": "node scripts/build-pwa-icons.js",
     "build:og-image": "node scripts/build-og-image.js",
+    "build:sample-plan": "node scripts/build-sample-plan.js",
+    "build:screenshots": "node scripts/build-screenshots.js",
     "build:guides": "node scripts/build-guides.js",
     "build:toc": "node scripts/build-toc.js",
     "lint": "eslint . --max-warnings 0",

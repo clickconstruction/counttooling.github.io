@@ -28,7 +28,13 @@
   it's ESM-only). It's a committed-artifact generator like `build:toc` — `npm run check`
   includes `build:guides -- --check` (fails if the committed HTML is stale). Authoring steps:
   `content/guides/README.md`. Tests: `guides.test.js` (Node, CI — SEO/link/sitemap integrity)
-  + `guides.spec.js` (Playwright, local).
+  + `guides.spec.js` (Playwright, local). **Guide visuals** are generated, not hand-captured:
+  `npm run build:sample-plan` makes a synthetic floor plan (`samples/sample-plan.pdf`), and
+  `npm run build:screenshots` (`scripts/build-screenshots.js`) drives the real app headlessly,
+  lays a sample takeoff on it, opens dialogs, overlays numbered callouts, and writes
+  `guides/img/*.png` referenced from articles via Markdown `![]()`. Both are manual (browser +
+  non-deterministic pixels) and **not** in `npm run check` — like `build:og-image`; the
+  link-integrity test fails only if an article references a missing image.
 - **PWA / offline**: the app is an installable PWA (scoped to `/app/`). Third-party libs (pdf.js + worker,
   pdf-lib, html2canvas, jsPDF, supabase-js, tus) and fonts are **vendored locally** in
   `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is

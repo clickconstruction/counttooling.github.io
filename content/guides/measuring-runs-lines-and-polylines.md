@@ -16,11 +16,11 @@ Every run belongs to a **line type** — a named template with a color and a str
 
 ## Straight lines
 
-The **Line** tool is a two-click straight run: click the start, click the end. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.
+The **Line** [[line]] tool is a two-click straight run: click the start, click the end. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.
 
 ## Polylines
 
-For a run that bends, use the **Polyline** tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape.
+For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape.
 
 ## Arcs and drops
 
@@ -32,10 +32,10 @@ Real runs aren't always flat or straight:
 ## Keep lines clean
 
 - **Snap to horizontal/vertical** (press `J`) locks lines to true H/V so your takeoff looks as tidy as the plan.
-- Turn on the **grid** with snapping when you want lines to follow a regular module.
+- Turn on the **grid** [[grid]] with snapping when you want lines to follow a regular module.
 
 ## Quick one-off distances
 
-Just need to check a dimension without adding it to a takeoff? The **Measure** tool gives a distance in two clicks. If those two points fall inside a [scale zone](/guides/scale-zones-and-multiply-zones/), it uses that zone's scale automatically.
+Just need to check a dimension without adding it to a takeoff? The **Measure** [[measure]] tool gives a distance in two clicks. If those two points fall inside a [scale zone](/guides/scale-zones-and-multiply-zones/), it uses that zone's scale automatically.
 
 With counts and runs both on the plan, you're ready to [review and export](/guides/reports-and-exports/).

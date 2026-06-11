@@ -28,8 +28,12 @@
        the visible area and the window can scroll — pushing the in-flow header up under
        the status bar. 100dvh tracks the visible height (100vh stays as the fallback for
        older browsers); html/body scroll-lock + overscroll-behavior close the gap. */
-    html { height: 100%; overflow: hidden; overscroll-behavior: none; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; min-height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+    /* touch-action: pan-x pan-y disables the browser's native pinch-zoom (and double-tap
+       zoom) everywhere — constrained down the ancestor chain — so the header/footer/menus
+       can't be browser-zoomed. One-finger scrolling still works (sidebars, tall modals).
+       The canvas keeps touch-action:none and handles its own PDF pinch-zoom. */
+    html { height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; min-height: 100dvh; overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; }
     .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
     /* Header reserves the top safe-area as padding so its surface fills the notch
        strip while the controls sit below it (in reach). Height grows by the same

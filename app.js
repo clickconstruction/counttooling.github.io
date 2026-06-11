@@ -6716,6 +6716,7 @@
   };
   document.getElementById('zoomOverlayMinus').onclick = (e) => { e.stopPropagation(); doZoomOut(); };
   document.getElementById('zoomOverlayPlus').onclick = (e) => { e.stopPropagation(); doZoomIn(); };
+  document.getElementById('zoomOverlaySettings').onclick = (e) => { e.stopPropagation(); zoomOverlay.classList.remove('visible'); App.showZoomModal(); };
   document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } };
   document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } };
   document.getElementById('prevMarkedPage').onclick = () => {

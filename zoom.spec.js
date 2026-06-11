@@ -65,4 +65,65 @@ test.describe('window.App registry pilot - Zoom modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('default is 400%; ceiling raised to 1200% and zoom reaches it without going black', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Default max zoom is 400%.
+    expect(await page.evaluate(() => window.App.getMaxZoom())).toBe(4);
+
+    await page.evaluate(() => window.App.showZoomModal());
+    await page.waitForSelector('#zoomModal.visible', { timeout: 5000 });
+    // The slider ceiling is now 1200 and it reflects the live 400% default.
+    const slider = await page.evaluate(() => {
+      const m = document.getElementById('zoomMax');
+      return { max: m.max, value: m.value };
+    });
+    expect(slider.max).toBe('1200');
+    expect(slider.value).toBe('400');
+
+    // Raise to 1200% and close -> persisted as 12.
+    await page.evaluate(() => { const m = document.getElementById('zoomMax'); m.value = '1200'; m.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.locator('#zoomModalClose').click();
+    await page.waitForFunction(() => !document.getElementById('zoomModal')?.classList.contains('visible'), { timeout: 5000 });
+    expect(await page.evaluate(() => window.state.maxZoom)).toBe(12);
+
+    // Zoom all the way to 1200% and confirm it still renders (the canvas-cap clamp
+    // keeps the buffer under the device limit instead of going black).
+    await page.evaluate(() => { window.state.zoom = window.App.getMaxZoom(); window.App.renderPdf(); });
+    await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, { timeout: 5000 });
+    expect(await page.evaluate(() => window.state.zoom)).toBe(12);
+    expect(errors).toEqual([]);
+  });
+
+  test('mobile: the zoom popover has a Settings entry that opens the Zoom modal', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.setViewportSize({ width: 390, height: 844 });   // mobile -> zoom-% opens the popover
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Tap the zoom % -> the mobile +/- popover (not the desktop modal).
+    await page.locator('#zoomPct').click();
+    await page.waitForSelector('#zoomOverlay.visible', { timeout: 3000 });
+
+    // The new Settings entry opens the Zoom Settings modal and dismisses the popover.
+    await page.locator('#zoomOverlaySettings').click();
+    await page.waitForSelector('#zoomModal.visible', { timeout: 3000 });
+    expect(await page.evaluate(() => document.getElementById('zoomMax').max)).toBe('1200');
+    expect(await page.evaluate(() => document.getElementById('zoomOverlay').classList.contains('visible'))).toBe(false);
+
+    expect(errors).toEqual([]);
+  });
 });

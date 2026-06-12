@@ -399,6 +399,7 @@
     activeCanvasIdByPage: {},
     showLegendOverlay: true,
     showGridOverlay: false,
+    showScaleRefLine: true,
     gridSettings: null,
     userActivityAllRowsCache: null,
     userActivityViewMode: 'events'
@@ -2616,6 +2617,41 @@
         ctx.fill(new Path2D(SCALE_CROSSHAIR_PATH));
         ctx.restore();
       });
+    } else if (state.showScaleRefLine && page.scale?.refLine) {
+      // Persistent scale reference line: the segment used to set this page's two-point
+      // scale, kept visible so the measured reference is always known. Dimmed + dashed
+      // so it reads as a reference, not a takeoff line. Suppressed while re-picking points.
+      const rl = page.scale.refLine;
+      const a = toCanvas({ x: rl.x1, y: rl.y1 }), b = toCanvas({ x: rl.x2, y: rl.y2 });
+      ctx.save();
+      ctx.strokeStyle = '#e8c547'; ctx.globalAlpha = 0.65; ctx.lineWidth = 1.5 * currentEffDpr; ctx.setLineDash([7 * currentEffDpr, 5 * currentEffDpr]);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.setLineDash([]);
+      [{ x: rl.x1, y: rl.y1 }, { x: rl.x2, y: rl.y2 }].forEach(pt => {
+        const p = toCanvas(pt);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(18 / 640, 18 / 640);
+        ctx.translate(-320, -320);
+        ctx.fillStyle = '#e8c547';
+        ctx.fill(new Path2D(SCALE_CROSSHAIR_PATH));
+        ctx.restore();
+      });
+      // Measured length label near the midpoint (e.g. "10 ft").
+      if (page.scale.pixelsPerUnit) {
+        const lenReal = ptDist({ x: rl.x1, y: rl.y1 }, { x: rl.x2, y: rl.y2 }) / page.scale.pixelsPerUnit;
+        const label = formatDistFeetInchesFromReal(lenReal, page.scale);
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        ctx.globalAlpha = 1;
+        ctx.font = (11 * currentEffDpr) + 'px DM Sans, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(label).width, padX = 5 * currentEffDpr, h = 16 * currentEffDpr;
+        ctx.fillStyle = 'rgba(20,20,20,0.82)';
+        ctx.fillRect(mid.x - tw / 2 - padX, mid.y - h / 2 - 9 * currentEffDpr, tw + padX * 2, h);
+        ctx.fillStyle = '#e8c547';
+        ctx.fillText(label, mid.x, mid.y - 9 * currentEffDpr + 1);
+      }
+      ctx.restore();
     }
     // Live Measure preview (mobile loupe aim + desktop hover): a dashed rubber band
     // to the moving second point, and the first-point crosshair while aiming. Scoped
@@ -13089,6 +13125,9 @@
     // Probe the device's max canvas size once, before any PDF render, so high-zoom
     // renders are clamped to a size the browser can actually rasterize (no black screen).
     detectMaxCanvasArea();
+    // Scale reference-line visibility is a device view-preference (localStorage), not
+    // project data — the line geometry itself rides on page.scale.refLine.
+    try { const v = localStorage.getItem('showScaleRefLine'); if (v != null) state.showScaleRefLine = v === 'true'; } catch (_) { /* private mode */ }
     // PWA: register the service worker (offline shell + cached PDF/lib assets).
     // Scoped to /app/ — the app lives there; the marketing site at / is plain static
     // HTML, outside the SW. Registered for every entry path, incl. the view-link branch.

@@ -77,6 +77,8 @@
       }
       showScaleTab('presets');
     }
+    const refChk = document.getElementById('scaleShowRefLine');
+    if (refChk) refChk.checked = !!state.showScaleRefLine;
     App.showModal('scaleModal');
   }
   function resetScaleModalZoneMode() {
@@ -161,6 +163,11 @@
 
   document.querySelectorAll('#scaleModalTabs .counter-tab').forEach(t => t.onclick = () => showScaleTab(t.dataset.tab));
   document.getElementById('scaleUnit').onchange = updateScalePlaceholder;
+  document.getElementById('scaleShowRefLine').onchange = (e) => {
+    App.state.showScaleRefLine = e.target.checked;   // device view-preference, not project data
+    try { localStorage.setItem('showScaleRefLine', String(e.target.checked)); } catch (_) { /* private mode */ }
+    App.renderPdf();
+  };
   document.getElementById('scaleSelectOnPdf').onclick = () => {
     const state = App.state;
     App.hideModal('scaleModal');
@@ -219,7 +226,7 @@
     }
     const dist = App.ptDist(state.scalePointA, state.scalePointB);
     if (dist < 1) { App.showToast('Scale line too short — pick two points further apart'); return; }
-    const scaleObj = { pixelsPerUnit: dist / val, unit, label: null };
+    const scaleObj = { pixelsPerUnit: dist / val, unit, label: null, refLine: { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y } };
     if (applyScaleObjectToZoneOrPage(scaleObj)) return;
     App.pushUndoSnapshot();
     const page = state.pages[state.currentPage];

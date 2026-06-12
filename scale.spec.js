@@ -210,4 +210,58 @@ test.describe('window.App registry pilot - Scale modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('two-point scale stores a refLine; preset has none; checkbox toggles the view flag', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Two-point apply stores the segment on page.scale.refLine; default checkbox is on.
+    await page.evaluate(() => {
+      window.state.scaleModalApplyTarget = null;
+      window.state.scalePointA = { x: 0, y: 0 };
+      window.state.scalePointB = { x: 151, y: 0 };
+      window.App.openScaleModal();
+    });
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('scaleShowRefLine').checked)).toBe(true);
+    await page.evaluate(() => { document.getElementById('scaleValue').value = '10'; document.getElementById('scaleSet').click(); });
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    expect(await page.evaluate(() => window.state.pages[window.state.currentPage].scale.refLine)).toEqual({ x1: 0, y1: 0, x2: 151, y2: 0 });
+
+    // A preset scale replaces it and carries no refLine.
+    await page.evaluate(() => window.App.openScaleModal());
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+    await page.locator('#scalePresetsList button').first().click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    expect(await page.evaluate(() => window.state.pages[window.state.currentPage].scale.refLine)).toBeUndefined();
+
+    // Re-set a two-point scale, then uncheck -> flag false + localStorage, geometry kept.
+    await page.evaluate(() => {
+      window.state.scalePointA = { x: 0, y: 0 };
+      window.state.scalePointB = { x: 100, y: 0 };
+      window.App.openScaleModal();
+    });
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    await page.evaluate(() => { document.getElementById('scaleValue').value = '5'; document.getElementById('scaleSet').click(); });
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    await page.evaluate(() => window.App.openScaleModal());
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    await page.evaluate(() => { const c = document.getElementById('scaleShowRefLine'); c.checked = false; c.dispatchEvent(new Event('change')); });
+    const toggled = await page.evaluate(() => ({
+      flag: window.state.showScaleRefLine,
+      ls: localStorage.getItem('showScaleRefLine'),
+      refStillThere: !!window.state.pages[window.state.currentPage].scale.refLine,
+    }));
+    expect(toggled.flag).toBe(false);
+    expect(toggled.ls).toBe('false');
+    expect(toggled.refStillThere).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
 });

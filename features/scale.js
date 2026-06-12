@@ -34,8 +34,11 @@
     const unit = document.getElementById('scaleUnit')?.value || 'ft';
     const inp = document.getElementById('scaleValue');
     if (!inp) return;
-    if (unit === 'ft') inp.placeholder = "e.g. 5'9\" or 5.75";
-    else if (unit === 'in') inp.placeholder = "e.g. 5'9\" or 69";
+    if (unit === 'ft') inp.placeholder = "e.g. 5.75 or 5'9";
+    else if (unit === 'in') inp.placeholder = "e.g. 69 or 5'9";
+    else if (unit === 'm') inp.placeholder = 'e.g. 1.75';
+    else if (unit === 'cm') inp.placeholder = 'e.g. 175';
+    else if (unit === 'yd') inp.placeholder = 'e.g. 1.92';
     else inp.placeholder = 'e.g. 10';
   }
   function openScaleModal() {
@@ -53,7 +56,7 @@
       pointsPanel.style.display = '';
       selectOnPdfGroup.style.display = 'none';
       if (lengthInputGroup) lengthInputGroup.style.display = '';
-      scaleInfo.textContent = 'You selected a line spanning ' + Math.round(App.ptDist(state.scalePointA, state.scalePointB)) + ' pdf-pts.';
+      scaleInfo.textContent = 'Line selected on the plan — enter its real-world length below.';
       updateScalePlaceholder();
     } else {
       tabsEl.style.display = '';

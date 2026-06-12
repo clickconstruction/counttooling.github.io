@@ -446,17 +446,16 @@
         <div id="scaleLengthInputGroup" style="display:none;">
           <div class="form-group">
             <label>Real-world length</label>
-            <input type="text" id="scaleValue" placeholder="e.g. 5'9&quot; or 5.75">
-          </div>
-          <div class="form-group">
-            <label>Unit</label>
-            <select id="scaleUnit">
-              <option value="ft">ft</option>
-              <option value="in">in</option>
-              <option value="m">m</option>
-              <option value="cm">cm</option>
-              <option value="yd">yd</option>
-            </select>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="text" id="scaleValue" placeholder="e.g. 5.75 or 5'9" style="flex:1;min-width:0;">
+              <select id="scaleUnit" style="width:auto;flex:0 0 auto;">
+                <option value="ft">ft</option>
+                <option value="in">in</option>
+                <option value="m">m</option>
+                <option value="cm">cm</option>
+                <option value="yd">yd</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="form-group" id="scaleSelectOnPdfGroup">

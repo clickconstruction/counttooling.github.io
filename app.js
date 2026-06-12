@@ -4553,9 +4553,10 @@
       const sd = line.startDrop || 0, ed = line.endDrop || 0;
       let dropsHtml = '';
       if (sd > 0 || ed > 0) {
+        const su = line.startDropUnit || pageScale?.unit, eu = line.endDropUnit || pageScale?.unit;
         const parts = [];
-        if (sd > 0) parts.push('↧ ' + sd);
-        if (ed > 0) parts.push('↧ ' + ed);
+        if (sd > 0) parts.push('↧ ' + sd + (su ? ' ' + su : ''));
+        if (ed > 0) parts.push('↧ ' + ed + (eu ? ' ' + eu : ''));
         dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
       }
       div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
@@ -5141,11 +5142,16 @@
     const swatchEl = document.getElementById('linePropertiesSwatch');
     const startDropEl = document.getElementById('linePropertiesStartDrop');
     const endDropEl = document.getElementById('linePropertiesEndDrop');
+    const startDropUnitEl = document.getElementById('linePropertiesStartDropUnit');
+    const endDropUnitEl = document.getElementById('linePropertiesEndDropUnit');
+    const defaultDropUnit = getPageScale(it.pageIdx ?? state.currentPage)?.unit || 'ft';
     const editVerticesGroup = document.getElementById('linePropertiesEditVerticesGroup');
     const editVerticesBtn = document.getElementById('linePropertiesEditVertices');
     nameEl.value = line.name || (it.type === 'poly' ? 'Polyline' : 'Quick line');
     startDropEl.value = String(line.startDrop ?? '');
     endDropEl.value = String(line.endDrop ?? '');
+    startDropUnitEl.value = line.startDropUnit || defaultDropUnit;
+    endDropUnitEl.value = line.endDropUnit || defaultDropUnit;
     swatchEl.style.background = color;
     editVerticesGroup.style.display = it.type === 'poly' ? '' : 'none';
     nameEl.onblur = () => {
@@ -5170,24 +5176,29 @@
       const ed = parseInt(endDropEl.value, 10);
       line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
       line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
+      line.startDropUnit = startDropUnitEl.value;
+      line.endDropUnit = endDropUnitEl.value;
     };
     startDropEl.onblur = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); };
     endDropEl.onblur = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); };
-    const adjustDrop = (el, prop, delta) => {
+    startDropUnitEl.onchange = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); renderPdf(); };
+    endDropUnitEl.onchange = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); renderPdf(); };
+    const adjustDrop = (el, unitEl, prop, delta) => {
       const v = parseInt(el.value, 10);
       const cur = isNaN(v) || v < 0 ? 0 : v;
       const next = Math.max(0, cur + delta);
       pushUndoSnapshot();
       line[prop] = next;
+      line[prop + 'Unit'] = unitEl.value;
       el.value = next || '';
       markProjectDirty();
       updateUI();
       renderPdf();
     };
-    document.getElementById('linePropertiesStartDropPlus1').onclick = () => adjustDrop(startDropEl, 'startDrop', 1);
-    document.getElementById('linePropertiesStartDropPlus10').onclick = () => adjustDrop(startDropEl, 'startDrop', 10);
-    document.getElementById('linePropertiesStartDropMinus1').onclick = () => adjustDrop(startDropEl, 'startDrop', -1);
-    document.getElementById('linePropertiesStartDropMinus10').onclick = () => adjustDrop(startDropEl, 'startDrop', -10);
+    document.getElementById('linePropertiesStartDropPlus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 1);
+    document.getElementById('linePropertiesStartDropPlus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 10);
+    document.getElementById('linePropertiesStartDropMinus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -1);
+    document.getElementById('linePropertiesStartDropMinus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -10);
     document.getElementById('linePropertiesClearStartDrop').onclick = () => {
       pushUndoSnapshot();
       line.startDrop = 0;
@@ -5196,10 +5207,10 @@
       updateUI();
       renderPdf();
     };
-    document.getElementById('linePropertiesEndDropPlus1').onclick = () => adjustDrop(endDropEl, 'endDrop', 1);
-    document.getElementById('linePropertiesEndDropPlus10').onclick = () => adjustDrop(endDropEl, 'endDrop', 10);
-    document.getElementById('linePropertiesEndDropMinus1').onclick = () => adjustDrop(endDropEl, 'endDrop', -1);
-    document.getElementById('linePropertiesEndDropMinus10').onclick = () => adjustDrop(endDropEl, 'endDrop', -10);
+    document.getElementById('linePropertiesEndDropPlus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 1);
+    document.getElementById('linePropertiesEndDropPlus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 10);
+    document.getElementById('linePropertiesEndDropMinus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -1);
+    document.getElementById('linePropertiesEndDropMinus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -10);
     document.getElementById('linePropertiesClearEndDrop').onclick = () => {
       pushUndoSnapshot();
       line.endDrop = 0;
@@ -5222,11 +5233,15 @@
     const line = pendingLineProperties.type === 'poly' ? pendingLineProperties.poly : pendingLineProperties.q;
     const startDropEl = document.getElementById('linePropertiesStartDrop');
     const endDropEl = document.getElementById('linePropertiesEndDrop');
+    const startDropUnitEl = document.getElementById('linePropertiesStartDropUnit');
+    const endDropUnitEl = document.getElementById('linePropertiesEndDropUnit');
     if (startDropEl && endDropEl) {
       const sd = parseInt(startDropEl.value, 10);
       const ed = parseInt(endDropEl.value, 10);
       line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
       line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
+      if (startDropUnitEl) line.startDropUnit = startDropUnitEl.value;
+      if (endDropUnitEl) line.endDropUnit = endDropUnitEl.value;
     }
     pushUndoSnapshot();
     markProjectDirty();

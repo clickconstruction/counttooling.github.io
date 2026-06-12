@@ -217,7 +217,9 @@
       App.showToast('Enter a valid length');
       return;
     }
-    const scaleObj = { pixelsPerUnit: App.ptDist(state.scalePointA, state.scalePointB) / val, unit, label: null };
+    const dist = App.ptDist(state.scalePointA, state.scalePointB);
+    if (dist < 1) { App.showToast('Scale line too short — pick two points further apart'); return; }
+    const scaleObj = { pixelsPerUnit: dist / val, unit, label: null };
     if (applyScaleObjectToZoneOrPage(scaleObj)) return;
     App.pushUndoSnapshot();
     const page = state.pages[state.currentPage];

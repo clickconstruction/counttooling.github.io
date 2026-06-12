@@ -227,6 +227,16 @@
     return Math.max(0.01, Math.min(eff, dpr));
   }
 
+  // Convert a length value between the units the app's Set Scale supports
+  // (ft/in/m/cm/yd) via a metres base. Unknown or identical units are a no-op,
+  // so a missing drop unit safely falls back to "same as the scale unit".
+  const UNIT_TO_M = { ft: 0.3048, in: 0.0254, yd: 0.9144, m: 1, cm: 0.01 };
+  function convertUnitValue(val, fromUnit, toUnit) {
+    const f = UNIT_TO_M[fromUnit], t = UNIT_TO_M[toUnit];
+    if (!f || !t || f === t) return val;
+    return val * (f / t);
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -238,6 +248,6 @@
       formatLineLengthRealSum, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
-      clampEffectiveDpr
+      clampEffectiveDpr, convertUnitValue
     };
   }

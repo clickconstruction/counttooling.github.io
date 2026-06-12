@@ -220,3 +220,17 @@ test('clampEffectiveDpr: monotonic — more zoom never grows the clamped buffer'
   }
   assert.ok(prevBuffer > 0);
 });
+
+test('convertUnitValue: converts between the Set-Scale units via a metres base', () => {
+  close(g.convertUnitValue(1, 'ft', 'in'), 12, 1e-9);
+  close(g.convertUnitValue(12, 'in', 'ft'), 1, 1e-9);
+  close(g.convertUnitValue(1, 'yd', 'ft'), 3, 1e-9);
+  close(g.convertUnitValue(1, 'm', 'cm'), 100, 1e-9);
+  close(g.convertUnitValue(8, 'in', 'ft'), 0.6666666666666667, 1e-9);
+});
+
+test('convertUnitValue: identical or unknown units are a no-op', () => {
+  assert.strictEqual(g.convertUnitValue(5, 'ft', 'ft'), 5);
+  assert.strictEqual(g.convertUnitValue(5, 'ft', 'bogus'), 5);
+  assert.strictEqual(g.convertUnitValue(5, undefined, 'ft'), 5);
+});

@@ -42,6 +42,21 @@ test('lineLengthPdfPts: adds drop length (drops * pixelsPerUnit) only when scale
   assert.strictEqual(lm.lineLengthPdfPts(line, false, null, null), 10);
 });
 
+test('lineLengthPdfPts: drop units convert to the scale unit; missing unit = legacy', () => {
+  const scale = { pixelsPerUnit: 10, unit: 'ft' };
+  // 8 in start drop on a ft-scaled page -> 8 in = 0.6667 ft -> base 10 + 0.6667*10
+  const inLine = { x1: 0, y1: 0, x2: 10, y2: 0, startDrop: 8, startDropUnit: 'in' };
+  assert.ok(Math.abs(lm.lineLengthPdfPts(inLine, false, scale, null) - (10 + (8 * 0.0254 / 0.3048) * 10)) < 1e-6);
+  // explicit ft unit == legacy (no *Unit) == bare scale unit
+  const ftLine = { x1: 0, y1: 0, x2: 10, y2: 0, startDrop: 2, startDropUnit: 'ft' };
+  const legacy = { x1: 0, y1: 0, x2: 10, y2: 0, startDrop: 2 };
+  assert.strictEqual(lm.lineLengthPdfPts(ftLine, false, scale, null), 30);
+  assert.strictEqual(lm.lineLengthPdfPts(legacy, false, scale, null), 30);
+  // start + end in different units (1 yd start + 12 in end on ft scale = 3 + 1 = 4 ft)
+  const mixed = { x1: 0, y1: 0, x2: 10, y2: 0, startDrop: 1, startDropUnit: 'yd', endDrop: 12, endDropUnit: 'in' };
+  assert.ok(Math.abs(lm.lineLengthPdfPts(mixed, false, scale, null) - (10 + 4 * 10)) < 1e-6);
+});
+
 test('effectiveScaleForLine: scale-zone override wins, else the injected page scale', () => {
   const pageScale = { pixelsPerUnit: 2, unit: 'ft' };
   const zoneScale = { pixelsPerUnit: 5, unit: 'in' };

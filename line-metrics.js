@@ -44,7 +44,13 @@
     if (!scale || ((line.startDrop || 0) === 0 && (line.endDrop || 0) === 0))
       return base;
     const ppu = scale.pixelsPerUnit;
-    const dropPts = ((line.startDrop || 0) + (line.endDrop || 0)) * ppu;
+    // Each drop is entered in its own unit (line.startDropUnit/endDropUnit); convert
+    // to the effective scale's unit before adding. A missing unit defaults to the
+    // scale unit (= legacy behaviour, no conversion).
+    const su = scale.unit;
+    const sd = convertUnitValue(line.startDrop || 0, line.startDropUnit || su, su);
+    const ed = convertUnitValue(line.endDrop || 0, line.endDropUnit || su, su);
+    const dropPts = (sd + ed) * ppu;
     return base + dropPts;
   }
 
@@ -62,8 +68,12 @@
     const base = lineGeomPdfPts(line, isPoly, lineType);
     const eff = effectiveScaleForLine(ann, line, isPoly, pageScale);
     if (!eff || !eff.pixelsPerUnit) return base;
-    const drop = (line.startDrop || 0) + (line.endDrop || 0);
-    return base / eff.pixelsPerUnit + drop;
+    // Each drop is entered in its own unit; convert to the effective scale's unit
+    // before adding. A missing unit defaults to the scale unit (legacy behaviour).
+    const su = eff.unit;
+    const sd = convertUnitValue(line.startDrop || 0, line.startDropUnit || su, su);
+    const ed = convertUnitValue(line.endDrop || 0, line.endDropUnit || su, su);
+    return base / eff.pixelsPerUnit + sd + ed;
   }
 
   // Real-world length scaled by the line's multiply-zone factor (1 when none).

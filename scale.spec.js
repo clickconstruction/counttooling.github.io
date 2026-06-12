@@ -74,4 +74,65 @@ test.describe('window.App registry pilot - Scale modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('two-point flow: friendly info, no-quote unit-aware placeholder, inline value+unit, applies', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Simulate the two-point "Select on PDF" finish (151 pt apart), then open the modal.
+    await page.evaluate(() => {
+      window.state.scaleModalApplyTarget = null;
+      window.state.scalePointA = { x: 0, y: 0 };
+      window.state.scalePointB = { x: 151, y: 0 };
+      window.App.openScaleModal();
+    });
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+
+    // Friendly info (no "pdf-pts" jargon) + the length input group is shown.
+    const ui = await page.evaluate(() => ({
+      lenShown: getComputedStyle(document.getElementById('scaleLengthInputGroup')).display !== 'none',
+      info: document.getElementById('scaleInfo').textContent,
+    }));
+    expect(ui.lenShown).toBe(true);
+    expect(ui.info).not.toContain('pdf-pts');
+    expect(ui.info.toLowerCase()).toContain('real-world length');
+
+    // Placeholder: no inch-mark, decimal-first, and updates with the unit.
+    const ph = await page.evaluate(() => {
+      const u = document.getElementById('scaleUnit'), v = document.getElementById('scaleValue');
+      u.value = 'ft'; u.dispatchEvent(new Event('change')); const ft = v.placeholder;
+      u.value = 'm'; u.dispatchEvent(new Event('change')); const m = v.placeholder;
+      return { ft, m };
+    });
+    expect(ph.ft).not.toContain('"');
+    expect(ph.ft).toContain('5.75');
+    expect(ph.m).toBe('e.g. 1.75');
+
+    // Value + unit sit on the same row (inline), unit to the right of the input.
+    const inline = await page.evaluate(() => {
+      const v = document.getElementById('scaleValue').getBoundingClientRect();
+      const u = document.getElementById('scaleUnit').getBoundingClientRect();
+      return u.left >= v.right - 4 && v.bottom > u.top && u.bottom > v.top;
+    });
+    expect(inline).toBe(true);
+
+    // Set Scale applies pixelsPerUnit = 151 / 5.75, unit ft, modal closes.
+    await page.evaluate(() => {
+      const u = document.getElementById('scaleUnit'); u.value = 'ft'; u.dispatchEvent(new Event('change'));
+      document.getElementById('scaleValue').value = '5.75';
+      document.getElementById('scaleSet').click();
+    });
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    const scale = await page.evaluate(() => window.state.pages[window.state.currentPage].scale);
+    expect(scale.unit).toBe('ft');
+    expect(scale.pixelsPerUnit).toBeCloseTo(151 / 5.75, 6);
+
+    expect(errors).toEqual([]);
+  });
 });

@@ -11,113 +11,114 @@ Phase 1 adds admin-provisioned auth and cloud project persistence. Phase 2 adds 
 
 ## 2. Run SQL Migrations
 
-**Option A: Supabase MCP** (recommended if you do not use the Supabase CLI): Each migration is a single file under `supabase/migrations/`. Use `list_migrations` to see what is already applied, then `apply_migration` with `name` set to the **filename without `.sql`** (e.g. `20260326230000_user_presence_and_activity`) and `query` set to the **entire file contents** of that SQL file—do not retype SQL by hand. Apply files in version order: numbered `001`–`041`, then any timestamped files (e.g. `20260326230000_user_presence_and_activity.sql`). Note that `supabase/migrations/` mixes two naming schemes—see **Migration file naming** below. If you previously applied 032/033 (user_artboards, now reverted), also apply 034. The Dashboard SQL Editor (Option B) is equivalent: paste the same file contents there.
+**Option A: Supabase MCP** (recommended if you do not use the Supabase CLI): Each migration is a single file under `supabase/migrations/`. Use `list_migrations` to see what is already applied, then `apply_migration` with `name` set to the **filename without `.sql`** (e.g. `20260326230000_user_presence_and_activity`) and `query` set to the **entire file contents** of that SQL file—do not retype SQL by hand. Apply files in filename order (every file is timestamped — see **Migration file naming** below). If you previously applied 032/033 (user_artboards, now reverted), also apply 034 (`20260319192450_034_revert_user_artboards.sql`). The Dashboard SQL Editor (Option B) is equivalent: paste the same file contents there.
 
-**Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in order (same SQL as in each file under `supabase/migrations/`):
+**Option B: Supabase Dashboard** — Apply migrations in SQL Editor, in filename (timestamp) order (same SQL as in each file under `supabase/migrations/`):
 
-**001_initial_schema.sql** — Creates:
+**001 — initial_schema** — Creates:
 - **profiles** — `user_id`, `is_admin` (identifies admins)
 - **projects** — `user_id`, `name`, `data` (JSONB)
 
 The migration does **not** include the first admin insert. Do that in step 4.
 
-**002_pdf_storage.sql** (Phase 2) — Adds:
+**002 — pdf_storage** (Phase 2) — Adds:
 - `pdf_path` column to `projects`
 - Private `pdfs` storage bucket (if the insert fails, create it manually: Dashboard > Storage > New bucket, name `pdfs`, private)
 - RLS policies so users can upload/read/delete only their own PDFs (path: `{user_id}/{project_id}/document.pdf`)
 
-**003_admin_list_users_rpc.sql** — Creates `list_users_for_admin()` RPC. Run this if admins see 401 when loading the user list in User Settings. The RPC bypasses Edge Function gateway JWT verification.
+**003 — admin_list_users_rpc** — Creates `list_users_for_admin()` RPC. Run this if admins see 401 when loading the user list in User Settings. The RPC bypasses Edge Function gateway JWT verification.
 
-**004_project_size.sql** — Adds `size_bytes` column to `projects` for displaying project size (MB) in the Load Project modal.
+**004 — project_size** — Adds `size_bytes` column to `projects` for displaying project size (MB) in the Load Project modal.
 
-**005_admin_list_projects_rpc.sql** — Creates `list_projects_for_admin()` RPC for admins to list all projects across users (used by Manage Projects in Project Settings).
+**005 — admin_list_projects_rpc** — Creates `list_projects_for_admin()` RPC for admins to list all projects across users (used by Manage Projects in Project Settings).
 
-**006_pdf_hash.sql** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
+**006 — pdf_hash** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
 
-**007_user_airboard.sql** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`. Used by Save Artboard / Load from Cloud in User Settings.
+**007 — user_airboard** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`. Used by Save Artboard / Load from Cloud in User Settings.
 
-**008_auth_profile_trigger.sql** — Auto-creates profile and user_airboard when a new user signs up.
+**008 — auth_profile_trigger** — Auto-creates profile and user_airboard when a new user signs up.
 
-**009_project_shares.sql** — Creates `project_shares` table (project_id, user_id, role, invited_by) for sharing projects. RLS: members can read/add shares; owner, inviter, or admin can remove.
+**009 — project_shares** — Creates `project_shares` table (project_id, user_id, role, invited_by) for sharing projects. RLS: members can read/add shares; owner, inviter, or admin can remove.
 
-**010_project_checkout.sql** — Adds `checked_out_by`, `checked_out_at` to `projects` for checkout/check-in (one editor at a time).
+**010 — project_checkout** — Adds `checked_out_by`, `checked_out_at` to `projects` for checkout/check-in (one editor at a time).
 
-**011_project_rpcs.sql** — Replaces projects RLS for sharing; adds RPCs: `check_out_project`, `check_in_project`, `force_check_in_project` (admin only), `list_accessible_projects`, `add_project_share`, `remove_project_share`, `list_project_shares`.
+**011 — project_rpcs** — Replaces projects RLS for sharing; adds RPCs: `check_out_project`, `check_in_project`, `force_check_in_project` (admin only), `list_accessible_projects`, `add_project_share`, `remove_project_share`, `list_project_shares`.
 
-**012_storage_shared_read.sql** — Storage policy so shared users can read project PDFs.
+**012 — storage_shared_read** — Storage policy so shared users can read project PDFs.
 
-**013_storage_shared_read_fix.sql** — Fixes 42P17 error: replaces inline EXISTS with `storage_can_read_shared_pdf()` SECURITY DEFINER helper. Run after 012 if shared users get "database error, code: 42P17" when loading PDFs.
+**013 — storage_shared_read_fix** — Fixes 42P17 error: replaces inline EXISTS with `storage_can_read_shared_pdf()` SECURITY DEFINER helper. Run after 012 if shared users get "database error, code: 42P17" when loading PDFs.
 
-**014_fix_rls_recursion.sql** — Fixes infinite recursion between projects and project_shares RLS. Adds `user_can_access_project()` SECURITY DEFINER helper; both tables use it instead of cross-referencing each other in policies. Run if you get "infinite recursion detected in policy for relation project_shares" when saving.
+**014 — fix_rls_recursion** — Fixes infinite recursion between projects and project_shares RLS. Adds `user_can_access_project()` SECURITY DEFINER helper; both tables use it instead of cross-referencing each other in policies. Run if you get "infinite recursion detected in policy for relation project_shares" when saving.
 
-**015_list_users_for_invite.sql** — Creates `list_users_for_project_invite(project_id)` RPC. Returns all users (except project owner) for project members who can add shares. Used by Share Project modal dropdown.
+**015 — list_users_for_invite** — Creates `list_users_for_project_invite(project_id)` RPC. Returns all users (except project owner) for project members who can add shares. Used by Share Project modal dropdown.
 
 **Realtime (optional):** Migration 017 adds `projects` for instant checkout notifications. For role promotion updates, add `project_shares` to the Realtime publication. In Dashboard: Database > Replication > Edit publication `supabase_realtime` > add `project_shares`. Without `projects` in the publication, checkout notifications fall back to visibility-based refresh when the user switches tabs.
 
-**016_owner_subject_to_checkout.sql** — Owners must check out to edit (same as shared editors). RLS UPDATE policy: only checkout holder or admin can update. `list_accessible_projects` can_edit: only when user has valid checkout. Auto-checkout trigger on project insert so creator is checked out when creating a new project.
+**016 — owner_subject_to_checkout** — Owners must check out to edit (same as shared editors). RLS UPDATE policy: only checkout holder or admin can update. `list_accessible_projects` can_edit: only when user has valid checkout. Auto-checkout trigger on project insert so creator is checked out when creating a new project.
 
-**017_projects_realtime.sql** — Adds `projects` table to `supabase_realtime` publication. Enables instant checkout notifications: when a user checks in, waiting users receive the update immediately and see a toast that the project is available to check out.
+**017 — projects_realtime** — Adds `projects` table to `supabase_realtime` publication. Enables instant checkout notifications: when a user checks in, waiting users receive the update immediately and see a toast that the project is available to check out.
 
-**018_inactivity_checkout.sql** — Changes checkout expiry from 12 hours to 30 minutes of inactivity. Adds `refresh_checkout_activity(project_id)` RPC; lock extends on user activity (edits, saves). Lock expires only after 30 minutes with no activity.
+**018 — inactivity_checkout** — Changes checkout expiry from 12 hours to 30 minutes of inactivity. Adds `refresh_checkout_activity(project_id)` RPC; lock extends on user activity (edits, saves). Lock expires only after 30 minutes with no activity.
 
-**019_project_view_links.sql** — Creates `project_view_links` (token, project_id, created_by, expires_at, name) and `view_link_access_log` (view_link_id, token, project_id, email, accessed_at) for view-only share links with email domain gate.
+**019 — project_view_links** — Creates `project_view_links` (token, project_id, created_by, expires_at, name) and `view_link_access_log` (view_link_id, token, project_id, email, accessed_at) for view-only share links with email domain gate.
 
-**020_view_link_rpcs.sql** — Creates `create_view_link`, `list_view_links`, `revoke_view_link`, `get_view_link_access_log` RPCs.
+**020 — view_link_rpcs** — Creates `create_view_link`, `list_view_links`, `revoke_view_link`, `get_view_link_access_log` RPCs.
 
-**021_view_link_owner_editor_only.sql** — Restricts `create_view_link` to owners and editors only (not viewers).
+**021 — view_link_owner_editor_only** — Restricts `create_view_link` to owners and editors only (not viewers).
 
-**022_admin_see_all_projects.sql** — Admins see all projects in Load Project from Cloud. `list_accessible_projects` includes admin in `can_check_out` and in the WHERE clause so admins can load any project.
+**022 — admin_see_all_projects** — Admins see all projects in Load Project from Cloud. `list_accessible_projects` includes admin in `can_check_out` and in the WHERE clause so admins can load any project.
 
-**023_storage_admin_read.sql** — Storage policy so admins can read any project PDF.
+**023 — storage_admin_read** — Storage policy so admins can read any project PDF.
 
-**024_admin_access_project.sql** — Updates `user_can_access_project()` to include admins. Fixes 406 when restoring last project or loading non-owned project as admin.
+**024 — admin_access_project** — Updates `user_can_access_project()` to include admins. Fixes 406 when restoring last project or loading non-owned project as admin.
 
-**025_admin_list_projects_checkout.sql** — Extends `list_projects_for_admin()` to return `checked_out_by`, `checked_out_at`, `checked_out_email`. Used by Manage Projects modal for Force turn-in (admin) button on checked-out projects.
+**025 — admin_list_projects_checkout** — Extends `list_projects_for_admin()` to return `checked_out_by`, `checked_out_at`, `checked_out_email`. Used by Manage Projects modal for Force turn-in (admin) button on checked-out projects.
 
-**026_project_counts.sql** — Adds `counter_count` and `line_count` to projects; computed on save, displayed in Manage Projects.
+**026 — project_counts** — Adds `counter_count` and `line_count` to projects; computed on save, displayed in Manage Projects.
 
-**027_view_link_allow_viewers_admins.sql** — Allows project share viewers and admins to create view links. Updates `create_view_link` to use `user_can_access_project()`.
+**027 — view_link_allow_viewers_admins** — Allows project share viewers and admins to create view links. Updates `create_view_link` to use `user_can_access_project()`.
 
-**028_list_project_shares_include_owner.sql** — Extends `list_project_shares` to include the project owner in the returned list.
+**028 — list_project_shares_include_owner** — Extends `list_project_shares` to include the project owner in the returned list.
 
-**029_admin_check_out_project.sql** — Allows admins to check out any project. Updates `check_out_project` RPC to include admin permission (aligns with `list_accessible_projects`).
+**029 — admin_check_out_project** — Allows admins to check out any project. Updates `check_out_project` RPC to include admin permission (aligns with `list_accessible_projects`).
 
-**030_list_accessible_projects_counts.sql** — Extends `list_accessible_projects` to return `counter_count` and `line_count`. Used by Load Project modal for counts badge (X cnt · Y ln).
+**030 — list_accessible_projects_counts** — Extends `list_accessible_projects` to return `counter_count` and `line_count`. Used by Load Project modal for counts badge (X cnt · Y ln).
 
-**031_user_airboard_modifiers.sql** — Adds `plumbing_modifiers` and `line_modifiers` (JSONB) to `user_airboard`. Used by Artboard Save/Load for Quick Count (Size/Type/Material) and Quick Line (Size/Material) preferences across devices.
+**031 — user_airboard_modifiers** — Adds `plumbing_modifiers` and `line_modifiers` (JSONB) to `user_airboard`. Used by Artboard Save/Load for Quick Count (Size/Type/Material) and Quick Line (Size/Material) preferences across devices.
 
-**034_revert_user_artboards.sql** — Reverts the aborted user_artboards feature. Run only if you previously applied 032_user_artboards and 033_migrate_airboard_to_artboards. Drops `user_artboards` table.
+**034 — revert_user_artboards** — Reverts the aborted user_artboards feature. Run only if you previously applied 032_user_artboards and 033_migrate_airboard_to_artboards. Drops `user_artboards` table.
 
-**035_list_project_shares_admin.sql** — Updates `list_project_shares` so admins can list shares for any project (same visibility as `list_accessible_projects`).
+**035 — list_project_shares_admin** — Updates `list_project_shares` so admins can list shares for any project (same visibility as `list_accessible_projects`).
 
-**036_list_accessible_projects_access_filters.sql** — Extends `list_accessible_projects` with `owner_email` (project owner) and `my_access_role` (`owner` | `editor` | `viewer` | `admin` | `unknown`). Used by the Load Project modal for filters (Mine/Shared, role, admin owner dropdown).
+**036 — list_accessible_projects_access_filters** — Extends `list_accessible_projects` with `owner_email` (project owner) and `my_access_role` (`owner` | `editor` | `viewer` | `admin` | `unknown`). Used by the Load Project modal for filters (Mine/Shared, role, admin owner dropdown).
 
-**037_remove_drop_claim_migration_entry.sql** — Idempotent cleanup: removes orphan migration history row `drop_claim_dev_with_code` (20260306034155) if present. The original migration only ran `DROP FUNCTION IF EXISTS public.claim_dev_with_code(text);`. Safe to apply on fresh databases (no-op).
+**037 — remove_drop_claim_migration_entry** — Idempotent cleanup: removes orphan migration history row `drop_claim_dev_with_code` (20260306034155) if present. The original migration only ran `DROP FUNCTION IF EXISTS public.claim_dev_with_code(text);`. Safe to apply on fresh databases (no-op).
 
-**038_checkout_server_time.sql** — `check_out_project` and `refresh_checkout_activity` now return `server_now` (and `checked_out_at`) in their JSONB result so the client can compute its clock offset and do checkout-expiry math against the server clock instead of the (possibly skewed) browser clock. Preserves the admin permission path from 029.
+**038 — checkout_server_time** — `check_out_project` and `refresh_checkout_activity` now return `server_now` (and `checked_out_at`) in their JSONB result so the client can compute its clock offset and do checkout-expiry math against the server clock instead of the (possibly skewed) browser clock. Preserves the admin permission path from 029.
 
-**039_projects_updated_at_trigger.sql** — Adds a `set_projects_updated_at()` BEFORE UPDATE trigger on `public.projects` so `updated_at` is set to `now()` server-side on every UPDATE. Makes the row mtime authoritative, eliminating multi-tab races caused by skewed client clocks when comparing IndexedDB takeoff backups against the cloud copy.
+**039 — projects_updated_at_trigger** — Adds a `set_projects_updated_at()` BEFORE UPDATE trigger on `public.projects` so `updated_at` is set to `now()` server-side on every UPDATE. Makes the row mtime authoritative, eliminating multi-tab races caused by skewed client clocks when comparing IndexedDB takeoff backups against the cloud copy.
 
-**040_check_in_server_time.sql** — Extends `check_in_project` and `force_check_in_project` to return `server_now` (same pattern as 038), so every check-in roundtrip also refreshes the client's `serverClockOffsetMs`.
+**040 — check_in_server_time** — Extends `check_in_project` and `force_check_in_project` to return `server_now` (same pattern as 038), so every check-in roundtrip also refreshes the client's `serverClockOffsetMs`.
 
-**041_global_force_reload.sql** — Adds a `system_settings` key/value table (with RLS read for authenticated users) holding a `force_reload_after` timestamp, and an admin-only `admin_trigger_global_reload(reason)` RPC that bumps it. Adds `system_settings` to the `supabase_realtime` publication so open tabs see the change immediately. Clients compare the timestamp against a localStorage stamp on boot and reload (clearing the PDF IndexedDB cache + selected localStorage keys) when the server value is newer; open tabs surface a banner with a manual Reload button via the realtime subscription.
+**041 — global_force_reload** — Adds a `system_settings` key/value table (with RLS read for authenticated users) holding a `force_reload_after` timestamp, and an admin-only `admin_trigger_global_reload(reason)` RPC that bumps it. Adds `system_settings` to the `supabase_realtime` publication so open tabs see the change immediately. Clients compare the timestamp against a localStorage stamp on boot and reload (clearing the PDF IndexedDB cache + selected localStorage keys) when the server value is newer; open tabs surface a banner with a manual Reload button via the realtime subscription.
 
-**20260326230000_user_presence_and_activity.sql** — Adds `profiles.last_seen_at`; table `user_activity` (event log); RPCs `touch_presence()`, `log_user_event(text, uuid, jsonb)`, `list_user_activity_for_admin(int, uuid, timestamptz)`; extends `list_users_for_admin()` with `last_seen_at`. Used by in-app presence heartbeat and admin **Activity** on user rows.
+**user_presence_and_activity** — Adds `profiles.last_seen_at`; table `user_activity` (event log); RPCs `touch_presence()`, `log_user_event(text, uuid, jsonb)`, `list_user_activity_for_admin(int, uuid, timestamptz)`; extends `list_users_for_admin()` with `last_seen_at`. Used by in-app presence heartbeat and admin **Activity** on user rows.
 
-**20260327120000_user_activity_summary_for_admin.sql** — Adds RPC `list_user_activity_summary_for_admin()` returning per-user rows: `user_id`, `email`, `last_sign_in_at`, rolling event counts (`events_1d`, `events_7d`, `events_30d`) from `user_activity`. Used by the User Activity modal **Summary** tab (admin).
+**user_activity_summary_for_admin** — Adds RPC `list_user_activity_summary_for_admin()` returning per-user rows: `user_id`, `email`, `last_sign_in_at`, rolling event counts (`events_1d`, `events_7d`, `events_30d`) from `user_activity`. Used by the User Activity modal **Summary** tab (admin).
 
-**20260605000000_list_users_for_admin_project_count.sql** — Drops and recreates `list_users_for_admin()` with an added `project_count` (owned projects) column. Powers the **Projects** column in Manage Users / All Users (clicking the count opens a per-user Projects list, filtered from `list_projects_for_admin`).
+**list_users_for_admin_project_count** — Drops and recreates `list_users_for_admin()` with an added `project_count` (owned projects) column. Powers the **Projects** column in Manage Users / All Users (clicking the count opens a per-user Projects list, filtered from `list_projects_for_admin`).
 
-**20260606000000…002000_user_activity_detail_for_admin.sql** — Adds the per-user activity RPC `user_activity_detail_for_admin(uuid)` returning a single jsonb: identity/presence (email, role, member-since, last sign-in/seen, project count), all-time totals, per-event-type breakdown, rolling 1d/7d/30d windows, active days (CST), distinct projects touched, and the recent timeline (with resolved project names). Security-definer; a `guard` CTE is the single auth choke point. Applied in three steps: admin-only (`…000000`), guard relaxed to **self-or-admin** so a user can view their own (`…001000`), and the recent feed widened 40 → 200 events (`…002000`). Powers the **Activity overview** modal (admin: click a user row's stacked dates or heart icon; self: User Settings → **My Activity**). The client renders it as a summary card + stat tiles + a day-grouped, run-collapsed feed.
+**user_activity_detail_for_admin** — Adds the per-user activity RPC `user_activity_detail_for_admin(uuid)` returning a single jsonb: identity/presence (email, role, member-since, last sign-in/seen, project count), all-time totals, per-event-type breakdown, rolling 1d/7d/30d windows, active days (CST), distinct projects touched, and the recent timeline (with resolved project names). Security-definer; a `guard` CTE is the single auth choke point. Applied in three steps: admin-only (`…000000`), guard relaxed to **self-or-admin** so a user can view their own (`…001000`), and the recent feed widened 40 → 200 events (`…002000`). Powers the **Activity overview** modal (admin: click a user row's stacked dates or heart icon; self: User Settings → **My Activity**). The client renders it as a summary card + stat tiles + a day-grouped, run-collapsed feed.
 
 ### Migration file naming
 
-`supabase/migrations/` contains two naming schemes:
+Every migration is a single file named `YYYYMMDDHHMMSS_<label>.sql` — a 14-digit timestamp version plus a descriptive label, the format the Supabase CLI expects. The `version` recorded in `supabase_migrations.schema_migrations` is the timestamp, and it matches the filename one-to-one.
 
-- **Legacy numbered** — `NNN_name.sql` (e.g. `001_initial_schema.sql` … `041_global_force_reload.sql`). Many of the early ones also have a Supabase-CLI **timestamped** twin (e.g. `20260301171417_001_initial_schema.sql`) with the same content; these are duplicates of the numbered files.
-- **Timestamped** — `YYYYMMDDHHMMSS_name.sql`. The newest features that have no numbered twin are the activity/presence ones (`20260326230000_user_presence_and_activity.sql`, `20260327120000_user_activity_summary_for_admin.sql`) and the Manage-Users additions (`20260605000000_list_users_for_admin_project_count.sql` and the `…_user_activity_detail_for_admin` series).
+The per-migration section headers above keep the historical **sequence number** where one exists (e.g. **029 — admin_check_out_project**) purely as a human reference for the inline cross-links ("from 029", "same pattern as 038"); the file on disk and its tracking row are keyed by the timestamp, not the number. A handful of early labels still embed their old number inside the timestamped filename (e.g. `20260301171417_001_initial_schema.sql`) — that is cosmetic and fully CLI-valid.
 
-On a **fresh** database, apply each distinct migration once, in version order (leading number, then timestamp); do not apply both a numbered file and its timestamped twin. On an **existing** database, use `list_migrations` (MCP) first to see what is already recorded and only apply what is missing. New migrations should be added via the Supabase MCP `apply_migration` tool.
+> **History note:** earlier this repo carried a dual scheme — legacy `NNN_name.sql` files alongside Supabase-CLI timestamped twins, with the same migrations recorded twice in `schema_migrations`. That was consolidated to the single timestamped scheme above (duplicate numbered files removed; the four numbered-only migrations `038`–`041` re-timestamped), and the tracking table was reconciled to match 1:1.
+
+On a **fresh** database, apply every file once, in filename (timestamp) order. On an **existing** database, run `list_migrations` (MCP) first and apply only what is missing. Add new migrations with the Supabase MCP `apply_migration` tool (or `supabase migration new`), always with a timestamped filename.
 
 ## 3. Deploy Edge Functions
 

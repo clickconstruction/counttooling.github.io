@@ -11536,6 +11536,16 @@
       else if (state.tool === TOOL.LINE) {
         if (state.quickLineStart) { state.quickLineStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.SCALE) {
+        // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
+        // stray crosshair lingers) and any zone-apply state.
+        state.tool = TOOL.NONE;
+        state.scaleMode = SCALE_MODES.NONE;
+        state.scalePointA = null;
+        state.scalePointB = null;
+        App.resetScaleModalZoneMode();
+        updateUI();
+        renderPdf();
       } else if (state.tool === TOOL.MEASURE) {
         state.tool = TOOL.NONE;
         state.scalePointA = null;

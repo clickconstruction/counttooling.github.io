@@ -135,4 +135,79 @@ test.describe('window.App registry pilot - Scale modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('degenerate scale line (identical points) is rejected, not applied', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Two identical points -> the modal opens, but Set Scale must reject it.
+    await page.evaluate(() => {
+      window.state.scaleModalApplyTarget = null;
+      window.state.scalePointA = { x: 50, y: 50 };
+      window.state.scalePointB = { x: 50, y: 50 };
+      window.App.openScaleModal();
+    });
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    await page.evaluate(() => {
+      document.getElementById('scaleValue').value = '10';
+      document.getElementById('scaleSet').click();
+    });
+    // No scale applied + modal stays open (rejected with a toast).
+    const after = await page.evaluate(() => ({
+      scale: window.state.pages[window.state.currentPage].scale,
+      modalOpen: document.getElementById('scaleModal').classList.contains('visible'),
+    }));
+    expect(after.scale == null).toBe(true);
+    expect(after.modalOpen).toBe(true);
+
+    // A distinct line still applies.
+    await page.evaluate(() => {
+      window.state.scalePointB = { x: 201, y: 50 };
+      document.getElementById('scaleValue').value = '10';
+      document.getElementById('scaleSet').click();
+    });
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    const applied = await page.evaluate(() => window.state.pages[window.state.currentPage].scale);
+    expect(applied.pixelsPerUnit).toBeCloseTo(151 / 10, 6);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('Escape while picking scale points clears the SCALE tool state (no stray crosshair)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // "Select on PDF" mid-flow: SCALE tool active, first point placed, modal hidden.
+    await page.evaluate(() => {
+      window.state.tool = window.App.TOOL.SCALE;
+      window.state.scaleMode = window.App.SCALE_MODES.POINT_B;
+      window.state.scalePointA = { x: 10, y: 10 };
+      window.state.scalePointB = null;
+      window.App.hideModal('scaleModal');
+    });
+    await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    const s = await page.evaluate(() => ({
+      tool: window.state.tool, none: window.App.TOOL.NONE,
+      mode: window.state.scaleMode, modeNone: window.App.SCALE_MODES.NONE,
+      a: window.state.scalePointA, b: window.state.scalePointB,
+    }));
+    expect(s.tool).toBe(s.none);
+    expect(s.mode).toBe(s.modeNone);
+    expect(s.a).toBeNull();
+    expect(s.b).toBeNull();
+
+    expect(errors).toEqual([]);
+  });
 });

@@ -8,12 +8,13 @@
  * Cross-origin (Supabase REST/auth/realtime/storage range-requests/TUS/functions) and
  * all non-GET requests are passed straight through to the network, untouched.
  *
- * !!! BUMP CACHE_VERSION ON EVERY DEPLOY that changes any precached asset. There is no
- * build step, so this is the manual cache-bust: a new value makes the browser install a
- * fresh SW, precache the new asset set, and purge the old cache on activate. The app's
- * admin "global force reload" also clears these caches as a backstop.
+ * CACHE_VERSION below is GENERATED — do not edit by hand. It is a content hash of every
+ * file in PRECACHE_URLS, stamped by `npm run build:sw` (and verified by `npm run build:sw
+ * -- --check` in CI). Change any precached asset and the hash changes, so the browser
+ * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
+ * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = '134d202f2cf7';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in

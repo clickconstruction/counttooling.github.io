@@ -10045,6 +10045,55 @@
     document.getElementById('lastSessionRestoreKeep').onclick = async () => {
       const p = pendingLastSessionRestore;
       if (!p) { hideModal('lastSessionRestoreModal'); return; }
+      // Cloud last-session: the boot path deferred the Supabase fetch + PDF-blob lookup
+      // to here (so the modal could appear instantly). Resolve the project now, behind a
+      // brief loading state on the modal buttons.
+      if (p.cloudLast) {
+        const last = p.cloudLast;
+        const keepBtn = document.getElementById('lastSessionRestoreKeep');
+        const discardBtn = document.getElementById('lastSessionRestoreDiscard');
+        const keepLabel = keepBtn ? keepBtn.textContent : '';
+        if (keepBtn) { keepBtn.disabled = true; keepBtn.textContent = 'Loading…'; }
+        if (discardBtn) discardBtn.disabled = true;
+        const currentUid = state.supabaseSession?.user?.id || null;
+        try {
+          let proj = null, fetchErr = null;
+          try {
+            const res = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
+            proj = res.data; fetchErr = res.error;
+          } catch (netErr) { fetchErr = netErr; }
+          const accessDenied = !!fetchErr && (fetchErr.code === 'PGRST116' || /no rows|denied|permission|policy/i.test(fetchErr.message || ''));
+          if (accessDenied) {
+            try { pushSaveEvent('last_session_restore_skip_inaccessible', 'Last-session project not accessible to current user', JSON.stringify({ projectId: last.projectId, code: fetchErr.code, message: fetchErr.message })); } catch (_) {}
+            try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
+            try { await takeoffBackupDelete(last.projectId); } catch (_) {}
+            showToast('This project is no longer available.', 5000);
+            return;
+          }
+          // Network/other error (e.g. offline): fall back to a local IndexedDB backup if
+          // one exists, so resuming offline still works.
+          let projForRestore = proj;
+          if (!projForRestore) {
+            const idbBackup = await takeoffBackupGet(last.projectId, currentUid);
+            if (idbBackup && idbBackup.data) {
+              projForRestore = { id: last.projectId, name: idbBackup.projectName || last.projectName || 'Untitled', data: backupDataToProjFormat(idbBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: idbBackup.pdfHash, user_id: last.userId, checked_out_by: null, checked_out_at: null };
+            }
+          }
+          if (!projForRestore) throw (fetchErr || new Error('Project unavailable'));
+          const pdfHashForCache = projForRestore.pdf_hash || last.pdfHash;
+          const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;
+          await doRestoreLastProject(projForRestore, cachedBlob);
+          updateUI();
+        } catch (err) {
+          showToast('Failed to restore project: ' + (err?.message || 'Unknown error'), 5000);
+        } finally {
+          pendingLastSessionRestore = null;
+          hideModal('lastSessionRestoreModal');
+          if (keepBtn) { keepBtn.disabled = false; keepBtn.textContent = keepLabel || 'Keep and Open'; }
+          if (discardBtn) discardBtn.disabled = false;
+        }
+        return;
+      }
       pendingLastSessionRestore = null;
       hideModal('lastSessionRestoreModal');
       try {
@@ -10057,12 +10106,14 @@
     document.getElementById('lastSessionRestoreDiscard').onclick = async () => {
       const p = pendingLastSessionRestore;
       if (!p) { hideModal('lastSessionRestoreModal'); return; }
-      const { proj } = p;
+      const projectId = p.cloudLast ? p.cloudLast.projectId : (p.proj && p.proj.id);
       pendingLastSessionRestore = null;
       hideModal('lastSessionRestoreModal');
       try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-      await pdfCacheDelete(proj.id);
-      await takeoffBackupDelete(proj.id);
+      if (projectId) {
+        await pdfCacheDelete(projectId);
+        await takeoffBackupDelete(projectId);
+      }
       updateUI();
     };
     // The admin Manage-Users handlers (#manageUsersBtn create-user opener,
@@ -13246,7 +13297,9 @@
       }).subscribe();
       try {
         let offeredRestore = false;
-        const localBackup = await takeoffBackupGet('local', uid);
+        // Reuse the 'local' record already read into localBackupForBoot above instead of
+        // a second identical full read of the same IndexedDB entry.
+        const localBackup = localBackupForBoot;
         const hasLocalPdf = localBackup && localBackup.pdfBlob && localBackup.pdfBlob.size > 0;
         if (hasLocalPdf && localBackup.data) {
           const projForRestore = { id: 'local', name: localBackup.projectName || 'Untitled', data: backupDataToProjFormat(localBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: localBackup.pdfHash, user_id: uid, checked_out_by: null, checked_out_at: null };
@@ -13260,34 +13313,22 @@
           offeredRestore = true;
         }
         if (!offeredRestore) {
+          // Cloud last-session: show the modal INSTANTLY from the lightweight
+          // localStorage metadata (projectName etc.). The Supabase project fetch +
+          // PDF-blob resolution are deferred to the #lastSessionRestoreKeep handler so a
+          // network round-trip no longer blocks the modal's appearance. A stale /
+          // inaccessible project is cleaned up on "Keep" rather than at boot.
           const stored = localStorage.getItem('clickcount-last-project');
           if (stored) {
             const last = JSON.parse(stored);
             if (last && last.userId === state.supabaseSession.user.id && last.projectId) {
-              const { data: proj, error } = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
-              const idbBackup = await takeoffBackupGet(last.projectId, uid);
-              const hasIdbPdf = idbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0;
-              const projectAccessDenied = !!error && (error.code === 'PGRST116' || /no rows|denied|permission|policy/i.test(error.message || ''));
-              if (projectAccessDenied) {
-                try { pushSaveEvent('last_session_restore_skip_inaccessible', 'Last-session project not accessible to current user', JSON.stringify({ projectId: last.projectId, code: error.code, message: error.message })); } catch (_) {}
-                try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-                try { await takeoffBackupDelete(last.projectId); } catch (_) {}
-              } else if ((!error && proj && proj.data) || hasIdbPdf) {
-                const projForRestore = proj || (idbBackup ? { id: last.projectId, name: idbBackup.projectName || 'Untitled', data: backupDataToProjFormat(idbBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: idbBackup.pdfHash, user_id: last.userId, checked_out_by: null, checked_out_at: null } : null);
-                const pdfHashForCache = proj?.pdf_hash || last.pdfHash;
-                const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;
-                if (cachedBlob || proj?.pdf_path || hasIdbPdf) {
-                  pendingLastSessionRestore = { proj: projForRestore, cachedBlob: cachedBlob || null };
-                  const msgEl = document.getElementById('lastSessionRestoreMessage');
-                  if (msgEl) {
-                    const n = (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([-_])/g, '$1\u200B');
-                    msgEl.innerHTML = 'You have a project from your last session: <strong>' + n + '</strong>. What would you like to do?';
-                  }
-                  showModal('lastSessionRestoreModal');
-                }
-              } else if (error) {
-                localStorage.removeItem('clickcount-last-project');
+              pendingLastSessionRestore = { cloudLast: last };
+              const msgEl = document.getElementById('lastSessionRestoreMessage');
+              if (msgEl) {
+                const n = (last.projectName || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([-_])/g, '$1\u200B');
+                msgEl.innerHTML = 'You have a project from your last session: <strong>' + n + '</strong>. What would you like to do?';
               }
+              showModal('lastSessionRestoreModal');
             }
           }
         }

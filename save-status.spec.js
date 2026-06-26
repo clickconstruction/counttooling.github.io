@@ -91,6 +91,13 @@ test.describe('window.App registry pilot - Save Status modal', () => {
     expect('project' in env).toBe(true);
     expect(env.lastLocalBackup && typeof env.lastLocalBackup === 'object').toBe(true);
     expect('ok' in env.lastLocalBackup).toBe(true);
+    // Canvas/display environment block (diagnoses "counts vanish at high zoom").
+    expect(env.display && typeof env.display === 'object').toBe(true);
+    expect(typeof env.display.devicePixelRatio === 'number' || env.display.devicePixelRatio === null).toBe(true);
+    expect(typeof env.display.canvasCaps.maxDim).toBe('number');
+    expect(typeof env.display.canvasCaps.maxArea).toBe('number');
+    expect(typeof env.display.renderAreaSafety).toBe('number');
+    expect('lastRender' in env.display).toBe(true);
   });
 
   test('export project summary counts the real canvases[].annotations shape', async ({ page }) => {

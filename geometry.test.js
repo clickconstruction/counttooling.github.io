@@ -195,6 +195,25 @@ test('clampEffectiveDpr: area-limited -> buffer area pinned at maxArea', () => {
   assert.ok(eff < dpr);
 });
 
+test('clampEffectiveDpr: budgeting maxArea shrinks eff by ~sqrt(ratio) when area-limited', () => {
+  // The render path budgets the probed area cap down (renderAreaSafety) by passing a
+  // reduced maxArea. On an area-limited page this shrinks the buffer side by sqrt(ratio).
+  const base = { pageW: 1500, pageH: 1500, zoom: 3, dpr: 3, maxDim: 100000 };
+  const effFull = g.clampEffectiveDpr({ ...base, maxArea: 16777216 });
+  const effBudgeted = g.clampEffectiveDpr({ ...base, maxArea: 16777216 * 0.5 });
+  close(effBudgeted, effFull * Math.sqrt(0.5), 1e-9);
+  assert.ok(effBudgeted < effFull);
+});
+
+test('clampEffectiveDpr: budgeting maxArea does not change a dimension-limited result', () => {
+  // When the dimension is the binding constraint, reducing maxArea (kept non-binding)
+  // leaves eff identical — proves area-budgeting only bites when area is the limit.
+  const base = { pageW: 2000, pageH: 1000, zoom: 4, dpr: 3, maxDim: 8192 };
+  const effFull = g.clampEffectiveDpr({ ...base, maxArea: 1e12 });
+  const effBudgeted = g.clampEffectiveDpr({ ...base, maxArea: 1e12 * 0.5 });
+  assert.strictEqual(effBudgeted, effFull);
+});
+
 test('clampEffectiveDpr: never exceeds the real dpr', () => {
   // tiny page where the caps would "allow" a huge eff — still clamped to dpr
   const eff = g.clampEffectiveDpr({ pageW: 10, pageH: 10, zoom: 1, dpr: 2, maxDim: 8192, maxArea: 16777216 });

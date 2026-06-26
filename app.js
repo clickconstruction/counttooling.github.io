@@ -218,11 +218,40 @@
           index: i,
           canvases,
           scale: data.pageScales?.[i],
-          rotation: (data.pageRotations?.[i] ?? 0)
+          rotation: (data.pageRotations?.[i] ?? 0),
+          bakeFrame: data.pageBakeFrames?.[i] ?? null
         }))
       };
     }
     return data;
+  }
+
+  // The frame a page's annotations are baked into: viewport dims at the page's rotation
+  // plus the PDF's intrinsic /Rotate. Stamped into saved data so a later load can detect
+  // when the loaded PDF would render the page in a different orientation than the marks
+  // were placed against ("rotated under the canvas"). See verifyPageBakeFrame.
+  function computePageBakeFrame(p) {
+    if (!p?.pdfPage) return null;
+    try {
+      const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+      return { w: Math.round(vp.width), h: Math.round(vp.height), intrinsic: p.pdfPage.rotate ?? 0 };
+    } catch (_) { return null; }
+  }
+  let lastBakeMismatchToastAt = 0;
+  // Detect-and-warn (never auto-correct): if the loaded PDF produces a different frame than
+  // the marks were baked against, the overlay will be misaligned. Surface it instead of
+  // rendering silently wrong. `page.bakeMismatch` feeds the Save Status telemetry.
+  function verifyPageBakeFrame(page, savedBakeFrame) {
+    if (!savedBakeFrame || !page?.pdfPage) return;
+    const cur = computePageBakeFrame(page);
+    if (bakeFramesMatch(savedBakeFrame, cur, 1)) { page.bakeMismatch = false; return; }
+    page.bakeMismatch = true;
+    try { console.warn('[bakeFrame] page orientation mismatch', { saved: savedBakeFrame, current: cur, rotation: page.rotation ?? 0 }); } catch (_) { /* noop */ }
+    const now = Date.now();
+    if (now - lastBakeMismatchToastAt > 4000) {
+      lastBakeMismatchToastAt = now;
+      try { showToast('This view may be misaligned — the PDF differs from when the marks were placed.', 6000); } catch (_) { /* showToast may not be ready */ }
+    }
   }
 
   function applyTakeoffBackupToState(backup) {
@@ -248,6 +277,7 @@
     }
     if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (state.pages[i]) state.pages[i].scale = s; });
     if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (state.pages[i]) state.pages[i].rotation = r ?? 0; });
+    if (backup.pageBakeFrames) backup.pageBakeFrames.forEach((bf, i) => { if (state.pages[i]) verifyPageBakeFrame(state.pages[i], bf); });
     if (backup.legendSettings) state.legendSettings = { ...state.legendSettings, ...backup.legendSettings };
     if (backup.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...backup.multiplyZoneSettings };
     if (backup.showGridOverlay != null) state.showGridOverlay = !!backup.showGridOverlay;
@@ -289,6 +319,7 @@
     }
     page.scale = p.scale !== undefined ? p.scale : (scaleFallback ?? null);
     page.rotation = p.rotation ?? 0;
+    verifyPageBakeFrame(page, p.bakeFrame);
   }
 
   function reconcileOrphanedCountersAndLineTypes() {
@@ -1172,6 +1203,12 @@
         projectName: state.currentProjectName,
         pageCount: pages.length,
         pagesWithScale: pages.filter(p => p.scale && p.scale.feet > 0).length,
+        // Per-page rotation diagnostics — root-causes "pages rotated under the canvas":
+        // page.rotation, the PDF's intrinsic /Rotate, the current frame dims, and whether a
+        // bake-frame mismatch was detected on load (verifyPageBakeFrame).
+        pageRotation: pages.map(p => p.rotation ?? 0),
+        pageBake: pages.map(p => { const f = computePageBakeFrame(p); return f ? { w: f.w, h: f.h, intrinsic: f.intrinsic } : null; }),
+        bakeMismatchPages: pages.filter(p => p && p.bakeMismatch).length,
         counters, lines, multiplyZones, scaleZones, highlights, notes,
         isAdmin: !!state.isAdmin,
         isViewer: !!state.isViewer,
@@ -7070,7 +7107,7 @@
 
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = sanitizeForFilename(state.currentProjectName) + '.json';
@@ -8347,6 +8384,11 @@
     async function copyOrCreateViewLinkToClipboard(btn) {
       if (!state.currentProjectId || !supabase) return;
       try {
+        // Flush pending edits (e.g. a just-applied page rotation) so the link's live cloud
+        // data reflects the current state. Best-effort — sharing proceeds even if it fails.
+        if (autoSaveDirty && !state.isViewer && !state.loadedViaViewLink && state.supabaseSession?.user) {
+          try { await performAutoSave('share_flush'); } catch (_) { /* best-effort */ }
+        }
         const url = await getOrCreateViewLinkUrl();
         await navigator.clipboard.writeText(url);
         showToast('View link copied to clipboard');
@@ -12011,7 +12053,7 @@
       multiplyZoneSettings: state.multiplyZoneSettings,
       showGridOverlay: state.showGridOverlay,
       gridSettings: state.gridSettings,
-      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
+      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {}
     };
     const counts = getProjectCounts(data);
@@ -12468,7 +12510,7 @@
       multiplyZoneSettings: state.multiplyZoneSettings,
       showGridOverlay: state.showGridOverlay,
       gridSettings: state.gridSettings,
-      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0 })),
+      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {}
     };
     const counts = getProjectCounts(data);
@@ -12790,7 +12832,8 @@
       pageCanvases: state.pages.map(p => p.canvases),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {},
       pageScales: state.pages.map(p => p.scale),
-      pageRotations: state.pages.map(p => p.rotation ?? 0)
+      pageRotations: state.pages.map(p => p.rotation ?? 0),
+      pageBakeFrames: state.pages.map(p => computePageBakeFrame(p))
     };
     const lastMod = (state.currentProjectId && lastModifiedAt) ? lastModifiedAt : Date.now();
     const pdfHash = state.pdfHash || null;
@@ -13175,42 +13218,56 @@
       return data;
     }
 
-    let projectData = null;
     const cachedMeta = await viewCacheGetMeta(viewToken);
     const cachedBlob = cachedMeta ? await viewCacheGet(viewToken, cachedMeta.pdfHash) : null;
-    if (cachedBlob && cachedMeta && cachedMeta.data && cachedMeta.projectId) {
-      projectData = { projectId: cachedMeta.projectId, name: cachedMeta.name, data: cachedMeta.data, pdfHash: cachedMeta.pdfHash };
-    }
-    if (!projectData) {
-      while (true) {
-        try {
-          projectData = await fetchViewProject(email);
-          localStorage.setItem('view:allowed:' + viewToken, email);
+    const cachedProjectData = (cachedBlob && cachedMeta && cachedMeta.data && cachedMeta.projectId)
+      ? { projectId: cachedMeta.projectId, name: cachedMeta.name, data: cachedMeta.data, pdfHash: cachedMeta.pdfHash, updatedAt: cachedMeta.updatedAt ?? null }
+      : null;
+
+    // Revalidate against the server even on a cache hit, so a viewer isn't pinned to a stale
+    // snapshot after the owner re-saves (rotation/marks change without changing the PDF hash).
+    // Fall back to the cached snapshot only when the server is unreachable (offline); a
+    // domain-restriction error always blocks (access may have been revoked).
+    let projectData = null;
+    while (true) {
+      try {
+        projectData = await fetchViewProject(email);
+        localStorage.setItem('view:allowed:' + viewToken, email);
+        break;
+      } catch (e) {
+        if (e && e.domainRestricted) {
+          const errEl = document.getElementById('viewLinkEmailError');
+          if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+          showModal('viewLinkEmailModal');
+          email = await showViewEmailModal();
+          if (!email) return;
+        } else if (cachedProjectData) {
+          projectData = cachedProjectData;   // offline / transient — use the cached snapshot
           break;
-        } catch (e) {
-          if (e && e.domainRestricted) {
-            const errEl = document.getElementById('viewLinkEmailError');
-            if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
-            showModal('viewLinkEmailModal');
-            email = await showViewEmailModal();
-            if (!email) return;
-          } else {
-            throw e;
-          }
+        } else {
+          throw e;
         }
       }
     }
 
     const d = projectData.data || {};
     let buf;
-    if (cachedBlob && cachedMeta && projectData.projectId === cachedMeta.projectId) {
+    const blobHashMatches = !!(cachedBlob && cachedMeta && projectData.projectId === cachedMeta.projectId && (projectData.pdfHash || null) === (cachedMeta.pdfHash || null));
+    if (blobHashMatches) {
+      // PDF unchanged — reuse the cached blob (no re-download), but refresh the cached data
+      // snapshot if the server returned a fresher copy.
       buf = await cachedBlob.arrayBuffer();
+      if (projectData !== cachedProjectData && (projectData.updatedAt ?? null) !== (cachedMeta.updatedAt ?? null)) {
+        viewCachePut(viewToken, cachedBlob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d, updatedAt: projectData.updatedAt ?? null });
+      }
     } else if (projectData.pdfSignedUrl) {
       const pdfRes = await fetch(projectData.pdfSignedUrl);
       if (!pdfRes.ok) throw new Error('Failed to load PDF');
       buf = await pdfRes.arrayBuffer();
       const blob = new Blob([buf], { type: 'application/pdf' });
-      viewCachePut(viewToken, blob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d });
+      viewCachePut(viewToken, blob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d, updatedAt: projectData.updatedAt ?? null });
+    } else if (cachedBlob) {
+      buf = await cachedBlob.arrayBuffer();   // cache fallback with no fresh signed URL
     } else {
       throw new Error('No PDF available');
     }

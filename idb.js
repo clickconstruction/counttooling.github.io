@@ -85,7 +85,7 @@ async function viewCachePut(token, blob, pdfHash, meta) {
     const db = await openPdfCacheDb();
     const tx = db.transaction([VIEW_PDFS_STORE, VIEW_PDFS_META_STORE], 'readwrite');
     tx.objectStore(VIEW_PDFS_STORE).put({ token, blob, pdfHash });
-    tx.objectStore(VIEW_PDFS_META_STORE).put({ token, lastUsed: Date.now(), size: blob.size, projectId: meta?.projectId, name: meta?.name, data: meta?.data, pdfHash: pdfHash });
+    tx.objectStore(VIEW_PDFS_META_STORE).put({ token, lastUsed: Date.now(), size: blob.size, projectId: meta?.projectId, name: meta?.name, data: meta?.data, pdfHash: pdfHash, updatedAt: meta?.updatedAt ?? null });
     await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
   } catch (_) { /* ignore */ }
 }

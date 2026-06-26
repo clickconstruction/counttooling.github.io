@@ -263,3 +263,22 @@ test('convertUnitValue: identical or unknown units are a no-op', () => {
   assert.strictEqual(g.convertUnitValue(5, 'ft', 'bogus'), 5);
   assert.strictEqual(g.convertUnitValue(5, undefined, 'ft'), 5);
 });
+
+test('bakeFramesMatch: same frame matches; swapped dims / changed intrinsic do not', () => {
+  const f = { w: 918, h: 594, intrinsic: 0 };
+  assert.strictEqual(g.bakeFramesMatch(f, { w: 918, h: 594, intrinsic: 0 }), true);
+  // sub-pixel viewport rounding is absorbed by the default ±1 tolerance
+  assert.strictEqual(g.bakeFramesMatch(f, { w: 919, h: 593, intrinsic: 0 }), true);
+  assert.strictEqual(g.bakeFramesMatch(f, { w: 920, h: 594, intrinsic: 0 }), false); // off by 2
+  // dims swapped (page reconstructed at a different rotation) -> mismatch
+  assert.strictEqual(g.bakeFramesMatch(f, { w: 594, h: 918, intrinsic: 0 }), false);
+  // same dims but the PDF's intrinsic /Rotate differs -> mismatch
+  assert.strictEqual(g.bakeFramesMatch(f, { w: 918, h: 594, intrinsic: 90 }), false);
+});
+
+test('bakeFramesMatch: a missing frame on either side is treated as a match (no false warning)', () => {
+  // pre-stamp projects have no saved frame -> nothing to verify
+  assert.strictEqual(g.bakeFramesMatch(null, { w: 918, h: 594, intrinsic: 0 }), true);
+  assert.strictEqual(g.bakeFramesMatch({ w: 918, h: 594, intrinsic: 0 }, null), true);
+  assert.strictEqual(g.bakeFramesMatch(undefined, undefined), true);
+});

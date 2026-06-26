@@ -245,6 +245,20 @@
     return val * (f / t);
   }
 
+  // Does a page's saved "bake frame" still match the frame the loaded PDF produces?
+  // Annotations are stored baked into the page-rotation frame, so the saved {w,h,intrinsic}
+  // (viewport dims at page.rotation + the PDF's intrinsic /Rotate) must match what the
+  // loaded pdfPage produces now, or the marks sit over a differently-oriented page. A
+  // missing frame on either side means "nothing to verify" -> treated as a match (no false
+  // warning on pre-stamp projects). `tol` absorbs sub-pixel viewport rounding.
+  function bakeFramesMatch(saved, current, tol) {
+    if (!saved || !current) return true;
+    const t = tol == null ? 1 : tol;
+    return Math.abs((saved.w ?? 0) - (current.w ?? 0)) <= t
+      && Math.abs((saved.h ?? 0) - (current.h ?? 0)) <= t
+      && (saved.intrinsic ?? 0) === (current.intrinsic ?? 0);
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -256,6 +270,6 @@
       formatLineLengthRealSum, formatFeet, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
-      clampEffectiveDpr, convertUnitValue
+      clampEffectiveDpr, convertUnitValue, bakeFramesMatch
     };
   }

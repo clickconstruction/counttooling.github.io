@@ -153,6 +153,16 @@ test('formatDist: decimal real-world length + px fallback', () => {
   assert.strictEqual(g.formatDist(100.4, null), '100 px');
 });
 
+test('formatFeet: already-in-feet value -> decimal feet, with px/0 fallback', () => {
+  // value is already feet; a truthy scale just selects the "ft" display
+  assert.strictEqual(g.formatFeet(12.5, { pixelsPerUnit: 2, unit: 'ft' }), '12.50 ft');
+  assert.strictEqual(g.formatFeet(12.5, { pixelsPerUnit: 5, unit: 'in' }), '12.50 ft');   // unit on the scale is irrelevant
+  assert.strictEqual(g.formatFeet(0, { pixelsPerUnit: 2, unit: 'ft' }), '0.00 ft');
+  // no scale -> rounded pixels, or '0'
+  assert.strictEqual(g.formatFeet(100.4, null), '100 px');
+  assert.strictEqual(g.formatFeet(0, null), '0');
+});
+
 test('formatArea: ppu^2 division + unit-squared suffix', () => {
   assert.strictEqual(g.formatArea(400, { pixelsPerUnit: 2, unit: 'ft' }), '100.0 ft\u00b2');
   assert.strictEqual(g.formatArea(900, { pixelsPerUnit: 3, unit: 'm' }), '100.0 m\u00b2');

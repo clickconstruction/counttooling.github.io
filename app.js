@@ -1766,10 +1766,25 @@
   function getLineLengthForTotals(line, pageIdx, isPoly, ann) {
     return lineLengthForTotals(line, isPoly, ann, getPageScale(pageIdx), lineTypeForLine(line));
   }
+  // Total length in FEET — used by every takeoff tally/summary/export so line lengths
+  // read identically ("12.50 ft") regardless of the page's scale unit, and so a line
+  // type spanning differently-scaled pages sums correctly. Per-line on-canvas labels and
+  // the Measure tool keep their feet-inches notation (they don't use this).
+  function getLineLengthFeetForTotals(line, pageIdx, isPoly, ann) {
+    return lineLengthFeetForTotals(line, isPoly, ann, getPageScale(pageIdx), lineTypeForLine(line));
+  }
+  // A single line's real-world length in feet (no multiply-zone factor) — for the
+  // per-line length badges in the Lines list. Converts via the line's effective unit.
+  function getLineRealWorldLengthFeet(line, pageIdx, isPoly, ann) {
+    const raw = getLineRealWorldLength(line, pageIdx, isPoly, ann);
+    const eff = getEffectiveScaleForLine(ann, line, isPoly, pageIdx);
+    return (eff && eff.unit) ? convertUnitValue(raw, eff.unit, 'ft') : raw;
+  }
   window.getScaleZoneForLine = getScaleZoneForLine;
   window.getEffectiveScaleForLine = getEffectiveScaleForLine;
   window.getLineRealWorldLength = getLineRealWorldLength;
   window.getLineLengthForTotals = getLineLengthForTotals;
+  window.getLineLengthFeetForTotals = getLineLengthFeetForTotals;
 
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) {
     let counterCount = 0, lineRunCount = 0, lengthRealSum = 0;
@@ -1779,12 +1794,12 @@
     });
     (ann?.quickLines || []).forEach(q => {
       const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
-      if (inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLength(q, pageIdx, false, ann); }
+      if (inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLengthFeet(q, pageIdx, false, ann); }
     });
     (ann?.polylines || []).forEach(poly => {
       const pts = poly.points || [];
       const start = pts[0], end = pts[pts.length - 1];
-      if (start && end && inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLength(poly, pageIdx, true, ann); }
+      if (start && end && inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLengthFeet(poly, pageIdx, true, ann); }
     });
     return { counterCount, lineRunCount, lengthRealSum };
   }
@@ -1808,7 +1823,7 @@
       const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
       if (inRect(start) && inRect(end)) {
         result.lineRunCount++;
-        result.lengthRealSum += getLineRealWorldLength(q, pageIdx, false, ann);
+        result.lengthRealSum += getLineRealWorldLengthFeet(q, pageIdx, false, ann);
         result.quickLines.push({ index: i, line: q });
       }
     });
@@ -1817,7 +1832,7 @@
       const start = pts[0], end = pts[pts.length - 1];
       if (start && end && inRect(start) && inRect(end)) {
         result.lineRunCount++;
-        result.lengthRealSum += getLineRealWorldLength(poly, pageIdx, true, ann);
+        result.lengthRealSum += getLineRealWorldLengthFeet(poly, pageIdx, true, ann);
         result.polylines.push({ index: i, poly });
       }
     });
@@ -2265,11 +2280,11 @@
         });
       });
       (ann.quickLines || []).forEach(q => {
-        lengthReal += (typeof getLineLengthForTotals === 'function') ? getLineLengthForTotals(q, i, false, ann) : 0;
+        lengthReal += (typeof getLineLengthFeetForTotals === 'function') ? getLineLengthFeetForTotals(q, i, false, ann) : 0;
         pageHas = true;
       });
       (ann.polylines || []).forEach(poly => {
-        lengthReal += (typeof getLineLengthForTotals === 'function') ? getLineLengthForTotals(poly, i, true, ann) : 0;
+        lengthReal += (typeof getLineLengthFeetForTotals === 'function') ? getLineLengthFeetForTotals(poly, i, true, ann) : 0;
         pageHas = true;
       });
       if (pageHas) markedIdx.push(i);
@@ -2403,13 +2418,8 @@
       } else {
         const t = getFooterTotalsCached();
         const countStr = (t.count || 0).toLocaleString();
-        let lenStr;
-        if (t.scale) {
-          const unit = t.scale.unit || '';
-          lenStr = Math.round(t.lengthReal || 0).toLocaleString() + (unit ? ' ' + unit : '');
-        } else {
-          lenStr = Math.round(t.lengthReal || 0).toLocaleString() + ' px';
-        }
+        // t.lengthReal is already in feet (accumulated via getLineLengthFeetForTotals).
+        const lenStr = formatFeet(t.lengthReal || 0, t.scale);
         totalsEl.textContent = '[' + countStr + ' | ' + lenStr + ']';
         totalsEl.title = countStr + ' counters | ' + lenStr + ' of lines';
         totalsEl.style.display = '';
@@ -3614,12 +3624,12 @@
       let lenReal = 0;
       const pi = pageIdx >= 0 ? pageIdx : 0;
       (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-        lenReal += getLineLengthForTotals(q, pi, false, ann);
+        lenReal += getLineLengthFeetForTotals(q, pi, false, ann);
       });
       (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-        lenReal += getLineLengthForTotals(poly, pi, true, ann);
+        lenReal += getLineLengthFeetForTotals(poly, pi, true, ann);
       });
-      if (lenReal > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: pageScale ? formatDistFeetInchesFromReal(lenReal, pageScale) : formatLineLengthRealSum(lenReal, null) });
+      if (lenReal > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatFeet(lenReal, pageScale) });
     });
     const hasRows = counterRows.length > 0 || lineRows.length > 0;
     ctx.font = (10 * effectiveScale) + 'px sans-serif';
@@ -4514,13 +4524,13 @@
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += getLineLengthForTotals(q, pi, false, ann); });
-        polys.forEach(poly => { runs++; len += getLineLengthForTotals(poly, pi, true, ann); });
+        qLines.forEach(q => { runs++; len += getLineLengthFeetForTotals(q, pi, false, ann); });
+        polys.forEach(poly => { runs++; len += getLineLengthFeetForTotals(poly, pi, true, ann); });
       });
       const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + (scale ? formatDistFeetInchesFromReal(len, scale) : formatLineLengthRealSum(len, null)) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatFeet(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;
         const handle = div.querySelector('.line-type-drag-handle');
@@ -4632,10 +4642,10 @@
       filteredItems.forEach(it => {
         const p = state.pages[it.pageIdx];
         const annIt = p ? getActiveAnnotations(p) : makeAnnotations();
-        totalLen += it.type === 'poly' ? getLineLengthForTotals(it.poly, it.pageIdx, true, annIt) : getLineLengthForTotals(it.q, it.pageIdx, false, annIt);
+        totalLen += it.type === 'poly' ? getLineLengthFeetForTotals(it.poly, it.pageIdx, true, annIt) : getLineLengthFeetForTotals(it.q, it.pageIdx, false, annIt);
       });
       const scale = pickScaleForLineType(pageIndices);
-      const summary = filteredItems.length + ' lines · ' + (scale ? formatDistFeetInchesFromReal(totalLen, scale) : formatLineLengthRealSum(totalLen, null));
+      const summary = filteredItems.length + ' lines · ' + formatFeet(totalLen, scale);
       const expanded = !!state.linesTypeExpanded[tid];
       const groupWrapper = document.createElement('div');
       groupWrapper.className = 'lines-type-group' + (expanded ? '' : ' collapsed');
@@ -4662,10 +4672,10 @@
       const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx]) : makeAnnotations();
       let dist, name;
       if (it.type === 'poly') {
-        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatDistFeetInchesFromReal(getLineRealWorldLength(it.poly, it.pageIdx, true, annRow), getEffectiveScaleForLine(annRow, it.poly, true, it.pageIdx));
+        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatFeet(getLineRealWorldLengthFeet(it.poly, it.pageIdx, true, annRow), getEffectiveScaleForLine(annRow, it.poly, true, it.pageIdx));
         name = it.poly.name || 'Polyline';
       } else {
-        dist = formatDistFeetInchesFromReal(getLineRealWorldLength(it.q, it.pageIdx, false, annRow), getEffectiveScaleForLine(annRow, it.q, false, it.pageIdx));
+        dist = formatFeet(getLineRealWorldLengthFeet(it.q, it.pageIdx, false, annRow), getEffectiveScaleForLine(annRow, it.q, false, it.pageIdx));
         name = it.q.name || 'Quick line';
       }
       const line = it.type === 'poly' ? it.poly : it.q;
@@ -4752,7 +4762,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += getLineLengthForTotals(q, pi, false, ann);
+          lineTypeByGroup[gid][lt.id].len += getLineLengthFeetForTotals(q, pi, false, ann);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
         (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -4760,7 +4770,7 @@
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
           if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
           lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += getLineLengthForTotals(poly, pi, true, ann);
+          lineTypeByGroup[gid][lt.id].len += getLineLengthFeetForTotals(poly, pi, true, ann);
           if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
         });
       });
@@ -4795,7 +4805,7 @@
           div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + (scale ? formatDistFeetInchesFromReal(r.len, scale) : formatLineLengthRealSum(r.len, null)) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + formatFeet(r.len, scale) + '</span>';
           div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -4837,8 +4847,8 @@
           const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
           const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
           if (qLines.length || polys.length) pageIndices.push(pi);
-          qLines.forEach(q => { runs++; len += getLineLengthForTotals(q, pi, false, ann); });
-          polys.forEach(poly => { runs++; len += getLineLengthForTotals(poly, pi, true, ann); });
+          qLines.forEach(q => { runs++; len += getLineLengthFeetForTotals(q, pi, false, ann); });
+          polys.forEach(poly => { runs++; len += getLineLengthFeetForTotals(poly, pi, true, ann); });
         });
         if (runs > 0) {
           const scale = pickScaleForLineType(pageIndices);
@@ -4846,7 +4856,7 @@
           div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + (scale ? formatDistFeetInchesFromReal(len, scale) : formatLineLengthRealSum(len, null)) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + formatFeet(len, scale) + '</span>';
           div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -4879,8 +4889,8 @@
       state.pages.forEach((p, pageIdx) => {
         const ann = getActiveAnnotations(p);
         let runs = 0, len = 0;
-        (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthForTotals(q, pageIdx, false, ann); });
-        (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthForTotals(poly, pageIdx, true, ann); });
+        (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthFeetForTotals(q, pageIdx, false, ann); });
+        (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthFeetForTotals(poly, pageIdx, true, ann); });
         if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
       });
     }
@@ -4911,7 +4921,7 @@
       metaHtml += '<span class="summary-count-detail-count">' + esc(it.isCounter ? String(it.count) : String(it.runs)) + '</span>';
       if (!it.isCounter) {
         const ps = getPageScale(it.pageIdx);
-        metaHtml += '<span class="summary-count-detail-length">' + esc(ps ? formatDistFeetInchesFromReal(it.length, ps) : formatLineLengthRealSum(it.length, null)) + '</span>';
+        metaHtml += '<span class="summary-count-detail-length">' + esc(formatFeet(it.length, ps)) + '</span>';
       }
       metaHtml += '<span class="summary-count-detail-page">on ' + esc(pagePart) + '</span></div>';
       row.innerHTML = metaHtml;
@@ -10624,7 +10634,7 @@
             state.multiplyZoneStart = null;
           } else {
             const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-            const lenStr = formatLineLengthRealSum(counts.lengthRealSum, page?.scale);
+            const lenStr = formatFeet(counts.lengthRealSum, page?.scale);
             state.pendingMultiplyZone = { x1, y1, x2, y2 };
             state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
             const mzTitleEl = document.querySelector('#multiplyZoneModal h2');
@@ -10686,7 +10696,7 @@
           if (total === 0) {
             showToast('No items in this area.', 2000);
           } else {
-            const lenStr = formatLineLengthRealSum(collected.lengthRealSum, page?.scale);
+            const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
             const parts = [];
             if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
             if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
@@ -11379,7 +11389,7 @@
             state.multiplyZoneStart = null;
           } else {
             const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-            const lenStr = formatLineLengthRealSum(counts.lengthRealSum, page?.scale);
+            const lenStr = formatFeet(counts.lengthRealSum, page?.scale);
             state.pendingMultiplyZone = { x1, y1, x2, y2 };
             state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
             const mzTitleElTouch = document.querySelector('#multiplyZoneModal h2');
@@ -11445,7 +11455,7 @@
           if (total === 0) {
             showToast('No items in this area.', 2000);
           } else {
-            const lenStr = formatLineLengthRealSum(collected.lengthRealSum, page?.scale);
+            const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
             const parts = [];
             if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
             if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');

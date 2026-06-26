@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
     const { data: proj, error: projErr } = await adminClient
       .from('projects')
-      .select('id, name, data, pdf_path, pdf_hash')
+      .select('id, name, data, pdf_path, pdf_hash, updated_at')
       .eq('id', link.project_id)
       .single()
 
@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
         data: proj.data || {},
         pdfSignedUrl: signed.signedUrl,
         pdfHash: proj.pdf_hash || null,
+        updatedAt: proj.updated_at || null,
       }),
       {
         status: 200,

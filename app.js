@@ -673,6 +673,29 @@
     } catch (_) { return null; }
   }
 
+  // Canvas/display environment for the export envelope -- catches "my counts vanish at
+  // high zoom" by revealing the device pixel ratio, the probed canvas caps, the current
+  // render-area-safety knob (lowered if a blank was caught), and the last render's buffer
+  // dims. Read at export time only; all identifiers are module-scope and initialised by
+  // the time logs are exported.
+  function captureDisplayInfoObj() {
+    try {
+      return {
+        devicePixelRatio: (typeof window !== 'undefined' && window.devicePixelRatio) || null,
+        canvasCaps: getCanvasCaps(),
+        fallback: { maxDim: FALLBACK_MAX_DIM, maxArea: FALLBACK_MAX_AREA },
+        renderAreaSafety,
+        lastRender: {
+          pdfW: pdfCanvas ? pdfCanvas.width : null,
+          pdfH: pdfCanvas ? pdfCanvas.height : null,
+          annW: annCanvas ? annCanvas.width : null,
+          annH: annCanvas ? annCanvas.height : null,
+          effDpr: currentEffDpr
+        }
+      };
+    } catch (_) { return null; }
+  }
+
   function autosaveEventDetail(extra) {
     const ctx = {
       failures: consecutiveAutoSaveFailures,
@@ -1214,6 +1237,7 @@
         onLine: (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : null,
         network: captureNetworkInfoDetail() || null
       },
+      display: captureDisplayInfoObj(),
       timing: {
         lastSuccessfulSupabaseCallAt: (typeof lastSuccessfulSupabaseCallAt !== 'undefined') ? lastSuccessfulSupabaseCallAt : null,
         serverClockOffsetMs: (typeof serverClockOffsetMs !== 'undefined') ? serverClockOffsetMs : null,
@@ -2012,6 +2036,37 @@
   function getCanvasCaps() { return _canvasCaps || { maxDim: FALLBACK_MAX_DIM, maxArea: FALLBACK_MAX_AREA }; }
   function setCanvasCaps(caps) { _canvasCaps = caps; }   // override (debug / tests)
 
+  // The boot probe measures the largest *single* canvas the device can allocate, but a
+  // render keeps THREE big canvases alive at peak (pdfOffscreenCanvas + pdfCanvas +
+  // annCanvas). On a memory-pressured desktop the last one (the annotation overlay)
+  // can silently allocate-but-paint-blank — counts vanish. So the render path budgets
+  // the probed area cap down by `renderAreaSafety` (applied in effectiveDpr), leaving
+  // memory headroom. If a render still reads back blank, the read-back guard in
+  // renderPdf ratchets this knob lower and re-renders (softer, never blank). Monotonic
+  // within a session — never raised back up, since a device that failed once shouldn't retry.
+  const RENDER_AREA_SAFETY_MAX = 0.5;    // start at 50% of the probed area cap (coexistence headroom)
+  const RENDER_AREA_SAFETY_MIN = 0.12;   // ratchet floor — below this we accept a soft bitmap
+  const RENDER_AREA_SAFETY_STEP = 0.6;   // each ratchet step multiplies the knob
+  let renderAreaSafety = RENDER_AREA_SAFETY_MAX;
+
+  // Does this canvas's far corner actually read back? A canvas that silently failed to
+  // allocate its backing store (memory pressure / over the device cap) paints blank with
+  // no error — the corner pixel won't read as the colour we set. Mutates one corner pixel
+  // (scratch; caller repaints). Dependency-free; shared by the boot probe + render guard.
+  function canvasCornerReadsBack(canvas) {
+    if (!canvas || !(canvas.width > 0) || !(canvas.height > 0)) return false;
+    const g = canvas.getContext('2d');
+    if (!g) return false;
+    const x = canvas.width - 1, y = canvas.height - 1;
+    const prev = g.fillStyle;
+    g.fillStyle = '#fff';
+    g.fillRect(x, y, 1, 1);
+    let ok = false;
+    try { ok = g.getImageData(x, y, 1, 1).data[3] === 255; } catch (_) { ok = false; }
+    g.fillStyle = prev;
+    return ok;
+  }
+
   // One-time probe of the device's real max canvas size: binary-search the largest
   // canvas whose far-corner pixel reads back. Detached canvases, freed after each test.
   function detectMaxCanvasArea() {
@@ -2019,13 +2074,7 @@
       const readsBack = (w, h) => {
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
-        const g = c.getContext('2d');
-        let ok = false;
-        if (g) {
-          g.fillStyle = '#fff';
-          g.fillRect(w - 1, h - 1, 1, 1);
-          try { ok = g.getImageData(w - 1, h - 1, 1, 1).data[3] === 255; } catch (_) { ok = false; }
-        }
+        const ok = canvasCornerReadsBack(c);
         c.width = 0; c.height = 0;
         return ok;
       };
@@ -2047,7 +2096,11 @@
     if (!page || !page.pdfPage) return window.devicePixelRatio || 1;
     const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
     const caps = getCanvasCaps();
-    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea: caps.maxArea });
+    // Budget the probed area cap down so pdfCanvas + annCanvas (and, transiently, the
+    // offscreen) can coexist without exhausting device memory. maxDim is left intact —
+    // the failure is area/memory-driven, not single-axis overflow, and clampEffectiveDpr
+    // already takes the min across both, so this only bites when area is the binding limit.
+    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea: caps.maxArea * renderAreaSafety });
   }
 
   function toCanvas(p) { const scale = state.zoom * currentEffDpr; return { x: p.x * scale, y: p.y * scale }; }
@@ -2500,6 +2553,36 @@
       pdfCanvas.style.width = viewport.width / eff + 'px';     // = pageW*zoom CSS px (clamp-independent)
       pdfCanvas.style.height = viewport.height / eff + 'px';
       pdfCanvas.getContext('2d').drawImage(pdfOffscreenCanvas, 0, 0);
+
+      // Read-back guard: did pdfCanvas actually allocate, or silently paint blank under
+      // memory pressure? If blank and we still have headroom, ratchet the shared safety
+      // knob down and re-render smaller. Both renderPdf and renderAnnotations re-read the
+      // lowered knob via effectiveDpr, so their buffers stay the same size. Bounded by
+      // RENDER_AREA_SAFETY_MIN (~3 steps) so it never spins. A silent blank becomes a
+      // softer-but-visible render instead of vanished counts.
+      if (!canvasCornerReadsBack(pdfCanvas) && renderAreaSafety > RENDER_AREA_SAFETY_MIN) {
+        const prevSafety = renderAreaSafety;
+        renderAreaSafety = Math.max(RENDER_AREA_SAFETY_MIN, renderAreaSafety * RENDER_AREA_SAFETY_STEP);
+        try {
+          pushSaveEvent('canvas_render_blank', 'PDF canvas read back blank — reduced render area', JSON.stringify({
+            devicePixelRatio: window.devicePixelRatio || 1,
+            requestedW: viewport.width, requestedH: viewport.height,
+            actualW: pdfCanvas.width, actualH: pdfCanvas.height,
+            zoom: state.zoom, caps: getCanvasCaps(),
+            prevSafety, newSafety: renderAreaSafety
+          }));
+        } catch (_) { /* diagnostics are best-effort */ }
+        // Free the offscreen before retrying so the smaller re-render has max headroom.
+        pdfOffscreenCanvas.width = 0;
+        pdfOffscreenCanvas.height = 0;
+        renderPdf();   // re-entrant: pdfRenderTask is null here, so this proceeds
+        return;
+      }
+
+      // Success: drop the offscreen backing store (cuts peak coexisting canvases from 3
+      // to 2 — the root cause of the overlay blanking), then paint the overlay.
+      pdfOffscreenCanvas.width = 0;
+      pdfOffscreenCanvas.height = 0;
       renderAnnotations();
       if (pdfRenderPending) renderPdf();
     }).catch(err => {
@@ -12915,6 +12998,7 @@
   App.getCanvasCaps = getCanvasCaps;
   App.setCanvasCaps = setCanvasCaps;
   App.effectiveDpr = effectiveDpr;
+  App.__getRenderAreaSafety = () => renderAreaSafety;   // debug/test seam (mirrors setCanvasCaps)
   App.getOrderedIcons = getOrderedIcons;
   App.iconVbFor = iconVbFor;
   App.getUserCustomIcons = getUserCustomIcons;

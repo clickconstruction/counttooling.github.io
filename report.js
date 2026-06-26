@@ -1,6 +1,6 @@
 /**
  * ClickCount Print Report
- * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getLineLengthForTotals, getLineRealWorldLength, getMultiplyZoneForPoint, getMultiplyZoneForLine
+ * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getLineLengthFeetForTotals (tally lengths in feet), getLineRealWorldLength, getMultiplyZoneForPoint, getMultiplyZoneForLine
  */
 (function() {
   function escapeHtml(s) {
@@ -81,7 +81,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -89,7 +89,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -121,7 +121,7 @@
     });
     const scale = pickScaleForLineType(allPagesWithLines.length ? allPagesWithLines : pageIndices.map(i => i + 1));
     const totalLengthStr = scale
-      ? totalLengthReal.toFixed(2) + ' ' + scale.unit
+      ? totalLengthReal.toFixed(2) + ' ft'
       : (totalLengthReal > 0 ? Math.round(totalLengthReal) + ' px' : '0');
 
     if (totalCounters > 0 || totalLineRuns > 0) {
@@ -164,14 +164,14 @@
         let len = 0;
         (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
           runs++;
-          len += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
+          len += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           runs++;
-          len += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
+          len += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
         });
         if (runs > 0) {
-          lineTypeRows.push({ type: lt.name, runs, length: page.scale ? len.toFixed(2) + ' ' + page.scale.unit : (len > 0 ? Math.round(len) + ' px' : '0'), color: lt.color });
+          lineTypeRows.push({ type: lt.name, runs, length: page.scale ? len.toFixed(2) + ' ft' : (len > 0 ? Math.round(len) + ' px' : '0'), color: lt.color });
         }
       });
       if (lineTypeRows.length > 0) {
@@ -213,7 +213,7 @@
         const groupTotalReal = Object.values(lines).reduce((s, r) => s + r.lengthReal, 0);
         const groupPages = [...new Set([...Object.values(counters).flatMap(r => r.pages), ...Object.values(lines).flatMap(r => r.pages)])];
         const groupScale = pickScaleForLineType(groupPages);
-        const groupLengthStr = groupScale ? groupTotalReal.toFixed(2) + ' ' + groupScale.unit : (groupTotalReal > 0 ? Math.round(groupTotalReal) + ' px' : '0');
+        const groupLengthStr = groupScale ? groupTotalReal.toFixed(2) + ' ft' : (groupTotalReal > 0 ? Math.round(groupTotalReal) + ' px' : '0');
         const groupParts = [];
         if (groupTotalCounters > 0) groupParts.push(groupTotalCounters + ' counter' + (groupTotalCounters !== 1 ? 's' : ''));
         if (groupTotalRuns > 0) groupParts.push(groupTotalRuns + ' line run' + (groupTotalRuns !== 1 ? 's' : ''));
@@ -231,7 +231,7 @@
           const r = lines[lt.id];
           if (r) {
             const scale = pickScaleForLineType(r.pages);
-            const unit = scale?.unit || 'px';
+            const unit = scale ? 'ft' : 'px';
             const num = scale
               ? r.lengthReal.toFixed(2)
               : String(Math.round(r.lengthReal));
@@ -277,14 +277,14 @@
           const gid = q.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
           const gid = poly.group || null;
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -303,7 +303,7 @@
         const r = lineTypes[lt.id];
         if (r) {
           const scale = pickScaleForLineType(r.pages);
-          const unit = scale?.unit || 'px';
+          const unit = scale ? 'ft' : 'px';
           const num = scale
             ? r.lengthReal.toFixed(2)
             : String(Math.round(r.lengthReal));
@@ -343,7 +343,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
         (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
@@ -351,7 +351,7 @@
           if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
           if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthReal: 0, pages: [] };
           lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthForTotals === 'function' ? getLineLengthForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
+          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
           if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
         });
       });
@@ -386,7 +386,7 @@
           const r = lineTypes[lt.id];
           if (r) {
             const scale = pickScaleForLineType(r.pages);
-            const unit = scale?.unit || 'px';
+            const unit = scale ? 'ft' : 'px';
             const num = scale
               ? r.lengthReal.toFixed(2)
               : String(Math.round(r.lengthReal));

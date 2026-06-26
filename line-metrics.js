@@ -82,6 +82,15 @@
     return lineRealWorldLength(line, isPoly, ann, pageScale, lineType) * mult;
   }
 
+  // Same total length, but converted to FEET so tallies can sum lines across pages of
+  // differing scale units correctly and display one consistent unit. Converts via the
+  // line's effective scale unit; returns the raw value (PDF-pts) when there is no scale.
+  function lineLengthFeetForTotals(line, isPoly, ann, pageScale, lineType) {
+    const len = lineLengthForTotals(line, isPoly, ann, pageScale, lineType);
+    const eff = effectiveScaleForLine(ann, line, isPoly, pageScale);
+    return (eff && eff.unit) ? convertUnitValue(len, eff.unit, 'ft') : len;
+  }
+
   // Pick a representative scale across the given page indices: first a preferred
   // unit in priority order, else any scaled page, else page 0's scale.
   function scaleForLineType(pageIndices, pages) {
@@ -109,6 +118,7 @@
       effectiveScaleForLine,
       lineRealWorldLength,
       lineLengthForTotals,
+      lineLengthFeetForTotals,
       scaleForLineType,
     };
   }

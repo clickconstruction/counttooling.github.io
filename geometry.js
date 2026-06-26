@@ -125,6 +125,14 @@
     if (realSum === 0) return '0';
     return Math.round(realSum) + ' px';
   }
+  // Format an already-in-feet length as decimal feet. Used by every takeoff tally so
+  // line lengths read identically everywhere ("12.50 ft") regardless of the page's
+  // scale unit. `val` must already be converted to feet (see lineLengthFeetForTotals);
+  // when there is no scale we fall back to the pixel display the other formatters use.
+  function formatFeet(val, scale) {
+    if (!scale) return val > 0 ? Math.round(val) + ' px' : '0';
+    return val.toFixed(2) + ' ft';
+  }
   function parseRealWorldLength(str, unit) {
     const s = String(str || '').trim();
     if (!s) return null;
@@ -245,7 +253,7 @@
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
       rotatePoint90CW, pointInRect, rectsOverlap,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
-      formatLineLengthRealSum, parseRealWorldLength, parseFraction,
+      formatLineLengthRealSum, formatFeet, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
       clampEffectiveDpr, convertUnitValue

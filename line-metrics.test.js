@@ -86,6 +86,22 @@ test('lineLengthForTotals: scales the real-world length by the multiply-zone fac
   assert.strictEqual(lm.lineLengthForTotals(line, false, {}, scale, null), 10);
 });
 
+test('lineLengthFeetForTotals: converts the total to feet via the line\'s effective unit', () => {
+  const closeTo = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ~= ${b}`);
+  const line = { x1: 10, y1: 10, x2: 30, y2: 10 };   // base 20 pdf-pts
+  // foot scale: realWorld 10 ft -> 10 ft (unchanged)
+  assert.strictEqual(lm.lineLengthFeetForTotals(line, false, {}, { pixelsPerUnit: 2, unit: 'ft' }, null), 10);
+  // inch scale: realWorld 10 in -> 10/12 ft
+  closeTo(lm.lineLengthFeetForTotals(line, false, {}, { pixelsPerUnit: 2, unit: 'in' }, null), 10 / 12);
+  // meter scale: realWorld 10 m -> 10 / 0.3048 ft
+  closeTo(lm.lineLengthFeetForTotals(line, false, {}, { pixelsPerUnit: 2, unit: 'm' }, null), 10 / 0.3048);
+  // multiply-zone factor still applies (then converts, ft): 10 ft * 3 = 30 ft
+  const ann = { multiplyZones: [{ x1: 0, y1: 0, x2: 100, y2: 100, multiplier: 3 }] };
+  assert.strictEqual(lm.lineLengthFeetForTotals(line, false, ann, { pixelsPerUnit: 2, unit: 'ft' }, null), 30);
+  // unscaled -> raw PDF-pts (no unit to convert)
+  assert.strictEqual(lm.lineLengthFeetForTotals(line, false, {}, null, null), 20);
+});
+
 test('scaleForLineType: prefers ft over other units regardless of page order', () => {
   const pages = [
     { scale: { unit: 'm', pixelsPerUnit: 1 } },

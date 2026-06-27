@@ -160,7 +160,7 @@ supabase functions deploy get-view-project --no-verify-jwt
 
 Each function still validates auth in-code via `getUser()` (except `get-view-project`, which is unauthenticated and validates domain server-side).
 
-**View links:** `get-view-project` validates tokens and email domain (default: clickplumbing.com). Set `VIEW_LINK_ALLOWED_DOMAINS` in Supabase Dashboard (Functions > get-view-project > Secrets) if different.
+**View links:** `get-view-project` validates tokens and email domain (default: clickplumbing.com). Set `VIEW_LINK_ALLOWED_DOMAINS` in Supabase Dashboard (Functions > get-view-project > Secrets) if different. The function also returns the project's `updated_at` (as `updatedAt`); the client (`initViewOnlyMode`) revalidates against the server on open and only re-renders/refreshes the view cache when it changed, so a viewer isn't pinned to a stale snapshot after the owner re-saves (the cached PDF blob is reused when its hash matches; offline falls back to the cache). The deployed function inlines its CORS headers (the repo source imports `_shared/cors.ts` — functionally identical; a CLI deploy bundles `_shared`).
 
 ## 4. Create First Admin
 

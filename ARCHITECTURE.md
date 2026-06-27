@@ -2,7 +2,7 @@
 
 Use this file to locate code in the app. The HTML shell + every modal live in
 [index.html](index.html) (~2.1k lines); the bulk of the app logic (the main JS
-IIFE) lives in [app.js](app.js) (~12.2k lines, slimmed from ~16.2k as the pure
+IIFE) lives in [app.js](app.js) (~13.5k lines, slimmed from ~16.2k as the pure
 modules + the `window.App` feature-file splits were pulled out). The core data
 model and invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
 navigation map plus the catalog of features built on top of that core.
@@ -10,7 +10,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 [CHANGELOG.md](CHANGELOG.md).
 
 > Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
-> is ~12.2k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> is ~13.5k lines and edits shift them constantly. Navigate by the `// SECTION:`
 > markers in the code and by the grep patterns in the Search Hints table below.
 
 ## Files
@@ -18,7 +18,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | File | Purpose |
 |------|---------|
 | [index.html](index.html) | The app shell: HTML structure + every modal; `<head>` loads the CSS/CDN/module scripts, the body ends by loading `app.js` then `report.js`. No inline JS logic anymore (~2.1k lines) |
-| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~12.2k lines, slimmed from ~16k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
+| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~13.5k lines, slimmed from ~16k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals |
 | [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
@@ -35,7 +35,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [format.test.js](format.test.js) | Node `node:test` unit tests for [format.js](format.js) — `calendarDaysFromSignInToNowInZone` integer deltas (incl. year boundary / future), `filterUserActivityRows` match/case rules, `renderUserActivityAllUsersTableHtml` cells + escaping, `formatLastSignIn` relative buckets, `formatUserActivityDateTime`; the two en-CA-hyphen-dependent cases (`dateKeyInTimeZone`, `formatLastSignInUserActivity` Today) auto-skip on a limited-ICU runtime and run on full-ICU (browser-equivalent / CI Node 20); run with `npm run test:unit` |
 | [icon-render.js](icon-render.js) | Pure icon geometry / render-rule helpers extracted from app.js — the `CUSTOM_ICON_META` table (derived from `CUSTOM_ICONS`) plus `iconMetaFromList`, `iconViewBoxFromList`, `iconRenderVbRule`, `iconRenderCenterRule`, `iconViewBoxStringRule`, `iconSvgHtml`. Classic `<script src>` loaded after [icons.js](icons.js) (reads `CUSTOM_ICONS`/`VB_384_512_PATHS`/`FA_PATHS` by bare name; the top-level `CUSTOM_ICON_META` read is `typeof`-guarded so Node `require` stays load-safe) and before [app.js](app.js). Depends only on icons.js globals + args — no `state`/DOM/user-icon-cache. app.js keeps the cache-coupled lookups (`getCustomIconMeta`, `getCustomIconViewBox`, `iconRenderVb`, `iconRenderCenter`, `iconViewBoxString`, `renderIconHtml`) as same-named thin wrappers that inject `getEffectiveCustomIcons()`. Guarded CommonJS export footer so the primitives can be `require()`d by [icon-render.test.js](icon-render.test.js) |
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
-| [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
+| [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
 | [features/canvas-repair.js](features/canvas-repair.js) | First feature-file split of the `app.js` IIFE (the `window.App` registry pilot) — the Canvas Repair modal (`openCanvasRepairModal` + `applyCanvasRepair`). Its own classic-script IIFE loaded **after** [app.js](app.js) (and before [report.js](report.js)); reads shared `state`/helpers from `window.App` at call time and registers `App.openCanvasRepairModal`/`App.applyCanvasRepair` back onto it. app.js invokes them via deferred bindings (`() => App.fn()`). See "Feature files / `window.App` registry" below |
 | [canvas-repair.spec.js](canvas-repair.spec.js) | Playwright regression for the registry pilot — uploads `test-2pages.pdf`, adds a page-0 marker, asserts `window.App.openCanvasRepairModal`/`applyCanvasRepair` are functions and `App.state === window.state`, opens the modal + clicks `#canvasRepairApply` (no-op default mapping), and asserts the marker survives with no console / page errors; `npx playwright test canvas-repair.spec.js` |
@@ -114,7 +114,7 @@ resolves `app.js`'s output via `window.*`.
 
 ### Feature files / `window.App` registry
 
-`app.js` is one ~12.2k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
+`app.js` is one ~13.5k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
 are closure-locals, so a feature file in a separate `<script>` cannot see them
 by bare name. To split it incrementally without a build step, `app.js` publishes
 a small, named contract onto a shared global registry, and feature files read
@@ -524,6 +524,8 @@ Annotated, in rough order:
 | Bundled icons | `CUSTOM_ICONS` or `getEffectiveCustomIcons`; built via `npm run build:icons` (see [CUSTOM_ICONS.md](CUSTOM_ICONS.md)) |
 | Custom icon upload | `customIconUploadInput` or `parseUploadedSvg` or `getUserCustomIcons` |
 | Page rotation | `rotatePage90` or `page.rotation` |
+| Rotation/share orientation guard | `bakeFrame` or `computePageBakeFrame` or `verifyPageBakeFrame` or `bakeFramesMatch` (geometry.js) or `page.bakeMismatch` |
+| Canvas-blank-at-zoom guard | `renderAreaSafety` or `canvasCornerReadsBack` or `effectiveDpr` or `getCanvasCaps` |
 | Counter/Line Type details modal | `openCounterLineTypeDetailsModal` |
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
 | Dev auth bypass | `canUseDevAuth` or `devAuthSignIn` (`?devAuth=1`, localhost) |
@@ -565,6 +567,7 @@ Annotated, in rough order:
 | Show Highlights / Notes | `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
 | Note modal | `openNoteModal` |
 | Line real-world length / scale zones | `getLineRealWorldLength` or `getLineLengthForTotals` or `getEffectiveScaleForLine` |
+| Length tally in feet (always-feet) | `getLineLengthFeetForTotals` or `lineLengthFeetForTotals` (line-metrics.js) or `formatFeet` (geometry.js) |
 | Multiply Zone | `TOOL.MULTIPLY_ZONE` or `getMultiplyZoneForPoint` / `getMultiplyZoneForLine` |
 | Scale Zone | `TOOL.SCALE_ZONE` or `getScaleZoneForLine` or `scaleModalApplyTarget` |
 | Delete Zone | `TOOL.DELETE_ZONE` or `collectItemsToDeleteInRect` or `performDeleteZone` |
@@ -574,7 +577,8 @@ Annotated, in rough order:
 
 These must remain on `window`: `state`, `makeAnnotations`, `ptDist`,
 `polylineDistance`, `formatDist`, `renderIconHtml`, `quickLineLength`,
-`getLineLengthPdfPts`, `getLineLengthForTotals`, `getLineRealWorldLength`,
+`getLineLengthPdfPts`, `getLineLengthForTotals`, `getLineLengthFeetForTotals`,
+`getLineRealWorldLength`,
 `getMultiplyZoneForLine`, `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`,
 `getMergedAnnotationsForPage`. [report.js](report.js) exposes back
 `buildReportHtml`, `printReport`, `getPipeToolingSummary`, `getEmailTextSummary`.
@@ -720,6 +724,14 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 
 ### Output
 
+- **Length tallies are always decimal feet.** Every takeoff tally / summary / export
+  (Line Types sidebar, Lines list, Summary panel + count-detail, footer totals, zone
+  preview modals, Copy to PipeTooling, Copy Summary email/text, printable Report, embedded
+  PDF legend) converts each line to feet **before summing** (via `getLineLengthFeetForTotals`
+  → `lineLengthFeetForTotals` + `convertUnitValue`, also fixing mixed-unit summation) and
+  formats decimal feet with `formatFeet` ("12.50 ft"), regardless of the page's scale unit.
+  Only the **on-canvas per-line length labels** and the **Measure-tool** readout keep
+  feet-inches notation (the construction-drawing convention).
 - **Show Report** — `#showReportDropdown` (this canvas / all canvases on page / all
   plan pages current canvas / all pages and canvases); opens report in a new tab
   via `printReport(mode)`; hidden when no counts/lines.
@@ -838,12 +850,19 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Checkout expired recovery** — recovery modal + silent auto-recheckout
   (`tryAutoRecheckoutIfAllowed`, `handleBackgroundCheckoutExpired`); see CHANGELOG.
 - **View links** — `project_view_links` + `view_link_access_log`; Share modal
-  create/list/copy/access-log/revoke; `?t=TOKEN`; `get-view-project` Edge Function;
-  email domain gate; `initViewOnlyMode`. The shared `getOrCreateViewLinkUrl()` /
+  create/list/copy/access-log/revoke; `?t=TOKEN`; `get-view-project` Edge Function
+  (returns `updatedAt`); email domain gate; `initViewOnlyMode`. The shared
+  `getOrCreateViewLinkUrl()` /
   `buildViewLinkUrl()` (reuse-or-create) back both the header Share button
-  (`copyOrCreateViewLinkToClipboard`) and the **Copy to PipeTooling** export footer;
+  (`copyOrCreateViewLinkToClipboard`, which now flushes a pending save first) and the
+  **Copy to PipeTooling** export footer;
   revoking a link clears the export's prefetch cache. View-link viewers also get the
-  **Hide marks** header toggle, remembered per token across reloads.
+  **Hide marks** header toggle, remembered per token across reloads. `initViewOnlyMode`
+  **revalidates against the server when online** (reusing the cached PDF blob by hash,
+  falling back to the cached snapshot offline) so a viewer isn't pinned to a stale copy
+  after the owner re-saves — backed by the new `updatedAt` (Edge Function + view-cache
+  meta). Loaded pages run the `bakeFrame` orientation check (see RECONSTITUTE.md / the
+  page save shape) so a misaligned share is surfaced, not rendered silently wrong.
 - **Artboard** — User Settings save/load counters, line types, and modifiers to the
   user profile (`user_airboard`).
 - **Admin** — Add/Manage/All Users, Manage Projects (delete + force turn-in), User

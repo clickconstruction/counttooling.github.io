@@ -62,7 +62,7 @@
   `report.js`),
   [app.js](app.js) (the bulk of the app logic — the former inline `index.html`
   IIFE, extracted into a classic `<script src>` and since slimmed from ~16.2k to
-  ~12.2k lines as the pure modules + the `window.App` feature-file splits were
+  ~13.5k lines as the pure modules + the `window.App` feature-file splits were
   pulled out; resolves the
   sibling modules' values by bare name and exposes its own helpers to `report.js`
   via `window.*` at the IIFE tail; linted with `no-undef` as error, the rest of
@@ -453,7 +453,9 @@
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
   `formatDist`, `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,
-  `getLineLengthForTotals`, `getLineRealWorldLength`, `getMultiplyZoneForLine`,
+  `getLineLengthForTotals`, `getLineLengthFeetForTotals` (per-line-type tally length
+  converted to feet, for the always-feet summaries/exports), `getLineRealWorldLength`,
+  `getMultiplyZoneForLine`,
   `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`.
   It exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`,
   `getEmailTextSummary`; both summary functions accept optional
@@ -529,7 +531,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~12.2k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~13.5k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -550,7 +552,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~12.2k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~13.5k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").
@@ -650,7 +652,13 @@ mode).
 
 - `customIconPaths` lives in **IndexedDB** (in-memory cache, per-user key; one-time
   migration from localStorage / legacy key).
-- Per-project, in save/load: `maxZoom`, `groups`, `activeCanvasIdByPage`.
+- Per-project, in save/load: `maxZoom`, `groups`, `activeCanvasIdByPage`. Each saved
+  page also carries `bakeFrame` `{ w, h, intrinsic }` (the viewport dims at `page.rotation`
+  + the PDF's intrinsic `/Rotate`) so a later load / view-link viewer can detect when the
+  loaded PDF would render the page in a different orientation than the marks were baked
+  against (`computePageBakeFrame` stamps it, `verifyPageBakeFrame` checks it on load via the
+  pure `bakeFramesMatch`; on mismatch it warns + toasts + sets `page.bakeMismatch`, never
+  auto-corrects). The IndexedDB takeoff backup carries the parallel `pageBakeFrames` array.
 - In-memory only (not persisted): `state.pdfBufferSize` (bytes; set whenever
   `state.pdfBuffer` is set, because pdf.js detaches the buffer making `byteLength`
   0), `state.userActivityAllRowsCache`, `state.userActivityViewMode`.
@@ -682,7 +690,11 @@ mode).
   (per-tab id), `timing` (token expiry `sessionExpiresAt`/`secondsToExpiry`,
   degradation metrics `clientRecycles`/`autosaveLatencyP50`/`P95`/`degradedForMs`/
   `nextAutoSaveAttemptInMs`), `project` (checkout ownership +
-  `dataJsonBytes`/`pdfBufferBytes`/`nearPdfCap`), `storage`
+  `dataJsonBytes`/`pdfBufferBytes`/`nearPdfCap`, plus per-page rotation diagnostics
+  `pageRotation`/`pageBake`/`bakeMismatchPages`), `display` (`devicePixelRatio`,
+  probed `canvasCaps`, `renderAreaSafety`, last-render buffer dims -- for "counts vanish
+  at high zoom"; a `canvas_render_blank` event also rides the log when the read-back guard
+  ratchets), `storage`
   (`navigator.storage.estimate`) + `lastLocalBackup`, and `visibility` on autosave
   events. Failed raw-fetch saves attach server request IDs via
   `extractResponseDiagnostics` (`requestId`/`cfRay`/`retryAfter`/`serverDate`) -- but

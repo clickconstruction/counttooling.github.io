@@ -147,7 +147,8 @@ keep exposed on `window`:
 
 `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`,
 `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,
-`getLineLengthForTotals`, `getLineRealWorldLength`, `getMultiplyZoneForLine`,
+`getLineLengthForTotals`, `getLineLengthFeetForTotals` (tally lengths in feet),
+`getLineRealWorldLength`, `getMultiplyZoneForLine`,
 `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`.
 
 It exposes back: `buildReportHtml(options)`, `printReport(mode)`,

@@ -870,3 +870,71 @@ hand-captured). The blocker was the blank sample PDF, so two new committed-artif
   `build:og-image`. `marketing.css .prose img` frames/centers images; `guides.test.js`
   link-integrity fails CI if an article references a missing image; `guides.spec.js` asserts an
   article's screenshot actually loads. Authoring documented in `content/guides/README.md`.
+
+## Counts vanishing at extreme zoom (canvas-blank guard)
+
+Counter markers disappeared at extreme zoom and reappeared after zooming around — a
+render/memory issue, not data loss. At high zoom three large canvases coexist
+(`pdfOffscreenCanvas` + `pdfCanvas` + `annCanvas`), each up to the device's probed area cap
+(~64M px); under memory pressure the last-allocated one (the annotation overlay) silently
+allocates but paints blank. The existing per-single-canvas, boot-probed cap
+(`detectMaxCanvasArea`/`clampEffectiveDpr`) didn't account for coexistence or current memory.
+
+- **Free the offscreen after copy** (`pdfOffscreenCanvas.width = height = 0`) — 3 coexisting
+  canvases → 2.
+- **Budget the area cap** via a shared `renderAreaSafety` knob (starts at 0.5) applied to
+  `maxArea` inside `effectiveDpr`; both `renderPdf` and `renderAnnotations` read the same knob,
+  so buffer sizes stay consistent.
+- **Read-back guard + ratchet:** after sizing/copying `pdfCanvas`, `canvasCornerReadsBack`
+  (factored out of the boot probe) checks it actually allocated; on a blank read it ratchets
+  `renderAreaSafety` down (bounded, ~3 steps) and re-renders — a silent blank becomes a softer
+  but visible render instead of vanished counts, and a `canvas_render_blank` event is logged.
+- The Save Status export envelope gained a passive `display` block (`devicePixelRatio`, probed
+  `canvasCaps`, `renderAreaSafety`, last-render dims) so an affected user's exported logs reveal
+  their environment.
+- Tests: `clampEffectiveDpr` area-budget unit cases; `zoom-canvas-cap.spec.js` (overlay matches
+  PDF + painted, single-blank ratchet, always-blank termination).
+
+## Takeoff length tallies denominated in decimal feet
+
+Copy to /Tooling showed different line lengths than the Line Types sidebar: both accumulate
+per-line lengths in the page's scale unit (ft/in/m/cm/yd) but formatted differently — the
+sidebar as feet-inches (`12'-6"`), the export as a decimal in the page unit (`150.00 in` on an
+inch-scaled sheet). Fixed structurally: convert each line to feet **before summing** (also fixes
+a latent mixed-unit summation bug) and format decimal feet everywhere.
+
+- New pure helpers `formatFeet` (geometry.js), `lineLengthFeetForTotals` (line-metrics.js); app.js
+  wrappers `getLineLengthFeetForTotals` (+`window.*` for report.js) and `getLineRealWorldLengthFeet`.
+- Converted to decimal feet: Line Types sidebar, Lines list (totals + per-line), Summary panel +
+  count-detail modal, footer totals, Multiply/Delete-zone preview modals, embedded PDF legend; and
+  report.js Copy to /Tooling, Copy Summary (email/text), printable Report (unit token now constant
+  `ft`; the `<unit> of <name>` + decimal export shape is unchanged, so PipeTooling/TakeoffTooling
+  importers keep working). On-canvas per-line labels + the Measure ruler keep feet-inches.
+- Tests: `formatFeet` + `lineLengthFeetForTotals` unit cases; `copy-tooling-feet.spec.js` asserts
+  the three surfaces agree in feet on inch- and foot-scaled pages.
+
+## View-link page/mark rotation misalignment (bake-frame guard + cache revalidation)
+
+A view-link recipient saw the PDF rotated under the marks ("rotated under the canvas"). The
+rotation pipeline is self-consistent for identical {PDF, data} (rotation is baked into mark
+coordinates by `rotateAnnotations` and restored alongside `page.rotation`; the render always
+overrides the PDF's intrinsic `/Rotate`, which the app otherwise never reads), so the corruption
+is a mismatch between the frame the marks were baked against and what the viewer reconstructs.
+No incident data — this is defense-in-depth that makes the class detectable + non-silent.
+
+- **Bake-frame stamp + verify** (detect → warn → log, never auto-correct): each saved page carries
+  `bakeFrame {w,h,intrinsic}` (`computePageBakeFrame`); both deserialize funnels
+  (`applyPageAnnotationsFromData`, `applyTakeoffBackupToState`) recompute the frame and, on
+  mismatch, `console.warn` + a one-time toast + `page.bakeMismatch`. Pure `bakeFramesMatch` in
+  geometry.js; additive + backward-compatible (no stamp → skip; the IDB backup carries a parallel
+  `pageBakeFrames` array).
+- **Save-before-share:** `copyOrCreateViewLinkToClipboard` flushes dirty state first so a link's
+  live cloud data reflects a just-applied rotation.
+- **View-cache revalidation:** `initViewOnlyMode` revalidates against the server when online
+  (reusing the cached PDF blob by hash; offline falls back to cache) instead of trusting a stale
+  snapshot — and fixes a latent bug where the cached blob was reused even when the PDF hash changed.
+  Backed by `updated_at` added to the `get-view-project` Edge Function + the view-cache meta.
+- **Rotation telemetry** in the Save Status envelope (`pageRotation`/`pageBake`/`bakeMismatchPages`).
+- Tests: `rotation-share-roundtrip.spec.js` generates a `/Rotate-90` PDF in-browser, runs
+  editor→viewer-reconstruct (incl. a real multi-page case that must not warn), asserts the
+  stamp/round-trip/guard; + `bakeFramesMatch` unit cases.

@@ -471,6 +471,12 @@
         </div>
       </div>
       <div id="scalePresetsPanel" class="counter-tab-panel">
+        <div id="scaleSheetWarning" class="scale-sheet-warning" style="display:none;">
+          <div class="scale-sheet-warning-title">⚠ This page isn't a standard sheet size</div>
+          <div class="scale-sheet-warning-body">It looks compressed or re-boxed, so the preset scales below may be off. Correcting presets as if printed on:</div>
+          <select id="scaleSheetSelect"></select>
+          <div class="scale-sheet-warning-hint">For an exact result, use <strong>Select two points</strong> instead.</div>
+        </div>
         <div id="scalePresetsList" class="scale-presets-list"></div>
         <div class="form-group scale-custom-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
           <label>Custom scale</label>

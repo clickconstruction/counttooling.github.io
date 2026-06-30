@@ -276,6 +276,57 @@ test('bakeFramesMatch: same frame matches; swapped dims / changed intrinsic do n
   assert.strictEqual(g.bakeFramesMatch(f, { w: 918, h: 594, intrinsic: 90 }), false);
 });
 
+test('analyzeSheet: a true-size ARCH D page is standard, factor 1, no correction', () => {
+  const a = g.analyzeSheet(36 * 72, 24 * 72);   // 2592 x 1728 pt
+  assert.strictEqual(a.isStandard, true);
+  assert.strictEqual(a.matchedSheet.id, 'ARCH_D');
+  close(g.sheetCorrectionFactor(36 * 72, 24 * 72, a.matchedSheet), 1, 1e-9);
+});
+
+test('analyzeSheet: orientation-independent — portrait ARCH D still matches', () => {
+  const a = g.analyzeSheet(24 * 72, 36 * 72);   // swapped dims
+  assert.strictEqual(a.isStandard, true);
+  assert.strictEqual(a.matchedSheet.id, 'ARCH_D');
+});
+
+test('analyzeSheet: a 0.6x ARCH D page is non-standard, guesses ARCH D, factor ~0.6', () => {
+  // 0.6x is chosen so the page (21.6x14.4in) does NOT land on another standard size.
+  // (A half-size ARCH D == ARCH B exactly, an inherent ambiguity, so detection can't tell.)
+  const a = g.analyzeSheet(36 * 72 * 0.6, 24 * 72 * 0.6);
+  assert.strictEqual(a.isStandard, false);
+  assert.ok(a.bestGuessSheet, 'expected a best-guess sheet');
+  // ARCH B and ARCH D share the 3:2 aspect; the larger (ARCH D) is the default guess.
+  assert.strictEqual(a.bestGuessSheet.id, 'ARCH_D');
+  close(g.sheetCorrectionFactor(36 * 72 * 0.6, 24 * 72 * 0.6, a.bestGuessSheet), 0.6, 1e-9);
+});
+
+test('analyzeSheet: a half-size ARCH D lands on standard ARCH B (inherent ambiguity)', () => {
+  const a = g.analyzeSheet(36 * 72 * 0.5, 24 * 72 * 0.5);   // == 12x18 in == ARCH B
+  assert.strictEqual(a.isStandard, true);
+  assert.strictEqual(a.matchedSheet.id, 'ARCH_B');
+});
+
+test('analyzeSheet: an odd-aspect page guesses nothing', () => {
+  const a = g.analyzeSheet(1000, 950);   // ~1.05 aspect — no standard sheet is square-ish
+  assert.strictEqual(a.isStandard, false);
+  assert.strictEqual(a.bestGuessSheet, null);
+  assert.strictEqual(a.candidates.length, 0);
+});
+
+test('analyzeSheet: ISO A1 round-trips as standard', () => {
+  const a = g.analyzeSheet(841 * 72 / 25.4, 594 * 72 / 25.4);
+  assert.strictEqual(a.isStandard, true);
+  assert.strictEqual(a.matchedSheet.id, 'ISO_A1');
+});
+
+test('sheetCorrectionFactor: corrected preset recovers true length on a compressed page', () => {
+  // 1/4"=1' -> 18 pt/ft on a true sheet. A 10 ft wall = 180 pt; compressed 0.5x = 90 pt.
+  const sheet = g.STANDARD_SHEETS.find(s => s.id === 'ARCH_D');
+  const factor = g.sheetCorrectionFactor(36 * 72 * 0.5, 24 * 72 * 0.5, sheet);
+  const correctedPpu = (72 / 4) * factor;        // 18 * 0.5 = 9
+  close(90 / correctedPpu, 10, 1e-9);            // 90 pt / 9 = 10 ft (was 5 uncorrected)
+});
+
 test('bakeFramesMatch: a missing frame on either side is treated as a match (no false warning)', () => {
   // pre-stamp projects have no saved frame -> nothing to verify
   assert.strictEqual(g.bakeFramesMatch(null, { w: 918, h: 594, intrinsic: 0 }), true);

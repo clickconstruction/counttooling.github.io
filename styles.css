@@ -489,6 +489,11 @@
     .save-status-expired-callout-body { font-size: 0.85rem; color: var(--text2); }
     .save-status-expired-callout-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .save-status-expired-callout-actions button { padding: 6px 12px; font-size: 0.85rem; }
+    .scale-sheet-warning { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; background: rgba(212, 160, 23, 0.10); border: 1px solid rgba(212, 160, 23, 0.4); margin-bottom: 14px; }
+    .scale-sheet-warning-title { font-weight: 700; color: var(--yellow); font-size: 0.9rem; }
+    .scale-sheet-warning-body { font-size: 0.82rem; color: var(--text2); }
+    .scale-sheet-warning-hint { font-size: 0.78rem; color: var(--text3); }
+    .scale-sheet-warning select { width: 100%; }
     .save-status-summary-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); font-weight: 600; flex-shrink: 0; }
     .save-status-summary-icon { flex-shrink: 0; }
     .save-status-summary-icon.dot, .save-status-summary-icon.square { width: 10px; height: 10px; }

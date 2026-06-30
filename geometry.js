@@ -259,6 +259,86 @@
       && (saved.intrinsic ?? 0) === (current.intrinsic ?? 0);
   }
 
+  // Standard drawing-sheet sizes, edges in PDF points (1 in = 72 pt; ISO mm * 72 / 25.4).
+  // The architectural Set Scale presets assume the PDF page's point space equals the true
+  // physical sheet size (72 pt = 1 real inch of paper). A "compressed" / re-boxed PDF breaks
+  // that, so we detect the sheet and correct the preset. Stored long-edge first (landscape).
+  const MM_TO_PT = 72 / 25.4;
+  const STANDARD_SHEETS = [
+    // ANSI (inches)
+    { id: 'ANSI_A', label: 'ANSI A (8.5×11)', w: 11 * 72, h: 8.5 * 72 },
+    { id: 'ANSI_B', label: 'ANSI B (11×17)', w: 17 * 72, h: 11 * 72 },
+    { id: 'ANSI_C', label: 'ANSI C (17×22)', w: 22 * 72, h: 17 * 72 },
+    { id: 'ANSI_D', label: 'ANSI D (22×34)', w: 34 * 72, h: 22 * 72 },
+    { id: 'ANSI_E', label: 'ANSI E (34×44)', w: 44 * 72, h: 34 * 72 },
+    // ARCH (inches)
+    { id: 'ARCH_A', label: 'ARCH A (9×12)', w: 12 * 72, h: 9 * 72 },
+    { id: 'ARCH_B', label: 'ARCH B (12×18)', w: 18 * 72, h: 12 * 72 },
+    { id: 'ARCH_C', label: 'ARCH C (18×24)', w: 24 * 72, h: 18 * 72 },
+    { id: 'ARCH_D', label: 'ARCH D (24×36)', w: 36 * 72, h: 24 * 72 },
+    { id: 'ARCH_E', label: 'ARCH E (36×48)', w: 48 * 72, h: 36 * 72 },
+    { id: 'ARCH_E1', label: 'ARCH E1 (30×42)', w: 42 * 72, h: 30 * 72 },
+    // ISO A-series (millimetres)
+    { id: 'ISO_A0', label: 'A0 (841×1189mm)', w: 1189 * MM_TO_PT, h: 841 * MM_TO_PT },
+    { id: 'ISO_A1', label: 'A1 (594×841mm)', w: 841 * MM_TO_PT, h: 594 * MM_TO_PT },
+    { id: 'ISO_A2', label: 'A2 (420×594mm)', w: 594 * MM_TO_PT, h: 420 * MM_TO_PT },
+    { id: 'ISO_A3', label: 'A3 (297×420mm)', w: 420 * MM_TO_PT, h: 297 * MM_TO_PT },
+    { id: 'ISO_A4', label: 'A4 (210×297mm)', w: 297 * MM_TO_PT, h: 210 * MM_TO_PT },
+  ];
+
+  // The orientation-normalized correction factor for treating `widthPt × heightPt` as a
+  // (possibly rescaled) print of `sheet`: actual long edge / sheet long edge. 1 for a
+  // true-size page; <1 for a shrunk/compressed one. Multiply a preset's pixelsPerUnit by it.
+  function sheetCorrectionFactor(widthPt, heightPt, sheet) {
+    if (!sheet) return 1;
+    const pageLong = Math.max(widthPt, heightPt);
+    const sheetLong = Math.max(sheet.w, sheet.h);
+    if (!(pageLong > 0) || !(sheetLong > 0)) return 1;
+    return pageLong / sheetLong;
+  }
+
+  // Classify a page's point dimensions against STANDARD_SHEETS. Orientation-independent
+  // (compares long-vs-long, short-vs-short). Returns:
+  //   isStandard/matchedSheet — page edges within `sizeTol` of a real sheet -> presets are
+  //     trustworthy, no correction needed.
+  //   bestGuessSheet/candidates — when NOT standard, the sheets whose aspect ratio is within
+  //     `aspectTol` (the page is likely a rescaled print of one of these), closest aspect
+  //     first; bestGuessSheet is null when the aspect matches nothing (genuinely odd page).
+  function analyzeSheet(widthPt, heightPt, opts) {
+    const sizeTol = opts && opts.sizeTol != null ? opts.sizeTol : 0.03;
+    const aspectTol = opts && opts.aspectTol != null ? opts.aspectTol : 0.02;
+    const longPt = Math.max(widthPt, heightPt);
+    const shortPt = Math.min(widthPt, heightPt);
+    const aspect = shortPt > 0 ? longPt / shortPt : 0;
+    let matchedSheet = null;
+    for (const s of STANDARD_SHEETS) {
+      const sLong = Math.max(s.w, s.h), sShort = Math.min(s.w, s.h);
+      if (Math.abs(longPt - sLong) / sLong <= sizeTol && Math.abs(shortPt - sShort) / sShort <= sizeTol) {
+        matchedSheet = s;
+        break;
+      }
+    }
+    const candidates = [];
+    if (!matchedSheet && aspect > 0) {
+      for (const s of STANDARD_SHEETS) {
+        const sAspect = Math.max(s.w, s.h) / Math.min(s.w, s.h);
+        const aspectErr = Math.abs(aspect - sAspect) / sAspect;
+        if (aspectErr <= aspectTol) candidates.push({ sheet: s, aspectErr, factor: sheetCorrectionFactor(widthPt, heightPt, s) });
+      }
+      // Closest aspect first; among equal-aspect sheets (e.g. ARCH B vs ARCH D, both 3:2 — a
+      // ratio alone cannot distinguish them) prefer the LARGER sheet: construction plans are
+      // usually D/E size, and the user can always override the guess in the picker.
+      candidates.sort((a, b) => a.aspectErr - b.aspectErr || (b.sheet.w * b.sheet.h) - (a.sheet.w * a.sheet.h));
+    }
+    return {
+      widthPt, heightPt, longPt, shortPt, aspect,
+      isStandard: !!matchedSheet,
+      matchedSheet,
+      bestGuessSheet: candidates.length ? candidates[0].sheet : null,
+      candidates,
+    };
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -270,6 +350,7 @@
       formatLineLengthRealSum, formatFeet, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
-      clampEffectiveDpr, convertUnitValue, bakeFramesMatch
+      clampEffectiveDpr, convertUnitValue, bakeFramesMatch,
+      STANDARD_SHEETS, sheetCorrectionFactor, analyzeSheet
     };
   }

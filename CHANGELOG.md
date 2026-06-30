@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(scale): sheet-size correction for compressed / re-boxed PDFs
+
+**Problem.** Annotations are stored in PDF points and real lengths are
+`geometricPdfPts / pixelsPerUnit`. The architectural presets ([constants.js](constants.js)
+`SCALE_PRESETS`) and the custom dialog hard-code `pixelsPerUnit = fractionInches * 72 / feet`,
+which only holds when the PDF page's point space equals the true physical sheet size
+(72 pt = 1 real inch of paper). When a PDF is "compressed" / re-boxed / rasterized-and-rescaled,
+the page MediaBox shrinks while still depicting a `1/4"=1'` drawing, so the preset is off by the
+rescale ratio (a half-size page reports a 10 ft wall as 5 ft). Two-point "Select on PDF"
+calibration (`pixelsPerUnit = ptDist/realLength`, no `72`) was the only immune method.
+
+**Fix (three layered surfaces over one page-size analysis):**
+
+- **Detect & warn (A).** [geometry.js](geometry.js) gains the pure `STANDARD_SHEETS` table
+  (ANSI A–E, ARCH A–E + E1, ISO A0–A4, edges in points) and `analyzeSheet(w, h)` →
+  `{ isStandard, matchedSheet, bestGuessSheet, candidates }` (orientation-normalized; standard =
+  within ~3% of a real sheet; otherwise aspect-ratio candidates within ~2%, ties → larger sheet).
+  app.js wraps it as `getPageSheetAnalysis(pageIdx)` (unrotated viewport dims) and publishes it
+  + `STANDARD_SHEETS` + `sheetCorrectionFactor` on the `App` registry. On the presets tab in
+  page-scale mode, a non-standard page shows the `#scaleSheetWarning` banner.
+- **Correct (B).** `sheetCorrectionFactor(w, h, sheet) = actualLongEdge / sheetLongEdge`.
+  `features/scale.js` multiplies the preset/custom `pixelsPerUnit` by it and stamps
+  `scale.sheetSize` / `scale.correctionFactor` / a label suffix. **Page scale only** — the zone
+  early-return in `applyScaleObjectToZoneOrPage` is untouched, and two-point is untouched. The
+  picker (`#scaleSheetSelect`) defaults to the best guess and can override or disable. A
+  standard-size page applies `correctionFactor` 1 with no banner (behavior byte-for-byte
+  unchanged).
+- **Verify (C).** `renderAnnotations` draws a synthetic dashed scale bar (round real length, ends
+  + label) for preset/custom scales that lack a two-point `refLine`, reusing the existing
+  `state.showScaleRefLine` toggle — a passive visual check and the backstop when a compression
+  lands exactly on another standard size (e.g. half-size ARCH D == ARCH B).
+
+New `scale` sub-fields auto-survive all persistence paths (cloud / IndexedDB / export / undo —
+spread/JSON, no sub-field whitelist). Tests: `analyzeSheet` / `sheetCorrectionFactor` cases in
+[geometry.test.js](geometry.test.js).
+
+---
+
 ## Sync hardening
 
 ### PR 1 — Abortable timeouts, backoff, and the sync-paused banner

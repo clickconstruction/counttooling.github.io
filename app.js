@@ -1934,6 +1934,18 @@
     updateUI();
   }
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
+  // Classify a page's PDF point dimensions against the standard sheet sizes so the Set Scale
+  // presets can detect a compressed / re-boxed page and offer a sheet-size correction. Uses the
+  // unrotated viewport (analyzeSheet normalizes orientation). Returns null when the page has no
+  // pdfPage yet (e.g. a canvas-only project). Pure analysis lives in geometry.js.
+  function getPageSheetAnalysis(pi) {
+    const p = state.pages[pi];
+    if (!p?.pdfPage) return null;
+    try {
+      const vp = p.pdfPage.getViewport({ scale: 1, rotation: 0 });
+      return analyzeSheet(vp.width, vp.height);
+    } catch (_) { return null; }
+  }
   function pickScaleForLineType(pageIndices) {
     return scaleForLineType(pageIndices, state.pages);
   }
@@ -2782,6 +2794,49 @@
         ctx.fillText(label, mid.x, mid.y - 9 * currentEffDpr + 1);
       }
       ctx.restore();
+    } else if (state.showScaleRefLine && page.scale?.pixelsPerUnit && !page.scale.refLine && page.pdfPage) {
+      // Synthetic verification scale bar for preset/custom scales (which have no two-point
+      // refLine): a dashed segment of a round real length near the page's bottom-left, so the
+      // user can eyeball the chosen scale against a known dimension — the safety net for the
+      // sheet-size correction. Same dashed-yellow look as the refLine above; same toggle.
+      let vp; try { vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 }); } catch (_) { vp = null; }
+      if (vp) {
+        const ppu = page.scale.pixelsPerUnit;
+        const targetReal = (vp.width * 0.2) / ppu;   // aim ~20% of page width
+        const NICE = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+        let nice = NICE[0];
+        for (const n of NICE) { if (n <= targetReal) nice = n; }
+        const barPts = nice * ppu;
+        if (barPts > 1 && barPts < vp.width * 0.85) {
+          const x1 = vp.width * 0.06, y1 = vp.height * 0.94, x2 = x1 + barPts, y2 = y1;
+          const a = toCanvas({ x: x1, y: y1 }), b = toCanvas({ x: x2, y: y2 });
+          ctx.save();
+          ctx.strokeStyle = '#e8c547'; ctx.globalAlpha = 0.65; ctx.lineWidth = 1.5 * currentEffDpr; ctx.setLineDash([7 * currentEffDpr, 5 * currentEffDpr]);
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          ctx.setLineDash([]);
+          [{ x: x1, y: y1 }, { x: x2, y: y2 }].forEach(pt => {
+            const p = toCanvas(pt);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.scale(18 / 640, 18 / 640);
+            ctx.translate(-320, -320);
+            ctx.fillStyle = '#e8c547';
+            ctx.fill(new Path2D(SCALE_CROSSHAIR_PATH));
+            ctx.restore();
+          });
+          const label = formatDistFeetInchesFromReal(nice, page.scale);
+          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          ctx.globalAlpha = 1;
+          ctx.font = (11 * currentEffDpr) + 'px DM Sans, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          const tw = ctx.measureText(label).width, padX = 5 * currentEffDpr, h = 16 * currentEffDpr;
+          ctx.fillStyle = 'rgba(20,20,20,0.82)';
+          ctx.fillRect(mid.x - tw / 2 - padX, mid.y - h / 2 - 9 * currentEffDpr, tw + padX * 2, h);
+          ctx.fillStyle = '#e8c547';
+          ctx.fillText(label, mid.x, mid.y - 9 * currentEffDpr + 1);
+          ctx.restore();
+        }
+      }
     }
     // Live Measure preview (mobile loupe aim + desktop hover): a dashed rubber band
     // to the moving second point, and the first-point crosshair while aiming. Scoped
@@ -13142,6 +13197,9 @@
   App.getActiveAnnotations = getActiveAnnotations;
   App.deleteGroup = deleteGroup;
   App.getPageScale = getPageScale;
+  App.getPageSheetAnalysis = getPageSheetAnalysis;
+  App.STANDARD_SHEETS = STANDARD_SHEETS;
+  App.sheetCorrectionFactor = sheetCorrectionFactor;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
 
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {

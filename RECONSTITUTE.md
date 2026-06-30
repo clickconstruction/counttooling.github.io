@@ -102,7 +102,9 @@ conversion (see `// SECTION: Coordinate Helpers`):
 Scale is **per page**, not global.
 
 - Each page has `page.scale`, `null` until the user sets it.
-- A scale object is `{ pixelsPerUnit, unit }` (e.g. unit `'ft'`).
+- A scale object is `{ pixelsPerUnit, unit }` (e.g. unit `'ft'`); plus optional
+  `label`, `refLine` (two-point calibration), and `sheetSize`/`correctionFactor`
+  (the compressed-PDF sheet-size correction — see ARCHITECTURE.md).
 - Read scale via `getPageScale(pageIdx)` — never reference a global `state.scale`.
 - Real-world line length = geometric PDF-point length / `pixelsPerUnit`
   (plus any drops). See `getLineRealWorldLength(line, pageIdx, isPoly, ann)`.

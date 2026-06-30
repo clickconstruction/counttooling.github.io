@@ -30,6 +30,61 @@
 (function() {
   const App = (window.App = window.App || {});
 
+  // Sheet-size correction (compressed / re-boxed PDF fix). The architectural presets and the
+  // custom dialog assume 72 pt = 1 real inch of paper; a rescaled page breaks that. When the
+  // current page isn't a standard sheet size we warn and offer to correct the preset's
+  // pixelsPerUnit by (actual long edge / chosen sheet long edge). PAGE SCALE ONLY — never zones
+  // (which inherit the page scale) and never two-point calibration (already ground truth).
+  let sheetAnalysis = null;          // last analysis for the current page (page-scale presets)
+  let activeSheetCorrection = null;  // { sheetId, factor } in effect, or null (no correction)
+
+  function clearSheetCorrection() {
+    sheetAnalysis = null;
+    activeSheetCorrection = null;
+    const warn = document.getElementById('scaleSheetWarning');
+    if (warn) warn.style.display = 'none';
+  }
+  function setSheetCorrectionFromSheet(sheet) {
+    if (!sheet || !sheetAnalysis) { activeSheetCorrection = null; return; }
+    const factor = App.sheetCorrectionFactor(sheetAnalysis.widthPt, sheetAnalysis.heightPt, sheet);
+    activeSheetCorrection = { sheetId: sheet.id, factor };
+  }
+  // Show/hide the non-standard-sheet warning + picker for the presets tab and prime the
+  // correction. No-op (cleared) for zone mode, a missing analysis, or a true standard size.
+  function refreshSheetWarning() {
+    const state = App.state;
+    const warn = document.getElementById('scaleSheetWarning');
+    const sel = document.getElementById('scaleSheetSelect');
+    if (!warn || !sel) return;
+    if (state.scaleModalApplyTarget === 'zone') { clearSheetCorrection(); return; }
+    const a = App.getPageSheetAnalysis(state.currentPage);
+    if (!a || a.isStandard) { clearSheetCorrection(); return; }
+    sheetAnalysis = a;
+    sel.innerHTML = '';
+    App.STANDARD_SHEETS.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id; opt.textContent = s.label;
+      sel.appendChild(opt);
+    });
+    const offOpt = document.createElement('option');
+    offOpt.value = ''; offOpt.textContent = "Non-standard — don't correct";
+    sel.appendChild(offOpt);
+    sel.value = a.bestGuessSheet ? a.bestGuessSheet.id : '';
+    setSheetCorrectionFromSheet(a.bestGuessSheet || null);
+    warn.style.display = '';
+  }
+  // Fold the active sheet correction into a page-scale object built from a preset / custom entry.
+  // No-op when no correction is active (standard / true-size page), so the common case is unchanged.
+  function withSheetCorrection(scaleObj) {
+    if (!activeSheetCorrection) return scaleObj;
+    const sheet = App.STANDARD_SHEETS.find(s => s.id === activeSheetCorrection.sheetId);
+    scaleObj.pixelsPerUnit *= activeSheetCorrection.factor;
+    scaleObj.sheetSize = activeSheetCorrection.sheetId;
+    scaleObj.correctionFactor = activeSheetCorrection.factor;
+    if (scaleObj.label && sheet) scaleObj.label += ' · ' + sheet.id.replace('_', ' ');
+    return scaleObj;
+  }
+
   function updateScalePlaceholder() {
     const unit = document.getElementById('scaleUnit')?.value || 'ft';
     const inp = document.getElementById('scaleValue');
@@ -43,6 +98,7 @@
   }
   function openScaleModal() {
     const state = App.state;
+    clearSheetCorrection();   // recomputed by refreshSheetWarning when the presets tab shows
     const finishingTwoPoints = state.scalePointA && state.scalePointB;
     const tabsEl = document.getElementById('scaleModalTabs');
     const pointsPanel = document.getElementById('scalePointsPanel');
@@ -136,10 +192,10 @@
         btn.textContent = p.label;
         btn.onclick = () => {
           const scaleObj = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
-          if (applyScaleObjectToZoneOrPage(scaleObj)) return;
+          if (applyScaleObjectToZoneOrPage(scaleObj)) return;   // zone target: no sheet correction
           App.pushUndoSnapshot();
           const page = state.pages[state.currentPage];
-          if (page) page.scale = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
+          if (page) page.scale = withSheetCorrection({ pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label });
           App.markProjectDirty();
           App.hideModal('scaleModal');
           App.updateUI();
@@ -147,6 +203,7 @@
         };
         list.appendChild(btn);
       });
+      refreshSheetWarning();
     }
   }
   const setScaleClick = () => {
@@ -199,14 +256,19 @@
     const fractionDisplay = String(fractionStr).trim();
     const label = fractionDisplay + '" = ' + feet + ' ft';
     const scaleObj = { pixelsPerUnit, unit: 'ft', label };
-    if (applyScaleObjectToZoneOrPage(scaleObj)) return;
+    if (applyScaleObjectToZoneOrPage(scaleObj)) return;   // zone target: no sheet correction
     App.pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    if (page) page.scale = { pixelsPerUnit, unit: 'ft', label };
+    if (page) page.scale = withSheetCorrection({ pixelsPerUnit, unit: 'ft', label });
     App.markProjectDirty();
     App.hideModal('scaleModal');
     App.updateUI();
     App.renderPdf();
+  };
+  const sheetSelectEl = document.getElementById('scaleSheetSelect');
+  if (sheetSelectEl) sheetSelectEl.onchange = (e) => {
+    const sheet = App.STANDARD_SHEETS.find(s => s.id === e.target.value) || null;
+    setSheetCorrectionFromSheet(sheet);
   };
   document.getElementById('scaleCancel').onclick = () => {
     const state = App.state;

@@ -470,7 +470,40 @@
           <button id="scaleSet">Set Scale</button>
         </div>
       </div>
+      <div id="scaleCheckPanel" class="counter-tab-panel" style="display:none;">
+        <p id="scaleCheckInfo" class="form-group">Enter the real length of the line you measured.</p>
+        <div class="form-group">
+          <label>Known real-world length</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" id="scaleCheckValue" placeholder="e.g. 10 or 10'6" style="flex:1;min-width:0;">
+            <select id="scaleCheckUnit" style="width:auto;flex:0 0 auto;">
+              <option value="ft">ft</option>
+              <option value="in">in</option>
+              <option value="m">m</option>
+              <option value="cm">cm</option>
+              <option value="yd">yd</option>
+            </select>
+          </div>
+        </div>
+        <div id="scaleCheckResult" style="display:none;">
+          <div class="scale-check-tiles">
+            <div class="scale-check-tile"><div class="scale-check-tile-label">Expected</div><div class="scale-check-tile-value" id="scaleCheckExpected">—</div></div>
+            <div class="scale-check-tile"><div class="scale-check-tile-label">Current scale reads</div><div class="scale-check-tile-value" id="scaleCheckMeasured">—</div></div>
+          </div>
+          <div class="scale-check-delta" id="scaleCheckDelta">—</div>
+        </div>
+        <div class="actions">
+          <button id="scaleCheckCancel">Cancel</button>
+          <button id="scaleCheckBtn">Check</button>
+          <button id="scaleCheckUseMeasured" style="display:none;">Use measured</button>
+        </div>
+      </div>
       <div id="scalePresetsPanel" class="counter-tab-panel">
+        <div id="scaleVerifyAdvisory" class="scale-verify-advisory">
+          <div class="scale-verify-advisory-title">Presets are an estimate</div>
+          <div class="scale-verify-advisory-body">They assume the plan is printed to true scale. After applying, confirm by measuring two known points.</div>
+          <button type="button" id="scaleVerifyBtn" class="settings-menu-btn">Verify by measuring two points</button>
+        </div>
         <div id="scaleSheetWarning" class="scale-sheet-warning" style="display:none;">
           <div class="scale-sheet-warning-title">⚠ This page isn't a standard sheet size</div>
           <div class="scale-sheet-warning-body">It looks compressed or re-boxed, so the preset scales below may be off. Correcting presets as if printed on:</div>

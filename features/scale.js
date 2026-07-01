@@ -103,10 +103,30 @@
     const tabsEl = document.getElementById('scaleModalTabs');
     const pointsPanel = document.getElementById('scalePointsPanel');
     const presetsPanel = document.getElementById('scalePresetsPanel');
+    const checkPanel = document.getElementById('scaleCheckPanel');
     const selectOnPdfGroup = document.getElementById('scaleSelectOnPdfGroup');
     const scaleInfo = document.getElementById('scaleInfo');
     const lengthInputGroup = document.getElementById('scaleLengthInputGroup');
-    if (finishingTwoPoints) {
+    if (checkPanel) checkPanel.style.display = 'none';
+    if (finishingTwoPoints && state.scaleCheckMode) {
+      // Verify mode: compare the just-measured line against the current scale (never overwrite
+      // until the user picks "Use measured"). Show the dedicated check panel, freshly reset.
+      tabsEl.style.display = 'none';
+      presetsPanel.style.display = 'none';
+      pointsPanel.style.display = 'none';
+      if (checkPanel) checkPanel.style.display = '';
+      const page = state.pages[state.currentPage];
+      const sc = page && page.scale;
+      const scName = sc ? (sc.label || ((sc.pixelsPerUnit != null ? Number(sc.pixelsPerUnit).toFixed(1) : '?') + ' px/' + (sc.unit || 'ft'))) : 'the current scale';
+      const infoEl = document.getElementById('scaleCheckInfo');
+      if (infoEl) infoEl.textContent = 'Checking against ' + scName + '. Enter the real length of the line you just measured.';
+      const cv = document.getElementById('scaleCheckValue'); if (cv) cv.value = '';
+      const cu = document.getElementById('scaleCheckUnit'); if (cu && sc && sc.unit) cu.value = sc.unit;
+      const res = document.getElementById('scaleCheckResult'); if (res) res.style.display = 'none';
+      document.getElementById('scaleCheckBtn').style.display = '';
+      document.getElementById('scaleCheckUseMeasured').style.display = 'none';
+      const cc = document.getElementById('scaleCheckCancel'); if (cc) cc.textContent = 'Cancel';
+    } else if (finishingTwoPoints) {
       tabsEl.style.display = 'none';
       presetsPanel.style.display = 'none';
       pointsPanel.style.display = '';
@@ -144,6 +164,50 @@
     state.pendingScaleZoneEdit = null;
     const h2 = document.querySelector('#scaleModal h2');
     if (h2) h2.textContent = 'Set Scale';
+  }
+  // Clear the verify/check flow (flag + result UI). Called by every scale-modal exit and by
+  // app.js's Escape-key TOOL.SCALE branches (via App.resetScaleCheckMode).
+  function resetScaleCheckMode() {
+    App.state.scaleCheckMode = false;
+    const res = document.getElementById('scaleCheckResult'); if (res) res.style.display = 'none';
+    const um = document.getElementById('scaleCheckUseMeasured'); if (um) um.style.display = 'none';
+  }
+  // Enter verify mode: measure two known points against the CURRENT page scale. Mirrors
+  // #scaleSelectOnPdf but sets scaleCheckMode so openScaleModal routes to the check panel.
+  function startScaleCheck() {
+    const state = App.state;
+    const page = state.pages[state.currentPage];
+    if (!page || !page.scale || !page.scale.pixelsPerUnit) { App.showToast('Set a scale first, then verify it'); return; }
+    state.scaleCheckMode = true;
+    App.hideModal('scaleModal');
+    state.tool = App.TOOL.SCALE;
+    state.scaleMode = App.SCALE_MODES.POINT_A;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    App.updateUI();
+    App.renderPdf();
+  }
+  // The shared two-point apply (extracted from #scaleSet): recalibrate page.scale (or a zone) so
+  // the picked line equals `val` in `unit`, stamping a refLine. Reused by #scaleSet and by the
+  // verify panel's "Use measured". Returns false (with a toast) when the line is too short.
+  function applyTwoPointScale(unit, val) {
+    const state = App.state;
+    const dist = App.ptDist(state.scalePointA, state.scalePointB);
+    if (dist < 1) { App.showToast('Scale line too short — pick two points further apart'); return false; }
+    const scaleObj = { pixelsPerUnit: dist / val, unit, label: null, refLine: { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y } };
+    if (applyScaleObjectToZoneOrPage(scaleObj)) return true;
+    App.pushUndoSnapshot();
+    const page = state.pages[state.currentPage];
+    if (page) page.scale = scaleObj;
+    App.markProjectDirty();
+    state.tool = App.TOOL.NONE;
+    state.scaleMode = App.SCALE_MODES.NONE;
+    state.scalePointA = null;
+    state.scalePointB = null;
+    App.hideModal('scaleModal');
+    App.updateUI();
+    App.renderPdf();
+    return true;
   }
   function applyScaleObjectToZoneOrPage(scaleObj) {
     const state = App.state;
@@ -200,6 +264,7 @@
           App.hideModal('scaleModal');
           App.updateUI();
           App.renderPdf();
+          App.showToast('Scale set — verify it against a known dimension');
         };
         list.appendChild(btn);
       });
@@ -209,6 +274,7 @@
   const setScaleClick = () => {
     const state = App.state;
     resetScaleModalZoneMode();
+    resetScaleCheckMode();
     state.scalePointA = null;
     state.scalePointB = null;
     state.scaleMode = App.SCALE_MODES.NONE;
@@ -239,6 +305,7 @@
     const state = App.state;
     if (state.tool === App.TOOL.SCALE) { state.tool = App.TOOL.NONE; state.scaleMode = App.SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
     resetScaleModalZoneMode();
+    resetScaleCheckMode();
     App.hideModal('scaleModal');
     App.updateUI();
   };
@@ -264,6 +331,7 @@
     App.hideModal('scaleModal');
     App.updateUI();
     App.renderPdf();
+    App.showToast('Scale set — verify it against a known dimension');
   };
   const sheetSelectEl = document.getElementById('scaleSheetSelect');
   if (sheetSelectEl) sheetSelectEl.onchange = (e) => {
@@ -274,6 +342,7 @@
     const state = App.state;
     if (state.tool === App.TOOL.SCALE) { state.tool = App.TOOL.NONE; state.scaleMode = App.SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
     resetScaleModalZoneMode();
+    resetScaleCheckMode();
     App.hideModal('scaleModal');
     App.updateUI();
   };
@@ -286,18 +355,49 @@
       App.showToast('Enter a valid length');
       return;
     }
-    const dist = App.ptDist(state.scalePointA, state.scalePointB);
-    if (dist < 1) { App.showToast('Scale line too short — pick two points further apart'); return; }
-    const scaleObj = { pixelsPerUnit: dist / val, unit, label: null, refLine: { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y } };
-    if (applyScaleObjectToZoneOrPage(scaleObj)) return;
-    App.pushUndoSnapshot();
+    applyTwoPointScale(unit, val);   // handles apply + modal close + re-render
+  };
+  document.getElementById('scaleVerifyBtn').onclick = startScaleCheck;
+  document.getElementById('scaleCheckBtn').onclick = () => {
+    const state = App.state;
     const page = state.pages[state.currentPage];
-    if (page) page.scale = scaleObj;
-    App.markProjectDirty();
-    state.tool = App.TOOL.NONE;
-    state.scaleMode = App.SCALE_MODES.NONE;
-    state.scalePointA = null;
-    state.scalePointB = null;
+    const scale = page && page.scale;
+    if (!scale || !scale.pixelsPerUnit) { App.showToast('Set a scale first'); return; }
+    if (!state.scalePointA || !state.scalePointB) return;
+    const unit = document.getElementById('scaleCheckUnit').value;
+    const known = App.parseRealWorldLength(document.getElementById('scaleCheckValue').value, unit);
+    if (!known || known <= 0) { App.showToast('Enter a valid length'); return; }
+    const dist = App.ptDist(state.scalePointA, state.scalePointB);
+    if (dist < 1) { App.showToast('Line too short — pick two points further apart'); return; }
+    const { reading, deltaPct } = App.scaleCheckDelta(dist, scale, known, unit);
+    const fmt = (v) => unit === 'ft' ? App.formatFeetInchesFromVal(v, 'ft') : (Math.round(v * 100) / 100 + ' ' + unit);
+    document.getElementById('scaleCheckExpected').textContent = fmt(known);
+    document.getElementById('scaleCheckMeasured').textContent = fmt(reading);
+    const absPct = Math.abs(deltaPct);
+    const deltaEl = document.getElementById('scaleCheckDelta');
+    deltaEl.classList.remove('ok', 'off');
+    if (absPct < 1) {
+      deltaEl.classList.add('ok');
+      deltaEl.textContent = 'Within ' + absPct.toFixed(1) + '% — the scale looks correct.';
+    } else {
+      deltaEl.classList.add('off');
+      deltaEl.textContent = 'Off by about ' + absPct.toFixed(1) + '% (reads ' + (deltaPct > 0 ? 'long' : 'short') + '). Use measured to fix it.';
+    }
+    document.getElementById('scaleCheckResult').style.display = '';
+    document.getElementById('scaleCheckUseMeasured').style.display = '';
+    document.getElementById('scaleCheckBtn').style.display = 'none';
+    const cc = document.getElementById('scaleCheckCancel'); if (cc) cc.textContent = 'Keep current scale';
+  };
+  document.getElementById('scaleCheckUseMeasured').onclick = () => {
+    const unit = document.getElementById('scaleCheckUnit').value;
+    const known = App.parseRealWorldLength(document.getElementById('scaleCheckValue').value, unit);
+    if (!known || known <= 0) { App.showToast('Enter a valid length'); return; }
+    if (applyTwoPointScale(unit, known)) resetScaleCheckMode();   // recalibrate to the measured line
+  };
+  document.getElementById('scaleCheckCancel').onclick = () => {
+    const state = App.state;
+    if (state.tool === App.TOOL.SCALE) { state.tool = App.TOOL.NONE; state.scaleMode = App.SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
+    resetScaleCheckMode();
     App.hideModal('scaleModal');
     App.updateUI();
     App.renderPdf();
@@ -305,4 +405,5 @@
 
   App.openScaleModal = openScaleModal;
   App.resetScaleModalZoneMode = resetScaleModalZoneMode;
+  App.resetScaleCheckMode = resetScaleCheckMode;
 })();

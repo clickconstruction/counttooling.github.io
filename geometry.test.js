@@ -327,6 +327,33 @@ test('sheetCorrectionFactor: corrected preset recovers true length on a compress
   close(90 / correctedPpu, 10, 1e-9);            // 90 pt / 9 = 10 ft (was 5 uncorrected)
 });
 
+test('scaleCheckDelta: a correct scale reads the known length with 0% error', () => {
+  // scale 18 pt/ft; a 10 ft wall is 180 pt. Verify against known 10 ft -> exact.
+  const r = g.scaleCheckDelta(180, { pixelsPerUnit: 18, unit: 'ft' }, 10, 'ft');
+  close(r.reading, 10, 1e-9);
+  close(r.deltaPct, 0, 1e-9);
+});
+
+test('scaleCheckDelta: a 2x-too-coarse scale reads +100%', () => {
+  // The real drawing is 1/8"=1' (9 pt/ft) so a 10 ft wall is 90 pt. But the user set 1/4"=1'
+  // (18 pt/ft). Verifying that 90 pt line as a known 5 ft -> reads 5 ft; as known 10 ft it is
+  // off. Use the classic case: 180 pt line, scale reads 10 ft, known truth 5 ft -> +100%.
+  const r = g.scaleCheckDelta(180, { pixelsPerUnit: 18, unit: 'ft' }, 5, 'ft');
+  close(r.reading, 10, 1e-9);
+  close(r.deltaPct, 100, 1e-9);
+});
+
+test('scaleCheckDelta: converts when the known length is entered in a different unit', () => {
+  // scale 18 pt/ft; 180 pt reads 10 ft = 120 in. Known entered as 120 in -> 0% error.
+  const r = g.scaleCheckDelta(180, { pixelsPerUnit: 18, unit: 'ft' }, 120, 'in');
+  close(r.reading, 120, 1e-6);
+  close(r.deltaPct, 0, 1e-9);
+});
+
+test('scaleCheckDelta: missing scale is a safe no-op', () => {
+  assert.deepStrictEqual(g.scaleCheckDelta(180, null, 10, 'ft'), { reading: 0, deltaPct: 0 });
+});
+
 test('bakeFramesMatch: a missing frame on either side is treated as a match (no false warning)', () => {
   // pre-stamp projects have no saved frame -> nothing to verify
   assert.strictEqual(g.bakeFramesMatch(null, { w: 918, h: 594, intrinsic: 0 }), true);

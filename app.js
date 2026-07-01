@@ -375,7 +375,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -11759,6 +11759,7 @@
       } else if (document.getElementById('scaleModal').classList.contains('visible')) {
         if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
         App.resetScaleModalZoneMode();
+        App.resetScaleCheckMode && App.resetScaleCheckMode();
         hideModal('scaleModal');
         updateUI();
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
@@ -11821,6 +11822,7 @@
         state.scalePointA = null;
         state.scalePointB = null;
         App.resetScaleModalZoneMode();
+        App.resetScaleCheckMode && App.resetScaleCheckMode();
         updateUI();
         renderPdf();
       } else if (state.tool === TOOL.MEASURE) {
@@ -13200,6 +13202,9 @@
   App.getPageSheetAnalysis = getPageSheetAnalysis;
   App.STANDARD_SHEETS = STANDARD_SHEETS;
   App.sheetCorrectionFactor = sheetCorrectionFactor;
+  App.scaleCheckDelta = scaleCheckDelta;
+  App.convertUnitValue = convertUnitValue;
+  App.formatFeetInchesFromVal = formatFeetInchesFromVal;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
 
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {

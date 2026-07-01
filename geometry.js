@@ -339,6 +339,18 @@
     };
   }
 
+  // Verify-scale check: how does a scale read a line the user knows the true length of?
+  // Given the picked line's PDF-point distance and the current page `scale`, compute what that
+  // scale says the line measures (converted to the unit the user typed the known length in) and
+  // the percent error vs the known value. deltaPct 0 = perfect; +100 = scale reads 2x too long.
+  function scaleCheckDelta(distPts, scale, knownVal, knownUnit) {
+    if (!scale || !scale.pixelsPerUnit) return { reading: 0, deltaPct: 0 };
+    const readingScaleUnit = distPts / scale.pixelsPerUnit;
+    const reading = convertUnitValue(readingScaleUnit, scale.unit, knownUnit);
+    const deltaPct = knownVal ? ((reading - knownVal) / knownVal) * 100 : 0;
+    return { reading, deltaPct };
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -351,6 +363,6 @@
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
       clampEffectiveDpr, convertUnitValue, bakeFramesMatch,
-      STANDARD_SHEETS, sheetCorrectionFactor, analyzeSheet
+      STANDARD_SHEETS, sheetCorrectionFactor, analyzeSheet, scaleCheckDelta
     };
   }

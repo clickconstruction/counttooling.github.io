@@ -13,6 +13,34 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(scale): "verify your scale" advisory + check mode
+
+**Problem.** A preset / custom architectural scale is an assumption (the PDF is printed to true
+scale), and even the sheet-size correction is a best guess — nothing prompted the user to confirm
+it, so a wrong scale silently propagated into every length tally.
+
+**Fix.** Two additions to the Set Scale modal, over the existing two-point pick flow:
+
+- **Advisory** — a persistent **blue** `#scaleVerifyAdvisory` banner atop `#scalePresetsPanel`
+  (covers presets + the custom row, which share the panel), calmer than the yellow sheet warning.
+  Its **Verify by measuring two points** button (`startScaleCheck`) reuses the two-point pick flow
+  (all input paths — mouse, touch, aim-loupe — funnel through the one `handleCanvasClick`
+  `TOOL.SCALE` branch), gated by a new `state.scaleCheckMode` flag.
+- **Check mode** — after the two points, `openScaleModal` routes to `#scaleCheckPanel`; the user
+  enters the line's **known** length and **Check** calls the pure `scaleCheckDelta(distPts, scale,
+  knownVal, knownUnit)` ([geometry.js](geometry.js)) → `{ reading, deltaPct }`, showing Expected
+  vs "current scale reads" + the **% error** (green < 1%, yellow otherwise). **Keep current scale**
+  leaves the preset; **Use measured** recalibrates via the shared `applyTwoPointScale` (extracted
+  from `#scaleSet`, stamps a `refLine`). A brief **post-apply toast** fires whenever a preset/custom
+  scale is set.
+
+`resetScaleCheckMode` (published on `App`) unwinds the flag from every modal exit and the two
+Escape-key `TOOL.SCALE` branches in app.js. Registry gains `App.scaleCheckDelta` /
+`App.convertUnitValue` / `App.formatFeetInchesFromVal` / `App.resetScaleCheckMode`. Tests:
+`scaleCheckDelta` cases (exact → 0%, 2× → 100%, cross-unit) in [geometry.test.js](geometry.test.js).
+
+---
+
 ## fix(scale): sheet-size correction for compressed / re-boxed PDFs
 
 **Problem.** Annotations are stored in PDF points and real lengths are

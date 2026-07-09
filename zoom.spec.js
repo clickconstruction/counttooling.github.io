@@ -103,26 +103,27 @@ test.describe('window.App registry pilot - Zoom modal', () => {
     expect(errors).toEqual([]);
   });
 
-  test('mobile: the zoom popover has a Settings entry that opens the Zoom modal', async ({ page }) => {
+  test('mobile: the zoom rail has a Settings gear that opens the Zoom modal (rail stays open)', async ({ page }) => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
 
-    await page.setViewportSize({ width: 390, height: 844 });   // mobile -> zoom-% opens the popover
+    await page.setViewportSize({ width: 390, height: 844 });   // mobile -> zoom-% opens the rail only
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
-    // Tap the zoom % -> the mobile +/- popover (not the desktop modal).
+    // Tap the zoom % -> the zoom rail (replaced the old #zoomOverlay popover).
     await page.locator('#zoomPct').click();
-    await page.waitForSelector('#zoomOverlay.visible', { timeout: 3000 });
+    await page.waitForSelector('#zoomRail.visible', { timeout: 3000 });
 
-    // The new Settings entry opens the Zoom Settings modal and dismisses the popover.
-    await page.locator('#zoomOverlaySettings').click();
+    // The gear opens the Zoom Settings modal; the rail is designed to coexist
+    // with it (unlike the old popover, it does NOT dismiss).
+    await page.locator('#zoomRailSettings').click();
     await page.waitForSelector('#zoomModal.visible', { timeout: 3000 });
     expect(await page.evaluate(() => document.getElementById('zoomMax').max)).toBe('1200');
-    expect(await page.evaluate(() => document.getElementById('zoomOverlay').classList.contains('visible'))).toBe(false);
+    expect(await page.evaluate(() => document.getElementById('zoomRail').classList.contains('visible'))).toBe(true);
 
     expect(errors).toEqual([]);
   });

@@ -3929,6 +3929,7 @@
   function updateUI() {
     try { updateCanvasOnlyNeedsPdfBanner(); } catch (_) {}
     document.getElementById('zoomPct').textContent = Math.round(state.zoom * 100) + '%';
+    if (App.onZoomRailSync) App.onZoomRailSync();
     const pageInfo = document.getElementById('pageInfo');
     const current = state.pages.length ? state.currentPage + 1 : 0;
     const total = state.pages.length || 0;
@@ -6936,23 +6937,11 @@
   document.getElementById('rotatePage').onclick = () => rotatePage90();
   document.getElementById('zoomFit').onclick = () => { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } fitZoom(); };
   const zoomPct = document.getElementById('zoomPct');
-  const zoomOverlay = document.getElementById('zoomOverlay');
   zoomPct.onclick = () => {
     if (!state.pages.length) return;
-    if (window.matchMedia('(max-width: 768px)').matches) {
-      zoomOverlay.classList.add('visible');
-      const rect = zoomPct.getBoundingClientRect();
-      let left = rect.left + rect.width / 2 - zoomOverlay.offsetWidth / 2;
-      left = Math.max(8, Math.min(window.innerWidth - zoomOverlay.offsetWidth - 8, left));
-      zoomOverlay.style.left = left + 'px';
-      zoomOverlay.style.top = Math.max(8, rect.top - zoomOverlay.offsetHeight - 8) + 'px';
-    } else {
-      App.showZoomModal();
-    }
+    // Zoom Settings stays reachable from the rail's gear button.
+    App.toggleZoomRail && App.toggleZoomRail();
   };
-  document.getElementById('zoomOverlayMinus').onclick = (e) => { e.stopPropagation(); doZoomOut(); };
-  document.getElementById('zoomOverlayPlus').onclick = (e) => { e.stopPropagation(); doZoomIn(); };
-  document.getElementById('zoomOverlaySettings').onclick = (e) => { e.stopPropagation(); zoomOverlay.classList.remove('visible'); App.showZoomModal(); };
   document.getElementById('prevPage').onclick = () => { if (state.currentPage > 0) { state.currentPage--; fitZoom(); } };
   document.getElementById('nextPage').onclick = () => { if (state.currentPage < state.pages.length - 1) { state.currentPage++; fitZoom(); } };
   document.getElementById('prevMarkedPage').onclick = () => {
@@ -11382,6 +11371,7 @@
           updateContainerTransform();
           const zp = document.getElementById('zoomPct');
           if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
+          if (App.onZoomRailSync) App.onZoomRailSync();
         });
       }
     } else if (e.touches.length === 1 && state.touchPanStart) {
@@ -11682,8 +11672,6 @@
       csm.classList.remove('visible');
       if (csd && csm.parentElement !== csd) csd.appendChild(csm);
     }
-    const zo = document.getElementById('zoomOverlay');
-    if (zo && zo.classList.contains('visible') && !e.target.closest('#zoomOverlay') && !e.target.closest('#zoomPct')) zo.classList.remove('visible');
   });
 
   document.addEventListener('keydown', (e) => {
@@ -13105,6 +13093,12 @@
   App.ensureActiveCanvas = ensureActiveCanvas;
   App.getMaxZoom = getMaxZoom;
   App.getWheelZoomSpeed = getWheelZoomSpeed;
+  // Zoom rail deps (features/zoom-rail.js): publish-only — the wheel/pinch
+  // paths in this file keep using them directly.
+  App.doZoomIn = doZoomIn;
+  App.doZoomOut = doZoomOut;
+  App.updateContainerTransform = updateContainerTransform;
+  App.commitWheelZoom = commitWheelZoom;
   App.getCanvasCaps = getCanvasCaps;
   App.setCanvasCaps = setCanvasCaps;
   App.effectiveDpr = effectiveDpr;

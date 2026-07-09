@@ -14,7 +14,7 @@
  * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
  * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = '16e7c8526069';
+const CACHE_VERSION = '60fcfea6fcd0';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -42,6 +42,7 @@ const PRECACHE_URLS = [
   '/features/canvas-repair.js',
   '/features/note.js',
   '/features/zoom.js',
+  '/features/zoom-rail.js',
   '/features/manage-icons.js',
   '/features/multiply-zone-settings.js',
   '/features/export-pdfs.js',

@@ -50,7 +50,7 @@
   shared global lexical scope — [index.html](index.html) (HTML shell + modals,
   ~2.1k lines; no inline JS logic — the body loads `app.js`, then the feature-file
   splits (`features/canvas-repair.js`, `features/note.js`, `features/zoom.js`,
-  `features/manage-icons.js`, `features/multiply-zone-settings.js`,
+  `features/zoom-rail.js`, `features/manage-icons.js`, `features/multiply-zone-settings.js`,
   `features/export-pdfs.js`, `features/legend-settings.js`,
   `features/page-settings.js`, `features/counter-settings.js`,
   `features/line-type-settings.js`, `features/choose-create-line-type.js`,
@@ -155,6 +155,18 @@
   at load), [features/zoom.js](features/zoom.js) (the third registry split — the
   Zoom Settings modal; registers `App.showZoomModal`; `getMaxZoom`/
   `getWheelZoomSpeed` stay in app.js and are published-only),
+  [features/zoom-rail.js](features/zoom-rail.js) (the Zoom Rail — the giant
+  floating vertical zoom slider on the right edge, toggled by the footer zoom-%
+  click; log-scale track with round-percent ticks + a magnetic-snap
+  accent-yellow %-readout thumb, +/− buttons, and a gear — the sole entry point
+  to the Zoom Settings modal (rail z-index 300 > modal overlay 200, so both
+  stay usable together); replaced the old `#zoomOverlay` popover. Dismissal:
+  re-click the zoom %, outside click, Escape, or a ~5s idle auto-fade (hover
+  cancels; never mid-drag or with the settings modal open). Registers
+  `App.openZoomRail`/`App.closeZoomRail`/`App.toggleZoomRail` + the
+  `App.onZoomRailSync` callback (called from `updateUI` and the pinch rAF so
+  the thumb tracks wheel/pinch/±/fit); four publish-only deps `doZoomIn`/
+  `doZoomOut`/`updateContainerTransform`/`commitWheelZoom` stay in app.js),
   [features/manage-icons.js](features/manage-icons.js) (the fourth registry split
   and first multi-region move — the Manage Icons modal; registers
   `App.openManageIconsModal` and binds the modal's Close/Cancel/Save at load;
@@ -565,7 +577,8 @@ Rules to follow when adding/editing a feature file:
   `reconcileOrphanedCountersAndLineTypes`, `pushUndoSnapshot`, `markProjectDirty`,
   `showModal`, `hideModal`, `updateUI`, `showLineColorModal`, `pushRecentColor`,
   `setupCreateColorPicker`, `ensureActiveCanvas`,
-  `getMaxZoom`, `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`,
+  `getMaxZoom`, `getWheelZoomSpeed`, `doZoomIn`, `doZoomOut`,
+  `updateContainerTransform`, `commitWheelZoom`, `getOrderedIcons`, `iconVbFor`,
   `getUserCustomIcons`, `saveUserCustomIcons`, `showToast`, `getPageCanvases`,
   `renderAnnotationsToContext`, `addReportPagesToPdf`, `addHighlightsToPdf`,
   `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`,
@@ -590,7 +603,9 @@ Rules to follow when adding/editing a feature file:
   Some are
   "publish-only" — the function stays defined in app.js (used widely there) and
   is just exposed on `App` (`ensureActiveCanvas`, `getMaxZoom`,
-  `getWheelZoomSpeed`, `getOrderedIcons`, `iconVbFor`, `getUserCustomIcons`,
+  `getWheelZoomSpeed`, the Zoom Rail's
+  `doZoomIn`/`doZoomOut`/`updateContainerTransform`/`commitWheelZoom`,
+  `getOrderedIcons`, `iconVbFor`, `getUserCustomIcons`,
   `saveUserCustomIcons`, `showToast`, the 9 Export PDFs deps
   `getPageCanvases`/`renderAnnotationsToContext`/`addReportPagesToPdf`/
   `addHighlightsToPdf`/`addNotesToPdf`/`hasAnyHighlights`/`hasAnyNotes`/

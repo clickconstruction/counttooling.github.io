@@ -41,7 +41,9 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [canvas-repair.spec.js](canvas-repair.spec.js) | Playwright regression for the registry pilot — uploads `test-2pages.pdf`, adds a page-0 marker, asserts `window.App.openCanvasRepairModal`/`applyCanvasRepair` are functions and `App.state === window.state`, opens the modal + clicks `#canvasRepairApply` (no-op default mapping), and asserts the marker survives with no console / page errors; `npx playwright test canvas-repair.spec.js` |
 | [features/note.js](features/note.js) | Second feature-file split (`window.App` registry pilot #2) — the Note add/edit modal (`openNoteModal` + its `noteModalCancel`/`noteModalDone` button bindings). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openNoteModal`, and binds the modal's Cancel/Done at load. app.js's 5 inbound call sites (canvas click / dblclick / context-menu / touch handlers) call it via `App.openNoteModal(...)` |
 | [note.spec.js](note.spec.js) | Playwright regression for pilot #2 — uploads `test-2pages.pdf`, asserts `window.App.openNoteModal`/`ensureActiveCanvas`/`showLineColorModal` are functions, then exercises add (type + `#noteModalDone` persists a note), edit (reopen on the note object, change text), and cancel (`#noteModalCancel` clears `pendingNote`/`editingNote` and adds nothing), reading notes back via `window.App.ensureActiveCanvas`; asserts no console / page errors; `npx playwright test note.spec.js` |
-| [features/zoom.js](features/zoom.js) | Third feature-file split (`window.App` registry pilot #3) — the Zoom Settings modal (`showZoomModal` + its `zoomModalClose`/`zoomMax`/`zoomSpeed` handlers). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showZoomModal`, binds the modal inputs at load. `getMaxZoom`/`getWheelZoomSpeed` stay defined in app.js (used in ~10 places there) and are read via `App.*` — the first "publish-only, do-not-move" dep. app.js's single call site (the desktop branch of the zoom-% click) calls `App.showZoomModal()` |
+| [features/zoom.js](features/zoom.js) | Third feature-file split (`window.App` registry pilot #3) — the Zoom Settings modal (`showZoomModal` + its `zoomModalClose`/`zoomMax`/`zoomSpeed` handlers). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showZoomModal`, binds the modal inputs at load. `getMaxZoom`/`getWheelZoomSpeed` stay defined in app.js (used in ~10 places there) and are read via `App.*` — the first "publish-only, do-not-move" dep. its inbound call sites are the Zoom Rail's gear button ([features/zoom-rail.js](features/zoom-rail.js)) — the zoom-% click itself only toggles the rail |
+| [features/zoom-rail.js](features/zoom-rail.js) | The **Zoom Rail** — the giant floating vertical zoom slider on the right edge, **toggled** by clicking the footer zoom-% (`#zoomPct`). Log-scale track (equal distance per doubling, 0.2 → `getMaxZoom()`) with round-percent tick marks (majors labelled), an accent-yellow %-readout draggable thumb with a light magnetic snap to ticks, +/− buttons, and a gear that opens the Zoom Settings modal (the modal's only entry point — the rail's z-index 300 sits above the modal overlay's 200, so both stay usable together). Drags anchor the zoom at the canvas-wrapper center and reuse app.js's cheap transform preview + debounced commit. Replaced the old `#zoomOverlay` popover (markup/handlers/dismisser removed). Registers `App.openZoomRail`/`App.closeZoomRail`/`App.toggleZoomRail` plus the `App.onZoomRailSync` core-→-feature callback (called from `updateUI` and the pinch rAF so the thumb tracks wheel/pinch/±/fit while open; also rebuilds ticks when Zoom Settings changes the max zoom, and closes the rail if the project unloads). Four new publish-only deps `doZoomIn`/`doZoomOut`/`updateContainerTransform`/`commitWheelZoom`. Dismissal: re-click the zoom %, outside click (clicks inside `#zoomModal` don't count), Escape, or a ~5s idle **auto-fade** (0.3s opacity transition; never mid-drag or while the settings modal is open; hovering the rail cancels it; only actual zoom changes re-arm it — unrelated `updateUI` churn doesn't) |
+| [zoom-rail.spec.js](zoom-rail.spec.js) | Playwright regression for the Zoom Rail — uploads `test-2pages.pdf`, asserts the registry contract (`openZoomRail`/`closeZoomRail`/`toggleZoomRail`/`onZoomRailSync` + the 4 publish-only deps), `#zoomPct` click toggles the rail (modal does **not** open; gear opens it with the rail staying up), mouse-drags the track past the ends asserting `state.zoom` rises to max then clamps to 0.2 with `#zoomPct` in sync, the ~5s idle auto-fade + the accent-yellow thumb, tick rebuild when max zoom changes 400% → 1200% (8 → 11 ticks), external `state.zoom` writes resync the thumb, mobile viewport tap shows the rail without the modal (and `#zoomOverlay` is gone), and outside-click + Escape dismiss; asserts no console / page errors; `npx playwright test zoom-rail.spec.js` |
 | [zoom.spec.js](zoom.spec.js) | Playwright regression for pilot #3 — uploads `test-2pages.pdf`, asserts `window.App.showZoomModal`/`getMaxZoom`/`getWheelZoomSpeed` are functions, opens via `window.App.showZoomModal()`, sets `#zoomMax` to 600 + `#zoomSpeed` to 200 (dispatching `input`), clicks `#zoomModalClose`, and asserts `state.maxZoom === 6` and `localStorage.zoomSettings.wheelZoomSpeed === 2` with no console / page errors; `npx playwright test zoom.spec.js` |
 | [features/manage-icons.js](features/manage-icons.js) | Fourth feature-file split (`window.App` registry pilot #4) and the **first multi-region move** — the Manage Icons modal (`openManageIconsModal` + its `manageIconsModalClose`/`manageIconsCancel`/`manageIconsSave` handlers, which lived in app.js's event-binding block, a region away from the opener). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openManageIconsModal`, binds the modal's Close/Cancel/Save at load. `getOrderedIcons`/`iconVbFor`/`getUserCustomIcons`/`saveUserCustomIcons`/`showToast` stay defined in app.js (each used 10-15× there) and are read via `App.*` — publish-only deps. The Save handler reads `App.getOrderedIcons().find(...)` (ordered icon objects) instead of the bare `ICONS` array, and preserves the existing no-`markProjectDirty` behavior. app.js's single call site (Advanced → Manage Icons) calls `App.openManageIconsModal()` |
 | [manage-icons.spec.js](manage-icons.spec.js) | Playwright regression for pilot #4 — uploads `test-2pages.pdf`, asserts `window.App.openManageIconsModal` + the 5 publish-only deps (`getOrderedIcons`/`iconVbFor`/`getUserCustomIcons`/`saveUserCustomIcons`/`showToast`) are functions, then exercises rename (set the first built-in row's input, `#manageIconsSave`, assert `state.iconNames[firstPath]`), reorder (reopen, `button[data-action="bottom"]` on the first row, Save, assert `state.iconOrder` ends with the former-first path), and custom delete (seed via `App.saveUserCustomIcons`, reopen, `#manageIconsEditToggle`, check the custom row's `.icon-select-cb`, `#manageIconsDeleteSelected`, assert `getUserCustomIcons().length === 0` and the custom section hides); asserts no console / page errors; `npx playwright test manage-icons.spec.js` |
@@ -95,7 +97,7 @@ not CDN, so the app is same-origin and offline-cacheable), the self-hosted fonts
 `idb.js`, `format.js`, and `save-utils.js`. The body holds the app shell + every modal,
 then loads `app.js` (the main JS IIFE — the bulk of the app logic), then the
 feature-file splits (`features/canvas-repair.js`, `features/note.js`,
-`features/zoom.js`, `features/manage-icons.js`,
+`features/zoom.js`, `features/zoom-rail.js`, `features/manage-icons.js`,
 `features/multiply-zone-settings.js`, `features/export-pdfs.js`,
 `features/legend-settings.js`, `features/page-settings.js`,
 `features/counter-settings.js`, `features/line-type-settings.js`,
@@ -172,7 +174,9 @@ Contract:
 
 Extracted so far: Canvas Repair → [features/canvas-repair.js](features/canvas-repair.js),
 the Note modal → [features/note.js](features/note.js), the Zoom Settings
-modal → [features/zoom.js](features/zoom.js), the Manage Icons modal →
+modal → [features/zoom.js](features/zoom.js), the Zoom Rail (the giant
+right-edge vertical zoom slider) → [features/zoom-rail.js](features/zoom-rail.js),
+the Manage Icons modal →
 [features/manage-icons.js](features/manage-icons.js) (the first multi-region
 move — opener + a separate Close/Cancel/Save handler block), the Multiply
 Zone **settings** modal → [features/multiply-zone-settings.js](features/multiply-zone-settings.js)
@@ -327,56 +331,56 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2561 - Coordinate Helpers
 - L2573 - PDF Rendering
 - L3928 - UI Render Functions
-- L5051 - Inline rename & polyline edit mode
-- L5165 - Item detail & properties modals
-- L5503 - Toasts & line color picker
-- L5651 - Airboard cloud sync
-- L5684 - Supabase RPC & presence heartbeat
-- L5724 - User activity / event telemetry
-- L5767 - Supabase auth & dev auth
-- L5888 - [sync] Checkout subscription & permission refresh
-- L6066 - Modals & Handlers
-- L6139 - PDF intake (upload, test PDF, hashing)
-- L6464 - Toolbar tool buttons
-- L6572 - Tool sidebar buttons & legend overlay
-- L6686 - Add Line Type modal
-- L6756 - Line color & sidebar handlers
-- L6900 - Polyline modal & drawing
-- L6931 - Zoom bar & page navigation
-- L6971 - Canvas layers
-- L7174 - PDF download helpers & PipeTooling menu
-- L7250 - Copy summaries (PipeTooling / Email)
-- L7452 - Import-canvas-after-PDF & Clear Page modals
-- L7628 - Download current page
-- L7876 - Zone & page-action modal handlers
-- L7980 - Mobile actions burger menu (right-side drawer)
-- L8108 - User activity time formatting
-- L8266 - User Activity modal (admin)
-- L8334 - My Settings modal
-- L8365 - Auth & settings entry buttons
-  - L8410 - Project Settings checkout & Save Status bell
-  - L8533 - [sync] Checkout expired recovery
-  - L8787 - [sync] Turn In
-  - L9300 - Share project & view links
-  - L9520 - Cloud project hydrate / copy / fork
-  - L9716 - Settings menu actions & Airboard sync
-  - L9795 - My Settings password & Auth sign-in
-  - L9848 - Save Project modal
-  - L10051 - Copy project modal
-  - L10075 - Checkout expired recovery modal wiring
-  - L10159 - Save-before-load modal
-  - L10234 - Last-session restore prompt
-  - L10313 - User Activity filters & view toggle
-- L10501 - Canvas Event Handlers
-- L10873 - Event Binding
-- L10876 - Aim loupe (mobile press-hold precise placement)
-- L11890 - [sync] Manual save to cloud
-- L12515 - [sync] Auto-save
-- L12812 - [sync] Local backup (IndexedDB takeoff state)
-- L13039 - [sync] Checkout keep-alive
-- L13083 - App feature registry
-- L13219 - View-only mode
-- L13388 - Init / boot
+- L5052 - Inline rename & polyline edit mode
+- L5166 - Item detail & properties modals
+- L5504 - Toasts & line color picker
+- L5652 - Airboard cloud sync
+- L5685 - Supabase RPC & presence heartbeat
+- L5725 - User activity / event telemetry
+- L5768 - Supabase auth & dev auth
+- L5889 - [sync] Checkout subscription & permission refresh
+- L6067 - Modals & Handlers
+- L6140 - PDF intake (upload, test PDF, hashing)
+- L6465 - Toolbar tool buttons
+- L6573 - Tool sidebar buttons & legend overlay
+- L6687 - Add Line Type modal
+- L6757 - Line color & sidebar handlers
+- L6901 - Polyline modal & drawing
+- L6932 - Zoom bar & page navigation
+- L6960 - Canvas layers
+- L7163 - PDF download helpers & PipeTooling menu
+- L7239 - Copy summaries (PipeTooling / Email)
+- L7441 - Import-canvas-after-PDF & Clear Page modals
+- L7617 - Download current page
+- L7865 - Zone & page-action modal handlers
+- L7969 - Mobile actions burger menu (right-side drawer)
+- L8097 - User activity time formatting
+- L8255 - User Activity modal (admin)
+- L8323 - My Settings modal
+- L8354 - Auth & settings entry buttons
+  - L8399 - Project Settings checkout & Save Status bell
+  - L8522 - [sync] Checkout expired recovery
+  - L8776 - [sync] Turn In
+  - L9289 - Share project & view links
+  - L9509 - Cloud project hydrate / copy / fork
+  - L9705 - Settings menu actions & Airboard sync
+  - L9784 - My Settings password & Auth sign-in
+  - L9837 - Save Project modal
+  - L10040 - Copy project modal
+  - L10064 - Checkout expired recovery modal wiring
+  - L10148 - Save-before-load modal
+  - L10223 - Last-session restore prompt
+  - L10302 - User Activity filters & view toggle
+- L10490 - Canvas Event Handlers
+- L10862 - Event Binding
+- L10865 - Aim loupe (mobile press-hold precise placement)
+- L11878 - [sync] Manual save to cloud
+- L12503 - [sync] Auto-save
+- L12800 - [sync] Local backup (IndexedDB takeoff state)
+- L13027 - [sync] Checkout keep-alive
+- L13071 - App feature registry
+- L13213 - View-only mode
+- L13382 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -856,6 +860,16 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Undo/Redo** — last 5 moves in memory; `undoStack`/`redoStack`; Ctrl+Z /
   Ctrl+Shift+Z; cleared on load/switch/viewer.
 - **Middle mouse pan** — hold middle button to pan regardless of tool.
+- **Zoom Rail** — clicking the footer zoom % toggles a giant floating vertical
+  slider on the right edge ([features/zoom-rail.js](features/zoom-rail.js)):
+  log-scale track with labelled tick marks, a draggable accent-yellow %-readout
+  thumb (magnetic snap to round percents), +/− buttons, and a gear — the sole
+  entry point to Zoom Settings (the rail floats above the modal backdrop).
+  Replaced the old mobile zoom popover. Drags zoom about the viewport center
+  with the wheel handler's transform preview + debounced re-render; the thumb
+  tracks wheel/pinch/±/fit via `App.onZoomRailSync` from `updateUI`. Dismissal:
+  re-click the zoom %, outside click, Escape, or a ~5s idle auto-fade (hover
+  cancels; never mid-drag or with the settings modal open).
 - **Canvas context menu** — `#contextMenu` on right-click / long-press;
   `handleContextMenu` -> `hitTest` -> `state.ctxTarget`; `#ctxTargetNameRow` shows
   the counter/line-type name below Delete; not available in view mode.

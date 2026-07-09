@@ -123,7 +123,7 @@ const header = `  <header class="site-header">
       <a class="logo" href="/">${RETICLE}<span>CountTooling</span></a>
       <nav class="site-nav">
         <a href="/guides/">Guides</a>
-        <a class="btn" href="/app/">Open the app</a>
+        <a class="btn" href="/app/"><span class="btn-label-full">Open the app</span><span class="btn-label-short">App</span></a>
       </nav>
     </div>
   </header>`;

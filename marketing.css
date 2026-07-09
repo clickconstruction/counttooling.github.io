@@ -21,10 +21,12 @@ a { color: inherit; }
 .site-nav a:not(.btn) { color: var(--text2); text-decoration: none; font-weight: 500; }
 .site-nav a:not(.btn):hover { color: var(--accent); }
 
-.btn { display: inline-block; background: var(--accent); color: var(--bg); font-weight: 600; text-decoration: none; padding: 11px 20px; border-radius: 8px; }
-.btn:hover { background: #f0d369; }
-.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-.btn-ghost:hover { background: var(--surface2); }
+.btn { display: inline-block; background: linear-gradient(180deg, #f6de83, var(--accent) 55%, #d9b535); color: var(--bg); font-weight: 600; text-decoration: none; padding: 11px 20px; border-radius: 8px; white-space: nowrap; box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 12px rgba(232,197,71,0.35); }
+.btn:hover { background: linear-gradient(180deg, #fae694, #f0d369 55%, #e3c04a); box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 16px rgba(232,197,71,0.5); }
+.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); box-shadow: none; }
+.btn-ghost:hover { background: var(--surface2); box-shadow: none; }
+/* Header CTA: full label on wide screens, just "App" on phones (no awkward wrap). */
+.btn .btn-label-short { display: none; }
 
 /* Landing */
 .hero { padding: 72px 0 56px; text-align: center; }
@@ -129,4 +131,6 @@ a { color: inherit; }
   .logo span { font-size: 1.25rem; }
   .site-nav { gap: 12px; }
   .site-header .btn { padding: 9px 14px; }
+  .site-header .btn .btn-label-full { display: none; }
+  .site-header .btn .btn-label-short { display: inline; }
 }

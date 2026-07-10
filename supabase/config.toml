@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.get-view-project]
 verify_jwt = false
+
+[functions.set-view-scale]
+verify_jwt = false

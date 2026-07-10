@@ -138,6 +138,7 @@ supabase functions deploy admin-delete-project
 supabase functions deploy admin-list-users
 supabase functions deploy invite-to-project
 supabase functions deploy get-view-project
+supabase functions deploy set-view-scale
 ```
 
 (Or run `./deploy-admin-functions.sh`, which deploys the admin functions with `--no-verify-jwt`.)
@@ -154,13 +155,14 @@ supabase functions deploy admin-set-password --no-verify-jwt
 supabase functions deploy admin-delete-project --no-verify-jwt
 supabase functions deploy invite-to-project --no-verify-jwt
 supabase functions deploy get-view-project --no-verify-jwt
+supabase functions deploy set-view-scale --no-verify-jwt
 ```
 
 `admin-reassign-projects` (standalone Transfer ownership) and `admin-set-password` share the same in-code admin check and the `_shared/reassignProjects.ts` ownership-move engine that `admin-delete-user`'s optional reassign uses.
 
-Each function still validates auth in-code via `getUser()` (except `get-view-project`, which is unauthenticated and validates domain server-side).
+Each function still validates auth in-code via `getUser()` (except `get-view-project` and `set-view-scale`, which are unauthenticated and validate the view token + email domain server-side).
 
-**View links:** `get-view-project` validates tokens and email domain (default: clickplumbing.com). Set `VIEW_LINK_ALLOWED_DOMAINS` in Supabase Dashboard (Functions > get-view-project > Secrets) if different. The function also returns the project's `updated_at` (as `updatedAt`); the client (`initViewOnlyMode`) revalidates against the server on open and only re-renders/refreshes the view cache when it changed, so a viewer isn't pinned to a stale snapshot after the owner re-saves (the cached PDF blob is reused when its hash matches; offline falls back to the cache). The deployed function inlines its CORS headers (the repo source imports `_shared/cors.ts` — functionally identical; a CLI deploy bundles `_shared`).
+**View links:** `get-view-project` validates tokens and email domain (default: clickplumbing.com). Set `VIEW_LINK_ALLOWED_DOMAINS` in Supabase Dashboard (Functions > get-view-project > Secrets) if different. The function also returns the project's `updated_at` (as `updatedAt`); the client (`initViewOnlyMode`) revalidates against the server on open and only re-renders/refreshes the view cache when it changed, so a viewer isn't pinned to a stale snapshot after the owner re-saves (the cached PDF blob is reused when its hash matches; offline falls back to the cache). The deployed function inlines its CORS headers (the repo source imports `_shared/cors.ts` — functionally identical; a CLI deploy bundles `_shared`). `set-view-scale` (same token + domain gate, also reads `VIEW_LINK_ALLOWED_DOMAINS`) lets a viewer set a page's scale for everyone: it sanitizes the scale payload and writes `projects.data.pages[i].scale` with a `viewerSet {email, at}` stamp that drives the owner's must-clear notice in the app.
 
 ## 4. Create First Admin
 

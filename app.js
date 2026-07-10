@@ -13223,7 +13223,7 @@
     const allowedEmail = localStorage.getItem('view:allowed:' + viewToken);
     let email = allowedEmail ? allowedEmail.trim() : '';
 
-    function showViewEmailModal() {
+    function showViewEmailModal(keepError) {
       return new Promise((resolve) => {
         const modal = document.getElementById('viewLinkEmailModal');
         const input = document.getElementById('viewLinkEmailInput');
@@ -13232,7 +13232,10 @@
         const cancelBtn = document.getElementById('viewLinkEmailCancel');
         if (!modal || !input) { resolve(null); return; }
         viewLinkEmailResolve = resolve;
-        errEl.style.display = 'none';
+        // keepError: re-shown after a domain_restricted rejection — the caller
+        // just set the message; clearing it here made the modal reappear with
+        // no explanation (looked like an endless silent loop).
+        if (!keepError) errEl.style.display = 'none';
         input.value = email || '';
         input.focus();
         showModal('viewLinkEmailModal');
@@ -13303,8 +13306,7 @@
         if (e && e.domainRestricted) {
           const errEl = document.getElementById('viewLinkEmailError');
           if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
-          showModal('viewLinkEmailModal');
-          email = await showViewEmailModal();
+          email = await showViewEmailModal(true);
           if (!email) return;
         } else if (cachedProjectData) {
           projectData = cachedProjectData;   // offline / transient — use the cached snapshot

@@ -944,7 +944,15 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   other same-origin assets **cache-first** for a coherent offline version. Non-GET and
   cross-origin (Supabase REST/auth/realtime/storage range-requests/TUS) **pass through
   untouched**. `skipWaiting` + `clients.claim`; `activate` purges old `counttooling-shell-*`
-  caches. Registered at the top of `init()`.
+  caches. Registered at the top of `init()`. **Mixed-shell auto-heal**: after a deploy, a
+  returning tab renders one mixed shell (network-first HTML + the previous version's
+  cached assets) until the updated SW takes control — the registration block reloads the
+  page once on that `controllerchange` (guarded: only when the page was already controlled
+  at load, i.e. an update rather than a first-install claim, and only when
+  `state.pages` is empty and nothing is dirty, so work is never lost). `#zoomRail` also
+  carries a `hidden` attribute as a belt-and-braces guard so a stale stylesheet (no
+  `.zoom-rail` rules) can't render its markup as bottom-left artifacts during that one
+  mixed load.
 - **CACHE_VERSION bump is a deploy discipline** — there is no build step, so bump
   `CACHE_VERSION` in [sw.js](sw.js) on every deploy that changes a precached asset, or the
   SW won't detect the update. `doGlobalReloadNow` also best-effort clears Cache Storage as

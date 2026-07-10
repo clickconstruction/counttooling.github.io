@@ -44,7 +44,11 @@
   build step → manual cache-bust; the admin global-force-reload is the backstop). When you
   add/rename a shell file (a `features/*.js`, a `vendor/*` lib, a font), update both the
   index.html tag **and** `PRECACHE_URLS` in sw.js. Regen icons with `npm run build:pwa-icons`.
-  See ARCHITECTURE.md "PWA / offline".
+  After a deploy, a returning tab renders one "mixed shell" (network-first HTML + the
+  previous version's cached assets) until the updated SW takes control; the app.js boot
+  reloads once on that `controllerchange` (only when it's an update, no project is open,
+  and nothing is dirty) so users aren't left on mismatched UI. See ARCHITECTURE.md
+  "PWA / offline".
 - Static assets, no bundler: the app is split across a few files loaded via
   `<link>` / `<script src>` and sharing state through `window` globals and the
   shared global lexical scope — [index.html](index.html) (HTML shell + modals,

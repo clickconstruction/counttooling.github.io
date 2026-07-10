@@ -168,7 +168,6 @@
       .sidebar-tool-buttons { display: flex; }
       .header #clearPage { display: none; }
       .sidebar-clear-page { display: block; }
-      .status-bar #statusBarAuth { display: none !important; }
       .status-bar { flex-wrap: nowrap; }
       .status-bar #statusMode { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 0; }
       .page-info-label { display: none; }
@@ -232,10 +231,12 @@
       body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
       body.supabase-enabled .header #saveStatusBtnHeader.supabase-only { display: inline-flex !important; }
       body.supabase-enabled:not(.has-project) .header #saveStatusBtnHeader.supabase-only { display: none !important; }
-      body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
       .status-bar #statusBarMacros.status-bar-desktop-only { display: inline !important; }
       body.supabase-enabled .status-bar #statusBarMacrosSep.status-bar-desktop-only { display: inline !important; }
     }
+    /* Sign In / account entry in the status bar — all widths (on mobile it is the
+       only sign-in entry point; signed-in it shows the email -> My Settings). */
+    body.supabase-enabled .status-bar #statusBarAuth.supabase-only { display: inline !important; }
     .sidebar-section { padding: 12px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
     #pagesSectionTitle, #countersSectionTitle, #lineTypesSectionTitle, #linesSectionTitle, #groupsSectionTitle, #summarySectionTitle, #exportOptionsSectionTitle,

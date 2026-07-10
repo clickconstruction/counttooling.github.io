@@ -171,6 +171,10 @@
     if (!App.state.pages.length) return;
     buildTicks();
     cancelFade();
+    // The [hidden] attribute keeps the rail invisible even under a stale-cache
+    // "mixed shell" load (new HTML + a previous version's CSS, which lacks the
+    // .zoom-rail rules); with current CSS the classes drive display as usual.
+    rail.hidden = false;
     rail.classList.add('visible');
     positionThumb();
     lastSyncZoom = App.state.zoom;
@@ -180,6 +184,7 @@
     if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
     cancelFade();
     rail.classList.remove('visible');
+    rail.hidden = true;
   }
   function toggleZoomRail() {
     if (rail.classList.contains('visible') && !rail.classList.contains('fade-out')) closeZoomRail();

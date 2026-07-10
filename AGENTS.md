@@ -535,7 +535,8 @@
   storage bucket, several RPCs, and Edge Functions (`admin-create-user`,
   `admin-delete-user` (optional `reassignToUserId`), `admin-reassign-projects`,
   `admin-set-password`, `admin-delete-project`, `admin-list-users`,
-  `invite-to-project`, `get-view-project`; `admin-reassign-projects` +
+  `invite-to-project`, `get-view-project`, `set-view-scale` (viewer sets a
+  page scale for everyone; token + email-domain gated); `admin-reassign-projects` +
   `admin-delete-user` share the `_shared/reassignProjects.ts` ownership-move
   engine). Config via `config.js` (see
   [SUPABASE_SETUP.md](SUPABASE_SETUP.md)). PDF uploads capped at 50 MB.
@@ -675,7 +676,8 @@ mode).
   migration from localStorage / legacy key).
 - Per view token (localStorage): `view:allowed:<token>` (accepted viewer email),
   `view:hideMarks:<token>`, `view:scale:<token>` (the viewer's temporary local
-  page scales, a page-index → scale map; owner scale wins on restore).
+  page scales — the offline fallback when the shared `set-view-scale` write
+  fails; a page-index → scale map, server scale wins on restore).
 - Per-project, in save/load: `maxZoom`, `groups`, `activeCanvasIdByPage`. Each saved
   page also carries `bakeFrame` `{ w, h, intrinsic }` (the viewport dims at `page.rotation`
   + the PDF's intrinsic `/Rotate`) so a later load / view-link viewer can detect when the

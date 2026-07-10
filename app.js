@@ -3930,6 +3930,7 @@
     try { updateCanvasOnlyNeedsPdfBanner(); } catch (_) {}
     document.getElementById('zoomPct').textContent = Math.round(state.zoom * 100) + '%';
     if (App.onZoomRailSync) App.onZoomRailSync();
+    maybeShowViewerScaleNotice();
     const pageInfo = document.getElementById('pageInfo');
     const current = state.pages.length ? state.currentPage + 1 : 0;
     const total = state.pages.length || 0;
@@ -13218,8 +13219,10 @@
   App.convertUnitValue = convertUnitValue;
   App.formatFeetInchesFromVal = formatFeetInchesFromVal;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
-  // Viewer temp scale (features/scale.js apply sites call the first; the second
-  // is the restore step, published as a test seam - hoisted declarations, safe).
+  // Viewer scale sharing (features/scale.js apply sites call shareViewerScale;
+  // noteViewerTempScale is its local-fallback layer and applyViewerTempScales the
+  // restore step, both published as test seams - hoisted declarations, safe).
+  App.shareViewerScale = shareViewerScale;
   App.noteViewerTempScale = noteViewerTempScale;
   App.applyViewerTempScales = applyViewerTempScales;
 
@@ -13233,11 +13236,56 @@
   }
 
   // SECTION: View-only mode
-  // Viewers may set a temporary, local-only page scale (so Measure reads real
-  // units on pages where the owner never set one). It is inherently unsaveable —
-  // markProjectDirty/performAutoSave are viewer-inert — and remembered per view
-  // token in localStorage (same pattern as view:hideMarks:<token>). The owner's
-  // scale always wins on restore.
+  // A viewer-set scale applies FOR EVERYONE: it is shared through the
+  // set-view-scale Edge Function (token + email gated), which writes it into the
+  // owner's project data with a viewerSet stamp so the owner gets a must-clear
+  // notice on that page. If the share fails (offline / rejected), the scale
+  // stays as a local temporary one — stamped temp, remembered per view token in
+  // localStorage (same pattern as view:hideMarks:<token>) and restored only for
+  // pages the server has no scale for.
+  function shareViewerScale(pageIdx) {
+    if (!state.isViewer) return;
+    noteViewerTempScale(pageIdx);   // local-first: applies + persists the temp fallback
+    const scale = state.pages[pageIdx]?.scale;
+    if (!scale || !state.viewToken || !SUPABASE_ENABLED || !SUPABASE_URL) return;
+    let email = '';
+    try { email = (localStorage.getItem('view:allowed:' + state.viewToken) || '').trim(); } catch (_) {}
+    if (!email) return;
+    const payload = {
+      token: state.viewToken,
+      email,
+      pageIndex: pageIdx,
+      scale: {
+        pixelsPerUnit: scale.pixelsPerUnit,
+        unit: scale.unit,
+        label: scale.label ?? null,
+        refLine: scale.refLine ?? undefined,
+        sheetSize: scale.sheetSize ?? undefined,
+        correctionFactor: scale.correctionFactor ?? undefined,
+      },
+    };
+    fetch(SUPABASE_URL + '/functions/v1/set-view-scale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(async (res) => {
+      if (!res.ok) throw new Error('share failed: ' + res.status);
+      await res.json().catch(() => ({}));
+      // Shared successfully: this is now the project's scale, not a temp one.
+      const cur = state.pages[pageIdx]?.scale;
+      if (cur) delete cur.temp;
+      try {
+        const key = 'view:scale:' + state.viewToken;
+        const map = JSON.parse(localStorage.getItem(key) || '{}');
+        delete map[pageIdx];
+        localStorage.setItem(key, JSON.stringify(map));
+      } catch (_) {}
+      updateUI();
+      showToast('Scale set for everyone viewing this plan');
+    }).catch(() => {
+      showToast('Couldn’t share the scale — it applies only on this device for now', 5000);
+    });
+  }
   function noteViewerTempScale(pageIdx) {
     if (!state.isViewer) return;
     const scale = state.pages[pageIdx]?.scale;
@@ -13261,6 +13309,40 @@
       }
     } catch (_) { /* corrupt/unavailable storage: just skip the restore */ }
   }
+
+  // Owner-side notice: when a viewer shared a scale (scale.viewerSet stamped by
+  // the set-view-scale Edge Function), the project owner gets a must-clear modal
+  // every time they land on that page, until they acknowledge it (which removes
+  // the stamp and persists via the normal dirty/save path — hence the checkout
+  // requirement, i.e. !state.isViewer).
+  let viewerScaleNoticedPage = null;
+  function maybeShowViewerScaleNotice() {
+    const pi = state.currentPage;
+    if (viewerScaleNoticedPage !== pi) viewerScaleNoticedPage = null;   // left the noticed page
+    const scale = state.pages[pi]?.scale;
+    const vs = scale?.viewerSet;
+    if (!vs || state.isViewer) return;
+    const isOwner = !!(state.currentProjectId && state.supabaseSession?.user && state.projectOwnerId === state.supabaseSession.user.id);
+    if (!isOwner) return;
+    if (viewerScaleNoticedPage === pi) return;                          // already shown this visit
+    viewerScaleNoticedPage = pi;
+    const msg = document.getElementById('viewerScaleNoticeText');
+    if (msg) {
+      const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px';
+      const when = vs.at ? new Date(vs.at).toLocaleString() : null;
+      msg.textContent = 'The scale on page ' + (pi + 1) + ' was set to '
+        + (scale.label ? scale.label + ' (' + pxLine + ')' : pxLine)
+        + ' by ' + (vs.email || 'a viewer') + (when ? ' on ' + when : '')
+        + '. All lengths and tallies on this page use it.';
+    }
+    showModal('viewerScaleNoticeModal');
+  }
+  document.getElementById('viewerScaleNoticeOk').onclick = () => {
+    const scale = state.pages[state.currentPage]?.scale;
+    if (scale && scale.viewerSet) { delete scale.viewerSet; markProjectDirty(); }
+    hideModal('viewerScaleNoticeModal');
+    updateUI();
+  };
 
   async function initViewOnlyMode(viewToken) {
     const allowedEmail = localStorage.getItem('view:allowed:' + viewToken);

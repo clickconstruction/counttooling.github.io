@@ -392,6 +392,10 @@
     .canvas-pill.active { background: var(--accent); color: #000; border-color: var(--accent); }
     .canvas-layers-mobile-only { display: none; }
     .canvas-layers-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    /* Show-all-canvases peek (desktop, multi-layer pages only; JS toggles display). */
+    .show-all-canvases-btn:hover { background: var(--surface3); }
+    .show-all-canvases-btn.active { background: var(--accent); border-color: var(--accent2); color: #000; }
+    @media (max-width: 768px) { .show-all-canvases-btn { display: none !important; } }
     .canvas-layers-btn.canvas-layers-multi { color: var(--yellow); }
     .canvas-current-name { font-size: 0.85rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
     .canvas-index-display { font-size: 0.8rem; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }

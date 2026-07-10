@@ -687,7 +687,8 @@ mode).
   auto-corrects). The IndexedDB takeoff backup carries the parallel `pageBakeFrames` array.
 - In-memory only (not persisted): `state.pdfBufferSize` (bytes; set whenever
   `state.pdfBuffer` is set, because pdf.js detaches the buffer making `byteLength`
-  0), `state.userActivityAllRowsCache`, `state.userActivityViewMode`.
+  0), `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
+  `state.showAllCanvases` (the desktop show-all-layers peek toggle).
 - `config.example.js` is the template; `config.js` is committed for production.
 
 ### Cloud state (when Supabase enabled)

@@ -422,6 +422,7 @@
     loadedViaViewLink: false,
     viewToken: null,
     hideMarks: false,
+    showAllCanvases: false,   // in-memory peek: render every canvas layer of the page at once
     canCheckOut: false,
     projectOwnerId: null,
     maxZoom: null,
@@ -2745,7 +2746,10 @@
     // Hide-marks mode: the overlay is sized + cleared (so the bare PDF shows
     // through) but nothing is painted on it. Toggle via the header eye button.
     if (state.hideMarks) return;
-    const ann = getActiveAnnotations(page);
+    // Show-all-canvases peek (the opposite of hide-marks): draw every layer of
+    // the page merged instead of just the active canvas. Purely visual — hit
+    // testing / editing / exports still target the active canvas only.
+    const ann = state.showAllCanvases ? getMergedAnnotationsForPage(page) : getActiveAnnotations(page);
     if (state.scalePointA) {
       const a = toCanvas(state.scalePointA), b = toCanvas(state.scalePointB || state.scalePointA);
       ctx.strokeStyle = '#e8c547'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -4449,6 +4453,17 @@
       const canvasMenuAdd = document.getElementById('canvasMenuAdd');
       if (canvasMenuAdd) canvasMenuAdd.style.display = state.isViewer ? 'none' : '';
       switcher?.classList.toggle('canvas-layers-desktop-visible', !isMobile && canvases.length >= 1);
+      const showAllBtn = document.getElementById('showAllCanvasesBtn');
+      if (showAllBtn) {
+        // Only meaningful with 2+ layers; desktop only (the mobile switcher is
+        // already the compact layers menu). Auto-off when layers drop to one.
+        if (state.showAllCanvases && canvases.length < 2) state.showAllCanvases = false;
+        showAllBtn.style.display = (!isMobile && canvases.length > 1 && state.pages.length > 0) ? '' : 'none';
+        showAllBtn.classList.toggle('active', !!state.showAllCanvases);
+        showAllBtn.title = state.showAllCanvases
+          ? 'Showing all canvases — click to show only the active canvas'
+          : 'Temporarily show all canvases at once';
+      }
       menuList.innerHTML = '';
       canvases.forEach(c => {
         const row = document.createElement('div');
@@ -7064,6 +7079,13 @@
   }
 
   document.getElementById('addCanvasBtn').onclick = () => openAddCanvasModal();
+  // Show-all-canvases peek toggle (desktop, next to the canvas selector; the
+  // opposite of the hide-marks eye). Visual only — no dirty, no persistence.
+  document.getElementById('showAllCanvasesBtn').onclick = () => {
+    state.showAllCanvases = !state.showAllCanvases;
+    renderAnnotations();
+    updateUI();
+  };
 
   const addCanvasModalNew = document.getElementById('addCanvasModalNew');
   const addCanvasModalDuplicate = document.getElementById('addCanvasModalDuplicate');

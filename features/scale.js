@@ -200,6 +200,7 @@
     const page = state.pages[state.currentPage];
     if (page) page.scale = scaleObj;
     App.markProjectDirty();
+    App.noteViewerTempScale && App.noteViewerTempScale(state.currentPage);
     state.tool = App.TOOL.NONE;
     state.scaleMode = App.SCALE_MODES.NONE;
     state.scalePointA = null;
@@ -261,6 +262,7 @@
           const page = state.pages[state.currentPage];
           if (page) page.scale = withSheetCorrection({ pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label });
           App.markProjectDirty();
+          App.noteViewerTempScale && App.noteViewerTempScale(state.currentPage);
           App.hideModal('scaleModal');
           App.updateUI();
           App.renderPdf();
@@ -328,6 +330,7 @@
     const page = state.pages[state.currentPage];
     if (page) page.scale = withSheetCorrection({ pixelsPerUnit, unit: 'ft', label });
     App.markProjectDirty();
+    App.noteViewerTempScale && App.noteViewerTempScale(state.currentPage);
     App.hideModal('scaleModal');
     App.updateUI();
     App.renderPdf();

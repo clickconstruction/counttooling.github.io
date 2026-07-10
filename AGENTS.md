@@ -673,6 +673,9 @@ mode).
 
 - `customIconPaths` lives in **IndexedDB** (in-memory cache, per-user key; one-time
   migration from localStorage / legacy key).
+- Per view token (localStorage): `view:allowed:<token>` (accepted viewer email),
+  `view:hideMarks:<token>`, `view:scale:<token>` (the viewer's temporary local
+  page scales, a page-index → scale map; owner scale wins on restore).
 - Per-project, in save/load: `maxZoom`, `groups`, `activeCanvasIdByPage`. Each saved
   page also carries `bakeFrame` `{ w, h, intrinsic }` (the viewport dims at `page.rotation`
   + the PDF's intrinsic `/Rotate`) so a later load / view-link viewer can detect when the

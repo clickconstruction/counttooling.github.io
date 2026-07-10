@@ -3952,7 +3952,8 @@
       if (scale) {
         btn.classList.add('scale-set');
         if (isHeader) btn.classList.remove('scale-unset');
-        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px';
+        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
+        btn.title = scale.temp ? 'Temporary scale — only on this device' : '';
         if (isHeader) {
           btn.innerHTML = scaleIconSvgHeader;
         } else if (scale.label) {
@@ -3963,6 +3964,7 @@
       } else {
         btn.classList.remove('scale-set');
         if (isHeader) btn.classList.add('scale-unset');
+        btn.title = '';
         btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Set Scale';
       }
     };
@@ -3971,7 +3973,7 @@
     const scaleDisplay = document.getElementById('sidebarScaleDisplay');
     if (scaleDisplay) {
       if (scale) {
-        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px';
+        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
         const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         if (scale.label) {
           scaleDisplay.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
@@ -3982,7 +3984,7 @@
         scaleDisplay.style.flexDirection = 'row';
         scaleDisplay.style.gap = '8px';
         scaleDisplay.classList.add('has-scale');
-        scaleDisplay.title = 'Click to set scale';
+        scaleDisplay.title = scale.temp ? 'Temporary scale — only on this device' : 'Click to set scale';
         scaleDisplay.onclick = () => document.getElementById('setScale').click();
       } else {
         scaleDisplay.textContent = '—';
@@ -4085,7 +4087,7 @@
     document.getElementById('doneEditing').style.display = (state.tool === TOOL.EDIT_POLY && !state.isViewer) ? 'block' : 'none';
     const doneEditingSidebar = document.getElementById('doneEditingSidebar');
     if (doneEditingSidebar) doneEditingSidebar.style.display = (state.tool === TOOL.EDIT_POLY && !state.isViewer) ? 'block' : 'none';
-    if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE) {
+    if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE && state.tool !== TOOL.SCALE) {
       state.tool = TOOL.NONE;
       state.activeCounterType = null;
       state.activeLineTypeId = null;
@@ -4102,7 +4104,11 @@
     const redoBtn = document.getElementById('redoBtn');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
-    const viewerHideIds = ['setScale', 'counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'setScaleSidebar', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    // setScale/setScaleSidebar are deliberately NOT in this list: viewers see the
+    // page's scale status on them and may set a temporary, local-only scale
+    // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the
+    // Measure tool reads real units. See noteViewerTempScale.
+    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -10633,7 +10639,7 @@
   // of deriving it from the event — lets the aim loupe reuse every tool's commit branch.
   function handleCanvasClick(e, pdfOverride) {
     if (!state.pages.length) return;
-    if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE) return;
+    if (state.isViewer && state.tool !== TOOL.NONE && state.tool !== TOOL.MEASURE && state.tool !== TOOL.SCALE) return;
     let pdf;
     if (pdfOverride) { pdf = pdfOverride; }
     else { const pt = canvasPointFromEvent(e); pdf = canvasToPdf(pt.x, pt.y); }
@@ -11090,7 +11096,7 @@
       const pdfPt = canvasToPdf(pt.x, pt.y);
       const r = 12 / state.zoom;
       state.draggingVertexIdx = pts.findIndex(p => ptDist(pdfPt, p) < r);
-    } else if (isAimingTool() && !(state.isViewer && state.tool !== TOOL.MEASURE)) {
+    } else if (isAimingTool() && !(state.isViewer && state.tool !== TOOL.MEASURE && state.tool !== TOOL.SCALE)) {
       // Left press-and-hold on a placement tool summons the aim loupe (desktop parity
       // with mobile). A quick click (release before AIM_PRESS_MS) still places instantly.
       const c = { x: e.clientX, y: e.clientY };
@@ -11727,9 +11733,10 @@
         updateUI();
         e.preventDefault();
       }
+      // S works for viewers too - they may set a temporary local scale to measure.
+      else if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
       else if (!state.isViewer) {
-        if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
-        else if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
+        if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
         else if (k === 'l') { document.getElementById('quickLine').click(); e.preventDefault(); }
         else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
         else if (k === 'h') { document.getElementById('highlightBtn').click(); e.preventDefault(); }
@@ -12807,6 +12814,9 @@
   let takeoffBackupWriteInFlight = null;
   // SECTION: [sync] Local backup (IndexedDB takeoff state)
   async function writeTakeoffStateBackup() {
+    // Viewer sessions have nothing recoverable (no edits are possible) - don't
+    // write local backups keyed by someone else's project id.
+    if (state.isViewer) return;
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
     // If an in-flight write exists, wait for it to finish then start a fresh write so
     // the latest state is captured (critical for doTurnIn / preparePdf commit paths).
@@ -13208,6 +13218,10 @@
   App.convertUnitValue = convertUnitValue;
   App.formatFeetInchesFromVal = formatFeetInchesFromVal;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
+  // Viewer temp scale (features/scale.js apply sites call the first; the second
+  // is the restore step, published as a test seam - hoisted declarations, safe).
+  App.noteViewerTempScale = noteViewerTempScale;
+  App.applyViewerTempScales = applyViewerTempScales;
 
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;
@@ -13219,6 +13233,35 @@
   }
 
   // SECTION: View-only mode
+  // Viewers may set a temporary, local-only page scale (so Measure reads real
+  // units on pages where the owner never set one). It is inherently unsaveable —
+  // markProjectDirty/performAutoSave are viewer-inert — and remembered per view
+  // token in localStorage (same pattern as view:hideMarks:<token>). The owner's
+  // scale always wins on restore.
+  function noteViewerTempScale(pageIdx) {
+    if (!state.isViewer) return;
+    const scale = state.pages[pageIdx]?.scale;
+    if (!scale) return;
+    scale.temp = true;
+    if (!state.viewToken) return;
+    try {
+      const key = 'view:scale:' + state.viewToken;
+      const map = JSON.parse(localStorage.getItem(key) || '{}');
+      map[pageIdx] = scale;
+      localStorage.setItem(key, JSON.stringify(map));
+    } catch (_) { /* storage may be unavailable */ }
+  }
+  function applyViewerTempScales() {
+    if (!state.viewToken) return;
+    try {
+      const map = JSON.parse(localStorage.getItem('view:scale:' + state.viewToken) || '{}');
+      for (const [i, s] of Object.entries(map)) {
+        const page = state.pages[+i];
+        if (page && !page.scale && s && s.pixelsPerUnit) page.scale = { ...s, temp: true };
+      }
+    } catch (_) { /* corrupt/unavailable storage: just skip the restore */ }
+  }
+
   async function initViewOnlyMode(viewToken) {
     const allowedEmail = localStorage.getItem('view:allowed:' + viewToken);
     let email = allowedEmail ? allowedEmail.trim() : '';
@@ -13375,6 +13418,7 @@
     state.loadedViaViewLink = true;
     state.viewToken = viewToken;
     state.hideMarks = localStorage.getItem('view:hideMarks:' + viewToken) === '1';
+    applyViewerTempScales();   // restore this device's temp scales (owner scale wins)
     state.isViewer = true;
     state.canCheckOut = false;
     state.checkedOutBy = null;

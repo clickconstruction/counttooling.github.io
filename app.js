@@ -13399,6 +13399,18 @@
     // Scoped to /app/ — the app lives there; the marketing site at / is plain static
     // HTML, outside the SW. Registered for every entry path, incl. the view-link branch.
     if ('serviceWorker' in navigator) {
+      // After a deploy, a returning tab renders one "mixed shell" (network-first
+      // HTML + the previous version's cached assets) until the updated SW takes
+      // control. Reload once on that takeover so users aren't left on mismatched
+      // UI — but only when it's an update (the page was already controlled at
+      // load, not a first-install claim) and nothing would be lost.
+      const swHadController = !!navigator.serviceWorker.controller;
+      let swReloadedOnUpdate = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!swHadController || swReloadedOnUpdate) return;
+        swReloadedOnUpdate = true;
+        if (state.pages.length === 0 && !autoSaveDirty) window.location.reload();
+      });
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/app/' }).catch(() => {});
       });

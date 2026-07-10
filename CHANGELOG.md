@@ -13,6 +13,26 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(auth): INITIAL_SESSION no-session event wiped view-link projects
+
+**Problem.** Share/view links (`/app/?t=<token>`) loaded the project and then went black on any
+device with **no signed-in Supabase session** (fresh phones being the common case — "works on my
+desktop, not on my phone"). `initViewOnlyMode` finished loading the project, then `initSupabaseAuth`
+subscribed `onAuthStateChange`, and supabase-js v2 fires an immediate `INITIAL_SESSION` event on
+subscription. With no session that event fell into the signed-out branch, whose per-user data
+hygiene called `resetLocalSessionState()` unconditionally — wiping `state.pages` /
+`currentProjectId` / `loadedViaViewLink` milliseconds after the view project loaded. Signed-in
+browsers took the session branch instead, which is why desktop appeared fine. The same
+unconditional wipe could also clobber a signed-out local session's restored backup at boot.
+
+**Fix.** The signed-out branch wipes only on a **real** sign-out — `hadSession` (a user id existed
+in this tab) — and never in a view-link tab (`state.loadedViaViewLink`), whose project access rides
+on the token + email gate, not the session. `broadcastSignOut()` keeps its existing `hadSession`
+gate. Diagnosed by tracing `state.pages`/`state.zoom` writes on the live link: pages went
+`0 → 1 → 0` 13ms after `fitZoom`, stacked under the auth callback.
+
+---
+
 ## feat(scale): "verify your scale" advisory + check mode
 
 **Problem.** A preset / custom architectural scale is an assumption (the PDF is printed to true

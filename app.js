@@ -5851,9 +5851,17 @@
         stopPresenceHeartbeat();
         state.isAdmin = false;
         const hadSession = !!prevUserId;
-        resetLocalSessionState();
         lastAuthUserId = null;
-        if (hadSession) broadcastSignOut();
+        // Per-user data hygiene: wipe only on a REAL sign-out (a user existed in
+        // this tab). supabase-js fires INITIAL_SESSION with no session right after
+        // subscribing on any signed-out device — wiping there nuked view-link
+        // projects milliseconds after they loaded (and could clobber a signed-out
+        // local session's restored backup). A view-link tab is never wiped: its
+        // project access rides on the token + email gate, not the session.
+        if (hadSession) {
+          if (!state.loadedViaViewLink) resetLocalSessionState();
+          broadcastSignOut();
+        }
       }
       updateUI();
       renderPdf();

@@ -90,6 +90,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [quick-modals.spec.js](quick-modals.spec.js) | Playwright regression for pilot #23 — registry-contract (`App.populatePlumModal` + `App.populateCounterQuickCountPanel` are functions) plus a real local flow opening Quick Plumbing via `App.populatePlumModal()` (asserts `#plumModal` renders) and Quick Count via `App.showCounterTab('quickcount')` (asserts the panel populates). Asserts no console / page errors; `npx playwright test quick-modals.spec.js` |
 | [features/pdf-bundle.js](features/pdf-bundle.js) | Twenty-fourth feature-file split (`window.App` registry pilot #24) — the PDF-bundling helpers `addReportPagesToPdf`/`addNotesToPdf`/`addHighlightsToPdf`/`hasAnyHighlights`/`hasAnyNotes` (report/notes/highlights → jsPDF). Its own IIFE loaded **after** [app.js](app.js). These were **already all on `App`** (publish-only for [features/export-pdfs.js](features/export-pdfs.js)), so the split **re-homes** their registrations from app.js; export-pdfs.js keeps working via `App.*`. One new publish-only dep `wrapNoteText`; `renderAnnotationsToContext`/`getPageCanvases`/`getActiveAnnotations` already on `App`; `buildReportHtml` (report.js) + `html2canvas` (CDN) are runtime globals (added `buildReportHtml` to the `features/*.js` eslint globals). app.js's 6 internal callers convert to `App.*`; the interleaved `importCanvasAfterPdf`/`clearPage` modals stay |
 | [pdf-bundle.spec.js](pdf-bundle.spec.js) | Playwright regression for pilot #24 — registry-contract (the 5 bundling fns are functions on `App`) plus a light real check: with a PDF loaded, `App.hasAnyHighlights()`/`hasAnyNotes()` are false, then flip true after a highlight/note is added. Asserts no console / page errors; `npx playwright test pdf-bundle.spec.js` |
+| [features/item-details.js](features/item-details.js) | Twenty-fifth feature-file split (`window.App` registry pilot #25) — the Counter / Line Type **details modal** (`#counterLineTypeDetailsModal`: rename, color, icon grid, per-page usage jump list, delete with `#deleteCounterLineTypeConfirmModal` confirm via the private `performDeleteCounterLineType`), the **Line Properties modal** (`#linePropertiesModal`: name/color/drops ±1/±10/clear + per-drop units, polyline vertex-edit entry), and **`deleteGroup`** (registration **re-homed** from app.js's registry tail — [features/groups.js](features/groups.js) keeps consuming `App.deleteGroup` at call time). The three modal-state flags (`counterLineTypeDetailsItem`, `pendingDeleteCounterLineType`, `pendingLineProperties`) move as private `let`s; the close/confirm bindings move from the zone & page-action handler block. Two core hooks: `hideModal('counterLineTypeDetailsModal')` resets the flag via the `App.onCounterLineTypeDetailsHidden` callback (Groups pattern), and the shared custom-icon upload handler reads the open item via the **feature-registered getter** `App.getCounterLineTypeDetailsItem()`. Registers `App.openCounterLineTypeDetailsModal`/`App.openLinePropertiesModal`/`App.closeLinePropertiesModal`/`App.deleteGroup`. Two new publish-only deps `enterEditMode`/`countItemsInGroup`; reuses `state`/`TOOL`/`showModal`/`hideModal`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`getOrderedIcons`/`getEffectiveCustomIcons`/`iconVbFor`/`getPageCanvases`/`makeAnnotations`/`showLineColorModal`/`getActiveAnnotations`/`getPageScale`/`fitZoom`. `showModal`/`hideModal` **stay** in app.js under the renamed marker `// SECTION: Modal primitives (showModal / hideModal)`; the external callers (sidebar edit pens, lines-list edit/dblclick, context-menu Line Properties, Escape branch) reach the modals via `App.*` |
+| [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
@@ -313,6 +315,19 @@ leaving **My Settings** (which owns the airboard cloud-sync, ~15 deps) and the
 (`formatLastSignIn`/`USER_ACTIVITY_ICON_SVG`/`openUserActivityModal`); it
 **renamed** the `// SECTION: User Settings & Manage Users` marker →
 `// SECTION: My Settings modal` (rename, My Settings stays, TOC stays 47).
+Pilots #21–#24 (Load Project, Prepare PDF, Quick Plumbing/Count, PDF bundling)
+are detailed in their Files-table rows above. Item details (pilot #25) pulled
+the Counter/Line Type details modal, the Line Properties modal, and
+`deleteGroup` into [features/item-details.js](features/item-details.js) — the
+second registration **re-home** (`App.deleteGroup`, after Quick Line's
+`populateQuickLineModal` and PDF bundling's helpers) and the first
+**feature-registered getter** (`App.getCounterLineTypeDetailsItem()`, read by
+the shared custom-icon upload handler in app.js — the reverse direction of the
+save-status getter-accessors). Two new publish-only deps
+(`enterEditMode`/`countItemsInGroup`); the emptied
+`// SECTION: Item detail & properties modals` marker was **renamed**
+`// SECTION: Modal primitives (showModal / hideModal)` since the app-wide
+`showModal`/`hideModal` stay.
 
 ## Section index (grep `// SECTION:`)
 
@@ -338,58 +353,58 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2735 - PDF Rendering
 - L4175 - UI Render Functions
 - L5322 - Inline rename & polyline edit mode
-- L5436 - Item detail & properties modals
-- L5774 - Toasts & line color picker
-- L5922 - Airboard cloud sync
-- L5955 - Supabase RPC & presence heartbeat
-- L5995 - User activity / event telemetry
-- L6038 - Supabase auth & dev auth
-- L6167 - [sync] Checkout subscription & permission refresh
-- L6345 - Modals & Handlers
-- L6418 - PDF intake (upload, test PDF, hashing)
-- L6746 - Toolbar tool buttons
-- L6854 - Tool sidebar buttons & legend overlay
-- L6968 - Add Line Type modal
-- L7038 - Line color & sidebar handlers
-- L7182 - Polyline modal & drawing
-- L7213 - Zoom bar & page navigation
-- L7241 - Canvas layers
-- L7451 - PDF download helpers & PipeTooling menu
-- L7527 - Copy summaries (PipeTooling / Email)
-- L7729 - Import-canvas-after-PDF & Clear Page modals
-- L7905 - Download current page
-- L8153 - Zone & page-action modal handlers
-- L8257 - Mobile actions burger menu (right-side drawer)
-- L8385 - User activity time formatting
-- L8543 - User Activity modal (admin)
-- L8611 - My Settings modal
-- L8642 - Auth & settings entry buttons
-  - L8687 - Project Settings checkout & Save Status bell
-  - L8810 - [sync] Checkout expired recovery
-  - L9064 - [sync] Turn In
-  - L9577 - Share project & view links
-  - L9797 - Cloud project hydrate / copy / fork
-  - L9994 - Settings menu actions & Airboard sync
-  - L10073 - My Settings password & Auth sign-in
-  - L10126 - Save Project modal
-  - L10329 - Copy project modal
-  - L10353 - Checkout expired recovery modal wiring
-  - L10437 - Save-before-load modal
-  - L10512 - Last-session restore prompt
-  - L10591 - User Activity filters & view toggle
-- L10779 - Canvas Event Handlers
-- L11151 - Event Binding
-- L11161 - Aim loupe (mobile press-hold precise placement)
-- L11299 - Zoom transform preview & commit
-- L11335 - Canvas mouse, wheel & touch handlers
-- L11956 - Global dropdown dismissal & keyboard hotkeys
-- L12187 - [sync] Manual save to cloud
-- L12812 - [sync] Auto-save
-- L13109 - [sync] Local backup (IndexedDB takeoff state)
-- L13339 - [sync] Checkout keep-alive
-- L13383 - App feature registry
-- L13538 - View-only mode
-- L13819 - Init / boot
+- L5436 - Modal primitives (showModal / hideModal)
+- L5455 - Toasts & line color picker
+- L5603 - Airboard cloud sync
+- L5636 - Supabase RPC & presence heartbeat
+- L5676 - User activity / event telemetry
+- L5719 - Supabase auth & dev auth
+- L5848 - [sync] Checkout subscription & permission refresh
+- L6026 - Modals & Handlers
+- L6099 - PDF intake (upload, test PDF, hashing)
+- L6427 - Toolbar tool buttons
+- L6535 - Tool sidebar buttons & legend overlay
+- L6649 - Add Line Type modal
+- L6719 - Line color & sidebar handlers
+- L6863 - Polyline modal & drawing
+- L6894 - Zoom bar & page navigation
+- L6922 - Canvas layers
+- L7132 - PDF download helpers & PipeTooling menu
+- L7208 - Copy summaries (PipeTooling / Email)
+- L7410 - Import-canvas-after-PDF & Clear Page modals
+- L7586 - Download current page
+- L7834 - Zone & page-action modal handlers
+- L7928 - Mobile actions burger menu (right-side drawer)
+- L8056 - User activity time formatting
+- L8214 - User Activity modal (admin)
+- L8282 - My Settings modal
+- L8313 - Auth & settings entry buttons
+  - L8358 - Project Settings checkout & Save Status bell
+  - L8481 - [sync] Checkout expired recovery
+  - L8735 - [sync] Turn In
+  - L9248 - Share project & view links
+  - L9468 - Cloud project hydrate / copy / fork
+  - L9665 - Settings menu actions & Airboard sync
+  - L9744 - My Settings password & Auth sign-in
+  - L9797 - Save Project modal
+  - L10000 - Copy project modal
+  - L10024 - Checkout expired recovery modal wiring
+  - L10108 - Save-before-load modal
+  - L10183 - Last-session restore prompt
+  - L10262 - User Activity filters & view toggle
+- L10450 - Canvas Event Handlers
+- L10822 - Event Binding
+- L10832 - Aim loupe (mobile press-hold precise placement)
+- L10970 - Zoom transform preview & commit
+- L11006 - Canvas mouse, wheel & touch handlers
+- L11627 - Global dropdown dismissal & keyboard hotkeys
+- L11858 - [sync] Manual save to cloud
+- L12483 - [sync] Auto-save
+- L12780 - [sync] Local backup (IndexedDB takeoff state)
+- L13010 - [sync] Checkout keep-alive
+- L13054 - App feature registry
+- L13212 - View-only mode
+- L13493 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -447,7 +462,7 @@ Annotated, in rough order:
 - PDF Rendering — `renderPdf` (bitmap-cache fast path + render-task cancellation + stale-blit preview), `renderAnnotations`, `renderAnnotationsToContext`, `drawDropMarker`, `drawGrid`, `drawLegend`
 - UI Render Functions — `updateUI`, `renderCanvasSwitcher`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `renderLinesList`, `renderSummary`, `openSummaryCountDetailModal`, `computeFooterTotals`/`getFooterTotalsCached`
 - Inline rename & polyline edit mode — `onDoubleTapOrDblClick`, `startRename`, `enterEditMode`, `exitEditMode`
-- Item detail & properties modals — `showModal`/`hideModal`, `openCounterLineTypeDetailsModal`, `performDeleteCounterLineType`, `openLinePropertiesModal`, `deleteGroup`
+- Modal primitives (showModal / hideModal) — the app-wide `showModal`/`hideModal` (the Counter/Line Type details modal, Line Properties modal, and `deleteGroup` moved to [features/item-details.js](features/item-details.js); `hideModal` resets the moved details item via `App.onCounterLineTypeDetailsHidden`)
 - Toasts & line color picker — `showToast`, `setTurnInProgress`, `showSetScaleFirstToast`, `showOutOfBoundsToast`, `showLineColorModal`, `applyLineColor`
 - Airboard cloud sync — `fetchUserAirboard`, `saveUserAirboard`
 - Supabase RPC & presence heartbeat — `rpcSupabase`, `touchPresence`, `startPresenceHeartbeat`/`stopPresenceHeartbeat`
@@ -546,7 +561,8 @@ Annotated, in rough order:
 | Page rotation | `rotatePage90` or `page.rotation` |
 | Rotation/share orientation guard | `bakeFrame` or `computePageBakeFrame` or `verifyPageBakeFrame` or `bakeFramesMatch` (geometry.js) or `page.bakeMismatch` |
 | Canvas-blank-at-zoom guard | `renderAreaSafety` or `canvasCornerReadsBack` or `effectiveDpr` or `getCanvasCaps` |
-| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` |
+| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` (features/item-details.js) |
+| Line Properties modal | `openLinePropertiesModal` or `closeLinePropertiesModal` (features/item-details.js) |
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
 | Dev auth bypass | `canUseDevAuth` or `devAuthSignIn` (`?devAuth=1`, localhost) |
 | Save / Load project | `performSaveProjectToCloud` or `openLoadProjectModal` or `saveProjectModal` |

@@ -632,7 +632,7 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 24 feature files in load order, each with a `*.spec.js` Playwright
+The 25 feature files in load order, each with a `*.spec.js` Playwright
 regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
 All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
 app.js; the Zoom Rail was born as a feature file (a new feature built directly
@@ -685,6 +685,10 @@ zoom-rail loads 4th but arrived much later:
 24. [features/pdf-bundle.js](features/pdf-bundle.js) — PDF-bundling helpers
     (report/notes/highlights → jsPDF; re-homed already-registered `App.*`
     entries).
+25. [features/item-details.js](features/item-details.js) — Counter/Line Type
+    details modal + Line Properties modal + `deleteGroup` (re-homed
+    `App.deleteGroup`; first feature-registered getter,
+    `App.getCounterLineTypeDetailsItem`).
 
 ### Tooling
 

@@ -4859,7 +4859,7 @@
         };
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !(state.sidebarReorderModeActive && e.target.closest('.counter-drag-handle'))) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('counter', c); });
+        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('counter', c); });
       }
       el.appendChild(div);
     });
@@ -4924,7 +4924,7 @@
         };
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !e.target.closest('.line-type-drag-handle')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openCounterLineTypeDetailsModal('lineType', lt); });
+        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('lineType', lt); });
       }
       el.appendChild(div);
     });
@@ -5083,8 +5083,8 @@
           );
         });
         const editBtn = div.querySelector('.edit-btn');
-        if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); openLinePropertiesModal(it); };
-        onDoubleTapOrDblClick(div.querySelector('.name'), () => openLinePropertiesModal(it));
+        if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); App.openLinePropertiesModal(it); };
+        onDoubleTapOrDblClick(div.querySelector('.name'), () => App.openLinePropertiesModal(it));
       }
       itemsContainer.appendChild(div);
     });
@@ -5433,343 +5433,24 @@
     renderPdf();
   }
 
-  // SECTION: Item detail & properties modals
+  // SECTION: Modal primitives (showModal / hideModal)
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) {
     if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
-    if (id === 'counterLineTypeDetailsModal') counterLineTypeDetailsItem = null;
+    if (id === 'counterLineTypeDetailsModal') App.onCounterLineTypeDetailsHidden && App.onCounterLineTypeDetailsHidden();
     if (id === 'canvasDetailsModal') pendingCanvasEdit = null;
     if (id === 'deleteCanvasConfirmModal') pendingDeleteCanvas = null;
     document.getElementById(id).classList.remove('visible');
   }
 
-  let pendingDeleteCounterLineType = null;
-  let counterLineTypeDetailsItem = null;
-  function openCounterLineTypeDetailsModal(kind, item) {
-    counterLineTypeDetailsItem = kind === 'counter' ? item : null;
-    const titleEl = document.getElementById('counterLineTypeDetailsTitle');
-    const nameEl = document.getElementById('counterLineTypeDetailsName');
-    const swatchEl = document.getElementById('counterLineTypeDetailsSwatch');
-    const pagesEl = document.getElementById('counterLineTypeDetailsPages');
-    const deleteBtn = document.getElementById('counterLineTypeDetailsDelete');
-    titleEl.textContent = kind === 'counter' ? 'Counter' : 'Line Type';
-    const curveGroup = document.getElementById('counterLineTypeDetailsCurveGroup');
-    if (curveGroup) {
-      curveGroup.style.display = kind === 'lineType' ? '' : 'none';
-      if (kind === 'lineType') {
-        const curveVal = item.curveStyle || 'straight';
-        document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => { r.checked = r.value === curveVal; });
-      }
-    }
-    const iconGroup = document.getElementById('counterLineTypeDetailsIconGroup');
-    if (iconGroup) iconGroup.style.display = kind === 'counter' ? '' : 'none';
-    if (kind === 'counter' && iconGroup) {
-      const grid = document.getElementById('counterLineTypeDetailsIconGrid');
-      const customGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
-      const customIconsGroup = document.getElementById('counterLineTypeDetailsCustomIconsGroup');
-      if (customIconsGroup) customIconsGroup.style.display = '';
-      const icons = getOrderedIcons();
-      const effectiveCustom = getEffectiveCustomIcons();
-      const allIcons = [...icons, ...effectiveCustom];
-      const currentIcon = item.icon && allIcons.some(ic => ic.value === item.icon) ? item.icon : (icons[0]?.value || '');
-      grid.innerHTML = icons.map((ic) => {
-        const sel = ic.value === currentIcon ? ' selected' : '';
-        return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
-      }).join('');
-      customGrid.innerHTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>' + effectiveCustom.map((ic) => {
-        const sel = ic.value === currentIcon ? ' selected' : '';
-        return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
-      }).join('');
-      const applyIcon = (path) => {
-        pushUndoSnapshot();
-        item.icon = path;
-        markProjectDirty();
-        updateUI();
-        renderPdf();
-      };
-      grid.querySelectorAll('.icon-cell').forEach(c => {
-        c.onclick = () => {
-          grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          c.classList.add('selected');
-          applyIcon(c.dataset.path);
-        };
-      });
-      customGrid.querySelectorAll('.icon-cell').forEach(c => {
-        c.onclick = () => {
-          if (c.dataset.upload) {
-            document.getElementById('customIconUploadInput').click();
-            return;
-          }
-          grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          c.classList.add('selected');
-          applyIcon(c.dataset.path);
-        };
-      });
-    }
-    nameEl.value = item.name || '';
-    nameEl.onblur = () => {
-      const v = nameEl.value.trim();
-      pushUndoSnapshot();
-      item.name = v || (kind === 'counter' ? 'Counter' : 'Line');
-      markProjectDirty();
-      updateUI();
-    };
-    const color = item.color || (kind === 'counter' ? '#e8c547' : '#4a9eff');
-    swatchEl.style.background = color;
-    swatchEl.onclick = () => {
-      showLineColorModal(color, (newColor) => {
-        pushUndoSnapshot();
-        item.color = newColor;
-        swatchEl.style.background = newColor;
-        markProjectDirty();
-        updateUI();
-        renderPdf();
-      });
-    };
-    if (kind === 'lineType') {
-      document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => {
-        r.onchange = () => { pushUndoSnapshot(); item.curveStyle = r.value; markProjectDirty(); updateUI(); renderPdf(); };
-      });
-    }
-    let totalCount = 0;
-    const pages = [];
-    if (kind === 'counter') {
-      state.pages.forEach((p, pi) => {
-        let n = 0;
-        getPageCanvases(p).forEach(c => { n += (c.annotations?.counterMarkers?.[item.id] || []).length; });
-        if (n > 0) { pages.push({ pageIdx: pi, count: n, label: p.label || 'Page ' + (pi + 1) }); totalCount += n; }
-      });
-    } else {
-      state.pages.forEach((p, pi) => {
-        let runs = 0;
-        getPageCanvases(p).forEach(c => {
-          const ann = c.annotations || makeAnnotations();
-          runs += (ann.quickLines || []).filter(q => q.lineTypeId === item.id).length;
-          runs += (ann.polylines || []).filter(poly => poly.lineTypeId === item.id).length;
-        });
-        if (runs > 0) { pages.push({ pageIdx: pi, count: runs, label: p.label || 'Page ' + (pi + 1) }); totalCount += runs; }
-      });
-    }
-    pagesEl.innerHTML = '';
-    if (pages.length === 0) {
-      pagesEl.innerHTML = '<p style="margin:0;color:var(--text2);font-size:0.9rem;">Not used on any page</p>';
-    } else {
-      pages.forEach(({ pageIdx, count, label }) => {
-        const div = document.createElement('div');
-        div.className = 'page-item';
-        div.textContent = kind === 'counter' ? label + ': ' + count + ' marker' + (count !== 1 ? 's' : '') : label + ': ' + count + ' run' + (count !== 1 ? 's' : '');
-        div.onclick = () => {
-          state.currentPage = pageIdx;
-          fitZoom();
-          hideModal('counterLineTypeDetailsModal');
-          updateUI();
-          renderPdf();
-        };
-        pagesEl.appendChild(div);
-      });
-    }
-    deleteBtn.onclick = () => {
-      if (totalCount === 0) {
-        performDeleteCounterLineType(kind, item);
-        hideModal('counterLineTypeDetailsModal');
-      } else {
-        pendingDeleteCounterLineType = { kind, item };
-        document.getElementById('deleteCounterLineTypeName').textContent = item.name || (kind === 'counter' ? 'this counter' : 'this line type');
-        document.getElementById('deleteCounterLineTypeMessage').textContent = 'This will remove ' + totalCount + (kind === 'counter' ? ' marker' + (totalCount !== 1 ? 's' : '') : ' line' + (totalCount !== 1 ? 's' : '')) + ' from the project. Continue?';
-        showModal('deleteCounterLineTypeConfirmModal');
-      }
-    };
-    showModal('counterLineTypeDetailsModal');
-  }
-  function performDeleteCounterLineType(kind, item) {
-    pushUndoSnapshot();
-    if (kind === 'counter') {
-      const idx = state.counters.findIndex(c => c.id === item.id);
-      if (idx >= 0) state.counters.splice(idx, 1);
-      state.pages.forEach(p => {
-        getPageCanvases(p).forEach(c => { if (c.annotations?.counterMarkers) delete c.annotations.counterMarkers[item.id]; });
-      });
-      if (state.activeCounterType === item.id) { state.activeCounterType = null; state.tool = TOOL.NONE; }
-    } else {
-      const idx = state.lineTypes.findIndex(lt => lt.id === item.id);
-      if (idx >= 0) state.lineTypes.splice(idx, 1);
-      state.pages.forEach(p => {
-        getPageCanvases(p).forEach(c => {
-          const ann = c.annotations;
-          if (ann) {
-            if (ann.quickLines) ann.quickLines = ann.quickLines.filter(q => q.lineTypeId !== item.id);
-            if (ann.polylines) ann.polylines = ann.polylines.filter(poly => poly.lineTypeId !== item.id);
-          }
-        });
-      });
-      if (state.activeLineTypeId === item.id) { state.activeLineTypeId = null; state.tool = TOOL.NONE; }
-      const selPage = state.pages[state.selectedLinePageIdx];
-      const selAnn = selPage ? getActiveAnnotations(selPage) : null;
-      const selPoly = (selAnn?.polylines || []).find(p => p.id === state.selectedLineId);
-      const selQuick = (selAnn?.quickLines || []).find(q => q.id === state.selectedLineId);
-      if ((selPoly && selPoly.lineTypeId === item.id) || (selQuick && selQuick.lineTypeId === item.id)) {
-        state.selectedLineId = null; state.selectedLineIsPoly = false; state.selectedLinePageIdx = null;
-      }
-    }
-    markProjectDirty();
-    updateUI();
-    renderPdf();
-  }
-
-  let pendingLineProperties = null;
-  function openLinePropertiesModal(it) {
-    pendingLineProperties = it;
-    const line = it.type === 'poly' ? it.poly : it.q;
-    const lt = state.lineTypes.find(l => l.id === line.lineTypeId);
-    const color = line.color || (lt?.color || '#4a9eff');
-    const lineTypeLineEl = document.getElementById('linePropertiesLineType');
-    if (lineTypeLineEl) {
-      lineTypeLineEl.textContent = lt
-        ? ('Line type: ' + (lt.name || 'Line'))
-        : 'Line type: \u2014';
-    }
-    const nameEl = document.getElementById('linePropertiesName');
-    const swatchEl = document.getElementById('linePropertiesSwatch');
-    const startDropEl = document.getElementById('linePropertiesStartDrop');
-    const endDropEl = document.getElementById('linePropertiesEndDrop');
-    const startDropUnitEl = document.getElementById('linePropertiesStartDropUnit');
-    const endDropUnitEl = document.getElementById('linePropertiesEndDropUnit');
-    const defaultDropUnit = getPageScale(it.pageIdx ?? state.currentPage)?.unit || 'ft';
-    const editVerticesGroup = document.getElementById('linePropertiesEditVerticesGroup');
-    const editVerticesBtn = document.getElementById('linePropertiesEditVertices');
-    nameEl.value = line.name || (it.type === 'poly' ? 'Polyline' : 'Quick line');
-    startDropEl.value = String(line.startDrop ?? '');
-    endDropEl.value = String(line.endDrop ?? '');
-    startDropUnitEl.value = line.startDropUnit || defaultDropUnit;
-    endDropUnitEl.value = line.endDropUnit || defaultDropUnit;
-    swatchEl.style.background = color;
-    editVerticesGroup.style.display = it.type === 'poly' ? '' : 'none';
-    nameEl.onblur = () => {
-      const v = nameEl.value.trim();
-      pushUndoSnapshot();
-      line.name = v || (it.type === 'poly' ? 'Polyline' : 'Quick line');
-      markProjectDirty();
-      updateUI();
-    };
-    swatchEl.onclick = () => {
-      showLineColorModal(color, (newColor) => {
-        pushUndoSnapshot();
-        line.color = newColor;
-        swatchEl.style.background = newColor;
-        markProjectDirty();
-        updateUI();
-        renderPdf();
-      });
-    };
-    const applyDrops = () => {
-      const sd = parseInt(startDropEl.value, 10);
-      const ed = parseInt(endDropEl.value, 10);
-      line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
-      line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
-      line.startDropUnit = startDropUnitEl.value;
-      line.endDropUnit = endDropUnitEl.value;
-    };
-    startDropEl.onblur = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); };
-    endDropEl.onblur = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); };
-    startDropUnitEl.onchange = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); renderPdf(); };
-    endDropUnitEl.onchange = () => { pushUndoSnapshot(); applyDrops(); markProjectDirty(); updateUI(); renderPdf(); };
-    const adjustDrop = (el, unitEl, prop, delta) => {
-      const v = parseInt(el.value, 10);
-      const cur = isNaN(v) || v < 0 ? 0 : v;
-      const next = Math.max(0, cur + delta);
-      pushUndoSnapshot();
-      line[prop] = next;
-      line[prop + 'Unit'] = unitEl.value;
-      el.value = next || '';
-      markProjectDirty();
-      updateUI();
-      renderPdf();
-    };
-    document.getElementById('linePropertiesStartDropPlus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 1);
-    document.getElementById('linePropertiesStartDropPlus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 10);
-    document.getElementById('linePropertiesStartDropMinus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -1);
-    document.getElementById('linePropertiesStartDropMinus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -10);
-    document.getElementById('linePropertiesClearStartDrop').onclick = () => {
-      pushUndoSnapshot();
-      line.startDrop = 0;
-      startDropEl.value = '';
-      markProjectDirty();
-      updateUI();
-      renderPdf();
-    };
-    document.getElementById('linePropertiesEndDropPlus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 1);
-    document.getElementById('linePropertiesEndDropPlus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 10);
-    document.getElementById('linePropertiesEndDropMinus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -1);
-    document.getElementById('linePropertiesEndDropMinus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -10);
-    document.getElementById('linePropertiesClearEndDrop').onclick = () => {
-      pushUndoSnapshot();
-      line.endDrop = 0;
-      endDropEl.value = '';
-      markProjectDirty();
-      updateUI();
-      renderPdf();
-    };
-    if (editVerticesBtn) {
-      editVerticesBtn.onclick = () => {
-        hideModal('linePropertiesModal');
-        pendingLineProperties = null;
-        enterEditMode(it.poly.id, it.pageIdx);
-      };
-    }
-    showModal('linePropertiesModal');
-  }
-  function closeLinePropertiesModal() {
-    if (!pendingLineProperties) return;
-    const line = pendingLineProperties.type === 'poly' ? pendingLineProperties.poly : pendingLineProperties.q;
-    const startDropEl = document.getElementById('linePropertiesStartDrop');
-    const endDropEl = document.getElementById('linePropertiesEndDrop');
-    const startDropUnitEl = document.getElementById('linePropertiesStartDropUnit');
-    const endDropUnitEl = document.getElementById('linePropertiesEndDropUnit');
-    if (startDropEl && endDropEl) {
-      const sd = parseInt(startDropEl.value, 10);
-      const ed = parseInt(endDropEl.value, 10);
-      line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
-      line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
-      if (startDropUnitEl) line.startDropUnit = startDropUnitEl.value;
-      if (endDropUnitEl) line.endDropUnit = endDropUnitEl.value;
-    }
-    pushUndoSnapshot();
-    markProjectDirty();
-    hideModal('linePropertiesModal');
-    pendingLineProperties = null;
-    updateUI();
-    renderPdf();
-  }
-
-  // The Groups modals (openGroupModal + the groupModal handlers,
-  // refreshGroupAssignButtons + openGroupAssignModal + the groupAssign handlers,
-  // and the pendingGroupEdit / pendingGroupAssignTarget / openedGroupModalFromAssign
-  // flags) moved to features/groups.js (window.App registry); reached via
-  // App.openGroupModal / App.openGroupAssignModal at call time. deleteGroup stays
-  // here (published as App.deleteGroup for the moved Delete handler).
-  function deleteGroup(groupId) {
-    const g = (state.groups || []).find(x => x.id === groupId);
-    if (!g) return false;
-    const count = countItemsInGroup(groupId);
-    if (count > 0 && !confirm('This group has ' + count + ' item(s). Remove group and clear assignment from those items?')) return false;
-    pushUndoSnapshot();
-    state.groups = (state.groups || []).filter(x => x.id !== groupId);
-    if (state.activeGroupId === groupId) state.activeGroupId = null;
-    state.pages.forEach(p => {
-      getPageCanvases(p).forEach(c => {
-        const ann = c.annotations || makeAnnotations();
-        Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
-        (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
-        (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
-      });
-    });
-    markProjectDirty();
-    updateUI();
-    renderPdf();
-    return true;
-  }
+  // The Counter/Line Type details modal (openCounterLineTypeDetailsModal +
+  // performDeleteCounterLineType + the counterLineTypeDetailsItem /
+  // pendingDeleteCounterLineType flags), the Line Properties modal
+  // (openLinePropertiesModal / closeLinePropertiesModal + pendingLineProperties),
+  // and deleteGroup moved to features/item-details.js (window.App registry);
+  // reached via App.* at call time. showModal/hideModal stay here (app-wide
+  // modal primitives); hideModal resets the moved details item via the
+  // App.onCounterLineTypeDetailsHidden callback.
 
   // SECTION: Toasts & line color picker
   let airboardToastTimer = null;
@@ -7852,7 +7533,7 @@
       }
       if (detailsCustomGrid) {
         const grid = document.getElementById('counterLineTypeDetailsIconGrid');
-        const item = counterLineTypeDetailsItem;
+        const item = App.getCounterLineTypeDetailsItem ? App.getCounterLineTypeDetailsItem() : null;
         const currentIcon = item?.icon || '';
         const iconCellsDetails = effectiveCustom.map((ic) => {
           const sel = ic.value === currentIcon ? ' selected' : '';
@@ -8224,18 +7905,8 @@
     state.pendingDeletePage = null;
     if (pending?.onDelete) pending.onDelete();
   };
-  document.getElementById('counterLineTypeDetailsClose').onclick = () => { counterLineTypeDetailsItem = null; hideModal('counterLineTypeDetailsModal'); };
-  document.getElementById('linePropertiesClose').onclick = () => closeLinePropertiesModal();
-  document.getElementById('deleteCounterLineTypeCancel').onclick = () => { hideModal('deleteCounterLineTypeConfirmModal'); pendingDeleteCounterLineType = null; };
-  document.getElementById('deleteCounterLineTypeConfirm').onclick = () => {
-    hideModal('deleteCounterLineTypeConfirmModal');
-    const pending = pendingDeleteCounterLineType;
-    pendingDeleteCounterLineType = null;
-    if (pending) {
-      performDeleteCounterLineType(pending.kind, pending.item);
-      hideModal('counterLineTypeDetailsModal');
-    }
-  };
+  // The counterLineTypeDetailsClose / linePropertiesClose / deleteCounterLineType
+  // confirm+cancel bindings moved to features/item-details.js with their modals.
   document.getElementById('clearPageConfirm').onclick = () => {
     hideModal('clearPageConfirmModal');
     pushUndoSnapshot();
@@ -10664,7 +10335,7 @@
     else if (t.type === 'polyline') it = { type: 'poly', poly: ann.polylines[t.index], pageIdx: state.currentPage };
     if (!it) return;
     document.getElementById('contextMenu').classList.remove('visible');
-    openLinePropertiesModal(it);
+    App.openLinePropertiesModal(it);
   };
   document.getElementById('ctxShowLength').onclick = () => {
     const t = state.ctxTarget;
@@ -12069,7 +11740,7 @@
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
       else if (document.getElementById('deleteZoneModal').classList.contains('visible')) { hideModal('deleteZoneModal'); state.pendingDeleteZone = null; }
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
-      else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { closeLinePropertiesModal(); }
+      else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
       else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
       else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
@@ -13510,7 +13181,10 @@
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.getActiveAnnotations = getActiveAnnotations;
-  App.deleteGroup = deleteGroup;
+  // Item detail & properties modal deps (features/item-details.js; deleteGroup's
+  // App registration moved there too — groups.js keeps consuming App.deleteGroup).
+  App.enterEditMode = enterEditMode;
+  App.countItemsInGroup = countItemsInGroup;
   App.getPageScale = getPageScale;
   App.getPageSheetAnalysis = getPageSheetAnalysis;
   App.STANDARD_SHEETS = STANDARD_SHEETS;

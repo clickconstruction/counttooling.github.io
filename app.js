@@ -144,17 +144,21 @@
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
-  function getActiveCanvas(page) {
+  // pageIdxHint (optional): the page's index when the caller already knows it —
+  // skips the O(pages) indexOf, which otherwise makes every all-pages loop over
+  // these accessors O(pages²) on large projects. Callers without the index are
+  // unchanged (indexOf fallback).
+  function getActiveCanvas(page, pageIdxHint) {
     if (!page) return null;
     const canvases = getPageCanvases(page);
     if (!canvases.length) return null;
-    const pageIdx = state.pages?.indexOf(page);
+    const pageIdx = (pageIdxHint != null && state.pages?.[pageIdxHint] === page) ? pageIdxHint : state.pages?.indexOf(page);
     const activeId = pageIdx >= 0 ? state.activeCanvasIdByPage?.[pageIdx] : null;
     const found = activeId ? canvases.find(c => c.id === activeId) : null;
     return found || canvases[0];
   }
-  function getActiveAnnotations(page) {
-    const canvas = getActiveCanvas(page);
+  function getActiveAnnotations(page, pageIdxHint) {
+    const canvas = getActiveCanvas(page, pageIdxHint);
     return canvas?.annotations ?? makeAnnotations();
   }
   function mergeAnnotations(...anns) {
@@ -4311,7 +4315,12 @@
     if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
     const bundleNotesBtn = document.getElementById('bundleNotes');
     if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
-    const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
+    // Cheap existence probe (report.js) — semantically identical to
+    // getPipeToolingSummary().length > 0 but short-circuits at the first count
+    // or line instead of building the whole summary (a real cost per updateUI
+    // on large projects). Same load-order guard as the App.* checks above:
+    // report.js loads after app.js, so this can run before it registers.
+    const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
     const ptBtn = document.getElementById('forPipeToolingDropdown');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
     const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
@@ -4573,13 +4582,13 @@
     filtered.forEach(c => {
       if (state.counterSettings?.showOnlyCountersOnCurrentPage && state.pages.length > 0) {
         const page = state.pages[state.currentPage];
-        const ann = getActiveAnnotations(page);
+        const ann = getActiveAnnotations(page, state.currentPage);
         const markers = (ann?.counterMarkers?.[c.id] || []);
         if (markers.length === 0) return;
       }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p) => n + ((getActiveAnnotations(p)?.counterMarkers?.[c.id] || []).length), 0);
+      const count = state.pages.reduce((n, p, pi) => n + ((getActiveAnnotations(p, pi)?.counterMarkers?.[c.id] || []).length), 0);
       div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
@@ -4627,7 +4636,7 @@
     filtered.forEach(lt => {
       if (state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage && state.pages.length > 0) {
         const page = state.pages[state.currentPage];
-        const ann = getActiveAnnotations(page);
+        const ann = getActiveAnnotations(page, state.currentPage);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length === 0 && polys.length === 0) return;
@@ -4635,7 +4644,7 @@
       let runs = 0, len = 0;
       const pageIndices = [];
       state.pages.forEach((p, pi) => {
-        const ann = getActiveAnnotations(p);
+        const ann = getActiveAnnotations(p, pi);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
@@ -4728,7 +4737,7 @@
     const byType = {};
     state.pages.forEach((p, pi) => {
       if (state.lineTypeSettings?.showOnlyLinesOnCurrentPage && state.pages.length > 0 && pi !== state.currentPage) return;
-      const ann = getActiveAnnotations(p);
+      const ann = getActiveAnnotations(p, pi);
       (ann?.polylines || []).forEach(poly => {
         const tid = poly.lineTypeId || '_none';
         if (!byType[tid]) byType[tid] = [];
@@ -4756,7 +4765,7 @@
       let totalLen = 0;
       filteredItems.forEach(it => {
         const p = state.pages[it.pageIdx];
-        const annIt = p ? getActiveAnnotations(p) : makeAnnotations();
+        const annIt = p ? getActiveAnnotations(p, it.pageIdx) : makeAnnotations();
         totalLen += it.type === 'poly' ? getLineLengthFeetForTotals(it.poly, it.pageIdx, true, annIt) : getLineLengthFeetForTotals(it.q, it.pageIdx, false, annIt);
       });
       const scale = pickScaleForLineType(pageIndices);
@@ -4784,7 +4793,7 @@
       const ltItem = state.lineTypes.find(l => l.id === (it.type === 'poly' ? it.poly.lineTypeId : it.q.lineTypeId));
       const color = (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff');
       const pageScale = state.pages[it.pageIdx]?.scale;
-      const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx]) : makeAnnotations();
+      const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx], it.pageIdx) : makeAnnotations();
       let dist, name;
       if (it.type === 'poly') {
         dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatFeet(getLineRealWorldLengthFeet(it.poly, it.pageIdx, true, annRow), getEffectiveScaleForLine(annRow, it.poly, true, it.pageIdx));
@@ -4852,8 +4861,8 @@
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
-    state.pages.forEach(p => {
-      const ann = getActiveAnnotations(p);
+    state.pages.forEach((p, pi) => {
+      const ann = getActiveAnnotations(p, pi);
       Object.values(ann?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
       (ann?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
       (ann?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
@@ -4861,7 +4870,7 @@
     const counterByGroup = {};
     const lineTypeByGroup = {};
     state.pages.forEach((p, pi) => {
-      const ann = getActiveAnnotations(p);
+      const ann = getActiveAnnotations(p, pi);
       (state.counters || []).forEach(c => {
         (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -11051,6 +11060,17 @@
     const scale = state.zoom / lastRenderedZoom;
     canvasContainer.style.transform = 'translate3d(' + state.pan.x + 'px, ' + state.pan.y + 'px, 0) scale(' + scale + ')';
   }
+  // Light per-frame zoom sync: just the zoom-% readout + the zoom-rail thumb.
+  // Used by the wheel/pinch rAF paths and the zoom-rail drag INSTEAD of the full
+  // updateUI() — the sidebar lists don't depend on zoom, and rebuilding them on
+  // every gesture frame is what made zooming lag on large multi-page projects.
+  // The gesture-end commits (commitWheelZoom / commitPinchZoom) still run the
+  // full updateUI() once.
+  function syncZoomIndicators() {
+    const zp = document.getElementById('zoomPct');
+    if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
+    if (App.onZoomRailSync) App.onZoomRailSync();
+  }
   function commitWheelZoom() {
     if (wheelZoomCommitTimer) clearTimeout(wheelZoomCommitTimer);
     wheelZoomCommitTimer = null;
@@ -11344,7 +11364,7 @@
         state.pan.y = pt.y - pdfY * newZoom;
         state.zoom = newZoom;
         updateContainerTransform();
-        updateUI();
+        syncZoomIndicators();   // full updateUI() waits for commitWheelZoom — see syncZoomIndicators
         if (wheelZoomCommitTimer) clearTimeout(wheelZoomCommitTimer);
         wheelZoomCommitTimer = setTimeout(commitWheelZoom, 150);
       });
@@ -11406,9 +11426,7 @@
         requestAnimationFrame(() => {
           pinchZoomPending = false;
           updateContainerTransform();
-          const zp = document.getElementById('zoomPct');
-          if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
-          if (App.onZoomRailSync) App.onZoomRailSync();
+          syncZoomIndicators();
         });
       }
     } else if (e.touches.length === 1 && state.touchPanStart) {
@@ -13103,7 +13121,7 @@
 
   window.state = state;
   window.makeAnnotations = makeAnnotations;
-  window.getAnnotationsForReport = (page) => getActiveAnnotations(page);
+  window.getAnnotationsForReport = (page, pageIdx) => getActiveAnnotations(page, pageIdx);
   window.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
   window.ptDist = ptDist;
   window.polylineDistance = polylineDistance;
@@ -13140,6 +13158,7 @@
   App.doZoomOut = doZoomOut;
   App.updateContainerTransform = updateContainerTransform;
   App.commitWheelZoom = commitWheelZoom;
+  App.syncZoomIndicators = syncZoomIndicators;
   App.getCanvasCaps = getCanvasCaps;
   App.setCanvasCaps = setCanvasCaps;
   App.effectiveDpr = effectiveDpr;

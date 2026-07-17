@@ -21,8 +21,12 @@
  * anchor the zoom at the canvas-wrapper center and reuse app.js's cheap
  * transform preview + debounced commit (App.updateContainerTransform /
  * App.commitWheelZoom - publish-only, the wheel/pinch paths keep them).
- * updateUI() calls App.onZoomRailSync() after every zoom change so the thumb
- * tracks wheel / pinch / +- / fit while the rail is open.
+ * Per drag-move the rail runs only the light App.syncZoomIndicators() (zoom-%
+ * readout + thumb), never the full updateUI() - the sidebar rebuild is what
+ * made zoom gestures lag on large multi-page projects; the full updateUI()
+ * runs once in the commit. updateUI() calls App.onZoomRailSync() after every
+ * zoom change so the thumb tracks wheel / pinch / +- / fit while the rail is
+ * open.
  *
  * Boundary rule: all shared dependencies are read from App.* at call time,
  * never captured at load, so load order beyond "after app.js" does not
@@ -104,7 +108,7 @@
     state.pan.y = pt.y - pdfY * newZoom;
     state.zoom = newZoom;
     App.updateContainerTransform();
-    App.updateUI(); // writes #zoomPct and fires onZoomRailSync -> positionThumb
+    App.syncZoomIndicators(); // writes #zoomPct and fires onZoomRailSync -> positionThumb
   }
 
   function zoomFromPointer(e) {

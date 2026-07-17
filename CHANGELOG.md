@@ -13,6 +13,67 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## perf: large-plan responsiveness, phases 1+2 (zoom gestures + page-switch bitmap cache)
+
+**Problem.** On large multi-page plans, zooming lagged with erratic jumps and page switches
+took seconds. Two root causes: (1) the wheel-zoom rAF and zoom-rail drag ran the full
+`updateUI()` **every frame**, and `updateUI()` rebuilds every sidebar list with
+O(all annotations across all pages) length math (16–31ms/call measured on a seeded 40-page
+project — frames blew the 16ms budget, wheel deltas accumulated, the zoom lurched); (2) every
+page switch re-rasterized the whole sheet from scratch via pdf.js, and rapid flips serialized
+full renders of every intermediate page.
+
+**Phase 1 — zoom gestures never run the full updateUI:**
+
+- New `syncZoomIndicators()` (zoom-% readout + rail-thumb sync only): the wheel rAF, pinch
+  rAF, and zoom-rail drag use it per frame; the full `updateUI()` still runs exactly once at
+  the debounced gesture-end commit. Published as `App.syncZoomIndicators` for
+  [features/zoom-rail.js](features/zoom-rail.js).
+- `updateUI()` win A: new `getPipeToolingHasData()` (report.js, on `window`) replaces the
+  `getPipeToolingSummary().length > 0` existence check — same counts-or-lines rule, but
+  short-circuits at the first hit instead of building the whole summary per updateUI call.
+- `updateUI()` win B: `getActiveCanvas`/`getActiveAnnotations` accept an optional `pageIdx`
+  hint (validated, `indexOf` fallback) so the all-pages loops in the sidebar renderers and
+  report walkers stop paying an O(pages) `indexOf` per page — removing the O(pages²) factor.
+- Measured after: per-frame gesture work ~0ms (was 16–31ms). Regression:
+  [zoom-no-updateui-during-gesture.spec.js](zoom-no-updateui-during-gesture.spec.js)
+  (sidebar sentinel survives the gesture; `#zoomPct` tracks per frame; exactly one
+  `updateUI()` at the commit).
+
+**Phase 2 — PDF render bitmap cache:**
+
+- New `// SECTION: PDF render bitmap cache`: an LRU (max 4) of rendered-page `ImageBitmap`s
+  keyed by the **self-validating** tuple (pdfPage proxy identity + rotation + zoom +
+  effDpr) — automatically invalidated by page deletes, prepare-pdf's `pdfPage` rebinds,
+  undo's in-place rotation writes, wrapper resizes, and `renderAreaSafety`/caps changes.
+  Area-capped per entry at min(0.15 × maxArea × safety, 5MP) so deep-zoom giants are never
+  cached (worst-case retention ~20MB); every evict/drop/clear `close()`s the bitmap; a
+  generation counter makes async inserts self-discard across clears. Entries are snapshotted
+  from the offscreen pre-free, post read-back guard (never a blank), using a key tuple
+  **captured at render start** so a cancel-lost race can't poison the cache (the same
+  capture fixed a pre-existing hole where a mid-gesture completion set `lastRenderedZoom`
+  from live state and made `commitWheelZoom` skip its crisp re-render).
+- `renderPdf` cache-hit fast path: synchronous blit (no pdf.js), with a blank read-back
+  mirroring the full path's pressure response (drop + clear + ratchet + re-enter).
+- Rapid-flip cancellation: the in-flight guard now `cancel()`s the running render task
+  (double-cancel guarded), landing in the existing `RenderingCancelledException` handling.
+- Stale-blit preview: switching to a page cached at a different zoom paints it scaled
+  immediately; the crisp render replaces it.
+- Idle prefetch (250ms after a settled render) rasters `currentPage±1` at predicted fit
+  zoom into the cache via a dedicated scratch canvas; skipped under memory pressure/hidden
+  tab; cancelled by any `renderPdf` entry and by wheel/touchstart/pointerdown (pdf.js runs
+  operator lists in main-thread chunks — speculation must never jank a gesture).
+- Cache clears are wired at every `state.pages` rebuild / `pdfPage` rebind site (app.js ×7,
+  features/prepare-pdf.js both branches, features/load-project.js ×3 via the new
+  `App.clearPdfBitmapCache`) plus the ratchet branch. Debug seams:
+  `App.__pdfBitmapCacheStats`, `App.__pdfBitmapCacheDump`.
+- Measured (40-page synthetic): cold switch 64ms raster; revisit 6ms blit; prefetched
+  neighbor first visit 12ms blit. On real dense sheets cold is seconds, so hits are the
+  difference between instant and unusable. Regression:
+  [page-switch-cache.spec.js](page-switch-cache.spec.js).
+
+---
+
 ## fix(auth): INITIAL_SESSION no-session event wiped view-link projects
 
 **Problem.** Share/view links (`/app/?t=<token>`) loaded the project and then went black on any
@@ -571,43 +632,59 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 19 feature files in load order, each with a `*.spec.js` Playwright
-regression (cloud-gated specs `test.skip` when Supabase secrets are absent):
+The 24 feature files in load order, each with a `*.spec.js` Playwright
+regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
+All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
+app.js; the Zoom Rail was born as a feature file (a new feature built directly
+on the registry). Note the "pilot #N" split numbering used in
+AGENTS/ARCHITECTURE is **chronological by extraction**, not this load order —
+zoom-rail loads 4th but arrived much later:
 
 1. [features/canvas-repair.js](features/canvas-repair.js) — Canvas Repair modal
    (first split; introduced the registry).
 2. [features/note.js](features/note.js) — Note add/edit modal.
 3. [features/zoom.js](features/zoom.js) — Zoom Settings modal.
-4. [features/manage-icons.js](features/manage-icons.js) — Manage Icons modal
+4. [features/zoom-rail.js](features/zoom-rail.js) — the Zoom Rail (right-edge
+   vertical zoom slider; not an extraction — built registry-native).
+5. [features/manage-icons.js](features/manage-icons.js) — Manage Icons modal
    (first multi-region move).
-5. [features/multiply-zone-settings.js](features/multiply-zone-settings.js) —
+6. [features/multiply-zone-settings.js](features/multiply-zone-settings.js) —
    Multiply Zone settings modal.
-6. [features/export-pdfs.js](features/export-pdfs.js) — Export PDFs modal's
+7. [features/export-pdfs.js](features/export-pdfs.js) — Export PDFs modal's
    `specificPages*` cluster (largest single move; 9 publish-only deps).
-7. [features/legend-settings.js](features/legend-settings.js) — Summary Legend
+8. [features/legend-settings.js](features/legend-settings.js) — Summary Legend
    settings modal.
-8. [features/page-settings.js](features/page-settings.js) — Page settings modal.
-9. [features/counter-settings.js](features/counter-settings.js) — Counter
-   settings modal (first two-region consolidation).
-10. [features/line-type-settings.js](features/line-type-settings.js) — Line Type
+9. [features/page-settings.js](features/page-settings.js) — Page settings modal.
+10. [features/counter-settings.js](features/counter-settings.js) — Counter
+    settings modal (first two-region consolidation).
+11. [features/line-type-settings.js](features/line-type-settings.js) — Line Type
     settings modal.
-11. [features/choose-create-line-type.js](features/choose-create-line-type.js) —
+12. [features/choose-create-line-type.js](features/choose-create-line-type.js) —
     Choose/Create Line Type modal.
-12. [features/scale.js](features/scale.js) — Set Scale modal (per-page / zone
+13. [features/scale.js](features/scale.js) — Set Scale modal (per-page / zone
     scale).
-13. [features/groups.js](features/groups.js) — Group + Group Assign modals
+14. [features/groups.js](features/groups.js) — Group + Group Assign modals
     (bidirectional callback for modal-hidden).
-14. [features/grid.js](features/grid.js) — Grid overlay toggle + settings.
-15. [features/quick-line.js](features/quick-line.js) — Quick Line modal +
+15. [features/grid.js](features/grid.js) — Grid overlay toggle + settings.
+16. [features/quick-line.js](features/quick-line.js) — Quick Line modal +
     line-modifier preview.
-16. [features/counter.js](features/counter.js) — Counter modal (Choose/Create/
+17. [features/counter.js](features/counter.js) — Counter modal (Choose/Create/
     Icon tabs).
-17. [features/save-status.js](features/save-status.js) — Save Status modal UI
+18. [features/save-status.js](features/save-status.js) — Save Status modal UI
     (getter-accessor + deferred-wrapper patterns).
-18. [features/manage-projects.js](features/manage-projects.js) — Manage Projects
+19. [features/manage-projects.js](features/manage-projects.js) — Manage Projects
     admin modal (Supabase-gated).
-19. [features/user-admin.js](features/user-admin.js) — Manage-Users admin modals
+20. [features/user-admin.js](features/user-admin.js) — Manage-Users admin modals
     (create/delete user, all-users; Supabase-gated).
+21. [features/load-project.js](features/load-project.js) — cloud Load Project
+    modal (most dependency-heavy split; ~20 `App.*` deps + four setters).
+22. [features/prepare-pdf.js](features/prepare-pdf.js) — Prepare PDF modal
+    (page keep/drop, rotate, append mode).
+23. [features/quick-modals.js](features/quick-modals.js) — Quick Plumbing +
+    Quick Count modifier-driven create panels.
+24. [features/pdf-bundle.js](features/pdf-bundle.js) — PDF-bundling helpers
+    (report/notes/highlights → jsPDF; re-homed already-registered `App.*`
+    entries).
 
 ### Tooling
 
@@ -844,7 +921,9 @@ phases.
   non-load-bearing for correctness.
 - **Deploy discipline (no build step):** bump `CACHE_VERSION` in [sw.js](sw.js) on every
   deploy that changes a precached asset, or the SW won't detect the update (the admin
-  global-force-reload is the backstop). GitHub Pages caches `sw.js` ~10 min, so updates
+  global-force-reload is the backstop). *(Since automated: the manual bump kept being
+  forgotten, so `CACHE_VERSION` is now a content hash stamped by `npm run build:sw` and
+  checked in `npm run check`.)* GitHub Pages caches `sw.js` ~10 min, so updates
   lag slightly. **iOS:** an installed app has a separate storage partition — sign in + open
   a takeoff once online before offline works.
 - **Regression test** — [pwa.spec.js](pwa.spec.js): manifest linked/parseable with

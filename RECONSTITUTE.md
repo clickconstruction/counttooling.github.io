@@ -7,7 +7,7 @@ of features built on top of this core lives in [ARCHITECTURE.md](ARCHITECTURE.md
 [CHANGELOG.md](CHANGELOG.md).
 
 Everything below was reverse-engineered from and verified against the current code
-in [index.html](index.html) and [report.js](report.js).
+in [app.js](app.js) and [report.js](report.js).
 
 ## What ClickCount is
 
@@ -19,17 +19,21 @@ real-world line lengths and produces reports/exports.
 ## Tech model
 
 - Vanilla HTML, CSS, and JavaScript. No build step; static deployment.
-- Static assets, no bundler. The app is split across a few files loaded via
-  `<link>` / `<script src>`: [index.html](index.html) holds the HTML shell,
-  every modal, and the main JS IIFE; [styles.css](styles.css) holds all CSS;
-  [icons.js](icons.js) is a classic script loaded before the IIFE that defines
-  the bundled icon data (`*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`,
-  `RING_PATH`, `CUSTOM_ICONS`, `ICONS`) in the shared global lexical scope;
-  [geometry.js](geometry.js) is a classic script loaded before the IIFE that
-  defines pure math/geometry/parse primitives (`ptDist`, `polylineDistance`,
-  `pointInRect`, zone locators, `parseFraction`, etc.) with no `state`
-  dependency; [report.js](report.js) loads after it and reads globals exposed
-  on `window`.
+- Static assets, no bundler. The app shell is [app/index.html](app/index.html)
+  (served at `/app/`; the repo-root [index.html](index.html) is the static
+  marketing landing) — it holds the HTML structure and every modal, and loads
+  the shared root-level assets via root-absolute `<link>` / `<script src>`:
+  [styles.css](styles.css) holds all CSS; [icons.js](icons.js) is a classic
+  script loaded before the main script that defines the bundled icon data
+  (`*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`,
+  `CUSTOM_ICONS`, `ICONS`) in the shared global lexical scope;
+  [geometry.js](geometry.js) is a classic script loaded before the main script
+  that defines pure math/geometry/parse primitives (`ptDist`,
+  `polylineDistance`, `pointInRect`, zone locators, `parseFraction`, etc.) with
+  no `state` dependency; [app.js](app.js) is the main IIFE (the bulk of the app
+  logic), followed by the `features/*.js` splits, then [report.js](report.js),
+  which reads globals exposed on `window`. (Full file map:
+  [ARCHITECTURE.md](ARCHITECTURE.md).)
 - Third-party libs are **vendored locally** in `/vendor/` (version-pinned filenames),
   not loaded from a CDN: pdf.js + its worker (render), pdf-lib (PDF manipulation),
   html2canvas + jsPDF (report/PDF export), supabase-js (optional cloud), tus-js-client
@@ -42,7 +46,7 @@ real-world line lengths and produces reports/exports.
 ## Core data model
 
 The single source of truth is the module-level `state` object (see
-`// SECTION: State` in [index.html](index.html)). The takeoff data is a tree:
+`// SECTION: State` in [app.js](app.js)). The takeoff data is a tree:
 
 ```
 state.pages[]            // one entry per PDF page
@@ -144,7 +148,7 @@ events -> handlers -> mutate state -> render
 ## Report / summary pipeline
 
 [report.js](report.js) builds the takeoff report and the copy/export summaries. It
-runs in the same page and depends on globals that [index.html](index.html) must
+runs in the same page and depends on globals that [app.js](app.js) must
 keep exposed on `window`:
 
 `state`, `makeAnnotations`, `ptDist`, `polylineDistance`, `formatDist`,
@@ -154,7 +158,8 @@ keep exposed on `window`:
 `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`.
 
 It exposes back: `buildReportHtml(options)`, `printReport(mode)`,
-`getPipeToolingSummary(options)`, `getEmailTextSummary(options)`. The two summary
+`getPipeToolingSummary(options)`, `getPipeToolingHasData()` (cheap existence
+check used by `updateUI`), `getEmailTextSummary(options)`. The two summary
 functions accept `{ pageIndices?, getAnnotations? }`.
 
 ## Invariants (do not break)

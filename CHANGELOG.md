@@ -632,7 +632,7 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 28 feature files in load order, each with a `*.spec.js` Playwright
+The 29 feature files in load order, each with a `*.spec.js` Playwright
 regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
 All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
 app.js; the Zoom Rail was born as a feature file (a new feature built directly
@@ -701,6 +701,10 @@ zoom-rail loads 4th but arrived much later:
     (+ import-after-PDF prompt) and the Clear Page confirm flow (new
     publish-only deps `applyPageAnnotationsFromData`/`getActiveCanvas`; the
     custom-icon upload handler stays in app.js).
+29. [features/zone-modals.js](features/zone-modals.js) — Multiply Zone value
+    modal + Delete Zone confirm + Delete Page confirm handlers (no entry
+    points; pending state rides on `state`; one publish-only dep,
+    `performDeleteZone`).
 
 ### Tooling
 

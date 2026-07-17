@@ -7469,79 +7469,10 @@
   // features/note.js (window.App registry); openNoteModal is reached via
   // App.openNoteModal at call time.
 
-  // SECTION: Zone & page-action modal handlers
-  document.getElementById('multiplyZoneCancel').onclick = () => {
-    hideModal('multiplyZoneModal');
-    state.multiplyZoneStart = null;
-    state.pendingMultiplyZone = null;
-    state.pendingMultiplyZoneEdit = null;
-  };
-  document.getElementById('deleteZoneCancel').onclick = () => {
-    hideModal('deleteZoneModal');
-    state.pendingDeleteZone = null;
-  };
-  document.getElementById('deleteZoneConfirm').onclick = () => {
-    const pending = state.pendingDeleteZone;
-    hideModal('deleteZoneModal');
-    state.pendingDeleteZone = null;
-    if (pending?.ann && pending?.collected) {
-      performDeleteZone(pending.ann, pending.collected);
-    }
-  };
-  (() => {
-    const inputEl = document.getElementById('multiplyZoneMultiplier');
-    const sync = () => { const v = parseInt(inputEl.value, 10); if (!isNaN(v) && v >= 1) state.pendingMultiplyZoneValue = v; };
-    if (inputEl) {
-      inputEl.oninput = inputEl.onchange = sync;
-      inputEl.onblur = sync;
-    }
-  })();
-  document.getElementById('multiplyZoneApply').onclick = (e) => {
-    const pending = state.pendingMultiplyZone;
-    /* Defer so input blur commits value before we read. Number inputs may not
-       update .value until after blur; click runs before blur on some browsers. */
-    setTimeout(() => {
-      const inputEl = document.getElementById('multiplyZoneMultiplier');
-      if (inputEl) { const v = parseInt(inputEl.value, 10); if (!isNaN(v) && v >= 1) state.pendingMultiplyZoneValue = v; }
-      hideModal('multiplyZoneModal');
-      const edit = state.pendingMultiplyZoneEdit;
-      state.pendingMultiplyZone = null;
-      state.pendingMultiplyZoneEdit = null;
-      const mult = state.pendingMultiplyZoneValue != null && state.pendingMultiplyZoneValue >= 1
-        ? state.pendingMultiplyZoneValue
-        : parseInt(document.getElementById('multiplyZoneMultiplier').value, 10);
-      if (isNaN(mult) || mult < 1) return;
-      if (edit) {
-        const page = state.pages[state.currentPage];
-        const ann = page ? getActiveAnnotations(page) : null;
-        const zone = ann?.multiplyZones?.[edit.zoneIndex];
-        if (zone) {
-          pushUndoSnapshot();
-          zone.multiplier = mult;
-          markProjectDirty();
-        }
-      } else if (pending) {
-        pushUndoSnapshot();
-        const page = state.pages[state.currentPage];
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) {
-          if (!canvas.annotations.multiplyZones) canvas.annotations.multiplyZones = [];
-          canvas.annotations.multiplyZones.push({ x1: pending.x1, y1: pending.y1, x2: pending.x2, y2: pending.y2, multiplier: mult, id: uid() });
-        }
-        state.tool = TOOL.NONE;
-        markProjectDirty();
-      }
-      updateUI();
-      renderPdf();
-    }, 0);
-  };
-  document.getElementById('deletePageCancel').onclick = () => { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; };
-  document.getElementById('deletePageConfirm').onclick = () => {
-    hideModal('deletePageConfirmModal');
-    const pending = state.pendingDeletePage;
-    state.pendingDeletePage = null;
-    if (pending?.onDelete) pending.onDelete();
-  };
+  // SECTION: Sidebar drawer toggles
+  // The Multiply Zone value modal, Delete Zone confirm, and Delete Page confirm
+  // handlers moved to features/zone-modals.js (all element-bound; their pending
+  // state lives on `state`, so no callbacks were needed).
   // The counterLineTypeDetailsClose / linePropertiesClose / deleteCounterLineType
   // confirm+cancel bindings moved to features/item-details.js with their modals;
   // the #clearPageCancel / #clearPageConfirm handlers moved to
@@ -12606,6 +12537,8 @@
   // Import Canvas / Clear Page deps (features/import-clear.js).
   App.applyPageAnnotationsFromData = applyPageAnnotationsFromData;
   App.getActiveCanvas = getActiveCanvas;
+  // Zone/page-action modal dep (features/zone-modals.js).
+  App.performDeleteZone = performDeleteZone;
   // Output cluster deps (features/output.js).
   App.SUPABASE_ENABLED = SUPABASE_ENABLED;
   App.getOrCreateViewLinkUrl = getOrCreateViewLinkUrl;

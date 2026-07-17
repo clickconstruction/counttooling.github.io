@@ -97,6 +97,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [share-links.spec.js](share-links.spec.js) | Playwright regression for pilot #27 — always-run registry-contract smoke (the full flow is Supabase-gated): `App.openShareProjectModal` + `App.onViewLinkRevoked` are functions; opening with no cloud project/session is a safe no-op (modal stays hidden); the view-links collapse toggle round-trips; the close binding hides a force-shown modal. Asserts no console / page errors; `npx playwright test share-links.spec.js` |
 | [features/import-clear.js](features/import-clear.js) | Twenty-eighth feature-file split (`window.App` registry pilot #28) — the **canvas JSON import** (`#importInput` change handler + the `#importBtn`/`#importBtnSidebar` openers + the import-canvas-after-PDF prompt modal `#importCanvasAfterPdfModal`) and the **Clear Page confirm flow** (`showClearPageModal` + the `#clearPage`/`#clearPageSidebar` openers + the `#clearPageCancel`/`#clearPageConfirm` handlers, consolidated from the zone & page-action handler block). Registers `App.showClearPageModal` (the Project Settings row stays in app.js as a deferred `App.*` call); the other bindings move with their DOM elements. Two new publish-only deps `applyPageAnnotationsFromData` (the shared per-page deserialize funnel — also used by cloud load / view mode / load-annotations) and `getActiveCanvas`; reuses `state`/`ensureGroupColors`/`saveUserCustomIcons`/`reconcileOrphanedCountersAndLineTypes`/`clearUndoStacks`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`/`pushUndoSnapshot`/`makeAnnotations`. The shared **custom-icon upload handler** that shared the old section stays in app.js under the renamed marker `// SECTION: Custom icon upload handler` (icon-domain infrastructure feeding four icon grids across app.js + three feature files) |
 | [import-clear.spec.js](import-clear.spec.js) | Playwright regression for pilot #28 — Clear Page: the sidebar button opens the confirm naming the active canvas, Cancel preserves the markers, Confirm empties only the current page's active canvas, `App.showClearPageModal` is registered; Import: a JSON file through `#importInput` replaces the palette and `reconcileOrphanedCountersAndLineTypes` re-creates a counter for still-present orphaned markers. Asserts no console / page errors; `npx playwright test import-clear.spec.js` |
+| [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` or commits a `state.pendingMultiplyZoneEdit`), the Delete Zone confirm (`#deleteZoneModal` cancel/confirm → `App.performDeleteZone`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
+| [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -351,7 +353,12 @@ openers` (the copy-project openers that shared it stay). Import/Clear (pilot
 [features/import-clear.js](features/import-clear.js) (two new publish-only
 deps `applyPageAnnotationsFromData`/`getActiveCanvas`); the shared custom-icon
 upload handler stays under the renamed marker
-`// SECTION: Custom icon upload handler`.
+`// SECTION: Custom icon upload handler`. Zone modals (pilot #29) pulled the
+Multiply Zone value modal, Delete Zone confirm, and Delete Page confirm
+handlers into [features/zone-modals.js](features/zone-modals.js) (one new
+publish-only dep `performDeleteZone`; no registered entry points — the
+pending state rides on `state`); the sidebar drawer toggles that shared the
+section stay under the renamed marker `// SECTION: Sidebar drawer toggles`.
 
 ## Section index (grep `// SECTION:`)
 
@@ -397,38 +404,38 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L7185 - View-link URL helpers & show-highlights/notes
 - L7257 - Custom icon upload handler
 - L7382 - Export & report dropdown menus
-- L7472 - Zone & page-action modal handlers
-- L7552 - Mobile actions burger menu (right-side drawer)
-- L7680 - User activity time formatting
-- L7838 - User Activity modal (admin)
-- L7906 - My Settings modal
-- L7937 - Auth & settings entry buttons
-  - L7982 - Project Settings checkout & Save Status bell
-  - L8105 - [sync] Checkout expired recovery
-  - L8359 - [sync] Turn In
-  - L8872 - Share modal pointer & copy-project openers
-  - L8915 - Cloud project hydrate / copy / fork
-  - L9112 - Settings menu actions & Airboard sync
-  - L9191 - My Settings password & Auth sign-in
-  - L9244 - Save Project modal
-  - L9447 - Copy project modal
-  - L9471 - Checkout expired recovery modal wiring
-  - L9555 - Save-before-load modal
-  - L9630 - Last-session restore prompt
-  - L9709 - User Activity filters & view toggle
-- L9897 - Canvas Event Handlers
-- L10269 - Event Binding
-- L10279 - Aim loupe (mobile press-hold precise placement)
-- L10417 - Zoom transform preview & commit
-- L10453 - Canvas mouse, wheel & touch handlers
-- L11074 - Global dropdown dismissal & keyboard hotkeys
-- L11305 - [sync] Manual save to cloud
-- L11930 - [sync] Auto-save
-- L12227 - [sync] Local backup (IndexedDB takeoff state)
-- L12457 - [sync] Checkout keep-alive
-- L12501 - App feature registry
-- L12665 - View-only mode
-- L12946 - Init / boot
+- L7472 - Sidebar drawer toggles
+- L7483 - Mobile actions burger menu (right-side drawer)
+- L7611 - User activity time formatting
+- L7769 - User Activity modal (admin)
+- L7837 - My Settings modal
+- L7868 - Auth & settings entry buttons
+  - L7913 - Project Settings checkout & Save Status bell
+  - L8036 - [sync] Checkout expired recovery
+  - L8290 - [sync] Turn In
+  - L8803 - Share modal pointer & copy-project openers
+  - L8846 - Cloud project hydrate / copy / fork
+  - L9043 - Settings menu actions & Airboard sync
+  - L9122 - My Settings password & Auth sign-in
+  - L9175 - Save Project modal
+  - L9378 - Copy project modal
+  - L9402 - Checkout expired recovery modal wiring
+  - L9486 - Save-before-load modal
+  - L9561 - Last-session restore prompt
+  - L9640 - User Activity filters & view toggle
+- L9828 - Canvas Event Handlers
+- L10200 - Event Binding
+- L10210 - Aim loupe (mobile press-hold precise placement)
+- L10348 - Zoom transform preview & commit
+- L10384 - Canvas mouse, wheel & touch handlers
+- L11005 - Global dropdown dismissal & keyboard hotkeys
+- L11236 - [sync] Manual save to cloud
+- L11861 - [sync] Auto-save
+- L12158 - [sync] Local backup (IndexedDB takeoff state)
+- L12388 - [sync] Checkout keep-alive
+- L12432 - App feature registry
+- L12598 - View-only mode
+- L12879 - Init / boot
 
 <!-- END SECTION TOC -->
 

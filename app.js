@@ -7254,53 +7254,10 @@
 
   // PDF bundling helpers (addReportPagesToPdf / addNotesToPdf / addHighlightsToPdf
   // / hasAnyHighlights / hasAnyNotes) moved to features/pdf-bundle.js.
-  // SECTION: Import-canvas-after-PDF & Clear Page modals
+  // SECTION: Custom icon upload handler
 
-  document.getElementById('importBtn').onclick = () => document.getElementById('importInput').click();
-  document.getElementById('importBtnSidebar').onclick = () => document.getElementById('importInput').click();
-  const importCanvasAfterPdfChoose = document.getElementById('importCanvasAfterPdfChoose');
-  const importCanvasAfterPdfCancel = document.getElementById('importCanvasAfterPdfCancel');
-  const importCanvasAfterPdfModalClose = document.getElementById('importCanvasAfterPdfModalClose');
-  function closeImportCanvasAfterPdfModal() { hideModal('importCanvasAfterPdfModal'); }
-  if (importCanvasAfterPdfChoose) {
-    importCanvasAfterPdfChoose.onclick = () => {
-      closeImportCanvasAfterPdfModal();
-      document.getElementById('importInput').click();
-    };
-  }
-  if (importCanvasAfterPdfCancel) importCanvasAfterPdfCancel.onclick = closeImportCanvasAfterPdfModal;
-  if (importCanvasAfterPdfModalClose) importCanvasAfterPdfModalClose.onclick = closeImportCanvasAfterPdfModal;
-  document.getElementById('importInput').onchange = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        const data = JSON.parse(r.result);
-        state.counters = Array.isArray(data.counters) ? data.counters : [];
-        state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
-        state.groups = ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
-        if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
-        if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
-        if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
-        if (data.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...data.multiplyZoneSettings };
-        if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;
-        if (data.gridSettings) state.gridSettings = data.gridSettings;
-        if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
-        (data.pages || []).forEach(p => {
-          applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
-        });
-        if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
-        reconcileOrphanedCountersAndLineTypes();
-        clearUndoStacks();
-        markProjectDirty();
-        updateUI();
-        renderPdf();
-      } catch (err) { alert('Invalid import file'); }
-    };
-    r.readAsText(f);
-    e.target.value = '';
-  };
+  // The canvas JSON import (#importBtn / #importBtnSidebar / #importInput) and
+  // the import-canvas-after-PDF prompt modal moved to features/import-clear.js.
 
   document.getElementById('customIconUploadInput').onchange = (e) => {
     const f = e.target.files[0];
@@ -7420,16 +7377,8 @@
     });
   };
 
-  function showClearPageModal() {
-    const page = state.pages[state.currentPage];
-    const canvas = page ? getActiveCanvas(page) : null;
-    const name = canvas?.name || 'Main';
-    const msg = document.getElementById('clearPageConfirmMessage');
-    if (msg) msg.textContent = 'Clear current canvas (' + name + ')?';
-    showModal('clearPageConfirmModal');
-  }
-  document.getElementById('clearPage').onclick = () => showClearPageModal();
-  document.getElementById('clearPageSidebar').onclick = () => showClearPageModal();
+  // showClearPageModal + the #clearPage / #clearPageSidebar openers moved to
+  // features/import-clear.js (registered as App.showClearPageModal).
   // SECTION: Export & report dropdown menus
   // downloadCurrentPageAsPdf + the #downloadCurrentPageBtn mode menu moved to
   // features/output.js (the mobile burger menu keeps dispatching clicks on the
@@ -7509,7 +7458,7 @@
   });
   document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
   document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
-  document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); showClearPageModal(); };
+  document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); App.showClearPageModal(); };
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
@@ -7586,7 +7535,6 @@
       renderPdf();
     }, 0);
   };
-  document.getElementById('clearPageCancel').onclick = () => hideModal('clearPageConfirmModal');
   document.getElementById('deletePageCancel').onclick = () => { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; };
   document.getElementById('deletePageConfirm').onclick = () => {
     hideModal('deletePageConfirmModal');
@@ -7595,22 +7543,9 @@
     if (pending?.onDelete) pending.onDelete();
   };
   // The counterLineTypeDetailsClose / linePropertiesClose / deleteCounterLineType
-  // confirm+cancel bindings moved to features/item-details.js with their modals.
-  document.getElementById('clearPageConfirm').onclick = () => {
-    hideModal('clearPageConfirmModal');
-    pushUndoSnapshot();
-    const page = state.pages[state.currentPage];
-    const canvas = page && getActiveCanvas(page);
-    if (canvas) canvas.annotations = makeAnnotations();
-    if (state.selectedLinePageIdx === state.currentPage) {
-      state.selectedLineId = null;
-      state.selectedLineIsPoly = false;
-      state.selectedLinePageIdx = null;
-    }
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  };
+  // confirm+cancel bindings moved to features/item-details.js with their modals;
+  // the #clearPageCancel / #clearPageConfirm handlers moved to
+  // features/import-clear.js with the Clear Page flow.
 
   document.getElementById('hamburger').onclick = () => document.body.classList.toggle('sidebar-open');
   document.getElementById('sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
@@ -12668,6 +12603,9 @@
   App.openCanvasOnlyNeedsPdfModal = openCanvasOnlyNeedsPdfModal;
   App.backupDataToProjFormat = backupDataToProjFormat;
   App.fitZoom = fitZoom;
+  // Import Canvas / Clear Page deps (features/import-clear.js).
+  App.applyPageAnnotationsFromData = applyPageAnnotationsFromData;
+  App.getActiveCanvas = getActiveCanvas;
   // Output cluster deps (features/output.js).
   App.SUPABASE_ENABLED = SUPABASE_ENABLED;
   App.getOrCreateViewLinkUrl = getOrCreateViewLinkUrl;

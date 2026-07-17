@@ -294,6 +294,10 @@
         }
         // Re-bind existing state.pages to the merged pdf so all pages share a
         // single pdfjs document. This avoids holding the old detached buffer.
+        // Rebinding pdfPage proxies: drop any cached page bitmaps first so they
+        // can't pin the old document (App.clearPdfBitmapCache is registered by
+        // app.js, which always loads before this feature file).
+        App.clearPdfBitmapCache && App.clearPdfBitmapCache();
         for (let i = 0; i < startIdx; i++) {
           if (state.pages[i]) state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
         }
@@ -319,6 +323,7 @@
     }
     const pdf = await pdfjsLib.getDocument(trimmedBuf.slice(0)).promise;
     const numPages = pdf.numPages;
+    App.clearPdfBitmapCache && App.clearPdfBitmapCache();
     state.pages = [];
     state.activeCanvasIdByPage = {};
     for (let i = 0; i < numPages; i++) {

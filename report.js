@@ -33,8 +33,8 @@
     if (!window.state || !state.pages || !state.pages.length) return '';
 
     const pageIndices = options.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = options.getAnnotations ?? ((page) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page?.annotations) || makeAnnotations());
+    const getAnn = options.getAnnotations ?? ((page, pageIdx) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations());
 
     const styles = `
       body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; color: #000; margin: 2em; }
@@ -254,15 +254,15 @@
     if (!window.state || !state.pages || !state.pages.length) return '';
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? ((page) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page?.annotations) || makeAnnotations());
+    const getAnn = opts.getAnnotations ?? ((page, pageIdx) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations());
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
     pageIndices.forEach((i) => {
       const page = state.pages[i];
-      const ann = getAnn(page);
+      const ann = getAnn(page, i);
       (state.counters || []).forEach(c => {
         (ann.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -315,19 +315,47 @@
     return lines.join('\n');
   }
 
+  // Cheap existence probe: would getPipeToolingSummary() be non-empty? Same
+  // annotation source and same "counts or lines" rule (a marker under a defined
+  // counter id, or a quick line / polyline whose lineTypeId matches a defined
+  // line type), but short-circuits at the first hit instead of building the
+  // whole summary. updateUI() calls this on every state change to toggle the
+  // export/summary buttons — the full walk was a measurable per-call cost on
+  // large multi-page projects.
+  function getPipeToolingHasData() {
+    if (!window.state || !state.pages || !state.pages.length) return false;
+    const getAnn = (page, pageIdx) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations();
+    const counterIds = new Set((state.counters || []).map(c => c.id));
+    const lineTypeIds = new Set((state.lineTypes || []).map(lt => lt.id));
+    for (let i = 0; i < state.pages.length; i++) {
+      const ann = getAnn(state.pages[i], i);
+      for (const [typeId, markers] of Object.entries(ann.counterMarkers || {})) {
+        if (markers && markers.length && counterIds.has(typeId)) return true;
+      }
+      for (const q of ann.quickLines || []) {
+        if (lineTypeIds.has(q.lineTypeId)) return true;
+      }
+      for (const poly of ann.polylines || []) {
+        if (lineTypeIds.has(poly.lineTypeId)) return true;
+      }
+    }
+    return false;
+  }
+
   function getEmailTextSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? ((page) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page) : page?.annotations) || makeAnnotations());
+    const getAnn = opts.getAnnotations ?? ((page, pageIdx) =>
+      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations());
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
     pageIndices.forEach((i) => {
       const page = state.pages[i];
-      const ann = getAnn(page);
+      const ann = getAnn(page, i);
       (state.counters || []).forEach(c => {
         (ann.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -437,6 +465,7 @@
     window.buildReportHtml = buildReportHtml;
     window.printReport = printReport;
     window.getPipeToolingSummary = getPipeToolingSummary;
+    window.getPipeToolingHasData = getPipeToolingHasData;
     window.getEmailTextSummary = getEmailTextSummary;
   }
 

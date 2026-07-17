@@ -144,17 +144,21 @@
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
-  function getActiveCanvas(page) {
+  // pageIdxHint (optional): the page's index when the caller already knows it —
+  // skips the O(pages) indexOf, which otherwise makes every all-pages loop over
+  // these accessors O(pages²) on large projects. Callers without the index are
+  // unchanged (indexOf fallback).
+  function getActiveCanvas(page, pageIdxHint) {
     if (!page) return null;
     const canvases = getPageCanvases(page);
     if (!canvases.length) return null;
-    const pageIdx = state.pages?.indexOf(page);
+    const pageIdx = (pageIdxHint != null && state.pages?.[pageIdxHint] === page) ? pageIdxHint : state.pages?.indexOf(page);
     const activeId = pageIdx >= 0 ? state.activeCanvasIdByPage?.[pageIdx] : null;
     const found = activeId ? canvases.find(c => c.id === activeId) : null;
     return found || canvases[0];
   }
-  function getActiveAnnotations(page) {
-    const canvas = getActiveCanvas(page);
+  function getActiveAnnotations(page, pageIdxHint) {
+    const canvas = getActiveCanvas(page, pageIdxHint);
     return canvas?.annotations ?? makeAnnotations();
   }
   function mergeAnnotations(...anns) {
@@ -1436,6 +1440,7 @@
       inFlightAutoSaveController = null;
     }
     try { subscribeToProjectCheckoutChanges(null); } catch (_) {}
+    clearPdfBitmapCache();
     state.pages = [];
     state.currentPage = 0;
     state.currentProjectId = null;
@@ -1711,6 +1716,7 @@
       if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
     }
     if (!pdf) throw new Error('No PDF available for this project');
+    clearPdfBitmapCache();
     state.pages = [];
     const numPages = pdf.numPages;
     for (let i = 0; i < numPages; i++) {
@@ -2567,12 +2573,168 @@
     return { x: c.x - rect.left, y: c.y - rect.top };
   }
 
+  // SECTION: PDF render bitmap cache
+  // Small LRU of recently rendered page bitmaps so switching back to a recent
+  // page (or to an idle-prefetched neighbor) blits in ~1 frame instead of
+  // re-running a full pdf.js raster — the dominant page-switch cost on
+  // vector-dense sheets. The key is SELF-VALIDATING: pdfPage proxy identity +
+  // rotation + zoom + effDpr. That automatically invalidates on: page delete
+  // (proxy never looked up again), prepare-pdf's pdfPage rebind (new proxy),
+  // undo's in-place rotation write, wrapper resize (fitZoom yields a new
+  // zoom), and any renderAreaSafety/caps change (new effDpr). Explicit clears
+  // are hygiene only — they free memory when a document is torn down or the
+  // device shows pressure.
+  const PDF_BITMAP_CACHE_MAX = 4;                    // entries (fit-zoom pages: ~1-5MB each)
+  const PDF_BITMAP_CACHE_AREA_FRAC = 0.15;           // of caps.maxArea × renderAreaSafety
+  const PDF_BITMAP_CACHE_AREA_ABS = 5000000;         // px — absolute clamp so big-desktop probes can't balloon retention
+  const pdfBitmapCache = [];                          // LRU: oldest first, [{pdfPage, rotation, zoom, effDpr, bitmap, w, h}]
+  let pdfBitmapCacheGeneration = 0;                   // bumped on clear; async inserts self-discard if it moved
+  const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0 };
+  function pdfBitmapCacheMaxArea() {
+    return Math.min(PDF_BITMAP_CACHE_AREA_FRAC * getCanvasCaps().maxArea * renderAreaSafety, PDF_BITMAP_CACHE_AREA_ABS);
+  }
+  function pdfBitmapCacheGet(pdfPage, rotation, zoom, effDpr) {
+    for (let i = pdfBitmapCache.length - 1; i >= 0; i--) {
+      const e = pdfBitmapCache[i];
+      if (e.pdfPage === pdfPage && e.rotation === rotation && Math.abs(e.zoom - zoom) < 1e-6 && e.effDpr === effDpr) {
+        // LRU touch: move to the end (most recent).
+        pdfBitmapCache.splice(i, 1);
+        pdfBitmapCache.push(e);
+        return e;
+      }
+    }
+    return null;
+  }
+  // Latest entry for the page regardless of zoom/effDpr — the stale-blit
+  // preview source when a switch lands at a zoom we haven't cached.
+  function pdfBitmapCacheGetAnyZoom(pdfPage, rotation) {
+    for (let i = pdfBitmapCache.length - 1; i >= 0; i--) {
+      const e = pdfBitmapCache[i];
+      if (e.pdfPage === pdfPage && e.rotation === rotation) return e;
+    }
+    return null;
+  }
+  function pdfBitmapCacheDrop(entry) {
+    const i = pdfBitmapCache.indexOf(entry);
+    if (i >= 0) pdfBitmapCache.splice(i, 1);
+    try { entry.bitmap.close(); } catch (_) { /* already closed */ }
+  }
+  function pdfBitmapCachePut(entry) {
+    // Replace any same-key entry (same page re-rendered, e.g. after a blit
+    // read-back drop), then evict oldest past the cap. close() everywhere —
+    // ImageBitmap backing stores must never wait for GC.
+    for (let i = pdfBitmapCache.length - 1; i >= 0; i--) {
+      const e = pdfBitmapCache[i];
+      if (e.pdfPage === entry.pdfPage && e.rotation === entry.rotation && Math.abs(e.zoom - entry.zoom) < 1e-6 && e.effDpr === entry.effDpr) {
+        pdfBitmapCache.splice(i, 1);
+        try { e.bitmap.close(); } catch (_) { /* already closed */ }
+      }
+    }
+    pdfBitmapCache.push(entry);
+    while (pdfBitmapCache.length > PDF_BITMAP_CACHE_MAX) {
+      const old = pdfBitmapCache.shift();
+      try { old.bitmap.close(); } catch (_) { /* already closed */ }
+    }
+  }
+  function clearPdfBitmapCache() {
+    pdfBitmapCacheGeneration++;
+    while (pdfBitmapCache.length) {
+      const e = pdfBitmapCache.pop();
+      try { e.bitmap.close(); } catch (_) { /* already closed */ }
+    }
+  }
+  // Snapshot a just-rendered canvas into the cache. createImageBitmap copies
+  // the pixels synchronously at call time (only delivery is async), so the
+  // caller may free/reuse the source right after. The generation guard makes
+  // a clear-between-snapshot-and-insert discard the late bitmap instead of
+  // repopulating a torn-down cache.
+  function pdfBitmapCacheCapture(sourceCanvas, key, { prefetch } = {}) {
+    if (typeof createImageBitmap !== 'function') return;                 // old Safari: cache disabled, behavior as before
+    if (sourceCanvas.width * sourceCanvas.height > pdfBitmapCacheMaxArea()) return;   // deep-zoom giants are never cached
+    const gen = pdfBitmapCacheGeneration;
+    const w = sourceCanvas.width, h = sourceCanvas.height;
+    createImageBitmap(sourceCanvas).then((bitmap) => {
+      if (gen !== pdfBitmapCacheGeneration) { try { bitmap.close(); } catch (_) {} return; }
+      pdfBitmapCachePut({ pdfPage: key.pdfPage, rotation: key.rotation, zoom: key.zoom, effDpr: key.effDpr, bitmap, w, h });
+      if (prefetch) pdfBitmapCacheStats.prefetched++;
+    }).catch(() => { /* capture is best-effort; a miss just re-renders */ });
+  }
+
+  // --- Idle prefetch of adjacent pages ---
+  // After a render settles, speculatively raster currentPage±1 at their
+  // predicted fit zoom into the cache, so the common "flip to the next sheet"
+  // is a blit. pdf.js executes operator lists in main-thread chunks, so a
+  // prefetch must yield to ANY interaction: renderPdf's entry and the
+  // wheel/touchstart/pointerdown listeners (bound in the Event Binding
+  // section) all call cancelPdfBitmapPrefetch. One prefetch at a time; the
+  // completion re-arms the timer for the other neighbor.
+  let pdfPrefetchTimer = null;
+  let pdfPrefetchTask = null;
+  let pdfPrefetchScratch = null;    // dedicated — never pdfOffscreenCanvas
+  function cancelPdfBitmapPrefetch() {
+    if (pdfPrefetchTimer) { clearTimeout(pdfPrefetchTimer); pdfPrefetchTimer = null; }
+    if (pdfPrefetchTask) { try { pdfPrefetchTask.cancel(); } catch (_) { /* settling */ } pdfPrefetchTask = null; }
+  }
+  function schedulePdfBitmapPrefetch() {
+    if (pdfPrefetchTimer) clearTimeout(pdfPrefetchTimer);
+    pdfPrefetchTimer = setTimeout(runPdfBitmapPrefetch, 250);
+  }
+  function predictedFitZoom(page) {
+    const wrap = document.querySelector('.canvas-wrapper');
+    if (!wrap || !page?.pdfPage) return null;
+    const r = wrap.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    return Math.max(0.2, Math.min(getMaxZoom(), Math.min(r.width / vp.width, r.height / vp.height)));
+  }
+  function runPdfBitmapPrefetch() {
+    pdfPrefetchTimer = null;
+    if (typeof createImageBitmap !== 'function') return;
+    if (document.hidden) return;
+    if (renderAreaSafety < RENDER_AREA_SAFETY_MAX) return;   // device showed memory pressure: no speculation
+    if (pdfRenderTask || pdfPrefetchTask) return;            // real render or a prefetch already in flight
+    for (const idx of [state.currentPage + 1, state.currentPage - 1]) {
+      const page = state.pages[idx];
+      if (!page || !page.pdfPage) continue;
+      const zoom = predictedFitZoom(page);
+      if (zoom == null) continue;
+      const eff = effectiveDpr(page, zoom);
+      const rot = page.rotation ?? 0;
+      if (pdfBitmapCacheGet(page.pdfPage, rot, zoom, eff)) continue;   // already cached
+      const viewport = page.pdfPage.getViewport({ scale: zoom * eff, rotation: rot });
+      if (viewport.width * viewport.height > pdfBitmapCacheMaxArea()) continue;
+      if (!pdfPrefetchScratch) pdfPrefetchScratch = document.createElement('canvas');
+      pdfPrefetchScratch.width = viewport.width;
+      pdfPrefetchScratch.height = viewport.height;
+      const key = { pdfPage: page.pdfPage, rotation: rot, zoom, effDpr: eff };
+      const task = page.pdfPage.render({ canvasContext: pdfPrefetchScratch.getContext('2d'), viewport });
+      pdfPrefetchTask = task;
+      task.promise.then(() => {
+        if (pdfPrefetchTask === task) pdfPrefetchTask = null;
+        // createImageBitmap copies synchronously at call time, so the scratch
+        // can be freed immediately after the capture call.
+        pdfBitmapCacheCapture(pdfPrefetchScratch, key, { prefetch: true });
+        pdfPrefetchScratch.width = 0;
+        pdfPrefetchScratch.height = 0;
+        schedulePdfBitmapPrefetch();   // other neighbor on the next idle slot
+      }).catch((err) => {
+        if (pdfPrefetchTask === task) pdfPrefetchTask = null;
+        pdfPrefetchScratch.width = 0;
+        pdfPrefetchScratch.height = 0;
+        if (err && err.name !== 'RenderingCancelledException') { /* speculative: swallow */ }
+      });
+      return;   // one at a time
+    }
+  }
+
   let pdfRenderTask = null;
+  let pdfRenderCancelled = false;   // guards against double-cancel on one task (pdf.js re-invokes callbacks)
   let pdfOffscreenCanvas = null;
   let pdfRenderId = 0;
   let pdfRenderPending = false;
   // SECTION: PDF Rendering
   function renderPdf() {
+    cancelPdfBitmapPrefetch();   // real rendering always preempts speculation
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) {
       pdfCanvas.width = 0;
@@ -2587,6 +2749,16 @@
     }
     if (pdfRenderTask) {
       pdfRenderPending = true;
+      // Cancel the in-flight raster so a rapid page flip skips straight to the
+      // latest target instead of serializing full renders of every
+      // intermediate page. The rejection lands in the catch below (which
+      // swallows RenderingCancelledException) and re-drives via the pending
+      // flag. Guarded: pdf.js re-invokes internal callbacks if cancel() is
+      // called repeatedly on one task (key-autorepeat flips).
+      if (!pdfRenderCancelled) {
+        pdfRenderCancelled = true;
+        try { pdfRenderTask.cancel(); } catch (_) { /* already settling */ }
+      }
       return;
     }
     pdfRenderPending = false;
@@ -2595,18 +2767,78 @@
     const eff = effectiveDpr(page, state.zoom);   // clamped dpr so the buffer fits the canvas cap
     currentEffDpr = eff;
     const scale = state.zoom * eff;
-    const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
+    // Capture the cache-key tuple NOW: rotation/pdfPage/zoom can all change
+    // while the async raster runs (undo rewrites rotation in place,
+    // prepare-pdf rebinds pdfPage, queued interactions move zoom/page). The
+    // completion callback must only trust these captured values — reading
+    // state.* at completion time would poison the cache after a cancel-lost
+    // race (task settles before cancel() lands).
+    const keyPdfPage = page.pdfPage;
+    const keyRot = page.rotation ?? 0;
+    const keyZoom = state.zoom;
+    const viewport = keyPdfPage.getViewport({ scale, rotation: keyRot });
+
+    // Cache hit: blit the retained bitmap — no pdf.js, fully synchronous.
+    const cached = pdfBitmapCacheGet(keyPdfPage, keyRot, keyZoom, eff);
+    if (cached) {
+      lastRenderedZoom = keyZoom;
+      updateContainerTransform();
+      pdfCanvas.width = cached.w;
+      pdfCanvas.height = cached.h;
+      pdfCanvas.style.width = cached.w / eff + 'px';
+      pdfCanvas.style.height = cached.h / eff + 'px';
+      pdfCanvas.getContext('2d').drawImage(cached.bitmap, 0, 0);
+      // A blit that reads back blank is the same memory-pressure signal as the
+      // full path's guard: drop the entry, free the whole cache, ratchet, and
+      // re-enter for a fresh (smaller) render. Mirrors the guard below.
+      if (!canvasCornerReadsBack(pdfCanvas)) {
+        pdfBitmapCacheDrop(cached);
+        clearPdfBitmapCache();
+        if (renderAreaSafety > RENDER_AREA_SAFETY_MIN) {
+          renderAreaSafety = Math.max(RENDER_AREA_SAFETY_MIN, renderAreaSafety * RENDER_AREA_SAFETY_STEP);
+        }
+        renderPdf();   // re-entrant: no task in flight, cache now empty -> full render path
+        return;
+      }
+      pdfBitmapCacheStats.hits++;
+      renderAnnotations();
+      schedulePdfBitmapPrefetch();
+      if (pdfRenderPending) renderPdf();
+      return;
+    }
+    pdfBitmapCacheStats.misses++;
+
+    // Stale-blit preview: we have this page cached at a different zoom/effDpr
+    // (e.g. the window was resized since the visit). Paint it scaled NOW so a
+    // switch to a dense sheet shows the right page instantly instead of the
+    // previous page for the whole raster; the async render below replaces it
+    // crisp. Same-page zoom changes keep their CSS-transform preview — this
+    // path only fires when the canvas would otherwise show stale content.
+    const preview = pdfBitmapCacheGetAnyZoom(keyPdfPage, keyRot);
+    if (preview) {
+      lastRenderedZoom = keyZoom;
+      updateContainerTransform();
+      pdfCanvas.width = viewport.width;
+      pdfCanvas.height = viewport.height;
+      pdfCanvas.style.width = viewport.width / eff + 'px';
+      pdfCanvas.style.height = viewport.height / eff + 'px';
+      const pctx = pdfCanvas.getContext('2d');
+      pctx.drawImage(preview.bitmap, 0, 0, preview.w, preview.h, 0, 0, viewport.width, viewport.height);
+      renderAnnotations();
+    }
+
     if (!pdfOffscreenCanvas) pdfOffscreenCanvas = document.createElement('canvas');
     pdfOffscreenCanvas.width = viewport.width;
     pdfOffscreenCanvas.height = viewport.height;
-    pdfRenderTask = page.pdfPage.render({ canvasContext: pdfOffscreenCanvas.getContext('2d'), viewport });
+    pdfRenderTask = keyPdfPage.render({ canvasContext: pdfOffscreenCanvas.getContext('2d'), viewport });
+    pdfRenderCancelled = false;
     pdfRenderTask.promise.then(() => {
       pdfRenderTask = null;
       if (thisRenderId !== pdfRenderId) {
         if (pdfRenderPending) renderPdf();
         return;
       }
-      lastRenderedZoom = state.zoom;
+      lastRenderedZoom = keyZoom;   // captured, not state.zoom: a mid-gesture completion must not make commitWheelZoom skip its crisp re-render
       updateContainerTransform();
       pdfCanvas.width = viewport.width;
       pdfCanvas.height = viewport.height;
@@ -2632,18 +2864,29 @@
             prevSafety, newSafety: renderAreaSafety
           }));
         } catch (_) { /* diagnostics are best-effort */ }
-        // Free the offscreen before retrying so the smaller re-render has max headroom.
+        // Free the offscreen AND the bitmap cache before retrying so the
+        // smaller re-render has max headroom — retained bitmaps are the first
+        // thing to give back under memory pressure.
+        clearPdfBitmapCache();
         pdfOffscreenCanvas.width = 0;
         pdfOffscreenCanvas.height = 0;
         renderPdf();   // re-entrant: pdfRenderTask is null here, so this proceeds
         return;
       }
 
+      // Cache the fresh raster (guard passed — never a blank). Snapshot from
+      // the offscreen before it's freed: createImageBitmap copies pixels
+      // synchronously at call time, and the offscreen (unlike pdfCanvas)
+      // doesn't carry the guard's scratch corner pixel. Entry key is the
+      // CAPTURED tuple — see the capture note at the top of this function.
+      pdfBitmapCacheCapture(pdfOffscreenCanvas, { pdfPage: keyPdfPage, rotation: keyRot, zoom: keyZoom, effDpr: eff });
+
       // Success: drop the offscreen backing store (cuts peak coexisting canvases from 3
       // to 2 — the root cause of the overlay blanking), then paint the overlay.
       pdfOffscreenCanvas.width = 0;
       pdfOffscreenCanvas.height = 0;
       renderAnnotations();
+      schedulePdfBitmapPrefetch();
       if (pdfRenderPending) renderPdf();
     }).catch(err => {
       pdfRenderTask = null;
@@ -4311,7 +4554,12 @@
     if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
     const bundleNotesBtn = document.getElementById('bundleNotes');
     if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
-    const hasCountsOrLines = typeof window.getPipeToolingSummary === 'function' && window.getPipeToolingSummary().length > 0;
+    // Cheap existence probe (report.js) — semantically identical to
+    // getPipeToolingSummary().length > 0 but short-circuits at the first count
+    // or line instead of building the whole summary (a real cost per updateUI
+    // on large projects). Same load-order guard as the App.* checks above:
+    // report.js loads after app.js, so this can run before it registers.
+    const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
     const ptBtn = document.getElementById('forPipeToolingDropdown');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
     const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
@@ -4573,13 +4821,13 @@
     filtered.forEach(c => {
       if (state.counterSettings?.showOnlyCountersOnCurrentPage && state.pages.length > 0) {
         const page = state.pages[state.currentPage];
-        const ann = getActiveAnnotations(page);
+        const ann = getActiveAnnotations(page, state.currentPage);
         const markers = (ann?.counterMarkers?.[c.id] || []);
         if (markers.length === 0) return;
       }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p) => n + ((getActiveAnnotations(p)?.counterMarkers?.[c.id] || []).length), 0);
+      const count = state.pages.reduce((n, p, pi) => n + ((getActiveAnnotations(p, pi)?.counterMarkers?.[c.id] || []).length), 0);
       div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
@@ -4627,7 +4875,7 @@
     filtered.forEach(lt => {
       if (state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage && state.pages.length > 0) {
         const page = state.pages[state.currentPage];
-        const ann = getActiveAnnotations(page);
+        const ann = getActiveAnnotations(page, state.currentPage);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length === 0 && polys.length === 0) return;
@@ -4635,7 +4883,7 @@
       let runs = 0, len = 0;
       const pageIndices = [];
       state.pages.forEach((p, pi) => {
-        const ann = getActiveAnnotations(p);
+        const ann = getActiveAnnotations(p, pi);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length || polys.length) pageIndices.push(pi);
@@ -4728,7 +4976,7 @@
     const byType = {};
     state.pages.forEach((p, pi) => {
       if (state.lineTypeSettings?.showOnlyLinesOnCurrentPage && state.pages.length > 0 && pi !== state.currentPage) return;
-      const ann = getActiveAnnotations(p);
+      const ann = getActiveAnnotations(p, pi);
       (ann?.polylines || []).forEach(poly => {
         const tid = poly.lineTypeId || '_none';
         if (!byType[tid]) byType[tid] = [];
@@ -4756,7 +5004,7 @@
       let totalLen = 0;
       filteredItems.forEach(it => {
         const p = state.pages[it.pageIdx];
-        const annIt = p ? getActiveAnnotations(p) : makeAnnotations();
+        const annIt = p ? getActiveAnnotations(p, it.pageIdx) : makeAnnotations();
         totalLen += it.type === 'poly' ? getLineLengthFeetForTotals(it.poly, it.pageIdx, true, annIt) : getLineLengthFeetForTotals(it.q, it.pageIdx, false, annIt);
       });
       const scale = pickScaleForLineType(pageIndices);
@@ -4784,7 +5032,7 @@
       const ltItem = state.lineTypes.find(l => l.id === (it.type === 'poly' ? it.poly.lineTypeId : it.q.lineTypeId));
       const color = (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff');
       const pageScale = state.pages[it.pageIdx]?.scale;
-      const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx]) : makeAnnotations();
+      const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx], it.pageIdx) : makeAnnotations();
       let dist, name;
       if (it.type === 'poly') {
         dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatFeet(getLineRealWorldLengthFeet(it.poly, it.pageIdx, true, annRow), getEffectiveScaleForLine(annRow, it.poly, true, it.pageIdx));
@@ -4852,8 +5100,8 @@
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
-    state.pages.forEach(p => {
-      const ann = getActiveAnnotations(p);
+    state.pages.forEach((p, pi) => {
+      const ann = getActiveAnnotations(p, pi);
       Object.values(ann?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
       (ann?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
       (ann?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
@@ -4861,7 +5109,7 @@
     const counterByGroup = {};
     const lineTypeByGroup = {};
     state.pages.forEach((p, pi) => {
-      const ann = getActiveAnnotations(p);
+      const ann = getActiveAnnotations(p, pi);
       (state.counters || []).forEach(c => {
         (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -6191,6 +6439,7 @@
         pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       }
       App.openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
+      clearPdfBitmapCache();
       state.pages = [];
       state.activeCanvasIdByPage = {};
       resetGridOrigin();
@@ -6316,6 +6565,7 @@
       state.pdfStoragePath = null;
       const mergedPdf = await pdfjsLib.getDocument(merged.slice ? merged.slice(0) : merged).promise;
       const numPages = mergedPdf.numPages;
+      clearPdfBitmapCache();   // pdfPage proxies rebound below — cached bitmaps would pin the old document
       for (let i = 0; i < numPages && i < state.pages.length; i++) {
         state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
       }
@@ -6477,6 +6727,7 @@
         showModal('loadAnnotationsModal');
       } else if (startPageIdx === 0) {
         App.openPreparePdfModal(state.pages, state.pdfBuffer, state.currentProjectName);
+        clearPdfBitmapCache();
         state.pages = [];
         state.activeCanvasIdByPage = {};
         state.pdfBuffer = null;
@@ -9610,6 +9861,7 @@
       const bufPdf = buf.slice(0);
       const bufStorage = buf.slice(0);
       const pdf = await pdfjsLib.getDocument(bufPdf).promise;
+      clearPdfBitmapCache();
       state.pages = [];
       const numPages = pdf.numPages;
       for (let i = 0; i < numPages; i++) {
@@ -10898,6 +11150,13 @@
 
   // SECTION: Event Binding
   const cWrapper = document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper');
+  // Prefetch yields to any canvas interaction (pdf.js runs operator lists in
+  // main-thread chunks — a speculative raster must never jank a gesture).
+  // Capture phase + passive: observation only, never interferes with the real
+  // handlers below.
+  ['wheel', 'touchstart', 'pointerdown'].forEach((evt) => {
+    (cWrapper || pdfCanvas).addEventListener(evt, cancelPdfBitmapPrefetch, { passive: true, capture: true });
+  });
 
   // SECTION: Aim loupe (mobile press-hold precise placement)
   // Press-and-hold on a placement tool summons a magnifier loupe + an offset
@@ -11050,6 +11309,17 @@
   function updateContainerTransform() {
     const scale = state.zoom / lastRenderedZoom;
     canvasContainer.style.transform = 'translate3d(' + state.pan.x + 'px, ' + state.pan.y + 'px, 0) scale(' + scale + ')';
+  }
+  // Light per-frame zoom sync: just the zoom-% readout + the zoom-rail thumb.
+  // Used by the wheel/pinch rAF paths and the zoom-rail drag INSTEAD of the full
+  // updateUI() — the sidebar lists don't depend on zoom, and rebuilding them on
+  // every gesture frame is what made zooming lag on large multi-page projects.
+  // The gesture-end commits (commitWheelZoom / commitPinchZoom) still run the
+  // full updateUI() once.
+  function syncZoomIndicators() {
+    const zp = document.getElementById('zoomPct');
+    if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
+    if (App.onZoomRailSync) App.onZoomRailSync();
   }
   function commitWheelZoom() {
     if (wheelZoomCommitTimer) clearTimeout(wheelZoomCommitTimer);
@@ -11344,7 +11614,7 @@
         state.pan.y = pt.y - pdfY * newZoom;
         state.zoom = newZoom;
         updateContainerTransform();
-        updateUI();
+        syncZoomIndicators();   // full updateUI() waits for commitWheelZoom — see syncZoomIndicators
         if (wheelZoomCommitTimer) clearTimeout(wheelZoomCommitTimer);
         wheelZoomCommitTimer = setTimeout(commitWheelZoom, 150);
       });
@@ -11406,9 +11676,7 @@
         requestAnimationFrame(() => {
           pinchZoomPending = false;
           updateContainerTransform();
-          const zp = document.getElementById('zoomPct');
-          if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
-          if (App.onZoomRailSync) App.onZoomRailSync();
+          syncZoomIndicators();
         });
       }
     } else if (e.touches.length === 1 && state.touchPanStart) {
@@ -13103,7 +13371,7 @@
 
   window.state = state;
   window.makeAnnotations = makeAnnotations;
-  window.getAnnotationsForReport = (page) => getActiveAnnotations(page);
+  window.getAnnotationsForReport = (page, pageIdx) => getActiveAnnotations(page, pageIdx);
   window.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
   window.ptDist = ptDist;
   window.polylineDistance = polylineDistance;
@@ -13140,10 +13408,17 @@
   App.doZoomOut = doZoomOut;
   App.updateContainerTransform = updateContainerTransform;
   App.commitWheelZoom = commitWheelZoom;
+  App.syncZoomIndicators = syncZoomIndicators;
   App.getCanvasCaps = getCanvasCaps;
   App.setCanvasCaps = setCanvasCaps;
   App.effectiveDpr = effectiveDpr;
   App.__getRenderAreaSafety = () => renderAreaSafety;   // debug/test seam (mirrors setCanvasCaps)
+  // Bitmap cache: the clear is called from features/prepare-pdf.js and
+  // features/load-project.js at their pages-rebuild sites; the stats object is
+  // a debug/test seam (page-switch-cache.spec.js).
+  App.clearPdfBitmapCache = clearPdfBitmapCache;
+  App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched });
+  App.__pdfBitmapCacheDump = () => pdfBitmapCache.map(e => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h, pageIdx: state.pages.findIndex(p => p.pdfPage === e.pdfPage) }));
   App.getOrderedIcons = getOrderedIcons;
   App.iconVbFor = iconVbFor;
   App.getUserCustomIcons = getUserCustomIcons;
@@ -13487,6 +13762,7 @@
     }
 
     const pdf = await pdfjsLib.getDocument(buf).promise;
+    clearPdfBitmapCache();
     state.pages = [];
     const numPages = pdf.numPages;
     for (let i = 0; i < numPages; i++) {

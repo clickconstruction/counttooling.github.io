@@ -274,6 +274,7 @@
                 }
                 if (state.currentProjectId === proj.id) {
                   clearUndoStacks();
+                  App.clearPdfBitmapCache && App.clearPdfBitmapCache();
                   state.pages = [];
                   state.currentProjectId = null;
                   subscribeToProjectCheckoutChanges(null);
@@ -448,6 +449,7 @@
                   state.pdfStoragePath = null;
                   state.pdfBuffer = null;
                   state.pdfBufferSize = 0;
+                  App.clearPdfBitmapCache && App.clearPdfBitmapCache();
                   state.pages = [];
                   state.counters = Array.isArray(d.counters) ? d.counters : [];
                   state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -491,6 +493,7 @@
             state.pdfStoragePath = null;
             state.pdfBuffer = null;
             state.pdfBufferSize = 0;
+            App.clearPdfBitmapCache && App.clearPdfBitmapCache();
             state.pages = [];
             const canvasData = useIdbBackup && idbBackup.data ? idbBackup.data : d;
             state.counters = Array.isArray(canvasData.counters) ? canvasData.counters : [];

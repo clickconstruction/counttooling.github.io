@@ -1,8 +1,10 @@
 # ClickCount — Code Map for AI Navigation
 
 Use this file to locate code in the app. The HTML shell + every modal live in
-[index.html](index.html) (~2.1k lines); the bulk of the app logic (the main JS
-IIFE) lives in [app.js](app.js) (~13.5k lines, slimmed from ~16.2k as the pure
+[app/index.html](app/index.html) (~2.3k lines, served at `/app/`; the repo-root
+[index.html](index.html) is the static marketing landing); the bulk of the app
+logic (the main JS
+IIFE) lives in [app.js](app.js) (~14k lines, slimmed from ~16.2k as the pure
 modules + the `window.App` feature-file splits were pulled out). The core data
 model and invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
 navigation map plus the catalog of features built on top of that core.
@@ -10,19 +12,20 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 [CHANGELOG.md](CHANGELOG.md).
 
 > Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
-> is ~13.5k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> is ~14k lines and edits shift them constantly. Navigate by the `// SECTION:`
 > markers in the code and by the grep patterns in the Search Hints table below.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| [index.html](index.html) | The app shell: HTML structure + every modal; `<head>` loads the CSS/CDN/module scripts, the body ends by loading `app.js` then `report.js`. No inline JS logic anymore (~2.1k lines) |
+| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.3k lines) |
+| [index.html](index.html) | The **static marketing landing** at `/` — plain HTML sharing `marketing.css`, no app JS, outside the SW scope; forwards old `/?t=`/`?devAuth=1` links to `/app/` |
 | [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~13.5k lines, slimmed from ~16k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals |
 | [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
-| [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in app.js); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
+| [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; plus the one pure helper `nextRecentColors(list, color, presets)` + its `RECENT_COLORS_MAX` cap (the recent-color list update shared by the create pickers and the edit color picker); classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in app.js); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
 | [geometry.test.js](geometry.test.js) | Node `node:test` + `node:assert` unit tests for the [geometry.js](geometry.js) primitives; run with `npm run test:unit` (no deps). Naming split: `*.test.js` = Node unit tests, `*.spec.js` = Playwright (see `testMatch` in [playwright.config.js](playwright.config.js)) |
 | [constants.test.js](constants.test.js) | Node `node:test` invariant tests for [constants.js](constants.js) (backoff arrays increasing & positive, timings/caps > 0, unique enum ids, valid hex colors, positive scale presets); run with `npm run test:unit` |
 | [report.js](report.js) | Loads after app.js. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals exposed by app.js via `window.*`. Its `window.*` attachment is guarded by `typeof window` and it has a guarded CommonJS export footer (`escapeHtml`, `pickScaleForLineType`) — both inert in the browser — so those pure helpers can be `require()`d by [report.test.js](report.test.js) |
@@ -79,14 +82,16 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [manage-projects.spec.js](manage-projects.spec.js) | Playwright regression for pilot #19 — an always-run registry-contract test (asserts `window.App.openManageProjectsModal` is a function and that calling it with no session is a safe no-op: `#manageProjectsModal` does not become visible and nothing throws), plus a cloud-gated test (`ensureSignedInWithProject` from `cloud-test-helpers.js` in `beforeAll`, `test.skip` when no cloud secrets) that opens Settings → Manage Projects and asserts the project list + a Delete button render. Asserts no console / page errors; `npx playwright test manage-projects.spec.js` |
 | [features/user-admin.js](features/user-admin.js) | Twentieth feature-file split (`window.App` registry pilot #20) — the admin user-management modals: `openManageUserModal` (user list + delete + activity, via `list_users_for_admin` RPC / `admin-list-users` Edge Fn), `openAllUsersModal` (read-only list), `deleteUser` (`admin-delete-user`), plus the `#manageUsersBtn` create-user opener + `#adminCreateForm` (`admin-create-user`) and the `#adminPanelClose`/`#manageUserModalClose`/`#allUsersModalClose`/`manageUserModalAllActivityBtn` handlers. Its own IIFE loaded **after** [app.js](app.js); registers `App.openManageUserModal` + `App.openAllUsersModal`. Three new publish-only deps: `App.formatLastSignIn` (a `format.js` global, lint-invisible to the features group so it must be published), `App.USER_ACTIVITY_ICON_SVG`, and `App.openUserActivityModal` (the User Activity modal **stays** in app.js; the moved lists + the all-activity button reach it via `App.*`); `state`/`showModal`/`hideModal`/`SUPABASE_URL`/`SUPABASE_ANON_KEY` were already on `App`. **My Settings** (`openMySettings`, which owns the airboard cloud-sync) deliberately stays in app.js under the renamed marker `// SECTION: My Settings modal`; its `#mySettingsManageUser`/`#mySettingsAllUsers` openers reach the feature via `App.*`. The moved handlers were interleaved with the User Activity + Canvas Repair handlers (which stay) in the Event Binding region. **Renamed** the `// SECTION: User Settings & Manage Users` marker → `// SECTION: My Settings modal` (rename, not removal, TOC stays 47). **Since extended** with the full Manage Users toolkit: an owned-`project_count` column (`list_users_for_admin` gained the count; clicking it opens `#userProjectsModal`, a per-user project list from `list_projects_for_admin`); a stacked last-sign-in/last-active cell; per-row **Set Password** (🔑 → `#setPasswordModal` → `admin-set-password`), **Transfer projects** (⇄ → `#transferProjectsModal` → `admin-reassign-projects`), and a **Delete** dialog (`#deleteUserConfirmModal`) that can **reassign** the user's projects to someone else before deleting (`admin-delete-user` with `reassignToUserId`); transfer/reassign share `supabase/functions/_shared/reassignProjects.ts`, which moves the project rows **and** their owner-scoped PDF storage objects, reassigns inherited view links, and clears redundant shares. Clicking the stacked dates cell or the heart icon opens the rich **Activity overview** `#userActivityOverviewModal` (`openUserActivityOverview` → one `user_activity_detail_for_admin(uuid)` jsonb → summary card + stat tiles + a day-grouped, run-collapsed feed; uses `App.formatUserActivityDateTime`). **My Activity** (User Settings → `#mySettingsMyActivity`) opens the same overview for the signed-in user — the RPC guard is **self-or-admin**, so non-admins can view only their own |
 | [user-admin.spec.js](user-admin.spec.js) | Playwright regression for pilot #20 — an always-run registry-contract test (asserts `window.App.openManageUserModal` + `openAllUsersModal` are functions and that calling them with no session is a safe no-op: the modals do not become visible and nothing throws), plus a cloud-gated test (`ensureSignedInWithProject`, `test.skip` when no cloud) that opens via `App.openManageUserModal()` and asserts `#manageUserModal.visible` + the list element gets content. Asserts no console / page errors; `npx playwright test user-admin.spec.js` |
-| [features/load-project.js](features/load-project.js) | Twenty-first feature-file split (`window.App` registry pilot #21) and the **most dependency-heavy** so far — the cloud Load Project modal `openLoadProjectModal` (~585 lines: project browser list, ownership/role filters, per-row access panels + invite via `invite-to-project`, copy/download/delete row actions, and the project-load action). Its own IIFE loaded **after** [app.js](app.js); reads deps from `App` and re-reads `App.getSupabase()` in the outer fn + each nested async helper (client can be recycled); registers `App.openLoadProjectModal`. The save-before-load gate `openLoadProjectModalOrPromptSave` + the `#loadProject*` bindings + Escape branch **stay** in app.js and call `App.openLoadProjectModal()`. Because the project-load action is fused with the boot/engine path, ~20 publish-only deps are exposed on `App`, incl. four **setters** (`setAutoSaveDirty`/`setLastModifiedAt`/`setLastLocalBackupAt`/`setLastSaveIncludedPdf`) for engine `let`-state the load resets. The leftover grab-bag under the old `// SECTION: Load Project modal` marker was re-sectioned into 8 honest markers, and `// SECTION: Canvas Event Handlers` moved up to absorb the stray `showContextMenu`. The modal header has an admin-only **Advanced** toggle (`#loadProjectAdvancedToggle`, persisted via `loadProjectAdvanced`) that shows/hides every row's "Who has access" block by toggling a `hide-access` class on `#loadProjectList` (default OFF = hidden) |
+| [features/load-project.js](features/load-project.js) | Twenty-first feature-file split (`window.App` registry pilot #21) and the **most dependency-heavy** so far — the cloud Load Project modal `openLoadProjectModal` (~585 lines: project browser list, ownership/role filters, per-row access panels + invite via `invite-to-project`, copy/download/delete row actions, and the project-load action). Its own IIFE loaded **after** [app.js](app.js); reads deps from `App` and re-reads `App.getSupabase()` in the outer fn + each nested async helper (client can be recycled); registers `App.openLoadProjectModal`. The save-before-load gate `openLoadProjectModalOrPromptSave` + the `#loadProject*` bindings + Escape branch **stay** in app.js and call `App.openLoadProjectModal()`. Because the project-load action is fused with the boot/engine path, ~20 publish-only deps are exposed on `App` (`updateSaveStatusIndicator`, `canUseDevAuth`, `deleteProjectAsOwner`, `openCopyProjectModalOrPromptSave`, `hydrateProjectFromCloudRow`, `clearUndoStacks`, `subscribeToProjectCheckoutChanges`, `checkInCurrentProjectIfHeld`, `takeoffBackupGet`, `resolvePdfBufferForCloudProject`, `ensureGroupColors`, `openCanvasOnlyNeedsPdfModal`, `buildPagesFromPdfArrayBufferAndProjectData`, `backupDataToProjFormat`, `fitZoom`, `SUPABASE_URL`), incl. four **setters** (`setAutoSaveDirty`/`setLastModifiedAt`/`setLastLocalBackupAt`/`setLastSaveIncludedPdf`) for engine `let`-state the load resets (it cannot assign through the registry otherwise). The leftover grab-bag under the old `// SECTION: Load Project modal` marker was re-sectioned into 8 honest markers, and `// SECTION: Canvas Event Handlers` moved up to absorb the stray `showContextMenu`. The modal header has an admin-only **Advanced** toggle (`#loadProjectAdvancedToggle`, persisted via `loadProjectAdvanced`) that shows/hides every row's "Who has access" block by toggling a `hide-access` class on `#loadProjectList` (default OFF = hidden) |
 | [load-project.spec.js](load-project.spec.js) | Playwright regression for pilot #21 — an always-run registry-contract test (`window.App.openLoadProjectModal` is a function; with Supabase unconfigured the modal shows "Cloud not configured" and becomes visible without throwing), plus a cloud-gated test (`ensureSignedInWithProject`, `test.skip` when no cloud) that opens via `App.openLoadProjectModal()` and asserts `#loadProjectModal.visible` + `#loadProjectList` (or `#loadProjectEmpty`) populated. Asserts no console / page errors; `npx playwright test load-project.spec.js` |
-| [features/prepare-pdf.js](features/prepare-pdf.js) | Twenty-second feature-file split (`window.App` registry pilot #22) — the Prepare PDF modal: `openPreparePdfModal` + preview/nav/render helpers + `preparePdfRotatePage90` + `commitPreparePdfToState` + `closePreparePdfModal` + the `#preparePdf*` bindings. Its own IIFE loaded **after** [app.js](app.js); the ~9 private `preparePdf*` state lets move **with** the feature as module-locals (no setters). Registers `App.openPreparePdfModal`; re-assigns `window.closePreparePdfModal` (inline-HTML/Escape use it). The PDF intake pipeline (upload, `loadTestPdf`, hashing) stays in app.js under the renamed `// SECTION: PDF intake (upload, test PDF, hashing)` marker and opens the modal via `App.openPreparePdfModal()`. Eight outer-scope publish-only deps (PDF helpers `assertPdfWithinLimit`/`mergePdfBuffers`/`buildTrimmedPdfBuffer`/`resetGridOrigin` + the Save-and-open flow's `writeTakeoffStateBackup`/`downloadPdfBuffer`/`performSaveProjectToCloud`/`isAuthError`); the `features/*.js` eslint group gained the CDN-lib globals. Interleaved siblings `openCanvasOnlyNeedsPdfModal`/`updateCanvasOnlyNeedsPdfBanner` stay in app.js |
+| [features/prepare-pdf.js](features/prepare-pdf.js) | Twenty-second feature-file split (`window.App` registry pilot #22) — the Prepare PDF modal: `openPreparePdfModal` + its preview/nav/render helpers (`renderPreparePdfPreview`, `saveCurrentPageName`, `updatePreparePdfControls`) + `preparePdfRotatePage90` + `commitPreparePdfToState` + `closePreparePdfModal` + the `#preparePdf*` bindings. Its own IIFE loaded **after** [app.js](app.js); the ~9 private `preparePdf*` state lets move **with** the feature as module-locals (no setters). Registers `App.openPreparePdfModal`; re-assigns `window.closePreparePdfModal` (inline-HTML/Escape use it). The PDF intake pipeline (upload, `loadTestPdf`, hashing) stays in app.js under the renamed `// SECTION: PDF intake (upload, test PDF, hashing)` marker and opens the modal via `App.openPreparePdfModal()`. Eight outer-scope publish-only deps (PDF helpers `assertPdfWithinLimit`/`mergePdfBuffers`/`buildTrimmedPdfBuffer`/`resetGridOrigin` + the Save-and-open flow's `writeTakeoffStateBackup`/`downloadPdfBuffer`/`performSaveProjectToCloud`/`isAuthError`); the `features/*.js` eslint group gained the vendored-lib globals (`pdfjsLib`/`PDFLib`/`jspdf`/`html2canvas`). Interleaved siblings `openCanvasOnlyNeedsPdfModal`/`updateCanvasOnlyNeedsPdfBanner` stay in app.js |
 | [prepare-pdf.spec.js](prepare-pdf.spec.js) | Playwright regression for pilot #22 — a real (non-cloud) end-to-end test: loads a small multi-page test PDF, opens via `App.openPreparePdfModal(...)`, asserts `#preparePdfModal` visible, exercises next/prev/rotate/delete, commits, and asserts `state.pages` reflects the kept/trimmed pages. Plus the registry-contract (`window.App.openPreparePdfModal` is a function). Asserts no console / page errors; `npx playwright test prepare-pdf.spec.js` |
 | [features/quick-modals.js](features/quick-modals.js) | Twenty-third feature-file split (`window.App` registry pilot #23), the cleanest since the early modals — the Quick Plumbing (`populatePlumModal` + icon-tab helpers + `removePlumbingModifier` + the `#plumBtn` opener) and Quick Count (`populateCounterQuickCountPanel` + parallel icon-tab helpers) clusters. Its own IIFE loaded **after** [app.js](app.js); no setters/flag-accessors, no private module state. Two new publish-only deps `getPlumbingModifiers`/`savePlumbingModifiers`. Registers `App.populatePlumModal`, `App.populateCounterQuickCountPanel` (registration **moved here from app.js** — `features/counter.js` `showCounterTab('quickcount')` calls it), and `App.updateCounterQuickCountNamePreview` (app.js's shared custom-icon-upload handler refreshes the Quick Count grid via it). Calls back into `App.showCounterTab`; the bidirectional coupling is mediated by the registry |
 | [quick-modals.spec.js](quick-modals.spec.js) | Playwright regression for pilot #23 — registry-contract (`App.populatePlumModal` + `App.populateCounterQuickCountPanel` are functions) plus a real local flow opening Quick Plumbing via `App.populatePlumModal()` (asserts `#plumModal` renders) and Quick Count via `App.showCounterTab('quickcount')` (asserts the panel populates). Asserts no console / page errors; `npx playwright test quick-modals.spec.js` |
 | [features/pdf-bundle.js](features/pdf-bundle.js) | Twenty-fourth feature-file split (`window.App` registry pilot #24) — the PDF-bundling helpers `addReportPagesToPdf`/`addNotesToPdf`/`addHighlightsToPdf`/`hasAnyHighlights`/`hasAnyNotes` (report/notes/highlights → jsPDF). Its own IIFE loaded **after** [app.js](app.js). These were **already all on `App`** (publish-only for [features/export-pdfs.js](features/export-pdfs.js)), so the split **re-homes** their registrations from app.js; export-pdfs.js keeps working via `App.*`. One new publish-only dep `wrapNoteText`; `renderAnnotationsToContext`/`getPageCanvases`/`getActiveAnnotations` already on `App`; `buildReportHtml` (report.js) + `html2canvas` (CDN) are runtime globals (added `buildReportHtml` to the `features/*.js` eslint globals). app.js's 6 internal callers convert to `App.*`; the interleaved `importCanvasAfterPdf`/`clearPage` modals stay |
 | [pdf-bundle.spec.js](pdf-bundle.spec.js) | Playwright regression for pilot #24 — registry-contract (the 5 bundling fns are functions on `App`) plus a light real check: with a PDF loaded, `App.hasAnyHighlights()`/`hasAnyNotes()` are false, then flip true after a highlight/note is added. Asserts no console / page errors; `npx playwright test pdf-bundle.spec.js` |
+| [features/item-details.js](features/item-details.js) | Twenty-fifth feature-file split (`window.App` registry pilot #25) — the Counter / Line Type **details modal** (`#counterLineTypeDetailsModal`: rename, color, icon grid, per-page usage jump list, delete with `#deleteCounterLineTypeConfirmModal` confirm via the private `performDeleteCounterLineType`), the **Line Properties modal** (`#linePropertiesModal`: name/color/drops ±1/±10/clear + per-drop units, polyline vertex-edit entry), and **`deleteGroup`** (registration **re-homed** from app.js's registry tail — [features/groups.js](features/groups.js) keeps consuming `App.deleteGroup` at call time). The three modal-state flags (`counterLineTypeDetailsItem`, `pendingDeleteCounterLineType`, `pendingLineProperties`) move as private `let`s; the close/confirm bindings move from the zone & page-action handler block. Two core hooks: `hideModal('counterLineTypeDetailsModal')` resets the flag via the `App.onCounterLineTypeDetailsHidden` callback (Groups pattern), and the shared custom-icon upload handler reads the open item via the **feature-registered getter** `App.getCounterLineTypeDetailsItem()`. Registers `App.openCounterLineTypeDetailsModal`/`App.openLinePropertiesModal`/`App.closeLinePropertiesModal`/`App.deleteGroup`. Two new publish-only deps `enterEditMode`/`countItemsInGroup`; reuses `state`/`TOOL`/`showModal`/`hideModal`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`getOrderedIcons`/`getEffectiveCustomIcons`/`iconVbFor`/`getPageCanvases`/`makeAnnotations`/`showLineColorModal`/`getActiveAnnotations`/`getPageScale`/`fitZoom`. `showModal`/`hideModal` **stay** in app.js under the renamed marker `// SECTION: Modal primitives (showModal / hideModal)`; the external callers (sidebar edit pens, lines-list edit/dblclick, context-menu Line Properties, Escape branch) reach the modals via `App.*` |
+| [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
@@ -118,7 +123,7 @@ resolves `app.js`'s output via `window.*`.
 
 ### Feature files / `window.App` registry
 
-`app.js` is one ~13.5k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
+`app.js` is one ~14k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
 are closure-locals, so a feature file in a separate `<script>` cannot see them
 by bare name. To split it incrementally without a build step, `app.js` publishes
 a small, named contract onto a shared global registry, and feature files read
@@ -310,6 +315,19 @@ leaving **My Settings** (which owns the airboard cloud-sync, ~15 deps) and the
 (`formatLastSignIn`/`USER_ACTIVITY_ICON_SVG`/`openUserActivityModal`); it
 **renamed** the `// SECTION: User Settings & Manage Users` marker →
 `// SECTION: My Settings modal` (rename, My Settings stays, TOC stays 47).
+Pilots #21–#24 (Load Project, Prepare PDF, Quick Plumbing/Count, PDF bundling)
+are detailed in their Files-table rows above. Item details (pilot #25) pulled
+the Counter/Line Type details modal, the Line Properties modal, and
+`deleteGroup` into [features/item-details.js](features/item-details.js) — the
+second registration **re-home** (`App.deleteGroup`, after Quick Line's
+`populateQuickLineModal` and PDF bundling's helpers) and the first
+**feature-registered getter** (`App.getCounterLineTypeDetailsItem()`, read by
+the shared custom-icon upload handler in app.js — the reverse direction of the
+save-status getter-accessors). Two new publish-only deps
+(`enterEditMode`/`countItemsInGroup`); the emptied
+`// SECTION: Item detail & properties modals` marker was **renamed**
+`// SECTION: Modal primitives (showModal / hideModal)` since the app-wide
+`showModal`/`hideModal` stay.
 
 ## Section index (grep `// SECTION:`)
 
@@ -335,55 +353,58 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2735 - PDF Rendering
 - L4175 - UI Render Functions
 - L5322 - Inline rename & polyline edit mode
-- L5436 - Item detail & properties modals
-- L5774 - Toasts & line color picker
-- L5922 - Airboard cloud sync
-- L5955 - Supabase RPC & presence heartbeat
-- L5995 - User activity / event telemetry
-- L6038 - Supabase auth & dev auth
-- L6167 - [sync] Checkout subscription & permission refresh
-- L6345 - Modals & Handlers
-- L6418 - PDF intake (upload, test PDF, hashing)
-- L6746 - Toolbar tool buttons
-- L6854 - Tool sidebar buttons & legend overlay
-- L6968 - Add Line Type modal
-- L7038 - Line color & sidebar handlers
-- L7182 - Polyline modal & drawing
-- L7213 - Zoom bar & page navigation
-- L7241 - Canvas layers
-- L7451 - PDF download helpers & PipeTooling menu
-- L7527 - Copy summaries (PipeTooling / Email)
-- L7729 - Import-canvas-after-PDF & Clear Page modals
-- L7905 - Download current page
-- L8153 - Zone & page-action modal handlers
-- L8257 - Mobile actions burger menu (right-side drawer)
-- L8385 - User activity time formatting
-- L8543 - User Activity modal (admin)
-- L8611 - My Settings modal
-- L8642 - Auth & settings entry buttons
-  - L8687 - Project Settings checkout & Save Status bell
-  - L8810 - [sync] Checkout expired recovery
-  - L9064 - [sync] Turn In
-  - L9577 - Share project & view links
-  - L9797 - Cloud project hydrate / copy / fork
-  - L9994 - Settings menu actions & Airboard sync
-  - L10073 - My Settings password & Auth sign-in
-  - L10126 - Save Project modal
-  - L10329 - Copy project modal
-  - L10353 - Checkout expired recovery modal wiring
-  - L10437 - Save-before-load modal
-  - L10512 - Last-session restore prompt
-  - L10591 - User Activity filters & view toggle
-- L10779 - Canvas Event Handlers
-- L11151 - Event Binding
-- L11161 - Aim loupe (mobile press-hold precise placement)
-- L12184 - [sync] Manual save to cloud
-- L12809 - [sync] Auto-save
-- L13106 - [sync] Local backup (IndexedDB takeoff state)
-- L13336 - [sync] Checkout keep-alive
-- L13380 - App feature registry
-- L13535 - View-only mode
-- L13816 - Init / boot
+- L5436 - Modal primitives (showModal / hideModal)
+- L5455 - Toasts & line color picker
+- L5603 - Airboard cloud sync
+- L5636 - Supabase RPC & presence heartbeat
+- L5676 - User activity / event telemetry
+- L5719 - Supabase auth & dev auth
+- L5848 - [sync] Checkout subscription & permission refresh
+- L6026 - Modals & Handlers
+- L6099 - PDF intake (upload, test PDF, hashing)
+- L6427 - Toolbar tool buttons
+- L6535 - Tool sidebar buttons & legend overlay
+- L6649 - Add Line Type modal
+- L6719 - Line color & sidebar handlers
+- L6863 - Polyline modal & drawing
+- L6894 - Zoom bar & page navigation
+- L6922 - Canvas layers
+- L7132 - PDF download helpers & PipeTooling menu
+- L7208 - Copy summaries (PipeTooling / Email)
+- L7410 - Import-canvas-after-PDF & Clear Page modals
+- L7586 - Download current page
+- L7834 - Zone & page-action modal handlers
+- L7928 - Mobile actions burger menu (right-side drawer)
+- L8056 - User activity time formatting
+- L8214 - User Activity modal (admin)
+- L8282 - My Settings modal
+- L8313 - Auth & settings entry buttons
+  - L8358 - Project Settings checkout & Save Status bell
+  - L8481 - [sync] Checkout expired recovery
+  - L8735 - [sync] Turn In
+  - L9248 - Share project & view links
+  - L9468 - Cloud project hydrate / copy / fork
+  - L9665 - Settings menu actions & Airboard sync
+  - L9744 - My Settings password & Auth sign-in
+  - L9797 - Save Project modal
+  - L10000 - Copy project modal
+  - L10024 - Checkout expired recovery modal wiring
+  - L10108 - Save-before-load modal
+  - L10183 - Last-session restore prompt
+  - L10262 - User Activity filters & view toggle
+- L10450 - Canvas Event Handlers
+- L10822 - Event Binding
+- L10832 - Aim loupe (mobile press-hold precise placement)
+- L10970 - Zoom transform preview & commit
+- L11006 - Canvas mouse, wheel & touch handlers
+- L11627 - Global dropdown dismissal & keyboard hotkeys
+- L11858 - [sync] Manual save to cloud
+- L12483 - [sync] Auto-save
+- L12780 - [sync] Local backup (IndexedDB takeoff state)
+- L13010 - [sync] Checkout keep-alive
+- L13054 - App feature registry
+- L13212 - View-only mode
+- L13493 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -437,10 +458,11 @@ Annotated, in rough order:
 - Math & Format Helpers — the state-coupled helpers: `getPageScale`, `pickScaleForLineType`, `quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `formatDist`, `formatArea`, `rotateAnnotations` (the pure primitives `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers, `pointInRect`, zone locators, `parseFraction`, etc. live in [geometry.js](geometry.js)). The wrappers `formatDistFeetInchesFromReal` / `formatDistFeetInches` keep their `getPageScale` lookup + px fallback then delegate to `formatFeetInchesFromVal`, and `formatSaveTime` / `formatSaveTimeParts` / the `updateStatus` inline delegate to `formatAgo` (both pure helpers live in [geometry.js](geometry.js))
 - Save Status modal — `renderSaveStatusModalContent`, `openSaveStatusModal`
 - Coordinate Helpers — `getClientCoords`, `canvasRect`, `toCanvas`, `pdfPos`, `canvasToPdf`, `hitTest`, `isPointInPageBounds`
-- PDF Rendering — `renderPdf`, `renderAnnotations`, `renderAnnotationsToContext`, `drawDropMarker`, `drawGrid`, `drawLegend`
+- PDF render bitmap cache — the LRU of rendered-page ImageBitmaps that makes page revisits a synchronous blit: `pdfBitmapCacheKey`-tuple helpers, put/get/clear, the idle neighbor prefetch, `App.clearPdfBitmapCache` + the `App.__pdfBitmapCache*` debug seams (see [page-switch-cache.spec.js](page-switch-cache.spec.js) and CHANGELOG "perf: large-plan responsiveness")
+- PDF Rendering — `renderPdf` (bitmap-cache fast path + render-task cancellation + stale-blit preview), `renderAnnotations`, `renderAnnotationsToContext`, `drawDropMarker`, `drawGrid`, `drawLegend`
 - UI Render Functions — `updateUI`, `renderCanvasSwitcher`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `renderLinesList`, `renderSummary`, `openSummaryCountDetailModal`, `computeFooterTotals`/`getFooterTotalsCached`
 - Inline rename & polyline edit mode — `onDoubleTapOrDblClick`, `startRename`, `enterEditMode`, `exitEditMode`
-- Item detail & properties modals — `showModal`/`hideModal`, `openCounterLineTypeDetailsModal`, `performDeleteCounterLineType`, `openLinePropertiesModal`, `deleteGroup`
+- Modal primitives (showModal / hideModal) — the app-wide `showModal`/`hideModal` (the Counter/Line Type details modal, Line Properties modal, and `deleteGroup` moved to [features/item-details.js](features/item-details.js); `hideModal` resets the moved details item via `App.onCounterLineTypeDetailsHidden`)
 - Toasts & line color picker — `showToast`, `setTurnInProgress`, `showSetScaleFirstToast`, `showOutOfBoundsToast`, `showLineColorModal`, `applyLineColor`
 - Airboard cloud sync — `fetchUserAirboard`, `saveUserAirboard`
 - Supabase RPC & presence heartbeat — `rpcSupabase`, `touchPresence`, `startPresenceHeartbeat`/`stopPresenceHeartbeat`
@@ -483,7 +505,11 @@ Annotated, in rough order:
   - Last-session restore prompt — `#lastSessionRestoreKeep`/`Discard`
   - User Activity filters & view toggle — `#userActivity*` filter/view handlers
 - Canvas Event Handlers — `showContextMenu`, `handleCanvasClick`, `handleCanvasDblClick`, `handleContextMenu`
-- Event Binding — transform/zoom/pan, wheel, touch, keyboard hotkeys
+- Event Binding — the canvas-wrapper handle + the bitmap-prefetch cancellation guards
+- Aim loupe (mobile press-hold precise placement) — the loupe core only: `isAimingTool`, `enterAiming`/`cancelAiming`, `drawAimLoupe`, `commitAimPoint`, `abortVertexDrag` (its call sites live in the mouse/touch handlers below)
+- Zoom transform preview & commit — `lastRenderedZoom`, `updateContainerTransform`, `syncZoomIndicators`, `commitWheelZoom`/`commitPinchZoom`
+- Canvas mouse, wheel & touch handlers — the mousedown/mousemove/mouseup stack (pan, legend drag/resize, note drag/resize, vertex drag, aim-loupe entry), the wheel-zoom rAF, the touch pinch/pan/tap/long-press stack, `handleTouchAsCanvasTap`
+- Global dropdown dismissal & keyboard hotkeys — the document-level click-outside closer for every dropdown + the hotkey/Escape/arrow-key handler
 - [sync] Manual save to cloud — `performSaveProjectToCloud`
 - [sync] Auto-save — `performAutoSave`, `noteAutoSaveOutcome`, `recordAutosaveLatency`
 - [sync] Local backup (IndexedDB takeoff state) — `writeTakeoffStateBackup`, `writeTakeoffBackupToIndexedDB`
@@ -517,6 +543,8 @@ Annotated, in rough order:
 | Canvas click handling | `handleCanvasClick` |
 | Measure tool / distance toast | `TOOL.MEASURE` or `measureBtn`; same-zone uses `getEffectiveScaleForLine` |
 | Zoom / pan | `state.zoom` or `updateContainerTransform` or `showZoomModal` |
+| Zoom gesture perf (no per-frame updateUI) | `syncZoomIndicators` or `commitWheelZoom` |
+| Page-switch bitmap cache | `pdfBitmapCache` or `clearPdfBitmapCache` or `SECTION: PDF render bitmap cache` |
 | hitTest | `function hitTest` |
 | Context menu | `handleContextMenu` or `showContextMenu` or `ctxTargetNameRow` |
 | Coordinate conversion | `canvasToPdf` or `toCanvas` |
@@ -533,7 +561,8 @@ Annotated, in rough order:
 | Page rotation | `rotatePage90` or `page.rotation` |
 | Rotation/share orientation guard | `bakeFrame` or `computePageBakeFrame` or `verifyPageBakeFrame` or `bakeFramesMatch` (geometry.js) or `page.bakeMismatch` |
 | Canvas-blank-at-zoom guard | `renderAreaSafety` or `canvasCornerReadsBack` or `effectiveDpr` or `getCanvasCaps` |
-| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` |
+| Counter/Line Type details modal | `openCounterLineTypeDetailsModal` (features/item-details.js) |
+| Line Properties modal | `openLinePropertiesModal` or `closeLinePropertiesModal` (features/item-details.js) |
 | Supabase auth | `initSupabaseAuth` or `state.supabaseSession` |
 | Dev auth bypass | `canUseDevAuth` or `devAuthSignIn` (`?devAuth=1`, localhost) |
 | Save / Load project | `performSaveProjectToCloud` or `openLoadProjectModal` or `saveProjectModal` |
@@ -588,7 +617,8 @@ These must remain on `window`: `state`, `makeAnnotations`, `ptDist`,
 `getLineRealWorldLength`,
 `getMultiplyZoneForLine`, `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`,
 `getMergedAnnotationsForPage`. [report.js](report.js) exposes back
-`buildReportHtml`, `printReport`, `getPipeToolingSummary`, `getEmailTextSummary`.
+`buildReportHtml`, `printReport`, `getPipeToolingSummary`, `getPipeToolingHasData`
+(cheap counts-or-lines existence check used by `updateUI`), `getEmailTextSummary`.
 Both summary functions accept optional `{ pageIndices?: number[], getAnnotations?: (page) => annotations }`.
 
 ## Data Flow
@@ -987,9 +1017,14 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   carries a `hidden` attribute as a belt-and-braces guard so a stale stylesheet (no
   `.zoom-rail` rules) can't render its markup as bottom-left artifacts during that one
   mixed load.
-- **CACHE_VERSION bump is a deploy discipline** — there is no build step, so bump
-  `CACHE_VERSION` in [sw.js](sw.js) on every deploy that changes a precached asset, or the
-  SW won't detect the update. `doGlobalReloadNow` also best-effort clears Cache Storage as
+- **CACHE_VERSION is generated (`npm run build:sw`)** — `CACHE_VERSION` in [sw.js](sw.js)
+  is a content hash of every asset in `PRECACHE_URLS`, stamped by
+  [scripts/build-sw.js](scripts/build-sw.js); never edit it by hand. Run `npm run build:sw`
+  after changing any precached asset (`npm run check` includes `build:sw -- --check`, so a
+  stale hash fails CI — this replaced the old manual bump, which kept being forgotten).
+  `PRECACHE_URLS` itself is still hand-maintained: when adding/renaming a shell file, update
+  the app/index.html tag **and** `PRECACHE_URLS`, then rerun `build:sw`.
+  `doGlobalReloadNow` also best-effort clears Cache Storage as
   a backstop. Icons are regenerated by `npm run build:pwa-icons`
   ([scripts/build-pwa-icons.js](scripts/build-pwa-icons.js), Playwright-rendered — no new
   deps). Storage durability: `navigator.storage.persist()` is requested after auth so the

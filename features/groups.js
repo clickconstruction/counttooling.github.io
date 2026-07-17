@@ -18,7 +18,9 @@
  * core-function -> feature callback in this codebase.
  *
  * Scope is the two modals only. deleteGroup (a heavier mutation that clears the
- * group off every annotation) stays in app.js and is reached via App.deleteGroup;
+ * group off every annotation) lives in features/item-details.js (split #25; its
+ * App.deleteGroup registration moved there from app.js) and is reached via
+ * App.deleteGroup at call time, so load order between the two files is irrelevant;
  * the "Show group colors" sidebar toggle (#showGroupColorsBtn) also stays in
  * app.js. The two external callers -- the groups-list Edit button (render code)
  * and the canvas right-click "Assign to Group" -- reach these via

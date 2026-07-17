@@ -7129,7 +7129,7 @@
   };
   document.getElementById('exportBtnSidebar').onclick = () => document.getElementById('exportBtn').click();
 
-  // SECTION: PDF download helpers & PipeTooling menu
+  // SECTION: PDF download helpers
   // The Export PDFs modal (openSpecificPagesModal + the specificPages* cluster
   // and its #specificPages* handlers) lives in features/export-pdfs.js
   // (window.App registry); it is reached via App.openSpecificPagesModal at call
@@ -7180,32 +7180,9 @@
     downloadPdfBuffer(buf, sanitizeForFilename(state.currentProjectName) + '.pdf');
     logUserEvent('export_pdf', state.currentProjectId, { source: 'project-pdf' });
   }
-  const forPipeToolingBtn = document.getElementById('forPipeTooling');
-  const forPipeToolingMenu = document.getElementById('forPipeToolingMenu');
-  const forPipeToolingDropdown = document.getElementById('forPipeToolingDropdown');
-  if (forPipeToolingBtn && forPipeToolingMenu) {
-    forPipeToolingBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (forPipeToolingMenu.classList.contains('visible')) {
-        forPipeToolingMenu.classList.remove('visible');
-        if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
-      } else {
-        prefetchExportViewLink();
-        forPipeToolingMenu.style.left = '';
-        forPipeToolingMenu.style.right = '';
-        forPipeToolingMenu.classList.add('visible');
-        const btnRect = forPipeToolingBtn.getBoundingClientRect();
-        forPipeToolingMenu.style.position = 'fixed';
-        forPipeToolingMenu.style.left = btnRect.left + 'px';
-        const menuHeight = 120;
-        forPipeToolingMenu.style.top = Math.max(8, btnRect.top - menuHeight - 4) + 'px';
-        forPipeToolingMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
-        const isMobile = window.matchMedia('(max-width: 768px)').matches;
-        if (isMobile && forPipeToolingMenu.parentElement !== document.body) document.body.appendChild(forPipeToolingMenu);
-      }
-    };
-  }
-  // SECTION: Copy summaries (PipeTooling / Email)
+  // The #forPipeTooling dropdown toggle moved to features/output.js with the
+  // Copy to PipeTooling flow.
+  // SECTION: View-link URL helpers & show-highlights/notes
   // Build the public view-link URL for a token (origin + path + ?t=token).
   function buildViewLinkUrl(token) {
     const base = window.location.origin + (window.location.pathname || '/');
@@ -7228,140 +7205,10 @@
     if (!token) throw new Error('No view link');
     return buildViewLinkUrl(token);
   }
-  // Cached view-link URL for the "Copy to /Tooling" export. Prefetched when the
-  // dropdown opens so the clipboard write can stay inside the user gesture
-  // (Safari/Firefox revoke clipboard permission across an await).
-  let exportViewLinkUrl = null;
-  let exportViewLinkProjectId = null;
-  function canExportViewLink() {
-    return !!(SUPABASE_ENABLED && supabase && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink);
-  }
-  function prefetchExportViewLink() {
-    if (!canExportViewLink()) { exportViewLinkUrl = null; exportViewLinkProjectId = null; return; }
-    if (exportViewLinkUrl && exportViewLinkProjectId === state.currentProjectId) return;
-    const pid = state.currentProjectId;
-    getOrCreateViewLinkUrl().then((url) => {
-      if (state.currentProjectId === pid) { exportViewLinkUrl = url; exportViewLinkProjectId = pid; }
-    }).catch(() => { /* best-effort; doCopyPipeTooling retries inline */ });
-  }
-  async function doCopyPipeTooling(getAnnFn, pageIndices) {
-    const opts = {};
-    if (getAnnFn) opts.getAnnotations = getAnnFn;
-    if (pageIndices != null) opts.pageIndices = pageIndices;
-    let text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
-    if (!text) {
-      alert('No items to summarize. Add counters or line types first.');
-      return;
-    }
-    // Append a project view link so importing tools (PipeTooling / TakeoffTooling)
-    // can link the bid back to the source takeoff. Importers detect it by scanning
-    // the pasted text for a counttooling URL with a ?t=<token>.
-    let noLinkToast = null;
-    if (SUPABASE_ENABLED) {
-      if (canExportViewLink()) {
-        let url = (exportViewLinkUrl && exportViewLinkProjectId === state.currentProjectId) ? exportViewLinkUrl : null;
-        if (!url) {
-          try {
-            url = await getOrCreateViewLinkUrl();
-            exportViewLinkUrl = url;
-            exportViewLinkProjectId = state.currentProjectId;
-          } catch (_) {
-            noLinkToast = 'Counts copied, but the view link could not be created.';
-          }
-        }
-        if (url) text += '\n\nView link:\t' + url;
-      } else if (!state.currentProjectId) {
-        noLinkToast = 'Counts copied. Save the project to the cloud to include a view link.';
-      } else if (!state.supabaseSession?.user) {
-        noLinkToast = 'Counts copied. Sign in to include a view link.';
-      } else if (state.loadedViaViewLink) {
-        noLinkToast = 'Counts copied. View-only sessions cannot create a share link.';
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      if (noLinkToast) {
-        showToast(noLinkToast);
-      } else {
-        showModal('pipeToolingCopiedModal');
-        setTimeout(() => hideModal('pipeToolingCopiedModal'), 1500);
-      }
-    } catch (err) {
-      alert('Could not copy to clipboard: ' + (err.message || err));
-    }
-  }
-  document.querySelectorAll('.pipe-tooling-option').forEach(opt => {
-    opt.onclick = async (e) => {
-      e.stopPropagation();
-      const mode = opt.dataset.mode;
-      if (forPipeToolingMenu) {
-        forPipeToolingMenu.classList.remove('visible');
-        if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
-      }
-      if (mode === 'this-canvas') await doCopyPipeTooling(null, [state.currentPage]);
-      else if (mode === 'visible') await doCopyPipeTooling(null);
-      else if (mode === 'all') await doCopyPipeTooling(getMergedAnnotationsForPage);
-    };
-  });
-
-  const copySummaryTextBtn = document.getElementById('copySummaryText');
-  const copySummaryTextMenu = document.getElementById('copySummaryTextMenu');
-  const copySummaryTextDropdown = document.getElementById('copySummaryTextDropdown');
-  if (copySummaryTextBtn && copySummaryTextMenu) {
-    copySummaryTextBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (copySummaryTextMenu.classList.contains('visible')) {
-        copySummaryTextMenu.classList.remove('visible');
-        if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
-      } else {
-        copySummaryTextMenu.style.left = '';
-        copySummaryTextMenu.style.right = '';
-        copySummaryTextMenu.classList.add('visible');
-        const btnRect = copySummaryTextBtn.getBoundingClientRect();
-        copySummaryTextMenu.style.position = 'fixed';
-        copySummaryTextMenu.style.left = btnRect.left + 'px';
-        const menuHeight = 120;
-        const spaceBelow = window.innerHeight - (btnRect.bottom + 4);
-        const top = spaceBelow < menuHeight
-          ? Math.max(8, btnRect.top - menuHeight - 4)
-          : (btnRect.bottom + 4);
-        copySummaryTextMenu.style.top = top + 'px';
-        copySummaryTextMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
-        const isMobile = window.matchMedia('(max-width: 768px)').matches;
-        if (isMobile && copySummaryTextMenu.parentElement !== document.body) document.body.appendChild(copySummaryTextMenu);
-      }
-    };
-  }
-  async function doCopyEmailSummary(getAnnFn, pageIndices) {
-    const opts = {};
-    if (getAnnFn) opts.getAnnotations = getAnnFn;
-    if (pageIndices != null) opts.pageIndices = pageIndices;
-    const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary(opts) : '';
-    if (!text) {
-      alert('No items to summarize. Add counters or line types first.');
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      showModal('pipeToolingCopiedModal');
-      setTimeout(() => hideModal('pipeToolingCopiedModal'), 1500);
-    } catch (err) {
-      alert('Could not copy to clipboard: ' + (err.message || err));
-    }
-  }
-  document.querySelectorAll('.copy-summary-option').forEach(opt => {
-    opt.onclick = async (e) => {
-      e.stopPropagation();
-      const mode = opt.dataset.mode;
-      if (copySummaryTextMenu) {
-        copySummaryTextMenu.classList.remove('visible');
-        if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
-      }
-      if (mode === 'this-canvas') await doCopyEmailSummary(null, [state.currentPage]);
-      else if (mode === 'visible') await doCopyEmailSummary(null);
-      else if (mode === 'all') await doCopyEmailSummary(getMergedAnnotationsForPage);
-    };
-  });
+  // The Copy to PipeTooling / Copy Summary flows (doCopyPipeTooling +
+  // doCopyEmailSummary, their dropdown toggles + option bindings, and the
+  // prefetched export view-link cache) moved to features/output.js; the Share
+  // modal's revoke clears that cache via App.onViewLinkRevoked().
 
   document.getElementById('bundleHighlights').onclick = async () => {
     if (!App.hasAnyHighlights()) return;
@@ -7583,168 +7430,10 @@
   }
   document.getElementById('clearPage').onclick = () => showClearPageModal();
   document.getElementById('clearPageSidebar').onclick = () => showClearPageModal();
-  // SECTION: Download current page
-  async function downloadCurrentPageAsPdf(mode) {
-    const page = state.pages[state.currentPage];
-    const isAllPages = mode === 'all-pages' || mode === 'all-pages-canvases';
-    if (!isAllPages && !page?.pdfPage) return;
-    if (!isAllPages) ensureActiveCanvas(page);
-    const jsPDFLib = window.jspdf;
-    if (!jsPDFLib?.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
-    const EXPORT_SCALE = 4;
-    const PT_TO_MM = 25.4 / 72;
-    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
-    const btn = document.getElementById('downloadCurrentPageBtn');
-    const origText = btn?.title || '';
-    if (btn) { btn.disabled = true; btn.title = 'Downloading…'; }
-    const baseName = sanitizeForFilename(state.currentProjectName);
-    const pageNum = state.currentPage + 1;
-    try {
-      if (mode === 'all-canvases') {
-        const canvases = getPageCanvases(page);
-        if (canvases.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let i = 0; i < canvases.length; i++) {
-          const c = canvases[i];
-          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || makeAnnotations());
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          const caption = c.name || 'Main';
-          const captionTop = 10;
-          const imageTop = 14;
-          const pdfPageW = Math.max(210, wMm + 28);
-          const pdfPageH = imageTop + hMm + 14 + 20;
-          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-          else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-          doc.setFontSize(9);
-          doc.text(caption, 14, captionTop);
-          doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-        }
-        if (doc) doc.save('takeoff-page' + pageNum + '_all-canvases_' + baseName + '.pdf');
-      } else if (mode === 'all-pages') {
-        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let i = 0; i < state.pages.length; i++) {
-          if (btn) btn.title = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
-          const p = state.pages[i];
-          ensureActiveCanvas(p);
-          const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides);
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        }
-        if (doc) doc.save('takeoff-all-pages_' + baseName + '.pdf');
-      } else if (mode === 'all-pages-canvases') {
-        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let pageIdx = 0; pageIdx < state.pages.length; pageIdx++) {
-          const p = state.pages[pageIdx];
-          ensureActiveCanvas(p);
-          const canvases = getPageCanvases(p);
-          if (canvases.length === 0) continue;
-          for (let ci = 0; ci < canvases.length; ci++) {
-            if (btn) btn.title = 'Exporting page ' + (pageIdx + 1) + '/' + state.pages.length + '…';
-            const c = canvases[ci];
-            const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-            renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides, c.annotations || makeAnnotations());
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-            const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-            if (canvases.length === 1) {
-              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-              else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-              doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-            } else {
-              const caption = c.name || 'Main';
-              const captionTop = 10;
-              const imageTop = 14;
-              const pdfPageW = Math.max(210, wMm + 28);
-              const pdfPageH = imageTop + hMm + 14 + 20;
-              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-              else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-              doc.setFontSize(9);
-              doc.text(caption, 14, captionTop);
-              doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-            }
-          }
-        }
-        if (doc) doc.save('takeoff-all-pages-canvases_' + baseName + '.pdf');
-      } else {
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
-      }
-      logUserEvent('export_pdf', state.currentProjectId, { source: 'download-current-page', mode: mode || 'this-canvas' });
-    } catch (err) {
-      console.error(err);
-      alert('Download failed: ' + (err?.message || err));
-    }
-    if (btn) { btn.disabled = false; btn.title = origText; }
-  }
-  const downloadCurrentPageBtn = document.getElementById('downloadCurrentPageBtn');
-  const downloadCurrentPageMenu = document.getElementById('downloadCurrentPageMenu');
-  if (downloadCurrentPageBtn) {
-    downloadCurrentPageBtn.onclick = (e) => {
-      e.stopPropagation();
-      const page = state.pages[state.currentPage];
-      const canvases = page ? getPageCanvases(page) : [];
-      const multiPage = state.pages.length > 1;
-      if (!multiPage && canvases.length <= 1) {
-        downloadCurrentPageAsPdf('this-canvas');
-      } else if (downloadCurrentPageMenu) {
-        if (downloadCurrentPageMenu.classList.contains('visible')) {
-          downloadCurrentPageMenu.classList.remove('visible');
-        } else {
-          downloadCurrentPageMenu.style.left = '';
-          downloadCurrentPageMenu.style.right = '';
-          downloadCurrentPageMenu.classList.add('visible');
-          const btnRect = downloadCurrentPageBtn.getBoundingClientRect();
-          downloadCurrentPageMenu.style.position = 'fixed';
-          downloadCurrentPageMenu.style.left = (btnRect.right - 300) + 'px';
-          downloadCurrentPageMenu.style.top = (btnRect.bottom + 4) + 'px';
-        }
-      }
-    };
-  }
-  document.querySelectorAll('.download-page-option').forEach(opt => {
-    opt.onclick = (e) => {
-      e.stopPropagation();
-      const mode = opt.dataset.mode;
-      if (downloadCurrentPageMenu) downloadCurrentPageMenu.classList.remove('visible');
-      if (mode) downloadCurrentPageAsPdf(mode);
-    };
-  });
+  // SECTION: Export & report dropdown menus
+  // downloadCurrentPageAsPdf + the #downloadCurrentPageBtn mode menu moved to
+  // features/output.js (the mobile burger menu keeps dispatching clicks on the
+  // same .download-page-option elements).
   const exportDropdownBtn = document.getElementById('exportDropdownBtn');
   const exportDropdownMenu = document.getElementById('exportDropdownMenu');
   if (exportDropdownBtn && exportDropdownMenu) {
@@ -9347,7 +9036,7 @@
                 const tok = this.dataset.token;
                 if (!confirm('Revoke this view link? It will stop working immediately.')) return;
                 const { data: res } = await supabase.rpc('revoke_view_link', { p_token: tok });
-                if (res && res.ok) { exportViewLinkUrl = null; exportViewLinkProjectId = null; openShareProjectModal(); }
+                if (res && res.ok) { App.onViewLinkRevoked && App.onViewLinkRevoked(); openShareProjectModal(); }
                 else showToast((res && res.error) || 'Failed to revoke');
               };
               viewLinksListEl.appendChild(div);
@@ -13156,6 +12845,9 @@
   App.openCanvasOnlyNeedsPdfModal = openCanvasOnlyNeedsPdfModal;
   App.backupDataToProjFormat = backupDataToProjFormat;
   App.fitZoom = fitZoom;
+  // Output cluster deps (features/output.js).
+  App.SUPABASE_ENABLED = SUPABASE_ENABLED;
+  App.getOrCreateViewLinkUrl = getOrCreateViewLinkUrl;
   // Prepare PDF modal deps (features/prepare-pdf.js).
   App.assertPdfWithinLimit = assertPdfWithinLimit;
   App.mergePdfBuffers = mergePdfBuffers;

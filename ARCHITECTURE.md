@@ -91,6 +91,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [features/pdf-bundle.js](features/pdf-bundle.js) | Twenty-fourth feature-file split (`window.App` registry pilot #24) — the PDF-bundling helpers `addReportPagesToPdf`/`addNotesToPdf`/`addHighlightsToPdf`/`hasAnyHighlights`/`hasAnyNotes` (report/notes/highlights → jsPDF). Its own IIFE loaded **after** [app.js](app.js). These were **already all on `App`** (publish-only for [features/export-pdfs.js](features/export-pdfs.js)), so the split **re-homes** their registrations from app.js; export-pdfs.js keeps working via `App.*`. One new publish-only dep `wrapNoteText`; `renderAnnotationsToContext`/`getPageCanvases`/`getActiveAnnotations` already on `App`; `buildReportHtml` (report.js) + `html2canvas` (CDN) are runtime globals (added `buildReportHtml` to the `features/*.js` eslint globals). app.js's 6 internal callers convert to `App.*`; the interleaved `importCanvasAfterPdf`/`clearPage` modals stay |
 | [pdf-bundle.spec.js](pdf-bundle.spec.js) | Playwright regression for pilot #24 — registry-contract (the 5 bundling fns are functions on `App`) plus a light real check: with a PDF loaded, `App.hasAnyHighlights()`/`hasAnyNotes()` are false, then flip true after a highlight/note is added. Asserts no console / page errors; `npx playwright test pdf-bundle.spec.js` |
 | [features/item-details.js](features/item-details.js) | Twenty-fifth feature-file split (`window.App` registry pilot #25) — the Counter / Line Type **details modal** (`#counterLineTypeDetailsModal`: rename, color, icon grid, per-page usage jump list, delete with `#deleteCounterLineTypeConfirmModal` confirm via the private `performDeleteCounterLineType`), the **Line Properties modal** (`#linePropertiesModal`: name/color/drops ±1/±10/clear + per-drop units, polyline vertex-edit entry), and **`deleteGroup`** (registration **re-homed** from app.js's registry tail — [features/groups.js](features/groups.js) keeps consuming `App.deleteGroup` at call time). The three modal-state flags (`counterLineTypeDetailsItem`, `pendingDeleteCounterLineType`, `pendingLineProperties`) move as private `let`s; the close/confirm bindings move from the zone & page-action handler block. Two core hooks: `hideModal('counterLineTypeDetailsModal')` resets the flag via the `App.onCounterLineTypeDetailsHidden` callback (Groups pattern), and the shared custom-icon upload handler reads the open item via the **feature-registered getter** `App.getCounterLineTypeDetailsItem()`. Registers `App.openCounterLineTypeDetailsModal`/`App.openLinePropertiesModal`/`App.closeLinePropertiesModal`/`App.deleteGroup`. Two new publish-only deps `enterEditMode`/`countItemsInGroup`; reuses `state`/`TOOL`/`showModal`/`hideModal`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`getOrderedIcons`/`getEffectiveCustomIcons`/`iconVbFor`/`getPageCanvases`/`makeAnnotations`/`showLineColorModal`/`getActiveAnnotations`/`getPageScale`/`fitZoom`. `showModal`/`hideModal` **stay** in app.js under the renamed marker `// SECTION: Modal primitives (showModal / hideModal)`; the external callers (sidebar edit pens, lines-list edit/dblclick, context-menu Line Properties, Escape branch) reach the modals via `App.*` |
+| [features/output.js](features/output.js) | Twenty-sixth feature-file split (`window.App` registry pilot #26) — the **output-actions cluster** (the "Output" features): **Copy to PipeTooling** (`#forPipeTooling` dropdown toggle + `doCopyPipeTooling` with the view-link footer + the prefetched export view-link cache `exportViewLinkUrl`/`exportViewLinkProjectId` + `canExportViewLink`/`prefetchExportViewLink`), **Copy Summary** (`#copySummaryText` dropdown + `doCopyEmailSummary`), and **Download current page** (`downloadCurrentPageAsPdf` + `#downloadCurrentPageBtn` + its mode menu). No entry points registered — the bindings move with their DOM elements, so the mobile burger menu's dispatched clicks keep working untouched; the one registration is the `App.onViewLinkRevoked()` callback (the Share modal's revoke clears the private cache through it). Two new publish-only deps `SUPABASE_ENABLED`/`getOrCreateViewLinkUrl` (the view-link minting **stays** in app.js — the header Share button uses it too — under the renamed marker `// SECTION: View-link URL helpers & show-highlights/notes`); reuses `state`/`getSupabase()`/`showToast`/`showModal`/`hideModal`/`sanitizeForFilename`/`ensureActiveCanvas`/`getPageCanvases`/`renderAnnotationsToContext`/`makeAnnotations`/`logUserEvent` + the `window.*` report fns. The `downloadProjectPdf`/`downloadPdfBuffer` helpers and the header export/report dropdowns stay in app.js (markers renamed `// SECTION: PDF download helpers` and `// SECTION: Export & report dropdown menus`) |
+| [output.spec.js](output.spec.js) | Playwright regression for pilot #26 — with clipboard permissions granted: the Copy Summary option writes the email summary to the clipboard + shows the copied modal; the Copy to PipeTooling option writes the tab-delimited summary and shows the "save to include a view link" toast (cloud enabled, no cloud project → no footer); the Download button opens its mode menu on a multi-page project and the this-canvas option yields a real download named `takeoff-page1_*.pdf`; `App.onViewLinkRevoked` is registered. Asserts no console / page errors; `npx playwright test output.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -327,7 +329,14 @@ save-status getter-accessors). Two new publish-only deps
 (`enterEditMode`/`countItemsInGroup`); the emptied
 `// SECTION: Item detail & properties modals` marker was **renamed**
 `// SECTION: Modal primitives (showModal / hideModal)` since the app-wide
-`showModal`/`hideModal` stay.
+`showModal`/`hideModal` stay. The output cluster (pilot #26) pulled Copy to
+PipeTooling, Copy Summary, and Download current page into
+[features/output.js](features/output.js) — the first split registering **no
+entry points** (every binding moves with its DOM element; the burger menu's
+dispatched clicks keep working), just the `App.onViewLinkRevoked` cache-clear
+callback; the shared view-link minting and download helpers stay in app.js
+(three markers renamed: `PDF download helpers`, `View-link URL helpers &
+show-highlights/notes`, `Export & report dropdown menus`).
 
 ## Section index (grep `// SECTION:`)
 
@@ -369,42 +378,42 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6863 - Polyline modal & drawing
 - L6894 - Zoom bar & page navigation
 - L6922 - Canvas layers
-- L7132 - PDF download helpers & PipeTooling menu
-- L7208 - Copy summaries (PipeTooling / Email)
-- L7410 - Import-canvas-after-PDF & Clear Page modals
-- L7586 - Download current page
-- L7834 - Zone & page-action modal handlers
-- L7928 - Mobile actions burger menu (right-side drawer)
-- L8056 - User activity time formatting
-- L8214 - User Activity modal (admin)
-- L8282 - My Settings modal
-- L8313 - Auth & settings entry buttons
-  - L8358 - Project Settings checkout & Save Status bell
-  - L8481 - [sync] Checkout expired recovery
-  - L8735 - [sync] Turn In
-  - L9248 - Share project & view links
-  - L9468 - Cloud project hydrate / copy / fork
-  - L9665 - Settings menu actions & Airboard sync
-  - L9744 - My Settings password & Auth sign-in
-  - L9797 - Save Project modal
-  - L10000 - Copy project modal
-  - L10024 - Checkout expired recovery modal wiring
-  - L10108 - Save-before-load modal
-  - L10183 - Last-session restore prompt
-  - L10262 - User Activity filters & view toggle
-- L10450 - Canvas Event Handlers
-- L10822 - Event Binding
-- L10832 - Aim loupe (mobile press-hold precise placement)
-- L10970 - Zoom transform preview & commit
-- L11006 - Canvas mouse, wheel & touch handlers
-- L11627 - Global dropdown dismissal & keyboard hotkeys
-- L11858 - [sync] Manual save to cloud
-- L12483 - [sync] Auto-save
-- L12780 - [sync] Local backup (IndexedDB takeoff state)
-- L13010 - [sync] Checkout keep-alive
-- L13054 - App feature registry
-- L13212 - View-only mode
-- L13493 - Init / boot
+- L7132 - PDF download helpers
+- L7185 - View-link URL helpers & show-highlights/notes
+- L7257 - Import-canvas-after-PDF & Clear Page modals
+- L7433 - Export & report dropdown menus
+- L7523 - Zone & page-action modal handlers
+- L7617 - Mobile actions burger menu (right-side drawer)
+- L7745 - User activity time formatting
+- L7903 - User Activity modal (admin)
+- L7971 - My Settings modal
+- L8002 - Auth & settings entry buttons
+  - L8047 - Project Settings checkout & Save Status bell
+  - L8170 - [sync] Checkout expired recovery
+  - L8424 - [sync] Turn In
+  - L8937 - Share project & view links
+  - L9157 - Cloud project hydrate / copy / fork
+  - L9354 - Settings menu actions & Airboard sync
+  - L9433 - My Settings password & Auth sign-in
+  - L9486 - Save Project modal
+  - L9689 - Copy project modal
+  - L9713 - Checkout expired recovery modal wiring
+  - L9797 - Save-before-load modal
+  - L9872 - Last-session restore prompt
+  - L9951 - User Activity filters & view toggle
+- L10139 - Canvas Event Handlers
+- L10511 - Event Binding
+- L10521 - Aim loupe (mobile press-hold precise placement)
+- L10659 - Zoom transform preview & commit
+- L10695 - Canvas mouse, wheel & touch handlers
+- L11316 - Global dropdown dismissal & keyboard hotkeys
+- L11547 - [sync] Manual save to cloud
+- L12172 - [sync] Auto-save
+- L12469 - [sync] Local backup (IndexedDB takeoff state)
+- L12699 - [sync] Checkout keep-alive
+- L12743 - App feature registry
+- L12904 - View-only mode
+- L13185 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -480,9 +489,9 @@ Annotated, in rough order:
   - Zoom modal — `showZoomModal`
   - Canvas layers — `openAddCanvasModal`, `doAddCanvas`, canvas details
   - Export PDFs modal — `openSpecificPagesModal`, `downloadSpecificPages`
-  - Copy summaries (PipeTooling / Email) — `doCopyPipeTooling` (appends a view-link footer via the shared `getOrCreateViewLinkUrl`/`buildViewLinkUrl` + `prefetchExportViewLink` cache), `doCopyEmailSummary`
+  - View-link URL helpers & show-highlights/notes — the shared `buildViewLinkUrl`/`getOrCreateViewLinkUrl` (used by the header Share button and, via `App.getOrCreateViewLinkUrl`, the moved Copy to PipeTooling export) + the `#bundleHighlights`/`#bundleNotes` open-in-tab handlers (the copy flows themselves moved to [features/output.js](features/output.js))
   - PDF bundling helpers (`addReportPagesToPdf`, `addNotesToPdf`, `addHighlightsToPdf`, `hasAnyHighlights`, `hasAnyNotes`) → moved to [features/pdf-bundle.js](features/pdf-bundle.js); the interleaved `importCanvasAfterPdf`/`clearPage` modals stay (renamed marker)
-  - Download current page — `downloadCurrentPageAsPdf`, `downloadProjectPdf`
+  - Export & report dropdown menus — the header `#exportDropdown` (canvas/PDF/both/import), Show Report menu, Macros + custom-icon-tips bindings (`downloadCurrentPageAsPdf` + its mode menu moved to [features/output.js](features/output.js); `downloadProjectPdf` stays under PDF download helpers)
   - Note modal — `openNoteModal`
   - User activity time formatting — `formatLastSignIn`, `formatUserActivityDateTime`, `formatLastSignInUserActivity`
   - User Activity modal (admin) — `openUserActivityModal`
@@ -550,7 +559,7 @@ Annotated, in rough order:
 | Coordinate conversion | `canvasToPdf` or `toCanvas` |
 | Rename | `startRename` |
 | Pages list / collapse / badges | `renderPagesList` or `pagesListCollapsed` or `badge-scale-set` / `badge-has-ann` |
-| Download current page | `downloadCurrentPageAsPdf` |
+| Download current page | `downloadCurrentPageAsPdf` (features/output.js) |
 | Export dropdown (cloud up/down) | `exportDropdown` or `projectHasAnyCanvasMarkup` |
 | Export Canvas (Advanced + JSON) | `exportBtn` or `advancedExport` |
 | Mobile sidebar / header tools | `sidebar-tool-buttons` or `sidebar-triggers` or `has-pdf` |
@@ -593,7 +602,7 @@ Annotated, in rough order:
 | Manage Icons | `openManageIconsModal` |
 | User Settings / Artboard | `openMySettings` or `mySettingsSaveAirboard` |
 | Export PDFs modal | `openSpecificPagesModal` or `downloadSpecificPages` |
-| Copy to PipeTooling | `forPipeToolingDropdown` or `getPipeToolingSummary`; view-link footer via `getOrCreateViewLinkUrl` |
+| Copy to PipeTooling | `doCopyPipeTooling` (features/output.js) or `getPipeToolingSummary` (report.js); view-link footer via `getOrCreateViewLinkUrl` (app.js) |
 | Copy Summary (Email/Text) | `copySummaryTextDropdown` or `getEmailTextSummary` |
 | Summary count detail modal | `openSummaryCountDetailModal` |
 | Legend overlay | `showLegendOverlay` or `legendSettingsModal` or `drawLegend` |

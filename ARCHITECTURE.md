@@ -93,6 +93,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [features/item-details.js](features/item-details.js) | Twenty-fifth feature-file split (`window.App` registry pilot #25) — the Counter / Line Type **details modal** (`#counterLineTypeDetailsModal`: rename, color, icon grid, per-page usage jump list, delete with `#deleteCounterLineTypeConfirmModal` confirm via the private `performDeleteCounterLineType`), the **Line Properties modal** (`#linePropertiesModal`: name/color/drops ±1/±10/clear + per-drop units, polyline vertex-edit entry), and **`deleteGroup`** (registration **re-homed** from app.js's registry tail — [features/groups.js](features/groups.js) keeps consuming `App.deleteGroup` at call time). The three modal-state flags (`counterLineTypeDetailsItem`, `pendingDeleteCounterLineType`, `pendingLineProperties`) move as private `let`s; the close/confirm bindings move from the zone & page-action handler block. Two core hooks: `hideModal('counterLineTypeDetailsModal')` resets the flag via the `App.onCounterLineTypeDetailsHidden` callback (Groups pattern), and the shared custom-icon upload handler reads the open item via the **feature-registered getter** `App.getCounterLineTypeDetailsItem()`. Registers `App.openCounterLineTypeDetailsModal`/`App.openLinePropertiesModal`/`App.closeLinePropertiesModal`/`App.deleteGroup`. Two new publish-only deps `enterEditMode`/`countItemsInGroup`; reuses `state`/`TOOL`/`showModal`/`hideModal`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`getOrderedIcons`/`getEffectiveCustomIcons`/`iconVbFor`/`getPageCanvases`/`makeAnnotations`/`showLineColorModal`/`getActiveAnnotations`/`getPageScale`/`fitZoom`. `showModal`/`hideModal` **stay** in app.js under the renamed marker `// SECTION: Modal primitives (showModal / hideModal)`; the external callers (sidebar edit pens, lines-list edit/dblclick, context-menu Line Properties, Escape branch) reach the modals via `App.*` |
 | [features/output.js](features/output.js) | Twenty-sixth feature-file split (`window.App` registry pilot #26) — the **output-actions cluster** (the "Output" features): **Copy to PipeTooling** (`#forPipeTooling` dropdown toggle + `doCopyPipeTooling` with the view-link footer + the prefetched export view-link cache `exportViewLinkUrl`/`exportViewLinkProjectId` + `canExportViewLink`/`prefetchExportViewLink`), **Copy Summary** (`#copySummaryText` dropdown + `doCopyEmailSummary`), and **Download current page** (`downloadCurrentPageAsPdf` + `#downloadCurrentPageBtn` + its mode menu). No entry points registered — the bindings move with their DOM elements, so the mobile burger menu's dispatched clicks keep working untouched; the one registration is the `App.onViewLinkRevoked()` callback (the Share modal's revoke clears the private cache through it). Two new publish-only deps `SUPABASE_ENABLED`/`getOrCreateViewLinkUrl` (the view-link minting **stays** in app.js — the header Share button uses it too — under the renamed marker `// SECTION: View-link URL helpers & show-highlights/notes`); reuses `state`/`getSupabase()`/`showToast`/`showModal`/`hideModal`/`sanitizeForFilename`/`ensureActiveCanvas`/`getPageCanvases`/`renderAnnotationsToContext`/`makeAnnotations`/`logUserEvent` + the `window.*` report fns. The `downloadProjectPdf`/`downloadPdfBuffer` helpers and the header export/report dropdowns stay in app.js (markers renamed `// SECTION: PDF download helpers` and `// SECTION: Export & report dropdown menus`) |
 | [output.spec.js](output.spec.js) | Playwright regression for pilot #26 — with clipboard permissions granted: the Copy Summary option writes the email summary to the clipboard + shows the copied modal; the Copy to PipeTooling option writes the tab-delimited summary and shows the "save to include a view link" toast (cloud enabled, no cloud project → no footer); the Download button opens its mode menu on a multi-page project and the this-canvas option yields a real download named `takeoff-page1_*.pdf`; `App.onViewLinkRevoked` is registered. Asserts no console / page errors; `npx playwright test output.spec.js` |
+| [features/share-links.js](features/share-links.js) | Twenty-seventh feature-file split (`window.App` registry pilot #27) — the **Share Project modal** (`#shareProjectModal`): the people list (add via the `invite-to-project` Edge Function, role change / remove via `add_project_share`/`remove_project_share`, loaded via `list_users_for_project_invite` + `list_project_shares`) and the **view-links section** (list / create / Copy URL / access log / revoke via the `*_view_link*` RPCs), plus the `#shareViewLinkCreate`/`#shareProjectModalClose`/`#shareProjectAdd` bindings and the collapse toggle. Registers `App.openShareProjectModal`. Cloud-coupled: reads the client via `App.getSupabase()` at call time in every handler (client recycle + the accessor only exists when `SUPABASE_ENABLED`); revoke calls `App.onViewLinkRevoked()` ([features/output.js](features/output.js)) — **feature-to-feature coupling mediated entirely by the registry**, load order irrelevant. No new published deps (`getSupabase`/`SUPABASE_URL`/`showModal`/`hideModal`/`showToast`/`state` all pre-existing). The two openers (`#sidebarLogoShare`, `#settingsShareProject`) stay in app.js as deferred `App.*` calls; the shared view-link minting `getOrCreateViewLinkUrl` + the copy-project openers stay under the renamed marker `// SECTION: Share modal pointer & copy-project openers` |
+| [share-links.spec.js](share-links.spec.js) | Playwright regression for pilot #27 — always-run registry-contract smoke (the full flow is Supabase-gated): `App.openShareProjectModal` + `App.onViewLinkRevoked` are functions; opening with no cloud project/session is a safe no-op (modal stays hidden); the view-links collapse toggle round-trips; the close binding hides a force-shown modal. Asserts no console / page errors; `npx playwright test share-links.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -336,7 +338,13 @@ entry points** (every binding moves with its DOM element; the burger menu's
 dispatched clicks keep working), just the `App.onViewLinkRevoked` cache-clear
 callback; the shared view-link minting and download helpers stay in app.js
 (three markers renamed: `PDF download helpers`, `View-link URL helpers &
-show-highlights/notes`, `Export & report dropdown menus`).
+show-highlights/notes`, `Export & report dropdown menus`). Share links
+(pilot #27) pulled the Share Project modal (people list + view links) into
+[features/share-links.js](features/share-links.js) — the first split whose
+mutation path crosses **two** feature files by registry alone (its revoke
+calls output.js's `App.onViewLinkRevoked`); zero new published deps; the
+emptied marker renamed `// SECTION: Share modal pointer & copy-project
+openers` (the copy-project openers that shared it stay).
 
 ## Section index (grep `// SECTION:`)
 
@@ -391,29 +399,29 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
   - L8047 - Project Settings checkout & Save Status bell
   - L8170 - [sync] Checkout expired recovery
   - L8424 - [sync] Turn In
-  - L8937 - Share project & view links
-  - L9157 - Cloud project hydrate / copy / fork
-  - L9354 - Settings menu actions & Airboard sync
-  - L9433 - My Settings password & Auth sign-in
-  - L9486 - Save Project modal
-  - L9689 - Copy project modal
-  - L9713 - Checkout expired recovery modal wiring
-  - L9797 - Save-before-load modal
-  - L9872 - Last-session restore prompt
-  - L9951 - User Activity filters & view toggle
-- L10139 - Canvas Event Handlers
-- L10511 - Event Binding
-- L10521 - Aim loupe (mobile press-hold precise placement)
-- L10659 - Zoom transform preview & commit
-- L10695 - Canvas mouse, wheel & touch handlers
-- L11316 - Global dropdown dismissal & keyboard hotkeys
-- L11547 - [sync] Manual save to cloud
-- L12172 - [sync] Auto-save
-- L12469 - [sync] Local backup (IndexedDB takeoff state)
-- L12699 - [sync] Checkout keep-alive
-- L12743 - App feature registry
-- L12904 - View-only mode
-- L13185 - Init / boot
+  - L8937 - Share modal pointer & copy-project openers
+  - L8980 - Cloud project hydrate / copy / fork
+  - L9177 - Settings menu actions & Airboard sync
+  - L9256 - My Settings password & Auth sign-in
+  - L9309 - Save Project modal
+  - L9512 - Copy project modal
+  - L9536 - Checkout expired recovery modal wiring
+  - L9620 - Save-before-load modal
+  - L9695 - Last-session restore prompt
+  - L9774 - User Activity filters & view toggle
+- L9962 - Canvas Event Handlers
+- L10334 - Event Binding
+- L10344 - Aim loupe (mobile press-hold precise placement)
+- L10482 - Zoom transform preview & commit
+- L10518 - Canvas mouse, wheel & touch handlers
+- L11139 - Global dropdown dismissal & keyboard hotkeys
+- L11370 - [sync] Manual save to cloud
+- L11995 - [sync] Auto-save
+- L12292 - [sync] Local backup (IndexedDB takeoff state)
+- L12522 - [sync] Checkout keep-alive
+- L12566 - App feature registry
+- L12727 - View-only mode
+- L13008 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -502,7 +510,7 @@ Annotated, in rough order:
   - Project Settings checkout & Save Status bell — `updateSettingsCheckoutSection`, view-link copy
   - [sync] Checkout expired recovery — `applyCheckoutExpiredRecoveryMode`, `openCheckoutExpiredRecoveryModal`, `reCheckOutAfterExpiry`, `tryAutoRecheckoutIfAllowed`
   - [sync] Turn In — `doTurnIn`, `doTurnInAndHandleResult`, `tryTurnIn`, `handleEditStatusBannerClick`
-  - Share project & view links — `openShareProjectModal`
+  - Share modal pointer & copy-project openers — `openShareProjectModal` moved to [features/share-links.js](features/share-links.js) (reached via `App.*`); `openCopyProjectModal`/`openCopyProjectModalOrPromptSave` stay
   - Cloud project hydrate / copy / fork — `hydrateProjectFromCloudRow`, `openCopyProjectModal`, `forkCloudProjectToLocalWorkingCopy`
   - Load Project modal (`openLoadProjectModal` + list/filters/access-panels/project-load) → moved to [features/load-project.js](features/load-project.js); the save-before-load gate + `#loadProject*` bindings stay in app.js
   - Settings menu actions & Airboard sync — `#settingsLoadProject`/`#settingsCloseProject`, `#mySettings*Airboard`

@@ -632,7 +632,7 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 26 feature files in load order, each with a `*.spec.js` Playwright
+The 27 feature files in load order, each with a `*.spec.js` Playwright
 regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
 All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
 app.js; the Zoom Rail was born as a feature file (a new feature built directly
@@ -693,6 +693,10 @@ zoom-rail loads 4th but arrived much later:
     PipeTooling (+ export view-link cache), Copy Summary, Download current
     page (first split registering no entry points — bindings move with their
     DOM elements; one callback, `App.onViewLinkRevoked`).
+27. [features/share-links.js](features/share-links.js) — Share Project modal:
+    people list + view links (Supabase-gated; revoke reaches output.js's
+    cache-clear via `App.onViewLinkRevoked` — feature-to-feature registry
+    coupling; zero new published deps).
 
 ### Tooling
 

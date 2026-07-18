@@ -632,7 +632,7 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 31 feature files in load order, each with a `*.spec.js` Playwright
+The 32 feature files in load order, each with a `*.spec.js` Playwright
 regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
 All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
 app.js; the Zoom Rail was born as a feature file (a new feature built directly
@@ -713,6 +713,11 @@ zoom-rail loads 4th but arrived much later:
     delete-canvas modals + footer layers menu + show-all-canvases peek (one
     publish-only dep `deepCopyAnnotations`; the Escape rename-commit reuses
     the Done button via a dispatched click; canvas JSON export stays).
+32. [features/my-settings.js](features/my-settings.js) — My Settings modal:
+    opener + Artboard save/load/export/clear + password form + sign-out +
+    admin openers (new publishes `fetchUserAirboard`/`saveUserAirboard`/
+    `PLUMBING_DEFAULTS`/`LINE_DEFAULTS`; the Airboard engine and auth
+    sign-in form stay in app.js).
 
 ### Tooling
 

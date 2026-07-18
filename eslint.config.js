@@ -18,6 +18,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./geometry.js')),
       Object.keys(require('./constants.js')),
       Object.keys(require('./save-utils.js')),
+      Object.keys(require('./save-engine.js')),
       Object.keys(require('./icons.js')),
       Object.keys(require('./idb.js')),
       Object.keys(require('./format.js')),
@@ -124,7 +125,7 @@ module.exports = [
     // noise here. no-undef stays an error (inherited from recommended) to catch
     // typo'd constants. They must NOT receive their own export names as globals
     // (no-redeclare would flag the local declarations), hence constants-only.
-    files: ['idb.js', 'format.js'],
+    files: ['idb.js', 'format.js', 'save-engine.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

@@ -7522,19 +7522,11 @@
     loadUserActivityAllUsersContent();
   }
 
-  // SECTION: My Settings modal
-  function openMySettings() {
-    const user = state.supabaseSession?.user;
-    if (!user) { document.getElementById('authBtn').click(); return; }
-    document.getElementById('mySettingsEmail').textContent = user.email || '—';
-    document.getElementById('mySettingsNewPassword').value = '';
-    document.getElementById('mySettingsConfirmPassword').value = '';
-    document.getElementById('mySettingsPasswordError').style.display = 'none';
-    document.getElementById('mySettingsPasswordSuccess').style.display = 'none';
-    document.getElementById('mySettingsManageUsersSection').style.display = state.isAdmin ? 'block' : 'none';
-    showModal('mySettingsModal');
-  }
-
+  // SECTION: My Settings pointer (features/my-settings.js)
+  // openMySettings (+ every #mySettings* handler: airboard save/load/export/
+  // clear, change-password form, sign-out, admin openers) moved to
+  // features/my-settings.js; the three openers below reach it via
+  // App.openMySettings.
   // The admin Manage-Users modals (openManageUserModal, openAllUsersModal,
   // deleteUser, the #manageUsersBtn create-user opener + #adminCreateForm, and the
   // manageUser/allUsers/adminPanel close handlers) moved to features/user-admin.js
@@ -7564,7 +7556,7 @@
   if (SUPABASE_ENABLED) {
     document.getElementById('authBtn').onclick = () => {
       if (state.supabaseSession?.user) {
-        openMySettings();
+        App.openMySettings();
       } else {
         document.getElementById('authError').style.display = 'none';
         document.getElementById('authError').textContent = '';
@@ -7584,7 +7576,7 @@
       updateSettingsCheckoutSection();
       showModal('settingsModal');
     };
-    document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); openMySettings(); };
+    document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); App.openMySettings(); };
     document.getElementById('sidebarLogoShare').onclick = () => { document.body.classList.remove('sidebar-open'); hideModal('settingsModal'); App.openShareProjectModal(); };
     const headerShareBtnEl = document.getElementById('headerShareBtn');
     if (headerShareBtnEl) headerShareBtnEl.onclick = () => copyOrCreateViewLinkToClipboard(headerShareBtnEl);
@@ -7597,7 +7589,7 @@
       updateSettingsCheckoutSection();
       showModal('settingsModal');
     };
-    document.getElementById('statusBarAuth').onclick = () => openMySettings();
+    document.getElementById('statusBarAuth').onclick = () => App.openMySettings();
     // SECTION: Project Settings checkout & Save Status bell
     function updateSettingsCheckoutSection() {
       const section = document.getElementById('settingsCheckoutSection');
@@ -8728,7 +8720,7 @@
     (window.App = window.App || {}).checkInCurrentProjectIfHeld = checkInCurrentProjectIfHeld;
     window.App.resolvePdfBufferForCloudProject = resolvePdfBufferForCloudProject;
     window.App.buildPagesFromPdfArrayBufferAndProjectData = buildPagesFromPdfArrayBufferAndProjectData;
-    // SECTION: Settings menu actions & Airboard sync
+    // SECTION: Settings menu actions
     document.getElementById('settingsLoadProject').onclick = () => {
       hideModal('settingsModal');
       openLoadProjectModalOrPromptSave();
@@ -8748,95 +8740,8 @@
     };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); App.openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); App.openShareProjectModal(); };
-    document.getElementById('mySettingsSignOut').onclick = async () => { hideModal('mySettingsModal'); await checkInCurrentProjectIfHeld(); supabase.auth.signOut(); updateUI(); updateSaveStatusIndicator(); };
-    document.getElementById('mySettingsModalClose').onclick = () => hideModal('mySettingsModal');
-    document.getElementById('mySettingsSaveAirboard').onclick = async () => {
-      const ok = await saveUserAirboard();
-      if (ok) {
-        showToast('Artboard saved to your account');
-        const statusEl = document.getElementById('mySettingsAirboardStatus');
-        if (statusEl) statusEl.textContent = 'Last saved: just now';
-      } else {
-        alert('Failed to save artboard. Please try again.');
-      }
-    };
-    document.getElementById('mySettingsLoadAirboard').onclick = async () => {
-      if (state.counters.length || state.lineTypes.length) {
-        if (!confirm('Replace your current artboard with the saved version from the cloud?')) return;
-      }
-      const data = await fetchUserAirboard();
-      if (!data) {
-        showToast('No saved artboard found');
-        return;
-      }
-      state.counters = data.counters;
-      state.lineTypes = data.lineTypes;
-      state.iconNames = data.iconNames;
-      state.iconOrder = data.iconOrder;
-      if (Array.isArray(data.customIconPaths)) saveUserCustomIcons(data.customIconPaths);
-      if (data.plumbingModifiers && typeof data.plumbingModifiers === 'object') savePlumbingModifiers(data.plumbingModifiers);
-      if (data.lineModifiers && typeof data.lineModifiers === 'object') saveLineModifiers(data.lineModifiers);
-      updateUI();
-      renderPdf();
-      showToast('Artboard loaded from cloud');
-    };
-    document.getElementById('mySettingsExportAirboard').onclick = () => {
-      const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), plumbingModifiers: getPlumbingModifiers(), lineModifiers: getLineModifiers() };
-      const a = document.createElement('a');
-      a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
-      a.download = 'artboard-backup.json';
-      a.click();
-      showToast('Artboard exported');
-    };
-    document.getElementById('mySettingsClearAirboard').onclick = () => {
-      if (!confirm('Clear all counters and line types? This cannot be undone.')) return;
-      pushUndoSnapshot();
-      state.counters = [];
-      state.lineTypes = [];
-      state.iconNames = {};
-      state.iconOrder = null;
-      state.activeCounterType = null;
-      state.activeLineTypeId = null;
-      savePlumbingModifiers({ sizes: [...PLUMBING_DEFAULTS.sizes], types: [...PLUMBING_DEFAULTS.types], materials: [...PLUMBING_DEFAULTS.materials], iconByType: {}, defaultColor: COLORS[2] });
-      saveLineModifiers({ sizes: [...LINE_DEFAULTS.sizes], materials: [...LINE_DEFAULTS.materials], defaultColor: COLORS[2] });
-      markProjectDirty();
-      updateUI();
-      renderPdf();
-      showToast('Artboard cleared');
-    };
-    document.getElementById('mySettingsManageUsers').onclick = () => { hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };
-    document.getElementById('mySettingsManageUser').onclick = () => App.openManageUserModal();
-    document.getElementById('mySettingsAllUsers').onclick = () => App.openAllUsersModal();
-    // SECTION: My Settings password & Auth sign-in
-    document.getElementById('mySettingsPasswordForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const newPw = document.getElementById('mySettingsNewPassword').value;
-      const confirmPw = document.getElementById('mySettingsConfirmPassword').value;
-      const errEl = document.getElementById('mySettingsPasswordError');
-      const successEl = document.getElementById('mySettingsPasswordSuccess');
-      errEl.style.display = 'none';
-      successEl.style.display = 'none';
-      if (!newPw || newPw.length < 6) {
-        errEl.textContent = 'Password must be at least 6 characters';
-        errEl.style.display = 'block';
-        return;
-      }
-      if (newPw !== confirmPw) {
-        errEl.textContent = 'Passwords do not match';
-        errEl.style.display = 'block';
-        return;
-      }
-      const { error } = await supabase.auth.updateUser({ password: newPw });
-      if (error) {
-        errEl.textContent = error.message || 'Failed to update password';
-        errEl.style.display = 'block';
-        return;
-      }
-      successEl.textContent = 'Password updated';
-      successEl.style.display = 'block';
-      document.getElementById('mySettingsNewPassword').value = '';
-      document.getElementById('mySettingsConfirmPassword').value = '';
-    };
+    // The #mySettings* handlers moved to features/my-settings.js.
+    // SECTION: Auth sign-in form
     document.getElementById('authForm').onsubmit = async (e) => {
       e.preventDefault();
       const email = document.getElementById('authEmail').value.trim();
@@ -12226,6 +12131,11 @@
   App.performDeleteZone = performDeleteZone;
   // Canvas layers dep (features/canvas-layers.js).
   App.deepCopyAnnotations = deepCopyAnnotations;
+  // My Settings deps (features/my-settings.js).
+  App.fetchUserAirboard = fetchUserAirboard;
+  App.saveUserAirboard = saveUserAirboard;
+  App.PLUMBING_DEFAULTS = PLUMBING_DEFAULTS;
+  App.LINE_DEFAULTS = LINE_DEFAULTS;
   // Output cluster deps (features/output.js).
   App.SUPABASE_ENABLED = SUPABASE_ENABLED;
   App.getOrCreateViewLinkUrl = getOrCreateViewLinkUrl;

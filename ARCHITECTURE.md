@@ -102,6 +102,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
 | [features/canvas-layers.js](features/canvas-layers.js) | Thirty-first feature-file split (`window.App` registry pilot #31; the last candidate named by the original extraction recipe) — the **canvas-layer management UI**: the Add Canvas modal (`#addCanvasModal`, new/duplicate modes; duplicate deep-copies the active layer via the new publish-only dep `App.deepCopyAnnotations`), the Canvas Details modal (`#canvasDetailsModal`, rename-committed on close; the Escape branch in app.js dispatches `#canvasDetailsClose`'s click so the commit lives in one place), the Delete Canvas confirm (→ the private `performDeleteCanvas`, which reactivates the first remaining layer), the footer layers menu (`#canvasLayersBtn`/`#canvasMenu`/`#canvasMenuAdd`), `#addCanvasBtn`, and the show-all-canvases peek toggle. The three state flags (`pendingAddCanvasMode`/`pendingCanvasEdit`/`pendingDeleteCanvas`) move as private `let`s; the `hideModal` resets go through the `App.onCanvasDetailsHidden`/`App.onDeleteCanvasConfirmHidden` callbacks; the canvas switcher's edit pen (renderCanvasSwitcher, app.js) opens the details modal via `App.openCanvasDetailsModal`. The canvas JSON export (`#exportBtn`) that shared the old section stays in app.js under the renamed marker `// SECTION: Export canvas JSON` |
 | [canvas-layers.spec.js](canvas-layers.spec.js) | Playwright regression for pilot #31 — Add creates an empty active layer; duplicate mode deep-copies the seeded layer's markers into a distinct annotations object; rename commits via Done **and** via Escape (same `#canvasDetailsClose` path); the delete confirm names the layer, removes it, and reactivates the first remaining one. Asserts no console / page errors; `npx playwright test canvas-layers.spec.js` (the peek toggle is covered by [show-all-canvases.spec.js](show-all-canvases.spec.js)) |
+| [features/my-settings.js](features/my-settings.js) | Thirty-second feature-file split (`window.App` registry pilot #32) — the **My Settings modal** (`#mySettingsModal`), the surface pilot #20 deliberately deferred: `openMySettings` (signed-out falls through to the auth modal via a dispatched `#authBtn` click), the **Artboard** rows (Save/Load via the newly-published engine helpers `App.saveUserAirboard`/`App.fetchUserAirboard`, Export to `artboard-backup.json`, Clear-with-defaults using the newly-published `App.PLUMBING_DEFAULTS`/`App.LINE_DEFAULTS`), the change-password form (`supabase.auth.updateUser` via `App.getSupabase()`), sign-out, close, and the admin Manage-Users/Manage-User/All-Users openers (feature-to-feature: `App.openManageUserModal`/`App.openAllUsersModal` + a dispatched `#manageUsersBtn` click into [features/user-admin.js](features/user-admin.js), whose `#mySettingsMyActivity` binding was already there). Registers `App.openMySettings`; the three openers (`#authBtn` signed-in path, `#sidebarLogoUser`, `#statusBarAuth`) stay in app.js as deferred `App.*` calls. The Airboard engine (`fetchUserAirboard`/`saveUserAirboard`) and the auth sign-in form stay in app.js (markers renamed `// SECTION: My Settings pointer` / `// SECTION: Settings menu actions` / `// SECTION: Auth sign-in form`) |
+| [my-settings.spec.js](my-settings.spec.js) | Playwright regression for pilot #32 — always-run: `App.openMySettings` registered; signed-out open falls through to the auth modal; Export artboard yields a real `artboard-backup.json` download; Clear artboard empties the palette + resets active tool state; the close binding hides a force-shown modal. The airboard cloud round-trip and password change stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test my-settings.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -373,6 +375,10 @@ the add/details/delete-canvas modals + layers menu + peek toggle moved to
 dep `deepCopyAnnotations`; two `onX` hidden-callbacks; the Escape branch
 reuses the Done button's commit via a dispatched click); the canvas JSON
 export stays under the renamed marker `// SECTION: Export canvas JSON`.
+My Settings (pilot #32) pulled the deferred My Settings modal into
+[features/my-settings.js](features/my-settings.js) (new publishes
+`fetchUserAirboard`/`saveUserAirboard`/`PLUMBING_DEFAULTS`/`LINE_DEFAULTS`;
+the Airboard engine + auth sign-in form stay).
 
 ## Section index (grep `// SECTION:`)
 
@@ -422,34 +428,34 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L7287 - Mobile actions burger menu pointer & header logo
 - L7299 - User activity time formatting
 - L7457 - User Activity modal (admin)
-- L7525 - My Settings modal
-- L7556 - Auth & settings entry buttons
-  - L7601 - Project Settings checkout & Save Status bell
-  - L7724 - [sync] Checkout expired recovery
-  - L7978 - [sync] Turn In
-  - L8491 - Share modal pointer & copy-project openers
-  - L8534 - Cloud project hydrate / copy / fork
-  - L8731 - Settings menu actions & Airboard sync
-  - L8810 - My Settings password & Auth sign-in
-  - L8863 - Save Project modal
-  - L9066 - Copy project modal
-  - L9090 - Checkout expired recovery modal wiring
-  - L9174 - Save-before-load modal
-  - L9249 - Last-session restore prompt
-  - L9328 - User Activity filters & view toggle
-- L9516 - Canvas Event Handlers
-- L9888 - Event Binding
-- L9898 - Aim loupe (mobile press-hold precise placement)
-- L10036 - Zoom transform preview & commit
-- L10072 - Canvas mouse, wheel & touch handlers
-- L10693 - Global dropdown dismissal & keyboard hotkeys
-- L10921 - [sync] Manual save to cloud
-- L11546 - [sync] Auto-save
-- L11843 - [sync] Local backup (IndexedDB takeoff state)
-- L12073 - [sync] Checkout keep-alive
-- L12117 - App feature registry
-- L12285 - View-only mode
-- L12566 - Init / boot
+- L7525 - My Settings pointer (features/my-settings.js)
+- L7548 - Auth & settings entry buttons
+  - L7593 - Project Settings checkout & Save Status bell
+  - L7716 - [sync] Checkout expired recovery
+  - L7970 - [sync] Turn In
+  - L8483 - Share modal pointer & copy-project openers
+  - L8526 - Cloud project hydrate / copy / fork
+  - L8723 - Settings menu actions
+  - L8744 - Auth sign-in form
+  - L8768 - Save Project modal
+  - L8971 - Copy project modal
+  - L8995 - Checkout expired recovery modal wiring
+  - L9079 - Save-before-load modal
+  - L9154 - Last-session restore prompt
+  - L9233 - User Activity filters & view toggle
+- L9421 - Canvas Event Handlers
+- L9793 - Event Binding
+- L9803 - Aim loupe (mobile press-hold precise placement)
+- L9941 - Zoom transform preview & commit
+- L9977 - Canvas mouse, wheel & touch handlers
+- L10598 - Global dropdown dismissal & keyboard hotkeys
+- L10826 - [sync] Manual save to cloud
+- L11451 - [sync] Auto-save
+- L11748 - [sync] Local backup (IndexedDB takeoff state)
+- L11978 - [sync] Checkout keep-alive
+- L12022 - App feature registry
+- L12195 - View-only mode
+- L12476 - Init / boot
 
 <!-- END SECTION TOC -->
 

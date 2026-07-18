@@ -496,17 +496,11 @@
   let bannerShown = false;
   let inFlightAutoSaveController = null;
   let autoSaveAbortReason = null;
-  let recoveryProbeInFlight = false;
   let recoveryProbeFiredForFailureCount = 0;
   let autoSaveLatencySamples = [];
   let autosaveSlowEmittedAt = 0;
   let autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
   let lastSuccessfulSupabaseCallAt = 0;
-  let lastSupabaseJsFailureAt = 0;
-  let clientRecycleInFlight = false;
-  let clientRecycleCountThisRun = 0;
-  let lastClientRecycleAt = 0;
-  let clientProbeInFlightGuard = false;
   // dirtyStartedAt lives in save-engine.js (Stage 2): saveEngine.getDirtyStartedAt().
   let envelopeSnapshotFiredAt = 0;
   let envelopeSnapshotDirtyStamp = 0;
@@ -552,7 +546,7 @@
         pushSaveEvent('autosave_recovered', 'Cloud sync recovered', autosaveEventDetail({
           failures: consecutiveAutoSaveFailures,
           durationMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0,
-          clientRecycles: clientRecycleCountThisRun
+          clientRecycles: saveEngine.getClientRecycleCount()
         }));
       }
       consecutiveAutoSaveFailures = 0;
@@ -560,7 +554,7 @@
       nextAutoSaveAttemptAt = 0;
       recoveryProbeFiredForFailureCount = 0;
       autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
-      clientRecycleCountThisRun = 0;
+      saveEngine.resetClientRecycleCount();
       lastSuccessfulSupabaseCallAt = Date.now();
       updateSyncPausedBanner(false);
       return;
@@ -592,58 +586,16 @@
     }
   }
 
-  function noteSupabaseJsFailure(context, err) {
-    if (err && typeof err.status === 'number' && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
-      return;
-    }
-    if (err && (err.code === 'CHECKOUT_EXPIRED' || err.code === 'CHECKOUT_NOT_OWNED' || err.code === '42501' || err.code === 'PGRST116')) {
-      return;
-    }
-    lastSupabaseJsFailureAt = Date.now();
-    try {
-      pushSaveEvent('sbjs_failure_recorded', 'Supabase-js call failed (raw-fetch may be safer)', autosaveEventDetail({
-        context: context || 'unknown',
-        message: err?.message,
-        name: err?.name,
-        code: err?.code,
-        status: err?.status
-      }));
-    } catch (_) {}
-  }
+  function noteSupabaseJsFailure(context, err) { return saveEngine.noteSupabaseJsFailure(context, err); }
 
   // Save/sync engine: this and the other `[sync]`-prefixed sections form the
   // scattered save/sync subsystem. See ARCHITECTURE.md "Save/sync engine map"
   // for the logical reading order.  (rg "SECTION: \[sync\]" app.js)
   // SECTION: [sync] Sync recovery & client recycle
-  async function runRecoveryProbeAndMaybeRecycle(trigger) {
-    const probe = await runRecoveryProbe(trigger).catch(() => null);
-    if (!probe || !probe.ok) return;
-    if (consecutiveAutoSaveFailures === 0) return;
-    const clientProbe = await runSupabaseClientProbe(trigger).catch(() => null);
-    if (clientProbe && !clientProbe.ok) {
-      await recreateSupabaseClient('client_probe_failed:' + trigger).catch(() => {});
-    } else if (!clientProbe) {
-      await recreateSupabaseClient('client_probe_threw:' + trigger).catch(() => {});
-    }
-  }
-
-  // Proactively recycle a wedged supabase-js client on a long-idle return. The
-  // raw-fetch recovery probe can pass (the network is fine) while the supabase-js
-  // client is wedged after sleep/background -- then every .rpc/.from in the wake
-  // path hangs to its full timeout (probeCheckoutLock 10s, refreshProjectPermissions
-  // 8s x2). runRecoveryProbeAndMaybeRecycle never fires here because an idle user
-  // has zero autosave failures, so detection has to be an ACTIVE probe rather than
-  // a failure count. Probe the client and, if it's wedged, recreate it BEFORE the
-  // wake's checkout/permissions refresh runs. Returns true iff a recycle happened.
-  async function recycleClientIfWedgedOnIdleReturn(trigger) {
-    if (!SUPABASE_ENABLED || !supabase) return false;
-    const clientProbe = await runSupabaseClientProbe(trigger).catch(() => null);
-    if (clientProbe && clientProbe.ok) return false;
-    // probe failed (recorded via noteSupabaseJsFailure) or threw -> looks wedged.
-    // recreateSupabaseClient is cooldown- and in-flight-guarded internally.
-    const reason = (clientProbe ? 'idle_return_client_wedged:' : 'idle_return_client_probe_threw:') + trigger;
-    return await recreateSupabaseClient(reason).catch(() => false);
-  }
+  // The recovery/recycle orchestrators, probes, client recycle, and raw-fetch
+  // fallbacks live in save-engine.js (Stage 4); same-named wrappers below.
+  function runRecoveryProbeAndMaybeRecycle(trigger) { return saveEngine.runRecoveryProbeAndMaybeRecycle(trigger); }
+  function recycleClientIfWedgedOnIdleReturn(trigger) { return saveEngine.recycleClientIfWedgedOnIdleReturn(trigger); }
 
   function updateSyncPausedBanner(show) {
     const el = document.getElementById('syncPausedBanner');
@@ -746,295 +698,14 @@
   // moved there too. All three are referenced here by bare name (save-utils
   // globals).
 
-  async function runRecoveryProbe(trigger) {
-    if (recoveryProbeInFlight) return { ok: false, ms: 0, status: null, errMsg: 'in_flight' };
-    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, ms: 0, status: null, errMsg: 'disabled' };
-    recoveryProbeInFlight = true;
-    const runId = saveDebugRunId();
-    saveDebugLog('autosave.recovery.start', { runId, trigger, failures: consecutiveAutoSaveFailures });
-    pushSaveEvent('autosave_recovery_probe', 'Attempting to refresh connection', JSON.stringify({ trigger }));
-    try {
-      const token = state.supabaseSession?.access_token || null;
-      const controller = new AbortController();
-      const timer = setTimeout(() => { try { controller.abort(); } catch (_) {} }, AUTOSAVE_RECOVERY_TIMEOUT_MS);
-      const t0 = Date.now();
-      let ok = false, status = null, errMsg = null, diag = null;
-      try {
-        const res = await fetch(SUPABASE_URL + '/rest/v1/projects?select=id&limit=1', {
-          method: 'GET',
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            ...(token ? { Authorization: 'Bearer ' + token } : {})
-          },
-          cache: 'no-store',
-          signal: controller.signal
-        });
-        status = res.status;
-        ok = res.ok;
-        diag = extractResponseDiagnostics(res.headers);
-      } catch (e) {
-        errMsg = e?.message || String(e);
-      } finally {
-        clearTimeout(timer);
-      }
-      const ms = Date.now() - t0;
-      if (ok) {
-        saveDebugLog('autosave.recovery.ok', { runId, ms, status });
-        pushSaveEvent('autosave_recovery_ok', 'Connection refreshed', JSON.stringify({ ms, status }));
-        nextAutoSaveAttemptAt = 0;
-        lastSuccessfulSupabaseCallAt = Date.now();
-      } else {
-        saveDebugLog('autosave.recovery.err', { runId, ms, status, message: errMsg });
-        pushSaveEvent('autosave_recovery_err', 'Recovery probe failed', JSON.stringify({ ms, status, message: errMsg, diag }));
-      }
-      return { ok, ms, status, errMsg };
-    } finally {
-      recoveryProbeInFlight = false;
-    }
-  }
+  function runRecoveryProbe(trigger) { return saveEngine.runRecoveryProbe(trigger); }
+  // runSupabaseClientProbe / recreateSupabaseClient have no app-side callers
+  // anymore (their orchestrators moved with them) — reach them via saveEngine.*.
 
-  async function runSupabaseClientProbe(trigger) {
-    if (!SUPABASE_ENABLED || !supabase) return { ok: false, ms: 0, errMsg: 'disabled' };
-    if (clientProbeInFlightGuard) return { ok: false, ms: 0, errMsg: 'in_flight' };
-    clientProbeInFlightGuard = true;
-    const t0 = Date.now();
-    let ok = false, errMsg = null, errName = null, errStatus = null, errCode = null;
-    try {
-      const probeOp = withTimeout(
-        (signal) => supabase.from('projects').select('id').limit(1).abortSignal(signal),
-        CLIENT_PROBE_TIMEOUT_MS,
-        'Client probe'
-      );
-      const { error } = await probeOp;
-      if (error) {
-        errMsg = error.message || String(error);
-        errName = error.name;
-        errStatus = (typeof error.status === 'number') ? error.status : null;
-        errCode = error.code || null;
-      } else {
-        ok = true;
-      }
-    } catch (e) {
-      errMsg = e?.message || String(e);
-      errName = e?.name;
-      errStatus = (typeof e?.status === 'number') ? e.status : null;
-      errCode = e?.code || null;
-    } finally {
-      clientProbeInFlightGuard = false;
-    }
-    const ms = Date.now() - t0;
-    if (ok) {
-      saveDebugLog('autosave.client_probe.ok', { trigger, ms });
-      pushSaveEvent('autosave_client_probe_ok', 'Supabase client responsive', autosaveEventDetail({ trigger, ms }));
-      lastSuccessfulSupabaseCallAt = Date.now();
-    } else {
-      saveDebugLog('autosave.client_probe.err', { trigger, ms, message: errMsg, name: errName });
-      pushSaveEvent('autosave_client_probe_err', 'Supabase client appears wedged', autosaveEventDetail({ trigger, ms, message: errMsg, name: errName }));
-      noteSupabaseJsFailure('client_probe', { message: errMsg, name: errName, status: errStatus, code: errCode });
-    }
-    return { ok, ms, errMsg };
-  }
-
-  async function recreateSupabaseClient(reason) {
-    if (!SUPABASE_ENABLED || typeof window.supabase === 'undefined') return false;
-    if (clientRecycleInFlight) {
-      saveDebugLog('autosave.client_recycle.skip', { reason, why: 'in_flight' });
-      pushSaveEvent('client_recycle_skipped_inflight', 'Client recycle skipped (already running)', autosaveEventDetail({ reason }));
-      return false;
-    }
-    if (Date.now() - lastClientRecycleAt < CLIENT_RECYCLE_COOLDOWN_MS) {
-      saveDebugLog('autosave.client_recycle.skip', { reason, why: 'cooldown' });
-      pushSaveEvent('client_recycle_skipped_cooldown', 'Client recycle skipped (cooldown)', autosaveEventDetail({ reason, msSinceLastRecycle: Date.now() - lastClientRecycleAt, cooldownMs: CLIENT_RECYCLE_COOLDOWN_MS }));
-      return false;
-    }
-    clientRecycleInFlight = true;
-    const t0 = Date.now();
-    const previousSession = state.supabaseSession || null;
-    let resubscribed = false;
-    try {
-      try { if (supabase) await supabase.removeAllChannels(); } catch (_) {}
-      projectsCheckoutChannel = null;
-      const { createClient } = window.supabase;
-      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      if (previousSession?.access_token && previousSession?.refresh_token) {
-        try {
-          await withTimeout(
-            supabase.auth.setSession({
-              access_token: previousSession.access_token,
-              refresh_token: previousSession.refresh_token
-            }),
-            5000,
-            'Client recycle setSession'
-          );
-        } catch (sessErr) {
-          saveDebugLog('autosave.client_recycle.setSession_err', { reason, message: sessErr?.message });
-        }
-      }
-      if (state.currentProjectId && state.supabaseSession?.user) {
-        try {
-          subscribeToProjectCheckoutChanges(state.currentProjectId);
-          resubscribed = true;
-        } catch (rtErr) {
-          saveDebugLog('autosave.client_recycle.resubscribe_err', { reason, message: rtErr?.message });
-        }
-      }
-      lastClientRecycleAt = Date.now();
-      clientRecycleCountThisRun++;
-      const elapsedMs = Date.now() - t0;
-      saveDebugLog('autosave.client_recycle.ok', { reason, elapsedMs, resubscribed });
-      pushSaveEvent('autosave_client_recycled', 'Supabase client recreated', autosaveEventDetail({ reason, elapsedMs, resubscribed, recycleCount: clientRecycleCountThisRun }));
-      return true;
-    } catch (e) {
-      saveDebugLog('autosave.client_recycle.err', { reason, message: e?.message, name: e?.name });
-      pushSaveEvent('autosave_client_recycle_err', 'Supabase client recreate failed', autosaveEventDetail({ reason, message: e?.message, name: e?.name }));
-      return false;
-    } finally {
-      clientRecycleInFlight = false;
-    }
-  }
-
-  async function rawProjectsUpdate(projectId, payload, signal) {
-    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('Supabase not configured');
-    }
-    const accessToken = state.supabaseSession?.access_token || '';
-    if (!accessToken) throw new Error('No access token for raw projects update');
-    const url = SUPABASE_URL + '/rest/v1/projects?id=eq.' + encodeURIComponent(projectId);
-    const res = await fetch(url, {
-      method: 'PATCH',
-      cache: 'no-store',
-      signal,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: 'Bearer ' + accessToken,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      let body = '';
-      try { body = await res.text(); } catch (_) {}
-      const e = new Error('Raw projects update failed: ' + res.status + (body ? (' ' + body.slice(0, 200)) : ''));
-      e.status = res.status;
-      e.code = 'RAW_UPDATE_HTTP_' + res.status;
-      e.diag = extractResponseDiagnostics(res.headers);
-      throw e;
-    }
-    return { ok: true, status: res.status };
-  }
-
-  async function rawProjectsInsert(payload, signal) {
-    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      return { data: null, error: { message: 'Supabase not configured', status: 0, code: 'RAW_INSERT_NOT_CONFIGURED' } };
-    }
-    const accessToken = state.supabaseSession?.access_token || '';
-    if (!accessToken) {
-      return { data: null, error: { message: 'No access token for raw projects insert', status: 401, code: 'RAW_INSERT_NO_TOKEN' } };
-    }
-    const url = SUPABASE_URL + '/rest/v1/projects';
-    let res;
-    try {
-      res = await fetch(url, {
-        method: 'POST',
-        cache: 'no-store',
-        signal,
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/json',
-          Prefer: 'return=representation'
-        },
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {
-      return { data: null, error: { message: (e && e.message) || 'fetch_failed', status: 0, name: e && e.name, code: 'RAW_INSERT_FETCH_ERR' } };
-    }
-    let body = null;
-    let bodyText = '';
-    try {
-      bodyText = await res.text();
-      if (bodyText) body = JSON.parse(bodyText);
-    } catch (_) {}
-    if (!res.ok) {
-      const message = (body && (body.message || body.error)) || ('HTTP ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
-      return { data: null, error: { message, status: res.status, code: (body && body.code) || ('RAW_INSERT_HTTP_' + res.status), diag: extractResponseDiagnostics(res.headers) } };
-    }
-    const row = Array.isArray(body) ? body[0] : body;
-    return { data: row || null, error: null };
-  }
-
-  async function rawCheckInProject(projectId, signal) {
-    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('Supabase not configured');
-    }
-    const accessToken = state.supabaseSession?.access_token || '';
-    if (!accessToken) throw new Error('No access token for raw check_in_project');
-    const url = SUPABASE_URL + '/rest/v1/rpc/check_in_project';
-    const res = await fetch(url, {
-      method: 'POST',
-      cache: 'no-store',
-      signal,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ p_project_id: projectId })
-    });
-    let bodyJson = null;
-    let bodyText = '';
-    try {
-      bodyText = await res.text();
-      if (bodyText) bodyJson = JSON.parse(bodyText);
-    } catch (_) {}
-    if (!res.ok) {
-      const e = new Error('Raw check_in failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
-      e.status = res.status;
-      e.code = 'RAW_RPC_HTTP_' + res.status;
-      e.diag = extractResponseDiagnostics(res.headers);
-      return { data: bodyJson, error: e };
-    }
-    return { data: bodyJson, error: null };
-  }
-
-  // Raw-fetch twin of supabase.rpc('list_accessible_projects'), and it exists for
-  // the same reason rawCheckInProject does: when the supabase-js client wedges
-  // after a long background/sleep, raw fetch to the same REST endpoint still
-  // returns in well under a second. Mirrors rawCheckInProject's return contract.
-  async function rawListAccessibleProjects(signal) {
-    if (!SUPABASE_ENABLED || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('Supabase not configured');
-    }
-    const accessToken = state.supabaseSession?.access_token || '';
-    if (!accessToken) throw new Error('No access token for raw list_accessible_projects');
-    const url = SUPABASE_URL + '/rest/v1/rpc/list_accessible_projects';
-    const res = await fetch(url, {
-      method: 'POST',
-      cache: 'no-store',
-      signal,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-      },
-      body: '{}'
-    });
-    let bodyJson = null;
-    let bodyText = '';
-    try {
-      bodyText = await res.text();
-      if (bodyText) bodyJson = JSON.parse(bodyText);
-    } catch (_) {}
-    if (!res.ok) {
-      const e = new Error('Raw list_accessible_projects failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
-      e.status = res.status;
-      e.code = 'RAW_RPC_HTTP_' + res.status;
-      e.diag = extractResponseDiagnostics(res.headers);
-      return { data: bodyJson, error: e };
-    }
-    return { data: bodyJson, error: null };
-  }
+  function rawProjectsUpdate(projectId, payload, signal) { return saveEngine.rawProjectsUpdate(projectId, payload, signal); }
+  function rawProjectsInsert(payload, signal) { return saveEngine.rawProjectsInsert(payload, signal); }
+  function rawCheckInProject(projectId, signal) { return saveEngine.rawCheckInProject(projectId, signal); }
+  function rawListAccessibleProjects(signal) { return saveEngine.rawListAccessibleProjects(signal); }
 
   // SECTION: [sync] Global force reload
   // The force-reload + keep-alive implementations moved to save-engine.js
@@ -1069,6 +740,14 @@
     getUserCustomIcons: () => getUserCustomIcons(),
     computePageBakeFrame: (p) => computePageBakeFrame(p),
     getLastModifiedAt: () => lastModifiedAt,
+    // Stage 4 (client resilience).
+    setSupabase: (client) => { supabase = client; },
+    getSupabaseUrl: () => SUPABASE_URL,
+    getSupabaseAnonKey: () => SUPABASE_ANON_KEY,
+    getConsecutiveAutoSaveFailures: () => consecutiveAutoSaveFailures,
+    clearAutoSaveBackoff: () => { nextAutoSaveAttemptAt = 0; },
+    resubscribeCheckout: (projectId) => subscribeToProjectCheckoutChanges(projectId),
+    onCheckoutChannelDropped: () => { projectsCheckoutChannel = null; },
   });
   function checkGlobalForceReload() { return saveEngine.checkGlobalForceReload(); }
   function doGlobalReloadNow(trigger) { return saveEngine.doGlobalReloadNow(trigger); }
@@ -1226,7 +905,7 @@
         sessionExpiresAt: (state.supabaseSession && state.supabaseSession.expires_at) || null,
         secondsToExpiry: secondsToExpiry(state.supabaseSession && state.supabaseSession.expires_at, Date.now()),
         // Degradation metrics (computed in the engine; surfaced here for export)
-        clientRecycles: (typeof clientRecycleCountThisRun !== 'undefined') ? clientRecycleCountThisRun : null,
+        clientRecycles: saveEngine.getClientRecycleCount(),
         autosaveLatencyP50: percentile(autoSaveLatencySamples, 0.5),
         autosaveLatencyP95: percentile(autoSaveLatencySamples, 0.95),
         autosaveLatencyN: (autoSaveLatencySamples && autoSaveLatencySamples.length) || 0,
@@ -1337,8 +1016,7 @@
     envelopeSnapshotFiredAt = 0;
     envelopeSnapshotDirtyStamp = 0;
     saveEngine.clearDirtyStartedAt();
-    clientRecycleCountThisRun = 0;
-    lastClientRecycleAt = 0;
+    saveEngine.resetRecycleState();
     autoSaveAbortReason = null;
     try { updateSyncPausedBanner(false); } catch (_) {}
   }
@@ -5761,7 +5439,7 @@
     // post-background failure mode), skip it and hit the REST endpoint with raw
     // fetch -- which keeps returning sub-second while supabase-js hangs to the
     // full timeout. Same pattern Turn In uses for check_in_project.
-    const sbJsRecentlyBad = () => lastSupabaseJsFailureAt > 0 && Date.now() - lastSupabaseJsFailureAt < 5 * 60 * 1000;
+    const sbJsRecentlyBad = () => { const t = saveEngine.getLastSupabaseJsFailureAt(); return t > 0 && Date.now() - t < 5 * 60 * 1000; };
     for (let attempt = 0; attempt < 2; attempt++) {
       const useRaw = sbJsRecentlyBad() || attempt > 0;
       try {
@@ -7646,7 +7324,7 @@
           saveInProgress,
           projectId: state.currentProjectId
         }));
-        const isSbJsRecentlyBad = () => lastSupabaseJsFailureAt > 0 && Date.now() - lastSupabaseJsFailureAt < 5 * 60 * 1000;
+        const isSbJsRecentlyBad = () => { const t = saveEngine.getLastSupabaseJsFailureAt(); return t > 0 && Date.now() - t < 5 * 60 * 1000; };
         const looksStale = consecutiveAutoSaveFailures > 0 ||
           (lastSuccessfulSupabaseCallAt > 0 && Date.now() - lastSuccessfulSupabaseCallAt > TURN_IN_STALENESS_MS) ||
           lastSuccessfulSupabaseCallAt === 0 ||
@@ -7755,7 +7433,7 @@
               (checkInAttempt > 0 && !usedRawFetchForCheckIn) ||
               sbJsBadNow;
             if (useRawForCheckIn && checkInAttempt === 0 && sbJsBadNow && consecutiveAutoSaveFailures < 3) {
-              pushSaveEvent('turn_in_raw_fetch_engaged_proactively', 'Turn In using raw fetch (supabase-js wedged recently)', JSON.stringify({ msSinceSbJsFailure: Date.now() - lastSupabaseJsFailureAt, lastOk: lastSuccessfulSupabaseCallAt, failures: consecutiveAutoSaveFailures }));
+              pushSaveEvent('turn_in_raw_fetch_engaged_proactively', 'Turn In using raw fetch (supabase-js wedged recently)', JSON.stringify({ msSinceSbJsFailure: Date.now() - saveEngine.getLastSupabaseJsFailureAt(), lastOk: lastSuccessfulSupabaseCallAt, failures: consecutiveAutoSaveFailures }));
             }
             usedRawFetchForCheckIn = useRawForCheckIn;
             let data = null, error = null;
@@ -10718,7 +10396,7 @@
                 throw error;
               }
               pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (with PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t0, projectId: row?.id, phase: 'with_pdf_new_project' }));
-              if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+              if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
                 runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
               }
               saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id, raw: true });
@@ -10800,7 +10478,7 @@
               try {
                 await withTimeout((signal) => rawProjectsUpdate(state.currentProjectId, updatePayload, signal), 30000, 'Update project');
                 pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch manual save succeeded', autosaveEventDetail({ runId, ms: Date.now() - t3 }));
-                if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+                if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
                   runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
                 }
               } catch (rawErr) {
@@ -10836,7 +10514,7 @@
               throw error;
             }
             pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (no PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t4, projectId: row?.id, phase: 'no_pdf' }));
-            if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+            if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
               runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
             }
             saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id, raw: true });
@@ -11190,7 +10868,7 @@
             pushSaveEvent('autosave_request_end', useRawFetch ? 'Update OK (raw fetch)' : 'Update OK', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: true }));
             if (useRawFetch) {
               pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch update succeeded', autosaveEventDetail({ runId, ms: updMs }));
-              if ((consecutiveAutoSaveFailures > 0 || attempt > 0) && !clientRecycleInFlight) {
+              if ((consecutiveAutoSaveFailures > 0 || attempt > 0) && !saveEngine.isClientRecycleInFlight()) {
                 runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
               }
             }
@@ -11243,7 +10921,7 @@
             state.currentProjectName = name;
             pushSaveEvent('autosave_request_end', 'Create OK (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, raw: true, projectId }));
             pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch autosave insert succeeded', autosaveEventDetail({ runId, ms: insMs, projectId }));
-            if (consecutiveAutoSaveFailures > 0 && !clientRecycleInFlight) {
+            if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
               runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
             }
             saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId, raw: true });

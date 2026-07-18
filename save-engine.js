@@ -39,6 +39,13 @@
  *   getUserCustomIcons()              -> user icon list for the backup blob
  *   computePageBakeFrame(page)        -> orientation stamp for the backup
  *   getLastModifiedAt()               -> app-side lastModifiedAt
+ *   -- Stage 4 (client resilience):
+ *   setSupabase(client)               -> reassign the app-side client let
+ *   getSupabaseUrl() / getSupabaseAnonKey()
+ *   getConsecutiveAutoSaveFailures()  -> stage-6 failure counter (read-only)
+ *   clearAutoSaveBackoff()            -> nextAutoSaveAttemptAt = 0
+ *   resubscribeCheckout(projectId)    -> re-attach the realtime channel
+ *   onCheckoutChannelDropped()        -> null the app-side channel handle
  *
  * Stage 2: the engine OWNS the Save Status log (saveStatusLog + push/prune/
  * window/debug helpers) and the dirty bookkeeping (dirtyGeneration /
@@ -353,6 +360,357 @@ function createSaveEngine(ctx) {
     takeoffBackupWarnShown = false;
   }
 
+  // --- [sync] Sync recovery & client recycle (Stage 4) --------------------
+  // Engine-owned: the probe/recycle in-flight guards, the recycle cooldown +
+  // per-run count, and the wedged-supabase-js failure stamp.
+  let recoveryProbeInFlight = false;
+  let clientProbeInFlightGuard = false;
+  let clientRecycleInFlight = false;
+  let lastClientRecycleAt = 0;
+  let clientRecycleCountThisRun = 0;
+  let lastSupabaseJsFailureAt = 0;
+
+  function noteSupabaseJsFailure(context, err) {
+    if (err && typeof err.status === 'number' && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
+      return;
+    }
+    if (err && (err.code === 'CHECKOUT_EXPIRED' || err.code === 'CHECKOUT_NOT_OWNED' || err.code === '42501' || err.code === 'PGRST116')) {
+      return;
+    }
+    lastSupabaseJsFailureAt = Date.now();
+    try {
+      pushSaveEvent('sbjs_failure_recorded', 'Supabase-js call failed (raw-fetch may be safer)', ctx.autosaveEventDetail({
+        context: context || 'unknown',
+        message: err?.message,
+        name: err?.name,
+        code: err?.code,
+        status: err?.status
+      }));
+    } catch (_) {}
+  }
+
+  async function runRecoveryProbe(trigger) {
+    if (recoveryProbeInFlight) return { ok: false, ms: 0, status: null, errMsg: 'in_flight' };
+    if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) return { ok: false, ms: 0, status: null, errMsg: 'disabled' };
+    recoveryProbeInFlight = true;
+    const runId = saveDebugRunId();
+    saveDebugLog('autosave.recovery.start', { runId, trigger, failures: ctx.getConsecutiveAutoSaveFailures() });
+    pushSaveEvent('autosave_recovery_probe', 'Attempting to refresh connection', JSON.stringify({ trigger }));
+    try {
+      const token = ctx.getState().supabaseSession?.access_token || null;
+      const controller = new AbortController();
+      const timer = setTimeout(() => { try { controller.abort(); } catch (_) {} }, AUTOSAVE_RECOVERY_TIMEOUT_MS);
+      const t0 = Date.now();
+      let ok = false, status = null, errMsg = null, diag = null;
+      try {
+        const res = await fetch(ctx.getSupabaseUrl() + '/rest/v1/projects?select=id&limit=1', {
+          method: 'GET',
+          headers: {
+            apikey: ctx.getSupabaseAnonKey(),
+            ...(token ? { Authorization: 'Bearer ' + token } : {})
+          },
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        status = res.status;
+        ok = res.ok;
+        diag = extractResponseDiagnostics(res.headers);
+      } catch (e) {
+        errMsg = e?.message || String(e);
+      } finally {
+        clearTimeout(timer);
+      }
+      const ms = Date.now() - t0;
+      if (ok) {
+        saveDebugLog('autosave.recovery.ok', { runId, ms, status });
+        pushSaveEvent('autosave_recovery_ok', 'Connection refreshed', JSON.stringify({ ms, status }));
+        ctx.clearAutoSaveBackoff();
+        ctx.noteSupabaseCallOk();
+      } else {
+        saveDebugLog('autosave.recovery.err', { runId, ms, status, message: errMsg });
+        pushSaveEvent('autosave_recovery_err', 'Recovery probe failed', JSON.stringify({ ms, status, message: errMsg, diag }));
+      }
+      return { ok, ms, status, errMsg };
+    } finally {
+      recoveryProbeInFlight = false;
+    }
+  }
+
+  async function runSupabaseClientProbe(trigger) {
+    const supabase = ctx.getSupabase();
+    if (!ctx.isSupabaseEnabled() || !supabase) return { ok: false, ms: 0, errMsg: 'disabled' };
+    if (clientProbeInFlightGuard) return { ok: false, ms: 0, errMsg: 'in_flight' };
+    clientProbeInFlightGuard = true;
+    const t0 = Date.now();
+    let ok = false, errMsg = null, errName = null, errStatus = null, errCode = null;
+    try {
+      const probeOp = ctx.withTimeout(
+        (signal) => supabase.from('projects').select('id').limit(1).abortSignal(signal),
+        CLIENT_PROBE_TIMEOUT_MS,
+        'Client probe'
+      );
+      const { error } = await probeOp;
+      if (error) {
+        errMsg = error.message || String(error);
+        errName = error.name;
+        errStatus = (typeof error.status === 'number') ? error.status : null;
+        errCode = error.code || null;
+      } else {
+        ok = true;
+      }
+    } catch (e) {
+      errMsg = e?.message || String(e);
+      errName = e?.name;
+      errStatus = (typeof e?.status === 'number') ? e.status : null;
+      errCode = e?.code || null;
+    } finally {
+      clientProbeInFlightGuard = false;
+    }
+    const ms = Date.now() - t0;
+    if (ok) {
+      saveDebugLog('autosave.client_probe.ok', { trigger, ms });
+      pushSaveEvent('autosave_client_probe_ok', 'Supabase client responsive', ctx.autosaveEventDetail({ trigger, ms }));
+      ctx.noteSupabaseCallOk();
+    } else {
+      saveDebugLog('autosave.client_probe.err', { trigger, ms, message: errMsg, name: errName });
+      pushSaveEvent('autosave_client_probe_err', 'Supabase client appears wedged', ctx.autosaveEventDetail({ trigger, ms, message: errMsg, name: errName }));
+      noteSupabaseJsFailure('client_probe', { message: errMsg, name: errName, status: errStatus, code: errCode });
+    }
+    return { ok, ms, errMsg };
+  }
+
+  async function recreateSupabaseClient(reason) {
+    if (!ctx.isSupabaseEnabled() || typeof window.supabase === 'undefined') return false;
+    if (clientRecycleInFlight) {
+      saveDebugLog('autosave.client_recycle.skip', { reason, why: 'in_flight' });
+      pushSaveEvent('client_recycle_skipped_inflight', 'Client recycle skipped (already running)', ctx.autosaveEventDetail({ reason }));
+      return false;
+    }
+    if (Date.now() - lastClientRecycleAt < CLIENT_RECYCLE_COOLDOWN_MS) {
+      saveDebugLog('autosave.client_recycle.skip', { reason, why: 'cooldown' });
+      pushSaveEvent('client_recycle_skipped_cooldown', 'Client recycle skipped (cooldown)', ctx.autosaveEventDetail({ reason, msSinceLastRecycle: Date.now() - lastClientRecycleAt, cooldownMs: CLIENT_RECYCLE_COOLDOWN_MS }));
+      return false;
+    }
+    clientRecycleInFlight = true;
+    const t0 = Date.now();
+    const state = ctx.getState();
+    const previousSession = state.supabaseSession || null;
+    let resubscribed = false;
+    try {
+      try { const prev = ctx.getSupabase(); if (prev) await prev.removeAllChannels(); } catch (_) {}
+      ctx.onCheckoutChannelDropped();
+      const { createClient } = window.supabase;
+      const next = createClient(ctx.getSupabaseUrl(), ctx.getSupabaseAnonKey());
+      ctx.setSupabase(next);
+      if (previousSession?.access_token && previousSession?.refresh_token) {
+        try {
+          await ctx.withTimeout(
+            next.auth.setSession({
+              access_token: previousSession.access_token,
+              refresh_token: previousSession.refresh_token
+            }),
+            5000,
+            'Client recycle setSession'
+          );
+        } catch (sessErr) {
+          saveDebugLog('autosave.client_recycle.setSession_err', { reason, message: sessErr?.message });
+        }
+      }
+      if (state.currentProjectId && state.supabaseSession?.user) {
+        try {
+          ctx.resubscribeCheckout(state.currentProjectId);
+          resubscribed = true;
+        } catch (rtErr) {
+          saveDebugLog('autosave.client_recycle.resubscribe_err', { reason, message: rtErr?.message });
+        }
+      }
+      lastClientRecycleAt = Date.now();
+      clientRecycleCountThisRun++;
+      const elapsedMs = Date.now() - t0;
+      saveDebugLog('autosave.client_recycle.ok', { reason, elapsedMs, resubscribed });
+      pushSaveEvent('autosave_client_recycled', 'Supabase client recreated', ctx.autosaveEventDetail({ reason, elapsedMs, resubscribed, recycleCount: clientRecycleCountThisRun }));
+      return true;
+    } catch (e) {
+      saveDebugLog('autosave.client_recycle.err', { reason, message: e?.message, name: e?.name });
+      pushSaveEvent('autosave_client_recycle_err', 'Supabase client recreate failed', ctx.autosaveEventDetail({ reason, message: e?.message, name: e?.name }));
+      return false;
+    } finally {
+      clientRecycleInFlight = false;
+    }
+  }
+
+  async function runRecoveryProbeAndMaybeRecycle(trigger) {
+    const probe = await runRecoveryProbe(trigger).catch(() => null);
+    if (!probe || !probe.ok) return;
+    if (ctx.getConsecutiveAutoSaveFailures() === 0) return;
+    const clientProbe = await runSupabaseClientProbe(trigger).catch(() => null);
+    if (clientProbe && !clientProbe.ok) {
+      await recreateSupabaseClient('client_probe_failed:' + trigger).catch(() => {});
+    } else if (!clientProbe) {
+      await recreateSupabaseClient('client_probe_threw:' + trigger).catch(() => {});
+    }
+  }
+
+  // Proactively recycle a wedged supabase-js client on a long-idle return (an
+  // ACTIVE probe: an idle user has zero autosave failures, so the failure-count
+  // trigger never fires). Returns true iff a recycle happened.
+  async function recycleClientIfWedgedOnIdleReturn(trigger) {
+    if (!ctx.isSupabaseEnabled() || !ctx.getSupabase()) return false;
+    const clientProbe = await runSupabaseClientProbe(trigger).catch(() => null);
+    if (clientProbe && clientProbe.ok) return false;
+    const reason = (clientProbe ? 'idle_return_client_wedged:' : 'idle_return_client_probe_threw:') + trigger;
+    return await recreateSupabaseClient(reason).catch(() => false);
+  }
+
+  // Raw-fetch fallbacks: when the supabase-js client wedges after sleep, a raw
+  // fetch to the same REST endpoint still returns quickly.
+  async function rawProjectsUpdate(projectId, payload, signal) {
+    if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) {
+      throw new Error('Supabase not configured');
+    }
+    const accessToken = ctx.getState().supabaseSession?.access_token || '';
+    if (!accessToken) throw new Error('No access token for raw projects update');
+    const url = ctx.getSupabaseUrl() + '/rest/v1/projects?id=eq.' + encodeURIComponent(projectId);
+    const res = await fetch(url, {
+      method: 'PATCH',
+      cache: 'no-store',
+      signal,
+      headers: {
+        apikey: ctx.getSupabaseAnonKey(),
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      let body = '';
+      try { body = await res.text(); } catch (_) {}
+      const e = new Error('Raw projects update failed: ' + res.status + (body ? (' ' + body.slice(0, 200)) : ''));
+      e.status = res.status;
+      e.code = 'RAW_UPDATE_HTTP_' + res.status;
+      e.diag = extractResponseDiagnostics(res.headers);
+      throw e;
+    }
+    return { ok: true, status: res.status };
+  }
+
+  async function rawProjectsInsert(payload, signal) {
+    if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) {
+      return { data: null, error: { message: 'Supabase not configured', status: 0, code: 'RAW_INSERT_NOT_CONFIGURED' } };
+    }
+    const accessToken = ctx.getState().supabaseSession?.access_token || '';
+    if (!accessToken) {
+      return { data: null, error: { message: 'No access token for raw projects insert', status: 401, code: 'RAW_INSERT_NO_TOKEN' } };
+    }
+    const url = ctx.getSupabaseUrl() + '/rest/v1/projects';
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        cache: 'no-store',
+        signal,
+        headers: {
+          apikey: ctx.getSupabaseAnonKey(),
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      return { data: null, error: { message: (e && e.message) || 'fetch_failed', status: 0, name: e && e.name, code: 'RAW_INSERT_FETCH_ERR' } };
+    }
+    let body = null;
+    let bodyText = '';
+    try {
+      bodyText = await res.text();
+      if (bodyText) body = JSON.parse(bodyText);
+    } catch (_) {}
+    if (!res.ok) {
+      const message = (body && (body.message || body.error)) || ('HTTP ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      return { data: null, error: { message, status: res.status, code: (body && body.code) || ('RAW_INSERT_HTTP_' + res.status), diag: extractResponseDiagnostics(res.headers) } };
+    }
+    const row = Array.isArray(body) ? body[0] : body;
+    return { data: row || null, error: null };
+  }
+
+  async function rawCheckInProject(projectId, signal) {
+    if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) {
+      throw new Error('Supabase not configured');
+    }
+    const accessToken = ctx.getState().supabaseSession?.access_token || '';
+    if (!accessToken) throw new Error('No access token for raw check_in_project');
+    const url = ctx.getSupabaseUrl() + '/rest/v1/rpc/check_in_project';
+    const res = await fetch(url, {
+      method: 'POST',
+      cache: 'no-store',
+      signal,
+      headers: {
+        apikey: ctx.getSupabaseAnonKey(),
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_project_id: projectId })
+    });
+    let bodyJson = null;
+    let bodyText = '';
+    try {
+      bodyText = await res.text();
+      if (bodyText) bodyJson = JSON.parse(bodyText);
+    } catch (_) {}
+    if (!res.ok) {
+      const e = new Error('Raw check_in failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      e.status = res.status;
+      e.code = 'RAW_RPC_HTTP_' + res.status;
+      e.diag = extractResponseDiagnostics(res.headers);
+      return { data: bodyJson, error: e };
+    }
+    return { data: bodyJson, error: null };
+  }
+
+  // Raw-fetch twin of supabase.rpc('list_accessible_projects'); mirrors
+  // rawCheckInProject's return contract.
+  async function rawListAccessibleProjects(signal) {
+    if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) {
+      throw new Error('Supabase not configured');
+    }
+    const accessToken = ctx.getState().supabaseSession?.access_token || '';
+    if (!accessToken) throw new Error('No access token for raw list_accessible_projects');
+    const url = ctx.getSupabaseUrl() + '/rest/v1/rpc/list_accessible_projects';
+    const res = await fetch(url, {
+      method: 'POST',
+      cache: 'no-store',
+      signal,
+      headers: {
+        apikey: ctx.getSupabaseAnonKey(),
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: '{}'
+    });
+    let bodyJson = null;
+    let bodyText = '';
+    try {
+      bodyText = await res.text();
+      if (bodyText) bodyJson = JSON.parse(bodyText);
+    } catch (_) {}
+    if (!res.ok) {
+      const e = new Error('Raw list_accessible_projects failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      e.status = res.status;
+      e.code = 'RAW_RPC_HTTP_' + res.status;
+      e.diag = extractResponseDiagnostics(res.headers);
+      return { data: bodyJson, error: e };
+    }
+    return { data: bodyJson, error: null };
+  }
+
+  function getLastSupabaseJsFailureAt() { return lastSupabaseJsFailureAt; }
+  function getClientRecycleCount() { return clientRecycleCountThisRun; }
+  function isClientRecycleInFlight() { return clientRecycleInFlight; }
+  function resetClientRecycleCount() { clientRecycleCountThisRun = 0; }
+  function resetRecycleState() { clientRecycleCountThisRun = 0; lastClientRecycleAt = 0; }
+
   // --- [sync] Global force reload -----------------------------------------
   // Admin-triggered "everyone reload now" via the system_settings row
   // force_reload_after: newer server timestamp than the local stamp -> clear
@@ -500,6 +858,22 @@ function createSaveEngine(ctx) {
     getLastLocalBackupOk,
     setLastLocalBackupAt,
     resetLocalBackupState,
+    // Stage 4: client resilience
+    noteSupabaseJsFailure,
+    runRecoveryProbe,
+    runSupabaseClientProbe,
+    recreateSupabaseClient,
+    runRecoveryProbeAndMaybeRecycle,
+    recycleClientIfWedgedOnIdleReturn,
+    rawProjectsUpdate,
+    rawProjectsInsert,
+    rawCheckInProject,
+    rawListAccessibleProjects,
+    getLastSupabaseJsFailureAt,
+    getClientRecycleCount,
+    isClientRecycleInFlight,
+    resetClientRecycleCount,
+    resetRecycleState,
     // Stage 1: global force reload + checkout keep-alive
     checkGlobalForceReload,
     doGlobalReloadNow,

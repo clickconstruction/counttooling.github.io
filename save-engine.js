@@ -15,23 +15,133 @@
  * checkoutKeepalive) so every call site, the App registry, and the window.*
  * contracts stay frozen while clusters migrate in behind this seam.
  *
- * ctx contract (Stage 1):
+ * ctx contract (grown per stage):
  *   getState()                        -> the live state object
  *   getSupabase()                     -> current supabase client (recycled)
  *   isSupabaseEnabled()               -> SUPABASE_ENABLED
  *   withTimeout(promise, ms, label)   -> app.js timeout wrapper
- *   pushSaveEvent(kind, msg, detail)  -> Save Status log writer
- *   saveDebugLog(phase, payload)      -> verbose [SaveDebug] logger
  *   probeCheckoutLock()               -> server-side lock probe
  *   handleBackgroundCheckoutExpired(trigger) -> background expiry wrapper
  *   isAutoSaveSuspended()             -> suspendAutoSaveUntilCheckout
  *   getLastCheckoutRefreshAt()        -> lastCheckoutRefreshAt
+ *   -- Stage 2 (dirty core; these reach app-side state whose primary
+ *      writers migrate in later stages):
+ *   getAutoSaveDirty() / setAutoSaveDirty(v)
+ *   setLastModifiedAt(ms)
+ *   invalidateFooterTotals()
+ *   autosaveEventDetail(extra)        -> enriched event detail builder
+ *   scheduleTakeoffBackup()           -> debounced local-backup kick
+ *   isCheckoutExpiredAttention()
+ *   setLastCheckoutRefreshAt(ms)
+ *   updateServerClockFromRpc(data)
+ *
+ * Stage 2: the engine OWNS the Save Status log (saveStatusLog + push/prune/
+ * window/debug helpers) and the dirty bookkeeping (dirtyGeneration /
+ *   dirtyStartedAt / the throttled dirty event) as instance state; app.js
+ * keeps same-named wrappers for the ~230 call sites and delegates
+ * App.getSaveStatusLog to the engine getter.
  *
  * The guarded CommonJS footer (inert in the browser) lets
  * save-engine.test.js `require()` createSaveEngine under node --test and
  * eslint.config.js derive the app.js lint global.
  */
 function createSaveEngine(ctx) {
+  // --- [sync] Save Status log core (Stage 2) ------------------------------
+  // The rolling client-side telemetry log. Engine-owned state: the log array
+  // (reassigned on clear) and the dirty-event throttle stamp.
+  let saveStatusLog = [];
+  let saveStatusDirtyLogAt = 0;
+
+  function isSaveDebugEnabled() {
+    try {
+      if (typeof window.CLICKCOUNT_DEBUG_SAVE !== 'undefined' && window.CLICKCOUNT_DEBUG_SAVE) return true;
+      return localStorage.getItem('clickcount-debug-save') === '1';
+    } catch (_) { return false; }
+  }
+  function setSaveDebugEnabled(on) {
+    try {
+      if (on) localStorage.setItem('clickcount-debug-save', '1');
+      else localStorage.removeItem('clickcount-debug-save');
+    } catch (_) {}
+  }
+  function saveDebugRunId() {
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+  function saveDebugLog(phase, payload) {
+    if (!isSaveDebugEnabled()) return;
+    const obj = payload && typeof payload === 'object' ? payload : {};
+    console.log('[SaveDebug]', phase, obj);
+    try {
+      let detailStr;
+      try { detailStr = JSON.stringify(obj); } catch (_) { detailStr = String(obj); }
+      if (detailStr && detailStr.length > 4096) detailStr = detailStr.slice(0, 4096) + '…';
+      pushSaveEvent('debug', phase, detailStr);
+    } catch (_) {}
+  }
+  function saveDebugLogError(runId, context, e) {
+    if (!isSaveDebugEnabled()) return;
+    const msg = (e && e.message) || '';
+    if (msg.includes('timed out')) {
+      saveDebugLog(context + '.timeout', { runId, note: 'The HTTP request may still complete server-side.', message: msg });
+    } else {
+      saveDebugLog(context + '.error', Object.assign({ runId }, serializeSaveError(e)));
+    }
+  }
+  function getSaveStatusLogWindowMs() {
+    return isSaveDebugEnabled() ? SAVE_STATUS_LOG_VERBOSE_MS : SAVE_STATUS_LOG_MS;
+  }
+  function pruneSaveStatusLog() {
+    const cutoff = Date.now() - getSaveStatusLogWindowMs();
+    while (saveStatusLog.length && saveStatusLog[0].ts < cutoff) saveStatusLog.shift();
+  }
+  function pushSaveEvent(kind, message, detail) {
+    if (!ctx.isSupabaseEnabled()) return;
+    pruneSaveStatusLog();
+    saveStatusLog.push({ ts: Date.now(), kind: kind, message: message || '', detail: detail !== undefined && detail !== '' ? detail : undefined });
+  }
+  function getSaveStatusLog() { return saveStatusLog; }
+  function clearSaveStatusLog() { saveStatusLog = []; }
+
+  // --- [sync] Dirty tracking core (Stage 2) -------------------------------
+  // Engine-owned: the dirty generation counter (lost-edit correctness across
+  // in-flight saves) and the first-dirty timestamp (snapshot threshold +
+  // dirtyForMs telemetry). autoSaveDirty / lastModifiedAt stay app-side until
+  // the save paths (their primary writers) migrate; the engine reaches them
+  // through ctx.
+  let dirtyGeneration = 0;
+  let dirtyStartedAt = 0;
+
+  function markProjectDirty() {
+    const state = ctx.getState();
+    if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
+    const wasDirty = ctx.getAutoSaveDirty();
+    ctx.setAutoSaveDirty(true);
+    dirtyGeneration++;
+    ctx.setLastModifiedAt(Date.now());
+    if (!wasDirty) dirtyStartedAt = Date.now();
+    ctx.invalidateFooterTotals();
+    if (ctx.isSupabaseEnabled() && state.supabaseSession?.user && !state.isViewer) {
+      const now = Date.now();
+      if (now - saveStatusDirtyLogAt >= 2000) {
+        saveStatusDirtyLogAt = now;
+        pushSaveEvent('dirty', 'Project marked dirty (pending cloud sync)', ctx.autosaveEventDetail({ dirtyForMs: dirtyStartedAt ? (now - dirtyStartedAt) : 0 }));
+      }
+    }
+    ctx.scheduleTakeoffBackup();
+    if (!ctx.isAutoSaveSuspended() && !ctx.isCheckoutExpiredAttention() && state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - ctx.getLastCheckoutRefreshAt() >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
+      ctx.setLastCheckoutRefreshAt(Date.now());
+      const supabase = ctx.getSupabase();
+      if (supabase) supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }).then(({ data }) => {
+        ctx.updateServerClockFromRpc(data);
+        if (data?.ok) state.checkedOutAt = data.checked_out_at || new Date().toISOString();
+      });
+    }
+  }
+  function getDirtyGeneration() { return dirtyGeneration; }
+  function getDirtyStartedAt() { return dirtyStartedAt; }
+  function clearDirtyStartedAt() { dirtyStartedAt = 0; }
+  function resetDirtyTracking() { dirtyGeneration = 0; dirtyStartedAt = 0; saveStatusDirtyLogAt = 0; }
+
   // --- [sync] Global force reload -----------------------------------------
   // Admin-triggered "everyone reload now" via the system_settings row
   // force_reload_after: newer server timestamp than the local stamp -> clear
@@ -61,7 +171,7 @@ function createSaveEngine(ctx) {
     const state = ctx.getState();
     const stamp = String(state.globalReloadAtServerMs || Date.now());
     try { localStorage.setItem(PENDING_GLOBAL_RELOAD_STAMP_KEY, stamp); } catch (_) {}
-    try { ctx.pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
+    try { pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
     try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
     // PWA: best-effort clear the service-worker caches too, so the offline
     // fallback also refreshes. Fire-and-forget — must NOT block location.reload().
@@ -91,7 +201,7 @@ function createSaveEngine(ctx) {
           if (confirmedReload) {
             localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, pending);
             localStorage.removeItem(PENDING_GLOBAL_RELOAD_STAMP_KEY);
-            try { ctx.pushSaveEvent('global_reload_committed', 'Global reload stamp committed after successful reload', pending); } catch (_) {}
+            try { pushSaveEvent('global_reload_committed', 'Global reload stamp committed after successful reload', pending); } catch (_) {}
           }
         } catch (_) {}
       };
@@ -120,30 +230,30 @@ function createSaveEngine(ctx) {
     const state = ctx.getState();
     if (!ctx.isSupabaseEnabled() || !ctx.getSupabase()) return;
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
-      ctx.saveDebugLog('keepalive.skip', { reason: 'not_visible' });
+      saveDebugLog('keepalive.skip', { reason: 'not_visible' });
       return;
     }
     const userId = state.supabaseSession?.user?.id;
     if (!userId) return;
     if (!state.currentProjectId || state.checkedOutBy !== userId) return;
     if (state.isViewer || ctx.isAutoSaveSuspended()) {
-      ctx.saveDebugLog('keepalive.skip', { reason: state.isViewer ? 'viewer' : 'suspended' });
+      saveDebugLog('keepalive.skip', { reason: state.isViewer ? 'viewer' : 'suspended' });
       return;
     }
     if (Date.now() - ctx.getLastCheckoutRefreshAt() < CHECKOUT_REFRESH_DEBOUNCE_MS) {
-      ctx.saveDebugLog('keepalive.skip', { reason: 'debounced' });
+      saveDebugLog('keepalive.skip', { reason: 'debounced' });
       return;
     }
-    ctx.saveDebugLog('keepalive.tick', { projectId: state.currentProjectId });
+    saveDebugLog('keepalive.tick', { projectId: state.currentProjectId });
     const probe = await ctx.probeCheckoutLock();
     if (probe.expired) {
-      ctx.saveDebugLog('keepalive.expired', {});
-      ctx.pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
+      saveDebugLog('keepalive.expired', {});
+      pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
       try {
         await ctx.handleBackgroundCheckoutExpired('keepalive');
       } catch (e) {
         try {
-          ctx.pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+          pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
             JSON.stringify({ trigger: 'keepalive', message: (e && e.message) || String(e), name: e && e.name }));
         } catch (_) {}
       }
@@ -151,6 +261,23 @@ function createSaveEngine(ctx) {
   }
 
   return {
+    // Stage 2: Save Status log core + dirty core
+    pushSaveEvent,
+    pruneSaveStatusLog,
+    getSaveStatusLog,
+    clearSaveStatusLog,
+    getSaveStatusLogWindowMs,
+    isSaveDebugEnabled,
+    setSaveDebugEnabled,
+    saveDebugRunId,
+    saveDebugLog,
+    saveDebugLogError,
+    markProjectDirty,
+    getDirtyGeneration,
+    getDirtyStartedAt,
+    clearDirtyStartedAt,
+    resetDirtyTracking,
+    // Stage 1: global force reload + checkout keep-alive
     checkGlobalForceReload,
     doGlobalReloadNow,
     installGlobalReloadStampCommit,

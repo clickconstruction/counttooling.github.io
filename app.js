@@ -510,7 +510,7 @@
   let clientRecycleCountThisRun = 0;
   let lastClientRecycleAt = 0;
   let clientProbeInFlightGuard = false;
-  let dirtyStartedAt = 0;
+  // dirtyStartedAt lives in save-engine.js (Stage 2): saveEngine.getDirtyStartedAt().
   let envelopeSnapshotFiredAt = 0;
   let envelopeSnapshotDirtyStamp = 0;
   // Autosave/checkout timing & threshold constants live in constants.js (see note in the Constants section).
@@ -1057,6 +1057,16 @@
     handleBackgroundCheckoutExpired: (...a) => handleBackgroundCheckoutExpired(...a),
     isAutoSaveSuspended: () => suspendAutoSaveUntilCheckout,
     getLastCheckoutRefreshAt: () => lastCheckoutRefreshAt,
+    // Stage 2 (dirty core): app-side state whose primary writers migrate later.
+    getAutoSaveDirty: () => autoSaveDirty,
+    setAutoSaveDirty: (v) => { autoSaveDirty = v; },
+    setLastModifiedAt: (ms) => { lastModifiedAt = ms; },
+    invalidateFooterTotals: () => invalidateFooterTotals(),
+    autosaveEventDetail: (extra) => autosaveEventDetail(extra),
+    scheduleTakeoffBackup: () => scheduleTakeoffBackupDebounced(),
+    isCheckoutExpiredAttention: () => checkoutExpiredNeedsAttention,
+    setLastCheckoutRefreshAt: (ms) => { lastCheckoutRefreshAt = ms; },
+    updateServerClockFromRpc: (data) => updateServerClockFromRpc(data),
   });
   function checkGlobalForceReload() { return saveEngine.checkGlobalForceReload(); }
   function doGlobalReloadNow(trigger) { return saveEngine.doGlobalReloadNow(trigger); }
@@ -1065,70 +1075,33 @@
 
   // isTransientSaveError(e) lives in save-utils.js (loaded before this IIFE).
 
-  function isSaveDebugEnabled() {
-    try {
-      if (typeof window.CLICKCOUNT_DEBUG_SAVE !== 'undefined' && window.CLICKCOUNT_DEBUG_SAVE) return true;
-      return localStorage.getItem('clickcount-debug-save') === '1';
-    } catch (_) { return false; }
-  }
-  function setSaveDebugEnabled(on) {
-    try {
-      if (on) localStorage.setItem('clickcount-debug-save', '1');
-      else localStorage.removeItem('clickcount-debug-save');
-    } catch (_) {}
-  }
-  function saveDebugRunId() {
-    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-  }
-  function saveDebugLog(phase, payload) {
-    if (!isSaveDebugEnabled()) return;
-    const obj = payload && typeof payload === 'object' ? payload : {};
-    console.log('[SaveDebug]', phase, obj);
-    try {
-      let detailStr;
-      try { detailStr = JSON.stringify(obj); } catch (_) { detailStr = String(obj); }
-      if (detailStr && detailStr.length > 4096) detailStr = detailStr.slice(0, 4096) + '…';
-      pushSaveEvent('debug', phase, detailStr);
-    } catch (_) {}
-  }
-  function saveDebugLogError(runId, context, e) {
-    if (!isSaveDebugEnabled()) return;
-    const msg = (e && e.message) || '';
-    if (msg.includes('timed out')) {
-      saveDebugLog(context + '.timeout', { runId, note: 'The HTTP request may still complete server-side.', message: msg });
-    } else {
-      saveDebugLog(context + '.error', Object.assign({ runId }, serializeSaveError(e)));
-    }
-  }
-
-  function getSaveStatusLogWindowMs() {
-    return isSaveDebugEnabled() ? SAVE_STATUS_LOG_VERBOSE_MS : SAVE_STATUS_LOG_MS;
-  }
-  let saveStatusLog = [];
+  // The [SaveDebug] helpers (isSaveDebugEnabled/setSaveDebugEnabled/
+  // saveDebugRunId/saveDebugLog/saveDebugLogError) live in save-engine.js
+  // (Stage 2); same-named wrappers below.
+  function isSaveDebugEnabled() { return saveEngine.isSaveDebugEnabled(); }
+  function setSaveDebugEnabled(on) { return saveEngine.setSaveDebugEnabled(on); }
+  function saveDebugRunId() { return saveEngine.saveDebugRunId(); }
+  function saveDebugLog(phase, payload) { return saveEngine.saveDebugLog(phase, payload); }
+  function saveDebugLogError(runId, context, e) { return saveEngine.saveDebugLogError(runId, context, e); }
+  function getSaveStatusLogWindowMs() { return saveEngine.getSaveStatusLogWindowMs(); }
+  // The saveStatusLog array + prune/push live in save-engine.js (Stage 2);
+  // read it via saveEngine.getSaveStatusLog() (App.getSaveStatusLog delegates).
   // saveStatusModalTickTimer moved to features/save-status.js (private to the modal).
   let lastCloudSaveAttemptFailed = false;
   let checkoutExpiredNeedsAttention = false;
   let checkoutExpiredToastShown = false;
-  let saveStatusDirtyLogAt = 0;
   function clearCheckoutExpiredAttention() {
     checkoutExpiredNeedsAttention = false;
     checkoutExpiredToastShown = false;
     suspendAutoSaveUntilCheckout = false;
     updateSaveStatusIndicator();
   }
-  function pruneSaveStatusLog() {
-    const cutoff = Date.now() - getSaveStatusLogWindowMs();
-    while (saveStatusLog.length && saveStatusLog[0].ts < cutoff) saveStatusLog.shift();
-  }
+  function pruneSaveStatusLog() { return saveEngine.pruneSaveStatusLog(); }
   // SECTION: [sync] Save Status log & envelope
   // Per-tab session id, stamped into the export envelope so concurrent tabs of
   // the same project (a real save/sync race) are distinguishable in logs.
   const TAB_SESSION_ID = uid();
-  function pushSaveEvent(kind, message, detail) {
-    if (!SUPABASE_ENABLED) return;
-    pruneSaveStatusLog();
-    saveStatusLog.push({ ts: Date.now(), kind: kind, message: message || '', detail: detail !== undefined && detail !== '' ? detail : undefined });
-  }
+  function pushSaveEvent(kind, message, detail) { return saveEngine.pushSaveEvent(kind, message, detail); }
   function getProjectSummaryForLogs() {
     try {
       const pages = (state && state.pages) || [];
@@ -1259,7 +1232,7 @@
         nextAutoSaveAttemptInMs: nextAutoSaveAttemptAt ? Math.max(0, nextAutoSaveAttemptAt - Date.now()) : 0
       },
       project: getProjectSummaryForLogs(),
-      events: saveStatusLog.slice()
+      events: saveEngine.getSaveStatusLog().slice()
     };
   }
 
@@ -1270,34 +1243,17 @@
   }
 
   let backupDebounceTimer = null;
-  let dirtyGeneration = 0;
   // SECTION: [sync] Dirty tracking & local session reset
-  function markProjectDirty() {
-    if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
-    const wasDirty = autoSaveDirty;
-    autoSaveDirty = true;
-    dirtyGeneration++;
-    lastModifiedAt = Date.now();
-    if (!wasDirty) dirtyStartedAt = Date.now();
-    invalidateFooterTotals();
-    if (SUPABASE_ENABLED && state.supabaseSession?.user && !state.isViewer) {
-      const now = Date.now();
-      if (now - saveStatusDirtyLogAt >= 2000) {
-        saveStatusDirtyLogAt = now;
-        pushSaveEvent('dirty', 'Project marked dirty (pending cloud sync)', autosaveEventDetail({ dirtyForMs: dirtyStartedAt ? (now - dirtyStartedAt) : 0 }));
-      }
-    }
+  // markProjectDirty + dirtyGeneration/dirtyStartedAt live in save-engine.js
+  // (Stage 2). The wrapper keeps the ~90 call sites + the App publish frozen;
+  // the debounced local-backup kick stays here (the writer moves in Stage 3).
+  function markProjectDirty() { return saveEngine.markProjectDirty(); }
+  function scheduleTakeoffBackupDebounced() {
     if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
     backupDebounceTimer = setTimeout(() => { backupDebounceTimer = null; writeTakeoffStateBackup(); }, 1000);
-    if (!suspendAutoSaveUntilCheckout && !checkoutExpiredNeedsAttention && state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - lastCheckoutRefreshAt >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
-      lastCheckoutRefreshAt = Date.now();
-      if (supabase) supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }).then(({ data }) => {
-        updateServerClockFromRpc(data);
-        if (data?.ok) state.checkedOutAt = data.checked_out_at || new Date().toISOString();
-      });
-    }
   }
 
+  // SECTION: Undo/redo stacks
   let undoStack = [];
   let redoStack = [];
 
@@ -1383,7 +1339,7 @@
     autosaveSlowEmittedAt = 0;
     envelopeSnapshotFiredAt = 0;
     envelopeSnapshotDirtyStamp = 0;
-    dirtyStartedAt = 0;
+    saveEngine.clearDirtyStartedAt();
     clientRecycleCountThisRun = 0;
     lastClientRecycleAt = 0;
     autoSaveAbortReason = null;
@@ -1422,7 +1378,7 @@
     state.loadedViaViewLink = false;
     state.canCheckOut = false;
     autoSaveDirty = false;
-    dirtyGeneration = 0;
+    saveEngine.resetDirtyTracking();
     saveInProgress = false;
     savePdfInProgress = false;
     turnInInProgress = false;
@@ -1434,7 +1390,7 @@
     resetAutosaveDegradedState();
     pdfCacheWarnShown = false;
     takeoffBackupWarnShown = false;
-    saveStatusLog = [];
+    saveEngine.clearSaveStatusLog();
     state.userActivityAllRowsCache = null;
     state.userActivityViewMode = 'events';
     try { autoRecheckoutCountByProject.clear(); } catch (_) {}
@@ -7435,8 +7391,9 @@
         if (Number.isFinite(t) && t > 0) candidates.push(t + CHECKOUT_INACTIVITY_MS);
       }
       try {
-        for (let i = saveStatusLog.length - 1; i >= 0; i--) {
-          const ev = saveStatusLog[i];
+        const engineLog = saveEngine.getSaveStatusLog();
+        for (let i = engineLog.length - 1; i >= 0; i--) {
+          const ev = engineLog[i];
           if (ev && (ev.kind === 'checkout_expired' || ev.kind === 'keepalive_expired')) {
             candidates.push(ev.ts);
             break;
@@ -10723,7 +10680,7 @@
     saveInProgress = true;
     savePdfInProgress = willUploadPdf;
     const wasDirty = autoSaveDirty;
-    const genAtEntry = dirtyGeneration;
+    const genAtEntry = saveEngine.getDirtyGeneration();
     autoSaveDirty = false;
     updateStatus();
     const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
@@ -11053,8 +11010,8 @@
       log('Save complete');
       saveDebugLog('manual.save.complete', { runId });
       lastCloudSaveAttemptFailed = false;
-      autoSaveDirty = (dirtyGeneration !== genAtEntry);
-      pushSaveEvent('manual_save_ok', 'Manual save to cloud completed', autosaveEventDetail({ runId, genAtEntry, genNow: dirtyGeneration, stillDirty: autoSaveDirty }));
+      autoSaveDirty = (saveEngine.getDirtyGeneration() !== genAtEntry);
+      pushSaveEvent('manual_save_ok', 'Manual save to cloud completed', autosaveEventDetail({ runId, genAtEntry, genNow: saveEngine.getDirtyGeneration(), stillDirty: autoSaveDirty }));
       saveProgressMessage = '';
       updateUI();
       return { ok: true };
@@ -11075,7 +11032,7 @@
       writeTakeoffBackupToIndexedDB();
       pushSaveEvent('manual_save_err', (e && e.message) || 'Manual save failed', formatSaveStatusErrDetail(e));
       lastCloudSaveAttemptFailed = true;
-      autoSaveDirty = wasDirty || (dirtyGeneration !== genAtEntry);
+      autoSaveDirty = wasDirty || (saveEngine.getDirtyGeneration() !== genAtEntry);
       updateSaveStatusIndicator();
       try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
       saveProgressMessage = '';
@@ -11191,7 +11148,7 @@
       }
     }
     const t0 = Date.now();
-    const genAtEntry = dirtyGeneration;
+    const genAtEntry = saveEngine.getDirtyGeneration();
     autoSaveDirty = false;
     const data = {
       version: 1,
@@ -11399,9 +11356,9 @@
       saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
       maybeLogProjectSaveEvent(state.currentProjectId);
       lastCloudSaveAttemptFailed = false;
-      autoSaveDirty = (dirtyGeneration !== genAtEntry);
-      if (!autoSaveDirty) dirtyStartedAt = 0;
-      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)', autosaveEventDetail({ runId, totalMs: Date.now() - tTotal, attempts: attempt + 1, usedRawFetch: lastAttemptUsedRawFetch, genAtEntry, genNow: dirtyGeneration }));
+      autoSaveDirty = (saveEngine.getDirtyGeneration() !== genAtEntry);
+      if (!autoSaveDirty) saveEngine.clearDirtyStartedAt();
+      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)', autosaveEventDetail({ runId, totalMs: Date.now() - tTotal, attempts: attempt + 1, usedRawFetch: lastAttemptUsedRawFetch, genAtEntry, genNow: saveEngine.getDirtyGeneration() }));
       autoSaveAbortReason = null;
       noteAutoSaveOutcome(true, null);
       return { ok: true };
@@ -11648,8 +11605,9 @@
     // state so a failed attempt retries on a later tick.
     uploadLocalPdfToCloudIfNeeded('autosave_tick').catch(() => {});
     if (!autoSaveDirty) return;
-    if (dirtyStartedAt && Date.now() - dirtyStartedAt >= DIRTY_SNAPSHOT_THRESHOLD_MS && envelopeSnapshotDirtyStamp < dirtyStartedAt) {
-      envelopeSnapshotDirtyStamp = dirtyStartedAt;
+    const dirtyStartedAtNow = saveEngine.getDirtyStartedAt();
+    if (dirtyStartedAtNow && Date.now() - dirtyStartedAtNow >= DIRTY_SNAPSHOT_THRESHOLD_MS && envelopeSnapshotDirtyStamp < dirtyStartedAtNow) {
+      envelopeSnapshotDirtyStamp = dirtyStartedAtNow;
       writeSaveLogsSnapshot('dirty_10min').catch(() => {});
     }
     if (Date.now() < nextAutoSaveAttemptAt) {
@@ -11768,7 +11726,7 @@
   App.setSaveDebugEnabled = setSaveDebugEnabled;
   App.buildSaveLogsEnvelopeWithSnapshots = buildSaveLogsEnvelopeWithSnapshots;
   App.pushSaveEvent = pushSaveEvent;
-  App.getSaveStatusLog = () => saveStatusLog;
+  App.getSaveStatusLog = () => saveEngine.getSaveStatusLog();
   App.isCheckoutExpiredAttention = () => checkoutExpiredNeedsAttention;
   App.SUPABASE_URL = SUPABASE_URL;
   App.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;

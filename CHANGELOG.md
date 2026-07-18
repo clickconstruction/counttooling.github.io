@@ -13,6 +13,30 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(save-engine): Stage 4 — the client-resilience layer
+
+Fourth stage: the wedged-client machinery moves behind the seam —
+`noteSupabaseJsFailure` (+ the failure stamp `doTurnIn` consults),
+`runRecoveryProbe` (the raw-fetch connection probe), `runSupabaseClientProbe`,
+`recreateSupabaseClient`, the two orchestrators
+(`runRecoveryProbeAndMaybeRecycle`, `recycleClientIfWedgedOnIdleReturn`), and
+all four raw-fetch fallbacks. Engine-owned: the in-flight guards, the recycle
+cooldown/per-run count, and the wedge stamp, with getters for the app-side
+readers (turn-in's `sbJsRecentlyBad`, the save paths' recycle-in-flight
+guards, the envelope's `clientRecycles`). **Client ownership decision:** the
+`supabase` let stays app-side (its ~100 bare readers are untouched); the
+recycle — its only reassigner besides boot — writes through `ctx.setSupabase`,
+and re-subscribes through `ctx.resubscribeCheckout` (the subscription cluster
+itself is Stage 5). `updateSyncPausedBanner`/`retrySyncNow`/
+`recordAutosaveLatency`/`noteAutoSaveOutcome` + the telemetry capture helpers
+stay app-side (stage-6 lets). Two wrappers were deleted rather than kept
+(`runSupabaseClientProbe`/`recreateSupabaseClient` — their only callers moved
+with them). ctx grew by 7; save-engine.test.js grew to 21 tests (failure
+filtering, recycle happy-path/cooldown with a stubbed `window.supabase`,
+orchestrator early-exit, raw-insert token guard).
+
+---
+
 ## refactor(save-engine): Stage 3 — the storage ring
 
 Third stage: `probeCheckoutLock` (which **graduates from the ctx to

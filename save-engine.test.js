@@ -88,6 +88,13 @@ function makeCtx(overrides) {
     getUserCustomIcons: () => [],
     computePageBakeFrame: () => null,
     getLastModifiedAt: () => 0,
+    setSupabase: () => {},
+    getSupabaseUrl: () => 'https://x.supabase.co',
+    getSupabaseAnonKey: () => 'anon',
+    getConsecutiveAutoSaveFailures: () => 0,
+    clearAutoSaveBackoff: () => {},
+    resubscribeCheckout: () => {},
+    onCheckoutChannelDropped: () => {},
     ...overrides,
   };
   return { ctx, calls, appSide };
@@ -256,6 +263,80 @@ test('probeCheckoutLock: non-holder reports expired; a healthy refresh stamps th
   assert.strictEqual(state.checkedOutAt, '2026-07-18T00:00:00Z');
   assert.strictEqual(b.calls.supabaseOk, 1);
   assert.strictEqual(b.calls.refreshAt.length, 1);
+});
+
+// --- Stage 4: client resilience ---------------------------------------------
+
+test('noteSupabaseJsFailure: 4xx and checkout-domain errors are ignored; real failures stamp', () => {
+  const { ctx } = makeCtx();
+  const engine = createSaveEngine(ctx);
+  engine.noteSupabaseJsFailure('t', { status: 403 });
+  engine.noteSupabaseJsFailure('t', { code: 'CHECKOUT_EXPIRED' });
+  assert.strictEqual(engine.getLastSupabaseJsFailureAt(), 0);
+  engine.noteSupabaseJsFailure('t', { message: 'socket hang up' });
+  assert.ok(engine.getLastSupabaseJsFailureAt() > 0);
+  assert.ok(logKinds(engine).includes('sbjs_failure_recorded'));
+  engine.noteSupabaseJsFailure('t', { status: 408, message: 'timeout-ish' });   // 408 is NOT ignored
+  assert.strictEqual(logKinds(engine).filter((k) => k === 'sbjs_failure_recorded').length, 2);
+});
+
+test('recreateSupabaseClient: swaps the client, resubscribes, counts; cooldown blocks a rerun', async () => {
+  const created = [];
+  globalThis.window.supabase = { createClient: (u, k) => { const c = { auth: { setSession: async () => ({}) }, removeAllChannels: async () => {} }; created.push(c); return c; } };
+  let set = [], resub = [], dropped = 0;
+  const state = { supabaseSession: { user: { id: 'u1' }, access_token: 'a', refresh_token: 'r' }, currentProjectId: 'p1' };
+  const { ctx } = makeCtx({
+    getState: () => state,
+    setSupabase: (c) => set.push(c),
+    resubscribeCheckout: (id) => resub.push(id),
+    onCheckoutChannelDropped: () => { dropped++; },
+    getSupabaseUrl: () => 'https://x.supabase.co',
+    getSupabaseAnonKey: () => 'anon',
+  });
+  const engine = createSaveEngine(ctx);
+  const ok = await engine.recreateSupabaseClient('test');
+  assert.strictEqual(ok, true);
+  assert.strictEqual(set.length, 1);
+  assert.strictEqual(set[0], created[0]);
+  assert.deepStrictEqual(resub, ['p1']);
+  assert.strictEqual(dropped, 1);
+  assert.strictEqual(engine.getClientRecycleCount(), 1);
+  assert.ok(logKinds(engine).includes('autosave_client_recycled'));
+  // Immediate rerun -> cooldown skip.
+  const again = await engine.recreateSupabaseClient('test2');
+  assert.strictEqual(again, false);
+  assert.ok(logKinds(engine).includes('client_recycle_skipped_cooldown'));
+  assert.strictEqual(engine.getClientRecycleCount(), 1);
+  engine.resetRecycleState();
+  assert.strictEqual(engine.getClientRecycleCount(), 0);
+  delete globalThis.window.supabase;
+});
+
+test('runRecoveryProbeAndMaybeRecycle: healthy probe with zero failures stops before the client probe', async () => {
+  let clientProbes = 0;
+  globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => null } });
+  const { ctx } = makeCtx({
+    getConsecutiveAutoSaveFailures: () => 0,
+    getSupabase: () => ({ from: () => { clientProbes++; throw new Error('should not run'); } }),
+    getSupabaseUrl: () => 'https://x.supabase.co',
+    getSupabaseAnonKey: () => 'anon',
+  });
+  const engine = createSaveEngine(ctx);
+  await engine.runRecoveryProbeAndMaybeRecycle('test');
+  assert.strictEqual(clientProbes, 0);
+  assert.ok(logKinds(engine).includes('autosave_recovery_ok'));
+  delete globalThis.fetch;
+});
+
+test('rawProjectsInsert: missing token returns the RAW_INSERT_NO_TOKEN error shape', async () => {
+  const { ctx } = makeCtx({
+    getState: () => ({ supabaseSession: null }),
+    getSupabaseUrl: () => 'https://x.supabase.co',
+    getSupabaseAnonKey: () => 'anon',
+  });
+  const res = await createSaveEngine(ctx).rawProjectsInsert({}, undefined);
+  assert.strictEqual(res.data, null);
+  assert.strictEqual(res.error.code, 'RAW_INSERT_NO_TOKEN');
 });
 
 // --- Stage 1: checkout keep-alive ------------------------------------------

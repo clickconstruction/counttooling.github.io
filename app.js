@@ -4629,8 +4629,8 @@
     const allPagesCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-pages-canvases"]');
     if (allPagesOpt) allPagesOpt.style.display = state.pages.length > 1 ? '' : 'none';
     if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = state.pages.length > 1 ? '' : 'none';
-    updateBurgerMenu();
-    scheduleHeaderCollapseCheck();
+    if (App.updateBurgerMenu) App.updateBurgerMenu();
+    if (App.scheduleHeaderCollapseCheck) App.scheduleHeaderCollapseCheck();
     document.querySelectorAll('.pipe-tooling-option[data-mode="this-canvas"], .copy-summary-option[data-mode="this-canvas"]').forEach(el => {
       el.style.display = state.pages.length <= 1 ? 'none' : '';
     });
@@ -7480,128 +7480,12 @@
 
   document.getElementById('hamburger').onclick = () => document.body.classList.toggle('sidebar-open');
   document.getElementById('sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
-  // SECTION: Mobile actions burger menu (right-side drawer)
-  // Consolidates the header's PDF actions (hide marks / share / download / export)
-  // into a right-side drawer on mobile. Each row dispatches the click of the
-  // existing (CSS-hidden on mobile) header control/option, so all desktop behavior
-  // is reused and no deeper-scope functions need to be referenced here. Rebuilt from
-  // the option buttons' current visibility on every updateUI (and on open).
-  function closeBurgerMenu() {
-    document.body.classList.remove('right-menu-open');
-    const b = document.getElementById('headerBurger');
-    if (b) b.setAttribute('aria-expanded', 'false');
-  }
-  function updateBurgerMenu() {
-    const list = document.getElementById('rightMenuList');
-    if (!list) return;
-    list.innerHTML = '';
-    if (!state.pages.length) return;
-    // Clone the matching header control's <svg> so each drawer row shows the same
-    // icon as its source (pixel-match, no duplicated icon data). Strips id/size so
-    // CSS (.right-menu-icon) controls dimensions.
-    const iconClone = (el) => {
-      if (!el) return null;
-      const svg = (el.tagName && el.tagName.toLowerCase() === 'svg') ? el : el.querySelector('svg');
-      if (!svg) return null;
-      const c = svg.cloneNode(true);
-      c.removeAttribute('id');
-      c.removeAttribute('width');
-      c.removeAttribute('height');
-      c.style.display = '';
-      c.setAttribute('aria-hidden', 'true');
-      c.classList.add('right-menu-icon');
-      return c;
-    };
-    const rows = [];
-    const addSection = (label) => rows.push({ section: label });
-    const addItem = (label, click, iconSrc) => rows.push({ label, click, iconSrc });
-    // 1. Show / Hide marks (mirrors #hideMarksBtn + its current eye/eye-slash icon)
-    addItem(
-      state.hideMarks ? 'Show marks' : 'Hide marks',
-      () => document.getElementById('hideMarksBtn')?.click(),
-      document.getElementById(state.hideMarks ? 'hideMarksIconHide' : 'hideMarksIconShow')
-    );
-    // 2. Share — editor opens the Share modal (#sidebarLogoShare); a signed-in
-    //    view-link viewer copies the link (#headerShareBtn). Same gating as updateUI.
-    const baseShare = SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user;
-    const shareIcon = document.getElementById('headerShareBtn');
-    if (baseShare && !state.loadedViaViewLink) {
-      addItem('Share', () => document.getElementById('sidebarLogoShare')?.click(), shareIcon);
-    } else if (baseShare && state.isViewer) {
-      addItem('Share', () => document.getElementById('headerShareBtn')?.click(), shareIcon);
-    }
-    // 3. Download — one row per currently-visible download option (visibility set by updateUI)
-    const dlOpts = Array.from(document.querySelectorAll('.download-page-option')).filter(o => o.style.display !== 'none');
-    if (dlOpts.length) {
-      addSection('Download');
-      const dlIcon = document.getElementById('downloadCurrentPageBtn');
-      dlOpts.forEach(o => addItem(o.textContent, () => o.click(), dlIcon));
-    }
-    // 4. Export — one row per currently-visible export option (only if the section is shown)
-    const exportDropdown = document.getElementById('exportDropdown');
-    const exOpts = Array.from(document.querySelectorAll('.export-dropdown-option')).filter(o => o.style.display !== 'none');
-    if (exportDropdown && exportDropdown.style.display !== 'none' && exOpts.length) {
-      addSection('Export');
-      const exIcon = document.getElementById('exportDropdownIconExport');
-      exOpts.forEach(o => addItem(o.textContent, () => o.click(), exIcon));
-    }
-    rows.forEach(r => {
-      if (r.section) {
-        const s = document.createElement('div');
-        s.className = 'right-menu-section';
-        s.textContent = r.section;
-        list.appendChild(s);
-      } else {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'right-menu-item';
-        const icon = iconClone(r.iconSrc);
-        if (icon) btn.appendChild(icon);
-        const label = document.createElement('span');
-        label.className = 'right-menu-label';
-        // Put a trailing "(qualifier)" on its own line in the drawer (the label uses
-        // white-space:pre-line). Desktop menus keep the single-line source text.
-        label.textContent = r.label.replace(' (', '\n(');
-        btn.appendChild(label);
-        btn.onclick = () => { r.click(); closeBurgerMenu(); };
-        list.appendChild(btn);
-      }
-    });
-  }
-  const headerBurgerEl = document.getElementById('headerBurger');
-  if (headerBurgerEl) {
-    headerBurgerEl.onclick = () => {
-      const open = document.body.classList.toggle('right-menu-open');
-      headerBurgerEl.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) updateBurgerMenu();
-    };
-  }
-  const rightMenuBackdropEl = document.getElementById('rightMenuBackdrop');
-  if (rightMenuBackdropEl) rightMenuBackdropEl.onclick = () => closeBurgerMenu();
-  // Desktop header overflow → compact mode. On desktop only (mobile already
-  // consolidates via media query), if the header row is wider than the viewport,
-  // add body.header-collapsed so the left tools scroll and the right PDF actions
-  // collapse into the burger drawer. Measured in the EXPANDED state (class removed
-  // first) so the decision is stable and never oscillates.
-  function updateHeaderCollapsed() {
-    const header = document.querySelector('.header');
-    if (!header) return;
-    if (window.matchMedia('(max-width: 768px)').matches) {
-      document.body.classList.remove('header-collapsed');
-      return;
-    }
-    document.body.classList.remove('header-collapsed');
-    const overflowing = header.scrollWidth > header.clientWidth + 1;
-    if (overflowing) document.body.classList.add('header-collapsed');
-    else closeBurgerMenu();
-  }
-  let headerCollapseRaf = 0;
-  function scheduleHeaderCollapseCheck() {
-    if (headerCollapseRaf) return;
-    headerCollapseRaf = requestAnimationFrame(() => { headerCollapseRaf = 0; updateHeaderCollapsed(); });
-  }
-  window.addEventListener('resize', scheduleHeaderCollapseCheck);
-  scheduleHeaderCollapseCheck();
+  // SECTION: Mobile actions burger menu pointer & header logo
+  // The burger drawer (closeBurgerMenu / updateBurgerMenu + the #headerBurger /
+  // #rightMenuBackdrop bindings) and the desktop header-overflow compact mode
+  // (updateHeaderCollapsed / scheduleHeaderCollapseCheck + the resize listener)
+  // moved to features/burger-menu.js; updateUI calls the registered
+  // App.updateBurgerMenu / App.scheduleHeaderCollapseCheck defensively.
   document.getElementById('headerLogo').onclick = () => {
     if (window.matchMedia('(min-width: 769px)').matches) {
       document.body.classList.toggle('sidebar-collapsed');

@@ -99,6 +99,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [import-clear.spec.js](import-clear.spec.js) | Playwright regression for pilot #28 — Clear Page: the sidebar button opens the confirm naming the active canvas, Cancel preserves the markers, Confirm empties only the current page's active canvas, `App.showClearPageModal` is registered; Import: a JSON file through `#importInput` replaces the palette and `reconcileOrphanedCountersAndLineTypes` re-creates a counter for still-present orphaned markers. Asserts no console / page errors; `npx playwright test import-clear.spec.js` |
 | [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` or commits a `state.pendingMultiplyZoneEdit`), the Delete Zone confirm (`#deleteZoneModal` cancel/confirm → `App.performDeleteZone`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
 | [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
+| [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -359,6 +360,11 @@ handlers into [features/zone-modals.js](features/zone-modals.js) (one new
 publish-only dep `performDeleteZone`; no registered entry points — the
 pending state rides on `state`); the sidebar drawer toggles that shared the
 section stay under the renamed marker `// SECTION: Sidebar drawer toggles`.
+Burger menu (pilot #30) pulled the mobile drawer + desktop header-overflow
+compact mode into [features/burger-menu.js](features/burger-menu.js) — zero
+new deps; `updateUI` reaches its two hooks (`updateBurgerMenu`/
+`scheduleHeaderCollapseCheck`) defensively, the first **core-hot-path →
+feature** callbacks (safe because a missed boot-time call is self-healing).
 
 ## Section index (grep `// SECTION:`)
 
@@ -405,37 +411,37 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L7257 - Custom icon upload handler
 - L7382 - Export & report dropdown menus
 - L7472 - Sidebar drawer toggles
-- L7483 - Mobile actions burger menu (right-side drawer)
-- L7611 - User activity time formatting
-- L7769 - User Activity modal (admin)
-- L7837 - My Settings modal
-- L7868 - Auth & settings entry buttons
-  - L7913 - Project Settings checkout & Save Status bell
-  - L8036 - [sync] Checkout expired recovery
-  - L8290 - [sync] Turn In
-  - L8803 - Share modal pointer & copy-project openers
-  - L8846 - Cloud project hydrate / copy / fork
-  - L9043 - Settings menu actions & Airboard sync
-  - L9122 - My Settings password & Auth sign-in
-  - L9175 - Save Project modal
-  - L9378 - Copy project modal
-  - L9402 - Checkout expired recovery modal wiring
-  - L9486 - Save-before-load modal
-  - L9561 - Last-session restore prompt
-  - L9640 - User Activity filters & view toggle
-- L9828 - Canvas Event Handlers
-- L10200 - Event Binding
-- L10210 - Aim loupe (mobile press-hold precise placement)
-- L10348 - Zoom transform preview & commit
-- L10384 - Canvas mouse, wheel & touch handlers
-- L11005 - Global dropdown dismissal & keyboard hotkeys
-- L11236 - [sync] Manual save to cloud
-- L11861 - [sync] Auto-save
-- L12158 - [sync] Local backup (IndexedDB takeoff state)
-- L12388 - [sync] Checkout keep-alive
-- L12432 - App feature registry
-- L12598 - View-only mode
-- L12879 - Init / boot
+- L7483 - Mobile actions burger menu pointer & header logo
+- L7495 - User activity time formatting
+- L7653 - User Activity modal (admin)
+- L7721 - My Settings modal
+- L7752 - Auth & settings entry buttons
+  - L7797 - Project Settings checkout & Save Status bell
+  - L7920 - [sync] Checkout expired recovery
+  - L8174 - [sync] Turn In
+  - L8687 - Share modal pointer & copy-project openers
+  - L8730 - Cloud project hydrate / copy / fork
+  - L8927 - Settings menu actions & Airboard sync
+  - L9006 - My Settings password & Auth sign-in
+  - L9059 - Save Project modal
+  - L9262 - Copy project modal
+  - L9286 - Checkout expired recovery modal wiring
+  - L9370 - Save-before-load modal
+  - L9445 - Last-session restore prompt
+  - L9524 - User Activity filters & view toggle
+- L9712 - Canvas Event Handlers
+- L10084 - Event Binding
+- L10094 - Aim loupe (mobile press-hold precise placement)
+- L10232 - Zoom transform preview & commit
+- L10268 - Canvas mouse, wheel & touch handlers
+- L10889 - Global dropdown dismissal & keyboard hotkeys
+- L11120 - [sync] Manual save to cloud
+- L11745 - [sync] Auto-save
+- L12042 - [sync] Local backup (IndexedDB takeoff state)
+- L12272 - [sync] Checkout keep-alive
+- L12316 - App feature registry
+- L12482 - View-only mode
+- L12763 - Init / boot
 
 <!-- END SECTION TOC -->
 

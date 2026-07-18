@@ -387,5 +387,6 @@ if (typeof module !== 'undefined' && module.exports) {
     idbCustomIconsGet, idbCustomIconsPut,
     idbPdfUploadResumeGetAll, idbPdfUploadResumeGetByFingerprint,
     idbPdfUploadResumePut, idbPdfUploadResumeDelete, idbPdfUploadResumeDeleteByFingerprint,
+    BACKUP_PDF_TO_INDEXEDDB,
   };
 }

@@ -32,8 +32,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [report.test.js](report.test.js) | Node `node:test` unit tests for [report.js](report.js)'s pure helpers — `escapeHtml` (null/undefined → `''`, entity escaping, `&`-first ordering, `String()` coercion) and `pickScaleForLineType` (preferred-unit selection via a `global.state` stub); run with `npm run test:unit` |
 | [save-utils.js](save-utils.js) | Pure helpers for the save/sync layer — `isTransientSaveError` (which save/turn-in errors merit one retry), `getProjectCounts` (counter/line totals over a project `data` object, both legacy `annotations` and `canvases` shapes), plus the pure-mined set: `serializeSaveError` (the **deduped** error serializer that replaced app.js's near-identical `serializeSaveErrorForEvent` + `saveDebugSerializeError`), `formatSaveStatusErrDetail`, `backoffDelayMs` (auto-save backoff level for a failure count), `computeClockOffsetMs` (server/local skew from an RPC `server_now`), and `percentile` (p95 of latency samples). Classic `<script src>` loaded before the IIFE; no `state`/DOM dependency — app.js keeps the state-coupled callers (`updateServerClockFromRpc`, the backoff line, `recordAutosaveLatency`) that delegate to these. Guarded CommonJS export footer so the helpers can be `require()`d by [save-utils.test.js](save-utils.test.js) |
 | [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, `getProjectCounts` shape/sum cases, plus the pure-mined helpers: `serializeSaveError` fields/null/`String(e)` fallback, `formatSaveStatusErrDetail`, `backoffDelayMs` clamp, `computeClockOffsetMs` string/numeric/null, and `percentile` p95/empty); run with `npm run test:unit` |
-| [save-engine.js](save-engine.js) | **The save/sync engine module** (staged extraction; Stages 1–2 landed) — exports `createSaveEngine(ctx)`. Classic `<script src>` loaded after [constants.js](constants.js) + [save-utils.js](save-utils.js) (reads their exports by bare name — `GLOBAL_RELOAD_*`/`CHECKOUT_*`/`SAVE_STATUS_LOG_*` constants, `serializeSaveError`) and before [app.js](app.js), which instantiates it once near the top of its IIFE with a **ctx of accessors/callbacks** whose live contract is documented in the file header and grows per stage — arrows that resolve live values at call time, so client recycles and `let` reassignments are always seen. app.js keeps **same-named thin wrappers** so call sites, the App registry, and `window.*` contracts stay frozen as clusters migrate behind the seam. **Stage 1:** the `[sync] Global force reload` cluster (check + reload + the pending-stamp commit listener installed via `installGlobalReloadStampCommit()` + banner) and the `[sync] Checkout keep-alive` probe. **Stage 2 (the engine's first owned state):** the Save Status **log core** (the `saveStatusLog` array + `pushSaveEvent`/`pruneSaveStatusLog`/window + the `[SaveDebug]` helpers; `App.getSaveStatusLog` delegates to the engine getter) and the **dirty core** (`markProjectDirty` + engine-owned `dirtyGeneration`/`dirtyStartedAt` with `getDirtyGeneration`/`getDirtyStartedAt`/`clearDirtyStartedAt`/`resetDirtyTracking` for the app-side save paths; `autoSaveDirty`/`lastModifiedAt` stay app-side via ctx get/set until their primary writers migrate; the debounced backup kick stays app-side as `ctx.scheduleTakeoffBackup`). Guarded CommonJS footer so [save-engine.test.js](save-engine.test.js) can `require()` it |
-| [save-engine.test.js](save-engine.test.js) | Node `node:test` unit tests for [save-engine.js](save-engine.js) — `createSaveEngine` with a fully stubbed ctx (13 tests). Stage 1: the keep-alive skip ladder / expiry routing / contained recovery throw (asserted against the engine's own log) and the force-reload decision matrix. Stage 2: log push/get/clear round-trip + disabled-Supabase drop, verbose-mode window widening + `saveDebugLog` gating, and `markProjectDirty` semantics (viewer/empty no-ops, generation bump, first-dirty stamped once, backup kick, 2s dirty-event throttle, holder-only checkout refresh + debounce, `resetDirtyTracking`). Constants + save-utils exports come via `Object.assign(globalThis, require(...))` per the line-metrics pattern; run with `npm run test:unit` |
+| [save-engine.js](save-engine.js) | **The save/sync engine module** (staged extraction; Stages 1–3 landed) — exports `createSaveEngine(ctx)`. Classic `<script src>` loaded after [constants.js](constants.js) + [save-utils.js](save-utils.js) (reads their exports by bare name — `GLOBAL_RELOAD_*`/`CHECKOUT_*`/`SAVE_STATUS_LOG_*` constants, `serializeSaveError`) and before [app.js](app.js), which instantiates it once near the top of its IIFE with a **ctx of accessors/callbacks** whose live contract is documented in the file header and grows per stage — arrows that resolve live values at call time, so client recycles and `let` reassignments are always seen. app.js keeps **same-named thin wrappers** so call sites, the App registry, and `window.*` contracts stay frozen as clusters migrate behind the seam. **Stage 1:** the `[sync] Global force reload` cluster (check + reload + the pending-stamp commit listener installed via `installGlobalReloadStampCommit()` + banner) and the `[sync] Checkout keep-alive` probe. **Stage 3 (storage ring):** `probeCheckoutLock` (graduated from ctx to engine-internal), `sha256Hex`, the `takeoffBackupGet`/`takeoffBackupPut` mismatch/warn wrappers, and the three-layer local-backup writer (`writeTakeoffStateBackup` → `writeTakeoffBackupToIndexedDB` → the serializer) with engine-owned `takeoffBackupWriteInFlight`/`takeoffBackupWarnShown`/`lastLocalBackupAt`/`lastLocalBackupOk` + the 1s dirty→backup debounce (also graduated from ctx); the 5s interval + visibilitychange kick stay app-side calling wrappers. **Stage 2 (the engine's first owned state):** the Save Status **log core** (the `saveStatusLog` array + `pushSaveEvent`/`pruneSaveStatusLog`/window + the `[SaveDebug]` helpers; `App.getSaveStatusLog` delegates to the engine getter) and the **dirty core** (`markProjectDirty` + engine-owned `dirtyGeneration`/`dirtyStartedAt` with `getDirtyGeneration`/`getDirtyStartedAt`/`clearDirtyStartedAt`/`resetDirtyTracking` for the app-side save paths; `autoSaveDirty`/`lastModifiedAt` stay app-side via ctx get/set until their primary writers migrate; the debounced backup kick stays app-side as `ctx.scheduleTakeoffBackup`). Guarded CommonJS footer so [save-engine.test.js](save-engine.test.js) can `require()` it |
+| [save-engine.test.js](save-engine.test.js) | Node `node:test` unit tests for [save-engine.js](save-engine.js) — `createSaveEngine` with a fully stubbed ctx + stubbed idb primitives (17 tests). Stage 1: the keep-alive skip ladder / expiry routing / contained recovery throw (asserted against the engine's own log) and the force-reload decision matrix. Stage 2: log push/get/clear round-trip + disabled-Supabase drop, verbose-mode window widening + `saveDebugLog` gating, and `markProjectDirty` semantics (viewer/empty no-ops, generation bump, first-dirty stamped once, backup kick, 2s dirty-event throttle, holder-only checkout refresh + debounce, `resetDirtyTracking`). Stage 3: the backup writer (viewer/empty no-ops; local-key serialization + success stamps; the debounced markProjectDirty→backup landing in the idb stub), takeoffBackupGet cross-user delete-and-hide, and probeCheckoutLock (non-holder expired; healthy refresh stamping clocks). Constants + save-utils exports come via `Object.assign(globalThis, require(...))` per the line-metrics pattern; run with `npm run test:unit` |
 | [idb.js](idb.js) | IndexedDB storage layer extracted from app.js — the single `openPdfCacheDb` (one DB `clickcount-pdf-cache` v6, 9 stores) plus the context-free accessors `viewCache*`, `pdfCache*` (LRU), `takeoffBackupDelete`, `readSaveLogsSnapshots`, the resumable-upload URL store accessors `idbPdfUploadResume*` (get-all / get-by-fingerprint / put / delete / delete-by-fingerprint — backs tus's `UrlStorage` for cross-reload resume of large PDF uploads), and the pure primitives `idbTakeoffBackupGetRaw`, `idbTakeoffBackupPut` (eviction + stale-skip, returns a status), `idbPutSaveLogsSnapshot` (put + prune), `idbCustomIconsGet`/`idbCustomIconsPut`. Classic `<script src>` loaded after [constants.js](constants.js) (whose store-name/cap globals it reads by bare name) and before [app.js](app.js). Depends only on constants + `indexedDB` + args — no `state`/loggers; the state/logging concerns stay in app.js as same-named thin wrappers (`takeoffBackupGet`, `takeoffBackupPut`, `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`). Guarded CommonJS export footer so the primitives can be `require()`d by [idb.test.js](idb.test.js) |
 | [idb.test.js](idb.test.js) | Node `node:test` unit tests for [idb.js](idb.js) using `fake-indexeddb` (a fresh `IDBFactory` per test) — pdf-cache hash-mismatch + byte-cap LRU eviction, takeoff-backup round-trip + stale-skip + delete, custom-icon legacy→per-user migration, and save-logs-snapshot prune/newest-first ordering; run with `npm run test:unit` |
 | [format.js](format.js) | Pure date/time/text formatters extracted from app.js — `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`, `formatLastSignInUserActivity`, `formatUserActivityDateTime`, `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`. Classic `<script src>` loaded after [constants.js](constants.js) (reads `USER_ACTIVITY_TZ` by bare name) and before [app.js](app.js); no `state`/DOM dependency (the DOM-coupled User Activity modal code — `applyUserActivityFilter`, `populateUserActivityUserSelect` — stays in app.js). Guarded CommonJS export footer so the formatters can be `require()`d by [format.test.js](format.test.js) |
@@ -403,69 +403,69 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L53 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L142 - ICONS array lives in icons.js (see icon-data note above).
 - L378 - State
-- L620 - [sync] Sync recovery & client recycle
-- L1042 - [sync] Global force reload
-- L1100 - [sync] Save Status log & envelope
-- L1246 - [sync] Dirty tracking & local session reset
-- L1256 - Undo/redo stacks
-- L1446 - [sync] Checkout probe, hashing & PDF cache
-- L1694 - Math & Format Helpers
-- L2482 - Coordinate Helpers
-- L2490 - PDF render bitmap cache
-- L2649 - PDF Rendering
-- L4089 - UI Render Functions
-- L5236 - Inline rename & polyline edit mode
-- L5350 - Modal primitives (showModal / hideModal)
-- L5369 - Toasts & line color picker
-- L5517 - Airboard cloud sync
-- L5550 - Supabase RPC & presence heartbeat
-- L5590 - User activity / event telemetry
-- L5633 - Supabase auth & dev auth
-- L5762 - [sync] Checkout subscription & permission refresh
-- L5940 - Modals & Handlers
-- L6013 - PDF intake (upload, test PDF, hashing)
-- L6341 - Toolbar tool buttons
-- L6449 - Tool sidebar buttons & legend overlay
-- L6563 - Add Line Type modal
-- L6633 - Line color & sidebar handlers
-- L6777 - Polyline modal & drawing
-- L6808 - Zoom bar & page navigation
-- L6834 - Export canvas JSON
-- L6850 - PDF download helpers
-- L6903 - View-link URL helpers & show-highlights/notes
-- L6975 - Custom icon upload handler
-- L7100 - Export & report dropdown menus
-- L7190 - Sidebar drawer toggles
-- L7201 - Mobile actions burger menu pointer & header logo
-- L7213 - User Activity pointer (format.js + features/user-activity.js)
-- L7225 - My Settings pointer (features/my-settings.js)
-- L7248 - Auth & settings entry buttons
-  - L7293 - Project Settings checkout & Save Status bell
-  - L7417 - [sync] Checkout expired recovery
-  - L7671 - [sync] Turn In
-  - L8184 - Share modal pointer & copy-project openers
-  - L8227 - Cloud project hydrate / copy / fork
-  - L8424 - Settings menu actions
-  - L8445 - Auth sign-in form
-  - L8469 - Save Project modal
-  - L8672 - Copy project modal
-  - L8696 - Checkout expired recovery modal wiring
-  - L8780 - Save-before-load modal
-  - L8855 - Last-session restore prompt
-  - L8934 - Canvas Repair modal wiring
-- L9081 - Canvas Event Handlers
-- L9453 - Event Binding
-- L9463 - Aim loupe (mobile press-hold precise placement)
-- L9601 - Zoom transform preview & commit
-- L9637 - Canvas mouse, wheel & touch handlers
-- L10258 - Global dropdown dismissal & keyboard hotkeys
-- L10486 - [sync] Manual save to cloud
-- L11111 - [sync] Auto-save
-- L11408 - [sync] Local backup (IndexedDB takeoff state)
-- L11639 - [sync] Checkout keep-alive
-- L11653 - App feature registry
-- L11829 - View-only mode
-- L12110 - Init / boot
+- L617 - [sync] Sync recovery & client recycle
+- L1039 - [sync] Global force reload
+- L1102 - [sync] Save Status log & envelope
+- L1247 - [sync] Dirty tracking & local session reset
+- L1253 - Undo/redo stacks
+- L1442 - [sync] Checkout probe, hashing & PDF cache
+- L1618 - Math & Format Helpers
+- L2407 - Coordinate Helpers
+- L2415 - PDF render bitmap cache
+- L2574 - PDF Rendering
+- L4014 - UI Render Functions
+- L5161 - Inline rename & polyline edit mode
+- L5275 - Modal primitives (showModal / hideModal)
+- L5294 - Toasts & line color picker
+- L5442 - Airboard cloud sync
+- L5475 - Supabase RPC & presence heartbeat
+- L5515 - User activity / event telemetry
+- L5558 - Supabase auth & dev auth
+- L5687 - [sync] Checkout subscription & permission refresh
+- L5865 - Modals & Handlers
+- L5938 - PDF intake (upload, test PDF, hashing)
+- L6266 - Toolbar tool buttons
+- L6374 - Tool sidebar buttons & legend overlay
+- L6488 - Add Line Type modal
+- L6558 - Line color & sidebar handlers
+- L6702 - Polyline modal & drawing
+- L6733 - Zoom bar & page navigation
+- L6759 - Export canvas JSON
+- L6775 - PDF download helpers
+- L6828 - View-link URL helpers & show-highlights/notes
+- L6900 - Custom icon upload handler
+- L7025 - Export & report dropdown menus
+- L7115 - Sidebar drawer toggles
+- L7126 - Mobile actions burger menu pointer & header logo
+- L7138 - User Activity pointer (format.js + features/user-activity.js)
+- L7150 - My Settings pointer (features/my-settings.js)
+- L7173 - Auth & settings entry buttons
+  - L7218 - Project Settings checkout & Save Status bell
+  - L7342 - [sync] Checkout expired recovery
+  - L7596 - [sync] Turn In
+  - L8109 - Share modal pointer & copy-project openers
+  - L8152 - Cloud project hydrate / copy / fork
+  - L8349 - Settings menu actions
+  - L8370 - Auth sign-in form
+  - L8394 - Save Project modal
+  - L8597 - Copy project modal
+  - L8621 - Checkout expired recovery modal wiring
+  - L8705 - Save-before-load modal
+  - L8780 - Last-session restore prompt
+  - L8859 - Canvas Repair modal wiring
+- L9006 - Canvas Event Handlers
+- L9378 - Event Binding
+- L9388 - Aim loupe (mobile press-hold precise placement)
+- L9526 - Zoom transform preview & commit
+- L9562 - Canvas mouse, wheel & touch handlers
+- L10183 - Global dropdown dismissal & keyboard hotkeys
+- L10411 - [sync] Manual save to cloud
+- L11036 - [sync] Auto-save
+- L11332 - [sync] Local backup (IndexedDB takeoff state)
+- L11474 - [sync] Checkout keep-alive
+- L11488 - App feature registry
+- L11664 - View-only mode
+- L11945 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -479,9 +479,12 @@ next to the settings modal it drives, and the autosave loop sits near boot. Its
 `rg "SECTION: \[sync\]" app.js`. **A staged extraction into
 [save-engine.js](save-engine.js) (`createSaveEngine(ctx)`, loaded before
 app.js) is underway: Stage 1 moved the Global force reload + Checkout
-keep-alive implementations behind the seam, and Stage 2 moved the Save
-Status log core + the dirty core (the engine now OWNS `saveStatusLog`,
-`dirtyGeneration`, and `dirtyStartedAt` as instance state) — the `[sync]`
+keep-alive implementations behind the seam, Stage 2 moved the Save
+Status log core + the dirty core, and Stage 3 moved the storage ring —
+the checkout probe, hashing, the takeoff-backup wrappers, and the local
+backup writer (the engine now OWNS `saveStatusLog`, `dirtyGeneration`,
+`dirtyStartedAt`, the backup in-flight/warn/stamp state, and the backup
+debounce) — the `[sync]`
 markers remain in app.js heading same-named thin wrappers, so the grep still
 finds the whole subsystem.** In logical (not file) order:
 

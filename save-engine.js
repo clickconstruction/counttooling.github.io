@@ -20,7 +20,6 @@
  *   getSupabase()                     -> current supabase client (recycled)
  *   isSupabaseEnabled()               -> SUPABASE_ENABLED
  *   withTimeout(promise, ms, label)   -> app.js timeout wrapper
- *   probeCheckoutLock()               -> server-side lock probe
  *   handleBackgroundCheckoutExpired(trigger) -> background expiry wrapper
  *   isAutoSaveSuspended()             -> suspendAutoSaveUntilCheckout
  *   getLastCheckoutRefreshAt()        -> lastCheckoutRefreshAt
@@ -30,10 +29,16 @@
  *   setLastModifiedAt(ms)
  *   invalidateFooterTotals()
  *   autosaveEventDetail(extra)        -> enriched event detail builder
- *   scheduleTakeoffBackup()           -> debounced local-backup kick
  *   isCheckoutExpiredAttention()
  *   setLastCheckoutRefreshAt(ms)
  *   updateServerClockFromRpc(data)
+ *   -- Stage 3 (storage ring):
+ *   serverNowMs()                     -> skew-corrected clock
+ *   noteSupabaseCallOk()              -> stamps lastSuccessfulSupabaseCallAt
+ *   perfLog(label, ms, extra)         -> [Perf] console line
+ *   getUserCustomIcons()              -> user icon list for the backup blob
+ *   computePageBakeFrame(page)        -> orientation stamp for the backup
+ *   getLastModifiedAt()               -> app-side lastModifiedAt
  *
  * Stage 2: the engine OWNS the Save Status log (saveStatusLog + push/prune/
  * window/debug helpers) and the dirty bookkeeping (dirtyGeneration /
@@ -127,7 +132,7 @@ function createSaveEngine(ctx) {
         pushSaveEvent('dirty', 'Project marked dirty (pending cloud sync)', ctx.autosaveEventDetail({ dirtyForMs: dirtyStartedAt ? (now - dirtyStartedAt) : 0 }));
       }
     }
-    ctx.scheduleTakeoffBackup();
+    scheduleTakeoffBackup();
     if (!ctx.isAutoSaveSuspended() && !ctx.isCheckoutExpiredAttention() && state.currentProjectId && state.checkedOutBy === state.supabaseSession?.user?.id && Date.now() - ctx.getLastCheckoutRefreshAt() >= CHECKOUT_REFRESH_DEBOUNCE_MS) {
       ctx.setLastCheckoutRefreshAt(Date.now());
       const supabase = ctx.getSupabase();
@@ -141,6 +146,212 @@ function createSaveEngine(ctx) {
   function getDirtyStartedAt() { return dirtyStartedAt; }
   function clearDirtyStartedAt() { dirtyStartedAt = 0; }
   function resetDirtyTracking() { dirtyGeneration = 0; dirtyStartedAt = 0; saveStatusDirtyLogAt = 0; }
+
+  // --- [sync] Checkout probe, hashing & backup storage (Stage 3) ----------
+  // Engine-owned: the backup write in-flight promise, the one-shot backup
+  // warning, the last-local-backup stamps, and the 1s dirty->backup debounce.
+  let takeoffBackupWriteInFlight = null;
+  let takeoffBackupWarnShown = false;
+  let lastLocalBackupAt = null;
+  let lastLocalBackupOk = null;
+  let backupDebounceTimer = null;
+
+  async function probeCheckoutLock(runId) {
+    const state = ctx.getState();
+    const supabase = ctx.getSupabase();
+    const userId = state.supabaseSession?.user?.id;
+    if (!ctx.isSupabaseEnabled() || !supabase || !state.currentProjectId || !userId) {
+      return { ok: false, error: new Error('Not signed in or no project') };
+    }
+    if (state.checkedOutBy !== userId) {
+      return { ok: false, expired: true, error: 'Not the lock holder' };
+    }
+    const checkedAt = state.checkedOutAt ? new Date(state.checkedOutAt).getTime() : 0;
+    const ageMs = checkedAt ? ctx.serverNowMs() - checkedAt : null;
+    saveDebugLog('probe.start', { runId, ageMs, projectId: state.currentProjectId });
+    const t0 = Date.now();
+    try {
+      const { data, error } = await ctx.withTimeout(
+        supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }),
+        10000,
+        'Probe checkout'
+      );
+      const roundTripMs = Date.now() - t0;
+      ctx.updateServerClockFromRpc(data);
+      if (error) {
+        saveDebugLog('probe.error', { runId, ageMs, roundTripMs, message: error.message, code: error.code });
+        return { ok: false, error };
+      }
+      if (data?.ok) {
+        state.checkedOutAt = data.checked_out_at || new Date().toISOString();
+        ctx.setLastCheckoutRefreshAt(Date.now());
+        ctx.noteSupabaseCallOk();
+        saveDebugLog('probe.ok', { runId, ageMs, roundTripMs });
+        return { ok: true, refreshed: true };
+      }
+      saveDebugLog('probe.expired', { runId, ageMs, roundTripMs, serverError: data?.error });
+      return { ok: false, expired: true, error: data?.error || 'Checkout expired' };
+    } catch (e) {
+      const roundTripMs = Date.now() - t0;
+      saveDebugLog('probe.error', { runId, ageMs, roundTripMs, message: e?.message, name: e?.name });
+      return { ok: false, error: e };
+    }
+  }
+
+  async function sha256Hex(buffer) {
+    const t0 = Date.now();
+    const hash = await crypto.subtle.digest('SHA-256', buffer);
+    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    ctx.perfLog('sha256Hex', Date.now() - t0, { bytes: buffer.byteLength });
+    return hex;
+  }
+
+  // Wrapper over idb.js idbTakeoffBackupGetRaw: the cross-user mismatch check
+  // + logging live here; idb.js owns the raw get.
+  async function takeoffBackupGet(projectId, currentUserId) {
+    const entry = await idbTakeoffBackupGetRaw(projectId);
+    if (!entry) return null;
+    if (currentUserId && entry.userId && entry.userId !== currentUserId) {
+      try { saveDebugLog('takeoffBackup.user_mismatch', { projectId, ownerUserId: entry.userId, currentUserId }); } catch (_) {}
+      try { await takeoffBackupDelete(projectId); } catch (_) {}
+      return null;
+    }
+    return entry;
+  }
+
+  // Wrapper over idb.js idbTakeoffBackupPut: the pure primitive does the eviction
+  // + stale-skip inside one transaction and returns a status; the logging + the
+  // one-shot warning stay here.
+  async function takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAtArg, projectName, userId) {
+    const res = await idbTakeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAtArg, projectName, userId);
+    if (res && res.skippedStale) {
+      saveDebugLog('takeoffBackup.skip_stale', { projectId, existing: res.existing, incoming: res.incoming });
+    } else if (res && res.error) {
+      saveDebugLog('takeoffBackup.put_err', { projectId, message: res.error?.message });
+      if (!takeoffBackupWarnShown) {
+        takeoffBackupWarnShown = true;
+        try {
+          pushSaveEvent(
+            'takeoff_backup_warn',
+            'Local takeoff backup failed - tab-crash recovery may not work',
+            res.error?.message || ''
+          );
+        } catch (_) {}
+      }
+    }
+  }
+
+  async function writeTakeoffStateBackup() {
+    const state = ctx.getState();
+    // Viewer sessions have nothing recoverable (no edits are possible) - don't
+    // write local backups keyed by someone else's project id.
+    if (state.isViewer) return;
+    if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    // If an in-flight write exists, wait for it to finish then start a fresh write so
+    // the latest state is captured (critical for doTurnIn / preparePdf commit paths).
+    if (takeoffBackupWriteInFlight) {
+      try { await takeoffBackupWriteInFlight; } catch (_) {}
+    }
+    try {
+      await writeTakeoffBackupToIndexedDB();
+    } catch (_) {}
+  }
+
+  async function writeTakeoffBackupToIndexedDB() {
+    const state = ctx.getState();
+    if (!BACKUP_PDF_TO_INDEXEDDB) return;
+    if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    if (takeoffBackupWriteInFlight) {
+      try { saveDebugLog('takeoff_backup_skip_inflight', {}); } catch (_) {}
+      return takeoffBackupWriteInFlight;
+    }
+    let resolveInFlight;
+    takeoffBackupWriteInFlight = new Promise((res) => { resolveInFlight = res; });
+    try {
+      return await doWriteTakeoffBackupToIndexedDB();
+    } finally {
+      const p = takeoffBackupWriteInFlight;
+      takeoffBackupWriteInFlight = null;
+      try { resolveInFlight && resolveInFlight(); } catch (_) {}
+      void p;
+    }
+  }
+
+  async function doWriteTakeoffBackupToIndexedDB() {
+    const state = ctx.getState();
+    let projectId = state.currentProjectId || 'local';
+    let pdfBlob = state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length || 0) > 0
+      ? new Blob([state.pdfBuffer], { type: 'application/pdf' }) : null;
+    if (!pdfBlob) {
+      let cacheProjectId = state.currentProjectId;
+      let cachePdfHash = state.pdfHash;
+      if (!cacheProjectId || !cachePdfHash) {
+        try {
+          const last = JSON.parse(localStorage.getItem('clickcount-last-project') || 'null');
+          if (last && last.userId === state.supabaseSession?.user?.id) {
+            if (!cacheProjectId) cacheProjectId = last.projectId;
+            if (!cachePdfHash) cachePdfHash = last.pdfHash;
+            if (!cachePdfHash && cacheProjectId && ctx.isSupabaseEnabled() && ctx.getSupabase()) {
+              const { data: proj } = await ctx.getSupabase().from('projects').select('pdf_hash').eq('id', cacheProjectId).single();
+              if (proj?.pdf_hash) cachePdfHash = proj.pdf_hash;
+            }
+          }
+        } catch (_) {}
+      }
+      if (cacheProjectId && cachePdfHash) {
+        try {
+          const cached = await pdfCacheGet(cacheProjectId, cachePdfHash);
+          if (cached && cached.size > 0) {
+            pdfBlob = cached;
+            if (projectId === 'local') projectId = cacheProjectId;
+          }
+        } catch (_) {}
+      }
+    }
+    const data = {
+      counters: state.counters,
+      lineTypes: state.lineTypes,
+      groups: state.groups || [],
+      counterSettings: state.counterSettings,
+      lineTypeSettings: state.lineTypeSettings,
+      exportSettings: state.exportSettings,
+      recentLineColors: state.recentLineColors,
+      iconNames: state.iconNames || {},
+      iconOrder: state.iconOrder || null,
+      customIconPaths: ctx.getUserCustomIcons(),
+      legendSettings: state.legendSettings,
+      multiplyZoneSettings: state.multiplyZoneSettings,
+      showGridOverlay: state.showGridOverlay,
+      gridSettings: state.gridSettings,
+      pageCanvases: state.pages.map(p => p.canvases),
+      activeCanvasIdByPage: state.activeCanvasIdByPage || {},
+      pageScales: state.pages.map(p => p.scale),
+      pageRotations: state.pages.map(p => p.rotation ?? 0),
+      pageBakeFrames: state.pages.map(p => ctx.computePageBakeFrame(p))
+    };
+    const lastMod = (state.currentProjectId && ctx.getLastModifiedAt()) ? ctx.getLastModifiedAt() : Date.now();
+    const pdfHash = state.pdfHash || null;
+    const projectName = state.currentProjectName || null;
+    const userId = state.supabaseSession?.user?.id || null;
+    lastLocalBackupOk = false;
+    await takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastMod, projectName, userId);
+    lastLocalBackupAt = new Date().toISOString();
+    lastLocalBackupOk = true;
+  }
+
+  // The 1s dirty->backup debounce (markProjectDirty calls this).
+  function scheduleTakeoffBackup() {
+    if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
+    backupDebounceTimer = setTimeout(() => { backupDebounceTimer = null; writeTakeoffStateBackup(); }, 1000);
+  }
+  function getLastLocalBackupAt() { return lastLocalBackupAt; }
+  function getLastLocalBackupOk() { return lastLocalBackupOk; }
+  function setLastLocalBackupAt(v) { lastLocalBackupAt = v; }
+  function resetLocalBackupState() {
+    lastLocalBackupAt = null;
+    lastLocalBackupOk = null;
+    takeoffBackupWarnShown = false;
+  }
 
   // --- [sync] Global force reload -----------------------------------------
   // Admin-triggered "everyone reload now" via the system_settings row
@@ -245,7 +456,7 @@ function createSaveEngine(ctx) {
       return;
     }
     saveDebugLog('keepalive.tick', { projectId: state.currentProjectId });
-    const probe = await ctx.probeCheckoutLock();
+    const probe = await probeCheckoutLock();
     if (probe.expired) {
       saveDebugLog('keepalive.expired', {});
       pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
@@ -277,6 +488,18 @@ function createSaveEngine(ctx) {
     getDirtyStartedAt,
     clearDirtyStartedAt,
     resetDirtyTracking,
+    // Stage 3: storage ring
+    probeCheckoutLock,
+    sha256Hex,
+    takeoffBackupGet,
+    takeoffBackupPut,
+    writeTakeoffStateBackup,
+    writeTakeoffBackupToIndexedDB,
+    scheduleTakeoffBackup,
+    getLastLocalBackupAt,
+    getLastLocalBackupOk,
+    setLastLocalBackupAt,
+    resetLocalBackupState,
     // Stage 1: global force reload + checkout keep-alive
     checkGlobalForceReload,
     doGlobalReloadNow,

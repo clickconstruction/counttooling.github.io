@@ -14,7 +14,7 @@
  * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
  * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = '9e4a66ce4c54';
+const CACHE_VERSION = '35b8a2aec027';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in

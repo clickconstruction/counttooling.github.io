@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(save-engine): Stage 3 — the storage ring
+
+Third stage: `probeCheckoutLock` (which **graduates from the ctx to
+engine-internal** — the keep-alive now calls it directly), `sha256Hex`, the
+`takeoffBackupGet`/`takeoffBackupPut` cross-user-mismatch + one-shot-warn
+wrappers, and the whole three-layer local-backup writer
+(`writeTakeoffStateBackup` → `writeTakeoffBackupToIndexedDB` → the takeoff
+serializer) move behind the seam, with the engine owning
+`takeoffBackupWriteInFlight`, `takeoffBackupWarnShown`, and the
+`lastLocalBackupAt`/`lastLocalBackupOk` stamps. The 1s dirty→backup debounce
+also graduated from ctx (`markProjectDirty` kicks it internally). App-side:
+the 5s interval + the visibilitychange backup kick call the wrappers;
+`updateStatus` reads the stamp via a shadowing
+`const lastLocalBackupAt = saveEngine.getLastLocalBackupAt()`;
+`BACKUP_PDF_TO_INDEXEDDB` is now solely the idb.js classic-script global
+(exported from its footer for lint/tests; app.js's duplicate const removed).
+ctx grew by 6 (serverNowMs, noteSupabaseCallOk, perfLog, getUserCustomIcons,
+computePageBakeFrame, getLastModifiedAt) and shrank by 2 (the graduations).
+save-engine.test.js grew to 17 tests with stubbed idb primitives — the
+backup writer, cross-user get, and probe now have Node coverage.
+
+---
+
 ## refactor(save-engine): Stage 2 — the log core + dirty core (first engine-owned state)
 
 Second stage: the engine now OWNS state instead of only borrowing accessors.

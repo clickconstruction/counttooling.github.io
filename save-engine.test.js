@@ -39,6 +39,17 @@ globalThis.window = /** @type {any} */ ({});
 globalThis.location = { reload: () => { reloads++; } };
 globalThis.indexedDB = { deleteDatabase: (n) => { deletedDbs.push(n); } };
 
+// idb.js storage-primitive stubs (the engine reads these classic-script
+// globals bare; stubbing avoids fake-indexeddb here).
+let idbPuts = [];
+let idbRawEntry = null;
+let idbDeletes = [];
+globalThis.BACKUP_PDF_TO_INDEXEDDB = true;
+globalThis.idbTakeoffBackupPut = async (...a) => { idbPuts.push(a); return { ok: true }; };
+globalThis.idbTakeoffBackupGetRaw = async () => idbRawEntry;
+globalThis.takeoffBackupDelete = async (id) => { idbDeletes.push(id); };
+globalThis.pdfCacheGet = async () => null;
+
 const { createSaveEngine } = require('./save-engine.js');
 
 beforeEach(() => {
@@ -46,6 +57,9 @@ beforeEach(() => {
   globalThis.window.CLICKCOUNT_DEBUG_SAVE = false;
   reloads = 0;
   deletedDbs = [];
+  idbPuts = [];
+  idbRawEntry = null;
+  idbDeletes = [];
 });
 
 function makeCtx(overrides) {
@@ -65,10 +79,15 @@ function makeCtx(overrides) {
     setLastModifiedAt: (ms) => { calls.lastModified.push(ms); },
     invalidateFooterTotals: () => { calls.footerInvalidations++; },
     autosaveEventDetail: (extra) => JSON.stringify(extra || {}),
-    scheduleTakeoffBackup: () => { calls.backupKicks++; },
     isCheckoutExpiredAttention: () => false,
     setLastCheckoutRefreshAt: (ms) => { appSide.lastCheckoutRefreshAt = ms; calls.refreshAt.push(ms); },
     updateServerClockFromRpc: (d) => { calls.clock.push(d); },
+    serverNowMs: () => Date.now(),
+    noteSupabaseCallOk: () => { calls.supabaseOk = (calls.supabaseOk || 0) + 1; },
+    perfLog: () => {},
+    getUserCustomIcons: () => [],
+    computePageBakeFrame: () => null,
+    getLastModifiedAt: () => 0,
     ...overrides,
   };
   return { ctx, calls, appSide };
@@ -115,18 +134,20 @@ test('markProjectDirty: viewer / empty sessions are no-ops', () => {
   const eb = createSaveEngine(b.ctx);
   eb.markProjectDirty();
   assert.strictEqual(eb.getDirtyGeneration(), 0);
-  assert.strictEqual(b.calls.backupKicks, 0);
 });
 
-test('markProjectDirty: sets dirty, bumps generation, stamps first-dirty once, kicks the backup', () => {
+test('markProjectDirty: sets dirty, bumps generation, stamps first-dirty once, kicks the debounced backup', async () => {
   const { ctx, calls, appSide } = makeCtx();
   const engine = createSaveEngine(ctx);
   engine.markProjectDirty();
   engine.markProjectDirty();
   assert.strictEqual(engine.getDirtyGeneration(), 2);
   assert.strictEqual(appSide.autoSaveDirty, true);
-  assert.strictEqual(calls.backupKicks, 2);
   assert.strictEqual(calls.footerInvalidations, 2);
+  // The debounced (1s) backup fires once for the burst and lands in the idb stub.
+  await new Promise((r) => setTimeout(r, 1300));
+  assert.strictEqual(idbPuts.length, 1);
+  assert.ok(engine.getLastLocalBackupOk());
   const stamp = engine.getDirtyStartedAt();
   assert.ok(stamp > 0);
   engine.markProjectDirty();
@@ -174,6 +195,67 @@ test('resetDirtyTracking zeroes generation, stamp, and the event throttle', () =
   assert.strictEqual(engine.getDirtyStartedAt(), 0);
   engine.markProjectDirty();   // throttle stamp was reset -> a fresh dirty event logs
   assert.strictEqual(logKinds(engine).filter((k) => k === 'dirty').length, 2);
+});
+
+// --- Stage 3: storage ring --------------------------------------------------
+
+test('backup writer: viewer and empty sessions never write', async () => {
+  const a = makeCtx({ getState: () => ({ isViewer: true, pages: [{}], counters: [], lineTypes: [] }) });
+  await createSaveEngine(a.ctx).writeTakeoffStateBackup();
+  const b = makeCtx({ getState: () => ({ isViewer: false, pages: [], counters: [], lineTypes: [] }) });
+  await createSaveEngine(b.ctx).writeTakeoffStateBackup();
+  assert.strictEqual(idbPuts.length, 0);
+});
+
+test('backup writer: serializes the takeoff under the local key and stamps success', async () => {
+  const state = {
+    isViewer: false, currentProjectId: null, pdfBuffer: null, pdfHash: null,
+    currentProjectName: null, supabaseSession: null,
+    pages: [{ canvases: [{ id: 'c', name: 'Main', annotations: { counterMarkers: { x: [{}] } } }], scale: null, rotation: 0 }],
+    counters: [{ id: 'x' }], lineTypes: [], groups: [],
+    counterSettings: {}, lineTypeSettings: {}, exportSettings: {}, recentLineColors: [],
+    iconNames: {}, iconOrder: null, legendSettings: {}, multiplyZoneSettings: {},
+    showGridOverlay: false, gridSettings: null, activeCanvasIdByPage: {},
+  };
+  const { ctx } = makeCtx({ getState: () => state });
+  const engine = createSaveEngine(ctx);
+  assert.strictEqual(engine.getLastLocalBackupAt(), null);
+  await engine.writeTakeoffStateBackup();
+  assert.strictEqual(idbPuts.length, 1);
+  const [projectId, data] = idbPuts[0];
+  assert.strictEqual(projectId, 'local');
+  assert.strictEqual(data.counters[0].id, 'x');
+  assert.strictEqual(data.pageCanvases.length, 1);
+  assert.ok(engine.getLastLocalBackupAt());
+  assert.strictEqual(engine.getLastLocalBackupOk(), true);
+  engine.resetLocalBackupState();
+  assert.strictEqual(engine.getLastLocalBackupAt(), null);
+});
+
+test('takeoffBackupGet: cross-user entries are deleted and hidden', async () => {
+  const { ctx } = makeCtx();
+  const engine = createSaveEngine(ctx);
+  idbRawEntry = { userId: 'someone-else', data: {} };
+  assert.strictEqual(await engine.takeoffBackupGet('p1', 'u1'), null);
+  assert.deepStrictEqual(idbDeletes, ['p1']);
+  idbRawEntry = { userId: 'u1', data: { ok: 1 } };
+  const entry = await engine.takeoffBackupGet('p1', 'u1');
+  assert.strictEqual(entry.data.ok, 1);
+});
+
+test('probeCheckoutLock: non-holder reports expired; a healthy refresh stamps the clocks', async () => {
+  const a = makeCtx({ getState: () => ({ supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'other' }) });
+  const ra = await createSaveEngine(a.ctx).probeCheckoutLock();
+  assert.strictEqual(ra.expired, true);
+
+  const supabase = { rpc: async () => ({ data: { ok: true, checked_out_at: '2026-07-18T00:00:00Z' } }) };
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: null };
+  const b = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const rb = await createSaveEngine(b.ctx).probeCheckoutLock();
+  assert.deepStrictEqual(rb, { ok: true, refreshed: true });
+  assert.strictEqual(state.checkedOutAt, '2026-07-18T00:00:00Z');
+  assert.strictEqual(b.calls.supabaseOk, 1);
+  assert.strictEqual(b.calls.refreshAt.length, 1);
 });
 
 // --- Stage 1: checkout keep-alive ------------------------------------------

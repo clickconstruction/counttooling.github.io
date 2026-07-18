@@ -40,12 +40,13 @@ const constantsGlobals = Object.fromEntries(
 // VB_384_512_PATHS, FA_PATHS) by bare name; same no-redeclare reasoning, so give
 // it an icons-only global set (not its own exports).
 // save-engine.js reaches for the constants (GLOBAL_RELOAD_* / CHECKOUT_* /
-// SAVE_STATUS_LOG_*) and the pure save-utils helpers (serializeSaveError) by
-// bare name; same no-redeclare reasoning, so give it those two modules' export
-// sets (not its own).
+// SAVE_STATUS_LOG_*), the pure save-utils helpers (serializeSaveError), and the
+// idb.js storage primitives (idbTakeoffBackup*, pdfCacheGet, takeoffBackupDelete,
+// BACKUP_PDF_TO_INDEXEDDB) by bare name; same no-redeclare reasoning, so give it
+// those modules' export sets (not its own).
 const saveEngineGlobals = Object.fromEntries(
   []
-    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')))
+    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')))
     .map((k) => [k, 'readonly']),
 );
 

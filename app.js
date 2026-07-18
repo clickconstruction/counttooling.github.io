@@ -486,10 +486,7 @@
   let savePdfInProgress = false;
   let saveProgressMessage = '';
   let lastSaveIncludedPdf = false;
-  let lastLocalBackupAt = null;
-  let lastLocalBackupOk = null;
   let pdfCacheWarnShown = false;
-  let takeoffBackupWarnShown = false;
   let turnInInProgress = false;
   let inFlightRecoverySavePromise = null;
   let inFlightAutoSavePromise = null;
@@ -1053,7 +1050,6 @@
     withTimeout: (p, ms, label) => withTimeout(p, ms, label),
     pushSaveEvent: (...a) => pushSaveEvent(...a),
     saveDebugLog: (...a) => saveDebugLog(...a),
-    probeCheckoutLock: (...a) => probeCheckoutLock(...a),
     handleBackgroundCheckoutExpired: (...a) => handleBackgroundCheckoutExpired(...a),
     isAutoSaveSuspended: () => suspendAutoSaveUntilCheckout,
     getLastCheckoutRefreshAt: () => lastCheckoutRefreshAt,
@@ -1063,10 +1059,16 @@
     setLastModifiedAt: (ms) => { lastModifiedAt = ms; },
     invalidateFooterTotals: () => invalidateFooterTotals(),
     autosaveEventDetail: (extra) => autosaveEventDetail(extra),
-    scheduleTakeoffBackup: () => scheduleTakeoffBackupDebounced(),
     isCheckoutExpiredAttention: () => checkoutExpiredNeedsAttention,
     setLastCheckoutRefreshAt: (ms) => { lastCheckoutRefreshAt = ms; },
     updateServerClockFromRpc: (data) => updateServerClockFromRpc(data),
+    // Stage 3 (storage ring).
+    serverNowMs: () => serverNowMs(),
+    noteSupabaseCallOk: () => { lastSuccessfulSupabaseCallAt = Date.now(); },
+    perfLog: (label, ms, extra) => perfLog(label, ms, extra),
+    getUserCustomIcons: () => getUserCustomIcons(),
+    computePageBakeFrame: (p) => computePageBakeFrame(p),
+    getLastModifiedAt: () => lastModifiedAt,
   });
   function checkGlobalForceReload() { return saveEngine.checkGlobalForceReload(); }
   function doGlobalReloadNow(trigger) { return saveEngine.doGlobalReloadNow(trigger); }
@@ -1177,7 +1179,7 @@
         envelope.storage = { usage: est.usage ?? null, quota: est.quota ?? null };
       }
     } catch (_) {}
-    envelope.lastLocalBackup = { at: lastLocalBackupAt, ok: lastLocalBackupOk };
+    envelope.lastLocalBackup = { at: saveEngine.getLastLocalBackupAt(), ok: saveEngine.getLastLocalBackupOk() };
     return envelope;
   }
 
@@ -1242,16 +1244,11 @@
     else console.log(msg);
   }
 
-  let backupDebounceTimer = null;
   // SECTION: [sync] Dirty tracking & local session reset
   // markProjectDirty + dirtyGeneration/dirtyStartedAt live in save-engine.js
   // (Stage 2). The wrapper keeps the ~90 call sites + the App publish frozen;
   // the debounced local-backup kick stays here (the writer moves in Stage 3).
   function markProjectDirty() { return saveEngine.markProjectDirty(); }
-  function scheduleTakeoffBackupDebounced() {
-    if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
-    backupDebounceTimer = setTimeout(() => { backupDebounceTimer = null; writeTakeoffStateBackup(); }, 1000);
-  }
 
   // SECTION: Undo/redo stacks
   let undoStack = [];
@@ -1365,7 +1362,7 @@
     state.pdfHash = null;
     state.projectOwnerId = null;
     state.lastSavedAt = null;
-    lastLocalBackupAt = null;
+    saveEngine.resetLocalBackupState();
     lastSaveIncludedPdf = false;
     state.pendingCanvasLoad = null;
     state.groups = [];
@@ -1389,7 +1386,6 @@
     clearUndoStacks();
     resetAutosaveDegradedState();
     pdfCacheWarnShown = false;
-    takeoffBackupWarnShown = false;
     saveEngine.clearSaveStatusLog();
     state.userActivityAllRowsCache = null;
     state.userActivityViewMode = 'events';
@@ -1444,94 +1440,22 @@
   }
 
   // SECTION: [sync] Checkout probe, hashing & PDF cache
-  async function probeCheckoutLock(runId) {
-    const userId = state.supabaseSession?.user?.id;
-    if (!SUPABASE_ENABLED || !supabase || !state.currentProjectId || !userId) {
-      return { ok: false, error: new Error('Not signed in or no project') };
-    }
-    if (state.checkedOutBy !== userId) {
-      return { ok: false, expired: true, error: 'Not the lock holder' };
-    }
-    const checkedAt = state.checkedOutAt ? new Date(state.checkedOutAt).getTime() : 0;
-    const ageMs = checkedAt ? serverNowMs() - checkedAt : null;
-    saveDebugLog('probe.start', { runId, ageMs, projectId: state.currentProjectId });
-    const t0 = Date.now();
-    try {
-      const { data, error } = await withTimeout(
-        supabase.rpc('refresh_checkout_activity', { p_project_id: state.currentProjectId }),
-        10000,
-        'Probe checkout'
-      );
-      const roundTripMs = Date.now() - t0;
-      updateServerClockFromRpc(data);
-      if (error) {
-        saveDebugLog('probe.error', { runId, ageMs, roundTripMs, message: error.message, code: error.code });
-        return { ok: false, error };
-      }
-      if (data?.ok) {
-        state.checkedOutAt = data.checked_out_at || new Date().toISOString();
-        lastCheckoutRefreshAt = Date.now();
-        lastSuccessfulSupabaseCallAt = Date.now();
-        saveDebugLog('probe.ok', { runId, ageMs, roundTripMs });
-        return { ok: true, refreshed: true };
-      }
-      saveDebugLog('probe.expired', { runId, ageMs, roundTripMs, serverError: data?.error });
-      return { ok: false, expired: true, error: data?.error || 'Checkout expired' };
-    } catch (e) {
-      const roundTripMs = Date.now() - t0;
-      saveDebugLog('probe.error', { runId, ageMs, roundTripMs, message: e?.message, name: e?.name });
-      return { ok: false, error: e };
-    }
-  }
+  // probeCheckoutLock lives in save-engine.js (Stage 3); wrapper keeps the
+  // preflight/visibility callers frozen.
+  function probeCheckoutLock(runId) { return saveEngine.probeCheckoutLock(runId); }
 
-  async function sha256Hex(buffer) {
-    const t0 = Date.now();
-    const hash = await crypto.subtle.digest('SHA-256', buffer);
-    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-    perfLog('sha256Hex', Date.now() - t0, { bytes: buffer.byteLength });
-    return hex;
-  }
+  function sha256Hex(buffer) { return saveEngine.sha256Hex(buffer); }
 
-  // IndexedDB store names & caps live in constants.js (see note in the Constants section).
-  const BACKUP_PDF_TO_INDEXEDDB = (typeof window.BACKUP_PDF_TO_INDEXEDDB !== 'undefined' ? window.BACKUP_PDF_TO_INDEXEDDB : true);
+  // IndexedDB store names & caps live in constants.js; the BACKUP_PDF_TO_INDEXEDDB
+  // env read lives in idb.js (a shared classic-script global the engine also reads).
 
   // openPdfCacheDb, viewCache*, pdfCache* live in idb.js (loaded before app.js).
   // They are context-free storage primitives and resolve here by bare name.
 
-  // Wrapper over idb.js idbTakeoffBackupGetRaw: keeps the cross-user mismatch
-  // check + logging in app.js (saveDebugLog / takeoffBackupDelete are app-side).
-  async function takeoffBackupGet(projectId, currentUserId) {
-    const entry = await idbTakeoffBackupGetRaw(projectId);
-    if (!entry) return null;
-    if (currentUserId && entry.userId && entry.userId !== currentUserId) {
-      try { saveDebugLog('takeoffBackup.user_mismatch', { projectId, ownerUserId: entry.userId, currentUserId }); } catch (_) {}
-      try { await takeoffBackupDelete(projectId); } catch (_) {}
-      return null;
-    }
-    return entry;
-  }
-
-  // Wrapper over idb.js idbTakeoffBackupPut: the pure primitive does the eviction
-  // + stale-skip inside one transaction and returns a status; the logging + the
-  // one-shot warning (gated by the IIFE-local takeoffBackupWarnShown) stay here.
-  async function takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAt, projectName, userId) {
-    const res = await idbTakeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifiedAt, projectName, userId);
-    if (res && res.skippedStale) {
-      saveDebugLog('takeoffBackup.skip_stale', { projectId, existing: res.existing, incoming: res.incoming });
-    } else if (res && res.error) {
-      saveDebugLog('takeoffBackup.put_err', { projectId, message: res.error?.message });
-      if (!takeoffBackupWarnShown) {
-        takeoffBackupWarnShown = true;
-        try {
-          pushSaveEvent(
-            'takeoff_backup_warn',
-            'Local takeoff backup failed - tab-crash recovery may not work',
-            res.error?.message || ''
-          );
-        } catch (_) {}
-      }
-    }
-  }
+  // takeoffBackupGet / takeoffBackupPut (the mismatch check + one-shot warn
+  // wrappers over the idb.js primitives) live in save-engine.js (Stage 3).
+  function takeoffBackupGet(projectId, currentUserId) { return saveEngine.takeoffBackupGet(projectId, currentUserId); }
+  function takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastMod, projectName, userId) { return saveEngine.takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastMod, projectName, userId); }
 
   // takeoffBackupDelete + readSaveLogsSnapshots live in idb.js (context-free).
 
@@ -1669,7 +1593,7 @@
     state.pdfBufferSize = 0;
     lastSaveIncludedPdf = !!proj.pdf_path;
     state.lastSavedAt = proj.updated_at || null;
-    lastLocalBackupAt = null;
+    saveEngine.setLastLocalBackupAt(null);
     state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
     state.projectOwnerId = proj.user_id || null;
     state.checkedOutBy = proj.checked_out_by || null;
@@ -2280,6 +2204,7 @@
   }
 
   function updateStatus() {
+    const lastLocalBackupAt = saveEngine.getLastLocalBackupAt();   // engine-owned (Stage 3)
     const modeEl = document.getElementById('statusMode');
     const coordsEl = document.getElementById('statusCoords');
     const dotEl = document.getElementById('statusBarDot');
@@ -8235,7 +8160,7 @@
       if (opts.reusePdfStoragePath !== undefined) state.pdfStoragePath = opts.reusePdfStoragePath;
       lastSaveIncludedPdf = !!proj.pdf_path;
       state.lastSavedAt = proj.updated_at || null;
-      lastLocalBackupAt = null;
+      saveEngine.setLastLocalBackupAt(null);
       state.currentPage = state.pages.length > 0
         ? Math.min(state.currentPage, Math.max(0, state.pages.length - 1))
         : 0;
@@ -8347,7 +8272,7 @@
       state.loadedViaViewLink = false;
       state.lastSavedAt = null;
       lastSaveIncludedPdf = false;
-      lastLocalBackupAt = null;
+      saveEngine.setLastLocalBackupAt(null);
       autoSaveDirty = false;
       try { clearCheckoutExpiredAttention(); } catch (_) {}
       lastModifiedAt = 0;
@@ -11404,103 +11329,13 @@
     }
   }
 
-  let takeoffBackupWriteInFlight = null;
   // SECTION: [sync] Local backup (IndexedDB takeoff state)
-  async function writeTakeoffStateBackup() {
-    // Viewer sessions have nothing recoverable (no edits are possible) - don't
-    // write local backups keyed by someone else's project id.
-    if (state.isViewer) return;
-    if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
-    // If an in-flight write exists, wait for it to finish then start a fresh write so
-    // the latest state is captured (critical for doTurnIn / preparePdf commit paths).
-    if (takeoffBackupWriteInFlight) {
-      try { await takeoffBackupWriteInFlight; } catch (_) {}
-    }
-    try {
-      await writeTakeoffBackupToIndexedDB();
-    } catch (_) {}
-  }
-
-  async function writeTakeoffBackupToIndexedDB() {
-    if (!BACKUP_PDF_TO_INDEXEDDB) return;
-    if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
-    if (takeoffBackupWriteInFlight) {
-      try { saveDebugLog('takeoff_backup_skip_inflight', {}); } catch (_) {}
-      return takeoffBackupWriteInFlight;
-    }
-    let resolveInFlight;
-    takeoffBackupWriteInFlight = new Promise((res) => { resolveInFlight = res; });
-    try {
-      return await doWriteTakeoffBackupToIndexedDB();
-    } finally {
-      const p = takeoffBackupWriteInFlight;
-      takeoffBackupWriteInFlight = null;
-      try { resolveInFlight && resolveInFlight(); } catch (_) {}
-      void p;
-    }
-  }
-
-  async function doWriteTakeoffBackupToIndexedDB() {
-    let projectId = state.currentProjectId || 'local';
-    let pdfBlob = state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length || 0) > 0
-      ? new Blob([state.pdfBuffer], { type: 'application/pdf' }) : null;
-    if (!pdfBlob) {
-      let cacheProjectId = state.currentProjectId;
-      let cachePdfHash = state.pdfHash;
-      if (!cacheProjectId || !cachePdfHash) {
-        try {
-          const last = JSON.parse(localStorage.getItem('clickcount-last-project') || 'null');
-          if (last && last.userId === state.supabaseSession?.user?.id) {
-            if (!cacheProjectId) cacheProjectId = last.projectId;
-            if (!cachePdfHash) cachePdfHash = last.pdfHash;
-            if (!cachePdfHash && cacheProjectId && SUPABASE_ENABLED && supabase) {
-              const { data: proj } = await supabase.from('projects').select('pdf_hash').eq('id', cacheProjectId).single();
-              if (proj?.pdf_hash) cachePdfHash = proj.pdf_hash;
-            }
-          }
-        } catch (_) {}
-      }
-      if (cacheProjectId && cachePdfHash) {
-        try {
-          const cached = await pdfCacheGet(cacheProjectId, cachePdfHash);
-          if (cached && cached.size > 0) {
-            pdfBlob = cached;
-            if (projectId === 'local') projectId = cacheProjectId;
-          }
-        } catch (_) {}
-      }
-    }
-    const data = {
-      counters: state.counters,
-      lineTypes: state.lineTypes,
-      groups: state.groups || [],
-      counterSettings: state.counterSettings,
-      lineTypeSettings: state.lineTypeSettings,
-      exportSettings: state.exportSettings,
-      recentLineColors: state.recentLineColors,
-      iconNames: state.iconNames || {},
-      iconOrder: state.iconOrder || null,
-      customIconPaths: getUserCustomIcons(),
-      legendSettings: state.legendSettings,
-      multiplyZoneSettings: state.multiplyZoneSettings,
-      showGridOverlay: state.showGridOverlay,
-      gridSettings: state.gridSettings,
-      pageCanvases: state.pages.map(p => p.canvases),
-      activeCanvasIdByPage: state.activeCanvasIdByPage || {},
-      pageScales: state.pages.map(p => p.scale),
-      pageRotations: state.pages.map(p => p.rotation ?? 0),
-      pageBakeFrames: state.pages.map(p => computePageBakeFrame(p))
-    };
-    const lastMod = (state.currentProjectId && lastModifiedAt) ? lastModifiedAt : Date.now();
-    const pdfHash = state.pdfHash || null;
-    const projectName = state.currentProjectName || null;
-    const userId = state.supabaseSession?.user?.id || null;
-    lastLocalBackupOk = false;
-    await takeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastMod, projectName, userId);
-    lastLocalBackupAt = new Date().toISOString();
-    lastLocalBackupOk = true;
-  }
-
+  // The three-layer backup writer (writeTakeoffStateBackup ->
+  // writeTakeoffBackupToIndexedDB -> doWriteTakeoffBackupToIndexedDB, with the
+  // in-flight promise + lastLocalBackup stamps) lives in save-engine.js
+  // (Stage 3); the 5s interval and the visibilitychange kick stay here.
+  function writeTakeoffStateBackup() { return saveEngine.writeTakeoffStateBackup(); }
+  function writeTakeoffBackupToIndexedDB() { return saveEngine.writeTakeoffBackupToIndexedDB(); }
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
 
   if (typeof document !== 'undefined' && document.addEventListener) {
@@ -11790,7 +11625,7 @@
   // the registry otherwise).
   App.setAutoSaveDirty = (v) => { autoSaveDirty = v; };
   App.setLastModifiedAt = (v) => { lastModifiedAt = v; };
-  App.setLastLocalBackupAt = (v) => { lastLocalBackupAt = v; };
+  App.setLastLocalBackupAt = (v) => saveEngine.setLastLocalBackupAt(v);
   App.setLastSaveIncludedPdf = (v) => { lastSaveIncludedPdf = v; };
   App.SCALE_MODES = SCALE_MODES;
   App.SCALE_PRESETS = SCALE_PRESETS;

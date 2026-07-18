@@ -81,7 +81,11 @@
     formatters; after constants.js), [icon-render.js](icon-render.js) (icon
     geometry/render-rule helpers; after icons.js),
     [line-metrics.js](line-metrics.js) (line length/scale math; after
-    geometry.js), [save-utils.js](save-utils.js) (pure save/sync helpers).
+    geometry.js), [save-utils.js](save-utils.js) (pure save/sync helpers),
+    [save-engine.js](save-engine.js) (the save/sync engine module —
+    `createSaveEngine(ctx)`; app.js instantiates it with live-value
+    accessors and keeps same-named wrappers; staged extraction, Stage 1:
+    global force reload + checkout keep-alive).
   - [app.js](app.js) — the main IIFE (~14k lines), the bulk of the app
     logic. Resolves the sibling modules' values by bare name, publishes the
     shared surface onto the `window.App` registry near its tail
@@ -120,7 +124,8 @@
   [constants.test.js](constants.test.js), [report.test.js](report.test.js),
   [save-utils.test.js](save-utils.test.js), [idb.test.js](idb.test.js),
   [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js),
-  [line-metrics.test.js](line-metrics.test.js)) via
+  [line-metrics.test.js](line-metrics.test.js),
+  [save-engine.test.js](save-engine.test.js)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
   auto-skips its two en-CA-hyphen-dependent cases on a limited-ICU runtime and

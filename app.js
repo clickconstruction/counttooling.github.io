@@ -1040,70 +1040,28 @@
   }
 
   // SECTION: [sync] Global force reload
-  async function checkGlobalForceReload() {
-    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return;
-    try {
-      const { data, error } = await withTimeout(
-        supabase.from('system_settings').select('value_ts,value_text').eq('key', 'force_reload_after').single(),
-        5000,
-        'check global reload'
-      );
-      if (error || !data?.value_ts) return;
-      const serverTs = new Date(data.value_ts).getTime();
-      const localTs = parseInt(localStorage.getItem(GLOBAL_RELOAD_STAMP_KEY) || '0', 10);
-      state.globalReloadAtServerMs = serverTs;
-      state.globalReloadReason = data.value_text || '';
-      if (serverTs > localTs) doGlobalReloadNow('boot');
-    } catch (_) {}
-  }
-
-  function doGlobalReloadNow(trigger) {
-    const stamp = String(state.globalReloadAtServerMs || Date.now());
-    try { localStorage.setItem(PENDING_GLOBAL_RELOAD_STAMP_KEY, stamp); } catch (_) {}
-    try { pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
-    try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
-    // PWA: best-effort clear the service-worker caches too, so the offline
-    // fallback also refreshes. Fire-and-forget — must NOT block location.reload().
-    try { if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {}); } catch (_) {}
-    const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
-    for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
-    location.reload();
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const commitPendingReloadStamp = () => {
-        try {
-          const pending = localStorage.getItem(PENDING_GLOBAL_RELOAD_STAMP_KEY);
-          if (!pending) return;
-          // We are running this code in a fresh document, so a navigation/load
-          // has happened. Treat any non-"prerender" navigation as a confirmed
-          // reload commit and write the real stamp.
-          let confirmedReload = true;
-          try {
-            const entries = (performance.getEntriesByType && performance.getEntriesByType('navigation')) || [];
-            if (entries.length && entries.every(e => e.type === 'prerender')) confirmedReload = false;
-          } catch (_) {}
-          if (confirmedReload) {
-            localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, pending);
-            localStorage.removeItem(PENDING_GLOBAL_RELOAD_STAMP_KEY);
-            try { pushSaveEvent && pushSaveEvent('global_reload_committed', 'Global reload stamp committed after successful reload', pending); } catch (_) {}
-          }
-        } catch (_) {}
-      };
-      if (document.readyState === 'complete' || document.readyState === 'interactive') commitPendingReloadStamp();
-      else window.addEventListener('load', commitPendingReloadStamp, { once: true });
-      window.addEventListener('pageshow', commitPendingReloadStamp, { once: true });
-    } catch (_) {}
-  }
-
-  function showGlobalReloadBanner() {
-    const el = document.getElementById('globalReloadBanner');
-    const txt = document.getElementById('globalReloadBannerText');
-    if (!el) return;
-    const reason = state.globalReloadReason ? ' Reason: ' + state.globalReloadReason : '';
-    if (txt) txt.textContent = 'Reload required for update.' + reason;
-    el.style.display = '';
-  }
+  // The force-reload + keep-alive implementations moved to save-engine.js
+  // (createSaveEngine, a classic script loaded before this IIFE). The engine
+  // receives everything state/closure-coupled through this ctx of accessors —
+  // arrows resolve the live values at call time, so client recycles and `let`
+  // reassignments are always seen. The same-named wrappers below keep every
+  // call site, the App registry, and the window.* contracts frozen.
+  const saveEngine = createSaveEngine({
+    getState: () => state,
+    getSupabase: () => supabase,
+    isSupabaseEnabled: () => SUPABASE_ENABLED,
+    withTimeout: (p, ms, label) => withTimeout(p, ms, label),
+    pushSaveEvent: (...a) => pushSaveEvent(...a),
+    saveDebugLog: (...a) => saveDebugLog(...a),
+    probeCheckoutLock: (...a) => probeCheckoutLock(...a),
+    handleBackgroundCheckoutExpired: (...a) => handleBackgroundCheckoutExpired(...a),
+    isAutoSaveSuspended: () => suspendAutoSaveUntilCheckout,
+    getLastCheckoutRefreshAt: () => lastCheckoutRefreshAt,
+  });
+  function checkGlobalForceReload() { return saveEngine.checkGlobalForceReload(); }
+  function doGlobalReloadNow(trigger) { return saveEngine.doGlobalReloadNow(trigger); }
+  function showGlobalReloadBanner() { return saveEngine.showGlobalReloadBanner(); }
+  saveEngine.installGlobalReloadStampCommit();
 
   // isTransientSaveError(e) lives in save-utils.js (loaded before this IIFE).
 
@@ -11721,39 +11679,9 @@
   }, AUTO_SAVE_INTERVAL_MS);
 
   // SECTION: [sync] Checkout keep-alive
-  async function checkoutKeepalive() {
-    if (!SUPABASE_ENABLED || !supabase) return;
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
-      saveDebugLog('keepalive.skip', { reason: 'not_visible' });
-      return;
-    }
-    const userId = state.supabaseSession?.user?.id;
-    if (!userId) return;
-    if (!state.currentProjectId || state.checkedOutBy !== userId) return;
-    if (state.isViewer || suspendAutoSaveUntilCheckout) {
-      saveDebugLog('keepalive.skip', { reason: state.isViewer ? 'viewer' : 'suspended' });
-      return;
-    }
-    if (Date.now() - lastCheckoutRefreshAt < CHECKOUT_REFRESH_DEBOUNCE_MS) {
-      saveDebugLog('keepalive.skip', { reason: 'debounced' });
-      return;
-    }
-    saveDebugLog('keepalive.tick', { projectId: state.currentProjectId });
-    const probe = await probeCheckoutLock();
-    if (probe.expired) {
-      saveDebugLog('keepalive.expired', {});
-      pushSaveEvent('keepalive_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-      try {
-        await handleBackgroundCheckoutExpired('keepalive');
-      } catch (e) {
-        try {
-          pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
-            JSON.stringify({ trigger: 'keepalive', message: (e && e.message) || String(e), name: e && e.name }));
-        } catch (_) {}
-      }
-    }
-  }
-
+  // Implementation in save-engine.js (Stage 1); the wrapper + interval stay so
+  // the symbol remains greppable here and future callers bind the same name.
+  function checkoutKeepalive() { return saveEngine.checkoutKeepalive(); }
   setInterval(checkoutKeepalive, CHECKOUT_KEEPALIVE_MS);
 
   window.state = state;

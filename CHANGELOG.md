@@ -13,6 +13,36 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(save-engine): Stage 1 — the createSaveEngine(ctx) seam
+
+First stage of the staged save/sync-engine extraction (the endgame after the
+modal-ladder splits #25–#33). A feature-file split can't work for the engine
+(feature files load after app.js, but boot needs the engine, and its ~48
+reassigned `let`s are written from both sides), so the shape is the *other*
+proven pattern scaled up: **[save-engine.js](save-engine.js)** as a classic
+script in the pre-app.js slot exporting `createSaveEngine(ctx)`. app.js
+instantiates it once near the top of its IIFE, passing accessors/callbacks
+that resolve live values at call time (`getState`, `getSupabase`,
+`isSupabaseEnabled`, `withTimeout`, `pushSaveEvent`, `saveDebugLog`,
+`probeCheckoutLock`, `handleBackgroundCheckoutExpired`, `isAutoSaveSuspended`,
+`getLastCheckoutRefreshAt`), and keeps **same-named thin wrappers** so every
+call site, the App registry, and the `window.*` contracts stay frozen.
+
+Stage 1 proves the seam on the two leaf clusters: `[sync] Global force
+reload` (check + reload + the pending-stamp commit listener, installed via
+`saveEngine.installGlobalReloadStampCommit()` at load + the banner) and
+`[sync] Checkout keep-alive` (the visible-tab lock probe). Their `[sync]`
+markers stay in app.js heading the wrappers, so `rg "SECTION: \[sync\]"`
+still finds the whole subsystem. New
+[save-engine.test.js](save-engine.test.js) gives the engine its first Node
+unit coverage via a fully stubbed ctx (keep-alive skip ladder + expiry
+routing; force-reload decision incl. the pending-stamp write). Groundwork
+laid beforehand (same day): the Stage 0 smoke spec, dev-auth for the cloud
+battery (suite baseline 120 passed / 1 known-red), and a telemetry baseline
+envelope.
+
+---
+
 ## perf: large-plan responsiveness, phases 1+2 (zoom gestures + page-switch bitmap cache)
 
 **Problem.** On large multi-page plans, zooming lagged with erratic jumps and page switches

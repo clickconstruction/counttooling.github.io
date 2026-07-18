@@ -4732,7 +4732,7 @@
         editBtn.onclick = (e) => {
           e.stopPropagation();
           if (state.isViewer) return;
-          openCanvasDetailsModal(c);
+          App.openCanvasDetailsModal(c);
         };
         row.appendChild(editBtn);
         row.appendChild(nameSpan);
@@ -5438,8 +5438,8 @@
   function hideModal(id) {
     if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
     if (id === 'counterLineTypeDetailsModal') App.onCounterLineTypeDetailsHidden && App.onCounterLineTypeDetailsHidden();
-    if (id === 'canvasDetailsModal') pendingCanvasEdit = null;
-    if (id === 'deleteCanvasConfirmModal') pendingDeleteCanvas = null;
+    if (id === 'canvasDetailsModal') App.onCanvasDetailsHidden && App.onCanvasDetailsHidden();
+    if (id === 'deleteCanvasConfirmModal') App.onDeleteCanvasConfirmHidden && App.onDeleteCanvasConfirmHidden();
     document.getElementById(id).classList.remove('visible');
   }
 
@@ -6917,207 +6917,11 @@
     if (next !== undefined) { state.currentPage = next; fitZoom(); }
   };
 
-  let pendingAddCanvasMode = 'new';
-
-  // SECTION: Canvas layers
-  function openAddCanvasModal() {
-    if (!state.pages.length || state.isViewer) return;
-    const page = state.pages[state.currentPage];
-    const canvases = getPageCanvases(page);
-    const n = canvases.length + 1;
-    pendingAddCanvasMode = 'new';
-    const newBtn = document.getElementById('addCanvasModalNew');
-    const dupBtn = document.getElementById('addCanvasModalDuplicate');
-    const nameInput = document.getElementById('addCanvasModalName');
-    if (newBtn) newBtn.classList.add('selected');
-    if (dupBtn) dupBtn.classList.remove('selected');
-    nameInput.placeholder = 'Layer ' + n;
-    nameInput.value = '';
-    showModal('addCanvasModal');
-    nameInput.focus();
-  }
-
-  function updateAddCanvasModalForMode() {
-    const page = state.pages[state.currentPage];
-    const canvases = getPageCanvases(page);
-    const currentCanvas = getActiveCanvas(page);
-    const n = canvases.length + 1;
-    const nameInput = document.getElementById('addCanvasModalName');
-    if (pendingAddCanvasMode === 'duplicate') {
-      const baseName = currentCanvas?.name || 'Main';
-      nameInput.placeholder = 'Copy of ' + baseName;
-      nameInput.value = 'Copy of ' + baseName;
-    } else {
-      nameInput.placeholder = 'Layer ' + n;
-      nameInput.value = '';
-    }
-  }
-
-  function doAddCanvas(mode, name) {
-    if (!state.pages.length || state.isViewer) return;
-    const page = state.pages[state.currentPage];
-    const canvases = getPageCanvases(page);
-    const n = canvases.length + 1;
-    const defaultNew = 'Layer ' + n;
-    const currentCanvas = getActiveCanvas(page);
-    const defaultDup = 'Copy of ' + (currentCanvas?.name || 'Main');
-    const finalName = (name || '').trim() || (mode === 'duplicate' ? defaultDup : defaultNew);
-    if (!finalName) return;
-    pushUndoSnapshot();
-    const annotations = mode === 'duplicate' ? deepCopyAnnotations(getActiveAnnotations(page)) : makeAnnotations();
-    const newCanvas = { id: uid(), name: finalName, annotations };
-    if (!page.canvases) page.canvases = [];
-    page.canvases.push(newCanvas);
-    state.activeCanvasIdByPage[state.currentPage] = newCanvas.id;
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  }
-
-  let pendingCanvasEdit = null;
-  let pendingDeleteCanvas = null;
-
-  function openCanvasDetailsModal(canvas) {
-    if (!state.pages.length || state.isViewer) return;
-    const page = state.pages[state.currentPage];
-    const canvases = getPageCanvases(page);
-    if (!canvases.includes(canvas)) return;
-    document.getElementById('canvasMenu')?.classList.remove('visible');
-    pendingCanvasEdit = canvas;
-    const nameInput = document.getElementById('canvasDetailsName');
-    const deleteBtn = document.getElementById('canvasDetailsDelete');
-    if (nameInput) nameInput.value = canvas.name || 'Main';
-    if (deleteBtn) deleteBtn.style.display = canvases.length <= 1 ? 'none' : '';
-    showModal('canvasDetailsModal');
-    nameInput?.focus();
-  }
-
-  function performDeleteCanvas(canvas) {
-    if (!state.pages.length || state.isViewer) return;
-    const page = state.pages[state.currentPage];
-    const canvases = getPageCanvases(page);
-    if (canvases.length <= 1) return;
-    const idx = canvases.indexOf(canvas);
-    if (idx < 0) return;
-    pushUndoSnapshot();
-    page.canvases.splice(idx, 1);
-    if (state.activeCanvasIdByPage[state.currentPage] === canvas.id) {
-      const remaining = getPageCanvases(page);
-      state.activeCanvasIdByPage[state.currentPage] = remaining[0]?.id ?? null;
-    }
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  }
-
-  document.getElementById('addCanvasBtn').onclick = () => openAddCanvasModal();
-  // Show-all-canvases peek toggle (desktop, next to the canvas selector; the
-  // opposite of the hide-marks eye). Visual only — no dirty, no persistence.
-  document.getElementById('showAllCanvasesBtn').onclick = () => {
-    state.showAllCanvases = !state.showAllCanvases;
-    renderAnnotations();
-    updateUI();
-  };
-
-  const addCanvasModalNew = document.getElementById('addCanvasModalNew');
-  const addCanvasModalDuplicate = document.getElementById('addCanvasModalDuplicate');
-  const addCanvasModalName = document.getElementById('addCanvasModalName');
-  const addCanvasModalCancel = document.getElementById('addCanvasModalCancel');
-  const addCanvasModalCreate = document.getElementById('addCanvasModalCreate');
-  if (addCanvasModalNew) {
-    addCanvasModalNew.onclick = () => {
-      pendingAddCanvasMode = 'new';
-      addCanvasModalNew.classList.add('selected');
-      if (addCanvasModalDuplicate) addCanvasModalDuplicate.classList.remove('selected');
-      updateAddCanvasModalForMode();
-    };
-  }
-  if (addCanvasModalDuplicate) {
-    addCanvasModalDuplicate.onclick = () => {
-      pendingAddCanvasMode = 'duplicate';
-      addCanvasModalDuplicate.classList.add('selected');
-      if (addCanvasModalNew) addCanvasModalNew.classList.remove('selected');
-      updateAddCanvasModalForMode();
-    };
-  }
-  if (addCanvasModalCancel) addCanvasModalCancel.onclick = () => hideModal('addCanvasModal');
-  if (addCanvasModalCreate) {
-    addCanvasModalCreate.onclick = () => {
-      const name = addCanvasModalName?.value?.trim() || addCanvasModalName?.placeholder || '';
-      hideModal('addCanvasModal');
-      doAddCanvas(pendingAddCanvasMode, name);
-    };
-  }
-  if (addCanvasModalName) {
-    addCanvasModalName.onkeydown = (e) => {
-      if (e.key === 'Enter') addCanvasModalCreate?.click();
-    };
-  }
-
-  document.getElementById('canvasDetailsClose').onclick = () => {
-    const canvas = pendingCanvasEdit;
-    const nameInput = document.getElementById('canvasDetailsName');
-    if (canvas && nameInput) {
-      canvas.name = (nameInput.value || '').trim() || 'Main';
-      markProjectDirty();
-      updateUI();
-    }
-    pendingCanvasEdit = null;
-    hideModal('canvasDetailsModal');
-  };
-  document.getElementById('canvasDetailsDelete').onclick = () => {
-    const canvas = pendingCanvasEdit;
-    if (!canvas) return;
-    const page = state.pages[state.currentPage];
-    const canvases = getPageCanvases(page);
-    if (canvases.length <= 1) return;
-    pendingDeleteCanvas = canvas;
-    document.getElementById('deleteCanvasName').textContent = canvas.name || 'Main';
-    hideModal('canvasDetailsModal');
-    showModal('deleteCanvasConfirmModal');
-  };
-  document.getElementById('canvasDetailsName').onkeydown = (e) => {
-    if (e.key === 'Enter') document.getElementById('canvasDetailsClose').click();
-  };
-
-  document.getElementById('deleteCanvasCancel').onclick = () => {
-    pendingDeleteCanvas = null;
-    hideModal('deleteCanvasConfirmModal');
-  };
-  document.getElementById('deleteCanvasConfirm').onclick = () => {
-    const canvas = pendingDeleteCanvas;
-    pendingDeleteCanvas = null;
-    hideModal('deleteCanvasConfirmModal');
-    if (canvas) {
-      performDeleteCanvas(canvas);
-    }
-  };
-
-  const canvasLayersBtn = document.getElementById('canvasLayersBtn');
-  const canvasMenu = document.getElementById('canvasMenu');
-  const canvasMenuAdd = document.getElementById('canvasMenuAdd');
-  if (canvasLayersBtn && canvasMenu) {
-    canvasLayersBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (canvasMenu.classList.contains('visible')) {
-        canvasMenu.classList.remove('visible');
-        return;
-      }
-      canvasMenu.style.left = '-9999px';
-      canvasMenu.classList.add('visible');
-      const btnRect = canvasLayersBtn.getBoundingClientRect();
-      canvasMenu.style.left = btnRect.left + 'px';
-      canvasMenu.style.top = Math.max(8, btnRect.top - canvasMenu.offsetHeight - 4) + 'px';
-    });
-  }
-  if (canvasMenuAdd && canvasMenu) {
-    canvasMenuAdd.addEventListener('click', (e) => {
-      e.stopPropagation();
-      canvasMenu.classList.remove('visible');
-      openAddCanvasModal();
-    });
-  }
-
+  // SECTION: Export canvas JSON
+  // The canvas-layer management UI (Add Canvas / Canvas Details / Delete Canvas
+  // modals, the footer layers menu, the show-all-canvases peek toggle, and their
+  // pending state) moved to features/canvas-layers.js; the canvas switcher's
+  // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
     const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
@@ -11031,13 +10835,10 @@
         hideModal('viewLinkEmailModal');
       }
       else if (document.getElementById('addCanvasModal').classList.contains('visible')) { hideModal('addCanvasModal'); }
-      else if (document.getElementById('deleteCanvasConfirmModal').classList.contains('visible')) { pendingDeleteCanvas = null; hideModal('deleteCanvasConfirmModal'); }
+      else if (document.getElementById('deleteCanvasConfirmModal').classList.contains('visible')) { hideModal('deleteCanvasConfirmModal'); }
       else if (document.getElementById('canvasDetailsModal').classList.contains('visible')) {
-        const canvas = pendingCanvasEdit;
-        const nameInput = document.getElementById('canvasDetailsName');
-        if (canvas && nameInput) { canvas.name = (nameInput.value || '').trim() || 'Main'; markProjectDirty(); updateUI(); }
-        pendingCanvasEdit = null;
-        hideModal('canvasDetailsModal');
+        // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
+        document.getElementById('canvasDetailsClose').click();
       }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
@@ -12423,6 +12224,8 @@
   App.getActiveCanvas = getActiveCanvas;
   // Zone/page-action modal dep (features/zone-modals.js).
   App.performDeleteZone = performDeleteZone;
+  // Canvas layers dep (features/canvas-layers.js).
+  App.deepCopyAnnotations = deepCopyAnnotations;
   // Output cluster deps (features/output.js).
   App.SUPABASE_ENABLED = SUPABASE_ENABLED;
   App.getOrCreateViewLinkUrl = getOrCreateViewLinkUrl;

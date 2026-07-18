@@ -632,7 +632,7 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 30 feature files in load order, each with a `*.spec.js` Playwright
+The 31 feature files in load order, each with a `*.spec.js` Playwright
 regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
 All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
 app.js; the Zoom Rail was born as a feature file (a new feature built directly
@@ -709,6 +709,10 @@ zoom-rail loads 4th but arrived much later:
     + desktop header-overflow compact mode (zero new deps; `updateUI` calls
     `App.updateBurgerMenu`/`App.scheduleHeaderCollapseCheck` defensively;
     covered by the pre-existing mobile-burger-menu + header-overflow specs).
+31. [features/canvas-layers.js](features/canvas-layers.js) — add / details /
+    delete-canvas modals + footer layers menu + show-all-canvases peek (one
+    publish-only dep `deepCopyAnnotations`; the Escape rename-commit reuses
+    the Done button via a dispatched click; canvas JSON export stays).
 
 ### Tooling
 

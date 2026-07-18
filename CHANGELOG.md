@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(save-engine): Stage 5 — the checkout-UX domain
+
+Fifth stage: the checkout domain moves behind the seam — the realtime
+checkout subscription cluster deferred from Stage 4
+(`subscribeToProjectCheckoutChanges` + reconnect backoff/generation guard +
+`refreshProjectPermissions`, including its force-turn-in flush), the expired
+recovery core (`computeCheckoutExpiryAgeMs`, `reCheckOutAfterExpiry`, the
+silent auto-recheckout ladder with its per-project cap/cool-down Maps,
+`handleBackgroundCheckoutExpired` — which also absorbed the app-side
+supabase-disabled no-op forward declaration), and the Turn In core
+(`doTurnIn` with its staged progress/retry/raw-fetch check-in). Engine-owned:
+the channel + reconnect state, the recovery/background in-flight guards, the
+auto-recheckout rate limits, the one-shot expired toast, the recovery-save
+promise, and `turnInInProgress` (getter feeds the envelope + the discard
+guard). **What stayed:** the recovery modal (open/apply/close + wiring), the
+Turn In result-handling UX (`doTurnInAndHandleResult`/`tryTurnIn`), the
+checkout/force-check-in buttons, and `formatExpiryAge` — modal wiring is
+app.js's job; the engine reports outcomes and flips the attention flags via
+ctx. **Graduations:** ctx.resubscribeCheckout / ctx.onCheckoutChannelDropped /
+ctx.handleBackgroundCheckoutExpired left the ctx (engine-internal now); the
+`rawCheckInProject`/`rawListAccessibleProjects` wrappers were deleted (their
+only callers moved in). ctx grew by 17 (stage-6 save-path state via get/set +
+UI hooks); save-engine.test.js grew to 35 tests (subscription wiring,
+permission refresh, recovery paths, recheckout cap ladder, Turn In stages).
+
+---
+
 ## refactor(save-engine): Stage 4 — the client-resilience layer
 
 Fourth stage: the wedged-client machinery moves behind the seam —

@@ -20,7 +20,7 @@ Object.assign(globalThis, require('./constants.js'));
 Object.assign(globalThis, require('./save-utils.js'));
 // Local bindings for the keys this file asserts on (the globalThis assigns
 // above feed the engine; the lint test-group doesn't know module globals).
-const { GLOBAL_RELOAD_STAMP_KEY, PENDING_GLOBAL_RELOAD_STAMP_KEY, SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS } = require('./constants.js');
+const { GLOBAL_RELOAD_STAMP_KEY, PENDING_GLOBAL_RELOAD_STAMP_KEY, SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_INACTIVITY_MS } = require('./constants.js');
 
 // Browser-global stubs. `window` exists so the CLICKCOUNT_DEBUG_SAVE flag can
 // toggle verbose mode per test; the caches-clear branch sees window.caches
@@ -63,15 +63,19 @@ beforeEach(() => {
 });
 
 function makeCtx(overrides) {
-  const calls = { expired: 0, backupKicks: 0, footerInvalidations: 0, setDirty: [], lastModified: [], refreshAt: [], clock: [] };
+  const calls = {
+    expired: 0, backupKicks: 0, footerInvalidations: 0, setDirty: [], lastModified: [], refreshAt: [], clock: [],
+    // Stage 5 spies
+    toasts: [], turnInLabels: [], progressHandlers: [], autosaves: [], uploads: [],
+    attention: 0, cleared: 0, suspends: 0, uiUpdates: 0, statusUpdates: 0, indicatorUpdates: 0, settingsSection: 0, cloudFailFlag: [],
+  };
   const appSide = { autoSaveDirty: false, lastCheckoutRefreshAt: 0 };
   const ctx = {
     getState: () => ({ supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', isViewer: false, pages: [{}] }),
     getSupabase: () => ({ rpc: () => Promise.resolve({ data: {} }) }),
     isSupabaseEnabled: () => true,
-    withTimeout: (p) => p,
+    withTimeout: (p) => (typeof p === 'function' ? p(undefined) : p),
     probeCheckoutLock: async () => ({ expired: false }),
-    handleBackgroundCheckoutExpired: async () => { calls.expired++; },
     isAutoSaveSuspended: () => false,
     getLastCheckoutRefreshAt: () => appSide.lastCheckoutRefreshAt,
     getAutoSaveDirty: () => appSide.autoSaveDirty,
@@ -93,11 +97,47 @@ function makeCtx(overrides) {
     getSupabaseAnonKey: () => 'anon',
     getConsecutiveAutoSaveFailures: () => 0,
     clearAutoSaveBackoff: () => {},
-    resubscribeCheckout: () => {},
-    onCheckoutChannelDropped: () => {},
+    // Stage 5 (checkout UX)
+    isSaveInProgress: () => false,
+    getInFlightAutoSavePromise: () => null,
+    getLastSuccessfulSupabaseCallAt: () => Date.now(),
+    performAutoSave: async (runId) => { calls.autosaves.push(runId); return { ok: true }; },
+    uploadLocalPdfToCloudIfNeeded: async (reason, opts) => { calls.uploads.push([reason, opts]); return { ok: true }; },
+    setPdfUploadProgressHandler: (fn) => { calls.progressHandlers.push(fn); },
+    setTurnInProgress: (label) => { calls.turnInLabels.push(label); },
+    showToast: (msg, ms) => { calls.toasts.push(msg); },
+    updateUI: () => { calls.uiUpdates++; },
+    updateStatus: () => { calls.statusUpdates++; },
+    updateSaveStatusIndicator: () => { calls.indicatorUpdates++; },
+    updateSettingsCheckoutSection: () => { calls.settingsSection++; },
+    clearCheckoutExpiredAttention: () => { calls.cleared++; },
+    setCheckoutExpiredAttention: () => { calls.attention++; },
+    suspendAutoSave: () => { calls.suspends++; },
+    setLastCloudSaveAttemptFailed: (v) => { calls.cloudFailFlag.push(v); },
+    captureNetworkInfoDetail: () => null,
+    isAuthError: () => false,
     ...overrides,
   };
   return { ctx, calls, appSide };
+}
+
+// Supabase stub with a working realtime-channel chain for the Stage 5
+// subscription cluster (channel().on().subscribe() + removeChannel).
+function makeChannelSupabase(rpcImpl) {
+  const sub = { channels: [], removed: [] };
+  const supabase = {
+    rpc: rpcImpl || (async () => ({ data: {} })),
+    removeAllChannels: async () => {},
+    removeChannel: async (ch) => { sub.removed.push(ch); },
+    channel: (name) => {
+      const ch = { name, ons: [], statusCb: null };
+      ch.on = (type, filter, cb) => { ch.ons.push({ type, filter, cb }); return ch; };
+      ch.subscribe = (cb) => { ch.statusCb = cb; return ch; };
+      sub.channels.push(ch);
+      return ch;
+    },
+  };
+  return { supabase, sub };
 }
 
 const logKinds = (engine) => engine.getSaveStatusLog().map((e) => e.kind);
@@ -280,26 +320,29 @@ test('noteSupabaseJsFailure: 4xx and checkout-domain errors are ignored; real fa
   assert.strictEqual(logKinds(engine).filter((k) => k === 'sbjs_failure_recorded').length, 2);
 });
 
-test('recreateSupabaseClient: swaps the client, resubscribes, counts; cooldown blocks a rerun', async () => {
+test('recreateSupabaseClient: swaps the client, resubscribes on the NEW client, counts; cooldown blocks a rerun', async () => {
+  // createClient returns channel-capable clients: Stage 5 made the checkout
+  // subscription engine-internal, so the recycle resubscribes through the
+  // engine's own subscribeToProjectCheckoutChanges against the new client.
   const created = [];
-  globalThis.window.supabase = { createClient: (u, k) => { const c = { auth: { setSession: async () => ({}) }, removeAllChannels: async () => {} }; created.push(c); return c; } };
-  let set = [], resub = [], dropped = 0;
+  globalThis.window.supabase = { createClient: () => { const { supabase, sub } = makeChannelSupabase(); created.push({ client: supabase, sub }); return supabase; } };
+  const initial = makeChannelSupabase();
+  let current = initial.supabase;
   const state = { supabaseSession: { user: { id: 'u1' }, access_token: 'a', refresh_token: 'r' }, currentProjectId: 'p1' };
+  const set = [];
   const { ctx } = makeCtx({
     getState: () => state,
-    setSupabase: (c) => set.push(c),
-    resubscribeCheckout: (id) => resub.push(id),
-    onCheckoutChannelDropped: () => { dropped++; },
-    getSupabaseUrl: () => 'https://x.supabase.co',
-    getSupabaseAnonKey: () => 'anon',
+    getSupabase: () => current,
+    setSupabase: (c) => { current = c; set.push(c); },
   });
   const engine = createSaveEngine(ctx);
   const ok = await engine.recreateSupabaseClient('test');
   assert.strictEqual(ok, true);
   assert.strictEqual(set.length, 1);
-  assert.strictEqual(set[0], created[0]);
-  assert.deepStrictEqual(resub, ['p1']);
-  assert.strictEqual(dropped, 1);
+  assert.strictEqual(set[0], created[0].client);
+  // The resubscribe landed on the new client, keyed by the project id.
+  assert.strictEqual(created[0].sub.channels.length, 1);
+  assert.strictEqual(created[0].sub.channels[0].name, 'projects-checkout-p1');
   assert.strictEqual(engine.getClientRecycleCount(), 1);
   assert.ok(logKinds(engine).includes('autosave_client_recycled'));
   // Immediate rerun -> cooldown skip.
@@ -370,15 +413,21 @@ test('keepalive: viewer / suspended / debounced skip with logged reasons', async
 });
 
 test('keepalive: expired probe pushes keepalive_expired and routes background recovery; throws are contained', async () => {
-  const a = makeCtx({ probeCheckoutLock: async () => ({ expired: true }) });
+  // The default rpc stub answers refresh_checkout_activity with {} (no ok) ->
+  // the internal probe reports expired -> the (now engine-internal) background
+  // recovery runs: attention flagged, auto-recheckout attempted and blocked
+  // (permissions never grant canCheckOut), one-shot toast shown.
+  const a = makeCtx();
   const ea = createSaveEngine(a.ctx);
   await ea.checkoutKeepalive();
   assert.ok(logKinds(ea).includes('keepalive_expired'));
-  assert.strictEqual(a.calls.expired, 1);
+  assert.ok(logKinds(ea).includes('checkout_expired'));
+  assert.strictEqual(a.calls.attention, 1);
+  assert.ok(logKinds(ea).includes('auto_recheckout_blocked'));
+  assert.strictEqual(a.calls.toasts.length, 1);
 
   const b = makeCtx({
-    probeCheckoutLock: async () => ({ expired: true }),
-    handleBackgroundCheckoutExpired: async () => { throw new Error('boom'); },
+    setCheckoutExpiredAttention: () => { throw new Error('boom'); },
   });
   const eb = createSaveEngine(b.ctx);
   await eb.checkoutKeepalive();   // must not reject
@@ -425,4 +474,259 @@ test('force reload: stale server stamp records state but does not reload', async
   await createSaveEngine(ctx).checkGlobalForceReload();
   assert.strictEqual(reloads, 0);
   assert.strictEqual(state.globalReloadAtServerMs, 5000);
+});
+
+// --- Stage 5: checkout subscription & permission refresh --------------------
+
+// list_accessible_projects responder for the permission-refresh tests.
+function rpcWithProjects(rows, outcomes) {
+  return async (name) => {
+    if (name === 'list_accessible_projects') return { data: rows };
+    if (name === 'check_out_project') return outcomes?.checkOut || { data: { ok: true, checked_out_at: 'TS' } };
+    if (name === 'check_in_project') return outcomes?.checkIn || { data: { ok: true } };
+    return { data: {} };
+  };
+}
+
+test('subscription: wires the postgres_changes channel; null projectId unsubscribes and resets', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1' };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  await engine.subscribeToProjectCheckoutChanges('p1');
+  assert.strictEqual(sub.channels.length, 1);
+  assert.strictEqual(sub.channels[0].name, 'projects-checkout-p1');
+  assert.strictEqual(sub.channels[0].ons[0].filter.filter, 'id=eq.p1');
+  // The UPDATE callback routes into refreshProjectPermissions; with an empty
+  // project list that lands on the "no longer have access" path.
+  await sub.channels[0].ons[0].cb();
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(calls.suspends, 1);
+  assert.ok(logKinds(engine).includes('permissions_project_missing'));
+  // Turn the subscription off: the stale channel is removed.
+  await engine.subscribeToProjectCheckoutChanges(null);
+  assert.strictEqual(sub.removed.length, 1);
+});
+
+test('refreshProjectPermissions: applies the project row and pings the UI', async () => {
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  await createSaveEngine(ctx).refreshProjectPermissions();
+  assert.strictEqual(state.checkedOutBy, 'u1');
+  assert.strictEqual(state.checkedOutEmail, 'me@x.com');
+  assert.strictEqual(state.isViewer, false);
+  assert.strictEqual(state.loadedViaViewLink, false);
+  assert.ok(calls.uiUpdates >= 1);
+  assert.ok(calls.statusUpdates >= 1);
+  assert.deepStrictEqual(calls.toasts, []);
+});
+
+test('refreshProjectPermissions: force turn-in with dirty edits flushes once and warns', async () => {
+  const row = { id: 'p1', can_edit: false, can_check_out: false, checked_out_by: 'u2', checked_out_email: 'other@x.com' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false };
+  const { ctx, calls, appSide } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  appSide.autoSaveDirty = true;
+  const engine = createSaveEngine(ctx);
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setImmediate(r));   // the flush is fire-and-forget
+  assert.strictEqual(calls.autosaves.length, 1);
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.strictEqual(state.isViewer, true);
+  assert.match(calls.toasts[0], /turned in by another user/);
+});
+
+// --- Stage 5: checkout expired recovery -------------------------------------
+
+test('computeCheckoutExpiryAgeMs: no candidates -> 0; stale last-success dates the expiry', () => {
+  const a = makeCtx({ getState: () => ({}), getLastSuccessfulSupabaseCallAt: () => 0 });
+  assert.strictEqual(createSaveEngine(a.ctx).computeCheckoutExpiryAgeMs(), 0);
+  const staleBy = 60000;
+  const b = makeCtx({ getState: () => ({}), getLastSuccessfulSupabaseCallAt: () => Date.now() - CHECKOUT_INACTIVITY_MS - staleBy });
+  const age = createSaveEngine(b.ctx).computeCheckoutExpiryAgeMs();
+  assert.ok(age >= staleBy - 1000 && age <= staleBy + 5000, 'age ~= ' + staleBy + ', got ' + age);
+  // A fresh last-success puts the expiry in the future -> clamped to 0.
+  const c = makeCtx({ getState: () => ({}), getLastSuccessfulSupabaseCallAt: () => Date.now() });
+  assert.strictEqual(createSaveEngine(c.ctx).computeCheckoutExpiryAgeMs(), 0);
+});
+
+test('reCheckOutAfterExpiry: success clears attention, retakes the lock, flushes dirty edits', async () => {
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, canCheckOut: true };
+  const { ctx, calls, appSide } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  appSide.autoSaveDirty = true;
+  const engine = createSaveEngine(ctx);
+  const res = await engine.reCheckOutAfterExpiry('test_trigger');
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(calls.cleared, 1);
+  assert.strictEqual(state.checkedOutBy, 'u1');
+  assert.strictEqual(state.isViewer, false);
+  assert.strictEqual(calls.refreshAt.length, 1);
+  assert.ok(logKinds(engine).includes('checkout_recovered'));
+  assert.deepStrictEqual(calls.autosaves, ['checkout_recovered']);
+  assert.match(calls.toasts[0], /Saving your edits/);
+});
+
+test('reCheckOutAfterExpiry: blocked by another holder reports otherEmail', async () => {
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u2', checked_out_email: 'other@x.com' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row], { checkOut: { data: { ok: false, error: 'held' } } }));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u2', checkedOutEmail: 'other@x.com' };
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.reCheckOutAfterExpiry('test_trigger');
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.otherEmail, 'other@x.com');
+  assert.ok(logKinds(engine).includes('checkout_recover_blocked'));
+});
+
+test('tryAutoRecheckoutIfAllowed: skip ladder, per-project cap, and counter reset', async () => {
+  const savedGap = globalThis.AUTO_RECHECKOUT_MIN_GAP_MS;
+  const savedCap = globalThis.AUTO_RECHECKOUT_MAX_PER_PROJECT;
+  globalThis.AUTO_RECHECKOUT_MIN_GAP_MS = 0;
+  globalThis.AUTO_RECHECKOUT_MAX_PER_PROJECT = 2;
+  try {
+    const viewer = makeCtx({ getState: () => ({ supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', isViewer: true }) });
+    const rv = await createSaveEngine(viewer.ctx).tryAutoRecheckoutIfAllowed('t');
+    assert.deepStrictEqual(rv, { skipped: true, reason: 'viewer' });
+
+    const row = { id: 'p1', can_edit: true, can_check_out: true, checked_out_by: null };
+    const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+    const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, canCheckOut: true, isViewer: false };
+    const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+    const engine = createSaveEngine(ctx);
+    assert.strictEqual((await engine.tryAutoRecheckoutIfAllowed('t')).ok, true);
+    assert.strictEqual((await engine.tryAutoRecheckoutIfAllowed('t')).ok, true);
+    const capped = await engine.tryAutoRecheckoutIfAllowed('t');
+    assert.deepStrictEqual(capped, { skipped: true, reason: 'cap_reached' });
+    engine.resetAutoRecheckoutCounter('p1');
+    assert.strictEqual((await engine.tryAutoRecheckoutIfAllowed('t')).ok, true);
+  } finally {
+    globalThis.AUTO_RECHECKOUT_MIN_GAP_MS = savedGap;
+    globalThis.AUTO_RECHECKOUT_MAX_PER_PROJECT = savedCap;
+  }
+});
+
+test('handleBackgroundCheckoutExpired: disabled no-op; silent recovery; one-shot toast re-armed by clear', async () => {
+  const off = makeCtx({ isSupabaseEnabled: () => false });
+  const ro = await createSaveEngine(off.ctx).handleBackgroundCheckoutExpired('t');
+  assert.deepStrictEqual(ro, { silentlyRecovered: false, reason: 'supabase_disabled' });
+
+  const savedGap = globalThis.AUTO_RECHECKOUT_MIN_GAP_MS;
+  globalThis.AUTO_RECHECKOUT_MIN_GAP_MS = 0;
+  try {
+    // Recoverable: permissions grant canCheckOut and check_out succeeds. The
+    // row flips to "held by me" once the checkout lands (so the trailing
+    // permission refresh doesn't re-grant canCheckOut and toast a promotion).
+    let held = false;
+    const supabase = makeChannelSupabase(async (name) => {
+      if (name === 'check_out_project') { held = true; return { data: { ok: true, checked_out_at: 'TS' } }; }
+      if (name === 'list_accessible_projects') {
+        return { data: [held
+          ? { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1' }
+          : { id: 'p1', can_edit: true, can_check_out: true, checked_out_by: null }] };
+      }
+      return { data: {} };
+    }).supabase;
+    const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, canCheckOut: true, isViewer: false };
+    const ok = makeCtx({ getState: () => state, getSupabase: () => supabase });
+    const rOk = await createSaveEngine(ok.ctx).handleBackgroundCheckoutExpired('t');
+    assert.deepStrictEqual(rOk, { silentlyRecovered: true });
+    assert.strictEqual(ok.calls.attention, 1);
+    assert.deepStrictEqual(ok.calls.toasts, []);
+
+    // Unrecoverable (viewer): the expired toast fires exactly once until cleared.
+    const v = makeCtx({ getState: () => ({ supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', isViewer: true }) });
+    const ev = createSaveEngine(v.ctx);
+    await ev.handleBackgroundCheckoutExpired('t');
+    await ev.handleBackgroundCheckoutExpired('t');
+    assert.strictEqual(v.calls.toasts.length, 1);
+    ev.clearCheckoutExpiredToastShown();
+    await ev.handleBackgroundCheckoutExpired('t');
+    assert.strictEqual(v.calls.toasts.length, 2);
+  } finally {
+    globalThis.AUTO_RECHECKOUT_MIN_GAP_MS = savedGap;
+  }
+});
+
+// --- Stage 5: Turn In core ---------------------------------------------------
+
+test('doTurnIn: clean session releases the lock, stages the banner, and clears it', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [], counters: [], lineTypes: [], pdfStoragePath: null, isViewer: false };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  assert.strictEqual(engine.isTurnInInProgress(), false);
+  const res = await engine.doTurnIn();
+  assert.deepStrictEqual(res, { ok: true });
+  assert.ok(logKinds(engine).includes('turn_in_start'));
+  assert.ok(logKinds(engine).includes('turn_in_ok'));
+  assert.strictEqual(calls.turnInLabels[calls.turnInLabels.length - 1], null);
+  assert.strictEqual(engine.isTurnInInProgress(), false);
+});
+
+test('doTurnIn: dirty session flushes via performAutoSave while in-progress is held', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [], counters: [], lineTypes: [], pdfStoragePath: 'cloud/p.pdf', isViewer: false };
+  let sawInProgress = null;
+  const { ctx, calls, appSide } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  appSide.autoSaveDirty = true;
+  const engine = createSaveEngine(ctx);
+  ctx.performAutoSave = async () => { sawInProgress = engine.isTurnInInProgress(); return { ok: true }; };
+  const res = await engine.doTurnIn();
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(sawInProgress, true);
+  assert.ok(logKinds(engine).some((k) => k === 'turn_in_stage'));
+  assert.strictEqual(calls.turnInLabels[calls.turnInLabels.length - 1], null);
+});
+
+test('doTurnIn: CHECKOUT_EXPIRED from the pre-check-in save is surfaced as a code', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [], counters: [], lineTypes: [], pdfStoragePath: 'cloud/p.pdf', isViewer: false };
+  const { ctx, appSide } = makeCtx({
+    getState: () => state,
+    getSupabase: () => supabase,
+    performAutoSave: async () => ({ ok: false, error: { code: 'CHECKOUT_EXPIRED', message: 'expired' } }),
+  });
+  appSide.autoSaveDirty = true;
+  const engine = createSaveEngine(ctx);
+  const res = await engine.doTurnIn();
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.code, 'CHECKOUT_EXPIRED');
+  assert.ok(logKinds(engine).includes('turn_in_blocked_by_save_err'));
+});
+
+test('doTurnIn: local-only PDF is uploaded with progress handler set and cleared', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [{ canvases: [] }], counters: [], lineTypes: [], pdfStoragePath: null, isViewer: false };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.doTurnIn();
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(calls.uploads.length, 1);
+  assert.strictEqual(calls.uploads[0][0], 'turn_in');
+  assert.strictEqual(calls.uploads[0][1].ignoreBackoff, true);
+  assert.strictEqual(calls.progressHandlers.length, 2);
+  assert.strictEqual(typeof calls.progressHandlers[0], 'function');
+  assert.strictEqual(calls.progressHandlers[1], null);
+});
+
+test('doTurnIn: server-side already-released is treated as success', async () => {
+  const err = { code: 'CHECKOUT_NOT_OWNED', message: 'You do not have this project checked out' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([], { checkIn: { data: null, error: err } }));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [], counters: [], lineTypes: [], pdfStoragePath: null, isViewer: false };
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.doTurnIn();
+  assert.deepStrictEqual(res, { ok: true, releasedByServer: true });
+  assert.ok(logKinds(engine).includes('turn_in_already_released'));
+});
+
+test('resetTurnInState clears the in-flight guard so a wedged flag cannot brick Turn In', async () => {
+  const { ctx } = makeCtx();
+  const engine = createSaveEngine(ctx);
+  engine.resetTurnInState();
+  assert.strictEqual(engine.isTurnInInProgress(), false);
 });

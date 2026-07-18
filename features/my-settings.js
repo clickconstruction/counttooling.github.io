@@ -43,7 +43,9 @@
 
   document.getElementById('mySettingsSignOut').onclick = async () => {
     App.hideModal('mySettingsModal');
-    await App.checkInCurrentProjectIfHeld();
+    // In-block publish: checkInCurrentProjectIfHeld only exists on App when
+    // SUPABASE_ENABLED (the binding here is unconditional), so guard it.
+    if (App.checkInCurrentProjectIfHeld) await App.checkInCurrentProjectIfHeld();
     const sb = App.getSupabase ? App.getSupabase() : null;
     if (sb) sb.auth.signOut();
     App.updateUI();

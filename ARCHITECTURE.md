@@ -104,6 +104,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [canvas-layers.spec.js](canvas-layers.spec.js) | Playwright regression for pilot #31 — Add creates an empty active layer; duplicate mode deep-copies the seeded layer's markers into a distinct annotations object; rename commits via Done **and** via Escape (same `#canvasDetailsClose` path); the delete confirm names the layer, removes it, and reactivates the first remaining one. Asserts no console / page errors; `npx playwright test canvas-layers.spec.js` (the peek toggle is covered by [show-all-canvases.spec.js](show-all-canvases.spec.js)) |
 | [features/my-settings.js](features/my-settings.js) | Thirty-second feature-file split (`window.App` registry pilot #32) — the **My Settings modal** (`#mySettingsModal`), the surface pilot #20 deliberately deferred: `openMySettings` (signed-out falls through to the auth modal via a dispatched `#authBtn` click), the **Artboard** rows (Save/Load via the newly-published engine helpers `App.saveUserAirboard`/`App.fetchUserAirboard`, Export to `artboard-backup.json`, Clear-with-defaults using the newly-published `App.PLUMBING_DEFAULTS`/`App.LINE_DEFAULTS`), the change-password form (`supabase.auth.updateUser` via `App.getSupabase()`), sign-out, close, and the admin Manage-Users/Manage-User/All-Users openers (feature-to-feature: `App.openManageUserModal`/`App.openAllUsersModal` + a dispatched `#manageUsersBtn` click into [features/user-admin.js](features/user-admin.js), whose `#mySettingsMyActivity` binding was already there). Registers `App.openMySettings`; the three openers (`#authBtn` signed-in path, `#sidebarLogoUser`, `#statusBarAuth`) stay in app.js as deferred `App.*` calls. The Airboard engine (`fetchUserAirboard`/`saveUserAirboard`) and the auth sign-in form stay in app.js (markers renamed `// SECTION: My Settings pointer` / `// SECTION: Settings menu actions` / `// SECTION: Auth sign-in form`) |
 | [my-settings.spec.js](my-settings.spec.js) | Playwright regression for pilot #32 — always-run: `App.openMySettings` registered; signed-out open falls through to the auth modal; Export artboard yields a real `artboard-backup.json` download; Clear artboard empties the palette + resets active tool state; the close binding hides a force-shown modal. The airboard cloud round-trip and password change stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test my-settings.spec.js` |
+| [features/user-activity.js](features/user-activity.js) | Thirty-third feature-file split (`window.App` registry pilot #33; the last rung of the modal ladder) — the **admin User Activity modal** (`#userActivityModal`, the raw event log): `openUserActivityModal` (per-user events or the all-users view via raw `fetch()` against `list_user_activity_for_admin`), the Events/Summary view toggle (`list_user_activity_summary_for_admin`), the user-select dropdown (`list_users_for_admin`), the client-side filter over `state.userActivityAllRowsCache`, and the close binding; the `userActivitySelectSuppress` flag moves as a private `let`. The **`App.openUserActivityModal` registration re-homes here** — [features/user-admin.js](features/user-admin.js) (which owns the rich per-user overview modal) keeps consuming it at call time. Uses the published `SUPABASE_URL`/`SUPABASE_ANON_KEY` + the session token from `App.state` (these calls never used supabase-js). Three new publishes for the format.js helpers it renders with (`filterUserActivityRows`/`renderUserActivityAllUsersTableHtml`/`formatLastSignInUserActivity` — format.js globals are lint-invisible to the features eslint group); the pure formatters themselves stay in [format.js](format.js) |
+| [user-activity.spec.js](user-activity.spec.js) | Playwright regression for pilot #33 — always-run: the re-homed `App.openUserActivityModal` is wired; opening without an admin session is a safe no-op; the client-side filter pipeline works against a seeded rows cache (typing filters the rendered table, a non-match shows the no-match message, Clear restores the full table); the close binding hides the modal. The loaders stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test user-activity.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -378,7 +380,13 @@ export stays under the renamed marker `// SECTION: Export canvas JSON`.
 My Settings (pilot #32) pulled the deferred My Settings modal into
 [features/my-settings.js](features/my-settings.js) (new publishes
 `fetchUserAirboard`/`saveUserAirboard`/`PLUMBING_DEFAULTS`/`LINE_DEFAULTS`;
-the Airboard engine + auth sign-in form stay).
+the Airboard engine + auth sign-in form stay). User Activity (pilot #33)
+closed the modal ladder: the admin raw-log modal moved to
+[features/user-activity.js](features/user-activity.js) with its loaders,
+filter, and view toggle — the `App.openUserActivityModal` registration
+**re-homed** there (user-admin.js keeps consuming it), plus three format.js
+helper publishes (`filterUserActivityRows`/
+`renderUserActivityAllUsersTableHtml`/`formatLastSignInUserActivity`).
 
 ## Section index (grep `// SECTION:`)
 
@@ -426,36 +434,35 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L7186 - Export & report dropdown menus
 - L7276 - Sidebar drawer toggles
 - L7287 - Mobile actions burger menu pointer & header logo
-- L7299 - User activity time formatting
-- L7457 - User Activity modal (admin)
-- L7525 - My Settings pointer (features/my-settings.js)
-- L7548 - Auth & settings entry buttons
-  - L7593 - Project Settings checkout & Save Status bell
-  - L7716 - [sync] Checkout expired recovery
-  - L7970 - [sync] Turn In
-  - L8483 - Share modal pointer & copy-project openers
-  - L8526 - Cloud project hydrate / copy / fork
-  - L8723 - Settings menu actions
-  - L8744 - Auth sign-in form
-  - L8768 - Save Project modal
-  - L8971 - Copy project modal
-  - L8995 - Checkout expired recovery modal wiring
-  - L9079 - Save-before-load modal
-  - L9154 - Last-session restore prompt
-  - L9233 - User Activity filters & view toggle
-- L9421 - Canvas Event Handlers
-- L9793 - Event Binding
-- L9803 - Aim loupe (mobile press-hold precise placement)
-- L9941 - Zoom transform preview & commit
-- L9977 - Canvas mouse, wheel & touch handlers
-- L10598 - Global dropdown dismissal & keyboard hotkeys
-- L10826 - [sync] Manual save to cloud
-- L11451 - [sync] Auto-save
-- L11748 - [sync] Local backup (IndexedDB takeoff state)
-- L11978 - [sync] Checkout keep-alive
-- L12022 - App feature registry
-- L12195 - View-only mode
-- L12476 - Init / boot
+- L7299 - User Activity pointer (format.js + features/user-activity.js)
+- L7311 - My Settings pointer (features/my-settings.js)
+- L7334 - Auth & settings entry buttons
+  - L7379 - Project Settings checkout & Save Status bell
+  - L7502 - [sync] Checkout expired recovery
+  - L7756 - [sync] Turn In
+  - L8269 - Share modal pointer & copy-project openers
+  - L8312 - Cloud project hydrate / copy / fork
+  - L8509 - Settings menu actions
+  - L8530 - Auth sign-in form
+  - L8554 - Save Project modal
+  - L8757 - Copy project modal
+  - L8781 - Checkout expired recovery modal wiring
+  - L8865 - Save-before-load modal
+  - L8940 - Last-session restore prompt
+  - L9019 - Canvas Repair modal wiring
+- L9166 - Canvas Event Handlers
+- L9538 - Event Binding
+- L9548 - Aim loupe (mobile press-hold precise placement)
+- L9686 - Zoom transform preview & commit
+- L9722 - Canvas mouse, wheel & touch handlers
+- L10343 - Global dropdown dismissal & keyboard hotkeys
+- L10571 - [sync] Manual save to cloud
+- L11196 - [sync] Auto-save
+- L11493 - [sync] Local backup (IndexedDB takeoff state)
+- L11723 - [sync] Checkout keep-alive
+- L11767 - App feature registry
+- L11943 - View-only mode
+- L12224 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -535,8 +542,7 @@ Annotated, in rough order:
   - PDF bundling helpers (`addReportPagesToPdf`, `addNotesToPdf`, `addHighlightsToPdf`, `hasAnyHighlights`, `hasAnyNotes`) → moved to [features/pdf-bundle.js](features/pdf-bundle.js); the interleaved `importCanvasAfterPdf`/`clearPage` modals stay (renamed marker)
   - Export & report dropdown menus — the header `#exportDropdown` (canvas/PDF/both/import), Show Report menu, Macros + custom-icon-tips bindings (`downloadCurrentPageAsPdf` + its mode menu moved to [features/output.js](features/output.js); `downloadProjectPdf` stays under PDF download helpers)
   - Note modal — `openNoteModal`
-  - User activity time formatting — `formatLastSignIn`, `formatUserActivityDateTime`, `formatLastSignInUserActivity`
-  - User Activity modal (admin) — `openUserActivityModal`
+  - User Activity pointer — the pure formatters live in [format.js](format.js); the admin modal + loaders + filter live in [features/user-activity.js](features/user-activity.js) (reached via `App.openUserActivityModal`)
   - User Settings & Manage Users — `openMySettings`, `openManageUserModal`, `openAllUsersModal`, `deleteUser`, `openSetPasswordModal`, `openTransferModal`, `openUserProjectsModal`, `openUserActivityOverview`
   - Canvas Repair — `openCanvasRepairModal`, `applyCanvasRepair`
   - Manage Icons modal — `openManageIconsModal`
@@ -554,7 +560,7 @@ Annotated, in rough order:
   - Checkout expired recovery modal wiring — `wireCheckoutExpiredRecoveryModal`, `#saveStatusExpired*`
   - Save-before-load modal — `#saveBeforeLoad*`
   - Last-session restore prompt — `#lastSessionRestoreKeep`/`Discard`
-  - User Activity filters & view toggle — `#userActivity*` filter/view handlers
+  - Canvas Repair modal wiring — the `#canvasRepair*` close/apply bindings (the `#userActivity*` filter/view handlers moved to [features/user-activity.js](features/user-activity.js))
 - Canvas Event Handlers — `showContextMenu`, `handleCanvasClick`, `handleCanvasDblClick`, `handleContextMenu`
 - Event Binding — the canvas-wrapper handle + the bitmap-prefetch cancellation guards
 - Aim loupe (mobile press-hold precise placement) — the loupe core only: `isAimingTool`, `enterAiming`/`cancelAiming`, `drawAimLoupe`, `commitAimPoint`, `abortVertexDrag` (its call sites live in the mouse/touch handlers below)

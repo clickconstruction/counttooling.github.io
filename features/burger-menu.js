@@ -64,10 +64,13 @@
       document.getElementById(state.hideMarks ? 'hideMarksIconHide' : 'hideMarksIconShow')
     );
     // 2. Share — editor opens the Share modal (#sidebarLogoShare); a signed-in
-    //    view-link viewer copies the link (#headerShareBtn). Same gating as updateUI.
+    //    viewer copies the link (#headerShareBtn). Same gating as updateUI,
+    //    including its !(isMobile && isViewer) exclusion on #sidebarLogoShare —
+    //    a mobile project viewer gets the copy-link row, never the editor modal.
     const baseShare = App.SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
     const shareIcon = document.getElementById('headerShareBtn');
-    if (baseShare && !state.loadedViaViewLink) {
+    if (baseShare && !state.loadedViaViewLink && !(isMobile && state.isViewer)) {
       addItem('Share', () => document.getElementById('sidebarLogoShare')?.click(), shareIcon);
     } else if (baseShare && state.isViewer) {
       addItem('Share', () => document.getElementById('headerShareBtn')?.click(), shareIcon);

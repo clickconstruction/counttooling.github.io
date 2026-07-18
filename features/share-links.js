@@ -14,9 +14,11 @@
  * the `#shareViewLinkCreate` / `#shareProjectModalClose` / `#shareProjectAdd`
  * handlers plus the view-links collapse toggle at load.
  *
- * Cloud-coupled: reads the Supabase client via App.getSupabase() at call time
- * (the client is recycled on recovery, and the accessor is only registered
- * when SUPABASE_ENABLED — every entry guards on it). Revoking a link calls
+ * Cloud-coupled: re-reads the Supabase client via App.getSupabase() at every
+ * await site (the client is recycled on recovery, so a captured reference
+ * would go stale mid-invocation; the accessor itself is registered
+ * unconditionally in app.js's registry tail and returns null when Supabase
+ * is disabled — the entry guards cover that). Revoking a link calls
  * App.onViewLinkRevoked() (registered by features/output.js) so the Copy to
  * PipeTooling export never hands out a revoked token — feature-to-feature
  * coupling mediated entirely by the registry, load order irrelevant. The two
@@ -32,8 +34,11 @@
 
   async function openShareProjectModal() {
     const state = App.state;
-    const supabase = App.getSupabase ? App.getSupabase() : null;
-    if (!state.currentProjectId || !supabase) return;
+    // Re-read the client at EACH await site below (never a single entry capture):
+    // the recovery machinery recycles the supabase-js client mid-flight, and a
+    // captured reference would keep using the wedged client the recycle abandoned
+    // (same rule as features/load-project.js).
+    if (!state.currentProjectId || !App.getSupabase()) return;
     const listEl = document.getElementById('shareProjectList');
     const errEl = document.getElementById('shareProjectError');
     const userSelect = document.getElementById('shareProjectUserSelect');
@@ -48,9 +53,10 @@
     if (shareViewLinkCreate) shareViewLinkCreate.style.display = state.loadedViaViewLink ? 'none' : '';
     let usersResult, sharesResult;
     try {
+      const sb = App.getSupabase();
       [usersResult, sharesResult] = await Promise.all([
-        supabase.rpc('list_users_for_project_invite', { p_project_id: state.currentProjectId }),
-        supabase.rpc('list_project_shares', { p_project_id: state.currentProjectId })
+        sb.rpc('list_users_for_project_invite', { p_project_id: state.currentProjectId }),
+        sb.rpc('list_project_shares', { p_project_id: state.currentProjectId })
       ]);
     } catch (e) {
       listEl.innerHTML = '';
@@ -108,7 +114,7 @@
     if (viewLinksListEl) {
       viewLinksListEl.innerHTML = '<p style="color:var(--text3);font-size:0.85rem;">Loading...</p>';
       try {
-        const { data: links, error: linksErr } = await supabase.rpc('list_view_links', { p_project_id: state.currentProjectId });
+        const { data: links, error: linksErr } = await App.getSupabase().rpc('list_view_links', { p_project_id: state.currentProjectId });
         viewLinksListEl.innerHTML = '';
         if (linksErr || !links || links.length === 0) {
           viewLinksListEl.innerHTML = '<p style="color:var(--text3);font-size:0.85rem;">No view links yet.</p>';
@@ -167,13 +173,12 @@
 
   document.getElementById('shareViewLinkCreate').onclick = async () => {
     const state = App.state;
-    const supabase = App.getSupabase ? App.getSupabase() : null;
-    if (!state.currentProjectId || !supabase) return;
+    if (!state.currentProjectId || !App.getSupabase()) return;
     const btn = document.getElementById('shareViewLinkCreate');
     btn.disabled = true;
     btn.textContent = 'Creating...';
     try {
-      const { data, error } = await supabase.rpc('create_view_link', { p_project_id: state.currentProjectId, p_name: null, p_expires_at: null });
+      const { data, error } = await App.getSupabase().rpc('create_view_link', { p_project_id: state.currentProjectId, p_name: null, p_expires_at: null });
       if (error) throw new Error(error.message);
       if (data && data.ok && data.token) {
         const base = window.location.origin + (window.location.pathname || '/');

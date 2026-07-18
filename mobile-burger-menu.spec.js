@@ -87,6 +87,44 @@ test.describe('Mobile right-side burger menu', () => {
     expect(downloadRows).toEqual(['Print Current Page (Current Canvas)']);
   });
 
+  test('mobile shared-project viewer gets the copy-link Share row, never the editor modal row', async ({ page }) => {
+    await page.setViewportSize(MOBILE);
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Simulate a signed-in shared-project VIEWER (role=viewer, not a view link):
+    // updateUI hides #sidebarLogoShare for isMobile && isViewer, so the drawer
+    // must offer the copy-link row (#headerShareBtn), not the editor Share modal.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.supabaseSession = { user: { id: 'u1', email: 'viewer@clickplumbing.com' } };
+      s.currentProjectId = 'p1';
+      s.isViewer = true;
+      s.loadedViaViewLink = false;
+      window.App.updateBurgerMenu();
+    });
+    const shareTargets = await page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll('#rightMenuList .right-menu-item'))
+        .filter((b) => /share/i.test(b.textContent || ''));
+      // Identify which hidden control each Share row dispatches by clicking it
+      // with spies on both candidates.
+      let clickedSidebar = 0, clickedHeader = 0;
+      const sidebar = document.getElementById('sidebarLogoShare');
+      const header = document.getElementById('headerShareBtn');
+      const origSidebar = sidebar.onclick, origHeader = header.onclick;
+      sidebar.onclick = () => { clickedSidebar++; };
+      header.onclick = () => { clickedHeader++; };
+      rows.forEach((r) => r.click());
+      sidebar.onclick = origSidebar; header.onclick = origHeader;
+      return { rowCount: rows.length, clickedSidebar, clickedHeader };
+    });
+    expect(shareTargets.rowCount).toBe(1);
+    expect(shareTargets.clickedSidebar).toBe(0);   // editor modal path must NOT be offered
+    expect(shareTargets.clickedHeader).toBe(1);    // copy-link path is
+  });
+
   test('desktop is unaffected: burger hidden, header dropdowns visible', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/app/');

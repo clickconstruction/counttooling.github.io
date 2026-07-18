@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(save-engine): Stage 2 — the log core + dirty core (first engine-owned state)
+
+Second stage: the engine now OWNS state instead of only borrowing accessors.
+The Save Status **log core** moved in (`saveStatusLog` + `pushSaveEvent` /
+`pruneSaveStatusLog` / `getSaveStatusLogWindowMs` + the `[SaveDebug]` helpers
+`isSaveDebugEnabled`/`setSaveDebugEnabled`/`saveDebugRunId`/`saveDebugLog`/
+`saveDebugLogError`), and the **dirty core** (`markProjectDirty` with
+engine-owned `dirtyGeneration` / `dirtyStartedAt` / the 2s-throttled dirty
+event). app.js keeps same-named wrappers for the ~230 call sites;
+`App.getSaveStatusLog` delegates to the engine getter; the save paths read
+generations via `saveEngine.getDirtyGeneration()`; `resetLocalSessionState` /
+`resetAutosaveDegradedState` call the engine's `resetDirtyTracking` /
+`clearDirtyStartedAt` / `clearSaveStatusLog`. Deliberately app-side still:
+`autoSaveDirty` + `lastModifiedAt` (their primary writers are the Stage-6
+save paths — the engine reaches them via ctx get/set), the debounced
+local-backup kick (`ctx.scheduleTakeoffBackup`; the writer moves in Stage 3),
+the envelope builders (wired to a dozen later-stage lets), and
+`resetLocalSessionState`/`resetAutosaveDegradedState` (orchestrators). The
+undo/redo machinery that shared the old dirty-tracking section got its own
+honest `// SECTION: Undo/redo stacks` marker (it was never sync).
+save-engine.js gained its own eslint group (constants + save-utils globals);
+save-engine.test.js grew to 13 tests, now asserting against the engine's own
+log (Stage 1's ctx-spy assertions were rewritten accordingly).
+
+---
+
 ## refactor(save-engine): Stage 1 — the createSaveEngine(ctx) seam
 
 First stage of the staged save/sync-engine extraction (the endgame after the

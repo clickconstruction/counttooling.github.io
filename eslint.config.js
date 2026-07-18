@@ -39,6 +39,16 @@ const constantsGlobals = Object.fromEntries(
 // icon-render.js reaches for the icon-data globals (CUSTOM_ICONS,
 // VB_384_512_PATHS, FA_PATHS) by bare name; same no-redeclare reasoning, so give
 // it an icons-only global set (not its own exports).
+// save-engine.js reaches for the constants (GLOBAL_RELOAD_* / CHECKOUT_* /
+// SAVE_STATUS_LOG_*) and the pure save-utils helpers (serializeSaveError) by
+// bare name; same no-redeclare reasoning, so give it those two modules' export
+// sets (not its own).
+const saveEngineGlobals = Object.fromEntries(
+  []
+    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')))
+    .map((k) => [k, 'readonly']),
+);
+
 const iconsGlobals = Object.fromEntries(
   Object.keys(require('./icons.js')).map((k) => [k, 'readonly']),
 );
@@ -125,7 +135,7 @@ module.exports = [
     // noise here. no-undef stays an error (inherited from recommended) to catch
     // typo'd constants. They must NOT receive their own export names as globals
     // (no-redeclare would flag the local declarations), hence constants-only.
-    files: ['idb.js', 'format.js', 'save-engine.js'],
+    files: ['idb.js', 'format.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -179,6 +189,28 @@ module.exports = [
       globals: {
         ...globals.browser,
         ...geometryGlobals,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // save-engine.js: the save/sync engine module (createSaveEngine(ctx)),
+    // extracted from app.js in stages. Classic <script> loaded after
+    // constants.js + save-utils.js, so it reads their exports by bare name
+    // (saveEngineGlobals); everything state/closure-coupled arrives via ctx.
+    // Its export is consumed cross-file by app.js, so no-unused-vars is noise.
+    files: ['save-engine.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...saveEngineGlobals,
         module: 'readonly',
       },
     },

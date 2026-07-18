@@ -7296,231 +7296,17 @@
     }
   };
 
-  // SECTION: User activity time formatting
+  // SECTION: User Activity pointer (format.js + features/user-activity.js)
   // The pure formatters live in format.js (loaded before app.js) and resolve
   // here by bare name: formatLastSignIn, dateKeyInTimeZone,
   // calendarDaysFromSignInToNowInZone, formatLastSignInUserActivity,
   // formatUserActivityDateTime, filterUserActivityRows,
   // renderUserActivityAllUsersTableHtml. The DOM-coupled modal code stays below.
 
-  let userActivitySelectSuppress = false;
-
-  function applyUserActivityFilter() {
-    const listEl = document.getElementById('userActivityList');
-    const filterInp = document.getElementById('userActivityFilterInput');
-    const toolbar = document.getElementById('userActivityToolbar');
-    if (!listEl || !toolbar || toolbar.classList.contains('user-activity-toolbar-hidden')) return;
-    if (!Array.isArray(state.userActivityAllRowsCache)) return;
-    const q = filterInp ? filterInp.value : '';
-    const filtered = filterUserActivityRows(state.userActivityAllRowsCache, q);
-    if (filtered.length === 0 && state.userActivityAllRowsCache.length > 0) {
-      listEl.innerHTML = '<p style="color:var(--text3);">No rows match your filter.</p>';
-      return;
-    }
-    if (filtered.length === 0) {
-      listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
-      return;
-    }
-    listEl.innerHTML = renderUserActivityAllUsersTableHtml(filtered);
-  }
-
-  function populateUserActivityUserSelect(users, listOk) {
-    const sel = document.getElementById('userActivityUserSelect');
-    const hint = document.getElementById('userActivityUserListHint');
-    if (!sel) return;
-    userActivitySelectSuppress = true;
-    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    let html = '<option value="">All users (latest)</option>';
-    if (listOk && Array.isArray(users) && users.length) {
-      const sorted = users.slice().sort((a, b) => String(a.email || '').localeCompare(String(b.email || ''), undefined, { sensitivity: 'base' }));
-      sorted.forEach((u) => {
-        html += '<option value="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + esc(u.email || '—') + '</option>';
-      });
-    }
-    sel.innerHTML = html;
-    sel.value = '';
-    userActivitySelectSuppress = false;
-    if (hint) {
-      if (!listOk) {
-        hint.textContent = 'Could not load user list; use Filter to narrow activity.';
-        hint.style.display = 'block';
-      } else {
-        hint.textContent = '';
-        hint.style.display = 'none';
-      }
-    }
-  }
-
-  function syncUserActivityViewToggleUI() {
-    const ev = document.getElementById('userActivityViewEventsBtn');
-    const sum = document.getElementById('userActivityViewSummaryBtn');
-    const mode = state.userActivityViewMode;
-    if (ev) ev.setAttribute('aria-pressed', mode === 'events' ? 'true' : 'false');
-    if (sum) sum.setAttribute('aria-pressed', mode === 'summary' ? 'true' : 'false');
-  }
-
-  function renderUserActivitySummaryTableHtml(rows) {
-    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const head = '<thead><tr><th>Email</th><th title="Relative labels use US Central (Chicago) calendar days">Last sign-in</th><th>1 day</th><th>7 days</th><th>30 days</th></tr></thead>';
-    const body = rows.map((row) => {
-      const signIn = esc(formatLastSignInUserActivity(row.last_sign_in_at));
-      const e1 = row.events_1d != null ? String(row.events_1d) : '0';
-      const e7 = row.events_7d != null ? String(row.events_7d) : '0';
-      const e30 = row.events_30d != null ? String(row.events_30d) : '0';
-      return '<tr><td>' + esc(row.email) + '</td><td>' + signIn + '</td><td>' + esc(e1) + '</td><td>' + esc(e7) + '</td><td>' + esc(e30) + '</td></tr>';
-    }).join('');
-    return '<table class="user-activity-table user-activity-summary-table">' + head + '<tbody>' + body + '</tbody></table>';
-  }
-
-  function loadUserActivityAllUsersContent() {
-    const session = state.supabaseSession;
-    if (!session?.access_token) return;
-    const listEl = document.getElementById('userActivityList');
-    const toolbar = document.getElementById('userActivityToolbar');
-    const filterInp = document.getElementById('userActivityFilterInput');
-    const subEl = document.getElementById('userActivityModalSubtitle');
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
-    if (subEl) {
-      subEl.textContent = state.userActivityViewMode === 'summary'
-        ? 'Per-user event counts (rolling windows) and last sign-in. Days are in CST not UTC.'
-        : 'Latest events across all users (newest first). Event times are US Central (Chicago).';
-    }
-    if (state.userActivityViewMode === 'summary') {
-      state.userActivityAllRowsCache = null;
-      if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
-      if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
-      fetch(SUPABASE_URL + '/rest/v1/rpc/list_user_activity_summary_for_admin', {
-        method: 'POST',
-        headers: headers,
-        body: '{}'
-      }).then(async (res) => {
-        let data;
-        try { data = await res.json(); } catch (_) { data = []; }
-        if (!res.ok) {
-          const msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + res.status);
-          if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
-          return;
-        }
-        const rows = Array.isArray(data) ? data : [];
-        if (rows.length === 0) {
-          if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No users.</p>';
-          return;
-        }
-        if (listEl) listEl.innerHTML = renderUserActivitySummaryTableHtml(rows);
-      }).catch((e) => {
-        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
-      });
-      return;
-    }
-    if (toolbar) toolbar.classList.remove('user-activity-toolbar-hidden');
-    if (filterInp) filterInp.value = '';
-    if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
-    const payload = { p_limit: 500, p_user_id: null, p_since: null };
-    const actFetch = fetch(SUPABASE_URL + '/rest/v1/rpc/list_user_activity_for_admin', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(payload)
-    });
-    const usrFetch = fetch(SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', {
-      method: 'POST',
-      headers: headers,
-      body: '{}'
-    });
-    Promise.all([actFetch, usrFetch]).then(async ([actRes, usrRes]) => {
-      let actData;
-      let usrData;
-      try { actData = await actRes.json(); } catch (_) { actData = []; }
-      try { usrData = await usrRes.json(); } catch (_) { usrData = []; }
-      const usersOk = usrRes.ok && Array.isArray(usrData);
-      populateUserActivityUserSelect(usersOk ? usrData : [], usersOk);
-      if (!actRes.ok) {
-        state.userActivityAllRowsCache = null;
-        const msg = (actData && (actData.message || actData.error || actData.hint)) ? String(actData.message || actData.error || actData.hint) : ('HTTP ' + actRes.status);
-        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
-        if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
-        return;
-      }
-      const data = Array.isArray(actData) ? actData : [];
-      state.userActivityAllRowsCache = data;
-      if (data.length === 0) {
-        if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
-        return;
-      }
-      if (listEl) listEl.innerHTML = renderUserActivityAllUsersTableHtml(filterUserActivityRows(data, filterInp ? filterInp.value : ''));
-    }).catch((e) => {
-      state.userActivityAllRowsCache = null;
-      if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
-      if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
-    });
-  }
-
-  // SECTION: User Activity modal (admin)
-  function openUserActivityModal(userId, email) {
-    const session = state.supabaseSession;
-    if (!session?.access_token || !state.isAdmin) return;
-    const allUsers = userId == null;
-    const titleEl = document.getElementById('userActivityModalTitle');
-    const listEl = document.getElementById('userActivityList');
-    const subEl = document.getElementById('userActivityModalSubtitle');
-    const toolbar = document.getElementById('userActivityToolbar');
-    const filterInp = document.getElementById('userActivityFilterInput');
-    const viewToggle = document.getElementById('userActivityModalViewToggle');
-    if (titleEl) titleEl.textContent = allUsers ? 'All user activity' : 'User activity';
-    if (subEl) {
-      if (allUsers) subEl.textContent = 'Latest events across all users (newest first).';
-      else subEl.textContent = (email ? ('Activity for ' + email) : String(userId)) + ' Event times are US Central (Chicago).';
-    }
-    if (!allUsers) {
-      state.userActivityAllRowsCache = null;
-      if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
-      if (viewToggle) viewToggle.classList.add('user-activity-view-toggle-hidden');
-    } else {
-      state.userActivityViewMode = 'events';
-      if (viewToggle) viewToggle.classList.remove('user-activity-view-toggle-hidden');
-      syncUserActivityViewToggleUI();
-      if (filterInp) filterInp.value = '';
-    }
-    if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
-    showModal('userActivityModal');
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
-    if (!allUsers) {
-      const payload = { p_limit: 200, p_user_id: userId, p_since: null };
-      fetch(SUPABASE_URL + '/rest/v1/rpc/list_user_activity_for_admin', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(payload)
-      }).then(async (res) => {
-        let data;
-        try { data = await res.json(); } catch (_) { data = []; }
-        if (!res.ok) {
-          const msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + res.status);
-          if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
-          return;
-        }
-        if (!Array.isArray(data) || data.length === 0) {
-          if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
-          return;
-        }
-        const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        if (listEl) {
-          listEl.innerHTML = data.map((row) => {
-            const when = row.created_at ? formatUserActivityDateTime(row.created_at) : '—';
-            let meta;
-            try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
-            return '<div class="settings-user-row" style="flex-wrap:wrap;align-items:flex-start;">' +
-              '<span style="min-width:120px;font-weight:600;">' + esc(row.event_type) + '</span>' +
-              '<span style="color:var(--text3);min-width:150px;">' + esc(when) + '</span>' +
-              '<span style="color:var(--text2);flex:1;word-break:break-all;">' + esc(meta) + '</span>' +
-              '</div>';
-          }).join('');
-        }
-      }).catch((e) => {
-        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
-      });
-      return;
-    }
-    loadUserActivityAllUsersContent();
-  }
+  // The admin User Activity modal (openUserActivityModal, the all-users/summary
+  // loaders, the user-select + client-side filter, and their bindings) moved to
+  // features/user-activity.js; features/user-admin.js keeps reaching it via
+  // App.openUserActivityModal (registration re-homed there).
 
   // SECTION: My Settings pointer (features/my-settings.js)
   // openMySettings (+ every #mySettings* handler: airboard save/load/export/
@@ -9230,50 +9016,9 @@
     // #manageUsersBtnSidebar, #adminPanelClose, #manageUserModalClose,
     // manageUserModalAllActivityBtn, #allUsersModalClose, #adminCreateForm below)
     // moved to features/user-admin.js (window.App registry).
-    // SECTION: User Activity filters & view toggle
-    document.getElementById('userActivityModalClose').onclick = () => hideModal('userActivityModal');
-    const userActivityUserSelect = document.getElementById('userActivityUserSelect');
-    if (userActivityUserSelect) {
-      userActivityUserSelect.onchange = function () {
-        if (userActivitySelectSuppress) return;
-        const v = this.value;
-        if (v === '') openUserActivityModal(null, null);
-        else {
-          const opt = this.options[this.selectedIndex];
-          const em = opt && opt.dataset ? opt.dataset.email : '';
-          openUserActivityModal(v, em || '');
-        }
-      };
-    }
-    const userActivityFilterInput = document.getElementById('userActivityFilterInput');
-    if (userActivityFilterInput) {
-      userActivityFilterInput.addEventListener('input', () => applyUserActivityFilter());
-    }
-    const userActivityFilterClear = document.getElementById('userActivityFilterClear');
-    if (userActivityFilterClear) {
-      userActivityFilterClear.onclick = () => {
-        if (userActivityFilterInput) userActivityFilterInput.value = '';
-        applyUserActivityFilter();
-      };
-    }
-    const userActivityViewEventsBtn = document.getElementById('userActivityViewEventsBtn');
-    const userActivityViewSummaryBtn = document.getElementById('userActivityViewSummaryBtn');
-    if (userActivityViewEventsBtn) {
-      userActivityViewEventsBtn.onclick = () => {
-        if (state.userActivityViewMode === 'events') return;
-        state.userActivityViewMode = 'events';
-        syncUserActivityViewToggleUI();
-        loadUserActivityAllUsersContent();
-      };
-    }
-    if (userActivityViewSummaryBtn) {
-      userActivityViewSummaryBtn.onclick = () => {
-        if (state.userActivityViewMode === 'summary') return;
-        state.userActivityViewMode = 'summary';
-        syncUserActivityViewToggleUI();
-        loadUserActivityAllUsersContent();
-      };
-    }
+    // SECTION: Canvas Repair modal wiring
+    // The #userActivity* close/select/filter/view-toggle bindings moved to
+    // features/user-activity.js.
     // #manageProjectsModalClose moved to features/manage-projects.js.
     // manageIconsModalClose / manageIconsCancel / manageIconsSave handlers live
     // in features/manage-icons.js (window.App registry).
@@ -12108,7 +11853,10 @@
   App.formatLastSignIn = formatLastSignIn;
   App.formatUserActivityDateTime = formatUserActivityDateTime;
   App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;
-  App.openUserActivityModal = openUserActivityModal;
+  // openUserActivityModal is registered by features/user-activity.js (re-homed).
+  App.formatLastSignInUserActivity = formatLastSignInUserActivity;
+  App.filterUserActivityRows = filterUserActivityRows;
+  App.renderUserActivityAllUsersTableHtml = renderUserActivityAllUsersTableHtml;
   App.updateSaveStatusIndicator = updateSaveStatusIndicator;
   App.canUseDevAuth = canUseDevAuth;
   App.deleteProjectAsOwner = deleteProjectAsOwner;

@@ -632,7 +632,7 @@ Patterns that emerged as the harder modals moved out:
   call each other, both sides register on `App` (or the feature exposes a
   callback like `App.onGroupModalHidden`).
 
-The 32 feature files in load order, each with a `*.spec.js` Playwright
+The 33 feature files in load order, each with a `*.spec.js` Playwright
 regression (cloud-gated specs `test.skip` when Supabase secrets are absent).
 All but [features/zoom-rail.js](features/zoom-rail.js) are extractions from
 app.js; the Zoom Rail was born as a feature file (a new feature built directly
@@ -718,6 +718,10 @@ zoom-rail loads 4th but arrived much later:
     admin openers (new publishes `fetchUserAirboard`/`saveUserAirboard`/
     `PLUMBING_DEFAULTS`/`LINE_DEFAULTS`; the Airboard engine and auth
     sign-in form stay in app.js).
+33. [features/user-activity.js](features/user-activity.js) — admin User
+    Activity modal: raw event log + all-users/summary loaders + user-select
+    + client-side filter (`App.openUserActivityModal` registration re-homed;
+    three format.js helper publishes; user-admin.js keeps consuming it).
 
 ### Tooling
 

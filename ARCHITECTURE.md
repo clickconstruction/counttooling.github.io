@@ -100,6 +100,8 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` or commits a `state.pendingMultiplyZoneEdit`), the Delete Zone confirm (`#deleteZoneModal` cancel/confirm → `App.performDeleteZone`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
 | [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
 | [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
+| [features/canvas-layers.js](features/canvas-layers.js) | Thirty-first feature-file split (`window.App` registry pilot #31; the last candidate named by the original extraction recipe) — the **canvas-layer management UI**: the Add Canvas modal (`#addCanvasModal`, new/duplicate modes; duplicate deep-copies the active layer via the new publish-only dep `App.deepCopyAnnotations`), the Canvas Details modal (`#canvasDetailsModal`, rename-committed on close; the Escape branch in app.js dispatches `#canvasDetailsClose`'s click so the commit lives in one place), the Delete Canvas confirm (→ the private `performDeleteCanvas`, which reactivates the first remaining layer), the footer layers menu (`#canvasLayersBtn`/`#canvasMenu`/`#canvasMenuAdd`), `#addCanvasBtn`, and the show-all-canvases peek toggle. The three state flags (`pendingAddCanvasMode`/`pendingCanvasEdit`/`pendingDeleteCanvas`) move as private `let`s; the `hideModal` resets go through the `App.onCanvasDetailsHidden`/`App.onDeleteCanvasConfirmHidden` callbacks; the canvas switcher's edit pen (renderCanvasSwitcher, app.js) opens the details modal via `App.openCanvasDetailsModal`. The canvas JSON export (`#exportBtn`) that shared the old section stays in app.js under the renamed marker `// SECTION: Export canvas JSON` |
+| [canvas-layers.spec.js](canvas-layers.spec.js) | Playwright regression for pilot #31 — Add creates an empty active layer; duplicate mode deep-copies the seeded layer's markers into a distinct annotations object; rename commits via Done **and** via Escape (same `#canvasDetailsClose` path); the delete confirm names the layer, removes it, and reactivates the first remaining one. Asserts no console / page errors; `npx playwright test canvas-layers.spec.js` (the peek toggle is covered by [show-all-canvases.spec.js](show-all-canvases.spec.js)) |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -365,6 +367,12 @@ compact mode into [features/burger-menu.js](features/burger-menu.js) — zero
 new deps; `updateUI` reaches its two hooks (`updateBurgerMenu`/
 `scheduleHeaderCollapseCheck`) defensively, the first **core-hot-path →
 feature** callbacks (safe because a missed boot-time call is self-healing).
+Canvas layers (pilot #31) closed out the original recipe's candidate list:
+the add/details/delete-canvas modals + layers menu + peek toggle moved to
+[features/canvas-layers.js](features/canvas-layers.js) (one new publish-only
+dep `deepCopyAnnotations`; two `onX` hidden-callbacks; the Escape branch
+reuses the Done button's commit via a dispatched click); the canvas JSON
+export stays under the renamed marker `// SECTION: Export canvas JSON`.
 
 ## Section index (grep `// SECTION:`)
 
@@ -405,43 +413,43 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6719 - Line color & sidebar handlers
 - L6863 - Polyline modal & drawing
 - L6894 - Zoom bar & page navigation
-- L6922 - Canvas layers
-- L7132 - PDF download helpers
-- L7185 - View-link URL helpers & show-highlights/notes
-- L7257 - Custom icon upload handler
-- L7382 - Export & report dropdown menus
-- L7472 - Sidebar drawer toggles
-- L7483 - Mobile actions burger menu pointer & header logo
-- L7495 - User activity time formatting
-- L7653 - User Activity modal (admin)
-- L7721 - My Settings modal
-- L7752 - Auth & settings entry buttons
-  - L7797 - Project Settings checkout & Save Status bell
-  - L7920 - [sync] Checkout expired recovery
-  - L8174 - [sync] Turn In
-  - L8687 - Share modal pointer & copy-project openers
-  - L8730 - Cloud project hydrate / copy / fork
-  - L8927 - Settings menu actions & Airboard sync
-  - L9006 - My Settings password & Auth sign-in
-  - L9059 - Save Project modal
-  - L9262 - Copy project modal
-  - L9286 - Checkout expired recovery modal wiring
-  - L9370 - Save-before-load modal
-  - L9445 - Last-session restore prompt
-  - L9524 - User Activity filters & view toggle
-- L9712 - Canvas Event Handlers
-- L10084 - Event Binding
-- L10094 - Aim loupe (mobile press-hold precise placement)
-- L10232 - Zoom transform preview & commit
-- L10268 - Canvas mouse, wheel & touch handlers
-- L10889 - Global dropdown dismissal & keyboard hotkeys
-- L11120 - [sync] Manual save to cloud
-- L11745 - [sync] Auto-save
-- L12042 - [sync] Local backup (IndexedDB takeoff state)
-- L12272 - [sync] Checkout keep-alive
-- L12316 - App feature registry
-- L12482 - View-only mode
-- L12763 - Init / boot
+- L6920 - Export canvas JSON
+- L6936 - PDF download helpers
+- L6989 - View-link URL helpers & show-highlights/notes
+- L7061 - Custom icon upload handler
+- L7186 - Export & report dropdown menus
+- L7276 - Sidebar drawer toggles
+- L7287 - Mobile actions burger menu pointer & header logo
+- L7299 - User activity time formatting
+- L7457 - User Activity modal (admin)
+- L7525 - My Settings modal
+- L7556 - Auth & settings entry buttons
+  - L7601 - Project Settings checkout & Save Status bell
+  - L7724 - [sync] Checkout expired recovery
+  - L7978 - [sync] Turn In
+  - L8491 - Share modal pointer & copy-project openers
+  - L8534 - Cloud project hydrate / copy / fork
+  - L8731 - Settings menu actions & Airboard sync
+  - L8810 - My Settings password & Auth sign-in
+  - L8863 - Save Project modal
+  - L9066 - Copy project modal
+  - L9090 - Checkout expired recovery modal wiring
+  - L9174 - Save-before-load modal
+  - L9249 - Last-session restore prompt
+  - L9328 - User Activity filters & view toggle
+- L9516 - Canvas Event Handlers
+- L9888 - Event Binding
+- L9898 - Aim loupe (mobile press-hold precise placement)
+- L10036 - Zoom transform preview & commit
+- L10072 - Canvas mouse, wheel & touch handlers
+- L10693 - Global dropdown dismissal & keyboard hotkeys
+- L10921 - [sync] Manual save to cloud
+- L11546 - [sync] Auto-save
+- L11843 - [sync] Local backup (IndexedDB takeoff state)
+- L12073 - [sync] Checkout keep-alive
+- L12117 - App feature registry
+- L12285 - View-only mode
+- L12566 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -515,7 +523,7 @@ Annotated, in rough order:
   - Groups — `openGroupAssignModal`, group color helpers
   - Multiply Zone settings — `openMultiplyZoneSettingsModal`
   - Zoom modal — `showZoomModal`
-  - Canvas layers — `openAddCanvasModal`, `doAddCanvas`, canvas details
+  - Export canvas JSON — the `#exportBtn`/`#exportBtnSidebar` canvas JSON export (the layer-management modals + layers menu moved to [features/canvas-layers.js](features/canvas-layers.js), reached via `App.openCanvasDetailsModal`)
   - Export PDFs modal — `openSpecificPagesModal`, `downloadSpecificPages`
   - View-link URL helpers & show-highlights/notes — the shared `buildViewLinkUrl`/`getOrCreateViewLinkUrl` (used by the header Share button and, via `App.getOrCreateViewLinkUrl`, the moved Copy to PipeTooling export) + the `#bundleHighlights`/`#bundleNotes` open-in-tab handlers (the copy flows themselves moved to [features/output.js](features/output.js))
   - PDF bundling helpers (`addReportPagesToPdf`, `addNotesToPdf`, `addHighlightsToPdf`, `hasAnyHighlights`, `hasAnyNotes`) → moved to [features/pdf-bundle.js](features/pdf-bundle.js); the interleaved `importCanvasAfterPdf`/`clearPage` modals stay (renamed marker)

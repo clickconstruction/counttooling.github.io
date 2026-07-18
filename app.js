@@ -487,8 +487,8 @@
   let saveProgressMessage = '';
   let lastSaveIncludedPdf = false;
   let pdfCacheWarnShown = false;
-  let turnInInProgress = false;
-  let inFlightRecoverySavePromise = null;
+  // turnInInProgress + inFlightRecoverySavePromise live in save-engine.js
+  // (Stage 5): saveEngine.isTurnInInProgress() / resetTurnInState().
   let inFlightAutoSavePromise = null;
   let consecutiveAutoSaveFailures = 0;
   let firstAutoSaveFailureAt = 0;
@@ -505,16 +505,12 @@
   let envelopeSnapshotFiredAt = 0;
   let envelopeSnapshotDirtyStamp = 0;
   // Autosave/checkout timing & threshold constants live in constants.js (see note in the Constants section).
-  const autoRecheckoutCountByProject = new Map();
-  const autoRecheckoutCapReachedAt = new Map();
-  let lastAutoRecheckoutAt = 0;
-  // Forward declaration: hoisted to IIFE scope so the autosave/keepalive/visibility
-  // background callers (which live outside `if (SUPABASE_ENABLED)`) can reach it.
-  // The real implementation is assigned inside the SUPABASE_ENABLED block; when
-  // Supabase is disabled the no-op below stands in.
-  var handleBackgroundCheckoutExpired = async function () {
-    return { silentlyRecovered: false, reason: 'supabase_disabled' };
-  };
+  // The auto-recheckout rate-limit state (per-project count/cap Maps + min-gap
+  // stamp) lives in save-engine.js (Stage 5); resetAutoRecheckoutCounter below.
+  // Background-expiry entry point: implementation lives in save-engine.js
+  // (Stage 5), including the old supabase-disabled no-op fallback.
+  function handleBackgroundCheckoutExpired(trigger) { return saveEngine.handleBackgroundCheckoutExpired(trigger); }
+  function resetAutoRecheckoutCounter(projectId) { return saveEngine.resetAutoRecheckoutCounter(projectId); }
   let lastCheckoutRefreshAt = 0;
   let suspendAutoSaveUntilCheckout = false;
   let lastHiddenAt = 0;
@@ -704,8 +700,8 @@
 
   function rawProjectsUpdate(projectId, payload, signal) { return saveEngine.rawProjectsUpdate(projectId, payload, signal); }
   function rawProjectsInsert(payload, signal) { return saveEngine.rawProjectsInsert(payload, signal); }
-  function rawCheckInProject(projectId, signal) { return saveEngine.rawCheckInProject(projectId, signal); }
-  function rawListAccessibleProjects(signal) { return saveEngine.rawListAccessibleProjects(signal); }
+  // rawCheckInProject / rawListAccessibleProjects have no app-side callers
+  // anymore (Turn In + permission refresh moved in Stage 5) — saveEngine.*.
 
   // SECTION: [sync] Global force reload
   // The force-reload + keep-alive implementations moved to save-engine.js
@@ -721,7 +717,6 @@
     withTimeout: (p, ms, label) => withTimeout(p, ms, label),
     pushSaveEvent: (...a) => pushSaveEvent(...a),
     saveDebugLog: (...a) => saveDebugLog(...a),
-    handleBackgroundCheckoutExpired: (...a) => handleBackgroundCheckoutExpired(...a),
     isAutoSaveSuspended: () => suspendAutoSaveUntilCheckout,
     getLastCheckoutRefreshAt: () => lastCheckoutRefreshAt,
     // Stage 2 (dirty core): app-side state whose primary writers migrate later.
@@ -746,8 +741,27 @@
     getSupabaseAnonKey: () => SUPABASE_ANON_KEY,
     getConsecutiveAutoSaveFailures: () => consecutiveAutoSaveFailures,
     clearAutoSaveBackoff: () => { nextAutoSaveAttemptAt = 0; },
-    resubscribeCheckout: (projectId) => subscribeToProjectCheckoutChanges(projectId),
-    onCheckoutChannelDropped: () => { projectsCheckoutChannel = null; },
+    // Stage 5 (checkout UX): stage-6 save-path state via get/set until those
+    // paths migrate; UI hooks resolve at call time (definitions come later in
+    // this IIFE, but the engine only calls them from event/async contexts).
+    isSaveInProgress: () => saveInProgress,
+    getInFlightAutoSavePromise: () => inFlightAutoSavePromise,
+    getLastSuccessfulSupabaseCallAt: () => lastSuccessfulSupabaseCallAt,
+    performAutoSave: (runId) => performAutoSave(runId),
+    uploadLocalPdfToCloudIfNeeded: (reason, opts) => uploadLocalPdfToCloudIfNeeded(reason, opts),
+    setPdfUploadProgressHandler: (fn) => { onPdfUploadProgress = fn; },
+    setTurnInProgress: (label) => setTurnInProgress(label),
+    showToast: (msg, ms) => showToast(msg, ms),
+    updateUI: () => updateUI(),
+    updateStatus: () => updateStatus(),
+    updateSaveStatusIndicator: () => updateSaveStatusIndicator(),
+    updateSettingsCheckoutSection: () => updateSettingsCheckoutSection(),
+    clearCheckoutExpiredAttention: () => clearCheckoutExpiredAttention(),
+    setCheckoutExpiredAttention: () => { checkoutExpiredNeedsAttention = true; suspendAutoSaveUntilCheckout = true; },
+    suspendAutoSave: () => { suspendAutoSaveUntilCheckout = true; },
+    setLastCloudSaveAttemptFailed: (v) => { lastCloudSaveAttemptFailed = v; },
+    captureNetworkInfoDetail: () => captureNetworkInfoDetail(),
+    isAuthError: (e) => isAuthError(e),
   });
   function checkGlobalForceReload() { return saveEngine.checkGlobalForceReload(); }
   function doGlobalReloadNow(trigger) { return saveEngine.doGlobalReloadNow(trigger); }
@@ -770,10 +784,11 @@
   // saveStatusModalTickTimer moved to features/save-status.js (private to the modal).
   let lastCloudSaveAttemptFailed = false;
   let checkoutExpiredNeedsAttention = false;
-  let checkoutExpiredToastShown = false;
+  // checkoutExpiredToastShown (the one-shot expired toast) lives in
+  // save-engine.js (Stage 5); re-armed via the engine call below.
   function clearCheckoutExpiredAttention() {
     checkoutExpiredNeedsAttention = false;
-    checkoutExpiredToastShown = false;
+    saveEngine.clearCheckoutExpiredToastShown();
     suspendAutoSaveUntilCheckout = false;
     updateSaveStatusIndicator();
   }
@@ -898,7 +913,7 @@
         consecutiveAutoSaveFailures: (typeof consecutiveAutoSaveFailures !== 'undefined') ? consecutiveAutoSaveFailures : null,
         autoSaveDirty: (typeof autoSaveDirty !== 'undefined') ? autoSaveDirty : null,
         saveInProgress: (typeof saveInProgress !== 'undefined') ? saveInProgress : null,
-        turnInInProgress: (typeof turnInInProgress !== 'undefined') ? turnInInProgress : null,
+        turnInInProgress: saveEngine.isTurnInInProgress(),
         verbose: isSaveDebugEnabled(),
         windowMs: getSaveStatusLogWindowMs(),
         // Token expiry -- catches the JWT-expired 401 class on long-open tabs
@@ -1056,7 +1071,7 @@
     saveEngine.resetDirtyTracking();
     saveInProgress = false;
     savePdfInProgress = false;
-    turnInInProgress = false;
+    saveEngine.resetTurnInState();
     lastModifiedAt = 0;
     pendingCopyProject = null;
     pendingImportCanvasAfterPdf = false;
@@ -1067,9 +1082,7 @@
     saveEngine.clearSaveStatusLog();
     state.userActivityAllRowsCache = null;
     state.userActivityViewMode = 'events';
-    try { autoRecheckoutCountByProject.clear(); } catch (_) {}
-    try { autoRecheckoutCapReachedAt.clear(); } catch (_) {}
-    lastAutoRecheckoutAt = 0;
+    try { saveEngine.resetAutoRecheckoutCounter(); } catch (_) {}
     lastCheckoutRefreshAt = 0;
     try { clearCheckoutExpiredAttention(); } catch (_) {}
     try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
@@ -5363,179 +5376,11 @@
   }
 
   // SECTION: [sync] Checkout subscription & permission refresh
-  let projectsCheckoutChannel = null;
-  let projectsCheckoutReconnectTimer = null;
-  let projectsCheckoutReconnectAttempt = 0;
-  let projectsCheckoutGeneration = 0;
-
-  function clearProjectsCheckoutReconnectTimer() {
-    if (projectsCheckoutReconnectTimer) {
-      clearTimeout(projectsCheckoutReconnectTimer);
-      projectsCheckoutReconnectTimer = null;
-    }
-  }
-
-  function scheduleProjectsCheckoutReconnect(projectId) {
-    if (!SUPABASE_ENABLED || !supabase || !projectId) return;
-    if (projectsCheckoutReconnectTimer) return;
-    const idx = Math.min(projectsCheckoutReconnectAttempt, PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS.length - 1);
-    const delay = PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS[idx];
-    projectsCheckoutReconnectAttempt += 1;
-    saveDebugLog('realtime.checkout.reconnect.schedule', { projectId, attempt: projectsCheckoutReconnectAttempt, delayMs: delay });
-    const scheduledGen = projectsCheckoutGeneration;
-    projectsCheckoutReconnectTimer = setTimeout(() => {
-      projectsCheckoutReconnectTimer = null;
-      if (scheduledGen === projectsCheckoutGeneration && state.currentProjectId === projectId) {
-        subscribeToProjectCheckoutChanges(projectId);
-      }
-    }, delay);
-  }
-
-  async function subscribeToProjectCheckoutChanges(projectId) {
-    const gen = ++projectsCheckoutGeneration;
-    clearProjectsCheckoutReconnectTimer();
-    if (projectsCheckoutChannel && supabase) {
-      const old = projectsCheckoutChannel;
-      projectsCheckoutChannel = null;
-      try { await supabase.removeChannel(old); } catch (_) {}
-    }
-    if (gen !== projectsCheckoutGeneration) return;
-    if (!SUPABASE_ENABLED || !supabase || !projectId || !state.supabaseSession?.user) {
-      projectsCheckoutReconnectAttempt = 0;
-      return;
-    }
-    projectsCheckoutChannel = supabase
-      .channel('projects-checkout-' + projectId)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'projects',
-        filter: 'id=eq.' + projectId
-      }, function() {
-        if (gen !== projectsCheckoutGeneration) return;
-        refreshProjectPermissions();
-      })
-      .subscribe((status, err) => {
-        if (gen !== projectsCheckoutGeneration) return;
-        saveDebugLog('realtime.checkout.status', { projectId, status, message: err?.message });
-        if (status === 'SUBSCRIBED') {
-          projectsCheckoutReconnectAttempt = 0;
-          clearProjectsCheckoutReconnectTimer();
-          refreshProjectPermissions().catch(() => {});
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          scheduleProjectsCheckoutReconnect(projectId);
-        }
-      });
-  }
-
-  async function refreshProjectPermissions() {
-    if (!supabase || !state.currentProjectId || !state.supabaseSession?.user) return;
-    const prevCanCheckOut = state.canCheckOut;
-    const prevCheckedOutEmail = state.checkedOutEmail;
-    const prevWasCheckedOut = state.checkedOutBy === state.supabaseSession?.user?.id;
-    let projects = null;
-    let error = null;
-    // When the supabase-js client has wedged recently (a frequent post-sleep /
-    // post-background failure mode), skip it and hit the REST endpoint with raw
-    // fetch -- which keeps returning sub-second while supabase-js hangs to the
-    // full timeout. Same pattern Turn In uses for check_in_project.
-    const sbJsRecentlyBad = () => { const t = saveEngine.getLastSupabaseJsFailureAt(); return t > 0 && Date.now() - t < 5 * 60 * 1000; };
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const useRaw = sbJsRecentlyBad() || attempt > 0;
-      try {
-        const r = useRaw
-          ? await withTimeout((signal) => rawListAccessibleProjects(signal), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects')
-          : await withTimeout(supabase.rpc('list_accessible_projects'), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects');
-        projects = r.data;
-        error = r.error;
-      } catch (e) {
-        projects = null;
-        error = e;
-      }
-      if (!error && projects) break;
-      // A supabase-js timeout/error here is the most reliable "client is wedged"
-      // signal we get -- record it so other sync paths (Turn In) proactively
-      // prefer raw fetch instead of each eating a full timeout first. Previously
-      // these 10+/hour timeouts were dropped on the floor, so Turn In had no idea
-      // the client was wedged and hung the full check-in timeout before retrying.
-      if (error && !useRaw) noteSupabaseJsFailure('list_accessible_projects', error);
-      if (attempt === 0) await new Promise(r2 => setTimeout(r2, 500));
-    }
-    if (error || !projects) {
-      try { pushSaveEvent('refresh_permissions_err', 'refreshProjectPermissions failed', (error && (error.message || String(error))) || 'no data returned'); } catch (_) {}
-      return;
-    }
-    const proj = projects.find(function(p) { return p.id === state.currentProjectId; });
-    if (!proj) {
-      try { pushSaveEvent('permissions_project_missing', 'You no longer have access to this project', JSON.stringify({ projectId: state.currentProjectId })); } catch (_) {}
-      state.isViewer = true;
-      state.canCheckOut = false;
-      state.checkedOutBy = null;
-      state.checkedOutAt = null;
-      state.checkedOutEmail = null;
-      suspendAutoSaveUntilCheckout = true;
-      try { showToast('You no longer have access to this project.', 5000); } catch (_) {}
-      try { updateUI(); updateStatus(); updateSaveStatusIndicator(); } catch (_) {}
-      return;
-    }
-    const willBecomeViewer = prevWasCheckedOut && !proj.can_edit;
-    const hadDirty = autoSaveDirty;
-    const hadInflight = saveInProgress;
-    if (willBecomeViewer && hadDirty && !hadInflight) {
-      if (suspendAutoSaveUntilCheckout) {
-        try { pushSaveEvent('force_turn_in_flush_skipped_suspended', 'Force turn-in flush skipped: autosave suspended pending re-checkout'); } catch (_) {}
-      } else {
-      performAutoSave()
-        .then((res) => {
-          if (res && res.ok === false) {
-            const code = res.error?.code || res.error?.details || '';
-            const msg  = res.error?.message || String(res.error || '');
-            const lockedOut =
-              code === 'CHECKOUT_EXPIRED' ||
-              code === 'CHECKOUT_NOT_OWNED' ||
-              code === '42501' ||
-              /not[_ ]?owned|checked[_ ]?out|permission/i.test(msg);
-            if (lockedOut) {
-              pushSaveEvent('force_turn_in_flush_blocked', 'Force turn-in: unsaved edits could not be flushed (lock taken)', msg);
-            } else {
-              pushSaveEvent('force_turn_in_flush_err', 'Force turn-in: flush errored', msg);
-            }
-            autoSaveDirty = true;
-            lastCloudSaveAttemptFailed = true;
-            updateSaveStatusIndicator();
-          }
-        })
-        .catch((err) => {
-          pushSaveEvent('force_turn_in_flush_err', 'Force turn-in: flush threw', err?.message || String(err));
-          autoSaveDirty = true;
-          lastCloudSaveAttemptFailed = true;
-          updateSaveStatusIndicator();
-        });
-      }
-    }
-    state.checkedOutBy = proj.checked_out_by || null;
-    state.checkedOutAt = proj.checked_out_at || null;
-    state.checkedOutEmail = proj.checked_out_email || null;
-    state.loadedViaViewLink = false;
-    state.isViewer = !proj.can_edit;
-    state.canCheckOut = proj.can_check_out || false;
-    updateUI();
-    updateStatus();
-    if (prevWasCheckedOut && state.isViewer) {
-      pushSaveEvent('force_turn_in', hadDirty ? 'Force turn-in with unsaved edits' : 'Force turn-in');
-      if (hadDirty) {
-        showToast('Project was turned in by another user. Unsaved edits may have been lost - check Save status (bell).', 6000);
-      } else {
-        showToast('Project was turned in. You can check out to edit again.');
-      }
-    } else if (!prevCanCheckOut && state.canCheckOut) {
-      if (prevCheckedOutEmail) {
-        showToast('Project is now available. You can check out to edit.');
-      } else {
-        showToast('You have been promoted to editor. You can now check out to edit.');
-      }
-    }
-  }
+  // The realtime channel (handle + reconnect backoff + generation guard) and
+  // refreshProjectPermissions live in save-engine.js (Stage 5); same-named
+  // wrappers below keep the many call sites + the App registry frozen.
+  function subscribeToProjectCheckoutChanges(projectId) { return saveEngine.subscribeToProjectCheckoutChanges(projectId); }
+  function refreshProjectPermissions() { return saveEngine.refreshProjectPermissions(); }
 
   // Note: consolidated visibilitychange handler (with probeCheckoutLock + refreshProjectPermissions)
   // lives near the autosave interval block below.
@@ -6986,29 +6831,6 @@
         try { pushSaveEvent('signout_checkin_timeout', 'Sign-out check-in did not complete', (e && e.message) || String(e)); } catch (_) {}
       }
     }
-    let checkoutExpiredRecoveryInFlight = false;
-    function computeCheckoutExpiryAgeMs() {
-      const candidates = [];
-      if (state.checkedOutAt) {
-        const t = new Date(state.checkedOutAt).getTime();
-        if (Number.isFinite(t) && t > 0) candidates.push(t + CHECKOUT_INACTIVITY_MS);
-      }
-      try {
-        const engineLog = saveEngine.getSaveStatusLog();
-        for (let i = engineLog.length - 1; i >= 0; i--) {
-          const ev = engineLog[i];
-          if (ev && (ev.kind === 'checkout_expired' || ev.kind === 'keepalive_expired')) {
-            candidates.push(ev.ts);
-            break;
-          }
-        }
-      } catch (_) {}
-      if (lastSuccessfulSupabaseCallAt > 0) candidates.push(lastSuccessfulSupabaseCallAt + CHECKOUT_INACTIVITY_MS);
-      if (!candidates.length) return 0;
-      const expiredAt = Math.min(...candidates);
-      const age = Date.now() - expiredAt;
-      return age > 0 ? age : 0;
-    }
     function formatExpiryAge(ms) {
       if (!ms || ms < 0) return '';
       const minutes = Math.round(ms / 60000);
@@ -7057,7 +6879,7 @@
       applyCheckoutExpiredRecoveryMode('default');
       const ageEl = document.getElementById('checkoutExpiredRecoveryAge');
       if (ageEl) {
-        const ageMs = computeCheckoutExpiryAgeMs();
+        const ageMs = saveEngine.computeCheckoutExpiryAgeMs();
         const label = formatExpiryAge(ageMs);
         if (label) { ageEl.style.display = ''; ageEl.textContent = 'Expired ' + label + '.'; }
         else { ageEl.style.display = 'none'; ageEl.textContent = ''; }
@@ -7068,447 +6890,15 @@
     function closeCheckoutExpiredRecoveryModal() {
       hideModal('checkoutExpiredRecoveryModal');
     }
-    async function reCheckOutAfterExpiry(trigger, opts) {
-      opts = opts || {};
-      const silent = !!opts.silent;
-      if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
-      if (checkoutExpiredRecoveryInFlight) return { ok: false, error: 'Re-check out already in progress' };
-      checkoutExpiredRecoveryInFlight = true;
-      const tStart = Date.now();
-      const ageMsAtStart = computeCheckoutExpiryAgeMs();
-      try {
-        let data = null, error = null;
-        try {
-          const r = await withTimeout(
-            supabase.rpc('check_out_project', { p_project_id: state.currentProjectId }),
-            CHECK_IN_TIMEOUT_MS,
-            'Re-check out'
-          );
-          data = r.data;
-          error = r.error;
-        } catch (e) {
-          error = e;
-        }
-        updateServerClockFromRpc(data);
-        const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-        if (result.ok) {
-          const wasDirty = autoSaveDirty;
-          clearCheckoutExpiredAttention();
-          state.checkedOutBy = state.supabaseSession?.user?.id;
-          state.checkedOutAt = result.checked_out_at || new Date().toISOString();
-          lastCheckoutRefreshAt = Date.now();
-          state.isViewer = false;
-          state.canCheckOut = false;
-          pushSaveEvent('checkout_recovered', 'Re-checked out after expiry', JSON.stringify({
-            trigger: trigger || 'unknown',
-            msSinceExpiry: ageMsAtStart,
-            elapsedMs: Date.now() - tStart,
-            dirty: wasDirty
-          }));
-          saveDebugLog('checkoutRecovery.ok', { trigger, msSinceExpiry: ageMsAtStart, dirty: wasDirty });
-          updateSettingsCheckoutSection();
-          updateUI();
-          updateStatus();
-          refreshProjectPermissions().catch(() => {});
-          if (!silent) {
-            try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
-          }
-          if (wasDirty) {
-            const recoverySavePromise = performAutoSave('checkout_recovered').catch((e) => ({ ok: false, error: e }));
-            inFlightRecoverySavePromise = recoverySavePromise;
-            recoverySavePromise.finally(() => { if (inFlightRecoverySavePromise === recoverySavePromise) inFlightRecoverySavePromise = null; });
-            try { await recoverySavePromise; } catch (_) {}
-            if (!silent) showToast('Re-checked out. Saving your edits...');
-          } else {
-            if (!silent) showToast('Project checked out. You can now edit.');
-          }
-          return { ok: true };
-        }
-        await refreshProjectPermissions().catch(() => {});
-        const errMsg = (error && error.message) || result.error || 'Re-check out failed';
-        const otherEmail = state.checkedOutEmail || null;
-        if (otherEmail && state.checkedOutBy && state.checkedOutBy !== state.supabaseSession?.user?.id) {
-          pushSaveEvent('checkout_recover_blocked', 'Cannot re-check out: someone else has it', JSON.stringify({
-            trigger: trigger || 'unknown',
-            otherEmail,
-            elapsedMs: Date.now() - tStart
-          }));
-          saveDebugLog('checkoutRecovery.blocked', { trigger, otherEmail });
-          updateUI();
-          return { ok: false, otherEmail, error: errMsg };
-        }
-        pushSaveEvent('checkout_recover_err', 'Re-check out failed', JSON.stringify({
-          trigger: trigger || 'unknown',
-          message: errMsg,
-          status: error && error.status,
-          elapsedMs: Date.now() - tStart
-        }));
-        saveDebugLog('checkoutRecovery.err', { trigger, message: errMsg });
-        updateUI();
-        return { ok: false, error: errMsg };
-      } finally {
-        checkoutExpiredRecoveryInFlight = false;
-      }
-    }
-    function resetAutoRecheckoutCounter(projectId) {
-      if (projectId) {
-        autoRecheckoutCountByProject.delete(projectId);
-        autoRecheckoutCapReachedAt.delete(projectId);
-      } else {
-        autoRecheckoutCountByProject.clear();
-        autoRecheckoutCapReachedAt.clear();
-      }
-      lastAutoRecheckoutAt = 0;
-    }
-    async function tryAutoRecheckoutIfAllowed(detectionTrigger) {
-      const trigger = detectionTrigger || 'unknown';
-      const projectId = state.currentProjectId;
-      if (!projectId || !supabase) {
-        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: no project', JSON.stringify({ trigger, reason: 'no_project' }));
-        return { skipped: true, reason: 'no_project' };
-      }
-      if (state.isViewer) {
-        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: viewer', JSON.stringify({ trigger, reason: 'viewer' }));
-        return { skipped: true, reason: 'viewer' };
-      }
-      if (Date.now() - lastAutoRecheckoutAt < AUTO_RECHECKOUT_MIN_GAP_MS) {
-        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: too soon after previous attempt', JSON.stringify({ trigger, reason: 'min_gap', sinceLastMs: Date.now() - lastAutoRecheckoutAt }));
-        return { skipped: true, reason: 'min_gap' };
-      }
-      let count = autoRecheckoutCountByProject.get(projectId) || 0;
-      if (count >= AUTO_RECHECKOUT_MAX_PER_PROJECT) {
-        const capReachedAt = autoRecheckoutCapReachedAt.get(projectId) || 0;
-        if (capReachedAt && Date.now() - capReachedAt > AUTO_RECHECKOUT_COOLDOWN_MS) {
-          autoRecheckoutCountByProject.set(projectId, 0);
-          autoRecheckoutCapReachedAt.delete(projectId);
-          count = 0;
-          pushSaveEvent('auto_recheckout_cooldown_reset', 'Per-project auto-recheckout cap reset after cool-down',
-            JSON.stringify({ trigger, projectId, cooldownMs: AUTO_RECHECKOUT_COOLDOWN_MS }));
-        } else {
-          if (!capReachedAt) autoRecheckoutCapReachedAt.set(projectId, Date.now());
-          const stamp = capReachedAt || Date.now();
-          pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: cap reached',
-            JSON.stringify({
-              trigger,
-              reason: 'cap_reached',
-              count,
-              cap: AUTO_RECHECKOUT_MAX_PER_PROJECT,
-              projectId,
-              cooldownRemainingMs: Math.max(0, AUTO_RECHECKOUT_COOLDOWN_MS - (Date.now() - stamp))
-            }));
-          return { skipped: true, reason: 'cap_reached' };
-        }
-      }
-      const tStart = Date.now();
-      pushSaveEvent('auto_recheckout_attempt', 'Attempting silent re-check out', JSON.stringify({ trigger, count, projectId }));
-      try {
-        await refreshProjectPermissions();
-      } catch (_) {}
-      const selfId = state.supabaseSession?.user?.id;
-      const heldByOther = state.checkedOutBy && selfId && state.checkedOutBy !== selfId;
-      if (!state.canCheckOut || heldByOther) {
-        pushSaveEvent('auto_recheckout_blocked', 'Auto re-check out skipped: not allowed', JSON.stringify({
-          trigger,
-          reason: 'not_allowed',
-          canCheckOut: !!state.canCheckOut,
-          heldByOther: !!heldByOther,
-          otherEmail: state.checkedOutEmail || null
-        }));
-        return { skipped: true, reason: 'not_allowed', otherEmail: state.checkedOutEmail || null };
-      }
-      lastAutoRecheckoutAt = Date.now();
-      const result = await reCheckOutAfterExpiry('auto_' + trigger, { silent: true });
-      const elapsedMs = Date.now() - tStart;
-      const isTransient = result && !result.ok && typeof isTransientSaveError === 'function' && isTransientSaveError({ message: (result.error || '').toString() });
-      if (result && result.ok) {
-        autoRecheckoutCountByProject.set(projectId, count + 1);
-        pushSaveEvent('auto_recheckout_ok', 'Silent re-check out succeeded', JSON.stringify({
-          trigger,
-          count: count + 1,
-          cap: AUTO_RECHECKOUT_MAX_PER_PROJECT,
-          elapsedMs,
-          projectId
-        }));
-        return { ok: true };
-      }
-      if (!isTransient) autoRecheckoutCountByProject.set(projectId, count + 1);
-      pushSaveEvent('auto_recheckout_err', 'Silent re-check out failed', JSON.stringify({
-        trigger,
-        count: isTransient ? count : count + 1,
-        message: (result && result.error) || 'unknown',
-        otherEmail: (result && result.otherEmail) || null,
-        transient: !!isTransient,
-        elapsedMs
-      }));
-      return { ok: false, error: (result && result.error) || 'Auto re-check out failed', otherEmail: (result && result.otherEmail) || null };
-    }
-    let backgroundCheckoutExpiredInFlight = false;
-    // Assigned (not declared) so the binding installed at IIFE scope above is
-    // overwritten with the real implementation. Async function declarations
-    // inside this `if (SUPABASE_ENABLED)` block are block-scoped per spec
-    // (Annex B.3.3 does not apply to AsyncFunctionDeclaration), so the
-    // background callers outside the block would otherwise hit a ReferenceError.
-    handleBackgroundCheckoutExpired = async function (trigger) {
-      if (backgroundCheckoutExpiredInFlight) {
-        try { saveDebugLog('checkoutExpired.skip_inflight', { trigger }); } catch (_) {}
-        return { silentlyRecovered: false, reason: 'already_handling' };
-      }
-      backgroundCheckoutExpiredInFlight = true;
-      try {
-        pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG, JSON.stringify({ trigger }));
-        checkoutExpiredNeedsAttention = true;
-        suspendAutoSaveUntilCheckout = true;
-        updateSaveStatusIndicator();
-        const auto = await tryAutoRecheckoutIfAllowed(trigger);
-        if (auto && auto.ok) return { silentlyRecovered: true };
-        if (!checkoutExpiredToastShown) {
-          showToast(CHECKOUT_EXPIRED_TOAST_MSG, 6000);
-          checkoutExpiredToastShown = true;
-        }
-        updateUI();
-        return { silentlyRecovered: false, reason: auto && auto.reason };
-      } finally {
-        backgroundCheckoutExpiredInFlight = false;
-      }
-    };
+    // reCheckOutAfterExpiry / tryAutoRecheckoutIfAllowed /
+    // handleBackgroundCheckoutExpired live in save-engine.js (Stage 5) with
+    // the auto-recheckout rate-limit state; the recovery modal handlers below
+    // reach the re-checkout through this wrapper.
+    function reCheckOutAfterExpiry(trigger, opts) { return saveEngine.reCheckOutAfterExpiry(trigger, opts); }
     // SECTION: [sync] Turn In
-    async function doTurnIn() {
-      if (turnInInProgress) {
-        saveDebugLog('turnIn.skip', { reason: 'already_in_progress' });
-        return { ok: false, error: 'Turn In is already running' };
-      }
-      if (inFlightRecoverySavePromise) {
-        try {
-          saveDebugLog('turnIn.awaitRecovery', {});
-          pushSaveEvent('turn_in_await_recovery', 'Turn In waiting for recovery save to complete');
-          await Promise.race([
-            inFlightRecoverySavePromise,
-            new Promise(r => setTimeout(r, 8000))
-          ]);
-        } catch (_) {}
-      }
-      turnInInProgress = true;
-      const tTurnIn = Date.now();
-      let currentStage = 'start';
-      let stageStartedAt = Date.now();
-      let checkInAttempt = 0;
-      let usedRawFetchForCheckIn = false;
-      const progress = (stage, label) => {
-        if (currentStage && currentStage !== 'start') {
-          pushSaveEvent('turn_in_phase_done', currentStage + ' done', JSON.stringify({ stage: currentStage, durationMs: Date.now() - stageStartedAt, elapsedMs: Date.now() - tTurnIn }));
-        }
-        currentStage = stage;
-        stageStartedAt = Date.now();
-        setTurnInProgress(label);
-        pushSaveEvent('turn_in_stage', label, JSON.stringify({ stage, elapsedMs: Date.now() - tTurnIn }));
-      };
-      const errDetail = (e) => {
-        try {
-          return JSON.stringify(Object.assign(serializeSaveError(e) || {}, {
-            elapsedMs: Date.now() - tTurnIn,
-            stage: currentStage,
-            attempt: checkInAttempt,
-            online: (typeof navigator !== 'undefined') ? navigator.onLine : null,
-            network: captureNetworkInfoDetail() || null
-          }));
-        } catch (_) { return formatSaveStatusErrDetail(e); }
-      };
-      try {
-        if (!state.currentProjectId || !supabase) return { ok: false, error: 'No project' };
-        pushSaveEvent('turn_in_start', 'Turn In started', JSON.stringify({
-          onLine: (typeof navigator !== 'undefined') ? navigator.onLine : null,
-          network: captureNetworkInfoDetail() || null,
-          lastOk: lastSuccessfulSupabaseCallAt,
-          failures: consecutiveAutoSaveFailures,
-          dirty: autoSaveDirty,
-          saveInProgress,
-          projectId: state.currentProjectId
-        }));
-        const isSbJsRecentlyBad = () => { const t = saveEngine.getLastSupabaseJsFailureAt(); return t > 0 && Date.now() - t < 5 * 60 * 1000; };
-        const looksStale = consecutiveAutoSaveFailures > 0 ||
-          (lastSuccessfulSupabaseCallAt > 0 && Date.now() - lastSuccessfulSupabaseCallAt > TURN_IN_STALENESS_MS) ||
-          lastSuccessfulSupabaseCallAt === 0 ||
-          isSbJsRecentlyBad();
-        if (looksStale) {
-          progress('pre_probe', 'Checking connection…');
-          saveDebugLog('turnIn.preProbe', { failures: consecutiveAutoSaveFailures, lastOk: lastSuccessfulSupabaseCallAt });
-          const probe = await runRecoveryProbe('turn_in_pre').catch(() => null);
-          if (probe && !probe.ok && probe.errMsg !== 'in_flight') {
-            pushSaveEvent('turn_in_pre_probe_failed', 'Connection seems offline; Turn In aborted (saved locally)', JSON.stringify({ ms: probe.ms, status: probe.status, message: probe.errMsg, elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
-            return { ok: false, error: 'Connection offline. Saved locally; try Turn In again in a moment.' };
-          }
-        }
-        progress('local_backup', 'Saving local backup…');
-        await writeTakeoffStateBackup();
-        const hadAutoSave = autoSaveDirty;
-        // If this project has a local PDF that never reached cloud storage,
-        // upload it as part of Turn In so the PDF doesn't get left behind.
-        const needsPdfUpload = state.pages.length > 0 && !state.pdfStoragePath && !state.isViewer;
-        if (needsPdfUpload) {
-          if (saveInProgress) {
-            saveDebugLog('turnIn.skip', { reason: 'save_in_progress' });
-            pushSaveEvent('turn_in_save_in_progress', 'Turn In skipped: sync still in progress', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
-            return { ok: false, error: 'Sync in progress, try again in a moment' };
-          }
-          progress('sync_to_cloud', 'Uploading PDF to cloud…');
-          // Show determinate upload progress in the Turn In banner (resumable
-          // path emits byte progress; the standard path stays on the plain label).
-          onPdfUploadProgress = (sent, total) => {
-            const pct = (total > 0) ? Math.min(100, Math.floor((sent / total) * 100)) : 0;
-            setTurnInProgress('Uploading PDF to cloud\u2026 ' + pct + '%');
-          };
-          let pdfResult;
-          try {
-            pdfResult = await uploadLocalPdfToCloudIfNeeded('turn_in', { ignoreBackoff: true });
-          } finally {
-            onPdfUploadProgress = null;
-          }
-          if (pdfResult && pdfResult.skipped) {
-            // No usable PDF buffer in memory or cache (detached + unrecoverable),
-            // or some other skip. Don't strand the user: fall back to a
-            // canvas-only save when dirty, warn, and continue releasing the lock.
-            if (autoSaveDirty) {
-              const saveResult = await performAutoSave();
-              if (!saveResult.ok) {
-                pushSaveEvent(
-                  'turn_in_blocked_by_save_err',
-                  'Turn In blocked: autosave failed before check-in',
-                  JSON.stringify({ message: (saveResult.error && saveResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
-                );
-                if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-                if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-                return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
-              }
-            }
-            if (pdfResult.reason === 'no_usable_buffer') {
-              showToast('PDF couldn\u2019t be uploaded \u2014 reopen the project to attach it.', 4000);
-            }
-          } else if (pdfResult && !pdfResult.ok) {
-            pushSaveEvent(
-              'turn_in_blocked_by_save_err',
-              'Turn In blocked: PDF upload failed before check-in',
-              JSON.stringify({ message: (pdfResult.error && pdfResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
-            );
-            if (isAuthError(pdfResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-            if (pdfResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-            return { ok: false, error: (pdfResult.error && pdfResult.error.message) || 'Save failed' };
-          }
-        } else if (autoSaveDirty) {
-          if (saveInProgress) {
-            saveDebugLog('turnIn.skip', { reason: 'save_in_progress' });
-            pushSaveEvent('turn_in_save_in_progress', 'Turn In skipped: sync still in progress', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
-            return { ok: false, error: 'Sync in progress, try again in a moment' };
-          }
-          progress('sync_to_cloud', 'Syncing edits to cloud…');
-          const saveResult = await performAutoSave();
-          if (!saveResult.ok) {
-            pushSaveEvent(
-              'turn_in_blocked_by_save_err',
-              'Turn In blocked: autosave failed before check-in',
-              JSON.stringify({ message: (saveResult.error && saveResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
-            );
-            if (isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-            if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-            return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
-          }
-        }
-        if (inFlightAutoSavePromise && saveInProgress) {
-          const tAwait = Date.now();
-          pushSaveEvent('turn_in_await_inflight_autosave', 'Turn In waiting briefly for in-flight autosave', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
-          try {
-            await Promise.race([
-              inFlightAutoSavePromise,
-              new Promise(r => setTimeout(r, 3000))
-            ]);
-          } catch (_) {}
-          pushSaveEvent('turn_in_await_inflight_autosave_done', 'Done waiting for in-flight autosave', JSON.stringify({ waitMs: Date.now() - tAwait, saveStillInProgress: saveInProgress }));
-        }
-        progress('release_lock', 'Releasing edit lock…');
-        let result;
-        while (true) {
-          try {
-            const tCheckIn = Date.now();
-            const sbJsBadNow = isSbJsRecentlyBad();
-            const useRawForCheckIn = consecutiveAutoSaveFailures >= 3 ||
-              (checkInAttempt > 0 && !usedRawFetchForCheckIn) ||
-              sbJsBadNow;
-            if (useRawForCheckIn && checkInAttempt === 0 && sbJsBadNow && consecutiveAutoSaveFailures < 3) {
-              pushSaveEvent('turn_in_raw_fetch_engaged_proactively', 'Turn In using raw fetch (supabase-js wedged recently)', JSON.stringify({ msSinceSbJsFailure: Date.now() - saveEngine.getLastSupabaseJsFailureAt(), lastOk: lastSuccessfulSupabaseCallAt, failures: consecutiveAutoSaveFailures }));
-            }
-            usedRawFetchForCheckIn = useRawForCheckIn;
-            let data = null, error = null;
-            if (useRawForCheckIn) {
-              try {
-                const r = await withTimeout((signal) => rawCheckInProject(state.currentProjectId, signal), CHECK_IN_TIMEOUT_MS, 'Turn in');
-                data = r.data || null;
-                error = r.error || null;
-                if (!error) pushSaveEvent('turn_in_via_raw_fetch_ok', 'Raw-fetch check-in succeeded', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt }));
-                else pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in failed', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: error?.message, status: error?.status, diag: error?.diag }));
-              } catch (rawErr) {
-                error = rawErr;
-                pushSaveEvent('turn_in_via_raw_fetch_err', 'Raw-fetch check-in threw', JSON.stringify({ ms: Date.now() - tCheckIn, attempt: checkInAttempt, message: rawErr?.message, status: rawErr?.status, diag: rawErr?.diag }));
-              }
-            } else {
-              const r = await withTimeout(
-                supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }),
-                CHECK_IN_TIMEOUT_MS,
-                'Turn in'
-              );
-              data = r.data;
-              error = r.error;
-            }
-            updateServerClockFromRpc(data);
-            perfLog('doTurnIn check_in_project', Date.now() - tCheckIn, { projectId: state.currentProjectId, attempt: checkInAttempt, raw: useRawForCheckIn });
-            result = data || (error ? { ok: false, error: error.message } : { ok: false });
-            const releaseMsg = (result?.error || '').toString();
-            const releaseCode = error?.code || '';
-            const alreadyReleased =
-              releaseCode === 'CHECKOUT_EXPIRED' ||
-              releaseCode === 'CHECKOUT_NOT_OWNED' ||
-              /CHECKOUT_EXPIRED|NOT_OWNED|not.checked.out|do not have .* checked out|expired/i.test(releaseMsg);
-            if (alreadyReleased) {
-              pushSaveEvent('turn_in_already_released', 'Server had already released the lock; treating as Turn In success', JSON.stringify({ message: releaseMsg || releaseCode, elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt }));
-              return { ok: true, releasedByServer: true };
-            }
-            if (error && checkInAttempt === 0 && isTransientSaveError(error)) {
-              saveDebugLog('turnIn.retry', { message: error?.message });
-              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', JSON.stringify({ message: error?.message || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage }));
-              checkInAttempt++;
-              progress('retry', 'Retrying…');
-              await new Promise(r => setTimeout(r, 500));
-              continue;
-            }
-            break;
-          } catch (e) {
-            const isTimedOutMsg = /timed?\s*out/i.test(e?.message || '');
-            if (checkInAttempt === 0 && (isTransientSaveError(e) || isTimedOutMsg)) {
-              saveDebugLog('turnIn.retry', { message: e?.message });
-              pushSaveEvent('turn_in_retry', 'Transient turn-in error, retrying once', JSON.stringify({ message: e?.message || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage, viaTimedOutCatch: isTimedOutMsg && !isTransientSaveError(e) }));
-              checkInAttempt++;
-              progress('retry', 'Retrying…');
-              await new Promise(r => setTimeout(r, 500));
-              continue;
-            }
-            perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
-            pushSaveEvent('turn_in_err', (e && e.message) || 'Failed to turn in', errDetail(e));
-            return { ok: false, error: (e && e.message) || 'Failed to turn in' };
-          }
-        }
-        perfLog('doTurnIn total', Date.now() - tTurnIn, { hadAutoSave });
-        if (currentStage && currentStage !== 'start') {
-          pushSaveEvent('turn_in_phase_done', currentStage + ' done', JSON.stringify({ stage: currentStage, durationMs: Date.now() - stageStartedAt, elapsedMs: Date.now() - tTurnIn }));
-        }
-        if (result.ok) {
-          pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, attempts: checkInAttempt + 1, usedRawFetchForCheckIn }));
-          return { ok: true };
-        }
-        pushSaveEvent('turn_in_err', (result.error || 'Failed to turn in').toString(), JSON.stringify({ elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt, usedRawFetchForCheckIn, online: (typeof navigator !== 'undefined') ? navigator.onLine : null, network: captureNetworkInfoDetail() || null }));
-        return { ok: false, error: result.error || 'Failed to turn in' };
-      } finally {
-        setTurnInProgress(null);
-        turnInInProgress = false;
-      }
-    }
+    // doTurnIn (the staged release: pre-probe, local backup, PDF/canvas
+    // flush, raw-fetch check-in fallback + retry) lives in save-engine.js
+    // (Stage 5). The result-handling UX below stays here with the modals.
     async function doTurnInAndHandleResult(opts) {
       opts = opts || {};
       if (checkoutExpiredNeedsAttention && state.currentProjectId && !state.isViewer) {
@@ -7517,7 +6907,7 @@
         openCheckoutExpiredRecoveryModal({ trigger: 'turn_in_short_circuit' });
         return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
       }
-      const result = await doTurnIn();
+      const result = await saveEngine.doTurnIn();
       if (result.ok) {
         clearCheckoutExpiredAttention();
         await refreshProjectPermissions();
@@ -8336,7 +7726,7 @@
         }
       };
       if (discardBtn) discardBtn.onclick = async () => {
-        if (saveInProgress || turnInInProgress) {
+        if (saveInProgress || saveEngine.isTurnInInProgress()) {
           showToast('Sync in progress, try again in a moment', 3000);
           return;
         }
@@ -11245,8 +10635,6 @@
   App.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
   App.updateServerClockFromRpc = updateServerClockFromRpc;
   App.clearCheckoutExpiredAttention = clearCheckoutExpiredAttention;
-  // resetAutoRecheckoutCounter is a sloppy-mode block-scoped function hoisted to
-  // the IIFE scope at runtime; wrap so the lookup defers to call time.
   App.resetAutoRecheckoutCounter = (projectId) => resetAutoRecheckoutCounter(projectId);
   App.getSupabase = () => supabase;
   App.formatLastSignIn = formatLastSignIn;

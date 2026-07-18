@@ -327,12 +327,13 @@ module.exports = [
         // which eslint-scope cannot see from every call site, so they read as
         // no-undef. closePreparePdfModal is assigned to window (resolves via
         // the global object); hydrateProjectFromCloudRow and
-        // resetAutoRecheckoutCounter are sloppy-mode function declarations
+        // updateSettingsCheckoutSection are sloppy-mode function declarations
         // inside the `if (SUPABASE_ENABLED) {...}` block, hoisted to the IIFE
-        // scope at runtime (Annex B.3.3) and only ever called on Supabase paths.
+        // scope at runtime (Annex B.3.3) and only ever called on Supabase paths
+        // (updateSettingsCheckoutSection via the save-engine ctx).
         closePreparePdfModal: 'readonly',
         hydrateProjectFromCloudRow: 'readonly',
-        resetAutoRecheckoutCounter: 'readonly',
+        updateSettingsCheckoutSection: 'readonly',
         // Sync block-scoped fn (Annex B.3.3 hoist), published at the tail
         // registry for features/load-project.js. The async block fns
         // (checkInCurrentProjectIfHeld / resolvePdfBufferForCloudProject /

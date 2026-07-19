@@ -244,9 +244,11 @@ module.exports = [
         PDFLib: 'readonly',
         // report.js global, resolved at export time (report.js loads after)
         buildReportHtml: 'readonly',
-        // idb.js storage primitives (classic-script globals, loaded before
-        // app.js; features/view-only.js reads the view cache directly)
+        // idb.js storage primitives + constants (classic-script globals,
+        // loaded before app.js; view-only reads the view cache directly and
+        // load-project's save-before-load branch reads the CHECKOUT_* msgs)
         ...Object.fromEntries(Object.keys(require('./idb.js')).map((k) => [k, 'readonly'])),
+        ...constantsGlobals,
       },
     },
     rules: {
@@ -339,6 +341,7 @@ module.exports = [
         closePreparePdfModal: 'readonly',
         hydrateProjectFromCloudRow: 'readonly',
         updateSettingsCheckoutSection: 'readonly',
+        openCheckoutExpiredRecoveryModal: 'readonly',
         // Sync block-scoped fn (Annex B.3.3 hoist), published at the tail
         // registry for features/load-project.js. The async block fns
         // (checkInCurrentProjectIfHeld / resolvePdfBufferForCloudProject /

@@ -4109,7 +4109,7 @@
           updateUI();
         };
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !(state.sidebarReorderModeActive && e.target.closest('.counter-drag-handle'))) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('counter', c); });
       }
       el.appendChild(div);
@@ -4174,7 +4174,7 @@
           updateUI();
         };
         div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !e.target.closest('.line-type-drag-handle')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('lineType', lt); });
       }
       el.appendChild(div);
@@ -4200,7 +4200,7 @@
             updateUI();
           }
         };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderPdf(); }); });
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderPdf(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openGroupModal(g); });
       }
       el.appendChild(div);
@@ -4323,7 +4323,7 @@
         const swatch = div.querySelector('.swatch');
         if (swatch) swatch.addEventListener('click', (e) => {
           e.stopPropagation();
-          showLineColorModal(
+          App.showLineColorModal(
             (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff'),
             (color) => {
               pushUndoSnapshot();
@@ -4752,104 +4752,10 @@
   // populateChooseLineTypeList, showChooseLineTypeModal) moved to
   // features/choose-create-line-type.js (window.App registry); reached via
   // App.showChooseLineTypeModal / App.showLineTypeTab at call time.
-
-  function showLineColorModal(currentColor, onApply) {
-    state.pendingLineColorApply = onApply;
-    const inp = document.getElementById('lineColorCustom');
-    inp.value = currentColor || '#4a9eff';
-    const presetsEl = document.getElementById('lineColorPresets');
-    presetsEl.innerHTML = COLORS.map(c =>
-      '<span class="color-swatch' + ((currentColor || '').toLowerCase() === c.toLowerCase() ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '" title="' + c + '"></span>'
-    ).join('');
-    presetsEl.querySelectorAll('.color-swatch').forEach(s => {
-      s.onclick = () => applyLineColor(s.dataset.color);
-    });
-    const recentEl = document.getElementById('lineColorRecent');
-    const recentGroup = document.getElementById('lineColorRecentGroup');
-    recentEl.innerHTML = '';
-    (state.recentLineColors || []).forEach(c => {
-      const s = document.createElement('span');
-      s.className = 'color-swatch';
-      s.style.background = c;
-      s.dataset.color = c;
-      s.onclick = () => applyLineColor(c);
-      recentEl.appendChild(s);
-    });
-    recentGroup.style.display = (state.recentLineColors || []).length ? 'block' : 'none';
-    showModal('lineColorModal');
-  }
-  function applyLineColor(color) {
-    if (state.pendingLineColorApply) {
-      state.pendingLineColorApply(color);
-      pushRecentColor(color);
-      state.pendingLineColorApply = null;
-      hideModal('lineColorModal');
-      updateUI();
-      renderPdf();
-    }
-  }
-  // Commit a chosen color to the shared Recent list (state.recentLineColors) and
-  // persist it app-wide in localStorage. Only off-palette (custom) colors are
-  // recorded; preset colors are skipped by nextRecentColors since they are always
-  // shown. Shared by applyLineColor (edit picker) and the Create Counter / Create
-  // Line Type pickers via App.pushRecentColor.
-  function pushRecentColor(color) {
-    state.recentLineColors = nextRecentColors(state.recentLineColors, color, COLORS);
-    try { localStorage.setItem('recentLineColors', JSON.stringify(state.recentLineColors)); } catch (_) {}
-  }
-  // Render the inline color picker used by the Create Counter / Create Line Type
-  // modals: the 18 preset swatches, a native <input type="color"> custom picker,
-  // and a Recent-colors row. The single source of truth for the chosen value is
-  // the presets row's dataset.selectedColor (lowercase hex). Clicking any preset
-  // or recent swatch, or committing the custom input, updates that value and
-  // re-rings the matching swatch by value. Recents are NOT committed here (only
-  // on Create), so cancelling never pollutes the Recent list.
-  function setupCreateColorPicker(opts) {
-    const presetsRow = document.getElementById(opts.presetsRowId);
-    const customInput = document.getElementById(opts.customInputId);
-    const recentRow = document.getElementById(opts.recentRowId);
-    const recentGroup = document.getElementById(opts.recentGroupId);
-    if (!presetsRow) return;
-    const initial = (opts.defaultColor || COLORS[2]).toLowerCase();
-
-    function ring(color) {
-      const c = (color || '').toLowerCase();
-      [presetsRow, recentRow].forEach(row => {
-        if (!row) return;
-        row.querySelectorAll('.color-swatch').forEach(s =>
-          s.classList.toggle('selected', (s.dataset.color || '').toLowerCase() === c));
-      });
-    }
-    function select(color) {
-      const c = (color || '').toLowerCase();
-      presetsRow.dataset.selectedColor = c;
-      if (customInput) customInput.value = c;
-      ring(c);
-    }
-
-    presetsRow.innerHTML = COLORS.map(c =>
-      '<span class="color-swatch" data-color="' + c + '" style="background:' + c + '" title="' + c + '"></span>'
-    ).join('');
-    presetsRow.querySelectorAll('.color-swatch').forEach(s => { s.onclick = () => select(s.dataset.color); });
-
-    if (recentRow) {
-      recentRow.innerHTML = '';
-      (state.recentLineColors || []).forEach(c => {
-        const s = document.createElement('span');
-        s.className = 'color-swatch';
-        s.style.background = c;
-        s.dataset.color = c;
-        s.title = c;
-        s.onclick = () => select(c);
-        recentRow.appendChild(s);
-      });
-    }
-    if (recentGroup) recentGroup.style.display = (state.recentLineColors || []).length ? '' : 'none';
-
-    if (customInput) customInput.onchange = () => select(customInput.value);
-
-    select(initial);
-  }
+  // The line color picker cluster (showLineColorModal / applyLineColor /
+  // pushRecentColor / setupCreateColorPicker + the #lineColorCancel /
+  // #lineColorCustom bindings) lives in features/line-color.js (registry
+  // split #36); reached via App.* at call time.
 
   // SECTION: Airboard cloud sync
   async function fetchUserAirboard() {
@@ -5737,7 +5643,7 @@
   // getLineModifiers/saveLineModifiers stay here (published as App.*).
   document.getElementById('addLineType').onclick = () => {
     document.getElementById('lineTypeName').value = '';
-    setupCreateColorPicker({ presetsRowId: 'lineTypeColorRow', customInputId: 'lineTypeColorCustom', recentRowId: 'lineTypeColorRecent', recentGroupId: 'lineTypeColorRecentGroup' });
+    App.setupCreateColorPicker({ presetsRowId: 'lineTypeColorRow', customInputId: 'lineTypeColorCustom', recentRowId: 'lineTypeColorRecent', recentGroupId: 'lineTypeColorRecentGroup' });
     showModal('lineTypeModal');
   };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
@@ -5749,7 +5655,7 @@
     pushUndoSnapshot();
     const newLt = { id: uid(), name, color, curveStyle };
     state.lineTypes.push(newLt);
-    pushRecentColor(color);
+    App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
     markProjectDirty();
     state.pagesListCollapsed = true;
@@ -5800,13 +5706,11 @@
   // the sidebar inline show-only buttons, #sidebarReorderFinish, the J-hotkey,
   // and the Escape-key close branch stay here.
   // SECTION: Line color & sidebar handlers
-  document.getElementById('lineColorCancel').onclick = () => { state.pendingLineColorApply = null; hideModal('lineColorModal'); };
   // The Choose/Create Line Type modal handlers (.line-type-tab clicks,
   // #lineTypeModalSearchInput, #chooseLineTypeCancel, #createLineTypeCancel,
   // #createLineTypeCreate) moved to features/choose-create-line-type.js
-  // (window.App registry). The line color modal handlers (#lineColorCancel
-  // above, #lineColorCustom below) and showLineColorModal/applyLineColor stay.
-  document.getElementById('lineColorCustom').onchange = () => applyLineColor(document.getElementById('lineColorCustom').value);
+  // (window.App registry). The line color modal handlers moved to
+  // features/line-color.js (split #36).
   // The Line Type settings value handlers (lineTypeSize/Opacity/DropXSize/
   // OrientLength/ParallelEnds/LengthLabel/SnapToHV/ShowOnlyOnPage) moved to
   // features/line-type-settings.js (window.App registry).
@@ -8903,9 +8807,8 @@
   App.hideModal = hideModal;
   App.renderPdf = renderPdf;
   App.updateUI = updateUI;
-  App.showLineColorModal = showLineColorModal;
-  App.pushRecentColor = pushRecentColor;
-  App.setupCreateColorPicker = setupCreateColorPicker;
+  // showLineColorModal / pushRecentColor / setupCreateColorPicker are
+  // registered by features/line-color.js (split #36).
   App.ensureActiveCanvas = ensureActiveCanvas;
   App.getMaxZoom = getMaxZoom;
   App.getWheelZoomSpeed = getWheelZoomSpeed;

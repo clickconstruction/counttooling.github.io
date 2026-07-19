@@ -1964,6 +1964,14 @@
   let pdfOffscreenCanvas = null;
   let pdfRenderId = 0;
   let pdfRenderPending = false;
+  // What the visible pdfCanvas currently shows (page identity + rotation;
+  // lastRenderedZoom below carries the zoom). Stamped at every pdfCanvas
+  // paint so the stale-blit preview can tell a genuinely stale canvas (page
+  // flip / rotate / zoom commit) from a same-target re-render — an
+  // annotation-only edit re-raster must NOT repaint correct pixels with an
+  // upscaled old bitmap (the "blurry after placing drops" bug, cddb807).
+  let lastPaintedPdfPage = null;
+  let lastPaintedRot = 0;
   // SECTION: PDF Rendering
   function renderPdf() {
     cancelPdfBitmapPrefetch();   // real rendering always preempts speculation
@@ -1977,6 +1985,7 @@
       annCanvas.height = 0;
       annCanvas.style.width = '0';
       annCanvas.style.height = '0';
+      lastPaintedPdfPage = null;
       return;
     }
     if (pdfRenderTask) {
@@ -2014,6 +2023,8 @@
     const cached = pdfBitmapCacheGet(keyPdfPage, keyRot, keyZoom, eff);
     if (cached) {
       lastRenderedZoom = keyZoom;
+      lastPaintedPdfPage = keyPdfPage;
+      lastPaintedRot = keyRot;
       updateContainerTransform();
       pdfCanvas.width = cached.w;
       pdfCanvas.height = cached.h;
@@ -2044,11 +2055,20 @@
     // (e.g. the window was resized since the visit). Paint it scaled NOW so a
     // switch to a dense sheet shows the right page instantly instead of the
     // previous page for the whole raster; the async render below replaces it
-    // crisp. Same-page zoom changes keep their CSS-transform preview — this
-    // path only fires when the canvas would otherwise show stale content.
-    const preview = pdfBitmapCacheGetAnyZoom(keyPdfPage, keyRot);
+    // crisp. Gated on the canvas being GENUINELY stale (page flip / rotate /
+    // zoom commit): a same-target re-render — e.g. an annotation edit that
+    // routes through renderPdf — must keep the correct pixels it already
+    // shows instead of downgrading them to an upscaled old bitmap for the
+    // whole raster (the "blurry after placing drops / deleting lines" bug).
+    const canvasIsCurrent = pdfCanvas.width > 0 &&
+      lastPaintedPdfPage === keyPdfPage &&
+      lastPaintedRot === keyRot &&
+      lastRenderedZoom === keyZoom;
+    const preview = canvasIsCurrent ? null : pdfBitmapCacheGetAnyZoom(keyPdfPage, keyRot);
     if (preview) {
       lastRenderedZoom = keyZoom;
+      lastPaintedPdfPage = keyPdfPage;
+      lastPaintedRot = keyRot;
       updateContainerTransform();
       pdfCanvas.width = viewport.width;
       pdfCanvas.height = viewport.height;
@@ -2071,6 +2091,8 @@
         return;
       }
       lastRenderedZoom = keyZoom;   // captured, not state.zoom: a mid-gesture completion must not make commitWheelZoom skip its crisp re-render
+      lastPaintedPdfPage = keyPdfPage;
+      lastPaintedRot = keyRot;
       updateContainerTransform();
       pdfCanvas.width = viewport.width;
       pdfCanvas.height = viewport.height;

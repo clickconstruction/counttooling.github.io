@@ -478,8 +478,6 @@
   let lastAuthUserId = null;
   let lastModifiedAt = 0;
   let pendingLastSessionRestore = null;
-  let pendingCopyProject = null;
-  let copyProjectModalTarget = null;
   let lastSaveIncludedPdf = false;
   // turnInInProgress + inFlightRecoverySavePromise live in save-engine.js
   // (Stage 5): saveEngine.isTurnInInProgress() / resetTurnInState().
@@ -789,7 +787,7 @@
     saveEngine.resetSaveFlags();
     saveEngine.resetTurnInState();
     lastModifiedAt = 0;
-    pendingCopyProject = null;
+    if (App.resetCopyProjectState) App.resetCopyProjectState();
     pendingImportCanvasAfterPdf = false;
     pendingLastSessionRestore = null;
     clearUndoStacks();
@@ -6904,33 +6902,13 @@
     // features/share-links.js; reached via App.openShareProjectModal at call
     // time. Revoke clears the export view-link cache via App.onViewLinkRevoked
     // (features/output.js).
-    function openCopyProjectModal(proj) {
-      copyProjectModalTarget = proj;
-      const inp = document.getElementById('copyProjectNameInput');
-      const confirmBtn = document.getElementById('copyProjectModalConfirm');
-      if (inp) inp.value = (proj.name || 'Untitled') + ' (copy)';
-      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Open copy'; }
-      showModal('copyProjectModal');
-      if (inp) setTimeout(function () { inp.focus(); inp.select && inp.select(); }, 0);
-    }
-    // eslint-disable-next-line no-unused-vars -- published on App for features/load-project.js
-    function openCopyProjectModalOrPromptSave(proj) {
-      if (!saveEngine.getAutoSaveDirty()) {
-        pendingCopyProject = null;
-        openCopyProjectModal(proj);
-        return;
-      }
-      pendingCopyProject = proj;
-      const msgEl = document.querySelector('#saveBeforeLoadModal p');
-      const cancelBtn = document.getElementById('saveBeforeLoadCancel');
-      const discardBtn = document.getElementById('saveBeforeLoadDiscard');
-      const saveBtn = document.getElementById('saveBeforeLoadSave');
-      if (msgEl) msgEl.textContent = 'You have unsaved changes. Save before copying another project?';
-      if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancel'; }
-      if (discardBtn) discardBtn.style.display = '';
-      if (saveBtn) saveBtn.style.display = '';
-      showModal('saveBeforeLoadModal');
-    }
+    // The copy-project modal openers, the cloud hydrate/fork cluster
+    // (hydrateProjectFromCloudRow / resolvePdfBufferForCloudProject /
+    // buildPagesFromPdfArrayBufferAndProjectData / fork), the save-before-load
+    // gate + modal bindings, and the copy-confirm binding live in
+    // features/load-project.js (registry split #35). pendingCopyProject and
+    // copyProjectModalTarget are feature-owned; app.js reaches them via
+    // App.resetCopyProjectState / App.clearCopyProjectModalTarget.
     // B1: Centralizes the "post-PDF-load" hydration that turns a cloud project
     // row into local session state. Used by both the Load Project modal row
     // click and the loadAnnotationsModal row click, so checkout/permissions/
@@ -6940,207 +6918,18 @@
     //   can_edit, can_check_out, checked_out_by, checked_out_at, checked_out_email
     // opts: { reusePdfHash?: string|null, reusePdfStoragePath?: string|null,
     //         source?: 'load_project'|'load_annotations'|'restore_last' }
-    // SECTION: Cloud project hydrate / copy / fork
-    // eslint-disable-next-line no-unused-vars -- published on App for features/load-project.js
-    function hydrateProjectFromCloudRow(proj, opts) {
-      opts = opts || {};
-      state.pendingCanvasLoad = null;
-      state.currentProjectId = proj.id;
-      state.currentProjectName = proj.name || 'Untitled';
-      state.pdfHash = opts.reusePdfHash !== undefined ? opts.reusePdfHash : (proj.pdf_hash || null);
-      if (opts.reusePdfStoragePath !== undefined) state.pdfStoragePath = opts.reusePdfStoragePath;
-      lastSaveIncludedPdf = !!proj.pdf_path;
-      state.lastSavedAt = proj.updated_at || null;
-      saveEngine.setLastLocalBackupAt(null);
-      state.currentPage = state.pages.length > 0
-        ? Math.min(state.currentPage, Math.max(0, state.pages.length - 1))
-        : 0;
-      saveEngine.setAutoSaveDirty(false);
-      lastModifiedAt = 0;
-      state.checkedOutBy = proj.checked_out_by || null;
-      state.checkedOutAt = proj.checked_out_at || null;
-      state.checkedOutEmail = proj.checked_out_email || null;
-      state.loadedViaViewLink = false;
-      state.isViewer = !proj.can_edit;
-      state.canCheckOut = proj.can_check_out || false;
-      try { clearCheckoutExpiredAttention(); } catch (_) {}
-      state.projectOwnerId = proj.user_id || null;
-      subscribeToProjectCheckoutChanges(proj.id);
-      logProjectOpenEvent();
-      if (SUPABASE_ENABLED && state.supabaseSession?.user) {
-        try {
-          localStorage.setItem('clickcount-last-project', JSON.stringify({
-            projectId: state.currentProjectId,
-            projectName: state.currentProjectName || 'Untitled',
-            pdfStoragePath: state.pdfStoragePath || null,
-            pdfHash: state.pdfHash || null,
-            userId: state.supabaseSession.user.id
-          }));
-        } catch (_) {}
-      }
-    }
-
-    async function resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup) {
-      let buf;
-      if (useIdbBackup && idbBackup.pdfBlob) {
-        buf = await idbBackup.pdfBlob.arrayBuffer();
-      }
-      if (buf === undefined || !buf || buf.byteLength === 0) {
-        const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
-        if (cachedBlob && cachedBlob.size > 0) {
-          buf = await cachedBlob.arrayBuffer();
-        }
-        if (cachedBlob && (!buf || buf.byteLength === 0)) {
-          pdfCacheDelete(proj.id);
-        }
-      }
-      if (buf === undefined || !buf || buf.byteLength === 0) {
-        const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
-        const emptyOrMissing = dlErr || !blob || blob.size === 0;
-        if (emptyOrMissing) return null;
-        buf = await blob.arrayBuffer();
-        if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
-      }
-      return (buf && buf.byteLength > 0) ? buf : null;
-    }
-    async function buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup) {
-      const bufPdf = buf.slice(0);
-      const bufStorage = buf.slice(0);
-      const pdf = await pdfjsLib.getDocument(bufPdf).promise;
-      clearPdfBitmapCache();
-      state.pages = [];
-      const numPages = pdf.numPages;
-      for (let i = 0; i < numPages; i++) {
-        const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-        const canvasId = uid();
-        state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-        state.activeCanvasIdByPage[i] = canvasId;
-      }
-      if (useIdbBackup && idbBackup.data) {
-        applyTakeoffBackupToState(idbBackup.data);
-      } else {
-        state.counters = Array.isArray(d.counters) ? d.counters : [];
-        state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-        state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-        if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-        if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-        if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-        (d.pages || []).forEach(function (p) {
-          applyPageAnnotationsFromData(state.pages[p.index], p);
-        });
-        if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-        if (d.pageScales) {
-          d.pageScales.forEach(function (scale, i) { if (state.pages[i]) state.pages[i].scale = scale; });
-        } else if (d.scale) {
-          state.pages.forEach(function (p) { p.scale = d.scale; });
-        }
-        state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-        if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-        if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-        if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-        if (d.gridSettings) state.gridSettings = d.gridSettings;
-      }
-      reconcileOrphanedCountersAndLineTypes();
-      clearUndoStacks();
-      return bufStorage;
-    }
-    async function applyLocalForkAfterPdfLoad(forkName, pdfArrayBuffer) {
-      state.pdfStoragePath = null;
-      state.pendingCanvasLoad = null;
-      state.currentProjectId = null;
-      state.currentProjectName = forkName || 'Untitled';
-      state.pdfBuffer = pdfArrayBuffer;
-      state.pdfBufferSize = pdfArrayBuffer.byteLength;
-      state.pdfHash = await sha256Hex(pdfArrayBuffer);
-      subscribeToProjectCheckoutChanges(null);
-      state.checkedOutBy = null;
-      state.checkedOutAt = null;
-      state.checkedOutEmail = null;
-      state.isViewer = false;
-      state.canCheckOut = false;
-      state.projectOwnerId = null;
-      state.loadedViaViewLink = false;
-      state.lastSavedAt = null;
-      lastSaveIncludedPdf = false;
-      saveEngine.setLastLocalBackupAt(null);
-      saveEngine.setAutoSaveDirty(false);
-      try { clearCheckoutExpiredAttention(); } catch (_) {}
-      lastModifiedAt = 0;
-      state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
-      try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-      hideModal('copyProjectModal');
-      hideModal('loadProjectModal');
-      state.sidebarReorderModeActive = false;
-      copyProjectModalTarget = null;
-      fitZoom();
-      updateUI();
-      showToast('Local copy opened. Save to cloud from Project Settings when you are ready.', 5000);
-    }
-    async function forkCloudProjectToLocalWorkingCopy(proj, forkName) {
-      if (!supabase) {
-        showToast('Cloud not configured.', 3000);
-        return;
-      }
-      if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
-      let d = proj.data || {};
-      try {
-        const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
-        if (!error && full && full.data) d = full.data;
-      } catch (_) {}
-      const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-      const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
-      const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
-      if (!proj.pdf_path) {
-        showToast('Copy to new requires a PDF in the project.', 4000);
-        return;
-      }
-      try {
-        const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
-        if (!buf) {
-          showToast('Cannot copy: PDF is missing from storage. Open the project and upload a PDF if needed.', 5000);
-          return;
-        }
-        const bufStorage = await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
-        const nameTrim = (forkName || '').trim() || 'Untitled';
-        await applyLocalForkAfterPdfLoad(nameTrim, bufStorage);
-      } catch (e) {
-        console.error('[Fork project]', e);
-        showToast(e.message || 'Failed to copy project.', 5000);
-      }
-    }
-    function openLoadProjectModalOrPromptSave() {
-      if (!saveEngine.getAutoSaveDirty()) {
-        pendingCopyProject = null;
-        App.openLoadProjectModal().catch(e => {
-          console.error('[Load Project]', e);
-          showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
-        });
-        return;
-      }
-      pendingCopyProject = null;
-      const msgEl = document.querySelector('#saveBeforeLoadModal p');
-      const cancelBtn = document.getElementById('saveBeforeLoadCancel');
-      const discardBtn = document.getElementById('saveBeforeLoadDiscard');
-      const saveBtn = document.getElementById('saveBeforeLoadSave');
-      if (msgEl) msgEl.textContent = 'You have unsaved changes. Save before loading another project?';
-      if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancel'; }
-      if (discardBtn) discardBtn.style.display = '';
-      if (saveBtn) saveBtn.style.display = '';
-      showModal('saveBeforeLoadModal');
-    }
     // openLoadProjectModal moved to features/load-project.js (App.openLoadProjectModal);
     // the save-before-load gate + #loadProject* bindings stay in app.js.
     // in-block load-helper publish: these async fns are block-scoped (not
     // Annex-B hoisted), so publish them here where they are in scope for
     // features/load-project.js. window.App is reused by the tail registry.
     (window.App = window.App || {}).checkInCurrentProjectIfHeld = checkInCurrentProjectIfHeld;
-    window.App.resolvePdfBufferForCloudProject = resolvePdfBufferForCloudProject;
-    window.App.buildPagesFromPdfArrayBufferAndProjectData = buildPagesFromPdfArrayBufferAndProjectData;
+    // resolvePdfBufferForCloudProject / buildPagesFromPdfArrayBufferAndProjectData
+    // moved to features/load-project.js (split #35), registered there.
     // SECTION: Settings menu actions
     document.getElementById('settingsLoadProject').onclick = () => {
       hideModal('settingsModal');
-      openLoadProjectModalOrPromptSave();
+      App.openLoadProjectModalOrPromptSave();
     };
     document.getElementById('settingsCloseProject').onclick = async () => {
       hideModal('settingsModal');
@@ -7378,35 +7167,12 @@
       saveBtn.disabled = false;
       saveBtn.textContent = origText;
     };
-    document.getElementById('loadProjectBtn').onclick = () => openLoadProjectModalOrPromptSave();
-    document.getElementById('loadProjectBtnSidebar').onclick = () => openLoadProjectModalOrPromptSave();
+    document.getElementById('loadProjectBtn').onclick = () => App.openLoadProjectModalOrPromptSave();
+    document.getElementById('loadProjectBtnSidebar').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
     document.getElementById('copyProjectModalCancel').onclick = () => {
-      copyProjectModalTarget = null;
+      if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget();
       hideModal('copyProjectModal');
-    };
-    // SECTION: Copy project modal
-    document.getElementById('copyProjectModalConfirm').onclick = async () => {
-      const proj = copyProjectModalTarget;
-      const inp = document.getElementById('copyProjectNameInput');
-      const confirmBtn = document.getElementById('copyProjectModalConfirm');
-      if (!proj) {
-        hideModal('copyProjectModal');
-        return;
-      }
-      const name = inp ? inp.value : '';
-      if (confirmBtn) {
-        confirmBtn.disabled = true;
-        confirmBtn.textContent = 'Opening…';
-      }
-      try {
-        await forkCloudProjectToLocalWorkingCopy(proj, name);
-      } finally {
-        if (confirmBtn) {
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = 'Open copy';
-        }
-      }
     };
     document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
     // SECTION: Checkout expired recovery modal wiring
@@ -7493,60 +7259,6 @@
         } catch (_) { showToast('Export failed', 3000); }
       };
     })();
-    // SECTION: Save-before-load modal
-    document.getElementById('saveBeforeLoadCancel').onclick = () => {
-      pendingCopyProject = null;
-      hideModal('saveBeforeLoadModal');
-    };
-    document.getElementById('saveBeforeLoadDiscard').onclick = () => {
-      hideModal('saveBeforeLoadModal');
-      const p = pendingCopyProject;
-      pendingCopyProject = null;
-      if (p) openCopyProjectModal(p);
-      else App.openLoadProjectModal();
-    };
-    document.getElementById('saveBeforeLoadSave').onclick = async () => {
-      const cancelBtn = document.getElementById('saveBeforeLoadCancel');
-      const discardBtn = document.getElementById('saveBeforeLoadDiscard');
-      const saveBtn = document.getElementById('saveBeforeLoadSave');
-      const msgEl = document.querySelector('#saveBeforeLoadModal p');
-      msgEl.textContent = 'Saving Now...';
-      discardBtn.style.display = 'none';
-      saveBtn.style.display = 'none';
-      cancelBtn.disabled = true;
-      cancelBtn.textContent = 'Cancel';
-      const result = await performAutoSave();
-      if (result.ok) {
-        hideModal('saveBeforeLoadModal');
-        const p = pendingCopyProject;
-        pendingCopyProject = null;
-        if (p) openCopyProjectModal(p);
-        else App.openLoadProjectModal();
-      } else {
-        if (result.error?.code === 'CHECKOUT_EXPIRED') {
-          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-          checkoutExpiredNeedsAttention = true;
-          suspendAutoSaveUntilCheckout = true;
-          refreshProjectPermissions().catch(() => {});
-          updateSaveStatusIndicator();
-          hideModal('saveBeforeLoadModal');
-          pendingCopyProject = null;
-          openCheckoutExpiredRecoveryModal({ trigger: 'save_before_load' });
-          return;
-        } else if (isAuthError(result.error)) {
-          showToast('Refresh the page to sync.', 4000);
-        } else {
-          const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
-          showToast('Save failed' + (errMsg ? ': ' + errMsg : '') + '. Open Project Settings to retry.', 4000);
-        }
-        msgEl.textContent = pendingCopyProject
-          ? 'You have unsaved changes. Save before copying another project?'
-          : 'You have unsaved changes. Save before loading another project?';
-        discardBtn.style.display = '';
-        saveBtn.style.display = '';
-        cancelBtn.disabled = false;
-      }
-    };
     document.getElementById('loadAnnotationsSkip').onclick = () => {
       hideModal('loadAnnotationsModal');
       renderPdf();
@@ -9105,7 +8817,7 @@
       else if (document.getElementById('manageIconsModal').classList.contains('visible')) { hideModal('manageIconsModal'); }
       else if (document.getElementById('canvasRepairModal').classList.contains('visible')) { hideModal('canvasRepairModal'); }
       else if (document.getElementById('saveProjectModal').classList.contains('visible')) { hideModal('saveProjectModal'); }
-      else if (document.getElementById('copyProjectModal').classList.contains('visible')) { copyProjectModalTarget = null; hideModal('copyProjectModal'); }
+      else if (document.getElementById('copyProjectModal').classList.contains('visible')) { if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget(); hideModal('copyProjectModal'); }
       else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
       else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
       else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }
@@ -9457,8 +9169,6 @@
   App.updateSaveStatusIndicator = updateSaveStatusIndicator;
   App.canUseDevAuth = canUseDevAuth;
   App.deleteProjectAsOwner = deleteProjectAsOwner;
-  App.openCopyProjectModalOrPromptSave = openCopyProjectModalOrPromptSave;
-  App.hydrateProjectFromCloudRow = hydrateProjectFromCloudRow;
   // Load Project modal deep deps (features/load-project.js): the project-load
   // action is fused with the boot/engine path, so it reaches these internals.
   App.SUPABASE_URL = SUPABASE_URL;
@@ -9500,6 +9210,15 @@
   // Setters for engine let-state the load action resets (cannot assign through
   // the registry otherwise).
   App.setAutoSaveDirty = (v) => saveEngine.setAutoSaveDirty(v);
+  App.getAutoSaveDirty = () => saveEngine.getAutoSaveDirty();
+  App.performAutoSave = (runId) => saveEngine.performAutoSave(runId);
+  App.sha256Hex = (buf) => saveEngine.sha256Hex(buf);
+  App.refreshProjectPermissions = () => refreshProjectPermissions();
+  App.setCheckoutExpiredAttention = () => { checkoutExpiredNeedsAttention = true; suspendAutoSaveUntilCheckout = true; };
+  App.applyTakeoffBackupToState = applyTakeoffBackupToState;
+  App.logProjectOpenEvent = logProjectOpenEvent;
+  // Annex-B hoisted from the SUPABASE_ENABLED block; resolved at call time.
+  App.openCheckoutExpiredRecoveryModal = (opts) => openCheckoutExpiredRecoveryModal(opts);
   App.setLastModifiedAt = (v) => { lastModifiedAt = v; };
   App.setLastLocalBackupAt = (v) => saveEngine.setLastLocalBackupAt(v);
   App.setLastSaveIncludedPdf = (v) => { lastSaveIncludedPdf = v; };

@@ -244,6 +244,9 @@ module.exports = [
         PDFLib: 'readonly',
         // report.js global, resolved at export time (report.js loads after)
         buildReportHtml: 'readonly',
+        // idb.js storage primitives (classic-script globals, loaded before
+        // app.js; features/view-only.js reads the view cache directly)
+        ...Object.fromEntries(Object.keys(require('./idb.js')).map((k) => [k, 'readonly'])),
       },
     },
     rules: {

@@ -6972,201 +6972,10 @@
     };
 
     // SECTION: Save Project modal
-    document.getElementById('saveProjectBtn').onclick = async () => {
-      document.getElementById('saveProjectName').value = state.currentProjectName || 'Untitled';
-      document.getElementById('saveProjectError').style.display = 'none';
-      document.getElementById('saveProjectDo').disabled = false;
-      document.getElementById('saveProjectDo').textContent = 'Save';
-      document.getElementById('saveProjectProgress').style.display = 'none';
-      document.getElementById('saveProjectChecklist').innerHTML = '';
-      const contentsList = document.getElementById('saveProjectContentsList');
-      const contentsLabel = document.getElementById('saveProjectContentsLabel');
-      const noPdfMessage = document.getElementById('saveProjectNoPdfMessage');
-      const checkboxEl = document.getElementById('saveProjectIncludePdf');
-      const includePdfLabel = document.getElementById('saveProjectIncludePdfLabel');
-      const includePdfBtn = document.getElementById('saveProjectIncludePdfBtn');
-      let pdfBufLen = state.pdfBufferSize > 0 ? state.pdfBufferSize : 0;
-      if (pdfBufLen === 0 && state.pdfBuffer) {
-        const b = state.pdfBuffer;
-        pdfBufLen = (typeof b.byteLength === 'number' ? b.byteLength : 0) || (typeof b.length === 'number' ? b.length : 0) || (typeof b.size === 'number' ? b.size : 0);
-        if (pdfBufLen === 0 && b) {
-          try { pdfBufLen = new Blob([b]).size; } catch (_) {}
-          if (pdfBufLen > 0) state.pdfBufferSize = pdfBufLen;
-        }
-      }
-      const hasValidPdfBuffer = pdfBufLen > 0;
-      let pdfSizeBytes = hasValidPdfBuffer ? pdfBufLen : 0;
-      if (!hasValidPdfBuffer) {
-        // Try the local IndexedDB cache first. This works even when the PDF is
-        // not in the cloud yet (e.g. created via Prepare PDF "Open"):
-        // performSaveProjectToCloud recovers the buffer the same way, so a cache
-        // hit means Include PDF will actually succeed.
-        if (state.currentProjectId && state.pdfHash) {
-          try {
-            const cached = await pdfCacheGet(state.currentProjectId, state.pdfHash);
-            if (cached && cached.size > 0) pdfSizeBytes = cached.size;
-          } catch (_) {}
-        }
-        if (pdfSizeBytes === 0 && state.pdfStoragePath && SUPABASE_ENABLED && supabase) {
-          try {
-            const { data: info } = await supabase.storage.from('pdfs').info(state.pdfStoragePath);
-            const sz = info?.metadata?.size ?? info?.size ?? info?.metadata?.contentLength;
-            pdfSizeBytes = typeof sz === 'number' ? sz : (typeof sz === 'string' ? parseInt(sz, 10) : 0);
-          } catch (_) {}
-        }
-      }
-      if (state.pdfBuffer || state.pdfStoragePath || state.pages.length > 0) {
-        contentsList.style.display = '';
-        contentsLabel.style.display = 'block';
-        noPdfMessage.style.display = 'none';
-        const nameEl = includePdfLabel?.querySelector('.save-contents-name');
-        if (hasValidPdfBuffer || pdfSizeBytes > 0) {
-          if (nameEl) nameEl.innerHTML = 'PDF (<span id="saveProjectPdfSize">' + (Math.max(pdfBufLen, pdfSizeBytes) / 1024 / 1024).toFixed(2) + '</span> MB)';
-          if (includePdfLabel) includePdfLabel.classList.remove('save-contents-omitted');
-          if (includePdfBtn) { includePdfBtn.style.display = ''; includePdfBtn.setAttribute('aria-pressed', 'true'); }
-          checkboxEl.checked = true;
-        } else if (state.pdfStoragePath) {
-          // PDF is already in the cloud but its size is unknown; keep it
-          // included (the save will simply not re-upload an unchanged file).
-          if (nameEl) nameEl.textContent = 'PDF (in project)';
-          if (includePdfBtn) includePdfBtn.style.display = 'none';
-          checkboxEl.checked = true;
-        } else {
-          // PDF is not in memory, not in the local cache, and not in the cloud.
-          // We cannot upload it from here, so saving with Include PDF would
-          // fail. Leave it off and tell the user how to re-attach it.
-          if (nameEl) nameEl.textContent = 'PDF (not in memory \u2014 reload the project to re-attach)';
-          if (includePdfLabel) includePdfLabel.classList.add('save-contents-omitted');
-          if (includePdfBtn) { includePdfBtn.style.display = ''; includePdfBtn.setAttribute('aria-pressed', 'false'); }
-          checkboxEl.checked = false;
-        }
-      } else {
-        contentsList.style.display = 'none';
-        contentsLabel.style.display = 'none';
-        noPdfMessage.style.display = 'block';
-      }
-      showModal('saveProjectModal');
-    };
-    document.getElementById('saveProjectBtnSidebar').onclick = () => document.getElementById('saveProjectBtn').click();
-    document.getElementById('saveProjectCancel').onclick = () => hideModal('saveProjectModal');
-    document.getElementById('saveProjectIncludePdf').onchange = () => {
-      const label = document.getElementById('saveProjectIncludePdfLabel');
-      const checkboxEl = document.getElementById('saveProjectIncludePdf');
-      const btn = document.getElementById('saveProjectIncludePdfBtn');
-      if (label) label.classList.toggle('save-contents-omitted', !checkboxEl.checked);
-      if (btn) btn.setAttribute('aria-pressed', checkboxEl.checked);
-    };
-    document.getElementById('saveProjectIncludePdfBtn').onclick = (e) => {
-      e.preventDefault();
-      const checkboxEl = document.getElementById('saveProjectIncludePdf');
-      checkboxEl.checked = !checkboxEl.checked;
-      checkboxEl.dispatchEvent(new Event('change'));
-    };
-    document.getElementById('saveProjectDo').onclick = async () => {
-      const name = document.getElementById('saveProjectName').value.trim() || 'Untitled';
-      const errEl = document.getElementById('saveProjectError');
-      const saveBtn = document.getElementById('saveProjectDo');
-      errEl.style.display = 'none';
-      const user = state.supabaseSession?.user;
-      if (!user) {
-        errEl.textContent = 'Please sign in to save.';
-        errEl.style.display = 'block';
-        return;
-      }
-      if (state.isViewer) {
-        errEl.textContent = 'You are viewing only. Check out the project to edit and save.';
-        errEl.style.display = 'block';
-        return;
-      }
-      if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
-        const checkedAt = new Date(state.checkedOutAt).getTime();
-        const ageMs = serverNowMs() - checkedAt;
-        let confirmedExpired = false;
-        if (ageMs > CHECKOUT_INACTIVITY_MS + CHECKOUT_SOFT_GRACE_MS) {
-          confirmedExpired = true;
-          saveDebugLog('manual.save.expired', { ageMs, mode: 'hard_skew' });
-        } else if (ageMs > CHECKOUT_INACTIVITY_MS - CHECKOUT_NEAR_EXPIRY_MS) {
-          const probe = await probeCheckoutLock();
-          if (probe.expired) {
-            confirmedExpired = true;
-            saveDebugLog('manual.save.expired', { ageMs, mode: 'probe' });
-          } else if (!probe.ok) {
-            showToast('Could not verify edit session. Try again.', 4000);
-            return;
-          }
-        }
-        if (confirmedExpired) {
-          // Note: keep state.checkedOutBy/At/Email populated until recovery resolves.
-          // Nulling them eagerly lets a re-click during a slow recovery bypass the
-          // preflight expiry guard and fall through to performSaveProjectToCloud
-          // against a wedged client.
-          clearUndoStacks();
-          updateSaveStatusIndicator();
-          const recovered = await handleBackgroundCheckoutExpired('manual_save');
-          await refreshProjectPermissions().catch(() => {});
-          if (recovered && recovered.silentlyRecovered) {
-            errEl.style.display = 'none';
-            updateUI();
-            return;
-          }
-          // Only zero locally when refresh did not reassign the lock to a
-          // different user. If refresh repopulated state.checkedOutBy with a
-          // new holder, preserve their info so the header banner / settings
-          // checkout row can show "Checked out by <email>" while the recovery
-          // modal is open.
-          if (state.checkedOutBy === user.id || !state.checkedOutBy) {
-            state.checkedOutBy = null;
-            state.checkedOutAt = null;
-            state.checkedOutEmail = null;
-          }
-          updateUI();
-          hideModal('saveProjectModal');
-          openCheckoutExpiredRecoveryModal({ trigger: 'manual_save' });
-          return;
-        }
-      }
-      const origText = saveBtn.textContent;
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving…';
-      hideModal('saveProjectModal');
-      const includePdf = document.getElementById('saveProjectIncludePdf').checked;
-      if (!includePdf && state.currentProjectId && state.pdfBuffer && state.pdfHash) {
-        let cloudPdfHash = null;
-        try {
-          const { data: cloudProj } = await withTimeout(
-            supabase.from('projects').select('pdf_hash').eq('id', state.currentProjectId).single(),
-            5000,
-            'pdf_hash check (G7)'
-          );
-          cloudPdfHash = cloudProj?.pdf_hash || null;
-        } catch (_) { /* network blip: skip the confirm */ }
-        if (cloudPdfHash && cloudPdfHash !== state.pdfHash) {
-          const proceed = confirm(
-            'Heads up: your local PDF is newer than the one in the cloud.\n\n' +
-            'Saving canvas only will leave the cloud copy referencing the old PDF. ' +
-            'Click Cancel to go back and turn Include PDF on, or OK to save canvas only anyway.'
-          );
-          if (!proceed) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = origText;
-            pushSaveEvent('manual_save_canceled', 'User canceled at stale-PDF confirm');
-            return;
-          }
-          pushSaveEvent('manual_save_pdf_mismatch_accepted', 'User saved canvas only with newer local PDF');
-        }
-      }
-      const result = await performSaveProjectToCloud({ name, includePdf });
-      if (!result.ok) {
-        if (isAuthError(result.error)) {
-          showToast('Refresh the page to sync.', 4000);
-        } else {
-          const errMsg = (result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error) || 'Save failed';
-          showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
-        }
-      }
-      saveBtn.disabled = false;
-      saveBtn.textContent = origText;
-    };
+    // The Save Project modal (open/prefill with the PDF-size probe, Include
+    // PDF toggle, and the save action with its checkout-expiry preflight and
+    // stale-PDF confirm) lives in features/save-project.js (registry split
+    // #35b).
     document.getElementById('loadProjectBtn').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectBtnSidebar').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
@@ -9219,6 +9028,11 @@
   App.logProjectOpenEvent = logProjectOpenEvent;
   // Annex-B hoisted from the SUPABASE_ENABLED block; resolved at call time.
   App.openCheckoutExpiredRecoveryModal = (opts) => openCheckoutExpiredRecoveryModal(opts);
+  App.serverNowMs = () => serverNowMs();
+  App.probeCheckoutLock = (runId) => saveEngine.probeCheckoutLock(runId);
+  App.saveDebugLog = (phase, payload) => saveEngine.saveDebugLog(phase, payload);
+  App.handleBackgroundCheckoutExpired = (trigger) => saveEngine.handleBackgroundCheckoutExpired(trigger);
+  App.withTimeout = (p, ms, label) => withTimeout(p, ms, label);
   App.setLastModifiedAt = (v) => { lastModifiedAt = v; };
   App.setLastLocalBackupAt = (v) => saveEngine.setLastLocalBackupAt(v);
   App.setLastSaveIncludedPdf = (v) => { lastSaveIncludedPdf = v; };

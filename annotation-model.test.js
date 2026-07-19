@@ -11,8 +11,10 @@ const assert = require('node:assert');
 
 Object.assign(globalThis, require('./geometry.js'));
 Object.assign(globalThis, require('./icons.js'));
+Object.assign(globalThis, require('./constants.js'));   // UNDO_STACK_SIZE
+const { UNDO_STACK_SIZE } = require('./constants.js');
 
-const { createAnnotationModel } = require('./annotation-model.js');
+const { createAnnotationModel, createUndoStack } = require('./annotation-model.js');
 
 let nextId = 0;
 function makeCtx(state) {
@@ -158,4 +160,62 @@ test('reconcileOrphanedCountersAndLineTypes backfills Unknown rows for orphaned 
   assert.strictEqual(state.counters[0].id, 'ghost');
   assert.strictEqual(state.counters[0].name, 'Unknown');
   assert.strictEqual(state.lineTypes[0].id, 'phantom');
+});
+
+// --- createUndoStack --------------------------------------------------------
+
+function undoCtx(state) {
+  const calls = { dirty: 0, renders: 0, ui: 0 };
+  return { calls, ctx: {
+    getState: () => state,
+    uid: () => 'u-' + Math.random().toString(36).slice(2, 6),
+    ensureGroupColors: (g) => g,
+    markProjectDirty: () => calls.dirty++,
+    renderPdf: () => calls.renders++,
+    updateUI: () => calls.ui++,
+  } };
+}
+
+test('undo/redo round-trip restores counters and marks dirty + re-renders', () => {
+  const state = { isViewer: false, pages: [{ canvases: [], scale: null, rotation: 0 }], counters: [{ id: 'a' }], lineTypes: [], groups: [] };
+  const { ctx, calls } = undoCtx(state);
+  const u = createUndoStack(ctx);
+  assert.strictEqual(u.canUndo(), false);
+  u.pushUndoSnapshot();
+  state.counters = [{ id: 'a' }, { id: 'b' }];
+  u.undo();
+  assert.strictEqual(state.counters.length, 1);
+  assert.strictEqual(calls.dirty, 1);
+  assert.strictEqual(calls.renders, 1);
+  assert.strictEqual(u.canRedo(), true);
+  u.redo();
+  assert.strictEqual(state.counters.length, 2);
+});
+
+test('pushUndoSnapshot: viewer/empty sessions are no-ops; cap sheds oldest; new push clears redo', () => {
+  const viewer = createUndoStack(undoCtx({ isViewer: true, pages: [{}] }).ctx);
+  viewer.pushUndoSnapshot();
+  assert.strictEqual(viewer.canUndo(), false);
+
+  const state = { isViewer: false, pages: [{ canvases: [] }], counters: [], lineTypes: [], groups: [] };
+  const u = createUndoStack(undoCtx(state).ctx);
+  for (let i = 0; i < UNDO_STACK_SIZE + 5; i++) u.pushUndoSnapshot();
+  u.undo();
+  assert.strictEqual(u.canRedo(), true);
+  u.pushUndoSnapshot();                       // a fresh edit invalidates redo
+  assert.strictEqual(u.canRedo(), false);
+});
+
+test('applySnapshot clears in-flight drawing state and drops dangling active ids', () => {
+  const state = {
+    isViewer: false, pages: [{ canvases: [] }], counters: [{ id: 'x' }], lineTypes: [],
+    groups: [], drawingPolyline: { pts: [] }, quickLineStart: { x: 1 },
+    activeCounterType: 'x', activeLineTypeId: 'gone',
+  };
+  const u = createUndoStack(undoCtx(state).ctx);
+  u.applySnapshot({ pages: [], counters: [], lineTypes: [], groups: [] });
+  assert.strictEqual(state.drawingPolyline, null);
+  assert.strictEqual(state.quickLineStart, null);
+  assert.strictEqual(state.activeCounterType, null);   // counter list emptied
+  assert.strictEqual(state.activeLineTypeId, null);
 });

@@ -442,80 +442,21 @@
   function markProjectDirty() { return saveEngine.markProjectDirty(); }
 
   // SECTION: Undo/redo stacks
-  let undoStack = [];
-  let redoStack = [];
-
-  // getProjectCounts(data) lives in save-utils.js (loaded before this IIFE).
-
-  function getUndoableSnapshot() {
-    return {
-      pages: state.pages.map(p => ({
-        canvases: JSON.parse(JSON.stringify(p.canvases || [])),
-        scale: p.scale ? { ...p.scale } : null,
-        rotation: p.rotation ?? 0,
-        label: p.label
-      })),
-      counters: JSON.parse(JSON.stringify(state.counters)),
-      lineTypes: JSON.parse(JSON.stringify(state.lineTypes)),
-      groups: JSON.parse(JSON.stringify(state.groups || []))
-    };
-  }
-
-  function pushUndoSnapshot() {
-    if (state.isViewer || !state.pages.length) return;
-    undoStack.push(getUndoableSnapshot());
-    if (undoStack.length > UNDO_STACK_SIZE) undoStack.shift();
-    redoStack = [];
-  }
-
-  function applySnapshot(snap) {
-    state.pages.forEach((p, i) => {
-      if (snap.pages[i]) {
-        if (Array.isArray(snap.pages[i].canvases)) p.canvases = snap.pages[i].canvases;
-        else if (snap.pages[i].annotations) { p.canvases = [{ id: uid(), name: 'Main', annotations: snap.pages[i].annotations }]; }
-        p.scale = snap.pages[i].scale;
-        p.rotation = snap.pages[i].rotation ?? 0;
-        if (snap.pages[i].label != null) p.label = snap.pages[i].label;
-      }
-    });
-    state.counters = snap.counters;
-    state.lineTypes = snap.lineTypes;
-    if (Array.isArray(snap.groups)) state.groups = ensureGroupColors(snap.groups);
-    state.quickLineStart = null;
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.drawingPolyline = null;
-    state.editingPolyline = null;
-    if (state.activeCounterType && !state.counters.some(c => c.id === state.activeCounterType)) state.activeCounterType = null;
-    if (state.activeLineTypeId && !state.lineTypes.some(lt => lt.id === state.activeLineTypeId)) state.activeLineTypeId = null;
-  }
-
-  function undo() {
-    if (undoStack.length === 0 || state.isViewer) return;
-    redoStack.push(getUndoableSnapshot());
-    const prev = undoStack.pop();
-    applySnapshot(prev);
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  }
-
-  function redo() {
-    if (redoStack.length === 0 || state.isViewer) return;
-    undoStack.push(getUndoableSnapshot());
-    const next = redoStack.pop();
-    applySnapshot(next);
-    markProjectDirty();
-    renderPdf();
-    updateUI();
-  }
-
-  function clearUndoStacks() {
-    undoStack = [];
-    redoStack = [];
-  }
+  // The undo/redo stack lives in annotation-model.js (createUndoStack(ctx),
+  // same seam as createAnnotationModel). Same-named wrappers keep the call
+  // sites + App publishes frozen; updateUI reads the depths via canUndo/canRedo.
+  const undoStackModel = createUndoStack({
+    getState: () => state,
+    uid: () => uid(),
+    ensureGroupColors: (g) => ensureGroupColors(g),
+    markProjectDirty: () => markProjectDirty(),
+    renderPdf: () => renderPdf(),
+    updateUI: () => updateUI(),
+  });
+  function pushUndoSnapshot() { return undoStackModel.pushUndoSnapshot(); }
+  function undo() { return undoStackModel.undo(); }
+  function redo() { return undoStackModel.redo(); }
+  function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
 
   function resetAutosaveDegradedState() { return saveEngine.resetAutosaveDegradedState(); }
 
@@ -3366,8 +3307,8 @@
     document.getElementById('polylineFinishBar').classList.toggle('visible', !!state.drawingPolyline);
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
-    if (undoBtn) undoBtn.disabled = undoStack.length === 0 || !!state.isViewer;
-    if (redoBtn) redoBtn.disabled = redoStack.length === 0 || !!state.isViewer;
+    if (undoBtn) undoBtn.disabled = !undoStackModel.canUndo() || !!state.isViewer;
+    if (redoBtn) redoBtn.disabled = !undoStackModel.canRedo() || !!state.isViewer;
     // setScale/setScaleSidebar are deliberately NOT in this list: viewers see the
     // page's scale status on them and may set a temporary, local-only scale
     // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the

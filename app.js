@@ -233,13 +233,11 @@
     return groups;
   }
 
-  let pendingImportCanvasAfterPdf = false;
   // #7b: When true, the next pdfInput.onchange treats the upload as "add
   // additional pages to the current project" and routes through Prepare PDF
   // in append mode. Set by the Project Settings "Add additional PDF pages"
   // button. Always cleared at the top of pdfInput.onchange so it can't leak
   // across calls.
-  let pendingAddAdditionalPages = false;
   let lastAuthUserId = null;
   let lastModifiedAt = 0;
   let pendingLastSessionRestore = null;
@@ -494,7 +492,7 @@
     saveEngine.resetTurnInState();
     lastModifiedAt = 0;
     if (App.resetCopyProjectState) App.resetCopyProjectState();
-    pendingImportCanvasAfterPdf = false;
+    if (App.resetPdfIntakeFlags) App.resetPdfIntakeFlags();
     pendingLastSessionRestore = null;
     clearUndoStacks();
     resetAutosaveDegradedState();
@@ -554,7 +552,7 @@
   // preflight/visibility callers frozen.
   function probeCheckoutLock(runId) { return saveEngine.probeCheckoutLock(runId); }
 
-  function sha256Hex(buffer) { return saveEngine.sha256Hex(buffer); }
+  // sha256Hex: engine-internal + App.sha256Hex delegate (intake moved, split #38).
 
   // IndexedDB store names & caps live in constants.js; the BACKUP_PDF_TO_INDEXEDDB
   // env read lives in idb.js (a shared classic-script global the engine also reads).
@@ -4730,11 +4728,6 @@
     return { ok: false, message: msg, bytes, limit: PDF_MAX_SIZE_BYTES };
   }
   const IS_DEV_HOST = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
-  function titleFromPdfFilename(name) {
-    if (!name) return 'Untitled';
-    const s = String(name).replace(/\.pdf$/i, '').trim();
-    return s || 'Untitled';
-  }
   async function mergePdfBuffers(buffers) {
     if (!buffers.length) return null;
     if (buffers.length === 1) return buffers[0].slice(0);
@@ -4792,333 +4785,13 @@
   // moved to features/prepare-pdf.js (App.openPreparePdfModal). What remains here
   // is the PDF intake pipeline (file upload, test PDF, hashing) that feeds it.
   // SECTION: PDF intake (upload, test PDF, hashing)
-  async function loadTestPdf() {
-    // A2: When a project is already loaded, refuse to clobber its name/buffer.
-    // The Advanced "Load test PDF" entry point is a dev fixture and should not
-    // be a back-door for the load-annotations-modal-style data loss.
-    if (state.currentProjectId) {
-      showToast('Close the current project before loading the test PDF.', 4000);
-      return;
-    }
-    try {
-      const res = await fetch(LOAD_TEST_PDF_URL);
-      if (!res.ok) throw new Error('Fetch failed: ' + res.status);
-      const buf = await res.arrayBuffer();
-      const bufForDisplay = buf.slice(0);
-      const pdf = await pdfjsLib.getDocument(buf).promise;
-      const numPages = pdf.numPages;
-      const pages = [];
-      for (let i = 0; i < numPages; i++) {
-        const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? ('Test PDF — p' + (i + 1)) : 'Test PDF';
-        const canvasId = uid();
-        pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-      }
-      App.openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
-      clearPdfBitmapCache();
-      state.pages = [];
-      state.activeCanvasIdByPage = {};
-      resetGridOrigin();
-      state.pdfBuffer = null;
-      state.pdfBufferSize = 0;
-      state.currentProjectName = 'Untitled';
-      state.currentPage = 0;
-      updateUI();
-      requestAnimationFrame(() => { fitZoom(); renderPdf(); });
-    } catch (e) {
-      console.error('[Load test PDF]', e);
-      showToast('Failed to load test PDF: ' + (e?.message || 'Unknown error'), 4000);
-    }
-  }
-  document.getElementById('pdfInput').onchange = async (e) => {
-    // #7b: Capture and clear the "Add additional PDF pages" flag immediately
-    // so it can never leak across calls (e.g. user dismisses picker, then
-    // uses Upload PDF from elsewhere).
-    const isAddAdditional = pendingAddAdditionalPages;
-    pendingAddAdditionalPages = false;
-    const files = e.target.files;
-    if (!files?.length) {
-      pendingImportCanvasAfterPdf = false;
-      return;
-    }
-    // #7b: When this upload is an explicit "add additional pages" request and
-    // we have a project already, route through Prepare PDF in append mode.
-    // Single-file & multi-file uploads both work: multi-file is merged into a
-    // single new buffer first so Prepare PDF can show one continuous preview.
-    if (isAddAdditional && state.currentProjectId && state.pages.length > 0) {
-      const filesToProcess = Array.from(files);
-      for (const f of filesToProcess) {
-        if (SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-          alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
-          e.target.value = '';
-          return;
-        }
-      }
-      const newBuffers = [];
-      const newPages = [];
-      try {
-        for (const f of filesToProcess) {
-          const buf = await f.arrayBuffer();
-          newBuffers.push(buf.slice(0));
-          const pdf = await pdfjsLib.getDocument(buf).promise;
-          const numPages = pdf.numPages;
-          for (let i = 0; i < numPages; i++) {
-            const pdfPage = await pdf.getPage(i + 1);
-            const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-            newPages.push({ pdfPage, label, rotation: 0 });
-          }
-        }
-      } catch (err) {
-        alert('Failed to read uploaded PDF: ' + (err?.message || 'unknown error'));
-        e.target.value = '';
-        return;
-      }
-      const newBuf = newBuffers.length === 1
-        ? newBuffers[0]
-        : await mergePdfBuffers(newBuffers);
-      e.target.value = '';
-      if (!newBuf || !newPages.length) {
-        alert('Failed to read uploaded PDF.');
-        return;
-      }
-      App.openPreparePdfModal(newPages, newBuf, state.currentProjectName || 'Untitled', { mode: 'append' });
-      return;
-    }
-    const importBothFollowUp = pendingImportCanvasAfterPdf;
-    pendingImportCanvasAfterPdf = false;
-    const filesToProcess = Array.from(files);
-    const startPageIdx = state.pages.length;
-    if (startPageIdx === 0) resetGridOrigin();
-    let firstBuf = null;
-    const buffersForMerge = [];
-    if (startPageIdx > 0 && state.pdfBuffer) {
-      buffersForMerge.push(state.pdfBuffer.slice ? state.pdfBuffer.slice(0) : state.pdfBuffer);
-    }
-    for (const f of filesToProcess) {
-      if (SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-        alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
-        e.target.value = '';
-        return;
-      }
-      const buf = await f.arrayBuffer();
-      const bufCopy = buf.slice(0);
-      if (!firstBuf) firstBuf = bufCopy;
-      buffersForMerge.push(bufCopy);
-      const pdf = await pdfjsLib.getDocument(buf).promise;
-      const numPages = pdf.numPages;
-      for (let i = 0; i < numPages; i++) {
-        const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-        const canvasId = uid();
-        const idx = state.pages.length;
-        state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-        state.activeCanvasIdByPage[idx] = canvasId;
-      }
-    }
-    if (SUPABASE_ENABLED && buffersForMerge.length > 0) {
-      const projectedBytes = buffersForMerge.reduce(
-        (s, b) => s + ((b && (b.byteLength || b.length)) || 0),
-        0
-      );
-      if (projectedBytes > PDF_MAX_SIZE_BYTES) {
-        state.pages.length = startPageIdx;
-        Object.keys(state.activeCanvasIdByPage).forEach((k) => {
-          if (Number(k) >= startPageIdx) delete state.activeCanvasIdByPage[k];
-        });
-        alert(
-          'Total PDF size after merge would be ' +
-          (projectedBytes / 1024 / 1024).toFixed(1) +
-          ' MB. Maximum is 50 MB. No pages were added.'
-        );
-        e.target.value = '';
-        return;
-      }
-    }
-    if (buffersForMerge.length > 0) {
-      const merged = await mergePdfBuffers(buffersForMerge);
-      state.pdfBuffer = merged;
-      state.pdfBufferSize = merged ? (merged.byteLength ?? merged.length ?? merged.size ?? 0) : 0;
-      state.pdfStoragePath = null;
-      const mergedPdf = await pdfjsLib.getDocument(merged.slice ? merged.slice(0) : merged).promise;
-      const numPages = mergedPdf.numPages;
-      clearPdfBitmapCache();   // pdfPage proxies rebound below — cached bitmaps would pin the old document
-      for (let i = 0; i < numPages && i < state.pages.length; i++) {
-        state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
-      }
-      if (!state.pendingCanvasLoad) markProjectDirty();
-    }
-    if (state.pendingCanvasLoad && firstBuf) {
-      const d = state.pendingCanvasLoad.data;
-      const hashBuf = state.pdfBuffer || firstBuf;
-      const uploadHash = await sha256Hex(hashBuf);
-      const hashMatches = !state.pendingCanvasLoad.pdf_hash || state.pendingCanvasLoad.pdf_hash === uploadHash;
-      if (!hashMatches && !confirm('This PDF doesn\'t match the project. Annotations may not align. Load anyway?')) {
-        state.pendingCanvasLoad = null;
-        state.currentProjectId = null;
-        state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
-        try { clearCheckoutExpiredAttention(); } catch (_) {}
-      } else {
-        const projName = state.pendingCanvasLoad.name;
-        state.counters = Array.isArray(d.counters) ? d.counters : [];
-        state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-        state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-        if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-        if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-        if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-        (d.pages || []).forEach(p => {
-          applyPageAnnotationsFromData(state.pages[p.index], p);
-        });
-        if (d.pageScales) {
-          d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-        } else if (d.scale) {
-          state.pages.forEach(p => { p.scale = d.scale; });
-        }
-        state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-        if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-        if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-        if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-        if (d.gridSettings) state.gridSettings = d.gridSettings;
-        reconcileOrphanedCountersAndLineTypes();
-        clearUndoStacks();
-        state.pendingCanvasLoad = null;
-        state.currentProjectName = projName;
-        state.pdfHash = uploadHash;
-        // Do NOT push this hash to the cloud row here: the locally-uploaded PDF
-        // has not been stored, so recording its hash would make the row claim a
-        // PDF that isn't in storage (or that differs from the file pdf_path
-        // points to). That both reintroduces the "saved but no PDF" bug and can
-        // cause the manual-save hash-skip to skip the real upload. The next real
-        // save (performSaveProjectToCloud with Include PDF) writes pdf_hash and
-        // pdf_path together once the file is actually uploaded.
-      }
-    } else {
-      state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
-    }
-    state.currentPage = startPageIdx;
-    updateUI();
-    requestAnimationFrame(() => {
-      fitZoom();
-    });
-    e.target.value = '';
-
-    const hashBufForMatch = state.pdfBuffer || firstBuf;
-    // Only prompt to load existing annotations / auto-open Prepare PDF when the
-    // user is NOT already inside a loaded project. Otherwise the user is just
-    // attaching/adding a PDF to their active project and these prompts would
-    // either offer to switch projects (destructive) or clobber the project name.
-    if (!importBothFollowUp && !state.pendingCanvasLoad && !state.currentProjectId && SUPABASE_ENABLED && supabase && state.supabaseSession?.user && hashBufForMatch) {
-      const uploadHash = await sha256Hex(hashBufForMatch);
-      const user = state.supabaseSession.user;
-      const { data: matches } = await supabase.from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
-      if (matches && matches.length > 0) {
-        const listEl = document.getElementById('loadAnnotationsList');
-        listEl.innerHTML = '';
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        matches.forEach(proj => {
-          const div = document.createElement('div');
-          const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
-          div.className = 'sidebar-item load-annotations-item';
-          div.innerHTML = '<span class="name">' + esc(proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + esc(date) + '</span>';
-          div.onclick = async () => {
-            // B1b: Fetch the full project row via list_accessible_projects so
-            // we have can_edit / can_check_out / checked_out_* / user_id and
-            // can hydrate checkout/permissions via the shared helper.
-            let fullProj;
-            try {
-              const { data: allProjects, error: allErr } = await supabase.rpc('list_accessible_projects');
-              if (allErr) throw allErr;
-              fullProj = (allProjects || []).find(p => p.id === proj.id) || null;
-            } catch (fetchErr) {
-              showToast('Failed to load project: ' + ((fetchErr && fetchErr.message) || 'unknown error'), 4000);
-              return;
-            }
-            if (!fullProj) {
-              showToast('Project is no longer accessible.', 4000);
-              return;
-            }
-            const d = fullProj.data || {};
-            // B2: Page-count mismatch warning. If the cloud project's pages
-            // count differs from the just-uploaded PDF, the user might lose
-            // annotations or end up with them on wrong pages. Only warn when
-            // the cloud project actually has per-page data; an empty d.pages
-            // array means nothing to misalign.
-            const cloudPages = Array.isArray(d.pages) ? d.pages : [];
-            const cloudPageCount = cloudPages.reduce((m, p) => Math.max(m, (p?.index ?? -1) + 1), 0) || cloudPages.length;
-            if (cloudPages.length > 0 && cloudPageCount !== state.pages.length) {
-              const ok = confirm(
-                'These annotations were saved for a ' + cloudPageCount + '-page PDF; ' +
-                'the PDF you uploaded has ' + state.pages.length + ' pages. ' +
-                'Some annotations may be missing or misplaced. Continue?'
-              );
-              if (!ok) return;
-            }
-            state.counters = Array.isArray(d.counters) ? d.counters : [];
-            state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-            state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-            if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-            if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-            if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-            cloudPages.forEach(p => {
-              if (state.pages[p.index]) applyPageAnnotationsFromData(state.pages[p.index], p);
-            });
-            // B2: Sanitize activeCanvasIdByPage to indices that exist in the
-            // current PDF so we never reference canvases on pages that aren't
-            // present.
-            if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') {
-              const sanitized = {};
-              Object.entries(d.activeCanvasIdByPage).forEach(([k, v]) => {
-                const idx = Number(k);
-                if (Number.isFinite(idx) && state.pages[idx]) sanitized[idx] = v;
-              });
-              state.activeCanvasIdByPage = sanitized;
-            }
-            if (d.pageScales) {
-              d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
-            } else if (d.scale) {
-              state.pages.forEach(p => { p.scale = d.scale; });
-            }
-            state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-            if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-            if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-            if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-            if (d.gridSettings) state.gridSettings = d.gridSettings;
-            reconcileOrphanedCountersAndLineTypes();
-            clearUndoStacks();
-            // B1b: Shared helper sets currentProjectId/Name, checkout/permissions,
-            // realtime subscription, clickcount-last-project, etc. Reuse the
-            // in-memory PDF (matched by hash) so next save doesn't re-upload.
-            hydrateProjectFromCloudRow(fullProj, {
-              reusePdfHash: uploadHash,
-              reusePdfStoragePath: fullProj.pdf_path || null,
-              source: 'load_annotations'
-            });
-            state.sidebarReorderModeActive = false;
-            hideModal('loadAnnotationsModal');
-            fitZoom();
-            updateUI();
-            renderPdf();
-          };
-          listEl.appendChild(div);
-        });
-        showModal('loadAnnotationsModal');
-      } else if (startPageIdx === 0) {
-        App.openPreparePdfModal(state.pages, state.pdfBuffer, state.currentProjectName);
-        clearPdfBitmapCache();
-        state.pages = [];
-        state.activeCanvasIdByPage = {};
-        state.pdfBuffer = null;
-        state.pdfBufferSize = 0;
-        state.currentProjectName = 'Untitled';
-        state.currentPage = 0;
-        updateUI();
-        renderPdf();
-      }
-    }
-    if (importBothFollowUp && state.pages.length > 0) {
-      showModal('importCanvasAfterPdfModal');
-    }
-  };
-
+  // The whole intake pipeline (the #pdfInput onchange flow: size caps,
+  // multi-file merge, append mode, canvas-load hash match, the
+  // load-annotations prompt, the Prepare PDF handoff; plus loadTestPdf and
+  // titleFromPdfFilename) lives in features/pdf-intake.js (registry split
+  // #38). The feature owns the pendingAddAdditionalPages /
+  // pendingImportCanvasAfterPdf flags; app.js reaches them via
+  // App.setPendingAddAdditionalPages / App.resetPdfIntakeFlags.
   // SECTION: Toolbar tool buttons
   // The Scale modal (updateScalePlaceholder, openScaleModal,
   // resetScaleModalZoneMode, applyScaleObjectToZoneOrPage, showScaleTab, the
@@ -6272,7 +5945,7 @@
         showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
         return;
       }
-      pendingAddAdditionalPages = true;
+      App.setPendingAddAdditionalPages(true);
       document.getElementById('pdfInput').click();
     };
     document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
@@ -6280,7 +5953,7 @@
     document.getElementById('settingsAdvancedModalClose').onclick = () => hideModal('settingsAdvancedModal');
     document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
     document.querySelector('#settingsAdvancedModal .modal-card').onclick = (e) => e.stopPropagation();
-    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await loadTestPdf(); };
+    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.loadTestPdf(); };
     document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openManageIconsModal(); };
     document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
     document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.downloadProjectPdf(); };

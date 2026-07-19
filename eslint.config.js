@@ -213,6 +213,8 @@ module.exports = [
         ...globals.browser,
         ...saveEngineGlobals,
         module: 'readonly',
+        // CDN library loaded via <script> in index.html (resumable PDF upload).
+        tus: 'readonly',
       },
     },
     rules: {

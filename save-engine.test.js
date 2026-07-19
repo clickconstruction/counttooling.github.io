@@ -38,6 +38,10 @@ let deletedDbs = [];
 globalThis.window = /** @type {any} */ ({});
 globalThis.location = { reload: () => { reloads++; } };
 globalThis.indexedDB = { deleteDatabase: (n) => { deletedDbs.push(n); } };
+// Stage 6: updateSyncPausedBanner (engine-internal) reaches for the banner
+// element; keepalive gates on visibilityState. A null-returning stub keeps
+// both honest under node.
+globalThis.document = /** @type {any} */ ({ getElementById: () => null, visibilityState: 'visible' });
 
 // idb.js storage-primitive stubs (the engine reads these classic-script
 // globals bare; stubbing avoids fake-indexeddb here).
@@ -60,16 +64,21 @@ beforeEach(() => {
   idbPuts = [];
   idbRawEntry = null;
   idbDeletes = [];
+  // Stage 6: the save paths run engine-internal now. The recovery probe
+  // (doTurnIn pre-probe with a 0 last-success stamp) needs a healthy fetch,
+  // and performSaveProjectToCloud's yield helper needs requestAnimationFrame.
+  globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => '' });
+  globalThis.requestAnimationFrame = (cb) => { cb(); return 0; };
 });
 
 function makeCtx(overrides) {
   const calls = {
-    expired: 0, backupKicks: 0, footerInvalidations: 0, setDirty: [], lastModified: [], refreshAt: [], clock: [],
-    // Stage 5 spies
-    toasts: [], turnInLabels: [], progressHandlers: [], autosaves: [], uploads: [],
-    attention: 0, cleared: 0, suspends: 0, uiUpdates: 0, statusUpdates: 0, indicatorUpdates: 0, settingsSection: 0, cloudFailFlag: [],
+    expired: 0, backupKicks: 0, footerInvalidations: 0, lastModified: [], refreshAt: [], clock: [],
+    // Stage 5/6 spies
+    toasts: [], turnInLabels: [], includedPdf: [],
+    attention: 0, cleared: 0, suspends: 0, uiUpdates: 0, statusUpdates: 0, indicatorUpdates: 0, settingsSection: 0,
   };
-  const appSide = { autoSaveDirty: false, lastCheckoutRefreshAt: 0 };
+  const appSide = { lastCheckoutRefreshAt: 0 };
   const ctx = {
     getState: () => ({ supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', isViewer: false, pages: [{}] }),
     getSupabase: () => ({ rpc: () => Promise.resolve({ data: {} }) }),
@@ -78,32 +87,25 @@ function makeCtx(overrides) {
     probeCheckoutLock: async () => ({ expired: false }),
     isAutoSaveSuspended: () => false,
     getLastCheckoutRefreshAt: () => appSide.lastCheckoutRefreshAt,
-    getAutoSaveDirty: () => appSide.autoSaveDirty,
-    setAutoSaveDirty: (v) => { appSide.autoSaveDirty = v; calls.setDirty.push(v); },
     setLastModifiedAt: (ms) => { calls.lastModified.push(ms); },
     invalidateFooterTotals: () => { calls.footerInvalidations++; },
-    autosaveEventDetail: (extra) => JSON.stringify(extra || {}),
     isCheckoutExpiredAttention: () => false,
     setLastCheckoutRefreshAt: (ms) => { appSide.lastCheckoutRefreshAt = ms; calls.refreshAt.push(ms); },
     updateServerClockFromRpc: (d) => { calls.clock.push(d); },
     serverNowMs: () => Date.now(),
-    noteSupabaseCallOk: () => { calls.supabaseOk = (calls.supabaseOk || 0) + 1; },
+    getServerClockOffsetMs: () => 0,
     perfLog: () => {},
     getUserCustomIcons: () => [],
     computePageBakeFrame: () => null,
     getLastModifiedAt: () => 0,
+    getMaxZoom: () => 4,
     setSupabase: () => {},
     getSupabaseUrl: () => 'https://x.supabase.co',
     getSupabaseAnonKey: () => 'anon',
-    getConsecutiveAutoSaveFailures: () => 0,
-    clearAutoSaveBackoff: () => {},
-    // Stage 5 (checkout UX)
-    isSaveInProgress: () => false,
-    getInFlightAutoSavePromise: () => null,
-    getLastSuccessfulSupabaseCallAt: () => Date.now(),
-    performAutoSave: async (runId) => { calls.autosaves.push(runId); return { ok: true }; },
-    uploadLocalPdfToCloudIfNeeded: async (reason, opts) => { calls.uploads.push([reason, opts]); return { ok: true }; },
-    setPdfUploadProgressHandler: (fn) => { calls.progressHandlers.push(fn); },
+    assertPdfWithinLimit: () => null,
+    maybeLogProjectSaveEvent: () => {},
+    captureDisplayInfoObj: () => null,
+    setLastSaveIncludedPdf: (v) => { calls.includedPdf.push(v); },
     setTurnInProgress: (label) => { calls.turnInLabels.push(label); },
     showToast: (msg, ms) => { calls.toasts.push(msg); },
     updateUI: () => { calls.uiUpdates++; },
@@ -113,8 +115,6 @@ function makeCtx(overrides) {
     clearCheckoutExpiredAttention: () => { calls.cleared++; },
     setCheckoutExpiredAttention: () => { calls.attention++; },
     suspendAutoSave: () => { calls.suspends++; },
-    setLastCloudSaveAttemptFailed: (v) => { calls.cloudFailFlag.push(v); },
-    captureNetworkInfoDetail: () => null,
     isAuthError: () => false,
     ...overrides,
   };
@@ -122,13 +122,29 @@ function makeCtx(overrides) {
 }
 
 // Supabase stub with a working realtime-channel chain for the Stage 5
-// subscription cluster (channel().on().subscribe() + removeChannel).
-function makeChannelSupabase(rpcImpl) {
-  const sub = { channels: [], removed: [] };
+// subscription cluster (channel().on().subscribe() + removeChannel), plus a
+// from()/update()/eq()/abortSignal() chain for the Stage 6 save paths.
+// opts.updateResult overrides the projects.update outcome ({ error }).
+function makeChannelSupabase(rpcImpl, opts) {
+  opts = opts || {};
+  const sub = { channels: [], removed: [], updates: [] };
   const supabase = {
     rpc: rpcImpl || (async () => ({ data: {} })),
     removeAllChannels: async () => {},
     removeChannel: async (ch) => { sub.removed.push(ch); },
+    from: (table) => ({
+      update: (payload) => ({
+        eq: () => {
+          sub.updates.push({ table, payload });
+          const result = Promise.resolve(opts.updateResult || { error: null });
+          return Object.assign(result, { abortSignal: () => result });
+        },
+      }),
+      select: () => ({ eq: () => ({ single: async () => ({ data: opts.selectRow || null }) }) }),
+      delete: () => ({ eq: async () => ({ error: null }) }),
+    }),
+    storage: { from: () => ({ info: async () => ({ data: null }), upload: async () => ({ error: null }), remove: async () => ({ error: null }) }) },
+    auth: { getSession: async () => ({ data: { session: null } }) },
     channel: (name) => {
       const ch = { name, ons: [], statusCb: null };
       ch.on = (type, filter, cb) => { ch.ons.push({ type, filter, cb }); return ch; };
@@ -184,12 +200,12 @@ test('markProjectDirty: viewer / empty sessions are no-ops', () => {
 });
 
 test('markProjectDirty: sets dirty, bumps generation, stamps first-dirty once, kicks the debounced backup', async () => {
-  const { ctx, calls, appSide } = makeCtx();
+  const { ctx, calls } = makeCtx();
   const engine = createSaveEngine(ctx);
   engine.markProjectDirty();
   engine.markProjectDirty();
   assert.strictEqual(engine.getDirtyGeneration(), 2);
-  assert.strictEqual(appSide.autoSaveDirty, true);
+  assert.strictEqual(engine.getAutoSaveDirty(), true);
   assert.strictEqual(calls.footerInvalidations, 2);
   // The debounced (1s) backup fires once for the burst and lands in the idb stub.
   await new Promise((r) => setTimeout(r, 1300));
@@ -298,10 +314,12 @@ test('probeCheckoutLock: non-holder reports expired; a healthy refresh stamps th
   const supabase = { rpc: async () => ({ data: { ok: true, checked_out_at: '2026-07-18T00:00:00Z' } }) };
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: null };
   const b = makeCtx({ getState: () => state, getSupabase: () => supabase });
-  const rb = await createSaveEngine(b.ctx).probeCheckoutLock();
+  const eb = createSaveEngine(b.ctx);
+  assert.strictEqual(eb.getLastSuccessfulSupabaseCallAt(), 0);
+  const rb = await eb.probeCheckoutLock();
   assert.deepStrictEqual(rb, { ok: true, refreshed: true });
   assert.strictEqual(state.checkedOutAt, '2026-07-18T00:00:00Z');
-  assert.strictEqual(b.calls.supabaseOk, 1);
+  assert.ok(eb.getLastSuccessfulSupabaseCallAt() > 0);   // noteSupabaseCallOk (engine-internal since Stage 6)
   assert.strictEqual(b.calls.refreshAt.length, 1);
 });
 
@@ -525,14 +543,17 @@ test('refreshProjectPermissions: applies the project row and pings the UI', asyn
 
 test('refreshProjectPermissions: force turn-in with dirty edits flushes once and warns', async () => {
   const row = { id: 'p1', can_edit: false, can_check_out: false, checked_out_by: 'u2', checked_out_email: 'other@x.com' };
-  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
-  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false };
-  const { ctx, calls, appSide } = makeCtx({ getState: () => state, getSupabase: () => supabase });
-  appSide.autoSaveDirty = true;
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false, isViewer: false, pages: [] };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
   const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
   await engine.refreshProjectPermissions();
-  await new Promise((r) => setImmediate(r));   // the flush is fire-and-forget
-  assert.strictEqual(calls.autosaves.length, 1);
+  await new Promise((r) => setTimeout(r, 20));   // the flush is fire-and-forget
+  // The flush ran through the (engine-internal) performAutoSave against the
+  // stubbed projects.update chain.
+  assert.ok(logKinds(engine).includes('autosave_start'));
+  assert.strictEqual(sub.updates.length, 1);
   assert.ok(logKinds(engine).includes('force_turn_in'));
   assert.strictEqual(state.isViewer, true);
   assert.match(calls.toasts[0], /turned in by another user/);
@@ -540,33 +561,39 @@ test('refreshProjectPermissions: force turn-in with dirty edits flushes once and
 
 // --- Stage 5: checkout expired recovery -------------------------------------
 
-test('computeCheckoutExpiryAgeMs: no candidates -> 0; stale last-success dates the expiry', () => {
-  const a = makeCtx({ getState: () => ({}), getLastSuccessfulSupabaseCallAt: () => 0 });
+test('computeCheckoutExpiryAgeMs: no candidates -> 0; stale checkout dates the expiry', () => {
+  // The last-success stamp is engine-internal since Stage 6 (0 on a fresh
+  // engine), so the candidates are driven through state.checkedOutAt.
+  const a = makeCtx({ getState: () => ({}) });
   assert.strictEqual(createSaveEngine(a.ctx).computeCheckoutExpiryAgeMs(), 0);
   const staleBy = 60000;
-  const b = makeCtx({ getState: () => ({}), getLastSuccessfulSupabaseCallAt: () => Date.now() - CHECKOUT_INACTIVITY_MS - staleBy });
+  const b = makeCtx({ getState: () => ({ checkedOutAt: new Date(Date.now() - CHECKOUT_INACTIVITY_MS - staleBy).toISOString() }) });
   const age = createSaveEngine(b.ctx).computeCheckoutExpiryAgeMs();
   assert.ok(age >= staleBy - 1000 && age <= staleBy + 5000, 'age ~= ' + staleBy + ', got ' + age);
-  // A fresh last-success puts the expiry in the future -> clamped to 0.
-  const c = makeCtx({ getState: () => ({}), getLastSuccessfulSupabaseCallAt: () => Date.now() });
+  // A fresh checkout puts the expiry in the future -> clamped to 0.
+  const c = makeCtx({ getState: () => ({ checkedOutAt: new Date().toISOString() }) });
   assert.strictEqual(createSaveEngine(c.ctx).computeCheckoutExpiryAgeMs(), 0);
 });
 
 test('reCheckOutAfterExpiry: success clears attention, retakes the lock, flushes dirty edits', async () => {
   const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1' };
-  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
-  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, canCheckOut: true };
-  const { ctx, calls, appSide } = makeCtx({ getState: () => state, getSupabase: () => supabase });
-  appSide.autoSaveDirty = true;
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, canCheckOut: true, isViewer: false, pages: [] };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
   const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
   const res = await engine.reCheckOutAfterExpiry('test_trigger');
   assert.strictEqual(res.ok, true);
   assert.strictEqual(calls.cleared, 1);
   assert.strictEqual(state.checkedOutBy, 'u1');
   assert.strictEqual(state.isViewer, false);
-  assert.strictEqual(calls.refreshAt.length, 1);
+  assert.ok(calls.refreshAt.length >= 1);
   assert.ok(logKinds(engine).includes('checkout_recovered'));
-  assert.deepStrictEqual(calls.autosaves, ['checkout_recovered']);
+  // The recovery save ran through the (engine-internal) performAutoSave and
+  // cleared the dirty flag against the stubbed update chain.
+  assert.ok(logKinds(engine).includes('autosave_ok'));
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
   assert.match(calls.toasts[0], /Saving your edits/);
 });
 
@@ -662,55 +689,57 @@ test('doTurnIn: clean session releases the lock, stages the banner, and clears i
   const res = await engine.doTurnIn();
   assert.deepStrictEqual(res, { ok: true });
   assert.ok(logKinds(engine).includes('turn_in_start'));
+  // A fresh engine has lastSuccessfulSupabaseCallAt 0 -> the staleness
+  // pre-probe runs against the beforeEach fetch stub and passes.
+  assert.ok(logKinds(engine).includes('autosave_recovery_ok'));
   assert.ok(logKinds(engine).includes('turn_in_ok'));
   assert.strictEqual(calls.turnInLabels[calls.turnInLabels.length - 1], null);
   assert.strictEqual(engine.isTurnInInProgress(), false);
 });
 
-test('doTurnIn: dirty session flushes via performAutoSave while in-progress is held', async () => {
-  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+test('doTurnIn: dirty session flushes through the engine-internal autosave before check-in', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [], counters: [], lineTypes: [], pdfStoragePath: 'cloud/p.pdf', isViewer: false };
-  let sawInProgress = null;
-  const { ctx, calls, appSide } = makeCtx({ getState: () => state, getSupabase: () => supabase });
-  appSide.autoSaveDirty = true;
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
   const engine = createSaveEngine(ctx);
-  ctx.performAutoSave = async () => { sawInProgress = engine.isTurnInInProgress(); return { ok: true }; };
+  engine.setAutoSaveDirty(true);
   const res = await engine.doTurnIn();
   assert.strictEqual(res.ok, true);
-  assert.strictEqual(sawInProgress, true);
-  assert.ok(logKinds(engine).some((k) => k === 'turn_in_stage'));
+  const kinds = logKinds(engine);
+  assert.ok(kinds.indexOf('autosave_ok') > -1 && kinds.indexOf('autosave_ok') < kinds.indexOf('turn_in_ok'));
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
   assert.strictEqual(calls.turnInLabels[calls.turnInLabels.length - 1], null);
 });
 
 test('doTurnIn: CHECKOUT_EXPIRED from the pre-check-in save is surfaced as a code', async () => {
+  // Suspended autosave is the engine's own CHECKOUT_EXPIRED source now.
   const { supabase } = makeChannelSupabase(rpcWithProjects([]));
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [], counters: [], lineTypes: [], pdfStoragePath: 'cloud/p.pdf', isViewer: false };
-  const { ctx, appSide } = makeCtx({
+  const { ctx } = makeCtx({
     getState: () => state,
     getSupabase: () => supabase,
-    performAutoSave: async () => ({ ok: false, error: { code: 'CHECKOUT_EXPIRED', message: 'expired' } }),
+    isAutoSaveSuspended: () => true,
   });
-  appSide.autoSaveDirty = true;
   const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
   const res = await engine.doTurnIn();
   assert.strictEqual(res.ok, false);
   assert.strictEqual(res.code, 'CHECKOUT_EXPIRED');
   assert.ok(logKinds(engine).includes('turn_in_blocked_by_save_err'));
 });
 
-test('doTurnIn: local-only PDF is uploaded with progress handler set and cleared', async () => {
+test('doTurnIn: unreachable local PDF falls back to a warning and still releases the lock', async () => {
   const { supabase } = makeChannelSupabase(rpcWithProjects([]));
-  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [{ canvases: [] }], counters: [], lineTypes: [], pdfStoragePath: null, isViewer: false };
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', pages: [{ canvases: [] }], counters: [], lineTypes: [], pdfStoragePath: null, pdfBuffer: null, pdfBufferSize: 0, isViewer: false };
   const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
   const engine = createSaveEngine(ctx);
   const res = await engine.doTurnIn();
   assert.strictEqual(res.ok, true);
-  assert.strictEqual(calls.uploads.length, 1);
-  assert.strictEqual(calls.uploads[0][0], 'turn_in');
-  assert.strictEqual(calls.uploads[0][1].ignoreBackoff, true);
-  assert.strictEqual(calls.progressHandlers.length, 2);
-  assert.strictEqual(typeof calls.progressHandlers[0], 'function');
-  assert.strictEqual(calls.progressHandlers[1], null);
+  // uploadLocalPdfToCloudIfNeeded (engine-internal) skipped with
+  // no_usable_buffer -> the user is warned, the lock is still released.
+  assert.ok(calls.toasts.some((t) => /couldn.t be uploaded/.test(t)));
+  assert.ok(logKinds(engine).includes('turn_in_ok'));
 });
 
 test('doTurnIn: server-side already-released is treated as success', async () => {
@@ -729,4 +758,158 @@ test('resetTurnInState clears the in-flight guard so a wedged flag cannot brick 
   const engine = createSaveEngine(ctx);
   engine.resetTurnInState();
   assert.strictEqual(engine.isTurnInInProgress(), false);
+});
+
+// --- Stage 6: auto-save ------------------------------------------------------
+
+function saveTestState(extra) {
+  return Object.assign({
+    supabaseSession: { user: { id: 'u1' } },
+    currentProjectId: 'p1',
+    checkedOutBy: 'u1',
+    isViewer: false,
+    pages: [], counters: [], lineTypes: [],
+    pdfStoragePath: null, pdfBuffer: null, pdfBufferSize: 0,
+  }, extra || {});
+}
+
+test('performAutoSave: happy update path clears dirty, stamps lastSavedAt, resets the failure ladder', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = saveTestState();
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  const res = await engine.performAutoSave();
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(sub.updates[0].table, 'projects');
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
+  assert.ok(state.lastSavedAt);
+  assert.strictEqual(engine.isSaveInProgress(), false);
+  assert.strictEqual(engine.getConsecutiveAutoSaveFailures(), 0);
+  assert.strictEqual(engine.getNextAutoSaveAttemptAt(), 0);
+  assert.ok(logKinds(engine).includes('autosave_ok'));
+});
+
+test('performAutoSave: suspended sessions surface CHECKOUT_EXPIRED without touching the cloud', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const { ctx } = makeCtx({ getState: () => saveTestState(), getSupabase: () => supabase, isAutoSaveSuspended: () => true });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.performAutoSave();
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.error?.code, 'CHECKOUT_EXPIRED');
+  assert.strictEqual(sub.updates.length, 0);
+  // ...but the recovery save runId is exempt (checkout_recovered flush).
+  const res2 = await engine.performAutoSave('checkout_recovered');
+  assert.strictEqual(res2.ok, true);
+  assert.strictEqual(sub.updates.length, 1);
+});
+
+test('performAutoSave: a non-transient failure restores dirty, arms the backoff, and counts', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]), { updateResult: { error: { message: 'row level security', status: 400 } } });
+  const state = saveTestState();
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  const res = await engine.performAutoSave();
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(engine.getAutoSaveDirty(), true);
+  assert.strictEqual(engine.getConsecutiveAutoSaveFailures(), 1);
+  assert.ok(engine.getNextAutoSaveAttemptAt() > Date.now());
+  assert.ok(logKinds(engine).includes('autosave_err'));
+
+  // Recovery bookkeeping: retrySyncNow clears the backoff and re-dirties.
+  await engine.retrySyncNow();
+  assert.strictEqual(engine.getNextAutoSaveAttemptAt(), 0);
+  assert.strictEqual(engine.getAutoSaveDirty(), true);
+  assert.ok(logKinds(engine).includes('manual_sync_retry'));
+  // resetAutosaveDegradedState zeroes the ladder.
+  engine.resetAutosaveDegradedState();
+  assert.strictEqual(engine.getConsecutiveAutoSaveFailures(), 0);
+});
+
+test('performAutoSave: three straight failures emit the autosave_failing_3 milestone', async () => {
+  // performAutoSave itself does not gate on the backoff (the interval does),
+  // so three direct calls drive the failure ladder.
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]), { updateResult: { error: { message: 'denied', status: 400 } } });
+  const engine = createSaveEngine(makeCtx({ getState: () => saveTestState(), getSupabase: () => supabase }).ctx);
+  for (let i = 0; i < 3; i++) {
+    engine.setAutoSaveDirty(true);
+    await engine.performAutoSave();
+  }
+  assert.strictEqual(engine.getConsecutiveAutoSaveFailures(), 3);
+  assert.ok(logKinds(engine).includes('autosave_failing_3'));
+});
+
+test('uploadLocalPdfToCloudIfNeeded: the skip ladder reports its reasons', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+  const mk = (stateExtra, ctxExtra) => createSaveEngine(makeCtx(Object.assign({
+    getState: () => saveTestState(stateExtra), getSupabase: () => supabase,
+  }, ctxExtra || {})).ctx);
+  assert.deepStrictEqual(await mk({}, { isSupabaseEnabled: () => false }).uploadLocalPdfToCloudIfNeeded('t'),
+    { skipped: true, reason: 'no_supabase' });
+  assert.deepStrictEqual(await mk({ currentProjectId: null }).uploadLocalPdfToCloudIfNeeded('t'),
+    { skipped: true, reason: 'no_project' });
+  assert.deepStrictEqual(await mk({ pages: [] }).uploadLocalPdfToCloudIfNeeded('t'),
+    { skipped: true, reason: 'no_pages' });
+  assert.deepStrictEqual(await mk({ pages: [{}], pdfStoragePath: 'cloud/p.pdf' }).uploadLocalPdfToCloudIfNeeded('t'),
+    { skipped: true, reason: 'already_in_cloud' });
+  assert.deepStrictEqual(await mk({ pages: [{}], isViewer: true }).uploadLocalPdfToCloudIfNeeded('t'),
+    { skipped: true, reason: 'viewer' });
+  assert.deepStrictEqual(await mk({ pages: [{}] }).uploadLocalPdfToCloudIfNeeded('t'),
+    { skipped: true, reason: 'no_usable_buffer' });
+});
+
+test('abortInFlightAutoSave: no controller -> false; save flags reset cleanly', () => {
+  const { ctx } = makeCtx();
+  const engine = createSaveEngine(ctx);
+  assert.strictEqual(engine.abortInFlightAutoSave('hidden'), false);
+  engine.resetSaveFlags();
+  assert.strictEqual(engine.isSaveInProgress(), false);
+  assert.strictEqual(engine.isSavePdfInProgress(), false);
+  assert.strictEqual(engine.getSaveProgressMessage(), '');
+});
+
+// --- Stage 6: manual save & envelope ----------------------------------------
+
+test('performSaveProjectToCloud: signed-out sessions fail fast', async () => {
+  const { ctx } = makeCtx({ getState: () => ({ supabaseSession: null }) });
+  const res = await createSaveEngine(ctx).performSaveProjectToCloud({ name: 'X', includePdf: false });
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error.message, /Not signed in/);
+});
+
+test('performSaveProjectToCloud: no-PDF update path completes and stamps state', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = saveTestState({ currentProjectName: 'Old' });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.performSaveProjectToCloud({ name: 'Renamed', includePdf: false });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(sub.updates[0].payload.name, 'Renamed');
+  assert.strictEqual(state.currentProjectName, 'Renamed');
+  assert.ok(state.lastSavedAt);
+  assert.ok(logKinds(engine).includes('manual_save_ok'));
+  assert.strictEqual(engine.wasLastCloudSaveAttemptFailed(), false);
+});
+
+test('envelope: schema, per-tab session id, timing block, and project summary', () => {
+  const state = saveTestState({
+    currentProjectName: 'Proj',
+    pages: [{ canvases: [{ annotations: { counterMarkers: { c1: [{}, {}] }, multiplyZones: [{}] } }], scale: { feet: 10 }, rotation: 0 }],
+    counters: [{ id: 'c1' }], groups: [],
+  });
+  const { ctx } = makeCtx({ getState: () => state });
+  const engine = createSaveEngine(ctx);
+  engine.pushSaveEvent('x', 'probe');
+  const env = engine.buildSaveLogsEnvelope();
+  assert.strictEqual(env.schema, 'clickcount-save-logs/v1');
+  assert.ok(env.tabSessionId && typeof env.tabSessionId === 'string');
+  assert.strictEqual(env.timing.consecutiveAutoSaveFailures, 0);
+  assert.strictEqual(env.timing.autoSaveDirty, false);
+  assert.strictEqual(env.project.projectName, 'Proj');
+  assert.strictEqual(env.project.counters, 2);
+  assert.strictEqual(env.project.multiplyZones, 1);
+  assert.strictEqual(env.events.length, 1);
 });

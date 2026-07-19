@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(save-engine): Stage 6 — the save paths (extraction COMPLETE)
+
+Sixth and final stage: the save paths move behind the seam — `performAutoSave`
+(checkout preflight, update/insert with raw-fetch fallback + retry, abort
+handling), `performSaveProjectToCloud` with the whole PDF upload ladder
+(`uploadPdfToStorage`, resumable/TUS `uploadPdfResumable` with cross-reload
+resume, `confirmPdfUploaded` verify-after-timeout), the one-shot
+`uploadLocalPdfToCloudIfNeeded`, the outcome/telemetry core
+(`noteAutoSaveOutcome`, `recordAutosaveLatency`, `updateSyncPausedBanner`,
+`retrySyncNow`, `autosaveEventDetail`, the network captures), and the
+Stage 2-deferred envelope builders (`getProjectSummaryForLogs`,
+`buildSaveLogsEnvelope(+WithSnapshots)`, `writeSaveLogsSnapshot`, the per-tab
+session id). Engine-owned: `autoSaveDirty` itself, the save-in-progress
+flags, the in-flight autosave promise/controller/abort-reason, the failure
+ladder + backoff + milestones + latency samples, the sync-paused banner
+state, the last-success stamp, the envelope snapshot throttles, the upload
+progress sink, and the one-shot backoff. **What stayed:** the boot wiring
+(5s autosave interval, visibilitychange/online handlers — now calling
+`saveEngine.maybeWriteDirtySnapshot()` / `abortInFlightAutoSave()`), the UI
+renderers (updateStatus / getCloudSaveSummary / the bell) reading engine
+getters, `lastSaveIncludedPdf` (load paths write it), and
+`captureDisplayInfoObj` (render internals, via ctx). **Graduations:** 14 ctx
+entries left the contract (getAutoSaveDirty/set, autosaveEventDetail,
+noteSupabaseCallOk, getConsecutiveAutoSaveFailures, clearAutoSaveBackoff,
+isSaveInProgress, getInFlightAutoSavePromise, getLastSuccessfulSupabaseCallAt,
+performAutoSave, uploadLocalPdfToCloudIfNeeded, setPdfUploadProgressHandler,
+setLastCloudSaveAttemptFailed, captureNetworkInfoDetail); 6 arrived
+(getServerClockOffsetMs, captureDisplayInfoObj, getMaxZoom,
+assertPdfWithinLimit, maybeLogProjectSaveEvent, setLastSaveIncludedPdf); five
+orphaned wrappers deleted. Two local `ctx` shadows in the moved code were
+renamed (`uploadPdfToStorage`'s options param, `autosaveEventDetail`'s
+accumulator). save-engine.test.js grew to 44 tests (autosave happy/suspended/
+failure + milestone ladder, retry/reset bookkeeping, one-shot skip ladder,
+manual-save paths, envelope shape) with node stubs for document/fetch/rAF.
+app.js ends at ~9.9k lines (from 13,993 pre-modularization); the engine is
+~2.9k and fully node-testable.
+
+---
+
 ## refactor(save-engine): Stage 5 — the checkout-UX domain
 
 Fifth stage: the checkout domain moves behind the seam — the realtime

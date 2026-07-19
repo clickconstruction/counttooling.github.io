@@ -476,34 +476,15 @@
   // across calls.
   let pendingAddAdditionalPages = false;
   let lastAuthUserId = null;
-  let autoSaveDirty = false;
   let lastModifiedAt = 0;
   let pendingLastSessionRestore = null;
   let pendingCopyProject = null;
   let copyProjectModalTarget = null;
   let viewLinkEmailResolve = null;
-  let saveInProgress = false;
-  let savePdfInProgress = false;
-  let saveProgressMessage = '';
   let lastSaveIncludedPdf = false;
-  let pdfCacheWarnShown = false;
   // turnInInProgress + inFlightRecoverySavePromise live in save-engine.js
   // (Stage 5): saveEngine.isTurnInInProgress() / resetTurnInState().
-  let inFlightAutoSavePromise = null;
-  let consecutiveAutoSaveFailures = 0;
-  let firstAutoSaveFailureAt = 0;
-  let nextAutoSaveAttemptAt = 0;
-  let bannerShown = false;
-  let inFlightAutoSaveController = null;
-  let autoSaveAbortReason = null;
-  let recoveryProbeFiredForFailureCount = 0;
-  let autoSaveLatencySamples = [];
-  let autosaveSlowEmittedAt = 0;
-  let autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
-  let lastSuccessfulSupabaseCallAt = 0;
   // dirtyStartedAt lives in save-engine.js (Stage 2): saveEngine.getDirtyStartedAt().
-  let envelopeSnapshotFiredAt = 0;
-  let envelopeSnapshotDirtyStamp = 0;
   // Autosave/checkout timing & threshold constants live in constants.js (see note in the Constants section).
   // The auto-recheckout rate-limit state (per-project count/cap Maps + min-gap
   // stamp) lives in save-engine.js (Stage 5); resetAutoRecheckoutCounter below.
@@ -536,53 +517,11 @@
     return result;
   };
 
-  function noteAutoSaveOutcome(ok, errOrNull) {
-    if (ok) {
-      if (consecutiveAutoSaveFailures > 0) {
-        pushSaveEvent('autosave_recovered', 'Cloud sync recovered', autosaveEventDetail({
-          failures: consecutiveAutoSaveFailures,
-          durationMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0,
-          clientRecycles: saveEngine.getClientRecycleCount()
-        }));
-      }
-      consecutiveAutoSaveFailures = 0;
-      firstAutoSaveFailureAt = 0;
-      nextAutoSaveAttemptAt = 0;
-      recoveryProbeFiredForFailureCount = 0;
-      autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
-      saveEngine.resetClientRecycleCount();
-      lastSuccessfulSupabaseCallAt = Date.now();
-      updateSyncPausedBanner(false);
-      return;
-    }
-    consecutiveAutoSaveFailures++;
-    if (!firstAutoSaveFailureAt) firstAutoSaveFailureAt = Date.now();
-    nextAutoSaveAttemptAt = Date.now() + backoffDelayMs(consecutiveAutoSaveFailures, AUTOSAVE_BACKOFF_LEVELS_MS);
-    if (consecutiveAutoSaveFailures >= AUTOSAVE_BANNER_THRESHOLD) updateSyncPausedBanner(true);
+  // noteAutoSaveOutcome + recordAutosaveLatency (the failure/backoff/latency
+  // bookkeeping) live in save-engine.js (Stage 6), internal to the save paths.
 
-    if (consecutiveAutoSaveFailures === 3 && !autosaveMilestoneFiredAt.f3) {
-      autosaveMilestoneFiredAt.f3 = Date.now();
-      pushSaveEvent('autosave_failing_3', 'Cloud sync has failed 3 times in a row', autosaveEventDetail({ milestone: 3 }));
-    }
-    if (consecutiveAutoSaveFailures === AUTOSAVE_RECOVERY_THRESHOLD && !autosaveMilestoneFiredAt.f5) {
-      autosaveMilestoneFiredAt.f5 = Date.now();
-      pushSaveEvent('autosave_failing_5', 'Cloud sync has failed 5 times in a row', autosaveEventDetail({ milestone: 5 }));
-      writeSaveLogsSnapshot('autosave_failing_5').catch(() => {});
-    }
-    if (consecutiveAutoSaveFailures === 10 && !autosaveMilestoneFiredAt.f10) {
-      autosaveMilestoneFiredAt.f10 = Date.now();
-      pushSaveEvent('autosave_failing_10', 'Cloud sync has failed 10 times in a row', autosaveEventDetail({ milestone: 10 }));
-    }
-
-    if (consecutiveAutoSaveFailures >= 3 &&
-        recoveryProbeFiredForFailureCount !== consecutiveAutoSaveFailures) {
-      recoveryProbeFiredForFailureCount = consecutiveAutoSaveFailures;
-      const trigger = consecutiveAutoSaveFailures >= AUTOSAVE_RECOVERY_THRESHOLD ? 'failure_threshold' : 'failure_threshold_early';
-      runRecoveryProbeAndMaybeRecycle(trigger).catch(() => {});
-    }
-  }
-
-  function noteSupabaseJsFailure(context, err) { return saveEngine.noteSupabaseJsFailure(context, err); }
+  // noteSupabaseJsFailure has no app-side callers anymore (its callers all
+  // moved in by Stage 6) — saveEngine.noteSupabaseJsFailure.
 
   // Save/sync engine: this and the other `[sync]`-prefixed sections form the
   // scattered save/sync subsystem. See ARCHITECTURE.md "Save/sync engine map"
@@ -590,69 +529,13 @@
   // SECTION: [sync] Sync recovery & client recycle
   // The recovery/recycle orchestrators, probes, client recycle, and raw-fetch
   // fallbacks live in save-engine.js (Stage 4); same-named wrappers below.
-  function runRecoveryProbeAndMaybeRecycle(trigger) { return saveEngine.runRecoveryProbeAndMaybeRecycle(trigger); }
+  // runRecoveryProbeAndMaybeRecycle: engine-internal since Stage 6.
   function recycleClientIfWedgedOnIdleReturn(trigger) { return saveEngine.recycleClientIfWedgedOnIdleReturn(trigger); }
 
-  function updateSyncPausedBanner(show) {
-    const el = document.getElementById('syncPausedBanner');
-    if (!el) return;
-    const next = !!show;
-    if (next === bannerShown) return;
-    bannerShown = next;
-    el.style.display = next ? 'flex' : 'none';
-  }
-
-  async function retrySyncNow() {
-    if (inFlightAutoSaveController) {
-      autoSaveAbortReason = 'user_retry';
-      try { inFlightAutoSaveController.abort(); } catch (_) {}
-      inFlightAutoSaveController = null;
-    }
-    nextAutoSaveAttemptAt = 0;
-    autoSaveDirty = true;
-    try { await supabase.auth.getSession(); } catch (_) {}
-    pushSaveEvent('manual_sync_retry', 'User requested manual retry');
-  }
-
-  function recordAutosaveLatency(ms) {
-    if (typeof ms !== 'number' || ms < 0) return;
-    autoSaveLatencySamples.push(ms);
-    if (autoSaveLatencySamples.length > AUTOSAVE_SLOW_WINDOW) autoSaveLatencySamples.shift();
-    if (autoSaveLatencySamples.length < AUTOSAVE_SLOW_MIN_SAMPLES) return;
-    const p95 = percentile(autoSaveLatencySamples, 0.95);
-    if (p95 > AUTOSAVE_SLOW_MS && Date.now() - autosaveSlowEmittedAt > AUTOSAVE_SLOW_DEBOUNCE_MS) {
-      autosaveSlowEmittedAt = Date.now();
-      pushSaveEvent('autosave_slow', 'Cloud writes are slow', JSON.stringify({
-        p95, n: autoSaveLatencySamples.length, latest: ms
-      }));
-    }
-  }
-
-  function captureNetworkInfoDetail() {
-    if (typeof navigator === 'undefined' || !navigator.connection) return undefined;
-    const c = navigator.connection;
-    try {
-      return JSON.stringify({
-        effectiveType: c.effectiveType,
-        downlink: c.downlink,
-        rtt: c.rtt,
-        saveData: c.saveData
-      });
-    } catch (_) { return undefined; }
-  }
-
-  function captureNetworkInfoObj() {
-    if (typeof navigator === 'undefined' || !navigator.connection) return null;
-    const c = navigator.connection;
-    try {
-      return {
-        effectiveType: c.effectiveType,
-        downlink: c.downlink,
-        rtt: c.rtt,
-        saveData: c.saveData
-      };
-    } catch (_) { return null; }
-  }
+  // updateSyncPausedBanner + retrySyncNow + captureNetworkInfoDetail/Obj live
+  // in save-engine.js (Stage 6); the sync-paused banner Retry button below
+  // reaches the abort-and-retry through this wrapper.
+  function retrySyncNow() { return saveEngine.retrySyncNow(); }
 
   // Canvas/display environment for the export envelope -- catches "my counts vanish at
   // high zoom" by revealing the device pixel ratio, the probed canvas caps, the current
@@ -677,17 +560,8 @@
     } catch (_) { return null; }
   }
 
-  function autosaveEventDetail(extra) {
-    const ctx = {
-      failures: consecutiveAutoSaveFailures,
-      online: (typeof navigator !== 'undefined') ? navigator.onLine : null,
-      msSinceLastSuccess: lastSuccessfulSupabaseCallAt ? (Date.now() - lastSuccessfulSupabaseCallAt) : null,
-      network: captureNetworkInfoObj(),
-      visibility: (typeof document !== 'undefined') ? document.visibilityState : null
-    };
-    if (extra && typeof extra === 'object') Object.assign(ctx, extra);
-    try { return JSON.stringify(ctx); } catch (_) { return ''; }
-  }
+  // autosaveEventDetail (the enriched event-detail builder) lives in
+  // save-engine.js (Stage 6), internal to the engine's event writers.
 
   // serializeSaveErrorForEvent + saveDebugSerializeError moved (deduped) to
   // save-utils.js as the single pure serializeSaveError; formatSaveStatusErrDetail
@@ -698,8 +572,8 @@
   // runSupabaseClientProbe / recreateSupabaseClient have no app-side callers
   // anymore (their orchestrators moved with them) — reach them via saveEngine.*.
 
-  function rawProjectsUpdate(projectId, payload, signal) { return saveEngine.rawProjectsUpdate(projectId, payload, signal); }
-  function rawProjectsInsert(payload, signal) { return saveEngine.rawProjectsInsert(payload, signal); }
+  // rawProjectsUpdate / rawProjectsInsert: engine-internal since Stage 6
+  // (the save paths moved in with them).
   // rawCheckInProject / rawListAccessibleProjects have no app-side callers
   // anymore (Turn In + permission refresh moved in Stage 5) — saveEngine.*.
 
@@ -720,17 +594,13 @@
     isAutoSaveSuspended: () => suspendAutoSaveUntilCheckout,
     getLastCheckoutRefreshAt: () => lastCheckoutRefreshAt,
     // Stage 2 (dirty core): app-side state whose primary writers migrate later.
-    getAutoSaveDirty: () => autoSaveDirty,
-    setAutoSaveDirty: (v) => { autoSaveDirty = v; },
     setLastModifiedAt: (ms) => { lastModifiedAt = ms; },
     invalidateFooterTotals: () => invalidateFooterTotals(),
-    autosaveEventDetail: (extra) => autosaveEventDetail(extra),
     isCheckoutExpiredAttention: () => checkoutExpiredNeedsAttention,
     setLastCheckoutRefreshAt: (ms) => { lastCheckoutRefreshAt = ms; },
     updateServerClockFromRpc: (data) => updateServerClockFromRpc(data),
     // Stage 3 (storage ring).
     serverNowMs: () => serverNowMs(),
-    noteSupabaseCallOk: () => { lastSuccessfulSupabaseCallAt = Date.now(); },
     perfLog: (label, ms, extra) => perfLog(label, ms, extra),
     getUserCustomIcons: () => getUserCustomIcons(),
     computePageBakeFrame: (p) => computePageBakeFrame(p),
@@ -739,17 +609,9 @@
     setSupabase: (client) => { supabase = client; },
     getSupabaseUrl: () => SUPABASE_URL,
     getSupabaseAnonKey: () => SUPABASE_ANON_KEY,
-    getConsecutiveAutoSaveFailures: () => consecutiveAutoSaveFailures,
-    clearAutoSaveBackoff: () => { nextAutoSaveAttemptAt = 0; },
     // Stage 5 (checkout UX): stage-6 save-path state via get/set until those
     // paths migrate; UI hooks resolve at call time (definitions come later in
     // this IIFE, but the engine only calls them from event/async contexts).
-    isSaveInProgress: () => saveInProgress,
-    getInFlightAutoSavePromise: () => inFlightAutoSavePromise,
-    getLastSuccessfulSupabaseCallAt: () => lastSuccessfulSupabaseCallAt,
-    performAutoSave: (runId) => performAutoSave(runId),
-    uploadLocalPdfToCloudIfNeeded: (reason, opts) => uploadLocalPdfToCloudIfNeeded(reason, opts),
-    setPdfUploadProgressHandler: (fn) => { onPdfUploadProgress = fn; },
     setTurnInProgress: (label) => setTurnInProgress(label),
     showToast: (msg, ms) => showToast(msg, ms),
     updateUI: () => updateUI(),
@@ -759,9 +621,16 @@
     clearCheckoutExpiredAttention: () => clearCheckoutExpiredAttention(),
     setCheckoutExpiredAttention: () => { checkoutExpiredNeedsAttention = true; suspendAutoSaveUntilCheckout = true; },
     suspendAutoSave: () => { suspendAutoSaveUntilCheckout = true; },
-    setLastCloudSaveAttemptFailed: (v) => { lastCloudSaveAttemptFailed = v; },
-    captureNetworkInfoDetail: () => captureNetworkInfoDetail(),
     isAuthError: (e) => isAuthError(e),
+    // Stage 6 (save paths): render-core / feature hooks the engine's save
+    // blobs and export envelope need; lastSaveIncludedPdf stays app-side
+    // (the load paths write it).
+    getServerClockOffsetMs: () => serverClockOffsetMs,
+    captureDisplayInfoObj: () => captureDisplayInfoObj(),
+    getMaxZoom: () => getMaxZoom(),
+    assertPdfWithinLimit: (bytes, context) => assertPdfWithinLimit(bytes, context),
+    maybeLogProjectSaveEvent: (projectId) => maybeLogProjectSaveEvent(projectId),
+    setLastSaveIncludedPdf: (v) => { lastSaveIncludedPdf = v; },
   });
   function checkGlobalForceReload() { return saveEngine.checkGlobalForceReload(); }
   function doGlobalReloadNow(trigger) { return saveEngine.doGlobalReloadNow(trigger); }
@@ -777,12 +646,10 @@
   function setSaveDebugEnabled(on) { return saveEngine.setSaveDebugEnabled(on); }
   function saveDebugRunId() { return saveEngine.saveDebugRunId(); }
   function saveDebugLog(phase, payload) { return saveEngine.saveDebugLog(phase, payload); }
-  function saveDebugLogError(runId, context, e) { return saveEngine.saveDebugLogError(runId, context, e); }
   function getSaveStatusLogWindowMs() { return saveEngine.getSaveStatusLogWindowMs(); }
   // The saveStatusLog array + prune/push live in save-engine.js (Stage 2);
   // read it via saveEngine.getSaveStatusLog() (App.getSaveStatusLog delegates).
   // saveStatusModalTickTimer moved to features/save-status.js (private to the modal).
-  let lastCloudSaveAttemptFailed = false;
   let checkoutExpiredNeedsAttention = false;
   // checkoutExpiredToastShown (the one-shot expired toast) lives in
   // save-engine.js (Stage 5); re-armed via the engine call below.
@@ -794,143 +661,11 @@
   }
   function pruneSaveStatusLog() { return saveEngine.pruneSaveStatusLog(); }
   // SECTION: [sync] Save Status log & envelope
-  // Per-tab session id, stamped into the export envelope so concurrent tabs of
-  // the same project (a real save/sync race) are distinguishable in logs.
-  const TAB_SESSION_ID = uid();
   function pushSaveEvent(kind, message, detail) { return saveEngine.pushSaveEvent(kind, message, detail); }
-  function getProjectSummaryForLogs() {
-    try {
-      const pages = (state && state.pages) || [];
-      // Count across the current per-page `canvases[].annotations` shape (with a
-      // fallback to the legacy per-page `annotations` shape), using the field
-      // names the app actually writes (counterMarkers / quickLines / polylines).
-      // The old code read `a.counts` / `a.lines` off `p.annotations`, which never
-      // exist in the canvases shape -- so every count logged as 0 even on full
-      // projects. counters/lines reuse getProjectCounts so the two never drift.
-      const { counter_count: counters, line_count: lines } = getProjectCounts({ pages });
-      let multiplyZones = 0, scaleZones = 0, highlights = 0, notes = 0;
-      pages.forEach(p => {
-        const canvases = p?.canvases || (p?.annotations ? [{ annotations: p.annotations }] : []);
-        canvases.forEach(c => {
-          const a = c?.annotations || {};
-          multiplyZones += (a.multiplyZones || []).length;
-          scaleZones    += (a.scaleZones || []).length;
-          highlights    += (a.highlights || []).length;
-          notes         += (a.notes || []).length;
-        });
-      });
-      // Payload sizing (export-time only -- never called per save event). An
-      // approximation of the cloud-save data blob, for "saves fail on big
-      // projects / large PDFs" diagnosis.
-      let dataJsonBytes = null;
-      try {
-        dataJsonBytes = JSON.stringify({
-          pages: pages.map(p => p.annotations || p.canvases || null),
-          counters: state.counters, lineTypes: state.lineTypes, groups: state.groups
-        }).length;
-      } catch (_) {}
-      const pdfBytes = (typeof state.pdfBufferSize === 'number') ? state.pdfBufferSize : null;
-      return {
-        projectId: state.currentProjectId,
-        projectName: state.currentProjectName,
-        pageCount: pages.length,
-        pagesWithScale: pages.filter(p => p.scale && p.scale.feet > 0).length,
-        // Per-page rotation diagnostics — root-causes "pages rotated under the canvas":
-        // page.rotation, the PDF's intrinsic /Rotate, the current frame dims, and whether a
-        // bake-frame mismatch was detected on load (verifyPageBakeFrame).
-        pageRotation: pages.map(p => p.rotation ?? 0),
-        pageBake: pages.map(p => { const f = computePageBakeFrame(p); return f ? { w: f.w, h: f.h, intrinsic: f.intrinsic } : null; }),
-        bakeMismatchPages: pages.filter(p => p && p.bakeMismatch).length,
-        counters, lines, multiplyZones, scaleZones, highlights, notes,
-        isAdmin: !!state.isAdmin,
-        isViewer: !!state.isViewer,
-        // Checkout ownership (multi-user contention / expiry diagnosis)
-        checkedOutBy: state.checkedOutBy || null,
-        checkedOutEmail: state.checkedOutEmail || null,
-        checkedOutAt: state.checkedOutAt || null,
-        checkedOutAgoMs: state.checkedOutAt ? (Date.now() - new Date(state.checkedOutAt).getTime()) : null,
-        canCheckOut: !!state.canCheckOut,
-        projectOwnerId: state.projectOwnerId || null,
-        loadedViaViewLink: !!state.loadedViaViewLink,
-        // Payload sizing
-        dataJsonBytes,
-        pdfBufferBytes: pdfBytes,
-        nearPdfCap: (pdfBytes != null && typeof PDF_MAX_SIZE_BYTES === 'number') ? (pdfBytes > PDF_MAX_SIZE_BYTES * 0.9) : null
-      };
-    } catch (_) { return null; }
-  }
-
-  async function buildSaveLogsEnvelopeWithSnapshots() {
-    const envelope = buildSaveLogsEnvelope();
-    try {
-      const snapshots = await readSaveLogsSnapshots(5);
-      if (snapshots && snapshots.length) envelope.autoSnapshotEnvelopes = snapshots;
-    } catch (_) {}
-    // Storage health -- catches "my work didn't recover" / private-mode / disk-full.
-    try {
-      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
-        const est = await navigator.storage.estimate();
-        envelope.storage = { usage: est.usage ?? null, quota: est.quota ?? null };
-      }
-    } catch (_) {}
-    envelope.lastLocalBackup = { at: saveEngine.getLastLocalBackupAt(), ok: saveEngine.getLastLocalBackupOk() };
-    return envelope;
-  }
-
-  function buildSaveLogsEnvelope() {
-    let userEmail = null;
-    try { userEmail = state.supabaseSession?.user?.email || null; } catch (_) {}
-    return {
-      schema: 'clickcount-save-logs/v1',
-      capturedAt: new Date().toISOString(),
-      tabSessionId: TAB_SESSION_ID,
-      projectRef: (typeof SUPABASE_URL === 'string' ? ((SUPABASE_URL.match(/^https?:\/\/([^.]+)\./) || [])[1] || null) : null),
-      // Triage note for anyone -- especially an AI/LLM -- handed an exported copy
-      // of these logs: these are CLIENT-side save/sync telemetry events. To
-      // root-cause a failure, cross-reference each error event against THIS
-      // project's Supabase server logs (Supabase MCP `get_logs` with service
-      // "api", or the dashboard Logs Explorer) by timestamp + path + status_code
-      // (and tabSessionId / user.email). The authoritative server request id
-      // (sb-request-id) is recorded server-side but is NOT browser-readable here
-      // (it is omitted from Access-Control-Expose-Headers), so it will be absent
-      // from these events -- get it from the server logs, not from here.
-      analysisNote: 'Client-side save/sync telemetry. To root-cause a failure, cross-reference each error event with this project\'s Supabase server logs (Supabase MCP get_logs service:"api", or the dashboard Logs Explorer) by timestamp + path + status_code (and tabSessionId / user.email). The authoritative sb-request-id lives in the server logs, not here (it is not browser-readable due to CORS). projectRef is included above.',
-      user: {
-        email: userEmail,
-        isAdmin: !!state.isAdmin,
-        isViewer: !!state.isViewer
-      },
-      browser: {
-        ua: (typeof navigator !== 'undefined' && navigator.userAgent) || null,
-        platform: (typeof navigator !== 'undefined' && navigator.platform) || null,
-        onLine: (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : null,
-        network: captureNetworkInfoDetail() || null
-      },
-      display: captureDisplayInfoObj(),
-      timing: {
-        lastSuccessfulSupabaseCallAt: (typeof lastSuccessfulSupabaseCallAt !== 'undefined') ? lastSuccessfulSupabaseCallAt : null,
-        serverClockOffsetMs: (typeof serverClockOffsetMs !== 'undefined') ? serverClockOffsetMs : null,
-        consecutiveAutoSaveFailures: (typeof consecutiveAutoSaveFailures !== 'undefined') ? consecutiveAutoSaveFailures : null,
-        autoSaveDirty: (typeof autoSaveDirty !== 'undefined') ? autoSaveDirty : null,
-        saveInProgress: (typeof saveInProgress !== 'undefined') ? saveInProgress : null,
-        turnInInProgress: saveEngine.isTurnInInProgress(),
-        verbose: isSaveDebugEnabled(),
-        windowMs: getSaveStatusLogWindowMs(),
-        // Token expiry -- catches the JWT-expired 401 class on long-open tabs
-        sessionExpiresAt: (state.supabaseSession && state.supabaseSession.expires_at) || null,
-        secondsToExpiry: secondsToExpiry(state.supabaseSession && state.supabaseSession.expires_at, Date.now()),
-        // Degradation metrics (computed in the engine; surfaced here for export)
-        clientRecycles: saveEngine.getClientRecycleCount(),
-        autosaveLatencyP50: percentile(autoSaveLatencySamples, 0.5),
-        autosaveLatencyP95: percentile(autoSaveLatencySamples, 0.95),
-        autosaveLatencyN: (autoSaveLatencySamples && autoSaveLatencySamples.length) || 0,
-        degradedForMs: firstAutoSaveFailureAt ? (Date.now() - firstAutoSaveFailureAt) : 0,
-        nextAutoSaveAttemptInMs: nextAutoSaveAttemptAt ? Math.max(0, nextAutoSaveAttemptAt - Date.now()) : 0
-      },
-      project: getProjectSummaryForLogs(),
-      events: saveEngine.getSaveStatusLog().slice()
-    };
-  }
+  // getProjectSummaryForLogs + buildSaveLogsEnvelope(+WithSnapshots) + the
+  // per-tab session id live in save-engine.js (Stage 6). The wrapper keeps
+  // the App registry + features/save-status.js contract frozen.
+  function buildSaveLogsEnvelopeWithSnapshots() { return saveEngine.buildSaveLogsEnvelopeWithSnapshots(); }
 
   function perfLog(label, durationMs, extra) {
     const msg = '[Perf] ' + label + ': ' + durationMs + 'ms';
@@ -1020,29 +755,12 @@
     redoStack = [];
   }
 
-  function resetAutosaveDegradedState() {
-    consecutiveAutoSaveFailures = 0;
-    firstAutoSaveFailureAt = 0;
-    nextAutoSaveAttemptAt = 0;
-    recoveryProbeFiredForFailureCount = 0;
-    autosaveMilestoneFiredAt = { f3: 0, f5: 0, f10: 0 };
-    autoSaveLatencySamples = [];
-    autosaveSlowEmittedAt = 0;
-    envelopeSnapshotFiredAt = 0;
-    envelopeSnapshotDirtyStamp = 0;
-    saveEngine.clearDirtyStartedAt();
-    saveEngine.resetRecycleState();
-    autoSaveAbortReason = null;
-    try { updateSyncPausedBanner(false); } catch (_) {}
-  }
+  function resetAutosaveDegradedState() { return saveEngine.resetAutosaveDegradedState(); }
 
   function resetLocalSessionState(opts) {
     opts = opts || {};
     const keepArtboard = !!opts.keepArtboard;
-    if (inFlightAutoSaveController) {
-      try { autoSaveAbortReason = autoSaveAbortReason || 'session_reset'; inFlightAutoSaveController.abort(); } catch (_) {}
-      inFlightAutoSaveController = null;
-    }
+    saveEngine.abortInFlightAutoSave('session_reset', true);
     try { subscribeToProjectCheckoutChanges(null); } catch (_) {}
     clearPdfBitmapCache();
     state.pages = [];
@@ -1067,10 +785,9 @@
     state.isViewer = false;
     state.loadedViaViewLink = false;
     state.canCheckOut = false;
-    autoSaveDirty = false;
+    saveEngine.setAutoSaveDirty(false);
     saveEngine.resetDirtyTracking();
-    saveInProgress = false;
-    savePdfInProgress = false;
+    saveEngine.resetSaveFlags();
     saveEngine.resetTurnInState();
     lastModifiedAt = 0;
     pendingCopyProject = null;
@@ -1078,7 +795,6 @@
     pendingLastSessionRestore = null;
     clearUndoStacks();
     resetAutosaveDegradedState();
-    pdfCacheWarnShown = false;
     saveEngine.clearSaveStatusLog();
     state.userActivityAllRowsCache = null;
     state.userActivityViewMode = 'events';
@@ -1150,22 +866,8 @@
 
   // takeoffBackupDelete + readSaveLogsSnapshots live in idb.js (context-free).
 
-  // Wrapper over idb.js idbPutSaveLogsSnapshot: the throttle, envelope build
-  // (reads state), and logging stay here; idb.js owns the put + prune-to-max.
-  async function writeSaveLogsSnapshot(reason) {
-    if (typeof indexedDB === 'undefined') return;
-    if (envelopeSnapshotFiredAt && Date.now() - envelopeSnapshotFiredAt < 60000) return;
-    envelopeSnapshotFiredAt = Date.now();
-    try {
-      const envelope = buildSaveLogsEnvelope();
-      envelope.autoSnapshotReason = reason || 'unknown';
-      const res = await idbPutSaveLogsSnapshot(envelope);
-      if (res && res.error) throw res.error;
-      saveDebugLog('autosave.snapshot.put', { reason, capturedAt: envelope.capturedAt, eventCount: envelope.events.length });
-    } catch (e) {
-      saveDebugLog('autosave.snapshot.put_err', { reason, message: e?.message });
-    }
-  }
+  // writeSaveLogsSnapshot (the throttled diagnostic envelope snapshot) lives
+  // in save-engine.js (Stage 6); idb.js owns the put + prune-to-max.
 
   function customIconsCurrentKey() {
     const uid = state.supabaseSession?.user?.id || null;
@@ -1298,7 +1000,7 @@
     state.isViewer = !hasValidCheckout;
     state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
     clearUndoStacks();
-    autoSaveDirty = false;
+    saveEngine.setAutoSaveDirty(false);
     lastModifiedAt = 0;
     fitZoom();
     renderPdf();
@@ -1907,11 +1609,11 @@
     const cloudMode = SUPABASE_ENABLED && state.supabaseSession?.user;
     if (cloudMode) {
       if (pdfGroupEl) { pdfGroupEl.style.display = ''; }
-      if (saveInProgress) {
+      if (saveEngine.isSaveInProgress()) {
         if (dotEl) { dotEl.className = 'dot dot-yellow'; dotEl.title = 'Canvas sync: Uploading...'; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas Uploading...';
         mode = '';
-      } else if (state.lastSavedAt && !autoSaveDirty) {
+      } else if (state.lastSavedAt && !saveEngine.getAutoSaveDirty()) {
         let canvasTitle = 'Canvas sync: Synced with Cloud';
         if (state.lastSavedAt) canvasTitle += '\nCloud: ' + formatSaveTime(state.lastSavedAt);
         if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + formatSaveTime(lastLocalBackupAt);
@@ -1940,7 +1642,7 @@
       }
       if (squareEl) {
         const pdfSynced = lastSaveIncludedPdf || !!state.pdfStoragePath;
-        if (savePdfInProgress) { squareEl.className = 'square square-yellow'; squareEl.title = 'PDF sync: Uploading PDF...'; }
+        if (saveEngine.isSavePdfInProgress()) { squareEl.className = 'square square-yellow'; squareEl.title = 'PDF sync: Uploading PDF...'; }
         else if (pdfSynced) {
           let pdfTitle = 'PDF sync: Synced with Cloud';
           if (state.lastSavedAt) pdfTitle += '\nCloud: ' + formatSaveTime(state.lastSavedAt);
@@ -1955,7 +1657,7 @@
       }
       if (pdfLabelEl) {
         const pdfSyncedLabel = lastSaveIncludedPdf || !!state.pdfStoragePath;
-        if (savePdfInProgress) pdfLabelEl.textContent = 'PDF Uploading...';
+        if (saveEngine.isSavePdfInProgress()) pdfLabelEl.textContent = 'PDF Uploading...';
         else if (pdfSyncedLabel) pdfLabelEl.textContent = 'PDF Synced with Cloud';
         else if (!state.pages.length) pdfLabelEl.textContent = 'PDF - Upload PDF to start a project';
         else pdfLabelEl.textContent = 'PDF: Not saved to cloud';
@@ -1966,8 +1668,8 @@
       if (dotEl) { dotEl.className = 'dot dot-green'; dotEl.title = canvasTitle; }
       if (canvasLabelEl) canvasLabelEl.textContent = '';
       if (pdfGroupEl) pdfGroupEl.style.display = 'none';
-      if (saveInProgress && saveProgressMessage) {
-        mode = saveProgressMessage;
+      if (saveEngine.isSaveInProgress() && saveEngine.getSaveProgressMessage()) {
+        mode = saveEngine.getSaveProgressMessage();
       } else {
         const projectSegment = state.currentProjectName || (state.pages.length ? 'Untitled' : '—');
         let lastSavedSegment = '—';
@@ -2023,21 +1725,21 @@
     }
     const savedParts = formatSaveTimeParts(state.lastSavedAt);
     let canvas;
-    if (saveInProgress) {
+    if (saveEngine.isSaveInProgress()) {
       canvas = { label: 'Canvas', state: 'yellow', status: 'Uploading...', clock: '', ago: '' };
-    } else if (state.lastSavedAt && !autoSaveDirty) {
+    } else if (state.lastSavedAt && !saveEngine.getAutoSaveDirty()) {
       canvas = { label: 'Canvas', state: 'green', status: 'Synced with cloud', clock: savedParts.clock, ago: savedParts.ago };
     } else if (!state.pages.length) {
       canvas = { label: 'Canvas', state: 'grey', status: 'No project', clock: '', ago: '' };
     } else if (state.isViewer) {
       canvas = { label: 'Canvas', state: 'yellow', status: 'Viewing (read-only)', clock: savedParts.clock, ago: savedParts.ago };
     } else {
-      const status = lastCloudSaveAttemptFailed ? 'Last sync failed' : 'Not saved to cloud';
+      const status = saveEngine.wasLastCloudSaveAttemptFailed() ? 'Last sync failed' : 'Not saved to cloud';
       canvas = { label: 'Canvas', state: 'red', status, clock: savedParts.clock, ago: savedParts.ago };
     }
     let pdf;
     const pdfSynced = lastSaveIncludedPdf || !!state.pdfStoragePath;
-    if (savePdfInProgress) {
+    if (saveEngine.isSavePdfInProgress()) {
       pdf = { label: 'PDF', state: 'yellow', status: 'Uploading...', clock: '', ago: '' };
     } else if (pdfSynced) {
       pdf = { label: 'PDF', state: 'green', status: 'Synced with cloud', clock: savedParts.clock, ago: savedParts.ago };
@@ -2056,7 +1758,7 @@
     const sectionVisible = !!(section && section.style.display !== 'none');
     const user = state.supabaseSession?.user;
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    const syncAttention = !!(lastCloudSaveAttemptFailed && autoSaveDirty);
+    const syncAttention = !!(saveEngine.wasLastCloudSaveAttemptFailed() && saveEngine.getAutoSaveDirty());
     const attention = syncAttention || checkoutExpiredNeedsAttention;
 
     if (inModal) {
@@ -6772,7 +6474,7 @@
       try {
         // Flush pending edits (e.g. a just-applied page rotation) so the link's live cloud
         // data reflects the current state. Best-effort — sharing proceeds even if it fails.
-        if (autoSaveDirty && !state.isViewer && !state.loadedViaViewLink && state.supabaseSession?.user) {
+        if (saveEngine.getAutoSaveDirty() && !state.isViewer && !state.loadedViaViewLink && state.supabaseSession?.user) {
           try { await performAutoSave('share_flush'); } catch (_) { /* best-effort */ }
         }
         const url = await getOrCreateViewLinkUrl();
@@ -7192,7 +6894,7 @@
     }
     // eslint-disable-next-line no-unused-vars -- published on App for features/load-project.js
     function openCopyProjectModalOrPromptSave(proj) {
-      if (!autoSaveDirty) {
+      if (!saveEngine.getAutoSaveDirty()) {
         pendingCopyProject = null;
         openCopyProjectModal(proj);
         return;
@@ -7232,7 +6934,7 @@
       state.currentPage = state.pages.length > 0
         ? Math.min(state.currentPage, Math.max(0, state.pages.length - 1))
         : 0;
-      autoSaveDirty = false;
+      saveEngine.setAutoSaveDirty(false);
       lastModifiedAt = 0;
       state.checkedOutBy = proj.checked_out_by || null;
       state.checkedOutAt = proj.checked_out_at || null;
@@ -7341,7 +7043,7 @@
       state.lastSavedAt = null;
       lastSaveIncludedPdf = false;
       saveEngine.setLastLocalBackupAt(null);
-      autoSaveDirty = false;
+      saveEngine.setAutoSaveDirty(false);
       try { clearCheckoutExpiredAttention(); } catch (_) {}
       lastModifiedAt = 0;
       state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
@@ -7387,7 +7089,7 @@
       }
     }
     function openLoadProjectModalOrPromptSave() {
-      if (!autoSaveDirty) {
+      if (!saveEngine.getAutoSaveDirty()) {
         pendingCopyProject = null;
         App.openLoadProjectModal().catch(e => {
           console.error('[Load Project]', e);
@@ -7726,13 +7428,13 @@
         }
       };
       if (discardBtn) discardBtn.onclick = async () => {
-        if (saveInProgress || saveEngine.isTurnInInProgress()) {
+        if (saveEngine.isSaveInProgress() || saveEngine.isTurnInInProgress()) {
           showToast('Sync in progress, try again in a moment', 3000);
           return;
         }
         if (!confirm('Discard local edits and reload? Your unsaved local edits for this project will be lost.')) return;
         try {
-          autoSaveDirty = false;
+          saveEngine.setAutoSaveDirty(false);
           if (state.currentProjectId) {
             try { await takeoffBackupDelete(state.currentProjectId); } catch (_) {}
           }
@@ -9478,924 +9180,20 @@
 
   // SECTION: [sync] Manual save to cloud
 
-  // Module-level progress sink for the active PDF upload. A flow that wants the
-  // byte-level upload progress (e.g. Turn In, to show a percentage in its banner)
-  // sets this before kicking off a save and clears it after; the upload helpers
-  // invoke it. Null when nobody is listening.
-  let onPdfUploadProgress = null;
-
-  // Poll storage.info() to confirm an object actually landed after an upload that
-  // timed out / aborted client-side (the underlying request can still complete
-  // server-side). Returns true when the object exists with the expected byte size.
-  async function confirmPdfUploaded(storagePath, expectedBytes) {
-    if (!supabase || !(expectedBytes > 0)) return false;
-    for (let i = 0; i < PDF_UPLOAD_VERIFY_ATTEMPTS; i++) {
-      if (i > 0) await new Promise(r => setTimeout(r, PDF_UPLOAD_VERIFY_GAP_MS));
-      try {
-        const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(storagePath), STORAGE_INFO_TIMEOUT_MS, 'Storage info');
-        const sz = info && (info.metadata?.size ?? info.size);
-        if (typeof sz === 'number' && sz === expectedBytes) return true;
-      } catch (_) { /* keep polling */ }
-    }
-    return false;
-  }
-
-  // True when the resumable/TUS path can be used (large file + library loaded).
-  function canUseResumableUpload(bytes) {
-    return bytes > PDF_RESUMABLE_THRESHOLD_BYTES &&
-      typeof tus !== 'undefined' && tus && typeof tus.Upload === 'function' && tus.isSupported;
-  }
-
-  // Resumable PDF upload via tus against Supabase Storage's resumable endpoint.
-  // Chunked (6 MB, required by Supabase), reports byte progress via opts.onProgress,
-  // honors opts.signal for abort, and resumes from a prior interrupted upload for
-  // the same fingerprint (persisted in IndexedDB, so it survives a page reload).
-  // Resolves { ok: true } or rejects with the tus error. opts: { fingerprint,
-  // onProgress, signal }.
-  async function uploadPdfResumable(storagePath, blob, opts) {
-    opts = opts || {};
-    if (typeof tus === 'undefined' || typeof tus.Upload !== 'function') throw new Error('Resumable upload library not loaded');
-    const token = state.supabaseSession?.access_token;
-    if (!token) throw new Error('Not signed in');
-    const fingerprint = 'clickcount-pdf::' + (opts.fingerprint || storagePath);
-    // tus UrlStorage backed by IndexedDB (cross-reload resume).
-    const idbUrlStorage = {
-      addUpload: async (fp, upload) => {
-        const urlStorageKey = 'tus::' + fp + '::' + Date.now();
-        await idbPdfUploadResumePut({
-          urlStorageKey, fingerprint: fp,
-          uploadUrl: upload.uploadUrl || null,
-          size: upload.size != null ? upload.size : null,
-          metadata: upload.metadata || null,
-          creationTime: upload.creationTime || new Date().toISOString(),
-          parallelUploadUrls: upload.parallelUploadUrls || null
-        });
-        return urlStorageKey;
-      },
-      removeUpload: async (urlStorageKey) => { await idbPdfUploadResumeDelete(urlStorageKey); },
-      findAllUploads: async () => { return await idbPdfUploadResumeGetAll(); },
-      findUploadsByFingerprint: async (fp) => { return await idbPdfUploadResumeGetByFingerprint(fp); }
-    };
-    return await new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = (fn, arg) => { if (!settled) { settled = true; fn(arg); } };
-      const upload = new tus.Upload(blob, {
-        endpoint: SUPABASE_URL + '/storage/v1/upload/resumable',
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        headers: {
-          authorization: 'Bearer ' + token,
-          apikey: SUPABASE_ANON_KEY,
-          'x-upsert': 'true'
-        },
-        uploadDataDuringCreation: true,
-        removeFingerprintOnSuccess: true,
-        chunkSize: 6 * 1024 * 1024,
-        fingerprint: () => Promise.resolve(fingerprint),
-        urlStorage: idbUrlStorage,
-        metadata: {
-          bucketName: 'pdfs',
-          objectName: storagePath,
-          contentType: 'application/pdf',
-          cacheControl: '3600'
-        },
-        onError: (err) => finish(reject, err),
-        onProgress: (sent, total) => { if (typeof opts.onProgress === 'function') { try { opts.onProgress(sent, total); } catch (_) {} } },
-        onSuccess: () => { idbPdfUploadResumeDeleteByFingerprint(fingerprint).catch(() => {}); finish(resolve, { ok: true }); }
-      });
-      if (opts.signal) {
-        if (opts.signal.aborted) { try { upload.abort(); } catch (_) {} finish(reject, new DOMException('Aborted', 'AbortError')); return; }
-        opts.signal.addEventListener('abort', () => { try { upload.abort(); } catch (_) {} finish(reject, new DOMException('Aborted', 'AbortError')); }, { once: true });
-      }
-      // Resume a prior interrupted upload for this fingerprint if one exists.
-      upload.findPreviousUploads().then((prev) => {
-        if (prev && prev.length) { try { upload.resumeFromPreviousUpload(prev[0]); } catch (_) {} }
-        upload.start();
-      }).catch(() => { upload.start(); });
-    });
-  }
-
-  // Upload a PDF to the `pdfs` bucket. Large files (> PDF_RESUMABLE_THRESHOLD_BYTES)
-  // go through the resumable/TUS path (chunked, progress, cross-reload resume, and
-  // genuinely cancellable via tus); smaller files use a single standard upload with
-  // a size-aware timeout (so a slow PDF is not falsely failed). NOTE: storage-js
-  // `upload()` does not accept an AbortSignal, so the standard path cannot cancel an
-  // in-flight request -- the timeout only bounds how long we WAIT, and the
-  // verify-after-timeout net (confirmPdfUploaded) reconciles an upload that actually
-  // completed server-side after the client gave up. Either path runs that verify net
-  // on a transient failure before surfacing. Returns { ok, ms, timeoutMs, viaVerify,
-  // resumable } or throws. ctx: { runId, timeoutMs, onProgress, fingerprint }.
-  async function uploadPdfToStorage(storagePath, pdfToUpload, ctx) {
-    ctx = ctx || {};
-    const bytes = pdfToUpload.byteLength || pdfToUpload.size || 0;
-    const timeoutMs = ctx.timeoutMs || pdfUploadTimeoutMs(bytes, {
-      baseMs: PDF_UPLOAD_TIMEOUT_BASE_MS, assumedBps: PDF_UPLOAD_ASSUMED_BPS,
-      slackMs: PDF_UPLOAD_TIMEOUT_SLACK_MS, maxMs: PDF_UPLOAD_TIMEOUT_MAX_MS
-    });
-    const t1 = Date.now();
-    if (canUseResumableUpload(bytes)) {
-      try {
-        const blob = (typeof Blob !== 'undefined' && pdfToUpload instanceof Blob) ? pdfToUpload : new Blob([pdfToUpload], { type: 'application/pdf' });
-        await uploadPdfResumable(storagePath, blob, { fingerprint: ctx.fingerprint || storagePath, onProgress: ctx.onProgress, signal: ctx.signal });
-        return { ok: true, ms: Date.now() - t1, timeoutMs, resumable: true };
-      } catch (e) {
-        // The upload may have completed server-side even though tus reported an
-        // error / was aborted; the object's presence is authoritative.
-        const confirmed = await confirmPdfUploaded(storagePath, bytes).catch(() => false);
-        if (confirmed) {
-          pushSaveEvent('pdf_upload_verified_after_timeout', 'PDF upload confirmed via storage info after error', JSON.stringify({ path: storagePath, bytes, ms: Date.now() - t1, resumable: true, runId: ctx.runId }));
-          return { ok: true, ms: Date.now() - t1, timeoutMs, viaVerify: true, resumable: true };
-        }
-        throw e;
-      }
-    }
-    try {
-      // storage-js upload() is not cancellable (no AbortSignal param), so pass a
-      // plain promise; withTimeout bounds the wait and verify-after-timeout below
-      // reconciles a request that completed server-side after we stopped waiting.
-      const { error: uploadErr } = await withTimeout(
-        supabase.storage.from('pdfs').upload(storagePath, pdfToUpload, { contentType: 'application/pdf', upsert: true }),
-        timeoutMs, 'PDF upload'
-      );
-      if (uploadErr) throw uploadErr;
-      return { ok: true, ms: Date.now() - t1, timeoutMs };
-    } catch (e) {
-      // A timeout/network error does not prove the object failed to land: the
-      // request may have finished server-side just as the client gave up.
-      // Verify via storage.info() before surfacing a failure.
-      if (isTransientSaveError(e)) {
-        const confirmed = await confirmPdfUploaded(storagePath, bytes).catch(() => false);
-        if (confirmed) {
-          pushSaveEvent('pdf_upload_verified_after_timeout', 'PDF upload confirmed via storage info after timeout', JSON.stringify({ path: storagePath, bytes, ms: Date.now() - t1, timeoutMs, runId: ctx.runId }));
-          return { ok: true, ms: Date.now() - t1, timeoutMs, viaVerify: true };
-        }
-      }
-      throw e;
-    }
-  }
-
-  async function performSaveProjectToCloud(opts) {
-    const runId = saveDebugRunId();
-    const { name, includePdf, pdfBuffer: optsPdfBuffer } = opts;
-    const user = state.supabaseSession?.user;
-    if (!user || !supabase) {
-      saveDebugLog('manual.save.skip', { runId, reason: 'not_signed_in' });
-      return { ok: false, error: new Error('Not signed in') };
-    }
-    let rawPdf = optsPdfBuffer ?? state.pdfBuffer;
-    let rawPdfBytes = (rawPdf && (rawPdf.byteLength || rawPdf.length || 0)) | 0;
-    if (includePdf && rawPdfBytes === 0 && state.pdfBufferSize > 0 && state.currentProjectId && state.pdfHash) {
-      try {
-        const cached = await pdfCacheGet(state.currentProjectId, state.pdfHash);
-        if (cached && cached.size > 0) {
-          const recoveredBuf = await cached.arrayBuffer();
-          if (recoveredBuf && recoveredBuf.byteLength > 0) {
-            rawPdf = recoveredBuf;
-            rawPdfBytes = recoveredBuf.byteLength;
-            saveDebugLog('manual.save.recover_pdf', { runId, bytes: recoveredBuf.byteLength });
-            pushSaveEvent('manual_save_recover', 'Recovered PDF from local cache');
-          }
-        }
-      } catch (recoverErr) {
-        saveDebugLog('manual.save.recover_pdf_err', { runId, message: recoverErr?.message });
-      }
-    }
-    if (includePdf && rawPdfBytes === 0 && state.pdfBufferSize > 0 && !state.pdfStoragePath) {
-      const detachedErr = new Error('PDF data is no longer in memory. Reload the project, then re-open Save.');
-      saveDebugLog('manual.save.detached_pdf_fail', { runId, hadHash: !!state.pdfHash, hasStoragePath: !!state.pdfStoragePath });
-      pushSaveEvent('manual_save_err', detachedErr.message);
-      lastCloudSaveAttemptFailed = true;
-      updateSaveStatusIndicator();
-      return { ok: false, error: detachedErr };
-    }
-    const pdfToUpload = rawPdfBytes > 0 ? rawPdf : null;
-    const willUploadPdf = pdfToUpload && includePdf;
-    const prevPdfStoragePath = state.pdfStoragePath || null;
-    saveInProgress = true;
-    savePdfInProgress = willUploadPdf;
-    const wasDirty = autoSaveDirty;
-    const genAtEntry = saveEngine.getDirtyGeneration();
-    autoSaveDirty = false;
-    updateStatus();
-    const setProgress = (msg) => { saveProgressMessage = msg; updateStatus(); };
-    // Determinate upload progress: drives the local status line and forwards to
-    // any module-level listener (e.g. Turn In's banner). Only the resumable/TUS
-    // path actually emits byte progress; the standard upload is a no-op here.
-    const onUploadProgress = (sent, total) => {
-      const pct = (total > 0) ? Math.min(100, Math.floor((sent / total) * 100)) : 0;
-      setProgress('Uploading PDF... ' + pct + '%');
-      if (typeof onPdfUploadProgress === 'function') { try { onPdfUploadProgress(sent, total); } catch (_) {} }
-    };
-    const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
-    const data = {
-      version: 1,
-      counters: state.counters,
-      lineTypes: state.lineTypes,
-      iconNames: state.iconNames || {},
-      iconOrder: state.iconOrder || null,
-      customIconPaths: getUserCustomIcons(),
-      maxZoom: getMaxZoom(),
-      groups: state.groups || [],
-      legendSettings: state.legendSettings,
-      multiplyZoneSettings: state.multiplyZoneSettings,
-      showGridOverlay: state.showGridOverlay,
-      gridSettings: state.gridSettings,
-      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })),
-      activeCanvasIdByPage: state.activeCanvasIdByPage || {}
-    };
-    const counts = getProjectCounts(data);
-    const tJson = Date.now();
-    const dataJson = JSON.stringify(data);
-    perfLog('Save JSON.stringify', Date.now() - tJson, { size: dataJson.length });
-    const dataSize = dataJson.length;
-    const log = (msg, extra) => { console.log('[Save]', msg, extra || ''); };
-    log('Starting save', { userId: user.id, name, hasPdfBuffer: !!pdfToUpload, currentProjectId: state.currentProjectId, payloadSize: dataSize, supabaseUrl: (typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'not set') });
-    saveDebugLog('manual.save.start', {
-      runId,
-      name,
-      includePdf,
-      hasPdfBuffer: !!pdfToUpload,
-      currentProjectId: state.currentProjectId,
-      willUploadPdf
-    });
-    saveDebugLog('manual.save.payload', {
-      runId,
-      dataSize,
-      counter_count: counts.counter_count,
-      line_count: counts.line_count
-    });
-    let orphanProjectIdForCleanup = null;
-    let pendingNewProjectHydration = null;
-    try {
-      let pdfPath = state.pdfStoragePath;
-      let cachePdfHash = null;
-      const originalProjectId = state.currentProjectId;
-      let manualSaveAttempt = 0;
-      manualSaveLoop: while (true) {
-        pdfPath = state.pdfStoragePath;
-        cachePdfHash = null;
-        try {
-          if (willUploadPdf) {
-            let projectId = state.currentProjectId;
-            const pdfSize = pdfToUpload.byteLength;
-            const sizeBytes = dataSize + pdfSize;
-            let skipUpload = false;
-            if (projectId) {
-              const tSelect = Date.now();
-              let row = null;
-              try {
-                const res = await withTimeout(supabase.from('projects').select('pdf_hash, pdf_path').eq('id', projectId).single(), 10000, 'pdf_hash check');
-                row = res?.data || null;
-              } catch (hashErr) {
-                saveDebugLog('manual.save.pdf_hash_timeout', { runId, message: hashErr?.message });
-              }
-              perfLog('Save projects.select pdf_hash', Date.now() - tSelect);
-              const newHash = await sha256Hex(pdfToUpload);
-              // Skip the upload only when the cloud row carries a matching hash
-              // AND actually has a pdf_path. A row can hold a pdf_hash with no
-              // pdf_path (e.g. a project first created by autosave, which records
-              // the hash but never uploads the file); in that case the storage
-              // object does not exist, so we MUST upload even though the hashes
-              // match — otherwise the project is left permanently without its PDF.
-              if (row?.pdf_hash === newHash && row?.pdf_path) {
-                skipUpload = true;
-                cachePdfHash = newHash;
-                log('PDF unchanged (hash match), skipping upload');
-                saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
-              } else if (row?.pdf_hash === newHash && !row?.pdf_path) {
-                saveDebugLog('manual.save.branch', { runId, branch: 'hash_match_but_no_path_force_upload' });
-                pushSaveEvent('manual_save_force_upload_missing_pdf', 'PDF hash matched but no file in cloud — uploading');
-              }
-            }
-            if (!skipUpload) {
-              // Check size BEFORE creating the project row so we don't leave an
-              // orphan record behind when the PDF exceeds the limit.
-              const sizeCheck = assertPdfWithinLimit(pdfToUpload.byteLength, 'performSaveProjectToCloud.upload');
-              if (sizeCheck && !sizeCheck.ok) throw new Error(sizeCheck.message);
-            }
-            if (!projectId) {
-              setProgress('Uploading project...');
-              await tick();
-              log('Inserting project...');
-              saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', timeoutMs: 60000, attempt: manualSaveAttempt, raw: true });
-              const t0 = Date.now();
-              const insertPayload = { user_id: user.id, name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count };
-              const { data: row, error } = await withTimeout((signal) => rawProjectsInsert(insertPayload, signal), 60000, 'Save project');
-              log('Insert done', { duration: Date.now() - t0 + 'ms', error: error?.message, projectId: row?.id });
-              if (error) {
-                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (with PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t0, message: error.message, status: error.status, code: error.code, phase: 'with_pdf_new_project', diag: error.diag }));
-                throw error;
-              }
-              pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (with PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t0, projectId: row?.id, phase: 'with_pdf_new_project' }));
-              if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
-                runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
-              }
-              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'with_pdf_new_project', ms: Date.now() - t0, projectId: row?.id, raw: true });
-              projectId = row?.id;
-              if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-              orphanProjectIdForCleanup = projectId;
-              pendingNewProjectHydration = { projectId, userId: user.id };
-              await tick();
-            }
-            if (!skipUpload) {
-              setProgress('Uploading project...');
-              await tick();
-              const storagePath = user.id + '/' + projectId + '/document.pdf';
-              log('Uploading PDF...', { path: storagePath, size: pdfToUpload.byteLength });
-              // Hash before the upload so it can key the resumable-upload
-              // fingerprint (project + content), so a resume after reload never
-              // attaches to a stale partial upload of different PDF content. Reused
-              // below as pdf_hash / cachePdfHash to avoid a second hash pass.
-              const newHash = await sha256Hex(pdfToUpload);
-              const uploadTimeoutMs = pdfUploadTimeoutMs(pdfToUpload.byteLength, { baseMs: PDF_UPLOAD_TIMEOUT_BASE_MS, assumedBps: PDF_UPLOAD_ASSUMED_BPS, slackMs: PDF_UPLOAD_TIMEOUT_SLACK_MS, maxMs: PDF_UPLOAD_TIMEOUT_MAX_MS });
-              saveDebugLog('manual.save.request.start', { runId, op: 'storage.upload', path: storagePath, timeoutMs: uploadTimeoutMs, attempt: manualSaveAttempt });
-              const t1 = Date.now();
-              const uploadOutcome = await uploadPdfToStorage(storagePath, pdfToUpload, { runId, timeoutMs: uploadTimeoutMs, onProgress: onUploadProgress, fingerprint: projectId + '::' + newHash });
-              log('Upload done', { duration: Date.now() - t1 + 'ms', viaVerify: !!uploadOutcome.viaVerify, resumable: !!uploadOutcome.resumable });
-              saveDebugLog('manual.save.request.ok', { runId, op: 'storage.upload', ms: Date.now() - t1, viaVerify: !!uploadOutcome.viaVerify, resumable: !!uploadOutcome.resumable });
-              pdfPath = storagePath;
-              cachePdfHash = newHash;
-              await tick();
-              setProgress('Uploading project...');
-              await tick();
-              log('Updating project with pdf_path and pdf_hash...');
-              saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'after_pdf_upload', projectId, timeoutMs: 30000, attempt: manualSaveAttempt });
-              const t2 = Date.now();
-              const updatePayload = { name, data, pdf_path: pdfPath, pdf_hash: newHash, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-              if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-              const { error: updateErr } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', projectId).abortSignal(signal), 30000, 'Update project');
-              log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
-              if (updateErr) throw updateErr;
-              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'after_pdf_upload', ms: Date.now() - t2, projectId });
-            } else {
-              setProgress('Uploading project...');
-              await tick();
-              log('Updating project data (PDF unchanged)...');
-              saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'pdf_hash_skip', projectId, timeoutMs: 30000, attempt: manualSaveAttempt });
-              const t2 = Date.now();
-              const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-              if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-              const { error: updateErr } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', projectId).abortSignal(signal), 30000, 'Update project');
-              log('Update done', { duration: Date.now() - t2 + 'ms', error: updateErr?.message });
-              if (updateErr) throw updateErr;
-              saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'pdf_hash_skip', ms: Date.now() - t2, projectId });
-            }
-          } else if (state.currentProjectId) {
-            setProgress('Uploading project...');
-            await tick();
-            let sizeBytes = dataSize;
-            const skipStorageInfoForDegraded = consecutiveAutoSaveFailures > 0;
-            if (state.pdfStoragePath && !skipStorageInfoForDegraded) {
-              const tInfo = Date.now();
-              try {
-                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), STORAGE_INFO_TIMEOUT_MS, 'Storage info');
-                const sz = info && (info.metadata?.size ?? info.size);
-                if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-                saveDebugLog('manual.save.storage.info.ok', { runId, ms: Date.now() - tInfo, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
-              } catch (se) {
-                saveDebugLog('manual.save.storage.info.error', { runId, ms: Date.now() - tInfo, message: se?.message, name: se?.name });
-                pushSaveEvent('manual_save_storage_info_err', 'Storage size check failed', autosaveEventDetail({ runId, ms: Date.now() - tInfo, message: se?.message, name: se?.name }));
-              }
-            } else if (state.pdfStoragePath) {
-              pushSaveEvent('manual_save_storage_info_skipped', 'Skipping size check while sync is degraded', autosaveEventDetail({ runId, reason: 'degraded_mode' }));
-            }
-            log('Updating existing project (no PDF)...');
-            const useRawForManual = consecutiveAutoSaveFailures >= 3;
-            saveDebugLog('manual.save.request.start', { runId, op: 'projects.update', phase: 'no_pdf_in_save', projectId: state.currentProjectId, timeoutMs: 30000, attempt: manualSaveAttempt, raw: useRawForManual });
-            const t3 = Date.now();
-            const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-            if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            if (useRawForManual) {
-              try {
-                await withTimeout((signal) => rawProjectsUpdate(state.currentProjectId, updatePayload, signal), 30000, 'Update project');
-                pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch manual save succeeded', autosaveEventDetail({ runId, ms: Date.now() - t3 }));
-                if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
-                  runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
-                }
-              } catch (rawErr) {
-                pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch manual save failed', autosaveEventDetail({ runId, ms: Date.now() - t3, message: rawErr?.message, status: rawErr?.status, diag: rawErr?.diag }));
-                throw rawErr;
-              }
-            } else {
-              let mErr = null;
-              try {
-                const { error } = await withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), 30000, 'Update project');
-                log('Update done', { duration: Date.now() - t3 + 'ms', error: error?.message });
-                mErr = error || null;
-              } catch (timeoutOrThrow) {
-                mErr = timeoutOrThrow;
-              }
-              if (mErr) {
-                noteSupabaseJsFailure('manual_save.projects.update', mErr);
-                throw mErr;
-              }
-            }
-            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.update', phase: 'no_pdf_in_save', ms: Date.now() - t3, projectId: state.currentProjectId, raw: useRawForManual });
-          } else {
-            setProgress('Uploading project...');
-            await tick();
-            log('Inserting project (no PDF)...');
-            saveDebugLog('manual.save.request.start', { runId, op: 'projects.insert', phase: 'no_pdf', timeoutMs: 60000, attempt: manualSaveAttempt, raw: true });
-            const t4 = Date.now();
-            const insertPayloadNoPdf = { user_id: user.id, name, data, size_bytes: dataSize, counter_count: counts.counter_count, line_count: counts.line_count };
-            const { data: row, error } = await withTimeout((signal) => rawProjectsInsert(insertPayloadNoPdf, signal), 60000, 'Save project');
-            log('Insert done', { duration: Date.now() - t4 + 'ms', error: error?.message, projectId: row?.id });
-            if (error) {
-              pushSaveEvent('manual_save_via_raw_fetch_err', 'Raw-fetch project insert (no PDF) failed', autosaveEventDetail({ runId, ms: Date.now() - t4, message: error.message, status: error.status, code: error.code, phase: 'no_pdf', diag: error.diag }));
-              throw error;
-            }
-            pushSaveEvent('manual_save_via_raw_fetch_ok', 'Raw-fetch project insert (no PDF) succeeded', autosaveEventDetail({ runId, ms: Date.now() - t4, projectId: row?.id, phase: 'no_pdf' }));
-            if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
-              runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
-            }
-            saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id, raw: true });
-            const projectId = row?.id;
-            if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-            state.currentProjectId = projectId;
-            try { clearCheckoutExpiredAttention(); } catch (_) {}
-            subscribeToProjectCheckoutChanges(projectId);
-            state.projectOwnerId = user.id;
-            state.loadedViaViewLink = false;
-            state.isViewer = false;
-            state.canCheckOut = true;
-            state.checkedOutBy = null;
-            state.checkedOutAt = null;
-            state.checkedOutEmail = null;
-          }
-          if (pendingNewProjectHydration && !state.currentProjectId) {
-            const h = pendingNewProjectHydration;
-            state.currentProjectId = h.projectId;
-            try { clearCheckoutExpiredAttention(); } catch (_) {}
-            subscribeToProjectCheckoutChanges(h.projectId);
-            state.projectOwnerId = h.userId;
-            state.loadedViaViewLink = false;
-            state.isViewer = false;
-            state.canCheckOut = true;
-            state.checkedOutBy = null;
-            state.checkedOutAt = null;
-            state.checkedOutEmail = null;
-          }
-          orphanProjectIdForCleanup = null;
-          pendingNewProjectHydration = null;
-          break manualSaveLoop;
-        } catch (innerErr) {
-          if (manualSaveAttempt === 0 && originalProjectId && isTransientSaveError(innerErr)) {
-            saveDebugLog('manual.save.retry', { runId, message: innerErr?.message });
-            pushSaveEvent('manual_save_retry', 'Transient save error, retrying once', innerErr?.message || '');
-            manualSaveAttempt++;
-            await new Promise(r => setTimeout(r, 500));
-            continue;
-          }
-          throw innerErr;
-        }
-      }
-      state.currentProjectName = name;
-      if (willUploadPdf && pdfToUpload && state.currentProjectId && cachePdfHash) {
-        withTimeout(pdfCachePut(state.currentProjectId, new Blob([pdfToUpload]), cachePdfHash), 5000, 'PDF cache put')
-          .catch((cacheErr) => {
-            saveDebugLog('manual.save.pdf_cache_put_err', { runId, message: cacheErr?.message });
-            if (!pdfCacheWarnShown) {
-              pdfCacheWarnShown = true;
-              pushSaveEvent(
-                'manual_save_cache_warn',
-                'Local PDF cache failed - recovery from a detached buffer may not work',
-                cacheErr?.message || ''
-              );
-            }
-          });
-      }
-      state.pdfBuffer = null;
-      state.pdfBufferSize = 0;
-      if (pdfPath) state.pdfStoragePath = pdfPath;
-      if (cachePdfHash) state.pdfHash = cachePdfHash;
-      if (pdfPath && prevPdfStoragePath && prevPdfStoragePath !== pdfPath) {
-        withTimeout(
-          supabase.storage.from('pdfs').remove([prevPdfStoragePath]),
-          10000,
-          'PDF cleanup remove'
-        )
-          .then((res) => {
-            const error = res && res.error;
-            if (error) saveDebugLog('manual.save.pdf_cleanup_err', { runId, message: error.message, path: prevPdfStoragePath });
-            else       saveDebugLog('manual.save.pdf_cleanup_ok',  { runId, path: prevPdfStoragePath });
-          })
-          .catch((err) => saveDebugLog('manual.save.pdf_cleanup_err', { runId, message: err?.message, path: prevPdfStoragePath }));
-      }
-      lastSaveIncludedPdf = willUploadPdf;
-      state.lastSavedAt = new Date().toISOString();
-      if (SUPABASE_ENABLED && state.currentProjectId && user) {
-        try {
-          localStorage.setItem('clickcount-last-project', JSON.stringify({
-            projectId: state.currentProjectId,
-            projectName: state.currentProjectName || 'Untitled',
-            pdfStoragePath: state.pdfStoragePath || null,
-            pdfHash: state.pdfHash || null,
-            userId: user.id
-          }));
-        } catch (_) {}
-      }
-      // Graduation cleanup: a projectless session that just became a cloud
-      // project leaves a stale anonymous 'local' takeoff backup behind. That
-      // 'local' snapshot would otherwise shadow this project at next boot
-      // (boot prefers 'local' over clickcount-last-project), so drop it.
-      if (!originalProjectId && state.currentProjectId) {
-        takeoffBackupDelete('local').catch(() => {});
-      }
-      log('Save complete');
-      saveDebugLog('manual.save.complete', { runId });
-      lastCloudSaveAttemptFailed = false;
-      autoSaveDirty = (saveEngine.getDirtyGeneration() !== genAtEntry);
-      pushSaveEvent('manual_save_ok', 'Manual save to cloud completed', autosaveEventDetail({ runId, genAtEntry, genNow: saveEngine.getDirtyGeneration(), stillDirty: autoSaveDirty }));
-      saveProgressMessage = '';
-      updateUI();
-      return { ok: true };
-    } catch (e) {
-      console.error('[Save] Failed:', e);
-      saveDebugLogError(runId, 'manual.save', e);
-      log('Save failed', { message: e?.message, details: e?.details, hint: e?.hint });
-      window.lastSaveError = e;
-      if (orphanProjectIdForCleanup) {
-        const orphanId = orphanProjectIdForCleanup;
-        try {
-          await withTimeout(supabase.from('projects').delete().eq('id', orphanId), 5000, 'Orphan project cleanup');
-          pushSaveEvent('manual_save_orphan_cleanup_ok', 'Orphan project row deleted after save failure', JSON.stringify({ projectId: orphanId }));
-        } catch (cleanupErr) {
-          pushSaveEvent('manual_save_orphan_cleanup_err', 'Orphan project cleanup failed', JSON.stringify({ projectId: orphanId, message: cleanupErr?.message }));
-        }
-      }
-      writeTakeoffBackupToIndexedDB();
-      pushSaveEvent('manual_save_err', (e && e.message) || 'Manual save failed', formatSaveStatusErrDetail(e));
-      lastCloudSaveAttemptFailed = true;
-      autoSaveDirty = wasDirty || (saveEngine.getDirtyGeneration() !== genAtEntry);
-      updateSaveStatusIndicator();
-      try { localStorage.setItem('clickcount-save-error', JSON.stringify({ msg: e?.message, details: e?.details, hint: e?.hint, code: e?.code })); } catch (_) {}
-      saveProgressMessage = '';
-      updateUI();
-      return { ok: false, error: e };
-    } finally {
-      saveInProgress = false;
-      savePdfInProgress = false;
-      saveProgressMessage = '';
-    }
-  }
-
-  // One-shot PDF upload: closes the gap where a project has annotations + a
-  // local PDF but no cloud storage object (e.g. created via Prepare PDF "Open",
-  // then only autosaved). Autosave never uploads the file, so without this the
-  // PDF would stay local until a manual Save-with-PDF. This runs from the
-  // autosave interval tick and Turn In, but only when there is genuinely a
-  // local-only PDF that is reachable (in memory or recoverable from cache),
-  // and it stops firing once pdf_path is set.
-  let pdfOneShotUploadInFlight = false;
-  let pdfOneShotNextAttemptAt = 0;
-  async function uploadLocalPdfToCloudIfNeeded(reason, opts) {
-    opts = opts || {};
-    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) return { skipped: true, reason: 'no_supabase' };
-    if (!state.currentProjectId) return { skipped: true, reason: 'no_project' };
-    if (!state.pages.length) return { skipped: true, reason: 'no_pages' };
-    if (state.pdfStoragePath) return { skipped: true, reason: 'already_in_cloud' };
-    if (state.isViewer) return { skipped: true, reason: 'viewer' };
-    if (suspendAutoSaveUntilCheckout) return { skipped: true, reason: 'suspended' };
-    if (saveInProgress) return { skipped: true, reason: 'save_in_progress' };
-    if (pdfOneShotUploadInFlight) return { skipped: true, reason: 'in_flight' };
-    // Turn In passes ignoreBackoff so an explicit user action is not blocked by
-    // a prior background tick's failure backoff window.
-    if (!opts.ignoreBackoff && Date.now() < pdfOneShotNextAttemptAt) return { skipped: true, reason: 'backoff' };
-    // Large first-PDF uploads still run from the background autosave tick (so a
-    // PDF opened via "Open", without an explicit Save/Turn In, still reaches the
-    // cloud), but they cannot tight-loop: the pdfOneShotUploadInFlight guard
-    // prevents overlapping ticks, the resumable/TUS path resumes rather than
-    // restarts, the size-aware timeout avoids premature failure, and a failed
-    // large upload backs off PDF_ONESHOT_LARGE_BACKOFF_MS (5 min) rather than 30s.
-    const pdfBytesApprox = (state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length)) || state.pdfBufferSize || 0;
-    const isLargePdf = pdfBytesApprox > PDF_RESUMABLE_THRESHOLD_BYTES;
-    // Verify a usable PDF buffer is reachable before invoking the cloud save so
-    // we don't trip performSaveProjectToCloud's detached-PDF error path (which
-    // flips the save-status bell to a failure state). pdf.js detaches the
-    // in-memory buffer after rendering, so fall back to the IndexedDB cache.
-    let hasUsableBuffer = !!(state.pdfBuffer && (state.pdfBuffer.byteLength || state.pdfBuffer.length || 0) > 0);
-    if (!hasUsableBuffer && state.pdfBufferSize > 0 && state.pdfHash) {
-      try {
-        const cached = await pdfCacheGet(state.currentProjectId, state.pdfHash);
-        if (cached && cached.size > 0) hasUsableBuffer = true;
-      } catch (_) {}
-    }
-    if (!hasUsableBuffer) return { skipped: true, reason: 'no_usable_buffer' };
-    pdfOneShotUploadInFlight = true;
-    pushSaveEvent('pdf_oneshot_upload_start', 'Uploading local PDF to cloud', JSON.stringify({ reason }));
-    try {
-      const result = await performSaveProjectToCloud({ name: state.currentProjectName || 'Untitled', includePdf: true });
-      if (result && result.ok) {
-        pushSaveEvent('pdf_oneshot_upload_ok', 'Local PDF uploaded to cloud', JSON.stringify({ reason }));
-        pdfOneShotNextAttemptAt = 0;
-      } else {
-        pdfOneShotNextAttemptAt = Date.now() + (isLargePdf ? PDF_ONESHOT_LARGE_BACKOFF_MS : PDF_ONESHOT_BACKOFF_MS);
-        pushSaveEvent('pdf_oneshot_upload_err', 'Local PDF upload failed', JSON.stringify({ reason, message: result?.error?.message, code: result?.error?.code }));
-      }
-      return result || { ok: false };
-    } catch (e) {
-      pdfOneShotNextAttemptAt = Date.now() + (isLargePdf ? PDF_ONESHOT_LARGE_BACKOFF_MS : PDF_ONESHOT_BACKOFF_MS);
-      pushSaveEvent('pdf_oneshot_upload_err', 'Local PDF upload threw', JSON.stringify({ reason, message: e?.message }));
-      return { ok: false, error: e };
-    } finally {
-      pdfOneShotUploadInFlight = false;
-    }
-  }
+  // The PDF upload ladder (resumable/TUS + verify-after-timeout),
+  // performSaveProjectToCloud, and the one-shot local-PDF uploader live in
+  // save-engine.js (Stage 6) with the upload-progress sink and the one-shot
+  // in-flight/backoff state. Wrappers keep the App registry (Prepare PDF
+  // commit) and the interval/visibility callers below frozen.
+  function performSaveProjectToCloud(opts) { return saveEngine.performSaveProjectToCloud(opts); }
+  function uploadLocalPdfToCloudIfNeeded(reason, opts) { return saveEngine.uploadLocalPdfToCloudIfNeeded(reason, opts); }
 
   // SECTION: [sync] Auto-save
-  async function performAutoSave(externalRunId) {
-    const runId = externalRunId || saveDebugRunId();
-    if (!SUPABASE_ENABLED || !supabase || !state.supabaseSession?.user) {
-      saveDebugLog('autosave.skip', { runId, reason: 'no_supabase_or_user' });
-      return { ok: false, error: null };
-    }
-    if (saveInProgress) {
-      saveDebugLog('autosave.skip', { runId, reason: 'save_in_progress' });
-      return { ok: false, error: null };
-    }
-    if (!state.pages.length && !state.currentProjectId) {
-      saveDebugLog('autosave.skip', { runId, reason: 'no_pages_no_project' });
-      return { ok: false, error: null };
-    }
-    if (state.isViewer) {
-      saveDebugLog('autosave.skip', { runId, reason: 'viewer' });
-      return { ok: false, error: null };
-    }
-    if (suspendAutoSaveUntilCheckout && externalRunId !== 'checkout_recovered') {
-      saveDebugLog('autosave.skip', { runId, reason: 'suspended_pending_recheckout' });
-      return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
-    }
-    const user = state.supabaseSession.user;
-    if (state.currentProjectId && state.checkedOutBy === user.id && state.checkedOutAt) {
-      const checkedAt = new Date(state.checkedOutAt).getTime();
-      const ageMs = serverNowMs() - checkedAt;
-      if (ageMs > CHECKOUT_INACTIVITY_MS + CHECKOUT_SOFT_GRACE_MS) {
-        saveDebugLog('autosave.skip', { runId, reason: 'checkout_expired', ageMs, mode: 'hard_skew' });
-        return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
-      }
-      if (ageMs > CHECKOUT_INACTIVITY_MS - CHECKOUT_NEAR_EXPIRY_MS) {
-        const probe = await probeCheckoutLock(runId);
-        if (probe.expired) {
-          saveDebugLog('autosave.skip', { runId, reason: 'checkout_expired', ageMs, mode: 'probe' });
-          return { ok: false, error: { code: 'CHECKOUT_EXPIRED' } };
-        }
-      }
-    }
-    const t0 = Date.now();
-    const genAtEntry = saveEngine.getDirtyGeneration();
-    autoSaveDirty = false;
-    const data = {
-      version: 1,
-      counters: state.counters,
-      lineTypes: state.lineTypes,
-      iconNames: state.iconNames || {},
-      iconOrder: state.iconOrder || null,
-      customIconPaths: getUserCustomIcons(),
-      maxZoom: getMaxZoom(),
-      groups: state.groups || [],
-      legendSettings: state.legendSettings,
-      multiplyZoneSettings: state.multiplyZoneSettings,
-      showGridOverlay: state.showGridOverlay,
-      gridSettings: state.gridSettings,
-      pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })),
-      activeCanvasIdByPage: state.activeCanvasIdByPage || {}
-    };
-    const counts = getProjectCounts(data);
-    const dataSize = JSON.stringify(data).length;
-    perfLog('performAutoSave JSON.stringify', Date.now() - t0, { dataSize, pages: state.pages.length });
-    const name = state.currentProjectName || 'Untitled';
-    saveDebugLog('autosave.payload', {
-      runId,
-      projectId: state.currentProjectId || null,
-      dataSize,
-      pages: state.pages.length,
-      counter_count: counts.counter_count,
-      line_count: counts.line_count,
-      willInsert: !state.currentProjectId
-    });
-    const tTotal = Date.now();
-    saveInProgress = true;
-    let _resolveAutoSaveInFlight = null;
-    inFlightAutoSavePromise = new Promise(r => { _resolveAutoSaveInFlight = r; });
-    let storageInfoFailedThisCall = false;
-    let storageInfoMs = 0;
-    let storageInfoStatus = 'not_run';
-    let lastAttemptUsedRawFetch = false;
-    let lastAttemptOpMs = 0;
-    let lastAttemptPhase = 'init';
-    let attempt = 0;
-    try {
-      pushSaveEvent(
-        'autosave_start',
-        state.currentProjectId ? 'Autosave: updating project in cloud' : 'Autosave: creating project in cloud',
-        autosaveEventDetail({
-          runId,
-          projectId: state.currentProjectId || null,
-          dataSize,
-          pages: state.pages.length,
-          hasPdfStoragePath: !!state.pdfStoragePath,
-          attempt
-        })
-      );
-      while (true) {
-        try {
-          if (state.currentProjectId) {
-            let sizeBytes = dataSize;
-            const skipStorageInfoForDegraded = consecutiveAutoSaveFailures > 0;
-            if (state.pdfStoragePath && !storageInfoFailedThisCall && !skipStorageInfoForDegraded) {
-              const t1 = Date.now();
-              try {
-                const { data: info } = await withTimeout(supabase.storage.from('pdfs').info(state.pdfStoragePath), STORAGE_INFO_TIMEOUT_MS, 'Storage info');
-                storageInfoMs = Date.now() - t1;
-                storageInfoStatus = 'ok';
-                perfLog('performAutoSave storage.info', storageInfoMs, { path: state.pdfStoragePath });
-                const sz = info && (info.metadata?.size ?? info.size);
-                if (typeof sz === 'number' && sz >= 0) sizeBytes += sz;
-                saveDebugLog('autosave.storage.info.ok', { runId, ms: storageInfoMs, path: state.pdfStoragePath, pdfSizeBytes: typeof sz === 'number' ? sz : null, sizeBytes });
-              } catch (se) {
-                storageInfoMs = Date.now() - t1;
-                storageInfoStatus = 'err';
-                storageInfoFailedThisCall = true;
-                saveDebugLog('autosave.storage.info.error', { runId, ms: storageInfoMs, message: se?.message, name: se?.name });
-                pushSaveEvent('autosave_storage_info_err', 'Storage size check failed', autosaveEventDetail({ runId, ms: storageInfoMs, message: se?.message, name: se?.name, attempt }));
-                noteSupabaseJsFailure('autosave.storage.info', se);
-              }
-            } else if (state.pdfStoragePath) {
-              storageInfoStatus = storageInfoFailedThisCall ? 'skipped_failed' : 'skipped_degraded';
-              pushSaveEvent('autosave_storage_info_skipped', 'Skipping size check while sync is degraded', autosaveEventDetail({ runId, reason: storageInfoStatus, attempt }));
-            }
-            const updatePayload = { name, data, size_bytes: sizeBytes, counter_count: counts.counter_count, line_count: counts.line_count, updated_at: new Date().toISOString() };
-            if (state.checkedOutBy === user.id) updatePayload.checked_out_at = new Date().toISOString();
-            const useRawFetch = (consecutiveAutoSaveFailures >= 3) || (attempt > 0 && lastAttemptUsedRawFetch === false && lastAttemptPhase === 'projects.update');
-            lastAttemptUsedRawFetch = useRawFetch;
-            lastAttemptPhase = 'projects.update';
-            saveDebugLog('autosave.request.start', { runId, op: 'projects.update', projectId: state.currentProjectId, timeoutMs: AUTOSAVE_TIMEOUT_MS, attempt, raw: useRawFetch });
-            pushSaveEvent('autosave_request_start', useRawFetch ? 'Updating project (raw fetch)' : 'Updating project', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch }));
-            const t3 = Date.now();
-            let opErr = null;
-            if (useRawFetch) {
-              const op = withTimeout((signal) => rawProjectsUpdate(state.currentProjectId, updatePayload, signal), AUTOSAVE_TIMEOUT_MS, 'Update project');
-              inFlightAutoSaveController = op.controller;
-              try {
-                await op;
-              } catch (rawErr) {
-                opErr = rawErr;
-              }
-            } else {
-              const op = withTimeout((signal) => supabase.from('projects').update(updatePayload).eq('id', state.currentProjectId).abortSignal(signal), AUTOSAVE_TIMEOUT_MS, 'Update project');
-              inFlightAutoSaveController = op.controller;
-              const { error } = await op;
-              opErr = error || null;
-            }
-            const updMs = Date.now() - t3;
-            lastAttemptOpMs = updMs;
-            perfLog('performAutoSave projects.update', updMs, { projectId: state.currentProjectId, raw: useRawFetch });
-            recordAutosaveLatency(updMs);
-            if (opErr) {
-              pushSaveEvent('autosave_request_end', useRawFetch ? 'Update failed (raw fetch)' : 'Update failed', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: false, message: opErr?.message, code: opErr?.code, status: opErr?.status }));
-              if (useRawFetch) pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch update failed', autosaveEventDetail({ runId, ms: updMs, message: opErr?.message, status: opErr?.status, diag: opErr?.diag }));
-              throw opErr;
-            }
-            pushSaveEvent('autosave_request_end', useRawFetch ? 'Update OK (raw fetch)' : 'Update OK', autosaveEventDetail({ runId, op: 'projects.update', attempt, raw: useRawFetch, ms: updMs, ok: true }));
-            if (useRawFetch) {
-              pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch update succeeded', autosaveEventDetail({ runId, ms: updMs }));
-              if ((consecutiveAutoSaveFailures > 0 || attempt > 0) && !saveEngine.isClientRecycleInFlight()) {
-                runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
-              }
-            }
-            saveDebugLog('autosave.request.ok', { runId, op: 'projects.update', ms: updMs, projectId: state.currentProjectId, raw: useRawFetch });
-          } else {
-            let sizeBytes = dataSize;
-            if (state.pdfBuffer) {
-              sizeBytes += state.pdfBuffer.byteLength;
-            }
-            // IMPORTANT: autosave never uploads the PDF file. We must NOT record
-            // pdf_hash here. Doing so would poison the row — the cloud would claim
-            // a PDF (pdf_hash set) while no storage object exists (pdf_path null),
-            // and the manual-save hash-skip would then skip the upload forever,
-            // leaving the project permanently without its PDF. pdf_hash is only
-            // written once the file is actually uploaded (performSaveProjectToCloud).
-            const insertData = { user_id: user.id, name, data, size_bytes: sizeBytes, pdf_path: null, counter_count: counts.counter_count, line_count: counts.line_count };
-            lastAttemptPhase = 'projects.insert';
-            lastAttemptUsedRawFetch = true;
-            saveDebugLog('autosave.request.start', { runId, op: 'projects.insert', timeoutMs: 60000, hasPdfHash: false, attempt, raw: true });
-            pushSaveEvent('autosave_request_start', 'Creating project (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, raw: true }));
-            const t4 = Date.now();
-            const insertOp = withTimeout((signal) => rawProjectsInsert(insertData, signal), 60000, 'Save project');
-            inFlightAutoSaveController = insertOp.controller;
-            const { data: row, error } = await insertOp;
-            const insMs = Date.now() - t4;
-            lastAttemptOpMs = insMs;
-            perfLog('performAutoSave projects.insert', insMs, { dataSize, raw: true });
-            if (error) {
-              pushSaveEvent('autosave_request_end', 'Create failed (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: false, raw: true, message: error?.message, code: error?.code, status: error?.status }));
-              pushSaveEvent('autosave_via_raw_fetch_err', 'Raw-fetch autosave insert failed', autosaveEventDetail({ runId, ms: insMs, message: error?.message, status: error?.status, code: error?.code, diag: error?.diag }));
-              throw error;
-            }
-            const projectId = row?.id;
-            if (!projectId) throw new Error('Project created but no ID returned');
-            state.currentProjectId = projectId;
-            // Graduation cleanup: this branch only runs when there was no
-            // currentProjectId, so the session just became a cloud project.
-            // Drop the now-stale anonymous 'local' takeoff backup so it can't
-            // shadow this project at next boot.
-            takeoffBackupDelete('local').catch(() => {});
-            try { clearCheckoutExpiredAttention(); } catch (_) {}
-            subscribeToProjectCheckoutChanges(projectId);
-            state.projectOwnerId = user.id;
-            state.loadedViaViewLink = false;
-            state.isViewer = false;
-            state.canCheckOut = true;
-            state.checkedOutBy = null;
-            state.checkedOutAt = null;
-            state.checkedOutEmail = null;
-            state.currentProjectName = name;
-            pushSaveEvent('autosave_request_end', 'Create OK (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, raw: true, projectId }));
-            pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch autosave insert succeeded', autosaveEventDetail({ runId, ms: insMs, projectId }));
-            if (consecutiveAutoSaveFailures > 0 && !saveEngine.isClientRecycleInFlight()) {
-              runRecoveryProbeAndMaybeRecycle('raw_fetch_rescue').catch(() => {});
-            }
-            saveDebugLog('autosave.request.ok', { runId, op: 'projects.insert', ms: insMs, projectId: state.currentProjectId, raw: true });
-          }
-          break;
-        } catch (innerErr) {
-          if (!lastAttemptUsedRawFetch && lastAttemptPhase !== 'init') {
-            noteSupabaseJsFailure('autosave.' + lastAttemptPhase, innerErr);
-          }
-          if (attempt === 0 && isTransientSaveError(innerErr)) {
-            saveDebugLog('autosave.retry', { runId, message: innerErr?.message });
-            pushSaveEvent('autosave_retry', 'Transient autosave error, retrying once', autosaveEventDetail({ runId, attempt, message: innerErr?.message }));
-            attempt++;
-            await new Promise(r => setTimeout(r, 500));
-            continue;
-          }
-          throw innerErr;
-        }
-      }
-      lastSaveIncludedPdf = !!state.pdfStoragePath;
-      state.lastSavedAt = new Date().toISOString();
-      if (state.currentProjectId && state.supabaseSession?.user) {
-        try {
-          localStorage.setItem('clickcount-last-project', JSON.stringify({
-            projectId: state.currentProjectId,
-            projectName: state.currentProjectName || 'Untitled',
-            pdfStoragePath: state.pdfStoragePath || null,
-            pdfHash: state.pdfHash || null,
-            userId: state.supabaseSession.user.id
-          }));
-        } catch (_) {}
-      }
-      updateUI();
-      perfLog('performAutoSave total', Date.now() - tTotal);
-      saveDebugLog('autosave.complete', { runId, totalMs: Date.now() - tTotal });
-      maybeLogProjectSaveEvent(state.currentProjectId);
-      lastCloudSaveAttemptFailed = false;
-      autoSaveDirty = (saveEngine.getDirtyGeneration() !== genAtEntry);
-      if (!autoSaveDirty) saveEngine.clearDirtyStartedAt();
-      pushSaveEvent('autosave_ok', state.currentProjectId ? 'Canvas synced with cloud (update)' : 'Canvas synced with cloud (new project)', autosaveEventDetail({ runId, totalMs: Date.now() - tTotal, attempts: attempt + 1, usedRawFetch: lastAttemptUsedRawFetch, genAtEntry, genNow: saveEngine.getDirtyGeneration() }));
-      autoSaveAbortReason = null;
-      noteAutoSaveOutcome(true, null);
-      return { ok: true };
-    } catch (e) {
-      if (autoSaveAbortReason) {
-        const reason = autoSaveAbortReason;
-        autoSaveAbortReason = null;
-        autoSaveDirty = true;
-        saveDebugLog('autosave.aborted', { runId, reason, message: e?.message });
-        return { ok: false, error: null };
-      }
-      console.error('[Auto-save] Failed:', e);
-      saveDebugLogError(runId, 'autosave.request', e);
-      window.lastSaveError = e;
-      autoSaveDirty = true;
-      writeTakeoffBackupToIndexedDB();
-      lastCloudSaveAttemptFailed = true;
-      const elapsedMs = Date.now() - tTotal;
-      pushSaveEvent(
-        'autosave_err',
-        (e && e.message) || 'Autosave failed',
-        autosaveEventDetail(Object.assign(
-          serializeSaveError(e),
-          {
-            runId,
-            elapsedMs,
-            attempt,
-            phase: lastAttemptPhase,
-            usedRawFetch: lastAttemptUsedRawFetch,
-            opMs: lastAttemptOpMs,
-            storageInfoStatus,
-            storageInfoMs
-          }
-        ))
-      );
-      noteAutoSaveOutcome(false, e);
-      return { ok: false, error: e };
-    } finally {
-      saveInProgress = false;
-      inFlightAutoSaveController = null;
-      try { if (_resolveAutoSaveInFlight) _resolveAutoSaveInFlight(); } catch (_) {}
-      inFlightAutoSavePromise = null;
-    }
-  }
+  // performAutoSave (the 5s dirty-loop worker: checkout preflight, update/
+  // insert with raw-fetch fallback + retry, outcome bookkeeping) lives in
+  // save-engine.js (Stage 6); the interval + visibility callers use this
+  // wrapper.
+  function performAutoSave(externalRunId) { return saveEngine.performAutoSave(externalRunId); }
 
   // SECTION: [sync] Local backup (IndexedDB takeoff state)
   // The three-layer backup writer (writeTakeoffStateBackup ->
@@ -10403,23 +9201,18 @@
   // in-flight promise + lastLocalBackup stamps) lives in save-engine.js
   // (Stage 3); the 5s interval and the visibilitychange kick stay here.
   function writeTakeoffStateBackup() { return saveEngine.writeTakeoffStateBackup(); }
-  function writeTakeoffBackupToIndexedDB() { return saveEngine.writeTakeoffBackupToIndexedDB(); }
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
 
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
         lastHiddenAt = Date.now();
-        saveDebugLog('visibility.hidden', { autoSaveDirty, hasProject: !!state.currentProjectId });
+        saveDebugLog('visibility.hidden', { autoSaveDirty: saveEngine.getAutoSaveDirty(), hasProject: !!state.currentProjectId });
         writeTakeoffStateBackup();
-        if (inFlightAutoSaveController) {
-          autoSaveAbortReason = 'hidden';
-          try { inFlightAutoSaveController.abort(); } catch (_) {}
-          inFlightAutoSaveController = null;
-        }
+        saveEngine.abortInFlightAutoSave('hidden');
         const userId = state.supabaseSession?.user?.id;
         if (SUPABASE_ENABLED && supabase && userId && state.currentProjectId &&
-            state.checkedOutBy === userId && autoSaveDirty && !saveInProgress && !suspendAutoSaveUntilCheckout) {
+            state.checkedOutBy === userId && saveEngine.getAutoSaveDirty() && !saveEngine.isSaveInProgress() && !suspendAutoSaveUntilCheckout) {
           performAutoSave().catch(() => {});
         }
         return;
@@ -10485,7 +9278,7 @@
     window.addEventListener('online', () => {
       pushSaveEvent('online', 'Browser reports connection online');
       updateSaveStatusIndicator();
-      if (consecutiveAutoSaveFailures > 0) {
+      if (saveEngine.getConsecutiveAutoSaveFailures() > 0) {
         runRecoveryProbe('online_event').catch(() => {});
       }
     });
@@ -10498,7 +9291,7 @@
   setInterval(async () => {
     if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
     if (suspendAutoSaveUntilCheckout) {
-      if (autoSaveDirty && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
+      if (saveEngine.getAutoSaveDirty() && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
       return;
     }
     // Belt-and-suspenders: if this project has a local PDF that never reached
@@ -10507,14 +9300,10 @@
     // stops firing once the upload succeeds. Runs regardless of canvas-dirty
     // state so a failed attempt retries on a later tick.
     uploadLocalPdfToCloudIfNeeded('autosave_tick').catch(() => {});
-    if (!autoSaveDirty) return;
-    const dirtyStartedAtNow = saveEngine.getDirtyStartedAt();
-    if (dirtyStartedAtNow && Date.now() - dirtyStartedAtNow >= DIRTY_SNAPSHOT_THRESHOLD_MS && envelopeSnapshotDirtyStamp < dirtyStartedAtNow) {
-      envelopeSnapshotDirtyStamp = dirtyStartedAtNow;
-      writeSaveLogsSnapshot('dirty_10min').catch(() => {});
-    }
-    if (Date.now() < nextAutoSaveAttemptAt) {
-      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: nextAutoSaveAttemptAt - Date.now() });
+    if (!saveEngine.getAutoSaveDirty()) return;
+    saveEngine.maybeWriteDirtySnapshot();
+    if (Date.now() < saveEngine.getNextAutoSaveAttemptAt()) {
+      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: saveEngine.getNextAutoSaveAttemptAt() - Date.now() });
       return;
     }
     const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
@@ -10689,7 +9478,7 @@
   // `if (SUPABASE_ENABLED)` block instead (search "in-block load-helper publish").
   // Setters for engine let-state the load action resets (cannot assign through
   // the registry otherwise).
-  App.setAutoSaveDirty = (v) => { autoSaveDirty = v; };
+  App.setAutoSaveDirty = (v) => saveEngine.setAutoSaveDirty(v);
   App.setLastModifiedAt = (v) => { lastModifiedAt = v; };
   App.setLastLocalBackupAt = (v) => saveEngine.setLastLocalBackupAt(v);
   App.setLastSaveIncludedPdf = (v) => { lastSaveIncludedPdf = v; };
@@ -11030,7 +9819,7 @@
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!swHadController || swReloadedOnUpdate) return;
         swReloadedOnUpdate = true;
-        if (state.pages.length === 0 && !autoSaveDirty) window.location.reload();
+        if (state.pages.length === 0 && !saveEngine.getAutoSaveDirty()) window.location.reload();
       });
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/app/' }).catch(() => {});

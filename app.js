@@ -83,51 +83,6 @@
     return iconViewBoxStringRule(getCustomIconViewBox(path), path);
   }
 
-  function parseUploadedSvg(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => {
-        try {
-          const doc = new DOMParser().parseFromString(r.result, 'image/svg+xml');
-          const svg = doc.querySelector('svg');
-          if (!svg) { reject(new Error('Invalid SVG')); return; }
-          const vb = svg.getAttribute('viewBox') || svg.getAttribute('viewbox') || '0 0 24 24';
-          const paths = [];
-          function toPath(el) {
-            const tag = (el.tagName || '').toLowerCase();
-            if (tag === 'path' && el.getAttribute('d')) return el.getAttribute('d');
-            if (tag === 'rect') {
-              const x = Number(el.getAttribute('x')) || 0, y = Number(el.getAttribute('y')) || 0, w = Number(el.getAttribute('width')) || 0, h = Number(el.getAttribute('height')) || 0;
-              return 'M' + x + ' ' + y + ' L' + (x + w) + ' ' + y + ' L' + (x + w) + ' ' + (y + h) + ' L' + x + ' ' + (y + h) + ' Z';
-            }
-            if (tag === 'circle') {
-              const cx = Number(el.getAttribute('cx')) || 0, cy = Number(el.getAttribute('cy')) || 0, r = Number(el.getAttribute('r')) || 0;
-              return 'M' + cx + ' ' + cy + ' m -' + r + ' 0 a ' + r + ' ' + r + ' 0 1 1 0 ' + (2 * r) + ' a ' + r + ' ' + r + ' 0 1 1 0 -' + (2 * r);
-            }
-            if (tag === 'ellipse') {
-              const cx = Number(el.getAttribute('cx')) || 0, cy = Number(el.getAttribute('cy')) || 0, rx = Number(el.getAttribute('rx')) || 0, ry = Number(el.getAttribute('ry')) || 0;
-              return 'M' + cx + ' ' + cy + ' m -' + rx + ' 0 a ' + rx + ' ' + ry + ' 0 1 1 0 ' + (2 * ry) + ' a ' + rx + ' ' + ry + ' 0 1 1 0 -' + (2 * ry);
-            }
-            if (tag === 'line') {
-              const x1 = Number(el.getAttribute('x1')) || 0, y1 = Number(el.getAttribute('y1')) || 0, x2 = Number(el.getAttribute('x2')) || 0, y2 = Number(el.getAttribute('y2')) || 0;
-              return 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2;
-            }
-            return null;
-          }
-          doc.querySelectorAll('path, rect, circle, ellipse, line').forEach(el => {
-            const d = toPath(el);
-            if (d) paths.push(d);
-          });
-          const value = paths.join(' ');
-          if (!value.trim()) { reject(new Error('SVG must contain at least one path, rect, circle, ellipse, or line.')); return; }
-          const name = (file.name || 'icon').replace(/\.svg$/i, '') || 'Icon';
-          resolve({ value, name, viewBox: vb });
-        } catch (e) { reject(e); }
-      };
-      r.onerror = () => reject(new Error('Failed to read file'));
-      r.readAsText(file);
-    });
-  }
 
   const COUNTER_BTN_DEFAULT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
   const USER_ACTIVITY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M320 171.9L305 151.1C280 116.5 239.9 96 197.1 96C123.6 96 64 155.6 64 229.1L64 231.7C64 255.3 70.2 279.7 80.6 304L186.6 304C189.8 304 192.7 302.1 194 299.1L225.8 222.8C229.5 214 238.1 208.2 247.6 208C257.1 207.8 265.9 213.4 269.8 222.1L321.1 336L362.5 253.2C366.6 245.1 374.9 239.9 384 239.9C393.1 239.9 401.4 245 405.5 253.2L428.7 299.5C430.1 302.2 432.8 303.9 435.9 303.9L559.5 303.9C570 279.6 576.1 255.2 576.1 231.6L576.1 229C576 155.6 516.4 96 442.9 96C400.2 96 360 116.5 335 151.1L320 171.8zM533.6 352L435.8 352C414.6 352 395.2 340 385.7 321L384 317.6L341.5 402.7C337.4 411 328.8 416.2 319.5 416C310.2 415.8 301.9 410.3 298.1 401.9L248.8 292.4L238.3 317.6C229.6 338.5 209.2 352.1 186.6 352.1L106.4 352.1C153.6 425.9 229.4 493.8 276.8 530C289.2 539.4 304.4 544.1 319.9 544.1C335.4 544.1 350.7 539.5 363 530C410.6 493.7 486.4 425.8 533.6 352z"/></svg>';
@@ -5914,7 +5869,7 @@
     const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
-    a.download = sanitizeForFilename(state.currentProjectName) + '.json';
+    a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
     a.click();
     logUserEvent('export_canvas', state.currentProjectId, {});
   };
@@ -5924,53 +5879,9 @@
   // The Export PDFs modal (openSpecificPagesModal + the specificPages* cluster
   // and its #specificPages* handlers) lives in features/export-pdfs.js
   // (window.App registry); it is reached via App.openSpecificPagesModal at call
-  // time. The shared download helpers below (sanitizeForFilename /
-  // downloadPdfBuffer / downloadProjectPdf) and the PipeTooling toggle stay here.
-  function sanitizeForFilename(s) {
-    const raw = (s || 'Untitled').replace(/\.pdf$/i, '').trim();
-    const cleaned = raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, '_').trim();
-    return cleaned || 'Untitled';
-  }
-  function downloadPdfBuffer(buffer, filename) {
-    const blob = new Blob([buffer], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.endsWith('.pdf') ? filename : filename + '.pdf';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  async function downloadProjectPdf() {
-    let buf = null;
-    if (state.pdfBuffer && state.pdfBuffer.byteLength > 0) {
-      buf = state.pdfBuffer;
-    } else if (state.pdfStoragePath && SUPABASE_ENABLED && supabase) {
-      try {
-        const cachedBlob = state.currentProjectId && state.pdfHash ? await pdfCacheGet(state.currentProjectId, state.pdfHash) : null;
-        if (cachedBlob && cachedBlob.size > 0) {
-          buf = await cachedBlob.arrayBuffer();
-        }
-        if (!buf || buf.byteLength === 0) {
-          const { data: blob, error: dlErr } = await supabase.storage.from('pdfs').download(state.pdfStoragePath);
-          if (dlErr || !blob || blob.size === 0) {
-            showToast('Failed to download PDF: ' + (dlErr?.message || 'PDF not found'), 4000);
-            return;
-          }
-          buf = await blob.arrayBuffer();
-        }
-      } catch (e) {
-        console.error('[Download PDF]', e);
-        showToast('Failed to download PDF: ' + (e?.message || 'Unknown error'), 4000);
-        return;
-      }
-    }
-    if (!buf || buf.byteLength === 0) {
-      showToast('No PDF available to download.', 3000);
-      return;
-    }
-    downloadPdfBuffer(buf, sanitizeForFilename(state.currentProjectName) + '.pdf');
-    logUserEvent('export_pdf', state.currentProjectId, { source: 'project-pdf' });
-  }
+  // time. The shared download helpers (sanitizeForFilename /
+  // downloadPdfBuffer / downloadProjectPdf) live in features/output.js
+  // (split #37); reached via App.* at call time.
   // The #forPipeTooling dropdown toggle moved to features/output.js with the
   // Copy to PipeTooling flow.
   // SECTION: View-link URL helpers & show-highlights/notes
@@ -6046,127 +5957,12 @@
   // PDF bundling helpers (addReportPagesToPdf / addNotesToPdf / addHighlightsToPdf
   // / hasAnyHighlights / hasAnyNotes) moved to features/pdf-bundle.js.
   // SECTION: Custom icon upload handler
+  // The #customIconUploadInput handler + parseUploadedSvg live in
+  // features/custom-icon-upload.js (split #37).
 
   // The canvas JSON import (#importBtn / #importBtnSidebar / #importInput) and
   // the import-canvas-after-PDF prompt modal moved to features/import-clear.js.
 
-  document.getElementById('customIconUploadInput').onchange = (e) => {
-    const f = e.target.files[0];
-    e.target.value = '';
-    if (!f) return;
-    parseUploadedSvg(f).then((icon) => {
-      const userIcons = getUserCustomIcons();
-      userIcons.push(icon);
-      saveUserCustomIcons(userIcons);
-      markProjectDirty();
-      const customGrid = document.getElementById('counterIconGridCustom');
-      const detailsCustomGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
-      const effectiveCustom = getEffectiveCustomIcons();
-      const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
-      const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
-      if (customGrid) {
-        customGrid.innerHTML = uploadCell + iconCells;
-        customGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            document.querySelectorAll('#counterIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-            customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-            const path = c.dataset.path;
-            if (path) {
-              const nameEl = document.getElementById('counterName');
-              if (!nameEl.value.trim()) nameEl.value = getIconName(path);
-            }
-          };
-        });
-        const newIconCell = Array.from(customGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCell) {
-          document.querySelectorAll('#counterIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCell.classList.add('selected');
-          const nameEl = document.getElementById('counterName');
-          if (!nameEl.value.trim()) nameEl.value = icon.name;
-        }
-      }
-      const plumCustomGrid = document.getElementById('plumIconGridCustom');
-      if (plumCustomGrid) {
-        plumCustomGrid.innerHTML = uploadCell + iconCells;
-        plumCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            document.querySelectorAll('#plumIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-            plumCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-          };
-        });
-        const newIconCellPlum = Array.from(plumCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCellPlum) {
-          document.querySelectorAll('#plumIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          plumCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCellPlum.classList.add('selected');
-        }
-      }
-      const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');
-      if (counterQuickCountCustomGrid) {
-        counterQuickCountCustomGrid.innerHTML = uploadCell + iconCells;
-        counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-            counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-            App.updateCounterQuickCountNamePreview();
-          };
-        });
-        const newIconCellQC = Array.from(counterQuickCountCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCellQC) {
-          document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCellQC.classList.add('selected');
-          App.updateCounterQuickCountNamePreview();
-        }
-      }
-      if (detailsCustomGrid) {
-        const grid = document.getElementById('counterLineTypeDetailsIconGrid');
-        const item = App.getCounterLineTypeDetailsItem ? App.getCounterLineTypeDetailsItem() : null;
-        const currentIcon = item?.icon || '';
-        const iconCellsDetails = effectiveCustom.map((ic) => {
-          const sel = ic.value === currentIcon ? ' selected' : '';
-          return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
-        }).join('');
-        detailsCustomGrid.innerHTML = uploadCell + iconCellsDetails;
-        detailsCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            detailsCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-            if (item) {
-              pushUndoSnapshot();
-              item.icon = c.dataset.path;
-              markProjectDirty();
-              updateUI();
-              renderPdf();
-            }
-          };
-        });
-        const newIconCellDetails = Array.from(detailsCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCellDetails && item) {
-          if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          detailsCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCellDetails.classList.add('selected');
-          pushUndoSnapshot();
-          item.icon = icon.value;
-          markProjectDirty();
-          updateUI();
-          renderPdf();
-        }
-      }
-      updateUI();
-    }).catch((err) => {
-      alert(err && err.message ? err.message : 'Invalid SVG. SVG must contain at least one path, rect, circle, ellipse, or line.');
-    });
-  };
 
   // showClearPageModal + the #clearPage / #clearPageSidebar openers moved to
   // features/import-clear.js (registered as App.showClearPageModal).
@@ -6204,10 +6000,10 @@
       const action = opt.dataset.action;
       if (exportDropdownMenu) exportDropdownMenu.classList.remove('visible');
       if (action === 'canvas') document.getElementById('exportBtn').click();
-      else if (action === 'pdf') await downloadProjectPdf();
+      else if (action === 'pdf') await App.downloadProjectPdf();
       else if (action === 'both') {
         document.getElementById('exportBtn').click();
-        await downloadProjectPdf();
+        await App.downloadProjectPdf();
       } else if (action === 'import-canvas') {
         document.getElementById('importInput').click();
       }
@@ -6728,7 +6524,7 @@
       pendingAddAdditionalPages = true;
       document.getElementById('pdfInput').click();
     };
-    document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await downloadProjectPdf(); };
+    document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
     document.getElementById('settingsAdvancedBtn').onclick = () => showModal('settingsAdvancedModal');
     document.getElementById('settingsAdvancedModalClose').onclick = () => hideModal('settingsAdvancedModal');
     document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
@@ -6736,7 +6532,7 @@
     document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await loadTestPdf(); };
     document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openManageIconsModal(); };
     document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-    document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await downloadProjectPdf(); };
+    document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.downloadProjectPdf(); };
     document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
     document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openCanvasRepairModal(); };
     document.getElementById('advancedEmptyCacheReload').onclick = async () => {
@@ -7077,10 +6873,8 @@
     // features/user-activity.js.
     // #manageProjectsModalClose moved to features/manage-projects.js.
     // manageIconsModalClose / manageIconsCancel / manageIconsSave handlers live
-    // in features/manage-icons.js (window.App registry).
-    document.getElementById('canvasRepairModalClose').onclick = () => hideModal('canvasRepairModal');
-    document.getElementById('canvasRepairCancel').onclick = () => hideModal('canvasRepairModal');
-    document.getElementById('canvasRepairApply').onclick = () => App.applyCanvasRepair();
+    // in features/manage-icons.js (window.App registry). The #canvasRepair*
+    // close/cancel/apply bindings live in features/canvas-repair.js (split #37).
     // #adminCreateForm (create-user) moved to features/user-admin.js.
   }
 
@@ -8839,7 +8633,6 @@
   // addReportPagesToPdf / addHighlightsToPdf / addNotesToPdf / hasAnyHighlights /
   // hasAnyNotes are registered from features/pdf-bundle.js.
   App.wrapNoteText = wrapNoteText;
-  App.sanitizeForFilename = sanitizeForFilename;
   App.logUserEvent = logUserEvent;
   App.renderPagesList = renderPagesList;
   App.renderAnnotations = renderAnnotations;
@@ -8912,7 +8705,6 @@
   App.buildTrimmedPdfBuffer = buildTrimmedPdfBuffer;
   App.resetGridOrigin = resetGridOrigin;
   App.writeTakeoffStateBackup = writeTakeoffStateBackup;
-  App.downloadPdfBuffer = downloadPdfBuffer;
   App.performSaveProjectToCloud = performSaveProjectToCloud;
   App.isAuthError = isAuthError;
   // NB: the three async, block-scoped load helpers (checkInCurrentProjectIfHeld,

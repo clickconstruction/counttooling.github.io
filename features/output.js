@@ -363,4 +363,54 @@
   // Share-modal revoke clears the export view-link cache so a revoked token is
   // never handed out (core-function -> feature callback).
   App.onViewLinkRevoked = () => { exportViewLinkUrl = null; exportViewLinkProjectId = null; };
+
+  // --- Shared PDF download helpers (split #37, moved from app.js) ----------
+  function sanitizeForFilename(s) {
+    const raw = (s || 'Untitled').replace(/\.pdf$/i, '').trim();
+    const cleaned = raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, '_').trim();
+    return cleaned || 'Untitled';
+  }
+  function downloadPdfBuffer(buffer, filename) {
+    const blob = new Blob([buffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.pdf') ? filename : filename + '.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  async function downloadProjectPdf() {
+    let buf = null;
+    if (App.state.pdfBuffer && App.state.pdfBuffer.byteLength > 0) {
+      buf = App.state.pdfBuffer;
+    } else if (App.state.pdfStoragePath && App.SUPABASE_ENABLED && App.getSupabase()) {
+      try {
+        const cachedBlob = App.state.currentProjectId && App.state.pdfHash ? await pdfCacheGet(App.state.currentProjectId, App.state.pdfHash) : null;
+        if (cachedBlob && cachedBlob.size > 0) {
+          buf = await cachedBlob.arrayBuffer();
+        }
+        if (!buf || buf.byteLength === 0) {
+          const { data: blob, error: dlErr } = await App.getSupabase().storage.from('pdfs').download(App.state.pdfStoragePath);
+          if (dlErr || !blob || blob.size === 0) {
+            App.showToast('Failed to download PDF: ' + (dlErr?.message || 'PDF not found'), 4000);
+            return;
+          }
+          buf = await blob.arrayBuffer();
+        }
+      } catch (e) {
+        console.error('[Download PDF]', e);
+        App.showToast('Failed to download PDF: ' + (e?.message || 'Unknown error'), 4000);
+        return;
+      }
+    }
+    if (!buf || buf.byteLength === 0) {
+      App.showToast('No PDF available to download.', 3000);
+      return;
+    }
+    downloadPdfBuffer(buf, sanitizeForFilename(App.state.currentProjectName) + '.pdf');
+    App.logUserEvent('export_pdf', App.state.currentProjectId, { source: 'project-pdf' });
+  }
+  App.sanitizeForFilename = sanitizeForFilename;
+  App.downloadPdfBuffer = downloadPdfBuffer;
+  App.downloadProjectPdf = downloadProjectPdf;
 })();

@@ -19,6 +19,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./constants.js')),
       Object.keys(require('./save-utils.js')),
       Object.keys(require('./save-engine.js')),
+      Object.keys(require('./annotation-model.js')),
       Object.keys(require('./icons.js')),
       Object.keys(require('./idb.js')),
       Object.keys(require('./format.js')),
@@ -46,7 +47,7 @@ const constantsGlobals = Object.fromEntries(
 // those modules' export sets (not its own).
 const saveEngineGlobals = Object.fromEntries(
   []
-    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')))
+    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')), Object.keys(require('./geometry.js')), Object.keys(require('./icons.js')))
     .map((k) => [k, 'readonly']),
 );
 
@@ -205,7 +206,7 @@ module.exports = [
     // constants.js + save-utils.js, so it reads their exports by bare name
     // (saveEngineGlobals); everything state/closure-coupled arrives via ctx.
     // Its export is consumed cross-file by app.js, so no-unused-vars is noise.
-    files: ['save-engine.js'],
+    files: ['save-engine.js', 'annotation-model.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

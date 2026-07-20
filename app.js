@@ -248,7 +248,6 @@
   // across calls.
   let lastAuthUserId = null;
   let lastModifiedAt = 0;
-  let pendingLastSessionRestore = null;
   let lastSaveIncludedPdf = false;
   // turnInInProgress + inFlightRecoverySavePromise live in save-engine.js
   // (Stage 5): saveEngine.isTurnInInProgress() / resetTurnInState().
@@ -502,7 +501,7 @@
     lastModifiedAt = 0;
     if (App.resetCopyProjectState) App.resetCopyProjectState();
     if (App.resetPdfIntakeFlags) App.resetPdfIntakeFlags();
-    pendingLastSessionRestore = null;
+    if (App.onLastSessionRestoreReset) App.onLastSessionRestoreReset();
     clearUndoStacks();
     resetAutosaveDegradedState();
     saveEngine.clearSaveStatusLog();
@@ -615,110 +614,9 @@
     }
   }
 
-  async function doRestoreLastProject(proj, cachedBlob) {
-    // A1: Same hygiene as the Load Project row-click - clear any stale
-    // pendingCanvasLoad before we start rebuilding session state.
-    state.pendingCanvasLoad = null;
-    const d = proj.data;
-    const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-    const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
-    const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
-    let pdf;
-    const idbPdfBlob = useIdbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0 ? idbBackup.pdfBlob : null;
-    if (idbPdfBlob) {
-      try {
-        const buf = await idbPdfBlob.arrayBuffer();
-        pdf = await pdfjsLib.getDocument(buf).promise;
-      } catch (e) {
-        if (!cachedBlob && !proj.pdf_path) throw e;
-      }
-    }
-    if (!pdf && cachedBlob && cachedBlob.size > 0) {
-      try {
-        const buf = await cachedBlob.arrayBuffer();
-        pdf = await pdfjsLib.getDocument(buf).promise;
-      } catch (e) {
-        if (!proj.pdf_path) throw e;
-        const { data: signed, error: urlErr } = await supabase.storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
-        if (urlErr) throw urlErr;
-        pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
-        if (proj.pdf_hash) {
-          supabase.storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
-            if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
-          });
-        }
-      }
-    }
-    if (!pdf && proj.pdf_path) {
-      const { data: blob, error: urlErr } = await supabase.storage.from('pdfs').download(proj.pdf_path);
-      if (urlErr) throw urlErr;
-      if (!blob || blob.size === 0) throw new Error('The PDF file in cloud storage is empty');
-      pdf = await pdfjsLib.getDocument(blob).promise;
-      if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
-    }
-    if (!pdf) throw new Error('No PDF available for this project');
-    clearPdfBitmapCache();
-    state.pages = [];
-    const numPages = pdf.numPages;
-    for (let i = 0; i < numPages; i++) {
-      const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-      const canvasId = uid();
-      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-      state.activeCanvasIdByPage[i] = canvasId;
-    }
-    if (useIdbBackup && idbBackup.data) {
-      applyTakeoffBackupToState(idbBackup.data);
-    } else {
-      state.counters = Array.isArray(d.counters) ? d.counters : [];
-      state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-      state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-      state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-      if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-      if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-      if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-      (d.pages || []).forEach(p => {
-        applyPageAnnotationsFromData(state.pages[p.index], p);
-      });
-      if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-      state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-      if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-      if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-      if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-      if (d.gridSettings) state.gridSettings = d.gridSettings;
-    }
-    reconcileOrphanedCountersAndLineTypes();
-    state.currentProjectId = proj.id === 'local' ? null : proj.id;
-    try { clearCheckoutExpiredAttention(); } catch (_) {}
-    state.currentProjectName = proj.name || 'Untitled';
-    state.pdfStoragePath = proj.pdf_path;
-    state.pdfHash = proj.pdf_hash || null;
-    state.pdfBuffer = null;
-    state.pdfBufferSize = 0;
-    lastSaveIncludedPdf = !!proj.pdf_path;
-    state.lastSavedAt = proj.updated_at || null;
-    saveEngine.setLastLocalBackupAt(null);
-    state.currentPage = Math.min(state.currentPage, Math.max(0, state.pages.length - 1));
-    state.projectOwnerId = proj.user_id || null;
-    state.checkedOutBy = proj.checked_out_by || null;
-    state.checkedOutAt = proj.checked_out_at || null;
-    state.checkedOutEmail = null;
-    const userId = state.supabaseSession?.user?.id;
-    const isOwner = proj.user_id === userId;
-    const lockExpired = !proj.checked_out_at || (serverNowMs() - new Date(proj.checked_out_at).getTime() >= CHECKOUT_INACTIVITY_MS);
-    const hasValidCheckout = proj.checked_out_by === userId && !lockExpired;
-    state.loadedViaViewLink = false;
-    state.isViewer = !hasValidCheckout;
-    state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
-    clearUndoStacks();
-    saveEngine.setAutoSaveDirty(false);
-    lastModifiedAt = 0;
-    fitZoom();
-    renderPdf();
-    refreshProjectPermissions();
-    subscribeToProjectCheckoutChanges(state.currentProjectId);
-  }
-
+  // doRestoreLastProject moved to features/restore-last-session.js (the
+  // last-session restore flow); boot hands the candidate over via
+  // App.openLastSessionRestorePrompt.
   // SECTION: Math & Format Helpers
   // Pure geometry/parse primitives (ptDist, snapToHorizontalOrVertical, polylineDistance,
   // polygonArea, distToSegment, the quadratic-bezier helpers, rotatePoint90CW, pointInRect,
@@ -6232,80 +6130,8 @@
       try { document.getElementById('pdfInput').click(); } catch (_) {}
     };
     // SECTION: Last-session restore prompt
-    document.getElementById('lastSessionRestoreKeep').onclick = async () => {
-      const p = pendingLastSessionRestore;
-      if (!p) { hideModal('lastSessionRestoreModal'); return; }
-      // Cloud last-session: the boot path deferred the Supabase fetch + PDF-blob lookup
-      // to here (so the modal could appear instantly). Resolve the project now, behind a
-      // brief loading state on the modal buttons.
-      if (p.cloudLast) {
-        const last = p.cloudLast;
-        const keepBtn = document.getElementById('lastSessionRestoreKeep');
-        const discardBtn = document.getElementById('lastSessionRestoreDiscard');
-        const keepLabel = keepBtn ? keepBtn.textContent : '';
-        if (keepBtn) { keepBtn.disabled = true; keepBtn.textContent = 'Loading…'; }
-        if (discardBtn) discardBtn.disabled = true;
-        const currentUid = state.supabaseSession?.user?.id || null;
-        try {
-          let proj = null, fetchErr = null;
-          try {
-            const res = await supabase.from('projects').select('id, name, data, updated_at, pdf_path, pdf_hash, user_id, checked_out_by, checked_out_at').eq('id', last.projectId).single();
-            proj = res.data; fetchErr = res.error;
-          } catch (netErr) { fetchErr = netErr; }
-          const accessDenied = !!fetchErr && (fetchErr.code === 'PGRST116' || /no rows|denied|permission|policy/i.test(fetchErr.message || ''));
-          if (accessDenied) {
-            try { pushSaveEvent('last_session_restore_skip_inaccessible', 'Last-session project not accessible to current user', JSON.stringify({ projectId: last.projectId, code: fetchErr.code, message: fetchErr.message })); } catch (_) {}
-            try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-            try { await takeoffBackupDelete(last.projectId); } catch (_) {}
-            showToast('This project is no longer available.', 5000);
-            return;
-          }
-          // Network/other error (e.g. offline): fall back to a local IndexedDB backup if
-          // one exists, so resuming offline still works.
-          let projForRestore = proj;
-          if (!projForRestore) {
-            const idbBackup = await takeoffBackupGet(last.projectId, currentUid);
-            if (idbBackup && idbBackup.data) {
-              projForRestore = { id: last.projectId, name: idbBackup.projectName || last.projectName || 'Untitled', data: backupDataToProjFormat(idbBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: idbBackup.pdfHash, user_id: last.userId, checked_out_by: null, checked_out_at: null };
-            }
-          }
-          if (!projForRestore) throw (fetchErr || new Error('Project unavailable'));
-          const pdfHashForCache = projForRestore.pdf_hash || last.pdfHash;
-          const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;
-          await doRestoreLastProject(projForRestore, cachedBlob);
-          updateUI();
-        } catch (err) {
-          showToast('Failed to restore project: ' + (err?.message || 'Unknown error'), 5000);
-        } finally {
-          pendingLastSessionRestore = null;
-          hideModal('lastSessionRestoreModal');
-          if (keepBtn) { keepBtn.disabled = false; keepBtn.textContent = keepLabel || 'Keep and Open'; }
-          if (discardBtn) discardBtn.disabled = false;
-        }
-        return;
-      }
-      pendingLastSessionRestore = null;
-      hideModal('lastSessionRestoreModal');
-      try {
-        await doRestoreLastProject(p.proj, p.cachedBlob);
-        updateUI();
-      } catch (err) {
-        showToast('Failed to restore project: ' + (err?.message || 'Unknown error'), 5000);
-      }
-    };
-    document.getElementById('lastSessionRestoreDiscard').onclick = async () => {
-      const p = pendingLastSessionRestore;
-      if (!p) { hideModal('lastSessionRestoreModal'); return; }
-      const projectId = p.cloudLast ? p.cloudLast.projectId : (p.proj && p.proj.id);
-      pendingLastSessionRestore = null;
-      hideModal('lastSessionRestoreModal');
-      try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-      if (projectId) {
-        await pdfCacheDelete(projectId);
-        await takeoffBackupDelete(projectId);
-      }
-      updateUI();
-    };
+    // The #lastSessionRestoreKeep/#lastSessionRestoreDiscard handlers and the
+    // restore flow moved to features/restore-last-session.js.
     // The admin Manage-Users handlers (#manageUsersBtn create-user opener,
     // #manageUsersBtnSidebar, #adminPanelClose, #manageUserModalClose,
     // manageUserModalAllActivityBtn, #allUsersModalClose, #adminCreateForm below)
@@ -8413,13 +8239,7 @@
         const hasLocalPdf = localBackup && localBackup.pdfBlob && localBackup.pdfBlob.size > 0;
         if (hasLocalPdf && localBackup.data) {
           const projForRestore = { id: 'local', name: localBackup.projectName || 'Untitled', data: backupDataToProjFormat(localBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: localBackup.pdfHash, user_id: uid, checked_out_by: null, checked_out_at: null };
-          pendingLastSessionRestore = { proj: projForRestore, cachedBlob: localBackup.pdfBlob };
-          const msgEl = document.getElementById('lastSessionRestoreMessage');
-          if (msgEl) {
-            const n = (projForRestore.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([-_])/g, '$1\u200B');
-            msgEl.innerHTML = 'You have a local session from your last visit: <strong>' + n + '</strong>. What would you like to do?';
-          }
-          showModal('lastSessionRestoreModal');
+          App.openLastSessionRestorePrompt({ proj: projForRestore, cachedBlob: localBackup.pdfBlob });
           offeredRestore = true;
         }
         if (!offeredRestore) {
@@ -8432,13 +8252,7 @@
           if (stored) {
             const last = JSON.parse(stored);
             if (last && last.userId === state.supabaseSession.user.id && last.projectId) {
-              pendingLastSessionRestore = { cloudLast: last };
-              const msgEl = document.getElementById('lastSessionRestoreMessage');
-              if (msgEl) {
-                const n = (last.projectName || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/([-_])/g, '$1\u200B');
-                msgEl.innerHTML = 'You have a project from your last session: <strong>' + n + '</strong>. What would you like to do?';
-              }
-              showModal('lastSessionRestoreModal');
+              App.openLastSessionRestorePrompt({ cloudLast: last });
             }
           }
         }

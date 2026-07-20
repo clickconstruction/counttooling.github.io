@@ -30,6 +30,46 @@
       .replace(/'/g, '&#39;');
   }
 
+  // Pure word-wrap core for note text: greedy fill against measureWidth(str),
+  // with hyphen/underscore break opportunities kept ON the leading fragment
+  // ("first-second" may break to "first-" / "second"). The canvas-backed
+  // measurer lives in app.js's thin wrapNoteText wrapper (this module is
+  // DOM-free); tests stub measureWidth with a char-count metric.
+  function wrapNoteTextCore(text, maxWidth, lineHeight, measureWidth) {
+    const lh = lineHeight != null ? lineHeight : 14;
+    const rawWords = (text || '').split(/\s+/).filter(Boolean);
+    const words = [];
+    for (const w of rawWords) {
+      const parts = w.split(/([-_])/);
+      if (parts.length === 1) {
+        words.push(w);
+      } else {
+        let buf = '';
+        for (let i = 0; i < parts.length; i++) {
+          if (parts[i] === '-' || parts[i] === '_') {
+            buf += parts[i];
+            words.push(buf);
+            buf = '';
+          } else if (parts[i]) {
+            buf = parts[i];
+          }
+        }
+        if (buf) words.push(buf);
+      }
+    }
+    const lines = [];
+    let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (measureWidth(test) > maxWidth && current) {
+        lines.push(current);
+        current = w;
+      } else current = test;
+    }
+    if (current) lines.push(current);
+    return { lines, height: lines.length * lh };
+  }
+
   function formatLastSignIn(ts) {
     if (!ts) return 'Never';
     const d = new Date(ts);
@@ -110,6 +150,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       escapeHtml,
+      wrapNoteTextCore,
       formatLastSignIn,
       dateKeyInTimeZone,
       calendarDaysFromSignInToNowInZone,

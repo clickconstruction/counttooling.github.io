@@ -38,7 +38,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [save-engine.test.js](save-engine.test.js) | Node `node:test` unit tests for [save-engine.js](save-engine.js) — `createSaveEngine` with a fully stubbed ctx + stubbed idb primitives (21 tests). Stage 1: the keep-alive skip ladder / expiry routing / contained recovery throw (asserted against the engine's own log) and the force-reload decision matrix. Stage 2: log push/get/clear round-trip + disabled-Supabase drop, verbose-mode window widening + `saveDebugLog` gating, and `markProjectDirty` semantics (viewer/empty no-ops, generation bump, first-dirty stamped once, backup kick, 2s dirty-event throttle, holder-only checkout refresh + debounce, `resetDirtyTracking`). Stage 3: the backup writer (viewer/empty no-ops; local-key serialization + success stamps; the debounced markProjectDirty→backup landing in the idb stub), takeoffBackupGet cross-user delete-and-hide, and probeCheckoutLock (non-holder expired; healthy refresh stamping clocks). Stage 4: noteSupabaseJsFailure filtering, the recycle happy-path/cooldown (client swap + resubscribe + count), the orchestrator's zero-failures early exit, and the raw-insert no-token shape. Constants + save-utils exports come via `Object.assign(globalThis, require(...))` per the line-metrics pattern; run with `npm run test:unit` |
 | [idb.js](idb.js) | IndexedDB storage layer extracted from app.js — the single `openPdfCacheDb` (one DB `clickcount-pdf-cache` v6, 9 stores) plus the context-free accessors `viewCache*`, `pdfCache*` (LRU), `takeoffBackupDelete`, `readSaveLogsSnapshots`, the resumable-upload URL store accessors `idbPdfUploadResume*` (get-all / get-by-fingerprint / put / delete / delete-by-fingerprint — backs tus's `UrlStorage` for cross-reload resume of large PDF uploads), and the pure primitives `idbTakeoffBackupGetRaw`, `idbTakeoffBackupPut` (eviction + stale-skip, returns a status), `idbPutSaveLogsSnapshot` (put + prune), `idbCustomIconsGet`/`idbCustomIconsPut`. Classic `<script src>` loaded after [constants.js](constants.js) (whose store-name/cap globals it reads by bare name) and before [app.js](app.js). Depends only on constants + `indexedDB` + args — no `state`/loggers; the state/logging concerns stay in app.js as same-named thin wrappers (`takeoffBackupGet`, `takeoffBackupPut`, `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`). Guarded CommonJS export footer so the primitives can be `require()`d by [idb.test.js](idb.test.js) |
 | [idb.test.js](idb.test.js) | Node `node:test` unit tests for [idb.js](idb.js) using `fake-indexeddb` (a fresh `IDBFactory` per test) — pdf-cache hash-mismatch + byte-cap LRU eviction, takeoff-backup round-trip + stale-skip + delete, custom-icon legacy→per-user migration, and save-logs-snapshot prune/newest-first ordering; run with `npm run test:unit` |
-| [format.js](format.js) | Pure date/time/text formatters extracted from app.js — `escapeHtml` (THE canonical HTML escaper, `& < > " '` superset; app.js reads it by bare name and publishes `App.escapeHtml` for feature files, replacing what were 27 inline copies in four behavioral variants — some skipped the quote entities), `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`, `formatLastSignInUserActivity`, `formatUserActivityDateTime`, `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`. Classic `<script src>` loaded after [constants.js](constants.js) (reads `USER_ACTIVITY_TZ` by bare name) and before [app.js](app.js); no `state`/DOM dependency (the DOM-coupled User Activity modal code — `applyUserActivityFilter`, `populateUserActivityUserSelect` — stays in app.js). Guarded CommonJS export footer so the formatters can be `require()`d by [format.test.js](format.test.js) |
+| [format.js](format.js) | Pure date/time/text formatters extracted from app.js — `wrapNoteTextCore` (the note word-wrap core with hyphen/underscore break opportunities; app.js's `wrapNoteText` wrapper supplies the canvas-backed measurer, tests stub it), `escapeHtml` (THE canonical HTML escaper, `& < > " '` superset; app.js reads it by bare name and publishes `App.escapeHtml` for feature files, replacing what were 27 inline copies in four behavioral variants — some skipped the quote entities), `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`, `formatLastSignInUserActivity`, `formatUserActivityDateTime`, `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`. Classic `<script src>` loaded after [constants.js](constants.js) (reads `USER_ACTIVITY_TZ` by bare name) and before [app.js](app.js); no `state`/DOM dependency (the DOM-coupled User Activity modal code — `applyUserActivityFilter`, `populateUserActivityUserSelect` — stays in app.js). Guarded CommonJS export footer so the formatters can be `require()`d by [format.test.js](format.test.js) |
 | [format.test.js](format.test.js) | Node `node:test` unit tests for [format.js](format.js) — `calendarDaysFromSignInToNowInZone` integer deltas (incl. year boundary / future), `filterUserActivityRows` match/case rules, `renderUserActivityAllUsersTableHtml` cells + escaping, `formatLastSignIn` relative buckets, `formatUserActivityDateTime`; the two en-CA-hyphen-dependent cases (`dateKeyInTimeZone`, `formatLastSignInUserActivity` Today) auto-skip on a limited-ICU runtime and run on full-ICU (browser-equivalent / CI Node 20); run with `npm run test:unit` |
 | [icon-render.js](icon-render.js) | Pure icon geometry / render-rule helpers extracted from app.js — the `CUSTOM_ICON_META` table (derived from `CUSTOM_ICONS`) plus `iconMetaFromList`, `iconViewBoxFromList`, `iconRenderVbRule`, `iconRenderCenterRule`, `iconViewBoxStringRule`, `iconSvgHtml`. Classic `<script src>` loaded after [icons.js](icons.js) (reads `CUSTOM_ICONS`/`VB_384_512_PATHS`/`FA_PATHS` by bare name; the top-level `CUSTOM_ICON_META` read is `typeof`-guarded so Node `require` stays load-safe) and before [app.js](app.js). Depends only on icons.js globals + args — no `state`/DOM/user-icon-cache. app.js keeps the cache-coupled lookups (`getCustomIconMeta`, `getCustomIconViewBox`, `iconRenderVb`, `iconRenderCenter`, `iconViewBoxString`, `renderIconHtml`) as same-named thin wrappers that inject `getEffectiveCustomIcons()`. Guarded CommonJS export footer so the primitives can be `require()`d by [icon-render.test.js](icon-render.test.js) |
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
@@ -102,6 +102,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [features/import-clear.js](features/import-clear.js) | Twenty-eighth feature-file split (`window.App` registry pilot #28) — the **canvas JSON import** (`#importInput` change handler + the `#importBtn`/`#importBtnSidebar` openers + the import-canvas-after-PDF prompt modal `#importCanvasAfterPdfModal`) and the **Clear Page confirm flow** (`showClearPageModal` + the `#clearPage`/`#clearPageSidebar` openers + the `#clearPageCancel`/`#clearPageConfirm` handlers, consolidated from the zone & page-action handler block). Registers `App.showClearPageModal` (the Project Settings row stays in app.js as a deferred `App.*` call); the other bindings move with their DOM elements. Two new publish-only deps `applyPageAnnotationsFromData` (the shared per-page deserialize funnel — also used by cloud load / view mode / load-annotations) and `getActiveCanvas`; reuses `state`/`ensureGroupColors`/`saveUserCustomIcons`/`reconcileOrphanedCountersAndLineTypes`/`clearUndoStacks`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`/`pushUndoSnapshot`/`makeAnnotations`. The shared **custom-icon upload handler** that shared the old section stays in app.js under the renamed marker `// SECTION: Custom icon upload handler` (icon-domain infrastructure feeding four icon grids across app.js + three feature files) |
 | [import-clear.spec.js](import-clear.spec.js) | Playwright regression for pilot #28 — Clear Page: the sidebar button opens the confirm naming the active canvas, Cancel preserves the markers, Confirm empties only the current page's active canvas, `App.showClearPageModal` is registered; Import: a JSON file through `#importInput` replaces the palette and `reconcileOrphanedCountersAndLineTypes` re-creates a counter for still-present orphaned markers. Asserts no console / page errors; `npx playwright test import-clear.spec.js` |
 | [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` or commits a `state.pendingMultiplyZoneEdit`), the Delete Zone confirm (`#deleteZoneModal` cancel/confirm → `App.performDeleteZone`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
+| [features/summary-detail.js](features/summary-detail.js) | The **Summary count-detail modal** (`#summaryCountDetailModal`, Tier-2 split out of the UI-render region) — `openSummaryCountDetailModal(type, id)`: per-page breakdown of one counter (multiply-zone-adjusted counts) or line type (runs + feet), each row with an async pdf.js-rendered thumbnail composited through `renderAnnotationsToContext` at the export marker/line scales. The four `renderSummary` row bindings in app.js call it via deferred `App.*` arrows. New publish-only deps: `getMultiplyZoneForPoint`, `getLineLengthFeetForTotals`, `formatFeet`. Regression: [summary-detail.spec.js](summary-detail.spec.js) |
 | [features/restore-last-session.js](features/restore-last-session.js) | The **last-session restore flow** (Tier-2 split) — `doRestoreLastProject` (full session rebuild from a cloud project row or IDB takeoff backup; PDF ladder: IDB blob → cached blob → signed-URL render → storage download with background re-cache), the `#lastSessionRestoreModal` Keep/Discard handlers (Keep defers the Supabase fetch to click time; offline falls back to the IDB backup; inaccessible projects are cleaned up), and the private `pendingRestore`. Boot (app.js init) detects the candidate and hands it over via `App.openLastSessionRestorePrompt({proj,cachedBlob} | {cloudLast})`; `resetLocalSessionState` clears the flag via the defensive `App.onLastSessionRestoreReset`. idb primitives + `pdfjsLib` are classic-script globals; everything else via `App.*` at call time. Regression: [restore-last-session.spec.js](restore-last-session.spec.js) |
 | [features/room-sizer.js](features/room-sizer.js) | The **Room Sizer** feature — draw room boxes on the plan, assign each a ceiling height + a Room, get per-room volumetric totals. Owns the Room Box modal (`#roomBoxModal` create/edit: height input parsed via `parseRealWorldLength`, recent-height chips persisted in `recentRoomHeights` localStorage, room choose/create with palette colors cycled from `COLORS`), the Room edit modal (`#roomEditModal` rename/recolor via `App.showLineColorModal` + delete cascade through `#roomDeleteConfirmModal`), the Rooms sidebar section (`#roomsSection`, hidden until the first box exists; box rows jump pages / delete), and `getRoomVolumeTotals({pageIndices?, getAnnotations?})` — consumed by report.js (guarded `window.App` lookup) for the report table + email summary. Registers `openRoomBoxModal` / `openRoomBoxModalForEdit` (called from the app.js `TOOL.ROOM` click/touch branches + `#ctxEditRoomBox`), `renderRoomsList` (called from `updateUI`, deferred), `getRoomVolumeTotals`. New publishes it consumes: `roomBoxDimsFeet` (pure, geometry.js), `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`. The tool itself (TOOL.ROOM two-corner click path, rubber-band preview with live W×L readout, committed-box rendering via the shared `drawRoomBoxesToContext`, hit testing, delete-zone/rotation participation, legend room-volume rows, hotkey V) stays in app.js. Data: `state.rooms[]` `{id,name,color}` + per-canvas `annotations.roomBoxes[]` `{x1,y1,x2,y2,heightFt,roomId,id}`; both ride save/load/export/import/IDB-backup/undo. Regression: [room-sizer.spec.js](room-sizer.spec.js) |
 | [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
@@ -414,59 +415,59 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L449 - Undo/redo stacks
 - L558 - [sync] Checkout probe, hashing & PDF cache
 - L620 - Math & Format Helpers
-- L1266 - Coordinate Helpers
-- L1274 - PDF render bitmap cache
-- L1441 - PDF Rendering
-- L3017 - UI Render Functions
-- L4172 - Inline rename & polyline edit mode
-- L4286 - Modal primitives (showModal / hideModal)
-- L4305 - Toasts & line color picker
-- L4359 - Airboard cloud sync
-- L4392 - Supabase RPC & presence heartbeat
-- L4432 - User activity / event telemetry
-- L4475 - Supabase auth & dev auth
-- L4604 - [sync] Checkout subscription & permission refresh
-- L4614 - Modals & Handlers
-- L4682 - PDF intake (upload, test PDF, hashing)
-- L4690 - Toolbar tool buttons
-- L4816 - Tool sidebar buttons & legend overlay
-- L4933 - Add Line Type modal
-- L5003 - Line color & sidebar handlers
-- L5145 - Polyline modal & drawing
-- L5176 - Zoom bar & page navigation
-- L5202 - Export canvas JSON
-- L5218 - PDF download helpers
-- L5227 - View-link URL helpers & show-highlights/notes
-- L5299 - Custom icon upload handler
-- L5309 - Export & report dropdown menus
-- L5399 - Sidebar drawer toggles
-- L5410 - Mobile actions burger menu pointer & header logo
-- L5422 - User Activity pointer (format.js + features/user-activity.js)
-- L5434 - My Settings pointer (features/my-settings.js)
-- L5457 - Auth & settings entry buttons
-  - L5502 - Project Settings checkout & Save Status bell
-  - L5603 - [sync] Checkout expired recovery
-  - L5659 - [sync] Turn In
-  - L5938 - Share modal pointer & copy-project openers
-  - L5969 - Settings menu actions
-  - L5990 - Auth sign-in form
-  - L6014 - Save Project modal
-  - L6027 - Checkout expired recovery modal wiring
-  - L6132 - Last-session restore prompt
-  - L6139 - Canvas Repair modal wiring
-- L6291 - Canvas Event Handlers
-- L6679 - Event Binding
-- L6689 - Aim loupe (mobile press-hold precise placement)
-- L6828 - Zoom transform preview & commit
-- L6864 - Canvas mouse, wheel & touch handlers
-- L7501 - Global dropdown dismissal & keyboard hotkeys
-- L7736 - [sync] Manual save to cloud
-- L7746 - [sync] Auto-save
-- L7753 - [sync] Local backup (IndexedDB takeoff state)
-- L7886 - [sync] Checkout keep-alive
-- L7900 - App feature registry
-- L8086 - View-only mode
-- L8092 - Init / boot
+- L1237 - Coordinate Helpers
+- L1245 - PDF render bitmap cache
+- L1412 - PDF Rendering
+- L2988 - UI Render Functions
+- L4053 - Inline rename & polyline edit mode
+- L4167 - Modal primitives (showModal / hideModal)
+- L4186 - Toasts & line color picker
+- L4240 - Airboard cloud sync
+- L4273 - Supabase RPC & presence heartbeat
+- L4313 - User activity / event telemetry
+- L4356 - Supabase auth & dev auth
+- L4485 - [sync] Checkout subscription & permission refresh
+- L4495 - Modals & Handlers
+- L4563 - PDF intake (upload, test PDF, hashing)
+- L4571 - Toolbar tool buttons
+- L4697 - Tool sidebar buttons & legend overlay
+- L4814 - Add Line Type modal
+- L4884 - Line color & sidebar handlers
+- L5026 - Polyline modal & drawing
+- L5057 - Zoom bar & page navigation
+- L5083 - Export canvas JSON
+- L5099 - PDF download helpers
+- L5108 - View-link URL helpers & show-highlights/notes
+- L5180 - Custom icon upload handler
+- L5190 - Export & report dropdown menus
+- L5280 - Sidebar drawer toggles
+- L5291 - Mobile actions burger menu pointer & header logo
+- L5303 - User Activity pointer (format.js + features/user-activity.js)
+- L5315 - My Settings pointer (features/my-settings.js)
+- L5338 - Auth & settings entry buttons
+  - L5383 - Project Settings checkout & Save Status bell
+  - L5484 - [sync] Checkout expired recovery
+  - L5540 - [sync] Turn In
+  - L5819 - Share modal pointer & copy-project openers
+  - L5850 - Settings menu actions
+  - L5871 - Auth sign-in form
+  - L5895 - Save Project modal
+  - L5908 - Checkout expired recovery modal wiring
+  - L6013 - Last-session restore prompt
+  - L6020 - Canvas Repair modal wiring
+- L6172 - Canvas Event Handlers
+- L6560 - Event Binding
+- L6570 - Aim loupe (mobile press-hold precise placement)
+- L6709 - Zoom transform preview & commit
+- L6745 - Canvas mouse, wheel & touch handlers
+- L7382 - Global dropdown dismissal & keyboard hotkeys
+- L7617 - [sync] Manual save to cloud
+- L7627 - [sync] Auto-save
+- L7634 - [sync] Local backup (IndexedDB takeoff state)
+- L7767 - [sync] Checkout keep-alive
+- L7781 - App feature registry
+- L7971 - View-only mode
+- L7977 - Init / boot
 
 <!-- END SECTION TOC -->
 

@@ -309,6 +309,35 @@
   // render-area-safety knob (lowered if a blank was caught), and the last render's buffer
   // dims. Read at export time only; all identifiers are module-scope and initialised by
   // the time logs are exported.
+  // --- Interaction-latency telemetry (rings of recent samples, ms) ---
+  // placeMs: counter click -> mark painted (incl. undo snapshot + overlay).
+  // zoomCrispMs: last gesture input -> first crisp base paint after commit.
+  // undoSnapshotMs / renderAnnotationsMs / updateUIMs: the per-piece costs of
+  // the placement hot path, so "feels slow" decomposes into numbers. p50/p95
+  // ride the Save Status envelope via captureDisplayInfoObj below.
+  const PERF_SAMPLE_CAP = 200;
+  const perfSamples = { placeMs: [], zoomCrispMs: [], undoSnapshotMs: [], renderAnnotationsMs: [], updateUIMs: [] };
+  let pendingZoomCrispT0 = null;
+  function notePerfSample(kind, ms) {
+    const arr = perfSamples[kind];
+    if (!arr) return;
+    arr.push(Math.round(ms * 100) / 100);
+    if (arr.length > PERF_SAMPLE_CAP) arr.splice(0, arr.length - PERF_SAMPLE_CAP);
+  }
+  function perfSummary() {
+    const out = {};
+    for (const k of Object.keys(perfSamples)) {
+      const arr = perfSamples[k];
+      out[k] = { n: arr.length, p50: percentile(arr, 0.5), p95: percentile(arr, 0.95) };
+    }
+    return out;
+  }
+  function noteZoomCrispPaint() {
+    if (pendingZoomCrispT0 == null) return;
+    notePerfSample('zoomCrispMs', performance.now() - pendingZoomCrispT0);
+    pendingZoomCrispT0 = null;
+  }
+
   function captureDisplayInfoObj() {
     try {
       return {
@@ -322,7 +351,8 @@
           annW: annCanvas ? annCanvas.width : null,
           annH: annCanvas ? annCanvas.height : null,
           effDpr: currentEffDpr
-        }
+        },
+        interactionLatency: perfSummary()
       };
     } catch (_) { return null; }
   }
@@ -458,7 +488,12 @@
     renderPdf: () => renderPdf(),
     updateUI: () => updateUI(),
   });
-  function pushUndoSnapshot() { return undoStackModel.pushUndoSnapshot(); }
+  function pushUndoSnapshot() {
+    const t0 = performance.now();
+    const r = undoStackModel.pushUndoSnapshot();
+    notePerfSample('undoSnapshotMs', performance.now() - t0);
+    return r;
+  }
   function undo() { return undoStackModel.undo(); }
   function redo() { return undoStackModel.redo(); }
   function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
@@ -750,6 +785,15 @@
   const pdfCanvas = document.getElementById('pdfCanvas');
   const cropCanvas = document.getElementById('cropCanvas');
   const annCanvas = document.getElementById('annCanvas');
+  // Low-latency presentation hint: desynchronize these canvases from the
+  // compositor's vsync queue (Chrome honors it; others ignore it). Must be
+  // the FIRST getContext call per canvas — every later plain getContext('2d')
+  // returns this same context.
+  try {
+    if (pdfCanvas) pdfCanvas.getContext('2d', { desynchronized: true });
+    if (cropCanvas) cropCanvas.getContext('2d', { desynchronized: true });
+    if (annCanvas) annCanvas.getContext('2d', { desynchronized: true });
+  } catch (_) { /* hint only */ }
   const aimLoupe = document.getElementById('aimLoupe');
 
   const dpr = () => window.devicePixelRatio || 1;
@@ -1260,7 +1304,7 @@
   // zoom), and any renderAreaSafety/caps change (new effDpr). Explicit clears
   // are hygiene only — they free memory when a document is torn down or the
   // device shows pressure.
-  const PDF_BITMAP_CACHE_MAX = 6;                    // entries — rungs of the current page + neighbor pages coexist; the total-px budget below is the real memory bound
+  const PDF_BITMAP_CACHE_MAX = (typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory >= 8) ? 10 : 6;   // entries — rungs + neighbor pages coexist; the total-px budget below is the real memory bound
   const PDF_BITMAP_CACHE_AREA_FRAC = 0.35;           // of caps.maxArea × renderAreaSafety
   // Per-entry / whole-cache pixel budgets. A hi-DPI (2x) fit-zoom page buffer
   // is ~6M px, and the old budget (min(0.15 × maxArea × safety, 5M) — often
@@ -1269,8 +1313,9 @@
   // a full multi-second raster on dense sheets. 16M px ≈ 64MB RGBA per entry,
   // 24M px total across entries; both halved on low-memory devices.
   const PDF_BITMAP_LOW_MEM = typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory <= 4;
+  const PDF_BITMAP_HIGH_MEM = typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory >= 8;
   const PDF_BITMAP_CACHE_AREA_ABS = PDF_BITMAP_LOW_MEM ? 8000000 : 16000000;
-  const PDF_BITMAP_CACHE_TOTAL_PX = PDF_BITMAP_LOW_MEM ? 12000000 : 24000000;
+  const PDF_BITMAP_CACHE_TOTAL_PX = PDF_BITMAP_LOW_MEM ? 12000000 : (PDF_BITMAP_HIGH_MEM ? 48000000 : 24000000);
   const pdfBitmapCache = [];                          // LRU: oldest first, [{pdfPage, rotation, zoom, effDpr, bitmap, w, h}]
   let pdfBitmapCacheGeneration = 0;                   // bumped on clear; async inserts self-discard if it moved
   const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0 };
@@ -1398,10 +1443,15 @@
       // the bitmaps the next commit in either direction will be served from.
       const rung0 = snapZoomToRung(state.zoom, 0.2, maxZ);
       candidates.push({ page: curPage, zoom: rung0 });   // loop below skips it when already cached
-      const up = nextRungUp(rung0, 0.2, maxZ);
-      const down = nextRungDown(rung0, 0.2, maxZ);
-      if (Math.abs(up - rung0) > 1e-9) candidates.push({ page: curPage, zoom: up });
-      if (Math.abs(down - rung0) > 1e-9) candidates.push({ page: curPage, zoom: down });
+      // Two rungs out in each direction — rapid multi-tick zooms span several
+      // rungs, and warm rungs are what rung-riding blits from mid-gesture.
+      let up = rung0, down = rung0;
+      for (let step = 0; step < 2; step++) {
+        const nu = nextRungUp(up, 0.2, maxZ);
+        if (Math.abs(nu - up) > 1e-9) { candidates.push({ page: curPage, zoom: nu }); up = nu; }
+        const nd = nextRungDown(down, 0.2, maxZ);
+        if (Math.abs(nd - down) > 1e-9) { candidates.push({ page: curPage, zoom: nd }); down = nd; }
+      }
     }
     for (const idx of [state.currentPage + 1, state.currentPage - 1]) {
       const page = state.pages[idx];
@@ -1713,6 +1763,7 @@
         return;
       }
       pdfBitmapCacheStats.hits++;
+      noteZoomCrispPaint();
       // The base at this display zoom just painted: a tile authored against a
       // DIFFERENT base zoom is now in the wrong container units — retire it.
       if (cropTileKey && cropTileKey.baseZoom !== lastRenderedZoom) clearCropTile();
@@ -1814,6 +1865,7 @@
       // to 2 — the root cause of the overlay blanking), then paint the overlay.
       pdfOffscreenCanvas.width = 0;
       pdfOffscreenCanvas.height = 0;
+      noteZoomCrispPaint();
       // The crisp base at this zoom just painted: a commit tile authored
       // against the OLD base zoom is now in the wrong container units and no
       // longer needed — retire it (the deficit path re-tiles via the
@@ -1884,6 +1936,11 @@
   });
 
   function renderAnnotations() {
+    const t0 = performance.now();
+    renderAnnotationsInner();
+    notePerfSample('renderAnnotationsMs', performance.now() - t0);
+  }
+  function renderAnnotationsInner() {
     const page = state.pages[state.currentPage];
     if (!page) return;
     currentEffDpr = effectiveDpr(page, state.zoom);   // match the (possibly clamped) pdfCanvas buffer
@@ -2249,6 +2306,18 @@
 
   // SECTION: UI Render Functions
   function updateUI() {
+    const t0 = performance.now();
+    updateUIInner();
+    notePerfSample('updateUIMs', performance.now() - t0);
+  }
+  // N3: rapid mark placement must never rebuild the sidebar per click — the
+  // canvas repaint is immediate, the sidebar/totals catch up ~120ms later.
+  let updateUITimer = null;
+  function scheduleUpdateUI() {
+    if (updateUITimer) return;   // trailing debounce
+    updateUITimer = setTimeout(() => { updateUITimer = null; updateUI(); }, 120);
+  }
+  function updateUIInner() {
     try { updateCanvasOnlyNeedsPdfBanner(); } catch (_) {}
     document.getElementById('zoomPct').textContent = Math.round(state.zoom * 100) + '%';
     if (App.onZoomRailSync) App.onZoomRailSync();
@@ -5597,13 +5666,12 @@
     } else if (state.tool === TOOL.LINE) {
       commitLinePoint(pdf);
       renderAnnotations();
-      updateUI();
     } else if (state.tool === TOOL.POLYLINE && state.drawingPolyline) {
       commitPolylinePoint(pdf);
       renderAnnotations();
-      updateUI();
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      const placeT0 = performance.now();
       pushUndoSnapshot();
       let pos = pdf;
       if (state.gridSettings?.snapToGrid && state.showGridOverlay) pos = snapToGrid(pdf, state.currentPage);
@@ -5616,7 +5684,7 @@
         markProjectDirty();
       }
       renderAnnotations();
-      updateUI();
+      requestAnimationFrame(() => notePerfSample('placeMs', performance.now() - placeT0));
     } else if (state.tool === TOOL.HIGHLIGHT) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -5757,7 +5825,10 @@
     } else if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
       if (state.draggingVertexIdx !== null) state.draggingVertexIdx = null;
     }
-    updateUI();
+    // The one shared post-click refresh. Debounced: rapid mark placement must
+    // never rebuild the sidebar per click (the canvas repaint above is
+    // immediate; the sidebar/totals catch up ~120ms after the burst ends).
+    scheduleUpdateUI();
   }
 
   function handleCanvasDblClick(e) {
@@ -5967,6 +6038,7 @@
   // raster was in flight snapped the preview transform to 1 around old
   // content and flashed wrong-scale/dark margins (the black-screen bug).
   function commitZoomRender() {
+    pendingZoomCrispT0 = wheelZoomLastEventTs > 0 ? wheelZoomLastEventTs : performance.now();
     if (Math.abs(state.zoom - lastRenderedZoom) <= 0.001) {
       updateContainerTransform();   // landed back on the already-rendered zoom — settle the preview
       return;
@@ -6004,6 +6076,25 @@
     const zp = document.getElementById('zoomPct');
     if (zp) zp.textContent = Math.round(state.zoom * 100) + '%';
     if (App.onZoomRailSync) App.onZoomRailSync();
+    maybeRideZoomRung();   // wheel/pinch/rail frames all pass through here
+  }
+  // Mid-gesture crisp riding: whenever the continuous preview zoom is nearer
+  // a DIFFERENT cached rung than the one the base currently shows, blit-swap
+  // immediately (renderPdf's rung-fallback path — synchronous). Strictly
+  // blit-only: uncached rungs are skipped and left to the idle prefetcher,
+  // and nothing happens while a raster is in flight. The visible base is
+  // therefore never more than ~half a rung (≈7%) from a crisp raster while
+  // zooming; the idle exact-refine lands pixel-perfect once the user rests.
+  function maybeRideZoomRung() {
+    const page = state.pages[state.currentPage];
+    if (!page || !page.pdfPage || pdfRenderTask) return;
+    if (Math.abs(state.zoom - lastRenderedZoom) <= 0.001) return;   // nothing to ride
+    const rot = page.rotation ?? 0;
+    if (pdfBitmapCacheGet(page.pdfPage, rot, state.zoom, effectiveDpr(page, state.zoom))) { renderPdf(); return; }   // exact bitmap cached
+    const rung = snapZoomToRung(state.zoom, 0.2, getMaxZoom());
+    if (Math.abs(rung - currentRenderZoom) < 1e-9) return;          // base already at the nearest rung
+    if (!pdfBitmapCacheGet(page.pdfPage, rot, rung, effectiveDpr(page, rung))) return;   // cold — never raster mid-gesture
+    renderPdf();
   }
   function commitWheelZoom() {
     if (wheelZoomCommitTimer) clearTimeout(wheelZoomCommitTimer);
@@ -7110,6 +7201,7 @@
   App.clearPdfBitmapCache = clearPdfBitmapCache;
   App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched });
   App.__renderServiceStats = () => renderService.statsSnapshot();          // debug/spec introspection
+  App.__perfSamples = () => ({ summary: perfSummary(), samples: JSON.parse(JSON.stringify(perfSamples)) });
   App.__renderServiceMode = () => renderService.mode();
   App.__renderWorkerState = () => renderService.workerState();
   App.__setRasterTestDelay = (ms, kinds) => renderService.setTestDelay(ms, kinds);   // spec hook (replaces pdfPage.render wrapping)

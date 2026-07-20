@@ -179,16 +179,11 @@ test.describe('Zoom Rail (features/zoom-rail.js)', () => {
     expect(opened.modalVisible).toBe(false);
     expect(opened.popover).toBeNull();
 
-    // +/− step exactly one zoom-ladder rung (constants.js nextRungUp/Down).
     const before = await page.evaluate(() => window.state.zoom);
     await page.locator('#zoomRailPlus').click();
-    // eslint-disable-next-line no-undef
-    const expectedUp = await page.evaluate((z) => nextRungUp(z, 0.2, window.App.getMaxZoom()), before);
-    expect(await page.evaluate(() => window.state.zoom)).toBeCloseTo(expectedUp, 5);
+    expect(await page.evaluate(() => window.state.zoom)).toBeCloseTo(Math.min(4, before + 0.1), 5);
     await page.locator('#zoomRailMinus').click();
-    // eslint-disable-next-line no-undef
-    const expectedDown = await page.evaluate((z) => nextRungDown(z, 0.2, window.App.getMaxZoom()), expectedUp);
-    expect(await page.evaluate(() => window.state.zoom)).toBeCloseTo(expectedDown, 5);
+    expect(await page.evaluate(() => window.state.zoom)).toBeCloseTo(before, 5);
 
     // The +/− clicks must not dismiss the rail (stopPropagation).
     expect(await page.evaluate(() => document.getElementById('zoomRail').classList.contains('visible'))).toBe(true);

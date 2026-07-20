@@ -40,18 +40,30 @@ test.describe('Adjacent-rung idle prefetch', () => {
       });
     });
 
-    // Cold step onto a rung; its raster (and the idle prefetches) may run.
+    // Cold +0.1 step (continuous zoom); its exact raster and the idle rung
+    // prefetches run. Gate on the ACTUAL cache contents — the rung nearest
+    // the current zoom plus both neighbors must be warm, so the next ±0.1
+    // step (≤ one rung away in either direction) is guaranteed served.
     await page.evaluate(() => { window.App.doZoomIn(); });
-    // Wait until the prefetcher has warmed at least one adjacent rung.
-    await page.waitForFunction(() => window.App.__pdfBitmapCacheStats().prefetched >= 1, { timeout: 10000 });
-    // Let any in-flight prefetch fully settle so the counter is quiescent.
-    await page.waitForTimeout(700);
+    const rungs = await page.evaluate(() => {
+      const maxZ = window.App.getMaxZoom();
+      /* eslint-disable no-undef */
+      const r0 = snapZoomToRung(window.state.zoom, 0.2, maxZ);
+      return { r0, up: nextRungUp(r0, 0.2, maxZ), down: nextRungDown(r0, 0.2, maxZ) };
+      /* eslint-enable no-undef */
+    });
+    await page.waitForFunction((r) => {
+      const keys = window.App.__pdfBitmapCacheKeys();
+      const has = (z) => keys.some((k) => Math.abs(k.zoom - z) < 1e-6);
+      return has(r.r0) && has(r.up) && has(r.down);
+    }, rungs, { timeout: 15000 });
+    await page.waitForTimeout(400);
 
     const measured = await page.evaluate(async () => {
       const before = window.__renderCount;
       const hitsBefore = window.App.__pdfBitmapCacheStats().hits;
-      window.App.doZoomIn();   // rung+1 was prefetched -> must be a pure blit
-      await new Promise((r) => setTimeout(r, 200));
+      window.App.doZoomIn();   // +0.1 lands within a prefetched rung -> pure blit
+      await new Promise((r) => setTimeout(r, 200));   // sample BEFORE the 600ms exact-refine
       return {
         renders: window.__renderCount - before,
         hitsGained: window.App.__pdfBitmapCacheStats().hits - hitsBefore,

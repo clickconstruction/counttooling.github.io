@@ -153,11 +153,12 @@ function nextRecentColors(list, color, presets) {
 }
 
 // --- Zoom ladder ---
-// Committed zooms snap to a discrete ladder of rungs (min 0.2 x 1.15^n) so
-// the PDF bitmap cache sees the SAME zoom values again and again — repeat
-// zooming becomes a synchronous blit instead of a multi-second re-raster on
-// dense sheets. Gesture PREVIEWS stay continuous (CSS transform); only the
-// commit (and the +/- buttons, which step exactly one rung) quantizes.
+// The ladder (min 0.2 x 1.15^n) is RASTER CURRENCY, not displayed values:
+// state.zoom stays fully continuous. renderPdf serves a commit from the
+// nearest rung's cached bitmap (CSS carries the <=7% residual, an idle
+// exact-refine settles crisp), and the idle prefetcher warms the rungs
+// around the current zoom — so repeat zooming becomes a synchronous blit
+// instead of a multi-second re-raster on dense sheets.
 // Pure: callers pass minZoom/maxZoom (state.maxZoom is user-configurable).
 const ZOOM_LADDER_STEP = 1.15;
 const ZOOM_LADDER_MIN = 0.2;

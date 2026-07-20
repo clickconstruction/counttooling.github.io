@@ -13,6 +13,48 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(zoom): continuous zoom values + the intermittent black screen
+
+Field feedback on the zoom ladder (below): Wendi wanted her zoom percentages
+continuous (not snapped to 115%/132%…), and hit an intermittent black screen
+while zooming in and out. Both addressed:
+
+**Continuous zoom (the ladder becomes raster currency only).** state.zoom is
+never snapped again — `snapCommitZoom` is gone. Instead `renderPdf` gained a
+lookup ladder: the exact display zoom's bitmap if cached, else the nearest
+RUNG's bitmap — blitted with the ≤7% residual carried by CSS sizing (new
+`currentRenderZoom` global = the zoom the buffer actually represents; it
+feeds `toCanvas`, the overlay draw env, and the legend/grid scales so marks
+stay glued), else a fresh EXACT raster. A rung-served view schedules an idle
+**exact-refine** (600ms) that re-rasters at the precise display zoom, so the
+settled view is always pixel-perfect. The idle prefetcher now warms the rung
+nearest the current zoom plus both neighbors unconditionally, and
+`doZoomIn/Out` are back to the familiar ±0.1 steps (served from rung bitmaps
+→ still instant).
+
+**Black-screen fixes** — three real bugs from the ladder work:
+1. An idle/pan-end crop-tile call during a tile-first commit cleared the
+   force tile and DROPPED its chained full render — the view stuck on the
+   stretched preview (dark margins on dark sheets). Chain ownership is now
+   explicit (`cropTileOnDone`): idle calls never disturb a pending commit
+   tile, and only the owner runs or replaces the chain.
+2. `commitZoomRender` pre-set `lastRenderedZoom` before calling `renderPdf`;
+   when a raster was already in flight renderPdf early-returns, so the
+   preview transform snapped to scale 1 around OLD content — a wrong-scale
+   flash with dark background. `lastRenderedZoom` is now owned exclusively
+   by renderPdf's paint sites.
+3. A superseded crop-tile task's catch handler zeroed the canvas the
+   replacement tile was actively rendering into.
+
+Specs updated to the new contracts: zoom-ladder.spec.js (continuous commits,
+rung-served blits with frozen miss-stat, exact-refine lands the exact
+buffer), commit-tile.spec.js, rung-prefetch.spec.js (gate on actual cache
+keys — the `prefetched` stat is lifetime), zoom-rail.spec.js (±0.1
+restored), page-switch-cache.spec.js (neighbor-page prefetch now runs after
+the rung prefetches).
+
+---
+
 ## perf(zoom): the zoom ladder — instant-feeling zoom on big files
 
 Follow-up to perf(render) below. Wendi's remaining report: after a zoom the

@@ -80,7 +80,7 @@
         item.icon = path;
         App.markProjectDirty();
         App.updateUI();
-        App.renderPdf();
+        App.renderAnnotations();
       };
       grid.querySelectorAll('.icon-cell').forEach(c => {
         c.onclick = () => {
@@ -120,12 +120,12 @@
         swatchEl.style.background = newColor;
         App.markProjectDirty();
         App.updateUI();
-        App.renderPdf();
+        App.renderAnnotations();
       });
     };
     if (kind === 'lineType') {
       document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => {
-        r.onchange = () => { App.pushUndoSnapshot(); item.curveStyle = r.value; App.markProjectDirty(); App.updateUI(); App.renderPdf(); };
+        r.onchange = () => { App.pushUndoSnapshot(); item.curveStyle = r.value; App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
       });
     }
     let totalCount = 0;
@@ -212,7 +212,7 @@
     }
     App.markProjectDirty();
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
   }
 
   function openLinePropertiesModal(it) {
@@ -257,7 +257,7 @@
         swatchEl.style.background = newColor;
         App.markProjectDirty();
         App.updateUI();
-        App.renderPdf();
+        App.renderAnnotations();
       });
     };
     const applyDrops = () => {
@@ -270,8 +270,8 @@
     };
     startDropEl.onblur = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
     endDropEl.onblur = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
-    startDropUnitEl.onchange = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderPdf(); };
-    endDropUnitEl.onchange = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderPdf(); };
+    startDropUnitEl.onchange = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
+    endDropUnitEl.onchange = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
     const adjustDrop = (el, unitEl, prop, delta) => {
       const v = parseInt(el.value, 10);
       const cur = isNaN(v) || v < 0 ? 0 : v;
@@ -282,7 +282,7 @@
       el.value = next || '';
       App.markProjectDirty();
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     };
     document.getElementById('linePropertiesStartDropPlus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 1);
     document.getElementById('linePropertiesStartDropPlus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 10);
@@ -294,7 +294,7 @@
       startDropEl.value = '';
       App.markProjectDirty();
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     };
     document.getElementById('linePropertiesEndDropPlus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 1);
     document.getElementById('linePropertiesEndDropPlus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 10);
@@ -306,7 +306,7 @@
       endDropEl.value = '';
       App.markProjectDirty();
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     };
     if (editVerticesBtn) {
       editVerticesBtn.onclick = () => {
@@ -338,7 +338,7 @@
     App.hideModal('linePropertiesModal');
     pendingLineProperties = null;
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
   }
 
   function deleteGroup(groupId) {
@@ -360,7 +360,7 @@
     });
     App.markProjectDirty();
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     return true;
   }
 

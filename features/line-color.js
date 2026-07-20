@@ -40,7 +40,7 @@
       App.state.pendingLineColorApply = null;
       App.hideModal('lineColorModal');
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     }
   }
   // Commit a chosen color to the shared Recent list (App.state.recentLineColors) and

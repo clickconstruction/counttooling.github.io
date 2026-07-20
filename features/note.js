@@ -43,7 +43,7 @@
             App.pushUndoSnapshot();
             state.editingNote.color = newColor;
             App.markProjectDirty();
-            App.renderPdf();
+            App.renderAnnotations();
           } else {
             state.pendingNoteColor = newColor;
           }
@@ -85,7 +85,7 @@
       state.editingNote = null;
     }
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 

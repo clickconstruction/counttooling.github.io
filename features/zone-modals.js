@@ -90,7 +90,7 @@
         App.markProjectDirty();
       }
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     }, 0);
   };
   document.getElementById('deletePageCancel').onclick = () => { App.hideModal('deletePageConfirmModal'); App.state.pendingDeletePage = null; };

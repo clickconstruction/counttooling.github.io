@@ -80,7 +80,7 @@
     if (data.plumbingModifiers && typeof data.plumbingModifiers === 'object') App.savePlumbingModifiers(data.plumbingModifiers);
     if (data.lineModifiers && typeof data.lineModifiers === 'object') App.saveLineModifiers(data.lineModifiers);
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     App.showToast('Artboard loaded from cloud');
   };
   document.getElementById('mySettingsExportAirboard').onclick = () => {
@@ -106,7 +106,7 @@
     App.saveLineModifiers({ sizes: [...App.LINE_DEFAULTS.sizes], materials: [...App.LINE_DEFAULTS.materials], defaultColor: App.COLORS[2] });
     App.markProjectDirty();
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     App.showToast('Artboard cleared');
   };
   document.getElementById('mySettingsManageUsers').onclick = () => { App.hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };

@@ -149,7 +149,7 @@
               item.icon = c.dataset.path;
               App.markProjectDirty();
               App.updateUI();
-              App.renderPdf();
+              App.renderAnnotations();
             }
           };
         });
@@ -162,7 +162,7 @@
           item.icon = icon.value;
           App.markProjectDirty();
           App.updateUI();
-          App.renderPdf();
+          App.renderAnnotations();
         }
       }
       App.updateUI();

@@ -42,6 +42,31 @@ function parsePrecacheUrls(swText) {
   return [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]);
 }
 
+// Completeness: every root-absolute <script src>/<link href> the app shell
+// (app/index.html) loads must be in PRECACHE_URLS, or the offline shell boots
+// with those requests 504ing (cacheFirst has no cache entry and no network).
+// The sw.js header names the HTML as the source of truth, but nothing enforced
+// it — five registry-split feature files were silently missing when this check
+// was added. One-directional on purpose: the precache legitimately carries
+// extras the HTML never names (the lazily-fetched pdf.js worker, fonts pulled
+// in via fonts.css, PWA icons, '/app/' itself). config.local.js is loaded via
+// document.write (localhost-only, gitignored) so it never matches the regex.
+const APP_HTML = path.join(ROOT, 'app', 'index.html');
+function checkPrecacheCoversShell(urls) {
+  const html = fs.readFileSync(APP_HTML, 'utf8');
+  const precached = new Set(urls);
+  const missing = [];
+  for (const m of html.matchAll(/<(?:script[^>]*\bsrc|link[^>]*\bhref)="(\/[^"]+)"/g)) {
+    if (!precached.has(m[1]) && !missing.includes(m[1])) missing.push(m[1]);
+  }
+  if (missing.length) {
+    console.error('app/index.html loads shell asset(s) that are NOT in sw.js PRECACHE_URLS:');
+    missing.forEach((u) => console.error(`  ${u}`));
+    console.error('Add them to PRECACHE_URLS (offline, a precache miss 504s and the shell boots broken).');
+    process.exit(1);
+  }
+}
+
 // Hash url + bytes for every precache asset, in declaration order. Missing files
 // are a hard error: a precache entry that 404s would break `cache.addAll` and
 // abort the whole SW install offline.
@@ -79,7 +104,9 @@ function main() {
   }
 
   const current = m[1];
-  const expected = computeHash(parsePrecacheUrls(swText));
+  const urls = parsePrecacheUrls(swText);
+  checkPrecacheCoversShell(urls);
+  const expected = computeHash(urls);
 
   if (current === expected) {
     console.log(`Service worker cache version up to date (${expected}).`);

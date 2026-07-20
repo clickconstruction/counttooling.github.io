@@ -8,7 +8,8 @@
  * the new cancel path without errors; and closing the project empties the
  * cache (bitmaps closed).
  *
- * Render calls are counted by wrapping each page's pdfPage.render in-page.
+ * Render calls are counted via the render-service stats log (every raster —
+ * full/prefetch/tile, main-thread or worker — flows through that seam).
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -21,14 +22,11 @@ async function boot(page, errors) {
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.waitForFunction(() => window.state.pages.length === 2 && document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
-  // Spy every page's pdfPage.render (prefetch renders count too — callers
-  // filter by window in time or by page index).
+  // Per-page raster counts come from the render-service log (prefetch/tile
+  // renders count too — callers filter by window in time or by page index).
   await page.evaluate(() => {
-    window.__renderCalls = [0, 0];
-    window.state.pages.forEach((p, i) => {
-      const orig = p.pdfPage.render.bind(p.pdfPage);
-      p.pdfPage.render = (...args) => { window.__renderCalls[i]++; return orig(...args); };
-    });
+    window.__renderCallCount = (i) =>
+      window.App.__renderServiceStats().log.filter((e) => e.pageNumber === i + 1).length;
   });
 }
 
@@ -49,12 +47,12 @@ test.describe('Page-switch bitmap cache', () => {
     // renders only up to the revisit).
     await page.locator('#nextPage').click();
     await settle(page);
-    const p0RendersBeforeRevisit = await page.evaluate(() => window.__renderCalls[0]);
+    const p0RendersBeforeRevisit = await page.evaluate(() => window.__renderCallCount(0));
     const hitsBefore = await page.evaluate(() => window.App.__pdfBitmapCacheStats().hits);
     await page.locator('#prevPage').click();
     await settle(page);
     const after = await page.evaluate(() => ({
-      p0Renders: window.__renderCalls[0],
+      p0Renders: window.__renderCallCount(0),
       hits: window.App.__pdfBitmapCacheStats().hits,
       canvasW: document.getElementById('pdfCanvas').width,
     }));
@@ -83,10 +81,10 @@ test.describe('Page-switch bitmap cache', () => {
     await boot(page, errors);
 
     // Prime the cache for page 0 at its current rotation, then rotate.
-    const before = await page.evaluate(() => window.__renderCalls[0]);
+    const before = await page.evaluate(() => window.__renderCallCount(0));
     await page.evaluate(() => document.getElementById('rotatePage').click());
     await settle(page);
-    const afterRotate = await page.evaluate(() => window.__renderCalls[0]);
+    const afterRotate = await page.evaluate(() => window.__renderCallCount(0));
     expect(afterRotate).toBeGreaterThan(before);   // rotated render is a miss
 
     // Undo restores rotation IN PLACE on the same page object — the key's
@@ -95,7 +93,7 @@ test.describe('Page-switch bitmap cache', () => {
     await page.evaluate(() => document.getElementById('undoBtn').click());
     await settle(page);
     const afterUndo = await page.evaluate(() => ({
-      calls: window.__renderCalls[0],
+      calls: window.__renderCallCount(0),
       rot: window.state.pages[0].rotation ?? 0,
     }));
     expect(afterUndo.rot).toBe(0);
@@ -138,12 +136,12 @@ test.describe('Page-switch bitmap cache', () => {
     // Landing render schedules idle prefetches: the current page's zoom rungs
     // first (the zoom hot path), THEN the neighbor pages — so wait for page
     // 1's raster specifically rather than the first prefetch of any kind.
-    await page.waitForFunction(() => window.__renderCalls[1] > 0, null, { timeout: 15000 });
-    const p1RendersAfterPrefetch = await page.evaluate(() => window.__renderCalls[1]);
+    await page.waitForFunction(() => window.__renderCallCount(1) > 0, null, { timeout: 15000 });
+    const p1RendersAfterPrefetch = await page.evaluate(() => window.__renderCallCount(1));
     expect(p1RendersAfterPrefetch).toBeGreaterThan(0);   // the prefetch rasterized page 1
     await page.locator('#nextPage').click();
     await settle(page);
-    const p1RendersAfterVisit = await page.evaluate(() => window.__renderCalls[1]);
+    const p1RendersAfterVisit = await page.evaluate(() => window.__renderCallCount(1));
     expect(p1RendersAfterVisit).toBe(p1RendersAfterPrefetch);   // the visit was a blit
     expect(errors).toEqual([]);
   });

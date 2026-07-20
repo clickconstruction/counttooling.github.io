@@ -7,9 +7,8 @@
  * and shows it over the CSS-stretched old base, then chains the slow
  * full-page raster; the tile is retired the moment the crisp base paints.
  *
- * The slow raster is simulated by wrapping pdfPage.render so that FULL-page
- * renders (any canvas that isn't #cropCanvas) resolve ~1.2s late, while tile
- * renders run at native speed — letting us assert the mid-flight state:
+ * The slow raster is simulated with the render-service test-delay hook so
+ * FULL-page rasters start ~1.2s late while tile renders run at native speed — letting us assert the mid-flight state:
  * tile visible + old base still up + committed zoom already on a rung.
  * Warm commits (cache hit) must show no tile at all.
  */
@@ -32,21 +31,9 @@ test.describe('Window-first cold zoom commit', () => {
     });
     await page.waitForTimeout(400);   // let boot-time prefetches settle
 
-    // Slow down FULL-page rasters only (tile renders into #cropCanvas).
-    await page.evaluate(() => {
-      const DELAY = 1200;
-      window.state.pages.forEach((p) => {
-        if (!p.pdfPage || p.pdfPage.__slowWrapped) return;
-        const orig = p.pdfPage.render.bind(p.pdfPage);
-        p.pdfPage.render = (args) => {
-          const t = orig(args);
-          const isTile = args?.canvasContext?.canvas === document.getElementById('cropCanvas');
-          if (isTile) return t;
-          return { promise: t.promise.then((v) => new Promise((res) => setTimeout(() => res(v), DELAY))), cancel: () => t.cancel() };
-        };
-        p.pdfPage.__slowWrapped = true;
-      });
-    });
+    // Slow down FULL-page rasters only (tile + prefetch run native speed) —
+    // via the render-service test hook, which works in both backends.
+    await page.evaluate(() => { window.App.__setRasterTestDelay(1200, ['full']); });
 
     // Cold commit: empty the cache, then wheel-zoom and let the commit fire.
     const mid = await page.evaluate(async () => {

@@ -79,6 +79,10 @@ modules. Candidates in priority order:
 | [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
 | [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend`, and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
+| [render-service.js](render-service.js) | **The raster seam** (option 4) — exports `createRenderService(deps)`; every pdf.js raster (renderPdf's full-page pass, the idle bitmap prefetcher, the crop tile) flows through `renderService.raster({pdfPage, scale, rotation, offsetX, offsetY, canvasContext, kind})`, which returns the pdf.js RenderTask shape (`{promise, cancel}`, `RenderingCancelledException` on cancel) so callers' cancel/pending machinery is untouched. Two backends: MAIN (pdfPage.render, always available) and WORKER ([render-worker.js](render-worker.js)) — chosen automatically. Document adoption is LAZY and site-free: the first worker-eligible raster reads the doc bytes back via `pdfPage._transport.getData()` (a private field of the version-pinned pdf.js 3.11.174 — guarded; any shape change just disables the worker) and ships them to the worker; new documents re-adopt by transport identity with generation guards. Gates: Worker+OffscreenCanvas support, the `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory×doc-size cap; ANY worker failure falls back to main for the session and logs `render_worker_fallback` to the Save Status log. Debug/spec hooks on App: `__renderServiceStats` (incl. a per-request kind+page log — the spec-side replacement for wrapping `pdfPage.render`), `__renderServiceMode`, `__renderWorkerState`, `__setRasterTestDelay`. Guarded CommonJS footer for [render-service.test.js](render-service.test.js) |
+| [render-service.test.js](render-service.test.js) | Node `node:test` unit tests for the seam's main backend + contract (5 tests): param forwarding into `getViewport`/`render`, stats/log accounting, cancel parity (`RenderingCancelledException`, inner-task cancel), cancel-during-test-delay never starts the raster, per-kind test-delay filtering, and non-cancel error propagation; run with `npm run test:unit` |
+| [render-worker.js](render-worker.js) | **The dedicated pdf.js render worker** — its own pdf.js instance (same-origin importScripts of the vendored lib; an explicit nested `GlobalWorkerOptions.workerPort` bypasses pdf.js's no-`window`⇒Node fake-worker detection, which needs `document` and dies in worker scope) over its own copy of the document bytes; rasters pages (with crop offsets for the tile) into OffscreenCanvas and posts back transferable ImageBitmaps. Generation-guarded load/render/cancel/dispose protocol (header comment). NOT a `<script>` tag — constructed as `new Worker('/render-worker.js')` by the service; precached in sw.js for offline |
+| [render-worker.spec.js](render-worker.spec.js) | Playwright regression for the render worker — lazy adoption reaches `ready` after boot, a forced cold raster is `workerRastered` with zero fallbacks and real canvas content, page flips work end-to-end, and the `DISABLE_RENDER_WORKER` escape hatch keeps everything main-thread (`mode 'main'`, adoption never kicks). Every other spec exercises the worker path implicitly in Chromium. `npx playwright test render-worker.spec.js` |
 | [canvas-draw.test.js](canvas-draw.test.js) | Node `node:test` unit tests for [canvas-draw.js](canvas-draw.js) — a recording 2D-context Proxy stub + stubbed `Path2D`, geometry/icons globals via `Object.assign(globalThis, require(...))` (10 tests): `hexToRgb` parse/fallback, `lineStyleToDash`, `drawDropMarker` glyph/save-restore/default color, room boxes (label vs "no scale" vs tiny-box skip), and `drawAnnotationsCore` env invariants — selection glow doubles width + shadow (live) vs absent (export), `fontFamily`/`fontScale` flow into labels and notes while counter numbers stay `DM Sans`, note handles gated on `drawNoteHandles`, group dots at `env.dotRadius`, hollow vs solid counter rings + outline, and the frozen paint order; run with `npm run test:unit` |
 | [zoom-ladder.spec.js](zoom-ladder.spec.js) | Playwright regression for the **zoom ladder** (commit-snap to rungs; `snapZoomToRung`/`nextRungUp`/`nextRungDown` in constants.js) — ± buttons step exactly one rung and invert; a wheel gesture keeps a continuous preview but its COMMIT lands on a rung with the cursor anchor preserved (±2px); bouncing between visited rungs adds zero visible-path rasters (cache-miss stat frozen, hits +4) — the point of the feature. `npx playwright test zoom-ladder.spec.js` |
 | [rung-prefetch.spec.js](rung-prefetch.spec.js) | Playwright regression for the **adjacent-rung idle prefetch** — after a commit lands on a rung, `runPdfBitmapPrefetch` warms rung±1 of the current page (before the neighbor-page fit prefetches); asserts the prefetched stat rises and the next `doZoomIn` needs zero new pdf.js render calls (pure blit). `npx playwright test rung-prefetch.spec.js` |
@@ -459,57 +463,57 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1244 - Coordinate Helpers
 - L1252 - PDF render bitmap cache
 - L1458 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1612 - PDF Rendering
-- L2246 - UI Render Functions
-- L3311 - Inline rename & polyline edit mode
-- L3425 - Modal primitives (showModal / hideModal)
-- L3444 - Toasts & line color picker
-- L3498 - Airboard cloud sync
-- L3531 - Supabase RPC & presence heartbeat
-- L3571 - User activity / event telemetry
-- L3614 - Supabase auth & dev auth
-- L3743 - [sync] Checkout subscription & permission refresh
-- L3753 - Modals & Handlers
-- L3821 - PDF intake (upload, test PDF, hashing)
-- L3829 - Toolbar tool buttons
-- L3955 - Tool sidebar buttons & legend overlay
-- L4072 - Add Line Type modal
-- L4142 - Line color & sidebar handlers
-- L4284 - Polyline modal & drawing
-- L4315 - Zoom bar & page navigation
-- L4341 - Export canvas JSON
-- L4357 - PDF download helpers
-- L4366 - View-link URL helpers & show-highlights/notes
-- L4438 - Custom icon upload handler
-- L4448 - Export & report dropdown menus
-- L4538 - Sidebar drawer toggles
-- L4549 - Mobile actions burger menu pointer & header logo
-- L4561 - User Activity pointer (format.js + features/user-activity.js)
-- L4573 - My Settings pointer (features/my-settings.js)
-- L4596 - Auth & settings entry buttons
-  - L4641 - Project Settings checkout & Save Status bell
-  - L4742 - [sync] Checkout expired recovery
-  - L4798 - [sync] Turn In
-  - L5063 - Share modal pointer & copy-project openers
-  - L5094 - Settings menu actions
-  - L5115 - Auth sign-in form
-  - L5139 - Save Project modal
-  - L5152 - Checkout expired recovery modal wiring
-  - L5257 - Last-session restore prompt
-  - L5264 - Canvas Repair modal wiring
-- L5415 - Canvas Event Handlers
-- L5803 - Event Binding
-- L5813 - Aim loupe (mobile press-hold precise placement)
-- L5952 - Zoom transform preview & commit
-- L6011 - Canvas mouse, wheel & touch handlers
-- L6669 - Global dropdown dismissal & keyboard hotkeys
-- L6904 - [sync] Manual save to cloud
-- L6914 - [sync] Auto-save
-- L6921 - [sync] Local backup (IndexedDB takeoff state)
-- L7054 - [sync] Checkout keep-alive
-- L7068 - App feature registry
-- L7259 - View-only mode
-- L7265 - Init / boot
+- L1611 - PDF Rendering
+- L2250 - UI Render Functions
+- L3315 - Inline rename & polyline edit mode
+- L3429 - Modal primitives (showModal / hideModal)
+- L3448 - Toasts & line color picker
+- L3502 - Airboard cloud sync
+- L3535 - Supabase RPC & presence heartbeat
+- L3575 - User activity / event telemetry
+- L3618 - Supabase auth & dev auth
+- L3747 - [sync] Checkout subscription & permission refresh
+- L3757 - Modals & Handlers
+- L3825 - PDF intake (upload, test PDF, hashing)
+- L3833 - Toolbar tool buttons
+- L3959 - Tool sidebar buttons & legend overlay
+- L4076 - Add Line Type modal
+- L4146 - Line color & sidebar handlers
+- L4288 - Polyline modal & drawing
+- L4319 - Zoom bar & page navigation
+- L4345 - Export canvas JSON
+- L4361 - PDF download helpers
+- L4370 - View-link URL helpers & show-highlights/notes
+- L4442 - Custom icon upload handler
+- L4452 - Export & report dropdown menus
+- L4542 - Sidebar drawer toggles
+- L4553 - Mobile actions burger menu pointer & header logo
+- L4565 - User Activity pointer (format.js + features/user-activity.js)
+- L4577 - My Settings pointer (features/my-settings.js)
+- L4600 - Auth & settings entry buttons
+  - L4645 - Project Settings checkout & Save Status bell
+  - L4746 - [sync] Checkout expired recovery
+  - L4802 - [sync] Turn In
+  - L5067 - Share modal pointer & copy-project openers
+  - L5098 - Settings menu actions
+  - L5119 - Auth sign-in form
+  - L5143 - Save Project modal
+  - L5156 - Checkout expired recovery modal wiring
+  - L5261 - Last-session restore prompt
+  - L5268 - Canvas Repair modal wiring
+- L5419 - Canvas Event Handlers
+- L5807 - Event Binding
+- L5817 - Aim loupe (mobile press-hold precise placement)
+- L5956 - Zoom transform preview & commit
+- L6015 - Canvas mouse, wheel & touch handlers
+- L6673 - Global dropdown dismissal & keyboard hotkeys
+- L6908 - [sync] Manual save to cloud
+- L6918 - [sync] Auto-save
+- L6925 - [sync] Local backup (IndexedDB takeoff state)
+- L7058 - [sync] Checkout keep-alive
+- L7072 - App feature registry
+- L7267 - View-only mode
+- L7273 - Init / boot
 
 <!-- END SECTION TOC -->
 

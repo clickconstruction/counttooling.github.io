@@ -88,7 +88,12 @@
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +
     icons.js; guarded by the [render-pixels.spec.js](render-pixels.spec.js)
-    pixel baselines), [save-utils.js](save-utils.js) (pure save/sync helpers),
+    pixel baselines), [render-service.js](render-service.js) (the raster
+    seam — every pdf.js raster flows through `createRenderService(deps)`;
+    main-thread or the [render-worker.js](render-worker.js) render worker,
+    chosen automatically with lazy doc adoption + session fallback; the
+    worker file is NOT a script tag — it's `new Worker('/render-worker.js')`,
+    but IS precached), [save-utils.js](save-utils.js) (pure save/sync helpers),
     [save-engine.js](save-engine.js) (the save/sync engine module —
     `createSaveEngine(ctx)`; app.js instantiates it with live-value
     accessors and keeps same-named wrappers; staged extraction, Stage 1:
@@ -133,6 +138,7 @@
   [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js),
   [line-metrics.test.js](line-metrics.test.js),
   [canvas-draw.test.js](canvas-draw.test.js),
+  [render-service.test.js](render-service.test.js),
   [save-engine.test.js](save-engine.test.js)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)

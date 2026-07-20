@@ -1422,7 +1422,7 @@
       pdfPrefetchScratch.width = viewport.width;
       pdfPrefetchScratch.height = viewport.height;
       const key = { pdfPage: page.pdfPage, rotation: rot, zoom, effDpr: eff };
-      const task = page.pdfPage.render({ canvasContext: pdfPrefetchScratch.getContext('2d'), viewport });
+      const task = renderService.raster({ pdfPage: page.pdfPage, scale: zoom * eff, rotation: rot, canvasContext: pdfPrefetchScratch.getContext('2d'), kind: 'prefetch' });
       pdfPrefetchTask = task;
       task.promise.then(() => {
         if (pdfPrefetchTask === task) pdfPrefetchTask = null;
@@ -1565,8 +1565,7 @@
     // offsetX/offsetY are in output px of this viewport: container CSS px x0
     // is page-point x0/baseZoom, which lands at output px x0·k·dpr at scale
     // zoom·dpr — shift by its negative.
-    const viewport = page.pdfPage.getViewport({ scale: state.zoom * dpr, rotation: rot, offsetX: -x0 * k * dpr, offsetY: -y0 * k * dpr });
-    const task = page.pdfPage.render({ canvasContext: cropCanvas.getContext('2d'), viewport });
+    const task = renderService.raster({ pdfPage: page.pdfPage, scale: state.zoom * dpr, rotation: rot, offsetX: -x0 * k * dpr, offsetY: -y0 * k * dpr, canvasContext: cropCanvas.getContext('2d'), kind: 'tile' });
     cropTileTask = task;
     task.promise.then(() => {
       if (cropTileTask !== task) return;   // superseded — the new owner runs its own chain
@@ -1758,7 +1757,7 @@
     if (!pdfOffscreenCanvas) pdfOffscreenCanvas = document.createElement('canvas');
     pdfOffscreenCanvas.width = viewport.width;
     pdfOffscreenCanvas.height = viewport.height;
-    pdfRenderTask = keyPdfPage.render({ canvasContext: pdfOffscreenCanvas.getContext('2d'), viewport });
+    pdfRenderTask = renderService.raster({ pdfPage: keyPdfPage, scale, rotation: keyRot, canvasContext: pdfOffscreenCanvas.getContext('2d'), kind: 'full' });
     pdfRenderCancelled = false;
     pdfRenderTask.promise.then(() => {
       pdfRenderTask = null;
@@ -1865,6 +1864,11 @@
   // The annotation draw core lives in canvas-draw.js (createCanvasDraw) —
   // instantiated once with live-value accessor arrows (the save-engine seam
   // recipe). Same-named thin wrappers keep call sites and contracts frozen.
+  // Every pdf.js raster (full page / prefetch / crop tile) goes through this
+  // seam — main-thread today, the render worker when available (option 4).
+  const renderService = createRenderService({
+    logEvent: (type, msg, detail) => { try { pushSaveEvent(type, msg, detail); } catch (_) { /* log ring not up yet */ } },
+  });
   const canvasDraw = createCanvasDraw({
     getState: () => state,
     getEffectiveScaleForLine: (ann, line, isPoly, pageIdx) => getEffectiveScaleForLine(ann, line, isPoly, pageIdx),
@@ -7105,6 +7109,10 @@
   // a debug/test seam (page-switch-cache.spec.js).
   App.clearPdfBitmapCache = clearPdfBitmapCache;
   App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched });
+  App.__renderServiceStats = () => renderService.statsSnapshot();          // debug/spec introspection
+  App.__renderServiceMode = () => renderService.mode();
+  App.__renderWorkerState = () => renderService.workerState();
+  App.__setRasterTestDelay = (ms, kinds) => renderService.setTestDelay(ms, kinds);   // spec hook (replaces pdfPage.render wrapping)
   App.__pdfBitmapCacheKeys = () => pdfBitmapCache.map((e) => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h }));   // debug/spec introspection
   App.__pdfBitmapCacheDump = () => pdfBitmapCache.map(e => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h, pageIdx: state.pages.findIndex(p => p.pdfPage === e.pdfPage) }));
   App.getOrderedIcons = getOrderedIcons;

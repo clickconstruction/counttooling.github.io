@@ -1982,27 +1982,51 @@
       const effScale = getEffectiveScaleForLine(ann, b, false, pageIdx);
       const dims = roomBoxDimsFeet(b, effScale);
       const nameLabel = room?.name || 'Room';
-      const dimsLabel = dims
-        ? formatFeetInchesFromVal(dims.widthFt, 'ft') + ' × ' + formatFeetInchesFromVal(dims.lengthFt, 'ft') + (dims.heightFt > 0 ? ' × ' + formatFeetInchesFromVal(dims.heightFt, 'ft') : '')
-        : 'no scale';
-      const nameSize = 13 * fontScale, dimsSize = 11 * fontScale;
+      // Dims read L × W (× H): longer side first, matching the modal's table,
+      // with small (L)/(W)/(H) tags centered under their segments.
+      let segs = null;
+      let dimsLabel = 'no scale';
+      if (dims) {
+        segs = [
+          { text: formatFeetInchesFromVal(Math.max(dims.widthFt, dims.lengthFt), 'ft'), tag: '(L)' },
+          { text: formatFeetInchesFromVal(Math.min(dims.widthFt, dims.lengthFt), 'ft'), tag: '(W)' }
+        ];
+        if (dims.heightFt > 0) segs.push({ text: formatFeetInchesFromVal(dims.heightFt, 'ft'), tag: '(H)' });
+        dimsLabel = segs.map(s => s.text).join(' × ');
+      }
+      const nameSize = 13 * fontScale, dimsSize = 11 * fontScale, tagSize = 8.5 * fontScale;
       const center = tcFn({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
       ctx.textAlign = 'center';
       ctx.font = '600 ' + nameSize + 'px DM Sans';
       const nameW = ctx.measureText(nameLabel).width;
       ctx.font = dimsSize + 'px DM Sans';
       const dimsW = ctx.measureText(dimsLabel).width;
+      const sepW = ctx.measureText(' × ').width;
       const pad = 4 * fontScale;
       const blockW = Math.max(nameW, dimsW) + pad * 2;
-      const blockH = nameSize + dimsSize + pad * 3;
+      const blockH = nameSize + dimsSize + (segs ? tagSize + pad : 0) + pad * 3;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillRect(center.x - blockW / 2, center.y - blockH / 2, blockW, blockH);
       ctx.fillStyle = '#222';
       ctx.textBaseline = 'top';
       ctx.font = '600 ' + nameSize + 'px DM Sans';
       ctx.fillText(nameLabel, center.x, center.y - blockH / 2 + pad);
+      const dimsY = center.y - blockH / 2 + pad * 2 + nameSize;
       ctx.font = dimsSize + 'px DM Sans';
-      ctx.fillText(dimsLabel, center.x, center.y - blockH / 2 + pad * 2 + nameSize);
+      ctx.fillText(dimsLabel, center.x, dimsY);
+      if (segs) {
+        const tagY = dimsY + dimsSize + pad / 2;
+        ctx.fillStyle = '#8a8a8a';
+        ctx.font = tagSize + 'px DM Sans';
+        let segX = center.x - dimsW / 2;
+        segs.forEach(seg => {
+          ctx.font = dimsSize + 'px DM Sans';
+          const segW = ctx.measureText(seg.text).width;
+          ctx.font = tagSize + 'px DM Sans';
+          ctx.fillText(seg.tag, segX + segW / 2, tagY);
+          segX += segW + sepW;
+        });
+      }
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
     });
@@ -2572,7 +2596,7 @@
       const effScale = getEffectiveScaleForLine(getActiveAnnotations(state.pages[state.currentPage]), { x1: minX, y1: minY, x2: maxX, y2: maxY }, false, state.currentPage);
       const dims = roomBoxDimsFeet({ x1: minX, y1: minY, x2: maxX, y2: maxY }, effScale);
       if (dims) {
-        const label = formatFeetInchesFromVal(dims.widthFt, 'ft') + ' × ' + formatFeetInchesFromVal(dims.lengthFt, 'ft');
+        const label = formatFeetInchesFromVal(Math.max(dims.widthFt, dims.lengthFt), 'ft') + ' × ' + formatFeetInchesFromVal(Math.min(dims.widthFt, dims.lengthFt), 'ft');
         const fontSize = 12 * z * currentEffDpr;
         ctx.font = fontSize + 'px DM Sans';
         const tw = ctx.measureText(label).width, pad = 4;

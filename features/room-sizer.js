@@ -102,20 +102,32 @@
 
   // ---- Room Box modal (create + edit) --------------------------------------
 
-  function populateRoomSelect(selectedId) {
-    const sel = document.getElementById('roomBoxRoomSelect');
+  // The Room picker: a scrollable single-select list (radio-style) with the
+  // "+ New room" button living in the header row beside the "Room" label.
+  // selectedRoomChoice is a room id or '__new__' (name input revealed).
+  let selectedRoomChoice = '__new__';
+
+  function renderRoomPicker(selectedId) {
     const rooms = App.state.rooms || [];
-    sel.innerHTML = rooms.map(r => '<option value="' + r.id + '"' + (r.id === selectedId ? ' selected' : '') + '>' + escapeHtmlText(r.name || 'Room') + '</option>').join('')
-      + '<option value="__new__"' + (selectedId === '__new__' ? ' selected' : '') + '>+ New room…</option>';
-    syncNewRoomNameVisibility();
+    selectedRoomChoice = (selectedId !== '__new__' && rooms.some(r => r.id === selectedId)) ? selectedId : '__new__';
+    const list = document.getElementById('roomBoxRoomList');
+    list.style.display = rooms.length ? '' : 'none';
+    list.innerHTML = rooms.map(r =>
+      '<div class="room-picker-item' + (r.id === selectedRoomChoice ? ' selected' : '') + '" data-room-id="' + r.id + '">'
+      + '<span class="room-swatch" style="background:' + (r.color || '#47c88e') + '"></span>'
+      + '<span class="room-picker-name">' + escapeHtmlText(r.name || 'Room') + '</span>'
+      + '</div>').join('');
+    list.querySelectorAll('.room-picker-item').forEach(item => {
+      item.onclick = () => {
+        selectedRoomChoice = item.dataset.roomId;
+        list.querySelectorAll('.room-picker-item').forEach(x => x.classList.toggle('selected', x === item));
+        document.getElementById('roomBoxNewRoomNameGroup').style.display = 'none';
+      };
+    });
+    document.getElementById('roomBoxNewRoomNameGroup').style.display = selectedRoomChoice === '__new__' ? '' : 'none';
   }
   function escapeHtmlText(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-  function syncNewRoomNameVisibility() {
-    const sel = document.getElementById('roomBoxRoomSelect');
-    const nameWrap = document.getElementById('roomBoxNewRoomNameGroup');
-    nameWrap.style.display = sel.value === '__new__' ? '' : 'none';
   }
   function renderRecentHeightChips() {
     const row = document.getElementById('roomBoxRecentHeights');
@@ -164,7 +176,7 @@
     h.value = lastHeightFt > 0 ? (Number.isInteger(lastHeightFt) ? String(lastHeightFt) : lastHeightFt.toFixed(2)) : '';
     const rooms = state.rooms || [];
     const stillExists = lastRoomId && rooms.some(r => r.id === lastRoomId);
-    populateRoomSelect(stillExists ? lastRoomId : '__new__');
+    renderRoomPicker(stillExists ? lastRoomId : '__new__');
     document.getElementById('roomBoxNewRoomName').value = '';
     renderRecentHeightChips();
     updateDimsPreview(rect, currentHeightInput() || 0);
@@ -184,7 +196,7 @@
     document.getElementById('roomBoxModalTitle').textContent = 'Edit Room Box';
     document.getElementById('roomBoxDelete').style.display = '';
     document.getElementById('roomBoxHeight').value = box.heightFt > 0 ? (Number.isInteger(box.heightFt) ? String(box.heightFt) : box.heightFt.toFixed(2)) : '';
-    populateRoomSelect(box.roomId || '__new__');
+    renderRoomPicker(box.roomId || '__new__');
     document.getElementById('roomBoxNewRoomName').value = '';
     renderRecentHeightChips();
     updateDimsPreview(box, box.heightFt || 0);
@@ -194,8 +206,7 @@
   // Resolve the modal's room selection, creating a new palette room if asked.
   // Returns null (with a toast) when a new room has no name.
   function resolveSelectedRoom() {
-    const sel = document.getElementById('roomBoxRoomSelect');
-    if (sel.value !== '__new__') return sel.value;
+    if (selectedRoomChoice !== '__new__' && (App.state.rooms || []).some(r => r.id === selectedRoomChoice)) return selectedRoomChoice;
     const name = document.getElementById('roomBoxNewRoomName').value.trim();
     if (!name) { App.showToast('Enter a name for the new room.'); return null; }
     const state = App.state;
@@ -217,9 +228,11 @@
     const rect = state.pendingRoomBox || state.pendingRoomBoxEdit?.ann?.roomBoxes?.[state.pendingRoomBoxEdit.index];
     if (rect) updateDimsPreview(rect, currentHeightInput() || 0);
   };
-  document.getElementById('roomBoxRoomSelect').onchange = () => {
-    syncNewRoomNameVisibility();
-    if (document.getElementById('roomBoxRoomSelect').value === '__new__') document.getElementById('roomBoxNewRoomName').focus();
+  document.getElementById('roomBoxNewRoomBtn').onclick = () => {
+    selectedRoomChoice = '__new__';
+    document.querySelectorAll('#roomBoxRoomList .room-picker-item').forEach(x => x.classList.remove('selected'));
+    document.getElementById('roomBoxNewRoomNameGroup').style.display = '';
+    document.getElementById('roomBoxNewRoomName').focus();
   };
   document.getElementById('roomBoxApply').onclick = () => {
     const state = App.state;

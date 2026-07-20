@@ -69,7 +69,9 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     await page.locator('#roomBoxHeight').fill('8');
     // Typing the height fills in the Volume row live.
     await expect(previewTable).toContainText('864 ft³ Volume');
-    await page.locator('#roomBoxRoomSelect').selectOption('__new__');
+    // No rooms yet: the picker list is hidden and new-room mode is active.
+    await expect(page.locator('#roomBoxRoomList')).toBeHidden();
+    await expect(page.locator('#roomBoxNewRoomNameGroup')).toBeVisible();
     await page.locator('#roomBoxNewRoomName').fill('Office 101');
     await page.evaluate(() => { document.getElementById('roomBoxApply').click(); });
     await page.waitForFunction(() => (window.App.getActiveAnnotations(window.state.pages[0]).roomBoxes || []).length === 1);
@@ -109,10 +111,22 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     await page.evaluate(() => { window.App.openRoomBoxModal({ x1: 200, y1: 0, x2: 260, y2: 60 }); });
     const sticky = await page.evaluate(() => ({
       height: document.getElementById('roomBoxHeight').value,
-      room: document.getElementById('roomBoxRoomSelect').value,
+      room: document.querySelector('#roomBoxRoomList .room-picker-item.selected')?.dataset.roomId,
+      listVisible: document.getElementById('roomBoxRoomList').style.display !== 'none',
+      nameHidden: document.getElementById('roomBoxNewRoomNameGroup').style.display === 'none',
     }));
     expect(sticky.height).toBe('8');
     expect(sticky.room).toBe((await page.evaluate(() => window.state.rooms[0].id)));
+    expect(sticky.listVisible).toBe(true);   // scrollable single-select list
+    expect(sticky.nameHidden).toBe(true);    // name input only in new-room mode
+    // "+ New room" flips to new-room mode and deselects the list.
+    await page.evaluate(() => document.getElementById('roomBoxNewRoomBtn').click());
+    await expect(page.locator('#roomBoxNewRoomNameGroup')).toBeVisible();
+    expect(await page.evaluate(() => document.querySelectorAll('#roomBoxRoomList .room-picker-item.selected').length)).toBe(0);
+    // Clicking the room row selects it again (single selection) and hides the name input.
+    await page.evaluate(() => { document.querySelector('#roomBoxRoomList .room-picker-item').dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(await page.evaluate(() => document.querySelectorAll('#roomBoxRoomList .room-picker-item.selected').length)).toBe(1);
+    await expect(page.locator('#roomBoxNewRoomNameGroup')).toBeHidden();
     await page.evaluate(() => { document.getElementById('roomBoxApply').click(); });
     await page.waitForFunction(() => (window.App.getActiveAnnotations(window.state.pages[0]).roomBoxes || []).length === 2);
     const twoBoxTotals = await page.evaluate(() => window.App.getRoomVolumeTotals());

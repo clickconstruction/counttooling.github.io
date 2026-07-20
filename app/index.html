@@ -1408,8 +1408,11 @@
         <div id="roomBoxRecentHeights" class="room-recent-heights" style="display:none;"></div>
       </div>
       <div class="form-group">
-        <label>Room</label>
-        <select id="roomBoxRoomSelect" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;"></select>
+        <div class="room-picker-header">
+          <label>Room</label>
+          <button type="button" id="roomBoxNewRoomBtn" class="sidebar-btn-inline" title="Create a new room">+ New room</button>
+        </div>
+        <div id="roomBoxRoomList" class="room-picker-list" style="display:none;"></div>
       </div>
       <div class="form-group" id="roomBoxNewRoomNameGroup" style="display:none;">
         <label>New room name</label>

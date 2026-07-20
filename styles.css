@@ -1218,3 +1218,46 @@
   text-align: right;
   color: var(--text2);
 }
+.room-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.room-picker-header label {
+  margin-bottom: 0;
+}
+.room-picker-list {
+  max-height: 148px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+}
+.room-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.room-picker-item:last-child {
+  border-bottom: none;
+}
+.room-picker-item:hover {
+  background: var(--surface3, rgba(255, 255, 255, 0.04));
+}
+.room-picker-item.selected {
+  background: var(--surface3, rgba(255, 255, 255, 0.06));
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.room-picker-item.selected .room-picker-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+.room-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

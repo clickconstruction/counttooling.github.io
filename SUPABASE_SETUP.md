@@ -110,6 +110,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **user_activity_detail_for_admin** — Adds the per-user activity RPC `user_activity_detail_for_admin(uuid)` returning a single jsonb: identity/presence (email, role, member-since, last sign-in/seen, project count), all-time totals, per-event-type breakdown, rolling 1d/7d/30d windows, active days (CST), distinct projects touched, and the recent timeline (with resolved project names). Security-definer; a `guard` CTE is the single auth choke point. Applied in three steps: admin-only (`…000000`), guard relaxed to **self-or-admin** so a user can view their own (`…001000`), and the recent feed widened 40 → 200 events (`…002000`). Powers the **Activity overview** modal (admin: click a user row's stacked dates or heart icon; self: User Settings → **My Activity**). The client renders it as a summary card + stat tiles + a day-grouped, run-collapsed feed.
 
+**drop_schema_migrations_backup** — Idempotent cleanup: drops the leftover `_schema_migrations_backup_20260612` table from the 2026-06-12 migration-history reconciliation (it was created outside the migration system with RLS disabled, flagged by the security advisor). No-op on fresh databases.
+
 ### Migration file naming
 
 Every migration is a single file named `YYYYMMDDHHMMSS_<label>.sql` — a 14-digit timestamp version plus a descriptive label, the format the Supabase CLI expects. The `version` recorded in `supabase_migrations.schema_migrations` is the timestamp, and it matches the filename one-to-one.

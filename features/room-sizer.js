@@ -245,7 +245,7 @@
   document.getElementById('roomBoxApply').onclick = () => {
     const state = App.state;
     const heightFt = currentHeightInput();
-    if (!(heightFt > 0)) { App.showToast('Enter a ceiling height (e.g. 8 or 9\'6).'); return; }
+    if (!(heightFt > 0)) { App.showToast('Enter a ceiling height (e.g. 9.5 or 9\'6).'); return; }
     const roomId = resolveSelectedRoom();
     if (!roomId) return;
     const edit = state.pendingRoomBoxEdit;

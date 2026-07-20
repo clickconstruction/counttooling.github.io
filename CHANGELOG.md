@@ -13,6 +13,47 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## perf(zoom): the zoom ladder — instant-feeling zoom on big files
+
+Follow-up to perf(render) below. Wendi's remaining report: after a zoom the
+page "takes a few moments to re-render to a higher pixel count" — a continuous
+wheel zoom commits at an arbitrary value (187.3%…), so the bitmap cache almost
+never had that exact level and nearly every commit was a fresh full-page
+raster. Three changes make committed zooms repeat-visited and the remaining
+cold rasters small:
+
+1. **Zoom ladder (commit-snap).** New pure helpers in constants.js
+   (`ZOOM_LADDER_STEP` 1.15, `snapZoomToRung`/`nextRungUp`/`nextRungDown`,
+   node-tested; the clamp ends count as rungs so drag-to-max commits max).
+   Gesture previews stay continuous; `commitWheelZoom`/`commitPinchZoom` snap
+   to the nearest rung with the gesture anchor preserved
+   (`snapCommitZoom`), and `doZoomIn`/`doZoomOut` step exactly one rung.
+   Repeat zooming now revisits identical zoom values → cache blits.
+   Regression: [zoom-ladder.spec.js](zoom-ladder.spec.js) (buttons step
+   rungs, wheel commits land on-rung with the anchor within ±2px, rung
+   revisits add zero visible-path rasters); the zoom-rail ± spec updated to
+   the rung contract.
+2. **Adjacent-rung idle prefetch.** `runPdfBitmapPrefetch` candidates are now
+   current page @ rung±1 first (when sitting on a rung), then neighbor pages
+   @ fit; cache slots 4 → 6 (the total-px budget stays the memory bound).
+   The next zoom step in either direction is typically a one-frame blit.
+   Regression: [rung-prefetch.spec.js](rung-prefetch.spec.js).
+3. **Window-first cold commits.** A commit onto an uncached rung paints the
+   VISIBLE WINDOW at the new zoom first (the crop tile in `force` mode —
+   bounded, screen-sized raster, skipped when it wouldn't beat ~70% of the
+   full-page raster), then chains the full-page raster via `onDone`;
+   `renderPdf` keeps a target-matching tile up during that raster and retires
+   it the moment the crisp base paints (tile keys carry `baseZoom` — during
+   the tile-first phase the tile is authored in old-base container units and
+   rastered at the new zoom, so it displays screen-sharp under the still-
+   scaled preview). Debug hook `App.__pdfBitmapCacheKeys` added alongside the
+   stats hook. Regression: [commit-tile.spec.js](commit-tile.spec.js) (slow
+   full rasters simulated by wrapping `pdfPage.render`; asserts the tile is
+   up mid-raster with the old base unswapped, retires on the crisp paint, and
+   that warm commits blit with no tile at all).
+
+---
+
 ## perf(render): big-file zoom/edit responsiveness (the "jumps around as files get bigger" bug)
 
 User report (Wendi): on large sheets, "you zoom and then after the fact it

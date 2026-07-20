@@ -152,6 +152,50 @@ function nextRecentColors(list, color, presets) {
   return [c].concat(base.filter(x => String(x).toLowerCase() !== c)).slice(0, RECENT_COLORS_MAX);
 }
 
+// --- Zoom ladder ---
+// Committed zooms snap to a discrete ladder of rungs (min 0.2 x 1.15^n) so
+// the PDF bitmap cache sees the SAME zoom values again and again — repeat
+// zooming becomes a synchronous blit instead of a multi-second re-raster on
+// dense sheets. Gesture PREVIEWS stay continuous (CSS transform); only the
+// commit (and the +/- buttons, which step exactly one rung) quantizes.
+// Pure: callers pass minZoom/maxZoom (state.maxZoom is user-configurable).
+const ZOOM_LADDER_STEP = 1.15;
+const ZOOM_LADDER_MIN = 0.2;
+function snapZoomToRung(z, minZoom, maxZoom, step) {
+  const s = step || ZOOM_LADDER_STEP;
+  const lo = minZoom ?? ZOOM_LADDER_MIN;
+  const hi = maxZoom ?? 4;
+  if (!(z > 0)) return lo;
+  const zc = Math.max(lo, Math.min(hi, z));
+  const n = Math.round(Math.log(zc / lo) / Math.log(s));
+  let rung = Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
+  // The clamp ends are rungs too: a gesture that lands at/near maxZoom (rail
+  // dragged to the top, wheel against the ceiling) must commit to maxZoom
+  // itself, not get pulled down to the nearest interior rung. Pick whichever
+  // of {rung, hi} is nearer in log space (lo is covered by the clamp above).
+  if (Math.abs(Math.log(zc / hi)) < Math.abs(Math.log(zc / rung))) rung = hi;
+  return rung;
+}
+// Smallest rung strictly above z (clamped to maxZoom). The 0.1% epsilon makes
+// a value sitting ON a rung (within float noise) step to the NEXT rung.
+function nextRungUp(z, minZoom, maxZoom, step) {
+  const s = step || ZOOM_LADDER_STEP;
+  const lo = minZoom ?? ZOOM_LADDER_MIN;
+  const hi = maxZoom ?? 4;
+  const zc = Math.max(lo, Math.min(hi, z > 0 ? z : lo));
+  const n = Math.floor(Math.log(zc * 1.001 / lo) / Math.log(s)) + 1;
+  return Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
+}
+// Largest rung strictly below z (clamped to minZoom); same epsilon reasoning.
+function nextRungDown(z, minZoom, maxZoom, step) {
+  const s = step || ZOOM_LADDER_STEP;
+  const lo = minZoom ?? ZOOM_LADDER_MIN;
+  const hi = maxZoom ?? 4;
+  const zc = Math.max(lo, Math.min(hi, z > 0 ? z : lo));
+  const n = Math.ceil(Math.log(zc * 0.999 / lo) / Math.log(s)) - 1;
+  return Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
+}
+
 // Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
@@ -177,6 +221,7 @@ if (typeof module !== 'undefined' && module.exports) {
     PDF_UPLOAD_TIMEOUT_BASE_MS, PDF_UPLOAD_ASSUMED_BPS, PDF_UPLOAD_TIMEOUT_SLACK_MS,
     PDF_UPLOAD_TIMEOUT_MAX_MS, PDF_UPLOAD_VERIFY_ATTEMPTS, PDF_UPLOAD_VERIFY_GAP_MS,
     PDF_RESUMABLE_THRESHOLD_BYTES,
-    RECENT_COLORS_MAX, nextRecentColors
+    RECENT_COLORS_MAX, nextRecentColors,
+    ZOOM_LADDER_STEP, ZOOM_LADDER_MIN, snapZoomToRung, nextRungUp, nextRungDown
   };
 }

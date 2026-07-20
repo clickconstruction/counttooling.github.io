@@ -97,6 +97,29 @@ async function takeoffSetup(page) {
   await page.waitForTimeout(350);
 }
 
+// Lay two finished room boxes onto the plan (Room Sizer guide), aligned with the
+// sample plan's real rooms (Office 101 and Conference 103) so the boxes read as
+// tracing actual rooms. The legend is nudged left so it isn't clipped at the edge.
+async function roomSetup(page) {
+  await page.evaluate(() => {
+    const s = window.state, App = window.App, uid = () => App.uid();
+    const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
+    const pw = vp.width, ph = vp.height;
+    const office = uid(), conf = uid();
+    s.rooms.push({ id: office, name: 'Office 101', color: '#e85447' });
+    s.rooms.push({ id: conf, name: 'Conference 103', color: '#4a9eff' });
+    const ann = s.pages[0].canvases[0].annotations;
+    ann.roomBoxes.push({ id: uid(), x1: 0.135 * pw, y1: 0.175 * ph, x2: 0.345 * pw, y2: 0.41 * ph, heightFt: 9.5, roomId: office });
+    ann.roomBoxes.push({ id: uid(), x1: 0.575 * pw, y1: 0.175 * ph, x2: 0.755 * pw, y2: 0.41 * ph, heightFt: 8, roomId: conf });
+    ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
+    s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+    App.fitZoom();
+    App.renderPdf();
+    App.updateUI();
+  });
+  await page.waitForTimeout(350);
+}
+
 // --- shot manifest ------------------------------------------------------------
 // clip: a selector whose bounding box is captured.
 // callouts: [{ n, sel?, x?, y? }]  (sel → anchored to that element; else x/y are
@@ -179,6 +202,37 @@ const SHOTS = [
     boxes: [
       { rect: { x: 0.12, y: 0.14, w: 0.64, h: 0.29 }, label: 'Multiply zone ×3' },
       { rect: { x: 0.345, y: 0.43, w: 0.165, h: 0.29 }, label: 'Scale zone' },
+    ],
+  },
+
+  // Room Sizer guide: two labeled room boxes on the plan + the Rooms sidebar tally.
+  {
+    name: 'room-sizer',
+    clip: '.app',
+    setup: roomSetup,
+    boxes: [{ sel: '#roomsSection' }],
+  },
+
+  // Room Size dialog — dims table, ceiling height, Add to Room list.
+  {
+    name: 'room-size-modal',
+    clip: '#roomBoxModal',
+    async setup(page) {
+      await roomSetup(page);
+      await page.evaluate(() => {
+        const vp = window.state.pages[0].pdfPage.getViewport({ scale: 1 });
+        window.App.openRoomBoxModal({ x1: 0.13 * vp.width, y1: 0.5 * vp.height, x2: 0.38 * vp.width, y2: 0.72 * vp.height });
+        const h = document.getElementById('roomBoxHeight');
+        h.value = "9'6";
+        h.dispatchEvent(new Event('input'));
+      });
+      await page.waitForSelector('#roomBoxModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+    callouts: [
+      { n: 1, sel: '#roomBoxModal >> text=Totals' },
+      { n: 2, sel: '#roomBoxModal >> text=Ceiling height' },
+      { n: 3, sel: '#roomBoxModal >> text=Add to Room' },
     ],
   },
 

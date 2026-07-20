@@ -63,7 +63,7 @@ const ICON_BTN = {
   move: 'moveBtn', 'set-scale': 'setScale', measure: 'measureBtn', highlight: 'highlightBtn',
   'multiply-zone': 'multiplyZoneBtn', 'scale-zone': 'scaleZoneBtn', 'delete-area': 'deleteZoneBtn',
   note: 'noteBtn', legend: 'legendBtn', grid: 'gridBtn', counter: 'counterBtn',
-  line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn',
+  line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn', room: 'roomBtn',
   'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn',
 };
 function loadIcons() {

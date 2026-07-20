@@ -68,7 +68,7 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     await expect(previewTable).toContainText('108 ft² Floor Area');
     await page.locator('#roomBoxHeight').fill('8');
     // Typing the height fills in the Volume row live.
-    await expect(previewTable).toContainText('= 864 ft³ Volume');
+    await expect(previewTable).toContainText('864 ft³ Volume');
     await page.locator('#roomBoxRoomSelect').selectOption('__new__');
     await page.locator('#roomBoxNewRoomName').fill('Office 101');
     await page.evaluate(() => { document.getElementById('roomBoxApply').click(); });

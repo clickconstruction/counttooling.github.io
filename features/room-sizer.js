@@ -142,7 +142,7 @@
     const lengthFt = Math.max(dims.widthFt, dims.lengthFt);
     const widthFt = Math.min(dims.widthFt, dims.lengthFt);
     const hCell = heightFt > 0 ? fmtFtIn(heightFt) : '—';
-    const volCell = heightFt > 0 ? '= ' + fmtVol(dims.areaSqFt * heightFt) + ' Volume' : 'enter height for volume';
+    const volCell = heightFt > 0 ? fmtVol(dims.areaSqFt * heightFt) + ' Volume' : 'enter height for volume';
     el.innerHTML = '<table class="room-dims-table">'
       + '<tr><th>Length</th><th>Width</th><th>Height</th><th>Totals</th></tr>'
       + '<tr><td>' + fmtFtIn(lengthFt) + '</td><td>' + fmtFtIn(widthFt) + '</td><td>' + hCell + '</td><td>' + volCell + '</td></tr>'

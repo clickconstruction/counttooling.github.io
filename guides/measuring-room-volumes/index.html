@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Measuring room volumes with the Room Sizer — CountTooling</title>
+  <meta name="description" content="Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.">
+  <link rel="canonical" href="https://counttooling.com/guides/measuring-room-volumes/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CountTooling">
+  <meta property="og:title" content="Measuring room volumes with the Room Sizer — CountTooling">
+  <meta property="og:description" content="Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.">
+  <meta property="og:url" content="https://counttooling.com/guides/measuring-room-volumes/">
+  <meta property="og:image" content="https://counttooling.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Measuring room volumes with the Room Sizer — CountTooling">
+  <meta name="twitter:description" content="Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.">
+  <meta name="twitter:image" content="https://counttooling.com/og-image.png">
+  <meta name="theme-color" content="#17171a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/marketing.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Measuring room volumes with the Room Sizer",
+  "description": "Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.",
+  "image": "https://counttooling.com/og-image.png",
+  "datePublished": "2026-07-19",
+  "dateModified": "2026-07-19",
+  "author": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "url": "https://counttooling.com/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://counttooling.com/icons/icon-512.png"
+    }
+  },
+  "mainEntityOfPage": "https://counttooling.com/guides/measuring-room-volumes/"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://counttooling.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://counttooling.com/guides/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Measuring room volumes with the Room Sizer",
+      "item": "https://counttooling.com/guides/measuring-room-volumes/"
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap site-header-wrap">
+      <a class="logo" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8c547"/><g fill="none" stroke="#161617" stroke-width="30" stroke-linecap="round"><circle cx="256" cy="256" r="118"/><line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/><line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/></g><circle cx="256" cy="256" r="34" fill="#161617"/></svg><span>CountTooling</span></a>
+      <nav class="site-nav">
+        <a href="/guides/">Guides</a>
+        <a class="btn" href="/app/"><span class="btn-label-full">Open the app</span><span class="btn-label-short">App</span></a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Measuring room volumes with the Room Sizer</span></nav>
+    <article class="article">
+      <h1>Measuring room volumes with the Room Sizer</h1>
+      <p class="article-meta">Last updated Jul 19, 2026</p>
+      <div class="prose">
+<p>Counting fixtures and measuring runs covers most of a takeoff, but HVAC work starts from a different number: <strong>how much air is in the room</strong>. The Room Sizer turns the rooms on a plan into floor areas (ft²) and air volumes (ft³) — the inputs for ventilation rates, air changes per hour, and rough equipment sizing.</p>
+<p><img src="/guides/img/room-sizer.png" alt="A plan with two room boxes drawn on it, each labeled with its room name and length, width, and height."></p>
+<h2>Draw a room box</h2>
+<ol>
+<li><a href="/guides/setting-the-scale/">Set the page scale</a> first — room sizes come from the drawing, so the tool won&#39;t start without one.</li>
+<li>Pick the <strong>Room Sizer</strong> <span class="ico" role="img" aria-label="Room Sizer" title="Room Sizer"><svg viewBox="0 0 512 512" aria-hidden="true"><path fill="currentColor" d="M234.5 5.7c13.9-5 29.1-5 43.1 0l192 68.6C495 83.4 512 107.5 512 134.6l0 242.9c0 27-17 51.2-42.5 60.3l-192 68.6c-13.9 5-29.1 5-43.1 0l-192-68.6C17 428.6 0 404.5 0 377.4L0 134.6c0-27 17-51.2 42.5-60.3l192-68.6zM256 66L82.3 128 256 190l173.7-62L256 66zm32 368.6l160-57.1 0-188L288 246.6l0 188z"/></svg></span> tool in the header (or press <strong>V</strong>).</li>
+<li>Click one corner of the room, then the opposite corner. While you move, a live readout shows the box&#39;s length × width.</li>
+</ol>
+<h2>Give it a height and a room</h2>
+<p>When the second corner lands, the Room Size dialog opens:</p>
+<p><img src="/guides/img/room-size-modal.png" alt="The Room Size dialog: the dimensions table, ceiling height field with recent-height chips, and the Add to Room list."></p>
+<ol>
+<li>The table at the top shows <strong>Length</strong>, <strong>Width</strong>, and the running totals — floor area immediately, air volume as soon as a height is entered.</li>
+<li>Enter the <strong>ceiling height</strong> in feet — <code>9.5</code> and <code>9&#39;6</code> both work. Heights you&#39;ve used recently appear as one-tap chips.</li>
+<li>Pick which room the box belongs to under <strong>Add to Room</strong> (each room shows its area and volume so far), or create one with <strong>+ New room</strong>.</li>
+</ol>
+<p>The tool stays armed after Apply, so the loop for the next room is just two clicks — your last height and room are already selected.</p>
+<p><strong>L-shaped or irregular room?</strong> Draw it as two or more boxes and assign them all to the same room. The room&#39;s area and volume are the sum of its boxes.</p>
+<h2>Where the totals show up</h2>
+<ul>
+<li><strong>The Rooms section</strong> appears in the left sidebar as soon as the first box exists — per-room floor area and air volume, with each box listed underneath (click a box row to jump to its page; click the room to rename, recolor, or delete it).</li>
+<li><strong>The summary legend</strong> gets a row per room with its volume (turn this off in Legend Settings if you don&#39;t want it on the sheet).</li>
+<li><strong>Reports and summaries</strong> include a Room Volumes table with area, volume, and pages per room — see <a href="/guides/reports-and-exports/">Reports and exports</a>.</li>
+</ul>
+<h2>Good to know</h2>
+<ul>
+<li>On-canvas labels read <strong>L × W × H</strong> with the longer side always shown as (L), so the plan reads the way you&#39;d say it out loud.</li>
+<li>Room boxes respect <a href="/guides/scale-zones-and-multiply-zones/">scale zones</a>: a box drawn fully inside a zone uses that zone&#39;s scale. Multiply zones deliberately do <strong>not</strong> multiply volumes — a room spanning identical floors is drawn once per floor.</li>
+<li>Totals are always decimal feet (ft² / ft³), no matter what unit the page scale uses.</li>
+<li>Right-click a box for <strong>Edit room box</strong> (change its height or room, or delete it). The <strong>Delete area</strong> <span class="ico" role="img" aria-label="Delete area" title="Delete area"><svg viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg></span> tool removes room boxes too.</li>
+</ul>
+      </div>
+      <div class="article-foot">
+        <a class="back-link" href="/guides/">← All guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 CountTooling</span>
+      <span class="fam">
+        Part of the Tooling family:
+        <a href="/guides/">Guides</a>
+        <a href="https://pipetooling.com/" rel="noopener">PipeTooling</a>
+        <a href="https://takeofftooling.com/" rel="noopener">TakeoffTooling</a>
+        <a href="/app/">Open the app</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

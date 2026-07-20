@@ -36,6 +36,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/measuring-room-volumes/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/reports-and-exports/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

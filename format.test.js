@@ -106,3 +106,26 @@ test('escapeHtml: null/undefined become empty, numbers stringify', () => {
   assert.strictEqual(f.escapeHtml(undefined), '');
   assert.strictEqual(f.escapeHtml(42), '42');
 });
+
+test('wrapNoteTextCore: greedy wrap with a stub char-width measurer', () => {
+  const measure = (s) => s.length * 10;   // 10px per char
+  // maxWidth 100 -> 10 chars per line
+  const r = f.wrapNoteTextCore('one two three four', 100, 14, measure);
+  assert.deepStrictEqual(r.lines, ['one two', 'three four']);
+  assert.strictEqual(r.height, 2 * 14);
+});
+
+test('wrapNoteTextCore: hyphen/underscore break opportunities keep the separator on the left fragment', () => {
+  const measure = (s) => s.length * 10;
+  const r = f.wrapNoteTextCore('first-second', 80, 14, measure);
+  assert.deepStrictEqual(r.lines, ['first-', 'second']);
+  const r2 = f.wrapNoteTextCore('a_b_c', 200, 14, measure);
+  assert.deepStrictEqual(r2.lines, ['a_ b_ c']);   // fragments rejoin when they fit
+});
+
+test('wrapNoteTextCore: empty text and single overlong word are safe', () => {
+  const measure = (s) => s.length * 10;
+  assert.deepStrictEqual(f.wrapNoteTextCore('', 100, 14, measure), { lines: [], height: 0 });
+  // An overlong single word still lands on its own line (no infinite loop).
+  assert.deepStrictEqual(f.wrapNoteTextCore('abcdefghijklmnop', 50, 10, measure).lines, ['abcdefghijklmnop']);
+});

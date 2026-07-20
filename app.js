@@ -730,45 +730,16 @@
     updateUI();
   }
 
+  // Pure wrap core moved to format.js (wrapNoteTextCore, node-tested); this
+  // wrapper supplies the canvas-backed text measurer. Same signature as ever
+  // (App.wrapNoteText / the render + hit-test callers are unchanged).
   let _measureCanvas = null;
   function wrapNoteText(text, maxWidth, font, lineHeight) {
     if (!_measureCanvas) _measureCanvas = document.createElement('canvas');
     const ctx = _measureCanvas.getContext('2d');
     ctx.font = font || '14px DM Sans';
-    const lh = lineHeight != null ? lineHeight : 14;
-    const rawWords = (text || '').split(/\s+/).filter(Boolean);
-    const words = [];
-    for (const w of rawWords) {
-      const parts = w.split(/([-_])/);
-      if (parts.length === 1) {
-        words.push(w);
-      } else {
-        let buf = '';
-        for (let i = 0; i < parts.length; i++) {
-          if (parts[i] === '-' || parts[i] === '_') {
-            buf += parts[i];
-            words.push(buf);
-            buf = '';
-          } else if (parts[i]) {
-            buf = parts[i];
-          }
-        }
-        if (buf) words.push(buf);
-      }
-    }
-    const lines = [];
-    let current = '';
-    for (const w of words) {
-      const test = current ? current + ' ' + w : w;
-      if (ctx.measureText(test).width > maxWidth && current) {
-        lines.push(current);
-        current = w;
-      } else current = test;
-    }
-    if (current) lines.push(current);
-    return { lines, height: lines.length * lh };
+    return wrapNoteTextCore(text, maxWidth, lineHeight, (s) => ctx.measureText(s).width);
   }
-
   function getClientCoords(e) {
     if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
     if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -4006,7 +3977,7 @@
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
           div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
-          div.onclick = () => openSummaryCountDetailModal('counter', c.id);
+          div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
         }
       });
@@ -4019,7 +3990,7 @@
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
           div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + formatFeet(r.len, scale) + '</span>';
-          div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
+          div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
       });
@@ -4048,7 +4019,7 @@
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
           div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
-          div.onclick = () => openSummaryCountDetailModal('counter', c.id);
+          div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
         }
       });
@@ -4070,105 +4041,15 @@
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
           div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + formatFeet(len, scale) + '</span>';
-          div.onclick = () => openSummaryCountDetailModal('lineType', lt.id);
+          div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
       });
     }
   }
 
-  async function openSummaryCountDetailModal(type, id) {
-    const titleEl = document.getElementById('summaryCountDetailTitle');
-    const listEl = document.getElementById('summaryCountDetailList');
-    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
-    const THUMB_WIDTH = 200;
-    let items = [];
-    if (type === 'counter') {
-      const c = state.counters.find(x => x.id === id);
-      if (!c) return;
-      titleEl.textContent = (c.name || 'Counter') + ' — by page';
-      state.pages.forEach((p, pageIdx) => {
-        const ann = getActiveAnnotations(p);
-        const markers = ann?.counterMarkers?.[id] || [];
-        if (markers.length > 0) {
-          const count = markers.reduce((s, m) => s + getMultiplyZoneForPoint(ann, m), 0);
-          items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), count, isCounter: true });
-        }
-      });
-    } else {
-      const lt = state.lineTypes.find(x => x.id === id);
-      if (!lt) return;
-      titleEl.textContent = (lt.name || 'Line type') + ' — by page';
-      state.pages.forEach((p, pageIdx) => {
-        const ann = getActiveAnnotations(p);
-        let runs = 0, len = 0;
-        (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += getLineLengthFeetForTotals(q, pageIdx, false, ann); });
-        (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += getLineLengthFeetForTotals(poly, pageIdx, true, ann); });
-        if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
-      });
-    }
-    if (!items.length) return;
-    const esc = escapeHtml;
-    listEl.innerHTML = '<p style="color:var(--text2);">Loading…</p>';
-    showModal('summaryCountDetailModal');
-    listEl.innerHTML = '';
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      const page = state.pages[it.pageIdx];
-      const fullLabel = it.pageLabel || 'Page ' + (it.pageIdx + 1);
-      let docName = 'document.pdf';
-      let pagePart = 'p' + (it.pageIdx + 1);
-      if (fullLabel.indexOf(' — ') >= 0) {
-        const parts = fullLabel.split(' — ');
-        docName = (parts[0] || 'document.pdf').trim();
-        pagePart = (parts[1] || pagePart).trim();
-      } else if (fullLabel.toLowerCase().endsWith('.pdf')) {
-        docName = fullLabel;
-        pagePart = 'p' + (it.pageIdx + 1);
-      } else {
-        pagePart = fullLabel;
-      }
-      const row = document.createElement('div');
-      row.className = 'summary-count-detail-row';
-      let metaHtml = '<div class="summary-count-detail-meta">';
-      metaHtml += '<span class="summary-count-detail-count">' + esc(it.isCounter ? String(it.count) : String(it.runs)) + '</span>';
-      if (!it.isCounter) {
-        const ps = getPageScale(it.pageIdx);
-        metaHtml += '<span class="summary-count-detail-length">' + esc(formatFeet(it.length, ps)) + '</span>';
-      }
-      metaHtml += '<span class="summary-count-detail-page">on ' + esc(pagePart) + '</span></div>';
-      row.innerHTML = metaHtml;
-      if (page.pdfPage) {
-        try {
-          const natView = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
-          const scale = THUMB_WIDTH / natView.width;
-          const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
-          const pageW = viewport.width, pageH = viewport.height;
-          const canvas = document.createElement('canvas');
-          canvas.width = pageW;
-          canvas.height = pageH;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'display' }).promise;
-          renderAnnotationsToContext(ctx, page, scale, exportOverrides);
-          const previewWrap = document.createElement('div');
-          previewWrap.className = 'summary-count-detail-preview';
-          const img = document.createElement('img');
-          img.src = canvas.toDataURL('image/jpeg', 0.9);
-          img.alt = fullLabel;
-          previewWrap.appendChild(img);
-          const docSpan = document.createElement('span');
-          docSpan.className = 'summary-count-detail-doc';
-          docSpan.textContent = docName;
-          previewWrap.appendChild(docSpan);
-          row.appendChild(previewWrap);
-        } catch (e) {
-          console.error('[Summary detail thumbnail]', e);
-        }
-      }
-      listEl.appendChild(row);
-    }
-  }
-
+  // openSummaryCountDetailModal moved to features/summary-detail.js
+  // (window.App registry); the renderSummary rows call it via App.*.
   // SECTION: Inline rename & polyline edit mode
   function onDoubleTapOrDblClick(el, handler) {
     if (!el) return;
@@ -8064,6 +7945,10 @@
   App.scaleCheckDelta = scaleCheckDelta;
   App.convertUnitValue = convertUnitValue;
   App.formatFeetInchesFromVal = formatFeetInchesFromVal;
+  // Summary count-detail deps (features/summary-detail.js).
+  App.getMultiplyZoneForPoint = getMultiplyZoneForPoint;
+  App.getLineLengthFeetForTotals = getLineLengthFeetForTotals;
+  App.formatFeet = formatFeet;
   // Room Sizer deps (features/room-sizer.js).
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;

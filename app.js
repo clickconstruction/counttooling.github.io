@@ -679,7 +679,7 @@
     pushUndoSnapshot();
     annotationModel.deleteCollectedItems(ann, collected);
     markProjectDirty();
-    renderPdf();
+    renderAnnotations();
     updateUI();
   }
   function getPageScale(pi) { return state.pages[pi]?.scale ?? null; }
@@ -726,7 +726,7 @@
     state.scalePointB = null;
     state.scaleMode = SCALE_MODES.NONE;
     markProjectDirty();
-    renderPdf();
+    renderPdf();   // rotation changes the raster — NOT an annotation-only edit
     updateUI();
   }
 
@@ -748,6 +748,7 @@
 
   const canvasContainer = document.getElementById('canvasContainer');
   const pdfCanvas = document.getElementById('pdfCanvas');
+  const cropCanvas = document.getElementById('cropCanvas');
   const annCanvas = document.getElementById('annCanvas');
   const aimLoupe = document.getElementById('aimLoupe');
 
@@ -1253,14 +1254,25 @@
   // zoom), and any renderAreaSafety/caps change (new effDpr). Explicit clears
   // are hygiene only — they free memory when a document is torn down or the
   // device shows pressure.
-  const PDF_BITMAP_CACHE_MAX = 4;                    // entries (fit-zoom pages: ~1-5MB each)
-  const PDF_BITMAP_CACHE_AREA_FRAC = 0.15;           // of caps.maxArea × renderAreaSafety
-  const PDF_BITMAP_CACHE_AREA_ABS = 5000000;         // px — absolute clamp so big-desktop probes can't balloon retention
+  const PDF_BITMAP_CACHE_MAX = 4;                    // entries
+  const PDF_BITMAP_CACHE_AREA_FRAC = 0.35;           // of caps.maxArea × renderAreaSafety
+  // Per-entry / whole-cache pixel budgets. A hi-DPI (2x) fit-zoom page buffer
+  // is ~6M px, and the old budget (min(0.15 × maxArea × safety, 5M) — often
+  // ~1.25M with the fallback caps) was BELOW it, so on Retina displays the
+  // cache retained nothing and every zoom commit / page flip / re-render was
+  // a full multi-second raster on dense sheets. 16M px ≈ 64MB RGBA per entry,
+  // 24M px total across entries; both halved on low-memory devices.
+  const PDF_BITMAP_LOW_MEM = typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory <= 4;
+  const PDF_BITMAP_CACHE_AREA_ABS = PDF_BITMAP_LOW_MEM ? 8000000 : 16000000;
+  const PDF_BITMAP_CACHE_TOTAL_PX = PDF_BITMAP_LOW_MEM ? 12000000 : 24000000;
   const pdfBitmapCache = [];                          // LRU: oldest first, [{pdfPage, rotation, zoom, effDpr, bitmap, w, h}]
   let pdfBitmapCacheGeneration = 0;                   // bumped on clear; async inserts self-discard if it moved
   const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0 };
   function pdfBitmapCacheMaxArea() {
     return Math.min(PDF_BITMAP_CACHE_AREA_FRAC * getCanvasCaps().maxArea * renderAreaSafety, PDF_BITMAP_CACHE_AREA_ABS);
+  }
+  function pdfBitmapCacheTotalArea() {
+    return pdfBitmapCache.reduce((sum, e) => sum + e.w * e.h, 0);
   }
   function pdfBitmapCacheGet(pdfPage, rotation, zoom, effDpr) {
     for (let i = pdfBitmapCache.length - 1; i >= 0; i--) {
@@ -1300,7 +1312,11 @@
       }
     }
     pdfBitmapCache.push(entry);
-    while (pdfBitmapCache.length > PDF_BITMAP_CACHE_MAX) {
+    // Evict oldest past the entry cap OR the whole-cache pixel budget (but
+    // never the entry just inserted — a single giant entry is legal as long
+    // as it passed the per-entry cap).
+    while (pdfBitmapCache.length > PDF_BITMAP_CACHE_MAX ||
+           (pdfBitmapCache.length > 1 && pdfBitmapCacheTotalArea() > PDF_BITMAP_CACHE_TOTAL_PX)) {
       const old = pdfBitmapCache.shift();
       try { old.bitmap.close(); } catch (_) { /* already closed */ }
     }
@@ -1409,9 +1425,100 @@
   // upscaled old bitmap (the "blurry after placing drops" bug, cddb807).
   let lastPaintedPdfPage = null;
   let lastPaintedRot = 0;
+  // SECTION: Deep-zoom sharp crop tile
+  // At deep zoom on large sheets, effectiveDpr clamps the full-page buffer
+  // below devicePixelRatio, so the base render goes soft. Rather than raster
+  // the whole page at full dpr (the very buffer the clamp exists to prevent),
+  // raster JUST THE VISIBLE WINDOW at full dpr into a small overlay canvas
+  // (#cropCanvas, DOM-sandwiched between pdfCanvas and the annotation
+  // overlay). The tile is positioned in CONTENT space (style.left/top inside
+  // the transformed container), so pans keep it glued to the sheet and the
+  // zoom preview scales it with everything else. Debounce-scheduled after a
+  // render settles or a pan ends; cleared the moment a new base raster starts
+  // (renderPdf entry); hidden until its own raster completes so a
+  // half-painted tile is never visible. Annotations are NOT in the tile —
+  // the overlay above remains the single source of marks; this is purely a
+  // sharpening layer for the PDF underneath. Best-effort: any failure just
+  // leaves the (correct, soft) base render.
+  let cropTileTask = null;
+  let cropTileTimer = null;
+  let cropTileKey = null;              // key of the tile currently shown
+  const CROP_TILE_DELAY_MS = 200;      // settle time after render/pan before sharpening
+  const CROP_TILE_MIN_DEFICIT = 1.15;  // only sharpen when dpr/effDpr is meaningfully soft
+  function clearCropTile() {
+    if (cropTileTimer) { clearTimeout(cropTileTimer); cropTileTimer = null; }
+    if (cropTileTask) { try { cropTileTask.cancel(); } catch (_) { /* settling */ } cropTileTask = null; }
+    cropTileKey = null;
+    if (cropCanvas && cropCanvas.width) { cropCanvas.width = 0; cropCanvas.height = 0; }
+    if (cropCanvas) cropCanvas.style.display = 'none';
+  }
+  function scheduleCropTile() {
+    if (!cropCanvas) return;
+    if (cropTileTimer) clearTimeout(cropTileTimer);
+    cropTileTimer = setTimeout(renderCropTile, CROP_TILE_DELAY_MS);
+  }
+  function renderCropTile() {
+    cropTileTimer = null;
+    if (!cropCanvas) return;
+    const page = state.pages[state.currentPage];
+    if (!page || !page.pdfPage) { clearCropTile(); return; }
+    const dpr = window.devicePixelRatio || 1;
+    if (!(currentEffDpr > 0) || dpr / currentEffDpr < CROP_TILE_MIN_DEFICIT) { clearCropTile(); return; }
+    if (pdfRenderTask) { scheduleCropTile(); return; }   // base raster in flight — wait for it to settle
+    const wrap = cWrapper;
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const pageCssW = parseFloat(pdfCanvas.style.width) || 0;
+    const pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+    if (!r.width || !pageCssW || !pageCssH) return;
+    // Visible window in page CSS px: the container sits at translate(pan)
+    // with transform-origin 0 0, so content x is visible for x in
+    // [-pan.x, -pan.x + wrapperW], clamped to the page.
+    const x0 = Math.max(0, -state.pan.x);
+    const y0 = Math.max(0, -state.pan.y);
+    const w = Math.min(pageCssW, x0 + r.width) - x0;
+    const h = Math.min(pageCssH, y0 + r.height) - y0;
+    if (w <= 0 || h <= 0) return;
+    const rot = page.rotation ?? 0;
+    const key = { pdfPage: page.pdfPage, rot, zoom: state.zoom, x0: Math.round(x0), y0: Math.round(y0), w: Math.round(w), h: Math.round(h) };
+    if (cropTileKey && cropCanvas.style.display !== 'none' &&
+        cropTileKey.pdfPage === key.pdfPage && cropTileKey.rot === key.rot && cropTileKey.zoom === key.zoom &&
+        cropTileKey.x0 === key.x0 && cropTileKey.y0 === key.y0 && cropTileKey.w === key.w && cropTileKey.h === key.h) {
+      return;   // the identical tile is already up
+    }
+    const bw = Math.ceil(w * dpr), bh = Math.ceil(h * dpr);
+    if (bw * bh > getCanvasCaps().maxArea * renderAreaSafety) return;   // stay inside the render budget
+    if (cropTileTask) { try { cropTileTask.cancel(); } catch (_) { /* settling */ } cropTileTask = null; }
+    cropCanvas.style.display = 'none';
+    cropCanvas.width = bw;
+    cropCanvas.height = bh;
+    cropCanvas.style.width = w + 'px';
+    cropCanvas.style.height = h + 'px';
+    cropCanvas.style.left = x0 + 'px';
+    cropCanvas.style.top = y0 + 'px';
+    // offsetX/offsetY are in output px of this viewport: content CSS px x0
+    // lands at output px x0*dpr at scale zoom*dpr, so shift by its negative.
+    const viewport = page.pdfPage.getViewport({ scale: state.zoom * dpr, rotation: rot, offsetX: -x0 * dpr, offsetY: -y0 * dpr });
+    const task = page.pdfPage.render({ canvasContext: cropCanvas.getContext('2d'), viewport });
+    cropTileTask = task;
+    task.promise.then(() => {
+      if (cropTileTask !== task) return;   // superseded or cleared while rastering
+      cropTileTask = null;
+      const cur = state.pages[state.currentPage];
+      if (!cur || cur.pdfPage !== key.pdfPage || (cur.rotation ?? 0) !== key.rot || state.zoom !== key.zoom) { clearCropTile(); return; }
+      cropTileKey = key;
+      cropCanvas.style.display = '';
+    }).catch((err) => {
+      if (cropTileTask === task) cropTileTask = null;
+      cropCanvas.width = 0; cropCanvas.height = 0;
+      if (err && err.name !== 'RenderingCancelledException') { /* sharpening is best-effort */ }
+    });
+  }
+
   // SECTION: PDF Rendering
   function renderPdf() {
     cancelPdfBitmapPrefetch();   // real rendering always preempts speculation
+    clearCropTile();             // the base is changing — a stale sharp tile would lie
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) {
       pdfCanvas.width = 0;
@@ -1483,6 +1590,7 @@
       pdfBitmapCacheStats.hits++;
       renderAnnotations();
       schedulePdfBitmapPrefetch();
+      scheduleCropTile();
       if (pdfRenderPending) renderPdf();
       return;
     }
@@ -1578,6 +1686,7 @@
       pdfOffscreenCanvas.height = 0;
       renderAnnotations();
       schedulePdfBitmapPrefetch();
+      scheduleCropTile();
       if (pdfRenderPending) renderPdf();
     }).catch(err => {
       pdfRenderTask = null;
@@ -2522,7 +2631,7 @@
           e.stopPropagation();
           state.activeCanvasIdByPage[state.currentPage] = c.id;
           if (!state.isViewer) markProjectDirty();
-          renderPdf();
+          renderAnnotations();
           updateUI();
         };
         pillsEl.appendChild(pill);
@@ -2575,7 +2684,7 @@
           e.stopPropagation();
           state.activeCanvasIdByPage[state.currentPage] = c.id;
           if (!state.isViewer) markProjectDirty();
-          renderPdf();
+          renderAnnotations();
           updateUI();
           canvasMenu.classList.remove('visible');
         };
@@ -2632,7 +2741,7 @@
           else if (state.editingPolyline && state.editingPolyIndex > i) state.editingPolyIndex--;
           markProjectDirty();
           updateUI();
-          renderPdf();
+          renderAnnotations();
           fitZoom();
         };
         const pageName = p.label || 'Page ' + (i + 1);
@@ -2783,7 +2892,7 @@
             updateUI();
           }
         };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderPdf(); }); });
+        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderAnnotations(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openGroupModal(g); });
       }
       el.appendChild(div);
@@ -2893,7 +3002,7 @@
           state.selectedLineIsPoly = false;
           state.selectedLinePageIdx = null;
           updateUI();
-          renderPdf();
+          renderAnnotations();
         } else if (lineId) {
           state.selectedLineId = lineId;
           state.selectedLineIsPoly = it.type === 'poly';
@@ -3174,7 +3283,7 @@
     state.draggingVertexIdx = null;
     annCanvas.classList.remove('interactive');
     updateUI();
-    renderPdf();
+    renderAnnotations();
   }
 
   // SECTION: Modal primitives (showModal / hideModal)
@@ -3597,7 +3706,7 @@
     state.scalePointA = null;
     state.scalePointB = null;
     updateUI();
-    renderPdf();
+    renderAnnotations();
   };
   document.getElementById('measureBtnSidebar').onclick = () => document.getElementById('measureBtn').click();
   document.getElementById('moveBtn').onclick = () => {
@@ -3612,7 +3721,7 @@
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
     updateUI();
-    renderPdf();
+    renderAnnotations();
   };
   document.getElementById('quickLine').onclick = () => {
     if (!getPageScale(state.currentPage)) {
@@ -3786,7 +3895,7 @@
       }
     }
     markProjectDirty();
-    renderPdf();
+    renderAnnotations();
     updateUI();
   }
   if (legendBtn) legendBtn.onclick = toggleLegendOverlay;
@@ -3870,7 +3979,7 @@
     showGroupColorsCheckbox.onchange = () => {
       state.showGroupColors = showGroupColorsCheckbox.checked;
       try { localStorage.setItem('groupColorDisplay', state.showGroupColors ? '1' : '0'); } catch (_) {}
-      renderPdf();
+      renderAnnotations();
     };
   }
   // The #groupAssign* handlers and refreshGroupAssignButtons / openGroupAssignModal
@@ -4064,12 +4173,12 @@
     state.tool = TOOL.NONE;
     markProjectDirty();
     updateUI();
-    renderPdf();
+    renderAnnotations();
   }
 
   // SECTION: Zoom bar & page navigation
-  function doZoomOut() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); updateUI(); }
-  function doZoomIn() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); updateUI(); }
+  function doZoomOut() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); syncZoomIndicators(); }
+  function doZoomIn() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); syncZoomIndicators(); }
   document.getElementById('zoomOut').onclick = () => doZoomOut();
   document.getElementById('zoomIn').onclick = () => doZoomIn();
   document.getElementById('rotatePage').onclick = () => rotatePage90();
@@ -5064,7 +5173,7 @@
     markProjectDirty();
     document.getElementById('contextMenu').classList.remove('visible');
     state.ctxTarget = null;
-    renderPdf();
+    renderAnnotations();
     updateUI();
   };
   document.getElementById('ctxAssignGroup').onclick = () => {
@@ -5164,7 +5273,6 @@
     document.getElementById('contextMenu').classList.remove('visible');
     state.ctxTarget = null;
     renderAnnotations();
-    renderPdf();
     updateUI();
   };
 
@@ -5300,7 +5408,7 @@
       state.scaleMode = SCALE_MODES.NONE;
       state.tool = TOOL.NONE;
     }
-    renderPdf();
+    renderAnnotations();
     updateUI();
   }
 
@@ -5328,7 +5436,7 @@
       state.gridOriginPickMode = false;
       showModal('gridSettingsModal');
       showToast('Origin set. Click Apply to confirm.');
-      renderPdf();
+      renderAnnotations();
       updateUI();
       return;
     }
@@ -5343,7 +5451,7 @@
         document.getElementById('scaleValue').value = '';
         App.openScaleModal();
       }
-      renderPdf();
+      renderAnnotations();
     } else if (state.tool === TOOL.MEASURE) {
       commitMeasurePoint(pdf);
     } else if (state.tool === TOOL.LINE) {
@@ -5714,7 +5822,7 @@
       lastRenderedZoom = state.zoom;
       renderPdf();
     }
-    updateUI();
+    syncZoomIndicators();   // nothing in the full updateUI() depends on zoom — see the gesture spec
   }
   function updateContainerTransform() {
     const scale = state.zoom / lastRenderedZoom;
@@ -5738,7 +5846,7 @@
       lastRenderedZoom = state.zoom;
       renderPdf();
     }
-    updateUI();
+    syncZoomIndicators();   // nothing in the full updateUI() depends on zoom — see the gesture spec
   }
 
   // SECTION: Canvas mouse, wheel & touch handlers
@@ -5901,6 +6009,7 @@
     if (e.button === 1) {
       state.isPanning = false;
       state.panStart = null;
+      scheduleCropTile();   // pan settled — re-cover the new visible window
       return;
     }
     if (e.button !== 0) return;
@@ -5925,6 +6034,7 @@
     if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
     state.isPanning = false;
     state.panStart = null;
+    scheduleCropTile();   // pan settled — re-cover the new visible window (no-ops when base is sharp)
     state.draggingVertexIdx = null;
     state.resizingNoteIdx = null;
     state.resizingNotePageIdx = null;
@@ -5973,6 +6083,7 @@
     if (e.button === 1) {
       state.isPanning = false;
       state.panStart = null;
+      scheduleCropTile();
     }
     if (e.button === 0 && (state.resizingLegend || state.draggingLegend)) {
       state.justFinishedLegendResize = true;
@@ -6001,6 +6112,16 @@
   let wheelZoomPending = false;
   let wheelZoomAccum = 0;
   let wheelZoomCursor = null;
+  let wheelZoomLastEventTs = 0;
+  // Cap on the per-frame zoom step exponent: |x| <= 0.6 -> one rAF step can
+  // change zoom by at most ~1.8x, no matter how many wheel deltas queued up
+  // while the main thread was busy rastering a dense sheet.
+  const WHEEL_ZOOM_STEP_CLAMP = 0.6;
+  // Accumulated deltas older than this are stale input from a main-thread
+  // stall (multi-second pdf.js raster): the user has stopped scrolling by the
+  // time we get to run, so applying the backlog would yank the view "after
+  // the fact". Discard instead.
+  const WHEEL_ZOOM_STALE_MS = 150;
   (cWrapper || pdfCanvas).addEventListener('wheel', (e) => {
     e.preventDefault();
     let delta = -e.deltaY;
@@ -6008,6 +6129,7 @@
     else if (e.deltaMode === 2) delta *= 240;
     wheelZoomAccum += delta;
     wheelZoomCursor = canvasPointFromEvent(e);
+    wheelZoomLastEventTs = performance.now();
     if (!wheelZoomPending) {
       wheelZoomPending = true;
       requestAnimationFrame(() => {
@@ -6015,7 +6137,13 @@
         const delta = wheelZoomAccum;
         wheelZoomAccum = 0;
         if (delta === 0 || !wheelZoomCursor) return;
-        const factor = 1 - delta * 0.001 * getWheelZoomSpeed();
+        if (performance.now() - wheelZoomLastEventTs > WHEEL_ZOOM_STALE_MS) return;   // stale backlog after a stall
+        // Sign-safe exponential step: exp(-x) ~ (1 - x) for the small per-frame
+        // deltas of a live gesture (same feel/direction as the old linear
+        // factor), but it can never go <= 0 — the old `1 - x` flipped negative
+        // for a big queued delta and the zoom clamp then slammed to 20%.
+        const x = Math.max(-WHEEL_ZOOM_STEP_CLAMP, Math.min(WHEEL_ZOOM_STEP_CLAMP, delta * 0.001 * getWheelZoomSpeed()));
+        const factor = Math.exp(-x);
         const newZoom = Math.max(0.2, Math.min(getMaxZoom(), state.zoom * factor));
         if (newZoom === state.zoom) return;
         const pt = wheelZoomCursor;
@@ -6350,6 +6478,7 @@
     if (state.touchPanning) {
       state.touchPanning = false;
       state.touchPanStart = null;
+      scheduleCropTile();   // touch pan settled
       return;
     }
     if (e.changedTouches && e.changedTouches.length && state.longPressTimer) {
@@ -6535,7 +6664,7 @@
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       else if (state.tool === TOOL.LINE) {
-        if (state.quickLineStart) { state.quickLineStart = null; renderPdf(); updateUI(); }
+        if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.SCALE) {
         // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
@@ -6547,28 +6676,28 @@
         App.resetScaleModalZoneMode();
         App.resetScaleCheckMode && App.resetScaleCheckMode();
         updateUI();
-        renderPdf();
+        renderAnnotations();
       } else if (state.tool === TOOL.MEASURE) {
         state.tool = TOOL.NONE;
         state.scalePointA = null;
         state.scalePointB = null;
         state.scaleMode = SCALE_MODES.NONE;
         updateUI();
-        renderPdf();
+        renderAnnotations();
       } else if (state.tool === TOOL.HIGHLIGHT) {
-        if (state.highlightStart) { state.highlightStart = null; renderPdf(); updateUI(); }
+        if (state.highlightStart) { state.highlightStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.MULTIPLY_ZONE) {
-        if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderPdf(); updateUI(); }
+        if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.SCALE_ZONE) {
-        if (state.scaleZoneStart) { state.scaleZoneStart = null; renderPdf(); updateUI(); }
+        if (state.scaleZoneStart) { state.scaleZoneStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.DELETE_ZONE) {
-        if (state.deleteZoneStart) { state.deleteZoneStart = null; renderPdf(); updateUI(); }
+        if (state.deleteZoneStart) { state.deleteZoneStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.ROOM) {
-        if (state.roomBoxStart) { state.roomBoxStart = null; renderPdf(); updateUI(); }
+        if (state.roomBoxStart) { state.roomBoxStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.NOTE) {
         state.tool = TOOL.NONE;
@@ -6599,12 +6728,12 @@
         if (e.key === 'ArrowUp' && idx > 0) {
           state.activeCanvasIdByPage[state.currentPage] = canvases[idx - 1].id;
           if (!state.isViewer) markProjectDirty();
-          renderPdf();
+          renderAnnotations();
           updateUI();
         } else if (e.key === 'ArrowDown' && idx < canvases.length - 1) {
           state.activeCanvasIdByPage[state.currentPage] = canvases[idx + 1].id;
           if (!state.isViewer) markProjectDirty();
-          renderPdf();
+          renderAnnotations();
           updateUI();
         }
       }

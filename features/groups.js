@@ -132,7 +132,7 @@
       pendingGroupEdit = null;
       App.hideModal('groupModal');
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     }
   };
   document.getElementById('groupModalDone').onclick = () => {
@@ -157,7 +157,7 @@
     pendingGroupEdit = null;
     App.hideModal('groupModal');
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
   };
 
   document.getElementById('groupAssignAddGroup').onclick = () => {
@@ -174,7 +174,7 @@
       pendingGroupAssignTarget.item.group = groupId;
       App.markProjectDirty();
       App.updateUI();
-      App.renderPdf();
+      App.renderAnnotations();
     }
     pendingGroupAssignTarget = null;
     App.hideModal('groupAssignModal');

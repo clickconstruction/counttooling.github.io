@@ -13,6 +13,53 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## perf(render): big-file zoom/edit responsiveness (the "jumps around as files get bigger" bug)
+
+User report (Wendi): on large sheets, "you zoom and then after the fact it
+moves beneath you", and "you go to add a drop and it loads several seconds
+after the fact". Root cause was one amplifier — pdf.js rasters the whole page
+on the main thread, seconds on dense sheets — multiplied by four app-side
+mistakes, each fixed here:
+
+1. **Annotation-only edits re-rastered the PDF.** ~60 call sites (drop
+   add/clear/±, line/counter colors, icons, curve style, group + room edits,
+   zone create, legend/grid settings, scale changes, canvas-layer switches,
+   Escape-clearing previews, …) ended in `renderPdf()` — and the overlay
+   repaint only ran in the raster's completion callback, so the new drop
+   appeared seconds later. All reclassified to `renderAnnotations()` (a few
+   ms, sheet-size-independent). The one deliberate keep discovered by test:
+   `rotatePage90` genuinely changes the raster (page-switch-cache.spec caught
+   the misclassification).
+2. **Queued wheel input landed "after the fact".** During a raster stall the
+   rAF is starved while wheel deltas accumulate; the backlog then applied as
+   one giant step at a stale anchor — and the old linear factor
+   `1 − delta·k` went NEGATIVE for big backlogs, slamming the zoom clamp to
+   20%. Now: sign-safe `exp(−x)` step (same feel for live gestures), per-frame
+   step clamp (±0.6 exponent ≈ 1.8× max), and accumulated deltas older than
+   150 ms are discarded as stall backlog.
+3. **The bitmap cache stored nothing on Retina displays.** The retention
+   budget `min(0.15 × maxArea × safety, 5M px)` sat BELOW a 2×-display
+   fit-zoom buffer (~6M px), so every zoom commit / page flip / re-render was
+   a full raster. New budgets: frac 0.35, per-entry 16M px + whole-cache 24M
+   px (halved via `navigator.deviceMemory ≤ 4`), total-area eviction in
+   `pdfBitmapCachePut`.
+4. **Zoom commits ran the full `updateUI()`.** Nothing in the sidebar rebuild
+   depends on zoom; commits (wheel/pinch/±) now run the light
+   `syncZoomIndicators()` only — the end-of-gesture jank spike is gone.
+   zoom-no-updateui-during-gesture.spec.js updated to the new contract (no
+   full updateUI anywhere on the zoom path, with a spy-validity check).
+5. **Deep zoom sharpening: the crop tile** (`// SECTION: Deep-zoom sharp crop
+   tile`, #cropCanvas). When `effectiveDpr` clamps below devicePixelRatio the
+   base render is soft; the app now rasters just the visible window at full
+   dpr into a small content-space canvas sandwiched between the PDF canvas and
+   the annotation overlay (rides the container transform, so pans keep it
+   glued and zoom previews scale it). Debounced 200 ms after a render/pan
+   settles; cleared at `renderPdf` entry; hidden until its raster completes;
+   guarded by the same render-area budget; best-effort. New regression:
+   [crop-tile.spec.js](crop-tile.spec.js).
+
+---
+
 ## refactor(canvas-draw): unify the two annotation draw paths behind one core
 
 The PDF Rendering region's structural duplication — `renderAnnotations` (live

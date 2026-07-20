@@ -85,7 +85,7 @@
     page.canvases.push(newCanvas);
     state.activeCanvasIdByPage[state.currentPage] = newCanvas.id;
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   }
 
@@ -120,7 +120,7 @@
       state.activeCanvasIdByPage[state.currentPage] = remaining[0]?.id ?? null;
     }
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   }
 

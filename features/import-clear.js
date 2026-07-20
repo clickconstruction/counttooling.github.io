@@ -99,7 +99,7 @@
       state.selectedLinePageIdx = null;
     }
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 

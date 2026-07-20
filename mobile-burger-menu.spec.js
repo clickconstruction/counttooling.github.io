@@ -57,6 +57,30 @@ test.describe('Mobile right-side burger menu', () => {
     expect(items).toContain('Print All Plan Pages (Current Canvas)');
     expect(items).toContain('Print All Pages (All Canvases)');
 
+    // 3b. Save status row: absent without a cloud project (mobile CSS hides the
+    //     header bell outright, so the drawer is the ONLY mobile surface for it).
+    expect(items).not.toContain('Save status');
+    await page.evaluate(() => {
+      window.state.currentProjectId = 'fake-project-id';
+      document.getElementById('saveStatusBtnHeader').classList.add('save-status-bell-attention');
+      window.App.updateBurgerMenu();
+    });
+    expect(await itemText()).toContain('Save status');
+    // The row icon mirrors the bell's attention coloring class.
+    expect(await page.evaluate(() => !!document.querySelector('#rightMenuList .right-menu-icon.save-status-bell-attention'))).toBe(true);
+    // Tapping it opens the Save Status modal and closes the drawer.
+    await page.locator('#rightMenuList .right-menu-item', { hasText: 'Save status' }).click();
+    await expect(page.locator('#saveStatusModal')).toHaveClass(/visible/);
+    await expect(page.locator('body')).not.toHaveClass(/right-menu-open/);
+    await page.evaluate(() => {
+      window.App.hideModal('saveStatusModal');
+      window.state.currentProjectId = null;
+      document.getElementById('saveStatusBtnHeader').classList.remove('save-status-bell-attention');
+      window.App.updateUI();
+    });
+    await page.locator('#headerBurger').click();
+    await expect(page.locator('body')).toHaveClass(/right-menu-open/);
+
     // 4. Tap the Hide-marks row -> state.hideMarks flips and the drawer closes.
     await page.locator('#rightMenuList .right-menu-item', { hasText: 'Hide marks' }).click();
     expect(await page.evaluate(() => window.state.hideMarks)).toBe(true);

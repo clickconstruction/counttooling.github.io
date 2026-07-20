@@ -63,6 +63,20 @@
       () => document.getElementById('hideMarksBtn')?.click(),
       document.getElementById(state.hideMarks ? 'hideMarksIconHide' : 'hideMarksIconShow')
     );
+    // 1b. Save status (the bell) — mobile CSS hides #saveStatusBtnHeader
+    //     outright, so the drawer is the only mobile surface for it. Same
+    //     gating as the header bell (supabase enabled + a cloud project); the
+    //     row icon inherits the bell's attention/offline coloring so a sync
+    //     failure is just as loud in the drawer.
+    const bellBtn = document.getElementById('saveStatusBtnHeader');
+    if (App.SUPABASE_ENABLED && state.currentProjectId && bellBtn) {
+      rows.push({
+        label: 'Save status',
+        click: () => bellBtn.click(),
+        iconSrc: bellBtn,
+        iconClasses: Array.from(bellBtn.classList).filter((c) => c.startsWith('save-status-bell-')),
+      });
+    }
     // 2. Share — editor opens the Share modal (#sidebarLogoShare); a signed-in
     //    viewer copies the link (#headerShareBtn). Same gating as updateUI,
     //    including its !(isMobile && isViewer) exclusion on #sidebarLogoShare —
@@ -101,7 +115,10 @@
         btn.type = 'button';
         btn.className = 'right-menu-item';
         const icon = iconClone(r.iconSrc);
-        if (icon) btn.appendChild(icon);
+        if (icon) {
+          if (r.iconClasses) r.iconClasses.forEach((c) => icon.classList.add(c));
+          btn.appendChild(icon);
+        }
         const label = document.createElement('span');
         label.className = 'right-menu-label';
         // Put a trailing "(qualifier)" on its own line in the drawer (the label uses

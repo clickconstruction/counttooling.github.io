@@ -71,7 +71,9 @@
     app.js keeps a same-named thin wrapper that resolves and delegates (so
     call sites and the report.js `window.*` contract never changed):
     [icons.js](icons.js) (bundled icon data: `*_PATH` consts,
-    `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`),
+    `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `ICONS`),
+    [icons-custom.js](icons-custom.js) (the GENERATED `CUSTOM_ICONS` array —
+    `npm run build:icons` overwrites it wholesale; loads right after icons.js),
     [geometry.js](geometry.js) (pure math/geometry/parse primitives),
     [constants.js](constants.js) (pure constant literals — `TOOL`,
     `SCALE_MODES`, `COLORS`, `SCALE_PRESETS`, timing/threshold blocks, IDB

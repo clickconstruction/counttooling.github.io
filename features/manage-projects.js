@@ -54,7 +54,7 @@
           listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>';
           return;
         }
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const esc = (s) => App.escapeHtml(s);
         listEl.innerHTML = data.map((p) => {
           const sizeStr = formatSizeMb(p.size_bytes);
           const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';

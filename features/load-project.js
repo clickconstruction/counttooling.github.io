@@ -74,7 +74,7 @@
           const mb = bytes / (1024 * 1024);
           return mb < 0.01 ? (bytes / 1024).toFixed(2) + ' KB' : mb.toFixed(2) + ' MB';
         };
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const esc = (s) => App.escapeHtml(s);
         const loadProjectAccessCache = Object.create(null);
         function fillLoadProjectAccessPanel(panel, rows, escFn) {
           if (!rows || rows.length === 0) {

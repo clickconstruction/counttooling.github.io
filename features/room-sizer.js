@@ -135,7 +135,7 @@
     document.getElementById('roomBoxNewRoomNameGroup').style.display = selectedRoomChoice === '__new__' ? '' : 'none';
   }
   function escapeHtmlText(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return App.escapeHtml(s);
   }
   function renderRecentHeightChips() {
     const row = document.getElementById('roomBoxRecentHeights');

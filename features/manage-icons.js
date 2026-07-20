@@ -27,7 +27,7 @@
     const deleteSelectedBtn = document.getElementById('manageIconsDeleteSelected');
     listEl.innerHTML = '';
     const ordered = App.getOrderedIcons();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const esc = (s) => App.escapeHtml(s);
     function updateMoveButtons() {
       listEl.querySelectorAll('.manage-icon-row').forEach((row, i) => {
         const rows = listEl.querySelectorAll('.manage-icon-row');

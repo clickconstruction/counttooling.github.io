@@ -240,7 +240,7 @@
       if (matches && matches.length > 0) {
         const listEl = document.getElementById('loadAnnotationsList');
         listEl.innerHTML = '';
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const esc = (s) => App.escapeHtml(s);
         matches.forEach(proj => {
           const div = document.createElement('div');
           const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';

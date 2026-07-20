@@ -30,7 +30,7 @@
 
   function populateQuickLineModal() {
     const mods = App.getLineModifiers();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = (s) => App.escapeHtml(s);
     const sizeSel = document.getElementById('quickLineSize');
     const materialSel = document.getElementById('quickLineMaterial');
     sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');

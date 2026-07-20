@@ -51,7 +51,7 @@
     const list = document.getElementById('counterChooseList');
     const empty = document.getElementById('counterChooseEmpty');
     list.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = (s) => App.escapeHtml(s);
     const q = (query || '').toLowerCase();
     const filtered = q ? state.counters.filter(c => (c.name || '').toLowerCase().includes(q)) : state.counters;
     if (!filtered.length) {

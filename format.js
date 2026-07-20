@@ -13,6 +13,23 @@
  * app.js. No build step.
  */
 
+  // THE canonical HTML escaper (full superset: & < > " '). The codebase once
+  // carried 27 inline copies in four behavioral variants — some skipped the
+  // quote entities, an attribute-injection foot-gun whenever a copy was pasted
+  // into a new context. All call sites now route here: app.js reads it by bare
+  // name, feature files via App.escapeHtml (format.js globals are invisible to
+  // their lint group). Escaping is a superset of every prior variant, so text
+  // contexts render identically. (report.js keeps its own — it is part of that
+  // file's exported CommonJS test contract.)
+  function escapeHtml(s) {
+    return (s == null ? '' : String(s))
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function formatLastSignIn(ts) {
     if (!ts) return 'Never';
     const d = new Date(ts);
@@ -92,6 +109,7 @@
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      escapeHtml,
       formatLastSignIn,
       dateKeyInTimeZone,
       calendarDaysFromSignInToNowInZone,

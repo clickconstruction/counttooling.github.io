@@ -95,3 +95,14 @@ test('formatLastSignInUserActivity: Today / old-date fallback', { skip: icuSkip 
   assert.ok(!['Today', 'Yesterday'].includes(old) && !/ago$/.test(old), 'expected a localized date string');
   assert.ok(/\d/.test(old));
 });
+
+test('escapeHtml: escapes the full entity superset & < > " \'', () => {
+  assert.strictEqual(f.escapeHtml(`<img src="x" onerror='a&b'>`),
+    '&lt;img src=&quot;x&quot; onerror=&#39;a&amp;b&#39;&gt;');
+});
+
+test('escapeHtml: null/undefined become empty, numbers stringify', () => {
+  assert.strictEqual(f.escapeHtml(null), '');
+  assert.strictEqual(f.escapeHtml(undefined), '');
+  assert.strictEqual(f.escapeHtml(42), '42');
+});

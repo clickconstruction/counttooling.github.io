@@ -3303,7 +3303,7 @@
     const scaleIconSvgHeader = scaleIconSvg.replace('width="18" height="18"', 'width="28" height="28"');
     const setScaleContent = (btn) => {
       const isHeader = btn.id === 'setScale';
-      const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const esc = escapeHtml;
       if (scale) {
         btn.classList.add('scale-set');
         if (isHeader) btn.classList.remove('scale-unset');
@@ -3329,7 +3329,7 @@
     if (scaleDisplay) {
       if (scale) {
         const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const esc = escapeHtml;
         if (scale.label) {
           scaleDisplay.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
         } else {
@@ -3879,7 +3879,7 @@
     el.classList.toggle('pages-titles-truncated', !!state.pagesTitlesTruncated);
     el.innerHTML = '';
     const showEdit = !state.isViewer;
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = escapeHtml;
     state.pages.forEach((p, i) => {
       if (state.hideUnmarkedPagesFromSidebar && !pageHasAnyAnnotations(p)) return;
       const div = document.createElement('div');
@@ -3929,7 +3929,7 @@
   function renderCountersList() {
     const el = document.getElementById('countersList');
     el.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = escapeHtml;
     const showEdit = !state.isViewer;
     const q = (state.counterSearch || '').trim().toLowerCase();
     const filtered = q ? state.counters.filter(c => (c.name || 'Counter').toLowerCase().includes(q)) : state.counters;
@@ -3983,7 +3983,7 @@
   function renderLineTypesList() {
     const el = document.getElementById('lineTypesList');
     el.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = escapeHtml;
     const showEdit = !state.isViewer;
     const q = (state.lineTypeSearch || '').trim().toLowerCase();
     const filtered = q ? state.lineTypes.filter(lt => (lt.name || 'Line').toLowerCase().includes(q)) : state.lineTypes;
@@ -4049,7 +4049,7 @@
     const el = document.getElementById('groupsList');
     if (!el) return;
     el.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = escapeHtml;
     const showEdit = !state.isViewer;
     const groups = state.groups || [];
     groups.forEach(g => {
@@ -4087,7 +4087,7 @@
   function renderLinesList() {
     const el = document.getElementById('linesList');
     el.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = escapeHtml;
     const byType = {};
     state.pages.forEach((p, pi) => {
       if (state.lineTypeSettings?.showOnlyLinesOnCurrentPage && state.pages.length > 0 && pi !== state.currentPage) return;
@@ -4211,7 +4211,7 @@
   function renderSummary() {
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const esc = escapeHtml;
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
@@ -4373,7 +4373,7 @@
       });
     }
     if (!items.length) return;
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const esc = escapeHtml;
     listEl.innerHTML = '<p style="color:var(--text2);">Loading…</p>';
     showModal('summaryCountDetailModal');
     listEl.innerHTML = '';
@@ -8316,6 +8316,7 @@
   App.clearCheckoutExpiredAttention = clearCheckoutExpiredAttention;
   App.resetAutoRecheckoutCounter = (projectId) => resetAutoRecheckoutCounter(projectId);
   App.getSupabase = () => supabase;
+  App.escapeHtml = escapeHtml;   // canonical HTML escaper (format.js)
   App.formatLastSignIn = formatLastSignIn;
   App.formatUserActivityDateTime = formatUserActivityDateTime;
   App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;

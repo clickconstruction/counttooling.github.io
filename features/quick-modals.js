@@ -13,7 +13,7 @@
 
   function populatePlumModal() {
     const mods = getPlumbingModifiers();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = (s) => App.escapeHtml(s);
     const sizeSel = document.getElementById('plumSize');
     const typeSel = document.getElementById('plumType');
     const materialSel = document.getElementById('plumMaterial');
@@ -309,7 +309,7 @@
   }
   function populateCounterQuickCountPanel() {
     const mods = getPlumbingModifiers();
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const esc = (s) => App.escapeHtml(s);
     const sizeSel = document.getElementById('counterQuickCountSize');
     const typeSel = document.getElementById('counterQuickCountType');
     const materialSel = document.getElementById('counterQuickCountMaterial');

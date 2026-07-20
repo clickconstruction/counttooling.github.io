@@ -1268,3 +1268,8 @@
   white-space: nowrap;
   flex: 0 0 auto;
 }
+.room-picker-cols {
+  color: var(--text2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}

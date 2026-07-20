@@ -118,6 +118,8 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     expect(sticky.height).toBe('8');
     expect(sticky.room).toBe((await page.evaluate(() => window.state.rooms[0].id)));
     expect(sticky.listVisible).toBe(true);   // scrollable single-select list
+    // Header row: Room | + New room (middle) | Area | Volume column caption (right).
+    await expect(page.locator('.room-picker-header .room-picker-cols')).toHaveText('Area | Volume');
     expect(sticky.nameHidden).toBe(true);    // name input only in new-room mode
     // The row shows the room's floor area + volume so far on its right edge.
     await expect(page.locator('#roomBoxRoomList .room-picker-item .room-picker-vol')).toHaveText('108 ft² | 864 ft³');

@@ -80,6 +80,9 @@ modules. Candidates in priority order:
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
 | [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend`, and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
 | [canvas-draw.test.js](canvas-draw.test.js) | Node `node:test` unit tests for [canvas-draw.js](canvas-draw.js) — a recording 2D-context Proxy stub + stubbed `Path2D`, geometry/icons globals via `Object.assign(globalThis, require(...))` (10 tests): `hexToRgb` parse/fallback, `lineStyleToDash`, `drawDropMarker` glyph/save-restore/default color, room boxes (label vs "no scale" vs tiny-box skip), and `drawAnnotationsCore` env invariants — selection glow doubles width + shadow (live) vs absent (export), `fontFamily`/`fontScale` flow into labels and notes while counter numbers stay `DM Sans`, note handles gated on `drawNoteHandles`, group dots at `env.dotRadius`, hollow vs solid counter rings + outline, and the frozen paint order; run with `npm run test:unit` |
+| [zoom-ladder.spec.js](zoom-ladder.spec.js) | Playwright regression for the **zoom ladder** (commit-snap to rungs; `snapZoomToRung`/`nextRungUp`/`nextRungDown` in constants.js) — ± buttons step exactly one rung and invert; a wheel gesture keeps a continuous preview but its COMMIT lands on a rung with the cursor anchor preserved (±2px); bouncing between visited rungs adds zero visible-path rasters (cache-miss stat frozen, hits +4) — the point of the feature. `npx playwright test zoom-ladder.spec.js` |
+| [rung-prefetch.spec.js](rung-prefetch.spec.js) | Playwright regression for the **adjacent-rung idle prefetch** — after a commit lands on a rung, `runPdfBitmapPrefetch` warms rung±1 of the current page (before the neighbor-page fit prefetches); asserts the prefetched stat rises and the next `doZoomIn` needs zero new pdf.js render calls (pure blit). `npx playwright test rung-prefetch.spec.js` |
+| [commit-tile.spec.js](commit-tile.spec.js) | Playwright regression for **window-first cold commits** — wraps `pdfPage.render` so full-page rasters resolve ~1.2s late (tile renders run native), then asserts: a cold-rung wheel commit shows the sharp visible-window tile while the old base is still up, the committed zoom is already on a rung, the tile retires when the crisp base paints, and a warm commit (down-rung prefetched — gated on `App.__pdfBitmapCacheKeys`, since the `prefetched` stat is a lifetime counter) blits with no tile. `npx playwright test commit-tile.spec.js` |
 | [crop-tile.spec.js](crop-tile.spec.js) | Playwright regression for the **deep-zoom sharp crop tile** (`#cropCanvas`, `// SECTION: Deep-zoom sharp crop tile` in app.js) — forces an `effectiveDpr` clamp via `App.setCanvasCaps` + zoom 3, then asserts the tile appears with ink after the 200ms debounce, covers the visible window at the right content-space position, respects the render-area budget, sits below the annotation overlay (z-order + DOM order), clears immediately on a page flip (`renderPdf` entry), and retires at a sharp zoom; no console/page errors. `npx playwright test crop-tile.spec.js` |
 | [render-pixels.spec.js](render-pixels.spec.js) | **The pixel-regression safety net** for the draw paths — seeds a fixture takeoff exercising every mark kind (straight + arc quick lines with drops/labels/selection glow, closed polyline, highlight, multiply + scale zones, room box, wrapping note, counters with rings/outline/index numbers, group dots, legend, grid), then compares the raw canvas buffers of the live overlay (`renderAnnotations` → `#annCanvas`) and two export renders (`renderAnnotationsToContext` at export scale with `lineScale`/`markerScale`, and via `annotationsOverride`) against committed baselines in `render-pixels.spec.js-snapshots/` with `maxDiffPixels: 0`. Baselines are machine-rasterized — regenerate on a new machine with `--update-snapshots`. `npx playwright test render-pixels.spec.js` |
 | [features/canvas-repair.js](features/canvas-repair.js) | First feature-file split of the `app.js` IIFE (the `window.App` registry pilot) — the Canvas Repair modal (`openCanvasRepairModal` + `applyCanvasRepair`). Its own classic-script IIFE loaded **after** [app.js](app.js) (and before [report.js](report.js)); reads shared `state`/helpers from `window.App` at call time and registers `App.openCanvasRepairModal`/`App.applyCanvasRepair` back onto it. app.js invokes them via deferred bindings (`() => App.fn()`). See "Feature files / `window.App` registry" below |
@@ -455,58 +458,58 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L620 - Math & Format Helpers
 - L1238 - Coordinate Helpers
 - L1246 - PDF render bitmap cache
-- L1428 - Deep-zoom sharp crop tile
-- L1518 - PDF Rendering
-- L2110 - UI Render Functions
-- L3175 - Inline rename & polyline edit mode
-- L3289 - Modal primitives (showModal / hideModal)
-- L3308 - Toasts & line color picker
-- L3362 - Airboard cloud sync
-- L3395 - Supabase RPC & presence heartbeat
-- L3435 - User activity / event telemetry
-- L3478 - Supabase auth & dev auth
-- L3607 - [sync] Checkout subscription & permission refresh
-- L3617 - Modals & Handlers
-- L3685 - PDF intake (upload, test PDF, hashing)
-- L3693 - Toolbar tool buttons
-- L3819 - Tool sidebar buttons & legend overlay
-- L3936 - Add Line Type modal
-- L4006 - Line color & sidebar handlers
-- L4148 - Polyline modal & drawing
-- L4179 - Zoom bar & page navigation
-- L4205 - Export canvas JSON
-- L4221 - PDF download helpers
-- L4230 - View-link URL helpers & show-highlights/notes
-- L4302 - Custom icon upload handler
-- L4312 - Export & report dropdown menus
-- L4402 - Sidebar drawer toggles
-- L4413 - Mobile actions burger menu pointer & header logo
-- L4425 - User Activity pointer (format.js + features/user-activity.js)
-- L4437 - My Settings pointer (features/my-settings.js)
-- L4460 - Auth & settings entry buttons
-  - L4505 - Project Settings checkout & Save Status bell
-  - L4606 - [sync] Checkout expired recovery
-  - L4662 - [sync] Turn In
-  - L4927 - Share modal pointer & copy-project openers
-  - L4958 - Settings menu actions
-  - L4979 - Auth sign-in form
-  - L5003 - Save Project modal
-  - L5016 - Checkout expired recovery modal wiring
-  - L5121 - Last-session restore prompt
-  - L5128 - Canvas Repair modal wiring
-- L5279 - Canvas Event Handlers
-- L5667 - Event Binding
-- L5677 - Aim loupe (mobile press-hold precise placement)
-- L5816 - Zoom transform preview & commit
-- L5852 - Canvas mouse, wheel & touch handlers
-- L6510 - Global dropdown dismissal & keyboard hotkeys
-- L6745 - [sync] Manual save to cloud
-- L6755 - [sync] Auto-save
-- L6762 - [sync] Local backup (IndexedDB takeoff state)
-- L6895 - [sync] Checkout keep-alive
-- L6909 - App feature registry
-- L7099 - View-only mode
-- L7105 - Init / boot
+- L1450 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1577 - PDF Rendering
+- L2188 - UI Render Functions
+- L3253 - Inline rename & polyline edit mode
+- L3367 - Modal primitives (showModal / hideModal)
+- L3386 - Toasts & line color picker
+- L3440 - Airboard cloud sync
+- L3473 - Supabase RPC & presence heartbeat
+- L3513 - User activity / event telemetry
+- L3556 - Supabase auth & dev auth
+- L3685 - [sync] Checkout subscription & permission refresh
+- L3695 - Modals & Handlers
+- L3763 - PDF intake (upload, test PDF, hashing)
+- L3771 - Toolbar tool buttons
+- L3897 - Tool sidebar buttons & legend overlay
+- L4014 - Add Line Type modal
+- L4084 - Line color & sidebar handlers
+- L4226 - Polyline modal & drawing
+- L4257 - Zoom bar & page navigation
+- L4283 - Export canvas JSON
+- L4299 - PDF download helpers
+- L4308 - View-link URL helpers & show-highlights/notes
+- L4380 - Custom icon upload handler
+- L4390 - Export & report dropdown menus
+- L4480 - Sidebar drawer toggles
+- L4491 - Mobile actions burger menu pointer & header logo
+- L4503 - User Activity pointer (format.js + features/user-activity.js)
+- L4515 - My Settings pointer (features/my-settings.js)
+- L4538 - Auth & settings entry buttons
+  - L4583 - Project Settings checkout & Save Status bell
+  - L4684 - [sync] Checkout expired recovery
+  - L4740 - [sync] Turn In
+  - L5005 - Share modal pointer & copy-project openers
+  - L5036 - Settings menu actions
+  - L5057 - Auth sign-in form
+  - L5081 - Save Project modal
+  - L5094 - Checkout expired recovery modal wiring
+  - L5199 - Last-session restore prompt
+  - L5206 - Canvas Repair modal wiring
+- L5357 - Canvas Event Handlers
+- L5745 - Event Binding
+- L5755 - Aim loupe (mobile press-hold precise placement)
+- L5894 - Zoom transform preview & commit
+- L5967 - Canvas mouse, wheel & touch handlers
+- L6625 - Global dropdown dismissal & keyboard hotkeys
+- L6860 - [sync] Manual save to cloud
+- L6870 - [sync] Auto-save
+- L6877 - [sync] Local backup (IndexedDB takeoff state)
+- L7010 - [sync] Checkout keep-alive
+- L7024 - App feature registry
+- L7215 - View-only mode
+- L7221 - Init / boot
 
 <!-- END SECTION TOC -->
 

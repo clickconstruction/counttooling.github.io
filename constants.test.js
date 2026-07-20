@@ -132,3 +132,44 @@ test('nextRecentColors: tolerates a non-array list and never mutates the input',
   c.nextRecentColors(input, '#123456', PRESETS);
   assert.deepStrictEqual(input, ['#abcdef'], 'input list was not mutated');
 });
+
+const { ZOOM_LADDER_STEP, snapZoomToRung, nextRungUp, nextRungDown } = c;
+
+test('zoom ladder: snap is idempotent, monotone, clamped; up/down step exactly one rung', () => {
+  const lo = 0.2, hi = 4;
+  for (const z of [0.2, 0.25, 0.5, 0.83, 1, 1.07, 1.5, 2.2, 3.9, 4]) {
+    const r = snapZoomToRung(z, lo, hi);
+    assert.ok(r >= lo && r <= hi, 'clamped');
+    assert.ok(Math.abs(snapZoomToRung(r, lo, hi) - r) < 1e-12, 'idempotent');
+    // r is genuinely a rung: lo * step^n for integer n
+    const n = Math.log(r / lo) / Math.log(ZOOM_LADDER_STEP);
+    assert.ok(Math.abs(n - Math.round(n)) < 1e-9 || r === hi, 'on the ladder (or the clamped max)');
+  }
+  // Monotone: snapping preserves order
+  assert.ok(snapZoomToRung(1, lo, hi) <= snapZoomToRung(2, lo, hi));
+  // up/down from a rung step exactly one rung and invert each other
+  const rung = snapZoomToRung(1, lo, hi);
+  const up = nextRungUp(rung, lo, hi);
+  assert.ok(Math.abs(up / rung - ZOOM_LADDER_STEP) < 1e-9);
+  assert.ok(Math.abs(nextRungDown(up, lo, hi) - rung) < 1e-9);
+  // from between rungs: up -> the rung above, down -> the rung below
+  const mid = rung * 1.07;
+  assert.ok(Math.abs(nextRungUp(mid, lo, hi) - up) < 1e-9);
+  assert.ok(Math.abs(nextRungDown(mid, lo, hi) - rung) < 1e-9);
+  // clamps at the ends
+  assert.strictEqual(nextRungDown(lo, lo, hi), lo);
+  assert.strictEqual(nextRungUp(hi, lo, hi), hi);
+  // degenerate input
+  assert.strictEqual(snapZoomToRung(0, lo, hi), lo);
+  assert.strictEqual(snapZoomToRung(NaN, lo, hi), lo);
+});
+
+test('zoom ladder: the clamp ends behave as rungs (drag-to-max commits max)', () => {
+  const lo = 0.2, hi = 4;
+  assert.strictEqual(snapZoomToRung(hi, lo, hi), hi);           // exactly max -> max
+  assert.strictEqual(snapZoomToRung(3.95, lo, hi), hi);         // near max -> max
+  assert.strictEqual(snapZoomToRung(lo, lo, hi), lo);           // exactly min -> min
+  const interior = snapZoomToRung(3.5, lo, hi);
+  assert.ok(interior < hi, 'well below max stays on an interior rung');
+  assert.ok(Math.abs(nextRungDown(hi, lo, hi) - 0.2 * Math.pow(ZOOM_LADDER_STEP, 21)) < 1e-9);
+});

@@ -763,6 +763,12 @@
   // features (line widths, marker dots) draw slightly larger only *beyond* the cap,
   // i.e. only where the canvas used to go black — benign.
   let currentEffDpr = window.devicePixelRatio || 1;     // refreshed by renderPdf + renderAnnotations
+  // The zoom the pdfCanvas BUFFER represents. state.zoom stays continuous
+  // (Wendi's ask); when a commit is served from a cached ladder-rung bitmap,
+  // the buffer is at the rung and CSS scales the <=7% residual — so every
+  // buffer-space consumer (toCanvas, the overlay env, the aim loupe blits)
+  // must use THIS, never state.zoom. Refreshed by every renderPdf paint.
+  let currentRenderZoom = 1;
   const FALLBACK_MAX_DIM = 8192;
   const FALLBACK_MAX_AREA = 16777216;                   // ~4096^2 — safe for old iOS Safari
   let _canvasCaps = null;
@@ -836,7 +842,7 @@
     return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea: caps.maxArea * renderAreaSafety });
   }
 
-  function toCanvas(p) { const scale = state.zoom * currentEffDpr; return { x: p.x * scale, y: p.y * scale }; }
+  function toCanvas(p) { const scale = currentRenderZoom * currentEffDpr; return { x: p.x * scale, y: p.y * scale }; }   // buffer space — currentRenderZoom, NOT state.zoom (rung blits)
 
   function canvasToPdf(canvasX, canvasY) {
     return { x: (canvasX - state.pan.x) / state.zoom, y: (canvasY - state.pan.y) / state.zoom };
@@ -1388,12 +1394,14 @@
     const curPage = state.pages[state.currentPage];
     if (curPage && curPage.pdfPage) {
       const maxZ = getMaxZoom();
-      if (Math.abs(snapZoomToRung(state.zoom, 0.2, maxZ) - state.zoom) < 1e-9) {
-        const up = nextRungUp(state.zoom, 0.2, maxZ);
-        const down = nextRungDown(state.zoom, 0.2, maxZ);
-        if (Math.abs(up - state.zoom) > 1e-9) candidates.push({ page: curPage, zoom: up });
-        if (Math.abs(down - state.zoom) > 1e-9) candidates.push({ page: curPage, zoom: down });
-      }
+      // state.zoom is continuous; the rung NEAREST it plus its neighbors are
+      // the bitmaps the next commit in either direction will be served from.
+      const rung0 = snapZoomToRung(state.zoom, 0.2, maxZ);
+      candidates.push({ page: curPage, zoom: rung0 });   // loop below skips it when already cached
+      const up = nextRungUp(rung0, 0.2, maxZ);
+      const down = nextRungDown(rung0, 0.2, maxZ);
+      if (Math.abs(up - rung0) > 1e-9) candidates.push({ page: curPage, zoom: up });
+      if (Math.abs(down - rung0) > 1e-9) candidates.push({ page: curPage, zoom: down });
     }
     for (const idx of [state.currentPage + 1, state.currentPage - 1]) {
       const page = state.pages[idx];
@@ -1471,11 +1479,13 @@
   let cropTileTask = null;
   let cropTileTimer = null;
   let cropTileKey = null;              // key of the tile currently shown
+  let cropTileOnDone = null;           // pending force-mode chain (the commit's full render)
   const CROP_TILE_DELAY_MS = 200;      // settle time after render/pan before sharpening
   const CROP_TILE_MIN_DEFICIT = 1.15;  // only sharpen when dpr/effDpr is meaningfully soft
   function clearCropTile() {
     if (cropTileTimer) { clearTimeout(cropTileTimer); cropTileTimer = null; }
     if (cropTileTask) { try { cropTileTask.cancel(); } catch (_) { /* settling */ } cropTileTask = null; }
+    cropTileOnDone = null;   // the caller that clears owns (or abandons) the follow-up render
     cropTileKey = null;
     if (cropCanvas && cropCanvas.width) { cropCanvas.width = 0; cropCanvas.height = 0; }
     if (cropCanvas) cropCanvas.style.display = 'none';
@@ -1490,6 +1500,10 @@
     const onDone = (options && options.onDone) || null;
     cropTileTimer = null;
     if (!cropCanvas) { if (onDone) onDone(); return; }
+    // An idle/pan-end call must never disturb a commit tile whose chained
+    // full render is still pending — clearing it here dropped the chain and
+    // left the view stuck on the stretched preview (the black-screen bug).
+    if (!force && cropTileOnDone) return;
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) { clearCropTile(); if (onDone) onDone(); return; }
     const dpr = window.devicePixelRatio || 1;
@@ -1540,6 +1554,7 @@
       if (bw * bh > 0.7 * vpT.width * vpT.height) { onDone && onDone(); return; }
     }
     if (cropTileTask) { try { cropTileTask.cancel(); } catch (_) { /* settling */ } cropTileTask = null; }
+    cropTileOnDone = onDone;   // this call owns the chain from here on
     cropCanvas.style.display = 'none';
     cropCanvas.width = bw;
     cropCanvas.height = bh;
@@ -1554,28 +1569,50 @@
     const task = page.pdfPage.render({ canvasContext: cropCanvas.getContext('2d'), viewport });
     cropTileTask = task;
     task.promise.then(() => {
-      if (cropTileTask !== task) { if (onDone) onDone(); return; }   // superseded while rastering
+      if (cropTileTask !== task) return;   // superseded — the new owner runs its own chain
       cropTileTask = null;
+      const chain = cropTileOnDone; cropTileOnDone = null;
       const cur = state.pages[state.currentPage];
       if (!cur || cur.pdfPage !== key.pdfPage || (cur.rotation ?? 0) !== key.rot || state.zoom !== key.zoom) {
         clearCropTile();
-        if (onDone) onDone();
+        if (chain) chain();
         return;
       }
       cropTileKey = key;
       cropCanvas.style.display = '';
-      if (onDone) onDone();
+      if (chain) chain();
     }).catch((err) => {
-      if (cropTileTask === task) cropTileTask = null;
+      // A superseded task must not touch the canvas the replacement is
+      // rendering into, and its chain (if any) already moved to the new owner.
+      if (cropTileTask !== task) return;
+      cropTileTask = null;
+      const chain = cropTileOnDone; cropTileOnDone = null;
       cropCanvas.width = 0; cropCanvas.height = 0;
-      // A cancel means a newer gesture/render took over — it owns the follow-up.
+      // A cancel came from clearCropTile — the clearer owns the follow-up.
       if (err && err.name === 'RenderingCancelledException') return;
-      if (onDone) onDone();   // sharpening is best-effort; still run the full raster
+      if (chain) chain();   // sharpening is best-effort; still run the full raster
     });
   }
 
+  // After a commit was served from a RUNG bitmap (<=7% CSS residual), settle
+  // to pixel-perfect once the user goes idle: re-render at the exact display
+  // zoom. Cancelled by any newer render (renderPdf entry clears the timer).
+  let pdfExactRefineTimer = null;
+  const PDF_EXACT_REFINE_MS = 600;
+  function schedulePdfExactRefine(forZoom) {
+    if (pdfExactRefineTimer) clearTimeout(pdfExactRefineTimer);
+    pdfExactRefineTimer = setTimeout(() => {
+      pdfExactRefineTimer = null;
+      if (state.zoom !== forZoom) return;          // the user moved on
+      if (pdfRenderTask || cropTileTask) return;   // busy — the next paint reschedules if still residual
+      renderPdf({ exactOnly: true });
+    }, PDF_EXACT_REFINE_MS);
+  }
+
   // SECTION: PDF Rendering
-  function renderPdf() {
+  function renderPdf(opts) {
+    const exactOnly = !!(opts && opts.exactOnly);   // idle exact-refine: skip the rung fallback
+    if (pdfExactRefineTimer) { clearTimeout(pdfExactRefineTimer); pdfExactRefineTimer = null; }
     cancelPdfBitmapPrefetch();   // real rendering always preempts speculation
     // Tile handling: a tile that matches the CURRENT target (page, rotation,
     // zoom) stays up through the raster — that's the window-first commit
@@ -1619,9 +1656,6 @@
     pdfRenderPending = false;
     pdfRenderId++;
     const thisRenderId = pdfRenderId;
-    const eff = effectiveDpr(page, state.zoom);   // clamped dpr so the buffer fits the canvas cap
-    currentEffDpr = eff;
-    const scale = state.zoom * eff;
     // Capture the cache-key tuple NOW: rotation/pdfPage/zoom can all change
     // while the async raster runs (undo rewrites rotation in place,
     // prepare-pdf rebinds pdfPage, queued interactions move zoom/page). The
@@ -1630,20 +1664,42 @@
     // race (task settles before cancel() lands).
     const keyPdfPage = page.pdfPage;
     const keyRot = page.rotation ?? 0;
-    const keyZoom = state.zoom;
+    const keyZoom = state.zoom;                      // the DISPLAY zoom (continuous)
+    const eff = effectiveDpr(page, keyZoom);         // clamped dpr so the buffer fits the canvas cap
+    currentEffDpr = eff;
+    const scale = keyZoom * eff;
     const viewport = keyPdfPage.getViewport({ scale, rotation: keyRot });
 
-    // Cache hit: blit the retained bitmap — no pdf.js, fully synchronous.
-    const cached = pdfBitmapCacheGet(keyPdfPage, keyRot, keyZoom, eff);
+    // Cache lookup ladder: the EXACT display zoom first; failing that, the
+    // nearest ladder rung — a rung bitmap serves any display zoom within
+    // ~7% via CSS residual scaling (state.zoom stays continuous; the ladder
+    // is raster currency only). A rung blit schedules an idle exact-refine
+    // so the view still lands pixel-perfect once the user settles.
+    let cached = pdfBitmapCacheGet(keyPdfPage, keyRot, keyZoom, eff);
+    let blitZoom = keyZoom;
+    let blitEff = eff;
+    if (!cached && !exactOnly) {
+      const rung = snapZoomToRung(keyZoom, 0.2, getMaxZoom());
+      if (Math.abs(rung - keyZoom) > 1e-9) {
+        const effR = effectiveDpr(page, rung);
+        const c2 = pdfBitmapCacheGet(keyPdfPage, keyRot, rung, effR);
+        if (c2) { cached = c2; blitZoom = rung; blitEff = effR; }
+      }
+    }
     if (cached) {
       lastRenderedZoom = keyZoom;
       lastPaintedPdfPage = keyPdfPage;
       lastPaintedRot = keyRot;
+      currentEffDpr = blitEff;
+      currentRenderZoom = blitZoom;
       updateContainerTransform();
       pdfCanvas.width = cached.w;
       pdfCanvas.height = cached.h;
-      pdfCanvas.style.width = cached.w / eff + 'px';
-      pdfCanvas.style.height = cached.h / eff + 'px';
+      // CSS box always represents the DISPLAY zoom; a rung buffer carries a
+      // <=7% residual scale here (buffer px = pagePts·rung·eff, CSS px =
+      // pagePts·display).
+      pdfCanvas.style.width = (cached.w / blitEff) * (keyZoom / blitZoom) + 'px';
+      pdfCanvas.style.height = (cached.h / blitEff) * (keyZoom / blitZoom) + 'px';
       pdfCanvas.getContext('2d').drawImage(cached.bitmap, 0, 0);
       // A blit that reads back blank is the same memory-pressure signal as the
       // full path's guard: drop the entry, free the whole cache, ratchet, and
@@ -1658,12 +1714,13 @@
         return;
       }
       pdfBitmapCacheStats.hits++;
-      // The crisp base at this zoom just painted: a tile authored against a
+      // The base at this display zoom just painted: a tile authored against a
       // DIFFERENT base zoom is now in the wrong container units — retire it.
       if (cropTileKey && cropTileKey.baseZoom !== lastRenderedZoom) clearCropTile();
       renderAnnotations();
       schedulePdfBitmapPrefetch();
       scheduleCropTile();
+      if (Math.abs(blitZoom - keyZoom) > 1e-9) schedulePdfExactRefine(keyZoom);   // rung blit -> settle crisp when idle
       if (pdfRenderPending) renderPdf();
       return;
     }
@@ -1678,6 +1735,7 @@
     // routes through renderPdf — must keep the correct pixels it already
     // shows instead of downgrading them to an upscaled old bitmap for the
     // whole raster (the "blurry after placing drops / deleting lines" bug).
+    currentRenderZoom = keyZoom;   // the raster below is exact — buffer will be display-zoom space
     const canvasIsCurrent = pdfCanvas.width > 0 &&
       lastPaintedPdfPage === keyPdfPage &&
       lastPaintedRot === keyRot &&
@@ -1830,7 +1888,7 @@
     annCanvas.style.width = pdfCanvas.style.width;
     annCanvas.style.height = pdfCanvas.style.height;
     const ctx = annCanvas.getContext('2d');
-    const z = state.zoom;
+    const z = currentRenderZoom;   // buffer space (rung blits render at the rung, CSS carries the residual)
     ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
     // Hide-marks mode: the overlay is sized + cleared (so the bare PDF shows
     // through) but nothing is painted on it. Toggle via the header eye button.
@@ -2096,11 +2154,11 @@
         const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
         ann.legend = { x: vp.width - 110, y: 16, w: 100, h: 56 };
       }
-      const scale = state.zoom * currentEffDpr;
+      const scale = currentRenderZoom * currentEffDpr;
       canvasDraw.drawLegend(ctx, page, state.currentPage, ann, scale, toCanvas);
     }
     if (state.showGridOverlay) {
-      const scale = state.zoom * currentEffDpr;
+      const scale = currentRenderZoom * currentEffDpr;
       canvasDraw.drawGrid(ctx, page, state.currentPage, scale, toCanvas);
     }
   }
@@ -4255,8 +4313,8 @@
   }
 
   // SECTION: Zoom bar & page navigation
-  function doZoomOut() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = nextRungDown(state.zoom, 0.2, getMaxZoom()); renderPdf(); syncZoomIndicators(); }
-  function doZoomIn() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = nextRungUp(state.zoom, 0.2, getMaxZoom()); renderPdf(); syncZoomIndicators(); }
+  function doZoomOut() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.max(0.2, state.zoom - 0.1); renderPdf(); syncZoomIndicators(); }
+  function doZoomIn() { if (wheelZoomCommitTimer) { clearTimeout(wheelZoomCommitTimer); wheelZoomCommitTimer = null; } state.zoom = Math.min(getMaxZoom(), state.zoom + 0.1); renderPdf(); syncZoomIndicators(); }
   document.getElementById('zoomOut').onclick = () => doZoomOut();
   document.getElementById('zoomIn').onclick = () => doZoomIn();
   document.getElementById('rotatePage').onclick = () => rotatePage90();
@@ -5895,49 +5953,36 @@
   let lastRenderedZoom = 1.0;
   let wheelZoomCommitTimer = null;
   let pinchZoomPending = false;
-  // Snap the committed zoom to the nearest ladder rung (constants.js
-  // snapZoomToRung), adjusting pan so `anchor` (wrapper-space px; last wheel
-  // cursor, else the wrapper center) stays fixed. Gesture previews remain
-  // continuous — only the commit quantizes, so the bitmap cache sees the same
-  // zoom values again and again and repeat zooming becomes a blit.
-  function snapCommitZoom(anchor) {
-    const snapped = snapZoomToRung(state.zoom, 0.2, getMaxZoom());
-    if (Math.abs(snapped - state.zoom) < 1e-6) { state.zoom = snapped; return; }
-    let pt = anchor;
-    if (!pt) {
-      const r = (cWrapper || pdfCanvas)?.getBoundingClientRect?.();
-      pt = r ? { x: r.width / 2, y: r.height / 2 } : { x: 0, y: 0 };
-    }
-    const pdfX = (pt.x - state.pan.x) / state.zoom;
-    const pdfY = (pt.y - state.pan.y) / state.zoom;
-    state.pan.x = pt.x - pdfX * snapped;
-    state.pan.y = pt.y - pdfY * snapped;
-    state.zoom = snapped;
-  }
-  // Shared gesture-commit render: warm rungs blit straight through renderPdf;
-  // a COLD rung paints the visible-window tile first (bounded, screen-sized
-  // raster at the new zoom — sharp pixels under the cursor fast), then chains
-  // the full-page raster. lastRenderedZoom is deliberately NOT advanced until
-  // the full render kicks, so the preview transform keeps the old base scaled
-  // correctly underneath the tile while the slow raster runs.
+  // Shared gesture-commit render. state.zoom stays CONTINUOUS (the ladder is
+  // raster currency only — see renderPdf's lookup): a commit that the cache
+  // can serve (exact key or the nearest rung's bitmap) blits straight through
+  // renderPdf; a genuinely cold commit paints the visible-window tile first
+  // (bounded, screen-sized raster at the new zoom — sharp pixels under the
+  // cursor fast), then chains the full-page raster. lastRenderedZoom is NEVER
+  // advanced here — renderPdf owns it at paint time; pre-setting it while a
+  // raster was in flight snapped the preview transform to 1 around old
+  // content and flashed wrong-scale/dark margins (the black-screen bug).
   function commitZoomRender() {
     if (Math.abs(state.zoom - lastRenderedZoom) <= 0.001) {
-      updateContainerTransform();   // snapped back onto the already-rendered rung — settle the preview
+      updateContainerTransform();   // landed back on the already-rendered zoom — settle the preview
       return;
     }
     const page = state.pages[state.currentPage];
     if (page && page.pdfPage && !pdfRenderTask) {
-      const eff = effectiveDpr(page, state.zoom);
-      if (!pdfBitmapCacheGet(page.pdfPage, page.rotation ?? 0, state.zoom, eff)) {
-        renderCropTile({ force: true, onDone: () => { lastRenderedZoom = state.zoom; renderPdf(); } });
+      const rot = page.rotation ?? 0;
+      const warm = pdfBitmapCacheGet(page.pdfPage, rot, state.zoom, effectiveDpr(page, state.zoom)) ||
+        (() => {
+          const rung = snapZoomToRung(state.zoom, 0.2, getMaxZoom());
+          return Math.abs(rung - state.zoom) > 1e-9 && pdfBitmapCacheGet(page.pdfPage, rot, rung, effectiveDpr(page, rung));
+        })();
+      if (!warm) {
+        renderCropTile({ force: true, onDone: () => renderPdf() });
         return;
       }
     }
-    lastRenderedZoom = state.zoom;
     renderPdf();
   }
   function commitPinchZoom() {
-    snapCommitZoom(null);
     commitZoomRender();
     syncZoomIndicators();   // nothing in the full updateUI() depends on zoom — see the gesture spec
   }
@@ -5959,7 +6004,6 @@
   function commitWheelZoom() {
     if (wheelZoomCommitTimer) clearTimeout(wheelZoomCommitTimer);
     wheelZoomCommitTimer = null;
-    snapCommitZoom(wheelZoomCursor);
     commitZoomRender();
     syncZoomIndicators();   // nothing in the full updateUI() depends on zoom — see the gesture spec
   }

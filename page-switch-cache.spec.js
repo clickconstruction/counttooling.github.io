@@ -135,10 +135,12 @@ test.describe('Page-switch bitmap cache', () => {
   test('idle prefetch caches the neighbor; visiting it needs no new raster', async ({ page }) => {
     const errors = [];
     await boot(page, errors);
-    // Landing render schedules a ~250ms prefetch of page ±1. Give it time.
-    await page.waitForFunction(() => window.App.__pdfBitmapCacheStats().prefetched >= 1, null, { timeout: 5000 });
+    // Landing render schedules idle prefetches: the current page's zoom rungs
+    // first (the zoom hot path), THEN the neighbor pages — so wait for page
+    // 1's raster specifically rather than the first prefetch of any kind.
+    await page.waitForFunction(() => window.__renderCalls[1] > 0, null, { timeout: 15000 });
     const p1RendersAfterPrefetch = await page.evaluate(() => window.__renderCalls[1]);
-    expect(p1RendersAfterPrefetch).toBeGreaterThan(0);   // the prefetch itself rasterized page 1
+    expect(p1RendersAfterPrefetch).toBeGreaterThan(0);   // the prefetch rasterized page 1
     await page.locator('#nextPage').click();
     await settle(page);
     const p1RendersAfterVisit = await page.evaluate(() => window.__renderCalls[1]);

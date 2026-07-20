@@ -68,15 +68,12 @@ test.describe('Window-first cold zoom commit', () => {
       // Sample mid-flight, well inside the 1.2s full-raster delay.
       await new Promise((r) => setTimeout(r, 600));
       const crop = /** @type {HTMLCanvasElement} */ (document.getElementById('cropCanvas'));
-      // eslint-disable-next-line no-undef
-      const onRung = Math.abs(snapZoomToRung(window.state.zoom, 0.2, window.App.getMaxZoom()) - window.state.zoom) < 1e-9;
       return {
-        onRung,
+        zoomAtCommit: window.state.zoom,
         tileVisible: crop.style.display !== 'none' && crop.width > 0,
         baseUnchanged: pdfC.width === baseBufBefore.w && pdfC.height === baseBufBefore.h,
       };
     });
-    expect(mid.onRung).toBe(true);
     expect(mid.tileVisible).toBe(true);    // sharp window is up while the full raster crawls
     expect(mid.baseUnchanged).toBe(true);  // full-page base hasn't swapped yet
 
@@ -95,8 +92,9 @@ test.describe('Window-first cold zoom commit', () => {
     // `prefetched` stat is a lifetime counter — boot-time prefetches from
     // before our cache clear count toward it, so it can't be used as a gate;
     // the slow-raster wrapper delays prefetches too, hence the long timeout).
+    // The rung nearest the cold zoom, one down — what a small zoom-out commit will be served from.
     // eslint-disable-next-line no-undef
-    const downRung = await page.evaluate((z) => nextRungDown(z, 0.2, window.App.getMaxZoom()), zoomAfterCold);
+    const downRung = await page.evaluate((z) => nextRungDown(snapZoomToRung(z, 0.2, window.App.getMaxZoom()), 0.2, window.App.getMaxZoom()), zoomAfterCold);
     await page.waitForFunction(
       (dz) => window.App.__pdfBitmapCacheKeys().some((k) => Math.abs(k.zoom - dz) < 1e-6),
       downRung,
@@ -120,9 +118,7 @@ test.describe('Window-first cold zoom commit', () => {
         hitsGained: window.App.__pdfBitmapCacheStats().hits - hitsBefore,
       };
     });
-    // eslint-disable-next-line no-undef
-    const expectedDown = await page.evaluate((z) => nextRungDown(z, 0.2, window.App.getMaxZoom()), zoomAfterCold);
-    expect(warm.zoom).toBeCloseTo(expectedDown, 6);   // committed onto the prefetched rung below
+    expect(warm.zoom).toBeLessThan(zoomAfterCold);    // continuous value, one tick out
     expect(warm.tileVisible).toBe(false);             // warm path: no tile, straight blit
     expect(warm.hitsGained).toBeGreaterThanOrEqual(1);
 

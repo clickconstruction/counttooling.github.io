@@ -83,18 +83,23 @@
     formatters; after constants.js), [icon-render.js](icon-render.js) (icon
     geometry/render-rule helpers; after icons.js),
     [line-metrics.js](line-metrics.js) (line length/scale math; after
-    geometry.js), [save-utils.js](save-utils.js) (pure save/sync helpers),
+    geometry.js), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
+    both `renderAnnotations` and `renderAnnotationsToContext` are thin
+    env-builders over it, so a new mark kind is drawn once; after geometry.js +
+    icons.js; guarded by the [render-pixels.spec.js](render-pixels.spec.js)
+    pixel baselines), [save-utils.js](save-utils.js) (pure save/sync helpers),
     [save-engine.js](save-engine.js) (the save/sync engine module —
     `createSaveEngine(ctx)`; app.js instantiates it with live-value
     accessors and keeps same-named wrappers; staged extraction, Stage 1:
     global force reload + checkout keep-alive).
-  - [app.js](app.js) — the main IIFE (~14k lines), the bulk of the app
+  - [app.js](app.js) — the main IIFE (~7.1k lines), the bulk of the app
     logic. Resolves the sibling modules' values by bare name, publishes the
     shared surface onto the `window.App` registry near its tail
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **33 `features/*.js` registry files**, after app.js and before
+  - **41 `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -127,6 +132,7 @@
   [save-utils.test.js](save-utils.test.js), [idb.test.js](idb.test.js),
   [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js),
   [line-metrics.test.js](line-metrics.test.js),
+  [canvas-draw.test.js](canvas-draw.test.js),
   [save-engine.test.js](save-engine.test.js)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
@@ -190,7 +196,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~14k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~7.1k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -211,7 +217,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~14k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~7.1k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").

@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(canvas-draw): unify the two annotation draw paths behind one core
+
+The PDF Rendering region's structural duplication — `renderAnnotations` (live
+overlay, ~620 lines) and `renderAnnotationsToContext` (export/thumbnail, ~450
+lines) painting the same eight mark kinds in two coordinate spaces — is gone.
+New [canvas-draw.js](canvas-draw.js) (766 lines) exports `createCanvasDraw(deps)`
+(the save-engine seam recipe: app.js instantiates once with live-value accessor
+arrows) plus the pure `drawDropMarker`/`hexToRgb`/`lineStyleToDash`. The factory
+owns `drawAnnotationsCore(ctx, ann, env)` — ONE painter for quickLines →
+polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes →
+counterMarkers — where `env` is the explicit **divergence register** between the
+paths (transform, constant-screen vs export-scaled line width, font scale, label
+pad, dot radius, counter sizes, `DM Sans` vs `sans-serif`, selection glow, note
+handles; historical quirks preserved and commented). `drawRoomBoxesToContext`,
+`drawLegend`, and `drawGrid` moved in too. Both former paths are now thin
+env-builders with frozen signatures (the 5-arg `renderAnnotationsToContext`
+contract consumed by export-pdfs/output/pdf-bundle/summary-detail is untouched)
+— **a new annotation kind is drawn once**. Executed in four gated stages:
+(0) [render-pixels.spec.js](render-pixels.spec.js), a pixel-regression safety
+net comparing the raw canvas buffers of both paths against committed baselines
+at `maxDiffPixels: 0` over a fixture exercising every mark kind; (1) pure moves;
+(2) core + export rewire; (3) live rewire; (4) legend/grid + docs. Every stage
+landed pixel-identical. [canvas-draw.test.js](canvas-draw.test.js) adds 10 node
+tests (recording 2D-context Proxy stub): env invariants (selection glow, font
+family flow, note-handle gating, dot radius, ring solid/hollow, paint order) +
+the pure helpers. app.js 8,134 → 7,147 lines; the PDF Rendering section 1,576 →
+589 (what remains is genuinely live-path: `renderPdf`, the scale-reference UI,
+the in-progress rubber-band previews).
+
+---
+
 ## feat(room-sizer): the Room Sizer — room boxes with heights and volumetric totals
 
 First HVAC-oriented feature. A new header tool (cube icon, `TOOL.ROOM`, hotkey

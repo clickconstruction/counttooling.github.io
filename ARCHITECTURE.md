@@ -1,10 +1,10 @@
 # ClickCount — Code Map for AI Navigation
 
 Use this file to locate code in the app. The HTML shell + every modal live in
-[app/index.html](app/index.html) (~2.3k lines, served at `/app/`; the repo-root
+[app/index.html](app/index.html) (~2.4k lines, served at `/app/`; the repo-root
 [index.html](index.html) is the static marketing landing); the bulk of the app
 logic (the main JS
-IIFE) lives in [app.js](app.js) (~14k lines, slimmed from ~16.2k as the pure
+IIFE) lives in [app.js](app.js) (~7.1k lines, slimmed from ~16.2k as the pure
 modules + the `window.App` feature-file splits were pulled out). The core data
 model and invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
 navigation map plus the catalog of features built on top of that core.
@@ -12,16 +12,50 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 [CHANGELOG.md](CHANGELOG.md).
 
 > Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
-> is ~14k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> is ~7.1k lines and edits shift them constantly. Navigate by the `// SECTION:`
 > markers in the code and by the grep patterns in the Search Hints table below.
+
+## Large-file map (decomposition status)
+
+Current first-party line counts (`wc -l`, 2026-07-20 — refresh when they
+drift; excludes `vendor/`, `node_modules/`, generated files, and tests/specs).
+Use this table to decide where the next decomposition effort pays off — and
+where it doesn't.
+
+| File | Lines | Status / verdict |
+|------|------:|------------------|
+| [app.js](app.js) | 7,147 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 2,913 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
+| [app/index.html](app/index.html) | 2,394 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,275 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 965 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
+| [annotation-model.js](annotation-model.js) | 566 | Done — extracted canvas/annotation data model + node tests. |
+| [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
+| [report.js](report.js) | 513 | Self-contained report builder with a frozen `window.*` contract. Leave. |
+| `features/*.js` (41 files) | 9,872 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+
+### What's left inside app.js (by `// SECTION:` size)
+
+The regions below account for ~3.5k of the 7.1k lines; every other section is
+already <300 lines — wiring, boot, and thin wrappers over the extracted
+modules. Candidates in priority order:
+
+| Region | Lines | Assessment |
+|--------|------:|------------|
+| PDF Rendering | ~589 | **DONE (2026-07-20)** — was ~1,576. The duplicated draw logic (`renderAnnotations` live / `renderAnnotationsToContext` export) was unified into [canvas-draw.js](canvas-draw.js)'s `drawAnnotationsCore(ctx, ann, env)`; both callers are now thin env-builders, and `drawDropMarker`/`drawRoomBoxesToContext`/`drawLegend`/`drawGrid`/`hexToRgb`/`lineStyleToDash` moved with it. What remains here is `renderPdf` (the pdf.js raster + bitmap-cache blit), the live-only scale-reference UI, and the in-progress rubber-band previews — all genuinely live-path code. Guarded by [render-pixels.spec.js](render-pixels.spec.js) (pixel baselines) + [canvas-draw.test.js](canvas-draw.test.js). |
+| UI Render Functions | ~1,065 | Second candidate. `updateUI` (~470 lines) plus the sidebar list renderers (`renderCanvasSwitcher`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `renderLinesList`, `renderSummary`). The list renderers are separable per-list as feature files (the summary-detail split already took `renderSummary`'s detail modal); `updateUI` itself stays core. |
+| Canvas mouse, wheel & touch handlers + Canvas Event Handlers + Aim loupe | ~1,160 combined | The input layer — the most state-entangled code in the file (drag state, tool modes, gesture arbitration) with the lowest unit-test leverage. Extract **last**, if ever, as an input-controller seam module. |
+| Math & Format Helpers | ~617 | Mostly *already* thin wrappers over geometry/line-metrics/annotation-model, plus the status/footer-totals renderers. Low yield — mine stray pure helpers (`getNoteRotationRad`, `formatSaveTime*`) into format.js/geometry.js opportunistically; don't force it. |
+| The `[sync]` sections (Turn In, recovery wiring, local backup, …) | ~750 combined | Modal/UX wiring over the save-engine seam — the engine owns the logic. Leave. |
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.3k lines) |
+| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines) |
 | [index.html](index.html) | The **static marketing landing** at `/` — plain HTML sharing `marketing.css`, no app JS, outside the SW scope; forwards old `/?t=`/`?devAuth=1` links to `/app/` |
-| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~13.5k lines, slimmed from ~16k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
+| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~7.1k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals **CUSTOM_ICONS moved out** to [icons-custom.js](icons-custom.js) (generated; loads right after this file) |
 | [icons-custom.js](icons-custom.js) | **The GENERATED bundled custom-icon data** — the `CUSTOM_ICONS` array (79KB, `{value, viewBox, name}` literals sourced from `my-counters/*.svg`). `npm run build:icons` ([scripts/build-custom-icons.js](scripts/build-custom-icons.js)) overwrites the file wholesale — no more paste-into-icons.js step, and regenerations stop churning the 246KB icons.js. Classic `<script src>` loaded between [icons.js](icons.js) and [icon-render.js](icon-render.js) (which builds `CUSTOM_ICON_META` from `CUSTOM_ICONS` at parse time — the load-order constraint). Guarded CommonJS footer for the Node tests + the eslint derived-globals wiring |
@@ -44,6 +78,9 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
 | [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
+| [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend`, and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
+| [canvas-draw.test.js](canvas-draw.test.js) | Node `node:test` unit tests for [canvas-draw.js](canvas-draw.js) — a recording 2D-context Proxy stub + stubbed `Path2D`, geometry/icons globals via `Object.assign(globalThis, require(...))` (10 tests): `hexToRgb` parse/fallback, `lineStyleToDash`, `drawDropMarker` glyph/save-restore/default color, room boxes (label vs "no scale" vs tiny-box skip), and `drawAnnotationsCore` env invariants — selection glow doubles width + shadow (live) vs absent (export), `fontFamily`/`fontScale` flow into labels and notes while counter numbers stay `DM Sans`, note handles gated on `drawNoteHandles`, group dots at `env.dotRadius`, hollow vs solid counter rings + outline, and the frozen paint order; run with `npm run test:unit` |
+| [render-pixels.spec.js](render-pixels.spec.js) | **The pixel-regression safety net** for the draw paths — seeds a fixture takeoff exercising every mark kind (straight + arc quick lines with drops/labels/selection glow, closed polyline, highlight, multiply + scale zones, room box, wrapping note, counters with rings/outline/index numbers, group dots, legend, grid), then compares the raw canvas buffers of the live overlay (`renderAnnotations` → `#annCanvas`) and two export renders (`renderAnnotationsToContext` at export scale with `lineScale`/`markerScale`, and via `annotationsOverride`) against committed baselines in `render-pixels.spec.js-snapshots/` with `maxDiffPixels: 0`. Baselines are machine-rasterized — regenerate on a new machine with `--update-snapshots`. `npx playwright test render-pixels.spec.js` |
 | [features/canvas-repair.js](features/canvas-repair.js) | First feature-file split of the `app.js` IIFE (the `window.App` registry pilot) — the Canvas Repair modal (`openCanvasRepairModal` + `applyCanvasRepair`). Its own classic-script IIFE loaded **after** [app.js](app.js) (and before [report.js](report.js)); reads shared `state`/helpers from `window.App` at call time and registers `App.openCanvasRepairModal`/`App.applyCanvasRepair` back onto it. app.js invokes them via deferred bindings (`() => App.fn()`). See "Feature files / `window.App` registry" below |
 | [canvas-repair.spec.js](canvas-repair.spec.js) | Playwright regression for the registry pilot — uploads `test-2pages.pdf`, adds a page-0 marker, asserts `window.App.openCanvasRepairModal`/`applyCanvasRepair` are functions and `App.state === window.state`, opens the modal + clicks `#canvasRepairApply` (no-op default mapping), and asserts the marker survives with no console / page errors; `npx playwright test canvas-repair.spec.js` |
 | [features/note.js](features/note.js) | Second feature-file split (`window.App` registry pilot #2) — the Note add/edit modal (`openNoteModal` + its `noteModalCancel`/`noteModalDone` button bindings). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openNoteModal`, and binds the modal's Cancel/Done at load. app.js's 5 inbound call sites (canvas click / dblclick / context-menu / touch handlers) call it via `App.openNoteModal(...)` |
@@ -145,7 +182,7 @@ resolves `app.js`'s output via `window.*`.
 
 ### Feature files / `window.App` registry
 
-`app.js` is one ~14k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
+`app.js` is one ~7.1k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
 are closure-locals, so a feature file in a separate `<script>` cannot see them
 by bare name. To split it incrementally without a build step, `app.js` publishes
 a small, named contract onto a shared global registry, and feature files read
@@ -418,56 +455,56 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1237 - Coordinate Helpers
 - L1245 - PDF render bitmap cache
 - L1412 - PDF Rendering
-- L2988 - UI Render Functions
-- L4053 - Inline rename & polyline edit mode
-- L4167 - Modal primitives (showModal / hideModal)
-- L4186 - Toasts & line color picker
-- L4240 - Airboard cloud sync
-- L4273 - Supabase RPC & presence heartbeat
-- L4313 - User activity / event telemetry
-- L4356 - Supabase auth & dev auth
-- L4485 - [sync] Checkout subscription & permission refresh
-- L4495 - Modals & Handlers
-- L4563 - PDF intake (upload, test PDF, hashing)
-- L4571 - Toolbar tool buttons
-- L4697 - Tool sidebar buttons & legend overlay
-- L4814 - Add Line Type modal
-- L4884 - Line color & sidebar handlers
-- L5026 - Polyline modal & drawing
-- L5057 - Zoom bar & page navigation
-- L5083 - Export canvas JSON
-- L5099 - PDF download helpers
-- L5108 - View-link URL helpers & show-highlights/notes
-- L5180 - Custom icon upload handler
-- L5190 - Export & report dropdown menus
-- L5280 - Sidebar drawer toggles
-- L5291 - Mobile actions burger menu pointer & header logo
-- L5303 - User Activity pointer (format.js + features/user-activity.js)
-- L5315 - My Settings pointer (features/my-settings.js)
-- L5338 - Auth & settings entry buttons
-  - L5383 - Project Settings checkout & Save Status bell
-  - L5484 - [sync] Checkout expired recovery
-  - L5540 - [sync] Turn In
-  - L5805 - Share modal pointer & copy-project openers
-  - L5836 - Settings menu actions
-  - L5857 - Auth sign-in form
-  - L5881 - Save Project modal
-  - L5894 - Checkout expired recovery modal wiring
-  - L5999 - Last-session restore prompt
-  - L6006 - Canvas Repair modal wiring
-- L6158 - Canvas Event Handlers
-- L6546 - Event Binding
-- L6556 - Aim loupe (mobile press-hold precise placement)
-- L6695 - Zoom transform preview & commit
-- L6731 - Canvas mouse, wheel & touch handlers
-- L7368 - Global dropdown dismissal & keyboard hotkeys
-- L7603 - [sync] Manual save to cloud
-- L7613 - [sync] Auto-save
-- L7620 - [sync] Local backup (IndexedDB takeoff state)
-- L7753 - [sync] Checkout keep-alive
-- L7767 - App feature registry
-- L7957 - View-only mode
-- L7963 - Init / boot
+- L2001 - UI Render Functions
+- L3066 - Inline rename & polyline edit mode
+- L3180 - Modal primitives (showModal / hideModal)
+- L3199 - Toasts & line color picker
+- L3253 - Airboard cloud sync
+- L3286 - Supabase RPC & presence heartbeat
+- L3326 - User activity / event telemetry
+- L3369 - Supabase auth & dev auth
+- L3498 - [sync] Checkout subscription & permission refresh
+- L3508 - Modals & Handlers
+- L3576 - PDF intake (upload, test PDF, hashing)
+- L3584 - Toolbar tool buttons
+- L3710 - Tool sidebar buttons & legend overlay
+- L3827 - Add Line Type modal
+- L3897 - Line color & sidebar handlers
+- L4039 - Polyline modal & drawing
+- L4070 - Zoom bar & page navigation
+- L4096 - Export canvas JSON
+- L4112 - PDF download helpers
+- L4121 - View-link URL helpers & show-highlights/notes
+- L4193 - Custom icon upload handler
+- L4203 - Export & report dropdown menus
+- L4293 - Sidebar drawer toggles
+- L4304 - Mobile actions burger menu pointer & header logo
+- L4316 - User Activity pointer (format.js + features/user-activity.js)
+- L4328 - My Settings pointer (features/my-settings.js)
+- L4351 - Auth & settings entry buttons
+  - L4396 - Project Settings checkout & Save Status bell
+  - L4497 - [sync] Checkout expired recovery
+  - L4553 - [sync] Turn In
+  - L4818 - Share modal pointer & copy-project openers
+  - L4849 - Settings menu actions
+  - L4870 - Auth sign-in form
+  - L4894 - Save Project modal
+  - L4907 - Checkout expired recovery modal wiring
+  - L5012 - Last-session restore prompt
+  - L5019 - Canvas Repair modal wiring
+- L5171 - Canvas Event Handlers
+- L5559 - Event Binding
+- L5569 - Aim loupe (mobile press-hold precise placement)
+- L5708 - Zoom transform preview & commit
+- L5744 - Canvas mouse, wheel & touch handlers
+- L6381 - Global dropdown dismissal & keyboard hotkeys
+- L6616 - [sync] Manual save to cloud
+- L6626 - [sync] Auto-save
+- L6633 - [sync] Local backup (IndexedDB takeoff state)
+- L6766 - [sync] Checkout keep-alive
+- L6780 - App feature registry
+- L6970 - View-only mode
+- L6976 - Init / boot
 
 <!-- END SECTION TOC -->
 

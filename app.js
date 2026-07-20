@@ -107,6 +107,7 @@
     showToast: (msg, ms) => showToast(msg, ms),
     ensureGroupColors: (groups) => ensureGroupColors(groups),
     saveUserCustomIcons: (arr) => saveUserCustomIcons(arr),
+    getLineRealWorldLengthFeet: (line, pageIdx, isPoly, ann) => getLineRealWorldLengthFeet(line, pageIdx, isPoly, ann),
   });
   // mergeAnnotations / migratePageToCanvases / verifyPageBakeFrame have no
   // app-side callers (their callers moved into the model) — annotationModel.*.
@@ -771,122 +772,14 @@
   window.getLineLengthForTotals = getLineLengthForTotals;
   window.getLineLengthFeetForTotals = getLineLengthFeetForTotals;
 
-  function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) {
-    let counterCount = 0, lineRunCount = 0, lengthRealSum = 0;
-    const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
-    (state.counters || []).forEach(c => {
-      (ann?.counterMarkers?.[c.id] || []).forEach(m => { if (inRect(m)) counterCount++; });
-    });
-    (ann?.quickLines || []).forEach(q => {
-      const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
-      if (inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLengthFeet(q, pageIdx, false, ann); }
-    });
-    (ann?.polylines || []).forEach(poly => {
-      const pts = poly.points || [];
-      const start = pts[0], end = pts[pts.length - 1];
-      if (start && end && inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += getLineRealWorldLengthFeet(poly, pageIdx, true, ann); }
-    });
-    return { counterCount, lineRunCount, lengthRealSum };
-  }
-  function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) {
-    const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
-    const result = {
-      counterCount: 0, lineRunCount: 0, lengthRealSum: 0,
-      highlightCount: 0, noteCount: 0, multiplyZoneCount: 0, scaleZoneCount: 0, roomBoxCount: 0,
-      counters: [], quickLines: [], polylines: [],
-      highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: []
-    };
-    (state.counters || []).forEach(c => {
-      (ann?.counterMarkers?.[c.id] || []).forEach(m => {
-        if (inRect(m)) {
-          result.counterCount++;
-          result.counters.push({ counterId: c.id, marker: m });
-        }
-      });
-    });
-    (ann?.quickLines || []).forEach((q, i) => {
-      const start = { x: q.x1, y: q.y1 }, end = { x: q.x2, y: q.y2 };
-      if (inRect(start) && inRect(end)) {
-        result.lineRunCount++;
-        result.lengthRealSum += getLineRealWorldLengthFeet(q, pageIdx, false, ann);
-        result.quickLines.push({ index: i, line: q });
-      }
-    });
-    (ann?.polylines || []).forEach((poly, i) => {
-      const pts = poly.points || [];
-      const start = pts[0], end = pts[pts.length - 1];
-      if (start && end && inRect(start) && inRect(end)) {
-        result.lineRunCount++;
-        result.lengthRealSum += getLineRealWorldLengthFeet(poly, pageIdx, true, ann);
-        result.polylines.push({ index: i, poly });
-      }
-    });
-    (ann?.highlights || []).forEach((h, i) => {
-      const cx = (h.x1 + h.x2) / 2, cy = (h.y1 + h.y2) / 2;
-      if (inRect({ x: cx, y: cy })) {
-        result.highlightCount++;
-        result.highlights.push({ index: i });
-      }
-    });
-    (ann?.notes || []).forEach((n, i) => {
-      if (inRect({ x: n.x, y: n.y })) {
-        result.noteCount++;
-        result.notes.push({ index: i });
-      }
-    });
-    (ann?.multiplyZones || []).forEach((z, i) => {
-      const cx = (z.x1 + z.x2) / 2, cy = (z.y1 + z.y2) / 2;
-      if (inRect({ x: cx, y: cy })) {
-        result.multiplyZoneCount++;
-        result.multiplyZones.push({ index: i });
-      }
-    });
-    (ann?.scaleZones || []).forEach((z, i) => {
-      const cx = (z.x1 + z.x2) / 2, cy = (z.y1 + z.y2) / 2;
-      if (inRect({ x: cx, y: cy })) {
-        result.scaleZoneCount++;
-        result.scaleZones.push({ index: i });
-      }
-    });
-    (ann?.roomBoxes || []).forEach((b, i) => {
-      const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
-      if (inRect({ x: cx, y: cy })) {
-        result.roomBoxCount++;
-        result.roomBoxes.push({ index: i });
-      }
-    });
-    return result;
-  }
+  // countItemsInRect / collectItemsToDeleteInRect / the Delete Area splice
+  // core moved to annotation-model.js (node-tested there); performDeleteZone
+  // keeps the UI choreography around the model's deleteCollectedItems.
+  function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.countItemsInRect(ann, pageIdx, x1, y1, x2, y2); }
+  function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2); }
   function performDeleteZone(ann, collected) {
     pushUndoSnapshot();
-    (collected.counters || []).forEach(({ counterId, marker }) => {
-      const arr = ann?.counterMarkers?.[counterId];
-      if (arr) {
-        const idx = arr.indexOf(marker);
-        if (idx >= 0) arr.splice(idx, 1);
-      }
-    });
-    (collected.multiplyZones || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.multiplyZones || []).splice(index, 1);
-    });
-    (collected.scaleZones || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.scaleZones || []).splice(index, 1);
-    });
-    (collected.roomBoxes || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.roomBoxes || []).splice(index, 1);
-    });
-    (collected.polylines || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.polylines || []).splice(index, 1);
-    });
-    (collected.quickLines || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.quickLines || []).splice(index, 1);
-    });
-    (collected.highlights || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.highlights || []).splice(index, 1);
-    });
-    (collected.notes || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
-      (ann?.notes || []).splice(index, 1);
-    });
+    annotationModel.deleteCollectedItems(ann, collected);
     markProjectDirty();
     renderPdf();
     updateUI();
@@ -917,67 +810,11 @@
   // moved to geometry.js (pure; all callers pass `scale` explicitly). The old
   // `scale ?? getPageScale(state.currentPage)` default was unused and was dropped.
 
-  function rotateAnnotations(page, w, h) {
-    const r = (pt) => rotatePoint90CW(pt, w, h);
-    const rotateAnn = (ann) => {
-    if (ann.counterMarkers) {
-      const next = {};
-      for (const [cid, arr] of Object.entries(ann.counterMarkers)) {
-        next[cid] = (arr || []).map(m => ({ ...m, ...r({ x: m.x, y: m.y }) }));
-      }
-      ann.counterMarkers = next;
-    }
-    (ann.quickLines || []).forEach(q => {
-      const a = r({ x: q.x1, y: q.y1 }), b = r({ x: q.x2, y: q.y2 });
-      q.x1 = a.x; q.y1 = a.y; q.x2 = b.x; q.y2 = b.y;
-    });
-    (ann.polylines || []).forEach(poly => {
-      if (poly.points) poly.points = poly.points.map(pt => r(pt));
-    });
-    (ann.highlights || []).forEach(h => {
-      const a = r({ x: h.x1, y: h.y1 }), b = r({ x: h.x2, y: h.y2 });
-      h.x1 = a.x; h.y1 = a.y; h.x2 = b.x; h.y2 = b.y;
-    });
-    (ann.multiplyZones || []).forEach(z => {
-      const a = r({ x: z.x1, y: z.y1 }), b = r({ x: z.x2, y: z.y2 });
-      z.x1 = a.x; z.y1 = a.y; z.x2 = b.x; z.y2 = b.y;
-    });
-    (ann.scaleZones || []).forEach(z => {
-      const a = r({ x: z.x1, y: z.y1 }), b = r({ x: z.x2, y: z.y2 });
-      z.x1 = a.x; z.y1 = a.y; z.x2 = b.x; z.y2 = b.y;
-    });
-    (ann.roomBoxes || []).forEach(bx => {
-      const a = r({ x: bx.x1, y: bx.y1 }), b = r({ x: bx.x2, y: bx.y2 });
-      bx.x1 = a.x; bx.y1 = a.y; bx.x2 = b.x; bx.y2 = b.y;
-    });
-    (ann.notes || []).forEach(n => {
-      const p = r({ x: n.x, y: n.y });
-      n.x = p.x; n.y = p.y;
-    });
-    if (ann.legend && typeof ann.legend === 'object') {
-      const p = r({ x: ann.legend.x, y: ann.legend.y });
-      ann.legend.x = p.x; ann.legend.y = p.y;
-    }
-    };
-    const canvases = getPageCanvases(page);
-    if (canvases.length) canvases.forEach(c => { if (c.annotations) rotateAnn(c.annotations); });
-    else rotateAnn(getActiveAnnotations(page));
-  }
-  function applyRotationDeltaToAnnotations(page, deltaDegrees) {
-    if (!page?.pdfPage || deltaDegrees % 90 !== 0) return;
-    const steps = Math.round((((deltaDegrees % 360) + 360) % 360) / 90);
-    if (steps === 0) return;
-    let rot = page.rotation ?? 0;
-    for (let i = 0; i < steps; i++) {
-      const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
-      rotateAnnotations(page, vp.width, vp.height);
-      rot = (rot + 90) % 360;
-    }
-  }
-  function deepCopyAnnotations(ann) {
-    if (!ann) return makeAnnotations();
-    return JSON.parse(JSON.stringify(ann));
-  }
+  // rotateAnnotations / applyRotationDeltaToAnnotations / deepCopyAnnotations
+  // moved to annotation-model.js (node-tested 4x90-degree round trips there).
+  function rotateAnnotations(page, w, h) { return annotationModel.rotateAnnotations(page, w, h); }
+  function applyRotationDeltaToAnnotations(page, deltaDegrees) { return annotationModel.applyRotationDeltaToAnnotations(page, deltaDegrees); }
+  function deepCopyAnnotations(ann) { return annotationModel.deepCopyAnnotations(ann); }
   function rotatePage90() {
     const page = state.pages[state.currentPage];
     if (!page || !page.pdfPage) return;

@@ -273,3 +273,122 @@ test('undo snapshot carries rooms; applySnapshot restores them and clears roomBo
   assert.strictEqual(state.rooms[0].name, 'Office');
   assert.strictEqual(state.roomBoxStart, null);
 });
+
+// --- rect-select operations (moved from app.js) ------------------------------
+
+function rectFixture() {
+  const state = { counters: [{ id: 'wc' }, { id: 'lav' }], pages: [] };
+  const { ctx } = makeCtx(state);
+  ctx.getLineRealWorldLengthFeet = (line, pageIdx, isPoly) => (isPoly ? 7 : 5);
+  const m = createAnnotationModel(ctx);
+  const ann = m.makeAnnotations();
+  ann.counterMarkers.wc = [{ x: 10, y: 10 }, { x: 200, y: 200 }];   // one in, one out
+  ann.counterMarkers.lav = [{ x: 20, y: 20 }];
+  ann.quickLines.push({ x1: 5, y1: 5, x2: 40, y2: 40 });            // both ends in
+  ann.quickLines.push({ x1: 5, y1: 5, x2: 500, y2: 500 });          // one end out -> not hit
+  ann.polylines.push({ points: [{ x: 8, y: 8 }, { x: 90, y: 90 }, { x: 30, y: 30 }] }); // endpoints in
+  ann.highlights.push({ x1: 0, y1: 0, x2: 60, y2: 60 });            // center (30,30) in
+  ann.highlights.push({ x1: 90, y1: 90, x2: 300, y2: 300 });        // center out
+  ann.notes.push({ x: 50, y: 50, text: 'n' });
+  ann.multiplyZones.push({ x1: 10, y1: 10, x2: 80, y2: 80, multiplier: 2 });
+  ann.scaleZones.push({ x1: 200, y1: 200, x2: 400, y2: 400 });      // center out
+  ann.roomBoxes.push({ x1: 20, y1: 20, x2: 70, y2: 70, heightFt: 8, roomId: 'r1' });
+  return { m, ann };
+}
+
+test('countItemsInRect: lines need both endpoints inside; counters per marker', () => {
+  const { m, ann } = rectFixture();
+  const r = m.countItemsInRect(ann, 0, 0, 0, 100, 100);
+  assert.strictEqual(r.counterCount, 2);        // wc[0] + lav[0]; wc[1] outside
+  assert.strictEqual(r.lineRunCount, 2);        // quickLine #1 + the polyline
+  assert.strictEqual(r.lengthRealSum, 5 + 7);   // stubbed lengths, feet
+});
+
+test('collectItemsToDeleteInRect: center-point hits for zones/highlights/rooms, anchor for notes', () => {
+  const { m, ann } = rectFixture();
+  const c = m.collectItemsToDeleteInRect(ann, 0, 0, 0, 100, 100);
+  assert.strictEqual(c.counterCount, 2);
+  assert.strictEqual(c.lineRunCount, 2);
+  assert.strictEqual(c.highlightCount, 1);
+  assert.strictEqual(c.noteCount, 1);
+  assert.strictEqual(c.multiplyZoneCount, 1);
+  assert.strictEqual(c.scaleZoneCount, 0);      // its center is outside
+  assert.strictEqual(c.roomBoxCount, 1);
+  assert.strictEqual(c.quickLines[0].index, 0); // the second quickLine survived
+});
+
+test('deleteCollectedItems: descending-index splices delete the right items', () => {
+  const state = { counters: [{ id: 'wc' }], pages: [] };
+  const { ctx } = makeCtx(state);
+  ctx.getLineRealWorldLengthFeet = () => 0;
+  const m = createAnnotationModel(ctx);
+  const ann = m.makeAnnotations();
+  ann.quickLines.push({ id: 'a' }, { id: 'b' }, { id: 'c' });
+  // Delete indices 0 and 2 — ascending splices would take 'a' then (shifted) 'c'
+  // out by removing what WAS at index 2 after the shift, i.e. nothing/'wrong'.
+  m.deleteCollectedItems(ann, { quickLines: [{ index: 0 }, { index: 2 }] });
+  assert.deepStrictEqual(ann.quickLines.map(q => q.id), ['b']);
+  // Counter markers delete by identity, not index.
+  const keep = { x: 1, y: 1 }, drop = { x: 2, y: 2 };
+  ann.counterMarkers.wc = [keep, drop];
+  m.deleteCollectedItems(ann, { counters: [{ counterId: 'wc', marker: drop }] });
+  assert.deepStrictEqual(ann.counterMarkers.wc, [keep]);
+});
+
+// --- page-rotation math (moved from app.js) -----------------------------------
+
+test('rotateAnnotations: four 90-degree turns are the identity for every kind', () => {
+  const state = { counters: [], pages: [] };
+  const { ctx } = makeCtx(state);
+  const m = createAnnotationModel(ctx);
+  const ann = m.makeAnnotations();
+  ann.counterMarkers.wc = [{ x: 11, y: 22, id: 'm1' }];
+  ann.quickLines.push({ x1: 1, y1: 2, x2: 3, y2: 4 });
+  ann.polylines.push({ points: [{ x: 5, y: 6 }, { x: 7, y: 8 }] });
+  ann.highlights.push({ x1: 9, y1: 10, x2: 11, y2: 12 });
+  ann.multiplyZones.push({ x1: 13, y1: 14, x2: 15, y2: 16 });
+  ann.scaleZones.push({ x1: 17, y1: 18, x2: 19, y2: 20 });
+  ann.roomBoxes.push({ x1: 21, y1: 22, x2: 23, y2: 24, heightFt: 8 });
+  ann.notes.push({ x: 25, y: 26, text: 'n' });
+  ann.legend = { x: 27, y: 28, w: 100, h: 50 };
+  const page = { canvases: [{ id: 'c1', annotations: ann }] };
+  const before = JSON.parse(JSON.stringify(ann));
+  // W x H swaps on every quarter turn: 300x200 -> 200x300 -> 300x200 -> ...
+  m.rotateAnnotations(page, 300, 200);
+  assert.notDeepStrictEqual(JSON.parse(JSON.stringify(page.canvases[0].annotations)), before);
+  m.rotateAnnotations(page, 200, 300);
+  m.rotateAnnotations(page, 300, 200);
+  m.rotateAnnotations(page, 200, 300);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(page.canvases[0].annotations)), before);
+});
+
+test('applyRotationDeltaToAnnotations: steps through viewports at each intermediate rotation', () => {
+  const state = { counters: [], pages: [] };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const seen = [];
+  const page = {
+    rotation: 0,
+    pdfPage: { getViewport: ({ rotation }) => { seen.push(rotation); return (rotation % 180 === 0) ? { width: 300, height: 200 } : { width: 200, height: 300 }; } },
+    canvases: [{ id: 'c1', annotations: Object.assign(createAnnotationModel(makeCtx(state).ctx).makeAnnotations(), { notes: [{ x: 10, y: 20, text: 'n' }] }) }],
+  };
+  m.applyRotationDeltaToAnnotations(page, 180);
+  assert.deepStrictEqual(seen, [0, 90]);
+  // 180 degrees on a 300x200 page: (x,y) -> (w-x, h-y)
+  assert.deepStrictEqual(
+    { x: page.canvases[0].annotations.notes[0].x, y: page.canvases[0].annotations.notes[0].y },
+    { x: 290, y: 180 });
+  // Non-multiples of 90 and null pages are safe no-ops.
+  m.applyRotationDeltaToAnnotations(page, 45);
+  m.applyRotationDeltaToAnnotations(null, 90);
+  assert.deepStrictEqual(seen, [0, 90]);
+});
+
+test('deepCopyAnnotations: null gets the canonical shape; copies are detached', () => {
+  const m = createAnnotationModel(makeCtx({}).ctx);
+  assert.deepStrictEqual(m.deepCopyAnnotations(null), m.makeAnnotations());
+  const ann = m.makeAnnotations();
+  ann.quickLines.push({ x1: 1 });
+  const copy = m.deepCopyAnnotations(ann);
+  copy.quickLines.push({ x1: 2 });
+  assert.strictEqual(ann.quickLines.length, 1);
+});

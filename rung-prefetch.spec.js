@@ -52,12 +52,12 @@ test.describe('Adjacent-rung idle prefetch', () => {
     await page.waitForTimeout(400);
 
     const measured = await page.evaluate(async () => {
-      const before = window.App.__renderServiceStats().total;
+      const before = window.App.__renderServiceStats().byKind.full || 0;
       const hitsBefore = window.App.__pdfBitmapCacheStats().hits;
       window.App.doZoomIn();   // +0.1 lands within a prefetched rung -> pure blit
       await new Promise((r) => setTimeout(r, 200));   // sample BEFORE the 600ms exact-refine
       return {
-        renders: window.App.__renderServiceStats().total - before,
+        renders: (window.App.__renderServiceStats().byKind.full || 0) - before,   // visible path only — background prefetches may fire in this window
         hitsGained: window.App.__pdfBitmapCacheStats().hits - hitsBefore,
         prefetched: window.App.__pdfBitmapCacheStats().prefetched,
       };

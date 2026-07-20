@@ -13,6 +13,35 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## perf(pyramid): downsample pyramid + prefetch immediacy/momentum
+
+"See more pixels more quickly" — attack the remaining cost, COLD rasters:
+
+- **Downsample pyramid** — a full-page bitmap rastered at zoom Z produces
+  every rung below it (down to ~0.55×Z) by GPU downscale: after any cache
+  capture, the rungs below derive automatically (one drawImage per
+  macrotask, high-quality smoothing, always from the ORIGINAL source — never
+  derived-from-derived; generation-guarded; `derived` flag + stats counter).
+  One pdf.js operator-list walk now warms the whole ladder downward, so
+  zooming back OUT is warm everywhere she's ever zoomed in, and the idle
+  prefetcher spends real rasters only on UP-rungs.
+- **Prefetch immediacy** — idle delay 250ms → 50ms (the worker made the
+  main-thread cost a postMessage; interaction listeners still cancel
+  instantly). The next rung starts rastering before the finger leaves the
+  wheel.
+- **Momentum bias** — rung candidates warm the direction the user has been
+  zooming first (wheel + pinch tracked; down-rungs usually arrive free via
+  the pyramid anyway).
+- Spec-infra note: page-switch-cache / rung-prefetch now count VISIBLE-PATH
+  ('full') rasters only — background prefetches legitimately fire within
+  their old measurement windows at the 50ms delay.
+
+New regression: [pyramid.spec.js](pyramid.spec.js) (lower rungs appear
+derived with zero rasters, zoom-out commits blit from them with the miss
+stat frozen, derived bases carry ink).
+
+---
+
 ## perf(instant): rung-riding, deeper warm-up, debounced click tail, latency telemetry
 
 For the zoom-several-times-a-second + rapid-placement workflow ("the feeling

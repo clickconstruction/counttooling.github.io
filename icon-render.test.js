@@ -9,11 +9,13 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const icons = require('./icons.js');
+const customIcons = require('./icons-custom.js');   // CUSTOM_ICONS (generated, split file)
+Object.assign(globalThis, customIcons);
 Object.assign(globalThis, icons);
 const ir = require('./icon-render.js');
 
 test('CUSTOM_ICON_META: derives center + max-dimension vb for a bundled icon', () => {
-  const first = icons.CUSTOM_ICONS[0];
+  const first = customIcons.CUSTOM_ICONS[0];
   const parts = first.viewBox.split(/\s+/);
   const w = Number(parts[2]), h = Number(parts[3]);
   const meta = ir.CUSTOM_ICON_META[first.value];
@@ -23,7 +25,7 @@ test('CUSTOM_ICON_META: derives center + max-dimension vb for a bundled icon', (
 });
 
 test('iconMetaFromList: CUSTOM_ICON_META fast path wins', () => {
-  const first = icons.CUSTOM_ICONS[0];
+  const first = customIcons.CUSTOM_ICONS[0];
   // Even with an empty injected list, the built-in table resolves it.
   assert.deepStrictEqual(ir.iconMetaFromList(first.value, []), ir.CUSTOM_ICON_META[first.value]);
 });

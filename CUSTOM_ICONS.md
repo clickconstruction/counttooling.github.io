@@ -2,7 +2,7 @@
 
 ClickCount supports two kinds of custom icons:
 
-1. **Bundled custom icons** (`CUSTOM_ICONS` in `icons.js`) — Available to all users, shipped with the app.
+1. **Bundled custom icons** (the generated `CUSTOM_ICONS` array in `icons-custom.js`) — Available to all users, shipped with the app.
 2. **User-uploaded icons** — Stored in IndexedDB per browser; users upload SVGs via Create Counter → Custom Icons.
 
 Both are merged by `getEffectiveCustomIcons()` and appear in the icon picker.
@@ -20,13 +20,11 @@ To add SVG icons that ship with the app:
    ```bash
    node scripts/build-custom-icons.js --dir path/to/svgs
    ```
-3. Copy the output line (starts with `const CUSTOM_ICONS = `).
-4. In `icons.js`, replace the existing `const CUSTOM_ICONS = [ ... ];` array with the pasted line. (`icons.js` is a classic `<script src>` loaded before the main script in `index.html`; the icon data lives in the shared global lexical scope.)
+3. That's it — the generator overwrites `icons-custom.js` wholesale (a classic
+   `<script src>` loaded between `icons.js` and `icon-render.js`; the icon data
+   lives in the shared global lexical scope). Commit the regenerated file.
 
-Optional: write output to a file instead of stdout:
-```bash
-node scripts/build-custom-icons.js --out custom-icons.js
-```
+Options: `--out other-file.js` writes elsewhere; `--stdout` prints instead of writing.
 
 ## SVG Requirements
 
@@ -42,4 +40,4 @@ Display names are derived from filenames:
 - `p-trap.svg` → "P Trap"
 - `mounted sink.svg` → "Mounted Sink"
 
-Hyphens and underscores become spaces; each word is title-cased. To override a name, edit the generated array in `index.html` after pasting.
+Hyphens and underscores become spaces; each word is title-cased. To override a name, rename the source `.svg` in `my-counters/` and rerun `npm run build:icons` (hand-edits to `icons-custom.js` are lost on the next regeneration).

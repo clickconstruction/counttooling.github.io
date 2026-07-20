@@ -21,6 +21,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./save-engine.js')),
       Object.keys(require('./annotation-model.js')),
       Object.keys(require('./icons.js')),
+      Object.keys(require('./icons-custom.js')),
       Object.keys(require('./idb.js')),
       Object.keys(require('./format.js')),
       Object.keys(require('./icon-render.js')),
@@ -47,12 +48,12 @@ const constantsGlobals = Object.fromEntries(
 // those modules' export sets (not its own).
 const saveEngineGlobals = Object.fromEntries(
   []
-    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')), Object.keys(require('./geometry.js')), Object.keys(require('./icons.js')))
+    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')), Object.keys(require('./geometry.js')), Object.keys(require('./icons.js')), Object.keys(require('./icons-custom.js')))
     .map((k) => [k, 'readonly']),
 );
 
 const iconsGlobals = Object.fromEntries(
-  Object.keys(require('./icons.js')).map((k) => [k, 'readonly']),
+  Object.keys(require('./icons.js')).concat(Object.keys(require('./icons-custom.js'))).map((k) => [k, 'readonly']),
 );
 
 // line-metrics.js reaches for the pure geometry helpers (ptDist,
@@ -114,7 +115,7 @@ module.exports = [
     // Definition modules: classic scripts whose top-level declarations exist
     // solely to be consumed cross-file by the index.html IIFE / report.js, so
     // no-unused-vars is pure noise here. `module` covers the dual-env footers.
-    files: ['geometry.js', 'constants.js', 'icons.js', 'save-utils.js'],
+    files: ['geometry.js', 'constants.js', 'icons.js', 'icons-custom.js', 'save-utils.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

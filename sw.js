@@ -14,7 +14,7 @@
  * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
  * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = '95edaa36330b';
+const CACHE_VERSION = 'efbae412af73';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -29,6 +29,7 @@ const PRECACHE_URLS = [
   '/manifest.webmanifest',
   // head pure-modules (load order)
   '/icons.js',
+  '/icons-custom.js',
   '/icon-render.js',
   '/geometry.js',
   '/line-metrics.js',

@@ -29,16 +29,8 @@ test.describe('Adjacent-rung idle prefetch', () => {
       return !!c && c.width > 0;
     });
 
-    // Wrap every page's render with a call counter BEFORE any stepping.
-    await page.evaluate(() => {
-      window.__renderCount = 0;
-      window.state.pages.forEach((p) => {
-        if (!p.pdfPage || p.pdfPage.__wrapped) return;
-        const orig = p.pdfPage.render.bind(p.pdfPage);
-        p.pdfPage.render = (args) => { window.__renderCount++; return orig(args); };
-        p.pdfPage.__wrapped = true;
-      });
-    });
+    // Raster counts come from the render-service stats (all kinds, both
+    // backends), so no pdfPage.render wrapping is needed.
 
     // Cold +0.1 step (continuous zoom); its exact raster and the idle rung
     // prefetches run. Gate on the ACTUAL cache contents — the rung nearest
@@ -60,12 +52,12 @@ test.describe('Adjacent-rung idle prefetch', () => {
     await page.waitForTimeout(400);
 
     const measured = await page.evaluate(async () => {
-      const before = window.__renderCount;
+      const before = window.App.__renderServiceStats().total;
       const hitsBefore = window.App.__pdfBitmapCacheStats().hits;
       window.App.doZoomIn();   // +0.1 lands within a prefetched rung -> pure blit
       await new Promise((r) => setTimeout(r, 200));   // sample BEFORE the 600ms exact-refine
       return {
-        renders: window.__renderCount - before,
+        renders: window.App.__renderServiceStats().total - before,
         hitsGained: window.App.__pdfBitmapCacheStats().hits - hitsBefore,
         prefetched: window.App.__pdfBitmapCacheStats().prefetched,
       };

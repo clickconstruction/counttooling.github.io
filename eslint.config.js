@@ -27,6 +27,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./icon-render.js')),
       Object.keys(require('./line-metrics.js')),
       Object.keys(require('./canvas-draw.js')),
+      Object.keys(require('./render-service.js')),
     )
     .map((k) => [k, 'readonly']),
 );
@@ -225,6 +226,44 @@ module.exports = [
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // render-service.js: the raster seam (createRenderService(deps)) — main
+    // thread pdf.js today, the render worker when available. Browser globals
+    // only (Worker, OffscreenCanvas, navigator); everything else arrives via
+    // params/deps. Consumed cross-file by app.js, so no-unused-vars is noise.
+    files: ['render-service.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // render-worker.js: the dedicated pdf.js render worker. Worker global
+    // scope (self/importScripts/OffscreenCanvas) + the pdfjsLib it imports.
+    files: ['render-worker.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.worker,
+        pdfjsLib: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': ['error', { caughtErrors: 'none' }],
       eqeqeq: ['warn', 'always', { null: 'ignore' }],
     },
   },

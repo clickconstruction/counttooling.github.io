@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## perf(render-worker): pdf.js rasters move off the main thread (option 4)
+
+Wendi's "work jumps around while zooming" persisted after the caching work —
+the remaining cause is that any raster (cold zoom, idle refine, prefetch) on
+a dense sheet blocks the main thread for seconds, starving the gesture rAF so
+queued input lands late. This lands the structural fix:
+
+- **[render-service.js](render-service.js)** — the single seam every pdf.js
+  raster flows through (`raster({pdfPage, scale, rotation, offsets,
+  canvasContext, kind})`, returning the exact RenderTask `{promise, cancel}`
+  + `RenderingCancelledException` contract, so renderPdf/prefetch/tile kept
+  their cancel/pending machinery unchanged).
+- **[render-worker.js](render-worker.js)** — a dedicated worker running its
+  own pdf.js 3.11.174 over its own copy of the document bytes, rastering
+  into OffscreenCanvas and posting back transferable ImageBitmaps. The
+  worker's pdf.js needs an explicit nested `workerPort` (no `window` in
+  worker scope ⇒ pdf.js assumes Node ⇒ its fake-worker fallback needs
+  `document` and dies — found by the new spec).
+- **Lazy, site-free document adoption** — instead of wiring the ~14
+  getDocument call sites, the first worker-eligible raster reads the bytes
+  back out of pdf.js via `pdfPage._transport.getData()` (pinned-version
+  private API, guarded) and ships them over; new docs re-adopt by transport
+  identity with generation guards; rasters run main-thread while adoption is
+  in flight.
+- **Gates + fallback**: Worker/OffscreenCanvas support, the
+  `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory ×
+  doc-size cap (the worker holds a second copy of the doc); ANY worker
+  failure permanently falls back to main for the session and logs
+  `render_worker_fallback` to the Save Status log for diagnosability.
+- **Spec infrastructure**: the specs that wrapped `pdfPage.render` to count
+  or delay rasters (page-switch-cache, rung-prefetch, commit-tile) now use
+  the seam's hooks (`App.__renderServiceStats` with a per-request kind+page
+  log, `App.__setRasterTestDelay`) — mode-agnostic, so the whole suite
+  exercises the worker path in Chromium. New: render-worker.spec.js
+  (adoption, worker rasters, escape hatch) + render-service.test.js (5 node
+  tests for the seam contract).
+
+---
+
 ## fix(zoom): continuous zoom values + the intermittent black screen
 
 Field feedback on the zoom ladder (below): Wendi wanted her zoom percentages

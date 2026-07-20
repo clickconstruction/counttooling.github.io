@@ -20,7 +20,7 @@
  * eslint.config.js derive the app.js lint globals.
  */
 function createAnnotationModel(ctx) {
-  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], legend: null }; }
+  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
   // pageIdxHint (optional): the page's index when the caller already knows it —
@@ -55,6 +55,7 @@ function createAnnotationModel(ctx) {
       (ann.highlights || []).forEach(h => { (out.highlights = out.highlights || []).push(h); });
       (ann.multiplyZones || []).forEach(z => { (out.multiplyZones = out.multiplyZones || []).push(z); });
       (ann.scaleZones || []).forEach(z => { (out.scaleZones = out.scaleZones || []).push(z); });
+      (ann.roomBoxes || []).forEach(b => { (out.roomBoxes = out.roomBoxes || []).push(b); });
     });
     return out;
   }
@@ -85,7 +86,7 @@ function createAnnotationModel(ctx) {
   function pageHasAnyAnnotations(p) {
     return getPageCanvases(p).some(c => {
       const ann = c.annotations || makeAnnotations();
-      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length);
+      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length) || (ann.roomBoxes?.length);
     });
   }
   function projectHasAnyCanvasMarkup() {
@@ -142,6 +143,7 @@ function createAnnotationModel(ctx) {
     if (Array.isArray(backup.counters)) ctx.getState().counters = backup.counters;
     if (Array.isArray(backup.lineTypes)) ctx.getState().lineTypes = backup.lineTypes;
     if (Array.isArray(backup.groups)) ctx.getState().groups = ctx.ensureGroupColors(backup.groups);
+    if (Array.isArray(backup.rooms)) ctx.getState().rooms = backup.rooms;
     if (backup.iconNames && typeof backup.iconNames === 'object') ctx.getState().iconNames = backup.iconNames;
     if (Array.isArray(backup.iconOrder)) ctx.getState().iconOrder = backup.iconOrder;
     if (Array.isArray(backup.customIconPaths)) ctx.saveUserCustomIcons(backup.customIconPaths);
@@ -181,6 +183,7 @@ function createAnnotationModel(ctx) {
           notes: Array.isArray(c.annotations.notes) ? c.annotations.notes : [],
           multiplyZones: Array.isArray(c.annotations.multiplyZones) ? c.annotations.multiplyZones : [],
           scaleZones: Array.isArray(c.annotations.scaleZones) ? c.annotations.scaleZones : [],
+          roomBoxes: Array.isArray(c.annotations.roomBoxes) ? c.annotations.roomBoxes : [],
           legend: c.annotations.legend && typeof c.annotations.legend === 'object' ? c.annotations.legend : null
         } : makeAnnotations()
       }));
@@ -195,6 +198,7 @@ function createAnnotationModel(ctx) {
         notes: Array.isArray(a.notes) ? a.notes : [],
         multiplyZones: Array.isArray(a.multiplyZones) ? a.multiplyZones : [],
         scaleZones: Array.isArray(a.scaleZones) ? a.scaleZones : [],
+        roomBoxes: Array.isArray(a.roomBoxes) ? a.roomBoxes : [],
         legend: a.legend && typeof a.legend === 'object' ? a.legend : null
       };
       page.canvases = [{ id: ctx.uid(), name: 'Main', annotations: ann }];
@@ -210,14 +214,17 @@ function createAnnotationModel(ctx) {
     ctx.getState().pages.forEach(migratePageToCanvases);
     const counterIds = new Set((ctx.getState().counters || []).map(c => c.id));
     const lineTypeIds = new Set((ctx.getState().lineTypes || []).map(lt => lt.id));
+    const roomIds = new Set((ctx.getState().rooms || []).map(r => r.id));
     const orphanCounterIds = new Set();
     const orphanLineTypeIds = new Set();
+    const orphanRoomIds = new Set();
     ctx.getState().pages.forEach(p => {
       getPageCanvases(p).forEach(c => {
         const ann = c.annotations || makeAnnotations();
         Object.keys(ann.counterMarkers || {}).forEach(id => { if (!counterIds.has(id)) orphanCounterIds.add(id); });
         (ann.quickLines || []).forEach(q => { if (q.lineTypeId && !lineTypeIds.has(q.lineTypeId)) orphanLineTypeIds.add(q.lineTypeId); });
         (ann.polylines || []).forEach(poly => { if (poly.lineTypeId && !lineTypeIds.has(poly.lineTypeId)) orphanLineTypeIds.add(poly.lineTypeId); });
+        (ann.roomBoxes || []).forEach(b => { if (b.roomId && !roomIds.has(b.roomId)) orphanRoomIds.add(b.roomId); });
       });
     });
     if (orphanCounterIds.size > 0) {
@@ -233,6 +240,14 @@ function createAnnotationModel(ctx) {
       orphanLineTypeIds.forEach(id => {
         if (!ctx.getState().lineTypes.some(lt => lt.id === id)) {
           ctx.getState().lineTypes.push({ id, name: 'Unknown', color: '#4a9eff', curveStyle: 'straight' });
+        }
+      });
+    }
+    if (orphanRoomIds.size > 0) {
+      ctx.getState().rooms = ctx.getState().rooms || [];
+      orphanRoomIds.forEach(id => {
+        if (!ctx.getState().rooms.some(r => r.id === id)) {
+          ctx.getState().rooms.push({ id, name: 'Unknown room', color: '#47c88e' });
         }
       });
     }
@@ -280,7 +295,8 @@ function createUndoStack(ctx) {
       })),
       counters: JSON.parse(JSON.stringify(ctx.getState().counters)),
       lineTypes: JSON.parse(JSON.stringify(ctx.getState().lineTypes)),
-      groups: JSON.parse(JSON.stringify(ctx.getState().groups || []))
+      groups: JSON.parse(JSON.stringify(ctx.getState().groups || [])),
+      rooms: JSON.parse(JSON.stringify(ctx.getState().rooms || []))
     };
   }
 
@@ -304,11 +320,13 @@ function createUndoStack(ctx) {
     ctx.getState().counters = snap.counters;
     ctx.getState().lineTypes = snap.lineTypes;
     if (Array.isArray(snap.groups)) ctx.getState().groups = ctx.ensureGroupColors(snap.groups);
+    if (Array.isArray(snap.rooms)) ctx.getState().rooms = snap.rooms;
     ctx.getState().quickLineStart = null;
     ctx.getState().highlightStart = null;
     ctx.getState().multiplyZoneStart = null;
     ctx.getState().scaleZoneStart = null;
     ctx.getState().deleteZoneStart = null;
+    ctx.getState().roomBoxStart = null;
     ctx.getState().drawingPolyline = null;
     ctx.getState().editingPolyline = null;
     if (ctx.getState().activeCounterType && !ctx.getState().counters.some(c => c.id === ctx.getState().activeCounterType)) ctx.getState().activeCounterType = null;

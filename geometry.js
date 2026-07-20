@@ -245,6 +245,22 @@
     return val * (f / t);
   }
 
+  // Room Sizer: real-world dimensions of a PDF-space room box ({x1,y1,x2,y2},
+  // corners in either order) under a scale object ({ pixelsPerUnit, unit }).
+  // Everything is converted to FEET (the app's tally unit — see the "sum in feet"
+  // invariant) regardless of the scale's unit. heightFt rides on the box itself
+  // (user-entered, already feet). Returns null when there is no usable scale, so
+  // callers can render an explicit "no scale" state instead of a wrong number.
+  function roomBoxDimsFeet(box, scale) {
+    if (!box || !scale || !scale.pixelsPerUnit) return null;
+    const unit = scale.unit || 'ft';
+    const widthFt = convertUnitValue(Math.abs(box.x2 - box.x1) / scale.pixelsPerUnit, unit, 'ft');
+    const lengthFt = convertUnitValue(Math.abs(box.y2 - box.y1) / scale.pixelsPerUnit, unit, 'ft');
+    const heightFt = box.heightFt > 0 ? box.heightFt : 0;
+    const areaSqFt = widthFt * lengthFt;
+    return { widthFt, lengthFt, heightFt, areaSqFt, volumeCuFt: areaSqFt * heightFt };
+  }
+
   // Does a page's saved "bake frame" still match the frame the loaded PDF produces?
   // Annotations are stored baked into the page-rotation frame, so the saved {w,h,intrinsic}
   // (viewport dims at page.rotation + the PDF's intrinsic /Rotate) must match what the
@@ -362,7 +378,7 @@
       formatLineLengthRealSum, formatFeet, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
-      clampEffectiveDpr, convertUnitValue, bakeFramesMatch,
+      clampEffectiveDpr, convertUnitValue, roomBoxDimsFeet, bakeFramesMatch,
       STANDARD_SHEETS, sheetCorrectionFactor, analyzeSheet, scaleCheckDelta
     };
   }

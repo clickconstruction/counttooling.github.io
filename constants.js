@@ -13,7 +13,7 @@
  */
 
 // --- Domain enums & defaults ---
-const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9, DELETE_ZONE: 10, SCALE_ZONE: 11 };
+const TOOL = { NONE: 0, SCALE: 1, LINE: 2, POLYLINE: 3, COUNTER: 4, EDIT_POLY: 5, MEASURE: 6, HIGHLIGHT: 7, NOTE: 8, MULTIPLY_ZONE: 9, DELETE_ZONE: 10, SCALE_ZONE: 11, ROOM: 12 };
 const SCALE_MODES = { NONE: 0, POINT_A: 1, POINT_B: 2 };
 const PLUMBING_DEFAULTS = {
   sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in'],

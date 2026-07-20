@@ -41,6 +41,10 @@
     const legendShowResizeHighlightBtn = document.getElementById('legendShowResizeHighlightBtn');
     legendShowResizeHighlightCb.checked = ls.showResizeHighlight === true;
     legendShowResizeHighlightBtn.setAttribute('aria-pressed', legendShowResizeHighlightCb.checked);
+    const legendShowRoomsCb = document.getElementById('legendShowRooms');
+    const legendShowRoomsBtn = document.getElementById('legendShowRoomsBtn');
+    legendShowRoomsCb.checked = ls.showRooms !== false;   // default on; only projects using the Room Sizer have rows
+    legendShowRoomsBtn.setAttribute('aria-pressed', legendShowRoomsCb.checked);
     App.showModal('legendSettingsModal');
   }
 
@@ -97,6 +101,19 @@
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showResizeHighlight = document.getElementById('legendShowResizeHighlight').checked;
+    App.renderPdf();
+  };
+  document.getElementById('legendShowRoomsBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('legendShowRooms');
+    cb.checked = !cb.checked;
+    document.getElementById('legendShowRoomsBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('legendShowRooms').onchange = () => {
+    const state = App.state;
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.showRooms = document.getElementById('legendShowRooms').checked;
     App.renderPdf();
   };
   document.getElementById('legendTextOpacity').oninput = () => {

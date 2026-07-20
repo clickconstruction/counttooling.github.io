@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(room-sizer): the Room Sizer — room boxes with heights and volumetric totals
+
+First HVAC-oriented feature. A new header tool (cube icon, `TOOL.ROOM`, hotkey
+V, page scale required) draws two-corner room boxes on the plan; each box gets
+a ceiling height (feet-inches parse, recent-height chips persisted in
+`recentRoomHeights`) and a **Room** (new palette object `state.rooms[]`
+`{id,name,color}` beside groups — multiple boxes per room aggregate, covering
+L-shaped rooms). Boxes live per-canvas as `annotations.roomBoxes[]`
+`{x1,y1,x2,y2,heightFt,roomId,id}` in PDF-space and ride every persistence
+surface (cloud save/autosave, IDB takeoff backup, export/import JSON,
+view-links, pdf-intake restore, undo/redo snapshots, page rotation, Delete
+Area, orphan-room reconcile). All math is feet-first via the pure
+`roomBoxDimsFeet` (geometry.js) with scale zones honored through
+`getEffectiveScaleForLine`; multiply zones deliberately do not multiply
+volumes. Surfaces: on-canvas name + W×L×H labels (shared with exports via
+`drawRoomBoxesToContext`), a Rooms sidebar section (appears with the first
+box; jump-to-page + delete per box; room rename/recolor/delete cascade),
+legend room-volume rows (`legendSettings.showRooms`, default on), and a "Room
+Volumes" table in the report + email summary (guarded `window.App` lookup so
+report.js's frozen `window.*` contract is untouched). New files:
+[features/room-sizer.js](features/room-sizer.js),
+[room-sizer.spec.js](room-sizer.spec.js); unit coverage in geometry.test.js +
+annotation-model.test.js. Also fixed in passing: `annotation-model.js` was
+missing from the service-worker `PRECACHE_URLS` (offline shell would 404 it).
+
 ## refactor(save-engine): Stage 6 — the save paths (extraction COMPLETE)
 
 Sixth and final stage: the save paths move behind the seam — `performAutoSave`

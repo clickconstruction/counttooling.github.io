@@ -51,6 +51,7 @@
         state.counters = Array.isArray(data.counters) ? data.counters : [];
         state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
         state.groups = App.ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
+        state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };

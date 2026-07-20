@@ -100,6 +100,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 | [features/import-clear.js](features/import-clear.js) | Twenty-eighth feature-file split (`window.App` registry pilot #28) — the **canvas JSON import** (`#importInput` change handler + the `#importBtn`/`#importBtnSidebar` openers + the import-canvas-after-PDF prompt modal `#importCanvasAfterPdfModal`) and the **Clear Page confirm flow** (`showClearPageModal` + the `#clearPage`/`#clearPageSidebar` openers + the `#clearPageCancel`/`#clearPageConfirm` handlers, consolidated from the zone & page-action handler block). Registers `App.showClearPageModal` (the Project Settings row stays in app.js as a deferred `App.*` call); the other bindings move with their DOM elements. Two new publish-only deps `applyPageAnnotationsFromData` (the shared per-page deserialize funnel — also used by cloud load / view mode / load-annotations) and `getActiveCanvas`; reuses `state`/`ensureGroupColors`/`saveUserCustomIcons`/`reconcileOrphanedCountersAndLineTypes`/`clearUndoStacks`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`/`pushUndoSnapshot`/`makeAnnotations`. The shared **custom-icon upload handler** that shared the old section stays in app.js under the renamed marker `// SECTION: Custom icon upload handler` (icon-domain infrastructure feeding four icon grids across app.js + three feature files) |
 | [import-clear.spec.js](import-clear.spec.js) | Playwright regression for pilot #28 — Clear Page: the sidebar button opens the confirm naming the active canvas, Cancel preserves the markers, Confirm empties only the current page's active canvas, `App.showClearPageModal` is registered; Import: a JSON file through `#importInput` replaces the palette and `reconcileOrphanedCountersAndLineTypes` re-creates a counter for still-present orphaned markers. Asserts no console / page errors; `npx playwright test import-clear.spec.js` |
 | [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` or commits a `state.pendingMultiplyZoneEdit`), the Delete Zone confirm (`#deleteZoneModal` cancel/confirm → `App.performDeleteZone`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
+| [features/room-sizer.js](features/room-sizer.js) | The **Room Sizer** feature — draw room boxes on the plan, assign each a ceiling height + a Room, get per-room volumetric totals. Owns the Room Box modal (`#roomBoxModal` create/edit: height input parsed via `parseRealWorldLength`, recent-height chips persisted in `recentRoomHeights` localStorage, room choose/create with palette colors cycled from `COLORS`), the Room edit modal (`#roomEditModal` rename/recolor via `App.showLineColorModal` + delete cascade through `#roomDeleteConfirmModal`), the Rooms sidebar section (`#roomsSection`, hidden until the first box exists; box rows jump pages / delete), and `getRoomVolumeTotals({pageIndices?, getAnnotations?})` — consumed by report.js (guarded `window.App` lookup) for the report table + email summary. Registers `openRoomBoxModal` / `openRoomBoxModalForEdit` (called from the app.js `TOOL.ROOM` click/touch branches + `#ctxEditRoomBox`), `renderRoomsList` (called from `updateUI`, deferred), `getRoomVolumeTotals`. New publishes it consumes: `roomBoxDimsFeet` (pure, geometry.js), `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`. The tool itself (TOOL.ROOM two-corner click path, rubber-band preview with live W×L readout, committed-box rendering via the shared `drawRoomBoxesToContext`, hit testing, delete-zone/rotation participation, legend room-volume rows, hotkey V) stays in app.js. Data: `state.rooms[]` `{id,name,color}` + per-canvas `annotations.roomBoxes[]` `{x1,y1,x2,y2,heightFt,roomId,id}`; both ride save/load/export/import/IDB-backup/undo. Regression: [room-sizer.spec.js](room-sizer.spec.js) |
 | [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
 | [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
 | [features/canvas-layers.js](features/canvas-layers.js) | Thirty-first feature-file split (`window.App` registry pilot #31; the last candidate named by the original extraction recipe) — the **canvas-layer management UI**: the Add Canvas modal (`#addCanvasModal`, new/duplicate modes; duplicate deep-copies the active layer via the new publish-only dep `App.deepCopyAnnotations`), the Canvas Details modal (`#canvasDetailsModal`, rename-committed on close; the Escape branch in app.js dispatches `#canvasDetailsClose`'s click so the commit lives in one place), the Delete Canvas confirm (→ the private `performDeleteCanvas`, which reactivates the first remaining layer), the footer layers menu (`#canvasLayersBtn`/`#canvasMenu`/`#canvasMenuAdd`), `#addCanvasBtn`, and the show-all-canvases peek toggle. The three state flags (`pendingAddCanvasMode`/`pendingCanvasEdit`/`pendingDeleteCanvas`) move as private `let`s; the `hideModal` resets go through the `App.onCanvasDetailsHidden`/`App.onDeleteCanvasConfirmHidden` callbacks; the canvas switcher's edit pen (renderCanvasSwitcher, app.js) opens the details modal via `App.openCanvasDetailsModal`. The canvas JSON export (`#exportBtn`) that shared the old section stays in app.js under the renamed marker `// SECTION: Export canvas JSON` |
@@ -403,66 +404,66 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L53 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L97 - ICONS array lives in icons.js (see icon-data note above).
 - L143 - State
-- L289 - [sync] Sync recovery & client recycle
-- L340 - [sync] Global force reload
-- L423 - [sync] Save Status log & envelope
-- L436 - [sync] Dirty tracking & local session reset
-- L442 - Undo/redo stacks
-- L550 - [sync] Checkout probe, hashing & PDF cache
-- L712 - Math & Format Helpers
-- L1501 - Coordinate Helpers
-- L1509 - PDF render bitmap cache
-- L1676 - PDF Rendering
-- L3130 - UI Render Functions
-- L4277 - Inline rename & polyline edit mode
-- L4391 - Modal primitives (showModal / hideModal)
-- L4410 - Toasts & line color picker
-- L4464 - Airboard cloud sync
-- L4497 - Supabase RPC & presence heartbeat
-- L4537 - User activity / event telemetry
-- L4580 - Supabase auth & dev auth
-- L4709 - [sync] Checkout subscription & permission refresh
-- L4719 - Modals & Handlers
-- L4787 - PDF intake (upload, test PDF, hashing)
-- L4795 - Toolbar tool buttons
-- L4903 - Tool sidebar buttons & legend overlay
-- L5017 - Add Line Type modal
-- L5087 - Line color & sidebar handlers
-- L5229 - Polyline modal & drawing
-- L5260 - Zoom bar & page navigation
-- L5286 - Export canvas JSON
-- L5302 - PDF download helpers
-- L5311 - View-link URL helpers & show-highlights/notes
-- L5383 - Custom icon upload handler
-- L5393 - Export & report dropdown menus
-- L5483 - Sidebar drawer toggles
-- L5494 - Mobile actions burger menu pointer & header logo
-- L5506 - User Activity pointer (format.js + features/user-activity.js)
-- L5518 - My Settings pointer (features/my-settings.js)
-- L5541 - Auth & settings entry buttons
-  - L5586 - Project Settings checkout & Save Status bell
-  - L5687 - [sync] Checkout expired recovery
-  - L5743 - [sync] Turn In
-  - L6022 - Share modal pointer & copy-project openers
-  - L6053 - Settings menu actions
-  - L6074 - Auth sign-in form
-  - L6098 - Save Project modal
-  - L6111 - Checkout expired recovery modal wiring
-  - L6216 - Last-session restore prompt
-  - L6295 - Canvas Repair modal wiring
-- L6440 - Canvas Event Handlers
-- L6812 - Event Binding
-- L6822 - Aim loupe (mobile press-hold precise placement)
-- L6960 - Zoom transform preview & commit
-- L6996 - Canvas mouse, wheel & touch handlers
-- L7617 - Global dropdown dismissal & keyboard hotkeys
-- L7845 - [sync] Manual save to cloud
-- L7855 - [sync] Auto-save
-- L7862 - [sync] Local backup (IndexedDB takeoff state)
-- L7995 - [sync] Checkout keep-alive
-- L8009 - App feature registry
-- L8190 - View-only mode
-- L8196 - Init / boot
+- L296 - [sync] Sync recovery & client recycle
+- L347 - [sync] Global force reload
+- L430 - [sync] Save Status log & envelope
+- L443 - [sync] Dirty tracking & local session reset
+- L449 - Undo/redo stacks
+- L558 - [sync] Checkout probe, hashing & PDF cache
+- L721 - Math & Format Helpers
+- L1531 - Coordinate Helpers
+- L1539 - PDF render bitmap cache
+- L1706 - PDF Rendering
+- L3258 - UI Render Functions
+- L4413 - Inline rename & polyline edit mode
+- L4527 - Modal primitives (showModal / hideModal)
+- L4546 - Toasts & line color picker
+- L4600 - Airboard cloud sync
+- L4633 - Supabase RPC & presence heartbeat
+- L4673 - User activity / event telemetry
+- L4716 - Supabase auth & dev auth
+- L4845 - [sync] Checkout subscription & permission refresh
+- L4855 - Modals & Handlers
+- L4923 - PDF intake (upload, test PDF, hashing)
+- L4931 - Toolbar tool buttons
+- L5057 - Tool sidebar buttons & legend overlay
+- L5174 - Add Line Type modal
+- L5244 - Line color & sidebar handlers
+- L5386 - Polyline modal & drawing
+- L5417 - Zoom bar & page navigation
+- L5443 - Export canvas JSON
+- L5459 - PDF download helpers
+- L5468 - View-link URL helpers & show-highlights/notes
+- L5540 - Custom icon upload handler
+- L5550 - Export & report dropdown menus
+- L5640 - Sidebar drawer toggles
+- L5651 - Mobile actions burger menu pointer & header logo
+- L5663 - User Activity pointer (format.js + features/user-activity.js)
+- L5675 - My Settings pointer (features/my-settings.js)
+- L5698 - Auth & settings entry buttons
+  - L5743 - Project Settings checkout & Save Status bell
+  - L5844 - [sync] Checkout expired recovery
+  - L5900 - [sync] Turn In
+  - L6179 - Share modal pointer & copy-project openers
+  - L6210 - Settings menu actions
+  - L6231 - Auth sign-in form
+  - L6255 - Save Project modal
+  - L6268 - Checkout expired recovery modal wiring
+  - L6373 - Last-session restore prompt
+  - L6452 - Canvas Repair modal wiring
+- L6604 - Canvas Event Handlers
+- L6992 - Event Binding
+- L7002 - Aim loupe (mobile press-hold precise placement)
+- L7141 - Zoom transform preview & commit
+- L7177 - Canvas mouse, wheel & touch handlers
+- L7814 - Global dropdown dismissal & keyboard hotkeys
+- L8049 - [sync] Manual save to cloud
+- L8059 - [sync] Auto-save
+- L8066 - [sync] Local backup (IndexedDB takeoff state)
+- L8199 - [sync] Checkout keep-alive
+- L8213 - App feature registry
+- L8398 - View-only mode
+- L8404 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -983,6 +984,19 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Grid overlay** — `state.showGridOverlay` (default false); `gridSettingsModal`
   (spacing, unit, origin, snap, color, major interval, opacity, width, style);
   `drawGrid`; view-only (not exported); `resetGridOrigin()` on new document.
+- **Room Sizer (room volumes)** — header cube button / `TOOL.ROOM` / hotkey V (scale
+  required, like Scale Zone). Two-corner click draws a room box (rubber-band preview
+  with live W×L readout); the Room Box modal assigns a ceiling height (ft-in parse,
+  recent-height chips) and a Room (choose existing / create — palette object
+  `state.rooms[]`, multiple boxes per room aggregate, e.g. an L-shaped room). Boxes
+  render in their room's color with name + W×L×H labels (shared by exports via
+  `drawRoomBoxesToContext`), are context-menu editable (`Edit room box`), participate
+  in Delete Area, rotate with the page, and honor scale zones via
+  `getEffectiveScaleForLine`. Totals are always feet (ft²/ft³ via the pure
+  `roomBoxDimsFeet`, geometry.js): Rooms sidebar section (appears with the first
+  box), legend rows (`legendSettings.showRooms`, default on), report "Room Volumes"
+  table + email-summary block. Multiply zones deliberately do NOT multiply volumes.
+  See [features/room-sizer.js](features/room-sizer.js).
 
 ### Canvas layers
 

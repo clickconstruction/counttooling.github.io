@@ -360,3 +360,28 @@ test('bakeFramesMatch: a missing frame on either side is treated as a match (no 
   assert.strictEqual(g.bakeFramesMatch({ w: 918, h: 594, intrinsic: 0 }, null), true);
   assert.strictEqual(g.bakeFramesMatch(undefined, undefined), true);
 });
+
+test('roomBoxDimsFeet: ft-unit scale converts a box to W/L/area/volume in feet', () => {
+  // 10 pt/ft; box 120 x 90 pt -> 12 ft x 9 ft; height 8 ft -> 864 ft³.
+  const box = { x1: 0, y1: 0, x2: 120, y2: 90, heightFt: 8 };
+  const d = g.roomBoxDimsFeet(box, { pixelsPerUnit: 10, unit: 'ft' });
+  close(d.widthFt, 12, 1e-9);
+  close(d.lengthFt, 9, 1e-9);
+  close(d.areaSqFt, 108, 1e-9);
+  close(d.volumeCuFt, 864, 1e-9);
+});
+
+test('roomBoxDimsFeet: corners in either order, non-ft units convert to feet', () => {
+  // 10 pt/m; box 10 x 20 pt -> 1 m x 2 m = 3.28084 ft x 6.56168 ft.
+  const box = { x1: 10, y1: 20, x2: 0, y2: 0, heightFt: 0 };
+  const d = g.roomBoxDimsFeet(box, { pixelsPerUnit: 10, unit: 'm' });
+  close(d.widthFt, 1 / 0.3048, 1e-9);
+  close(d.lengthFt, 2 / 0.3048, 1e-9);
+  close(d.volumeCuFt, 0, 1e-9);   // no height yet -> zero volume, not NaN
+});
+
+test('roomBoxDimsFeet: no scale (or no box) returns null, never a wrong number', () => {
+  assert.strictEqual(g.roomBoxDimsFeet({ x1: 0, y1: 0, x2: 10, y2: 10, heightFt: 8 }, null), null);
+  assert.strictEqual(g.roomBoxDimsFeet({ x1: 0, y1: 0, x2: 10, y2: 10, heightFt: 8 }, { unit: 'ft' }), null);
+  assert.strictEqual(g.roomBoxDimsFeet(null, { pixelsPerUnit: 10, unit: 'ft' }), null);
+});

@@ -1318,7 +1318,7 @@
   const PDF_BITMAP_CACHE_TOTAL_PX = PDF_BITMAP_LOW_MEM ? 12000000 : (PDF_BITMAP_HIGH_MEM ? 48000000 : 24000000);
   const pdfBitmapCache = [];                          // LRU: oldest first, [{pdfPage, rotation, zoom, effDpr, bitmap, w, h}]
   let pdfBitmapCacheGeneration = 0;                   // bumped on clear; async inserts self-discard if it moved
-  const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0 };
+  const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0, derived: 0 };
   function pdfBitmapCacheMaxArea() {
     return Math.min(PDF_BITMAP_CACHE_AREA_FRAC * getCanvasCaps().maxArea * renderAreaSafety, PDF_BITMAP_CACHE_AREA_ABS);
   }
@@ -1374,6 +1374,7 @@
   }
   function clearPdfBitmapCache() {
     pdfBitmapCacheGeneration++;
+    clearPyramidQueue();
     while (pdfBitmapCache.length) {
       const e = pdfBitmapCache.pop();
       try { e.bitmap.close(); } catch (_) { /* already closed */ }
@@ -1391,9 +1392,78 @@
     const w = sourceCanvas.width, h = sourceCanvas.height;
     createImageBitmap(sourceCanvas).then((bitmap) => {
       if (gen !== pdfBitmapCacheGeneration) { try { bitmap.close(); } catch (_) {} return; }
-      pdfBitmapCachePut({ pdfPage: key.pdfPage, rotation: key.rotation, zoom: key.zoom, effDpr: key.effDpr, bitmap, w, h });
+      const entry = { pdfPage: key.pdfPage, rotation: key.rotation, zoom: key.zoom, effDpr: key.effDpr, bitmap, w, h };
+      pdfBitmapCachePut(entry);
       if (prefetch) pdfBitmapCacheStats.prefetched++;
+      schedulePyramidDerive(entry);
     }).catch(() => { /* capture is best-effort; a miss just re-renders */ });
+  }
+
+  // --- The downsample pyramid ---
+  // A full-page bitmap rastered at zoom Z can produce every rung BELOW it by
+  // GPU downscaling — a few ms of drawImage instead of a full pdf.js
+  // operator-list re-walk. So after any capture, derive the rungs down to
+  // ~PYRAMID_MIN_RATIO of the source (below that, quality and savings both
+  // fade — a real raster at that size is cheap anyway). One derivation per
+  // macrotask keeps the main thread jank-free; every level derives from the
+  // ORIGINAL source (never derived-from-derived, which compounds smoothing).
+  // Derived entries satisfy the prefetcher's cache checks, so idle warm-up
+  // only spends real rasters on UP-rungs — zooming back out is always warm.
+  const PYRAMID_MIN_RATIO = 0.55;      // derive down ~3 rungs (1/1.15^3 ≈ 0.66, with margin)
+  const pyramidQueue = [];
+  let pyramidTimer = null;
+  let pyramidScratch = null;
+  function clearPyramidQueue() {
+    pyramidQueue.length = 0;
+    if (pyramidTimer) { clearTimeout(pyramidTimer); pyramidTimer = null; }
+  }
+  function schedulePyramidDerive(srcEntry) {
+    pyramidQueue.push(srcEntry);
+    if (!pyramidTimer) pyramidTimer = setTimeout(runPyramidDerive, 0);
+  }
+  function runPyramidDerive() {
+    pyramidTimer = null;
+    const src = pyramidQueue.shift();
+    if (src && pdfBitmapCache.includes(src)) {
+      // Find the highest uncached rung at-or-below the source within ratio.
+      const stubPage = { pdfPage: src.pdfPage, rotation: src.rotation };
+      const maxZ = getMaxZoom();
+      let rung = snapZoomToRung(src.zoom, 0.2, maxZ);
+      if (rung > src.zoom * 1.0001) rung = nextRungDown(rung, 0.2, maxZ);   // never upscale
+      let target = null;
+      while (rung >= src.zoom * PYRAMID_MIN_RATIO) {
+        if (rung < src.zoom * 0.9999) {   // skip a rung that IS the source zoom
+          const effR = effectiveDpr(stubPage, rung);
+          if (!pdfBitmapCacheGet(src.pdfPage, src.rotation, rung, effR)) { target = { rung, effR }; break; }
+        }
+        const next = nextRungDown(rung, 0.2, maxZ);
+        if (Math.abs(next - rung) < 1e-9) break;
+        rung = next;
+      }
+      if (target) {
+        try {
+          const vp = src.pdfPage.getViewport({ scale: target.rung * target.effR, rotation: src.rotation });
+          const tw = Math.max(1, Math.round(vp.width)), th = Math.max(1, Math.round(vp.height));
+          if (!pyramidScratch) pyramidScratch = document.createElement('canvas');
+          pyramidScratch.width = tw;
+          pyramidScratch.height = th;
+          const g = pyramidScratch.getContext('2d');
+          g.imageSmoothingEnabled = true;
+          g.imageSmoothingQuality = 'high';
+          g.drawImage(src.bitmap, 0, 0, src.w, src.h, 0, 0, tw, th);
+          const gen = pdfBitmapCacheGeneration;
+          createImageBitmap(pyramidScratch).then((bitmap) => {
+            if (gen !== pdfBitmapCacheGeneration) { try { bitmap.close(); } catch (_) {} return; }
+            pdfBitmapCachePut({ pdfPage: src.pdfPage, rotation: src.rotation, zoom: target.rung, effDpr: target.effR, bitmap, w: tw, h: th, derived: true });
+            pdfBitmapCacheStats.derived++;
+          }).catch(() => { /* best-effort */ });
+          pyramidScratch.width = 0;
+          pyramidScratch.height = 0;
+          pyramidQueue.push(src);   // continue to the next level down on a later tick
+        } catch (_) { /* a failed derive just leaves the rung cold */ }
+      }
+    }
+    if (pyramidQueue.length && !pyramidTimer) pyramidTimer = setTimeout(runPyramidDerive, 0);
   }
 
   // --- Idle prefetch of adjacent pages ---
@@ -1413,7 +1483,11 @@
   }
   function schedulePdfBitmapPrefetch() {
     if (pdfPrefetchTimer) clearTimeout(pdfPrefetchTimer);
-    pdfPrefetchTimer = setTimeout(runPdfBitmapPrefetch, 250);
+    // 50ms, not the old 250: with the render worker the main-thread cost of a
+    // prefetch is a postMessage, and the wheel/touch/pointer listeners still
+    // cancel instantly on interaction. The rung the user needs next should be
+    // rastering before their finger leaves the wheel.
+    pdfPrefetchTimer = setTimeout(runPdfBitmapPrefetch, 50);
   }
   function predictedFitZoom(page) {
     const wrap = document.querySelector('.canvas-wrapper');
@@ -1445,13 +1519,18 @@
       candidates.push({ page: curPage, zoom: rung0 });   // loop below skips it when already cached
       // Two rungs out in each direction — rapid multi-tick zooms span several
       // rungs, and warm rungs are what rung-riding blits from mid-gesture.
+      // Momentum bias: warm the direction the user has been zooming FIRST
+      // (down-rungs usually arrive free via the downsample pyramid anyway).
+      const ups = [], downs = [];
       let up = rung0, down = rung0;
       for (let step = 0; step < 2; step++) {
         const nu = nextRungUp(up, 0.2, maxZ);
-        if (Math.abs(nu - up) > 1e-9) { candidates.push({ page: curPage, zoom: nu }); up = nu; }
+        if (Math.abs(nu - up) > 1e-9) { ups.push({ page: curPage, zoom: nu }); up = nu; }
         const nd = nextRungDown(down, 0.2, maxZ);
-        if (Math.abs(nd - down) > 1e-9) { candidates.push({ page: curPage, zoom: nd }); down = nd; }
+        if (Math.abs(nd - down) > 1e-9) { downs.push({ page: curPage, zoom: nd }); down = nd; }
       }
+      const ordered = zoomGestureDirection < 0 ? downs.concat(ups) : ups.concat(downs);
+      candidates.push(...ordered);
     }
     for (const idx of [state.currentPage + 1, state.currentPage - 1]) {
       const page = state.pages[idx];
@@ -6367,6 +6446,7 @@
   let wheelZoomAccum = 0;
   let wheelZoomCursor = null;
   let wheelZoomLastEventTs = 0;
+  let zoomGestureDirection = 0;   // +1 zooming in, -1 out — biases which rungs prefetch first
   // Cap on the per-frame zoom step exponent: |x| <= 0.6 -> one rAF step can
   // change zoom by at most ~1.8x, no matter how many wheel deltas queued up
   // while the main thread was busy rastering a dense sheet.
@@ -6400,6 +6480,7 @@
         const factor = Math.exp(-x);
         const newZoom = Math.max(0.2, Math.min(getMaxZoom(), state.zoom * factor));
         if (newZoom === state.zoom) return;
+        zoomGestureDirection = newZoom > state.zoom ? 1 : -1;
         const pt = wheelZoomCursor;
         const pdfX = (pt.x - state.pan.x) / state.zoom;
         const pdfY = (pt.y - state.pan.y) / state.zoom;
@@ -6456,6 +6537,7 @@
       const d = ptDist({ x: e.touches[0].clientX, y: e.touches[0].clientY }, { x: e.touches[1].clientX, y: e.touches[1].clientY });
       const scale = d / state.pinchStartDistance;
       const newZoom = Math.max(0.2, Math.min(getMaxZoom(), state.pinchStartZoom * scale));
+      if (newZoom !== state.zoom) zoomGestureDirection = newZoom > state.zoom ? 1 : -1;
       const rect = (document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper'))?.getBoundingClientRect() || { left: 0, top: 0 };
       const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
@@ -7199,7 +7281,7 @@
   // features/load-project.js at their pages-rebuild sites; the stats object is
   // a debug/test seam (page-switch-cache.spec.js).
   App.clearPdfBitmapCache = clearPdfBitmapCache;
-  App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched });
+  App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched, derived: pdfBitmapCacheStats.derived });
   App.__renderServiceStats = () => renderService.statsSnapshot();          // debug/spec introspection
   App.__perfSamples = () => ({ summary: perfSummary(), samples: JSON.parse(JSON.stringify(perfSamples)) });
   App.__renderServiceMode = () => renderService.mode();

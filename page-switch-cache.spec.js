@@ -22,11 +22,13 @@ async function boot(page, errors) {
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.waitForFunction(() => window.state.pages.length === 2 && document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
-  // Per-page raster counts come from the render-service log (prefetch/tile
-  // renders count too — callers filter by window in time or by page index).
+  // Per-page raster counts come from the render-service log. Default counts
+  // VISIBLE-PATH ('full') rasters only — background prefetches now fire
+  // within ~50ms and would otherwise pollute the quiescence assertions; pass
+  // kind=null to count everything (e.g. to observe a prefetch happening).
   await page.evaluate(() => {
-    window.__renderCallCount = (i) =>
-      window.App.__renderServiceStats().log.filter((e) => e.pageNumber === i + 1).length;
+    window.__renderCallCount = (i, kind = 'full') =>
+      window.App.__renderServiceStats().log.filter((e) => e.pageNumber === i + 1 && (kind == null || e.kind === kind)).length;
   });
 }
 
@@ -136,13 +138,13 @@ test.describe('Page-switch bitmap cache', () => {
     // Landing render schedules idle prefetches: the current page's zoom rungs
     // first (the zoom hot path), THEN the neighbor pages — so wait for page
     // 1's raster specifically rather than the first prefetch of any kind.
-    await page.waitForFunction(() => window.__renderCallCount(1) > 0, null, { timeout: 15000 });
-    const p1RendersAfterPrefetch = await page.evaluate(() => window.__renderCallCount(1));
-    expect(p1RendersAfterPrefetch).toBeGreaterThan(0);   // the prefetch rasterized page 1
+    await page.waitForFunction(() => window.__renderCallCount(1, null) > 0, null, { timeout: 15000 });
+    expect(await page.evaluate(() => window.__renderCallCount(1, 'prefetch'))).toBeGreaterThan(0);   // the prefetch rasterized page 1
+    const p1FullBefore = await page.evaluate(() => window.__renderCallCount(1));
     await page.locator('#nextPage').click();
     await settle(page);
-    const p1RendersAfterVisit = await page.evaluate(() => window.__renderCallCount(1));
-    expect(p1RendersAfterVisit).toBe(p1RendersAfterPrefetch);   // the visit was a blit
+    const p1FullAfterVisit = await page.evaluate(() => window.__renderCallCount(1));
+    expect(p1FullAfterVisit).toBe(p1FullBefore);   // the visit was a blit — zero visible-path rasters
     expect(errors).toEqual([]);
   });
 

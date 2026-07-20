@@ -750,6 +750,7 @@
       App.state.counters = Array.isArray(d.counters) ? d.counters : [];
       App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
       App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+      App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
       if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
       if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
       if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);

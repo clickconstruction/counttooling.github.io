@@ -261,6 +261,7 @@ Rules to follow when adding/editing a feature file:
 `lengthLabelSize`, `snapToHorizontalVertical`, `showOnlyLinesOnCurrentPage`),
 `legendSettings`, `multiplyZoneSettings`, `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),
+`recentRoomHeights` (Room Sizer recent ceiling heights, decimal feet, max 5),
 `recentLineColors` (shared recent-color list, written by `pushRecentColor` —
 custom/off-palette colors only, presets skipped; consumed by the edit color
 picker and the Create Counter / Create Line Type pickers), `iconNames`,
@@ -279,7 +280,8 @@ mode).
   `view:hideMarks:<token>`, `view:scale:<token>` (the viewer's temporary local
   page scales — the offline fallback when the shared `set-view-scale` write
   fails; a page-index → scale map, server scale wins on restore).
-- Per-project, in save/load: `maxZoom`, `groups`, `activeCanvasIdByPage`. Each saved
+- Per-project, in save/load: `maxZoom`, `groups`, `rooms` (Room Sizer palette —
+  each canvas's `annotations.roomBoxes` references a room id), `activeCanvasIdByPage`. Each saved
   page also carries `bakeFrame` `{ w, h, intrinsic }` (the viewport dims at `page.rotation`
   + the PDF's intrinsic `/Rotate`) so a later load / view-link viewer can detect when the
   loaded PDF would render the page in a different orientation than the marks were baked
@@ -344,8 +346,8 @@ mode).
 ### Hotkeys
 
 M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to H/V), P
-(Polyline), D (Measure), H (Highlight), X (Multiply Zone), N (Note), R (Rotate
-page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
+(Polyline), D (Measure), H (Highlight), X (Multiply Zone), V (Room Sizer), N
+(Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z
 undo/redo; Ctrl+R refresh. Ignored when focus is in an input/textarea/contenteditable.
 

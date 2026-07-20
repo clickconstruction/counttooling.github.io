@@ -144,7 +144,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -196,6 +196,9 @@
     projectOwnerId: null,
     maxZoom: null,
     groups: [],
+    rooms: [],
+    roomsListCollapsed: false,
+    recentRoomHeights: [],
     activeGroupId: null,
     activeCanvasIdByPage: {},
     showLegendOverlay: true,
@@ -206,6 +209,10 @@
     userActivityViewMode: 'events'
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
+  try {
+    const rrh = JSON.parse(localStorage.getItem('recentRoomHeights') || '[]');
+    if (Array.isArray(rrh)) state.recentRoomHeights = rrh.filter(h => typeof h === 'number' && h > 0).slice(0, 5);
+  } catch (_) { /* corrupted entry -> empty recents */ }
   state.pagesTitlesTruncated = localStorage.getItem('pagesTitlesTruncated') !== '0';
   state.hideUnmarkedPagesFromSidebar = localStorage.getItem('hideUnmarkedPagesFromSidebar') === '1';
   try {
@@ -478,6 +485,7 @@
     lastSaveIncludedPdf = false;
     state.pendingCanvasLoad = null;
     state.groups = [];
+    state.rooms = [];
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
     state.checkedOutBy = null;
@@ -664,6 +672,7 @@
       state.counters = Array.isArray(d.counters) ? d.counters : [];
       state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
       state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+      state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
       if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
       if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
       if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
@@ -783,9 +792,9 @@
     const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
     const result = {
       counterCount: 0, lineRunCount: 0, lengthRealSum: 0,
-      highlightCount: 0, noteCount: 0, multiplyZoneCount: 0, scaleZoneCount: 0,
+      highlightCount: 0, noteCount: 0, multiplyZoneCount: 0, scaleZoneCount: 0, roomBoxCount: 0,
       counters: [], quickLines: [], polylines: [],
-      highlights: [], notes: [], multiplyZones: [], scaleZones: []
+      highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: []
     };
     (state.counters || []).forEach(c => {
       (ann?.counterMarkers?.[c.id] || []).forEach(m => {
@@ -839,6 +848,13 @@
         result.scaleZones.push({ index: i });
       }
     });
+    (ann?.roomBoxes || []).forEach((b, i) => {
+      const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
+      if (inRect({ x: cx, y: cy })) {
+        result.roomBoxCount++;
+        result.roomBoxes.push({ index: i });
+      }
+    });
     return result;
   }
   function performDeleteZone(ann, collected) {
@@ -855,6 +871,9 @@
     });
     (collected.scaleZones || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
       (ann?.scaleZones || []).splice(index, 1);
+    });
+    (collected.roomBoxes || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.roomBoxes || []).splice(index, 1);
     });
     (collected.polylines || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
       (ann?.polylines || []).splice(index, 1);
@@ -926,6 +945,10 @@
     (ann.scaleZones || []).forEach(z => {
       const a = r({ x: z.x1, y: z.y1 }), b = r({ x: z.x2, y: z.y2 });
       z.x1 = a.x; z.y1 = a.y; z.x2 = b.x; z.y2 = b.y;
+    });
+    (ann.roomBoxes || []).forEach(bx => {
+      const a = r({ x: bx.x1, y: bx.y1 }), b = r({ x: bx.x2, y: bx.y2 });
+      bx.x1 = a.x; bx.y1 = a.y; bx.x2 = b.x; bx.y2 = b.y;
     });
     (ann.notes || []).forEach(n => {
       const p = r({ x: n.x, y: n.y });
@@ -1183,6 +1206,12 @@
       const minY = Math.min(z.y1, z.y2), maxY = Math.max(z.y1, z.y2);
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'scaleZone', index: i };
     }
+    for (let i = 0; i < (ann.roomBoxes || []).length; i++) {
+      const b = ann.roomBoxes[i];
+      const minX = Math.min(b.x1, b.x2), maxX = Math.max(b.x1, b.x2);
+      const minY = Math.min(b.y1, b.y2), maxY = Math.max(b.y1, b.y2);
+      if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'roomBox', index: i };
+    }
     for (let i = 0; i < (ann.notes || []).length; i++) {
       const n = ann.notes[i];
       const noteRot = getNoteRotationRad(n, page);
@@ -1390,6 +1419,7 @@
         else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.SCALE_ZONE) toolHint = state.scaleZoneStart ? 'Click second corner' : 'Click first corner';
+        else if (state.tool === TOOL.ROOM) toolHint = state.roomBoxStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.NOTE) toolHint = 'Click to add note';
         else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
@@ -1930,6 +1960,78 @@
     ctx.restore();
   }
 
+  // Room Sizer boxes, shared by the live overlay and the export path (the two
+  // callers differ only in their PDF->canvas mapper and label scale factor).
+  // Boxes render in their room's color with a name + W×L×H label; a box whose
+  // page (or containing scale zone) has no scale gets an explicit "no scale"
+  // label instead of silently wrong numbers.
+  function drawRoomBoxesToContext(ctx, ann, pageIdx, tcFn, fontScale) {
+    (ann.roomBoxes || []).forEach(b => {
+      const room = (state.rooms || []).find(r => r.id === b.roomId);
+      const color = room?.color || '#47c88e';
+      const minX = Math.min(b.x1, b.x2), maxX = Math.max(b.x1, b.x2);
+      const minY = Math.min(b.y1, b.y2), maxY = Math.max(b.y1, b.y2);
+      const tl = tcFn({ x: minX, y: minY }), br = tcFn({ x: maxX, y: maxY });
+      ctx.globalAlpha = 0.12; ctx.fillStyle = color;
+      ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      const boxW = br.x - tl.x, boxH = br.y - tl.y;
+      if (boxW < 40 || boxH < 24) return;
+      const effScale = getEffectiveScaleForLine(ann, b, false, pageIdx);
+      const dims = roomBoxDimsFeet(b, effScale);
+      const nameLabel = room?.name || 'Room';
+      // Dims read L × W (× H): longer side first, matching the modal's table,
+      // with small (L)/(W)/(H) tags centered under their segments.
+      let segs = null;
+      let dimsLabel = 'no scale';
+      if (dims) {
+        segs = [
+          { text: formatFeetInchesFromVal(Math.max(dims.widthFt, dims.lengthFt), 'ft'), tag: '(L)' },
+          { text: formatFeetInchesFromVal(Math.min(dims.widthFt, dims.lengthFt), 'ft'), tag: '(W)' }
+        ];
+        if (dims.heightFt > 0) segs.push({ text: formatFeetInchesFromVal(dims.heightFt, 'ft'), tag: '(H)' });
+        dimsLabel = segs.map(s => s.text).join(' × ');
+      }
+      const nameSize = 13 * fontScale, dimsSize = 11 * fontScale, tagSize = 8.5 * fontScale;
+      const center = tcFn({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+      ctx.textAlign = 'center';
+      ctx.font = '600 ' + nameSize + 'px DM Sans';
+      const nameW = ctx.measureText(nameLabel).width;
+      ctx.font = dimsSize + 'px DM Sans';
+      const dimsW = ctx.measureText(dimsLabel).width;
+      const sepW = ctx.measureText(' × ').width;
+      const pad = 4 * fontScale;
+      const blockW = Math.max(nameW, dimsW) + pad * 2;
+      const blockH = nameSize + dimsSize + (segs ? tagSize + pad : 0) + pad * 3;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(center.x - blockW / 2, center.y - blockH / 2, blockW, blockH);
+      ctx.fillStyle = '#222';
+      ctx.textBaseline = 'top';
+      ctx.font = '600 ' + nameSize + 'px DM Sans';
+      ctx.fillText(nameLabel, center.x, center.y - blockH / 2 + pad);
+      const dimsY = center.y - blockH / 2 + pad * 2 + nameSize;
+      ctx.font = dimsSize + 'px DM Sans';
+      ctx.fillText(dimsLabel, center.x, dimsY);
+      if (segs) {
+        const tagY = dimsY + dimsSize + pad / 2;
+        ctx.fillStyle = '#8a8a8a';
+        ctx.font = tagSize + 'px DM Sans';
+        let segX = center.x - dimsW / 2;
+        segs.forEach(seg => {
+          ctx.font = dimsSize + 'px DM Sans';
+          const segW = ctx.measureText(seg.text).width;
+          ctx.font = tagSize + 'px DM Sans';
+          ctx.fillText(seg.tag, segX + segW / 2, tagY);
+          segX += segW + sepW;
+        });
+      }
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    });
+  }
+
   function renderAnnotations() {
     const page = state.pages[state.currentPage];
     if (!page) return;
@@ -2354,6 +2456,7 @@
         ctx.textBaseline = 'alphabetic';
       }
     });
+    drawRoomBoxesToContext(ctx, ann, state.currentPage, toCanvas, z * currentEffDpr);
     (ann.notes || []).forEach(n => {
       if (!n.text) return;
       const w = n.width || 150;
@@ -2481,6 +2584,27 @@
       ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
+    }
+    if (state.roomBoxStart && state.mousePos) {
+      const minX = Math.min(state.roomBoxStart.x, state.mousePos.x), maxX = Math.max(state.roomBoxStart.x, state.mousePos.x);
+      const minY = Math.min(state.roomBoxStart.y, state.mousePos.y), maxY = Math.max(state.roomBoxStart.y, state.mousePos.y);
+      const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
+      ctx.strokeStyle = '#8e6fd8'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+      // Live W × L readout beside the cursor while sizing the room.
+      const effScale = getEffectiveScaleForLine(getActiveAnnotations(state.pages[state.currentPage]), { x1: minX, y1: minY, x2: maxX, y2: maxY }, false, state.currentPage);
+      const dims = roomBoxDimsFeet({ x1: minX, y1: minY, x2: maxX, y2: maxY }, effScale);
+      if (dims) {
+        const label = formatFeetInchesFromVal(Math.max(dims.widthFt, dims.lengthFt), 'ft') + ' × ' + formatFeetInchesFromVal(Math.min(dims.widthFt, dims.lengthFt), 'ft');
+        const fontSize = 12 * z * currentEffDpr;
+        ctx.font = fontSize + 'px DM Sans';
+        const tw = ctx.measureText(label).width, pad = 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(br.x + 8, br.y - fontSize - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = '#5b3fa8';
+        ctx.fillText(label, br.x + 8 + pad, br.y - pad);
+      }
     }
     if (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart && state.mousePos) {
       const minX = Math.min(state.deleteZoneStart.x, state.mousePos.x), maxX = Math.max(state.deleteZoneStart.x, state.mousePos.x);
@@ -2802,6 +2926,7 @@
         ctx.textBaseline = 'alphabetic';
       }
     });
+    drawRoomBoxesToContext(ctx, ann, pageIdx >= 0 ? pageIdx : 0, tc, scale);
     (ann.notes || []).forEach(n => {
       if (!n.text) return;
       const w = n.width || 150;
@@ -2925,7 +3050,22 @@
       });
       if (lenReal > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatFeet(lenReal, pageScale) });
     });
-    const hasRows = counterRows.length > 0 || lineRows.length > 0;
+    // Room Sizer rows: per-room volume for this page's boxes (always cubic feet).
+    // Toggleable in Legend Settings; on by default — only projects that use the
+    // Room Sizer have roomBoxes, so legacy legends are unchanged.
+    const roomRows = [];
+    if (state.legendSettings?.showRooms !== false) {
+      const pi = pageIdx >= 0 ? pageIdx : 0;
+      (state.rooms || []).forEach(rm => {
+        let vol = 0, any = false;
+        (ann.roomBoxes || []).filter(b => b.roomId === rm.id).forEach(b => {
+          const dims = roomBoxDimsFeet(b, getEffectiveScaleForLine(ann, b, false, pi));
+          if (dims) { vol += dims.volumeCuFt; any = true; }
+        });
+        if (any) roomRows.push({ name: rm.name || 'Room', color: rm.color || '#47c88e', volStr: Math.round(vol) + ' ft³' });
+      });
+    }
+    const hasRows = counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0;
     ctx.font = (10 * effectiveScale) + 'px sans-serif';
     let maxTextWidthCanvas = 0;
     counterRows.forEach(r => {
@@ -2936,9 +3076,13 @@
       const w = ctx.measureText((r.name || '') + ' ' + r.lengthStr).width;
       if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
     });
+    roomRows.forEach(r => {
+      const w = ctx.measureText((r.name || '') + ' ' + r.volStr).width;
+      if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
+    });
     const ROW_H_PDF = 14;
     const PAD_PDF = 6;
-    const totalRows = counterRows.length + lineRows.length;
+    const totalRows = counterRows.length + lineRows.length + roomRows.length;
     const idealHeightPdf = legendScale * (hasRows ? (2 * PAD_PDF + totalRows * ROW_H_PDF) : 40);
     const idealWidthPdf = hasRows ? (legendScale * (24 + 6 + 6) + maxTextWidthCanvas / scale) : legendScale * 80;
     const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
@@ -3033,6 +3177,14 @@
       ctx.fillRect(tl.x + PAD + (LEFT_COL - 20 * effectiveScale) / 2, swatchY, 20 * effectiveScale, SWATCH_H);
       ctx.fillStyle = '#000';
       ctx.fillText((r.name || '') + ' ' + r.lengthStr, NAME_START, rowY);
+      rowY += ROW_H;
+    });
+    roomRows.forEach(r => {
+      ctx.fillStyle = r.color;
+      const SWATCH = 8 * effectiveScale;
+      ctx.fillRect(tl.x + PAD + (LEFT_COL - SWATCH) / 2, rowY + (ROW_H - SWATCH) / 2, SWATCH, SWATCH);
+      ctx.fillStyle = '#000';
+      ctx.fillText((r.name || '') + ' ' + r.volStr, NAME_START, rowY);
       rowY += ROW_H;
     });
     ctx.restore();
@@ -3211,6 +3363,8 @@
     if (scaleZoneBtn) scaleZoneBtn.classList.toggle('active', state.tool === TOOL.SCALE_ZONE);
     const deleteZoneBtn = document.getElementById('deleteZoneBtn');
     if (deleteZoneBtn) deleteZoneBtn.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
+    const roomBtnEl = document.getElementById('roomBtn');
+    if (roomBtnEl) roomBtnEl.classList.toggle('active', state.tool === TOOL.ROOM);
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
     const counterBtn = document.getElementById('counterBtn');
@@ -3267,6 +3421,11 @@
     if (scaleZoneBtnSidebar) scaleZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.SCALE_ZONE);
     const deleteZoneBtnSidebar = document.getElementById('deleteZoneBtnSidebar');
     if (deleteZoneBtnSidebar) deleteZoneBtnSidebar.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
+    const roomBtnSidebarEl = document.getElementById('roomBtnSidebar');
+    if (roomBtnSidebarEl) roomBtnSidebarEl.classList.toggle('active', state.tool === TOOL.ROOM);
+    // Rooms sidebar section (features/room-sizer.js); deferred — the feature
+    // file registers after app.js loads.
+    if (App.renderRoomsList) App.renderRoomsList();
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
     if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
     const legendBtnEl = document.getElementById('legendBtn');
@@ -3299,6 +3458,7 @@
       state.multiplyZoneStart = null;
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
+      state.roomBoxStart = null;
       state.drawingPolyline = null;
       state.editingPolyline = null;
     }
@@ -4819,6 +4979,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
+    state.roomBoxStart = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
     updateUI();
@@ -4864,6 +5025,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
+    state.roomBoxStart = null;
     state.tool = TOOL.HIGHLIGHT;
     updateUI();
   };
@@ -4872,6 +5034,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
+    state.roomBoxStart = null;
     state.tool = TOOL.MULTIPLY_ZONE;
     updateUI();
   };
@@ -4884,6 +5047,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
+    state.roomBoxStart = null;
     state.tool = TOOL.SCALE_ZONE;
     updateUI();
   };
@@ -4892,7 +5056,21 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
+    state.roomBoxStart = null;
     state.tool = TOOL.DELETE_ZONE;
+    updateUI();
+  };
+  document.getElementById('roomBtn').onclick = () => {
+    if (!getPageScale(state.currentPage)) {
+      showSetScaleFirstToast('Room Sizer');
+      return;
+    }
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
+    state.deleteZoneStart = null;
+    state.roomBoxStart = null;
+    state.tool = TOOL.ROOM;
     updateUI();
   };
   document.getElementById('multiplyZoneBtn').oncontextmenu = (e) => {
@@ -4937,6 +5115,8 @@
     };
   }
   document.getElementById('highlightBtnSidebar').onclick = () => document.getElementById('highlightBtn').click();
+  const roomBtnSidebarWire = document.getElementById('roomBtnSidebar');
+  if (roomBtnSidebarWire) roomBtnSidebarWire.onclick = () => document.getElementById('roomBtn').click();
   const multiplyZoneBtnSidebarEl = document.getElementById('multiplyZoneBtnSidebar');
   if (multiplyZoneBtnSidebarEl) {
     multiplyZoneBtnSidebarEl.onclick = () => document.getElementById('multiplyZoneBtn').click();
@@ -4966,6 +5146,7 @@
       state.multiplyZoneStart = null;
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
+      state.roomBoxStart = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
       const ann = getActiveAnnotations(page);
@@ -5290,7 +5471,7 @@
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], rooms: state.rooms || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -6357,6 +6538,13 @@
     document.getElementById('contextMenu').classList.remove('visible');
     App.openGroupAssignModal(item);
   };
+  const ctxEditRoomBoxEl = document.getElementById('ctxEditRoomBox');
+  if (ctxEditRoomBoxEl) ctxEditRoomBoxEl.onclick = () => {
+    document.getElementById('contextMenu').classList.remove('visible');
+    const t = state.ctxTarget;
+    state.ctxTarget = null;
+    if (t?.type === 'roomBox') App.openRoomBoxModalForEdit(t.index);
+  };
   document.getElementById('ctxEditMultiplyZone').onclick = () => {
     const t = state.ctxTarget;
     if (!t || t.type !== 'multiplyZone') return;
@@ -6461,6 +6649,8 @@
     ctxEditMzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'multiplyZone' ? 'block' : 'none';
     const ctxEditSzBtn = document.getElementById('ctxEditScaleZone');
     ctxEditSzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'scaleZone' ? 'block' : 'none';
+    const ctxEditRoomBoxBtn = document.getElementById('ctxEditRoomBox');
+    if (ctxEditRoomBoxBtn) ctxEditRoomBoxBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'roomBox' ? 'block' : 'none';
     const nameRow = document.getElementById('ctxTargetNameRow');
     if (nameRow) {
       const t = state.ctxTarget;
@@ -6716,6 +6906,19 @@
       }
       renderAnnotations();
       updateUI();
+    } else if (state.tool === TOOL.ROOM) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Room Sizer'); return; }
+      if (!state.roomBoxStart) {
+        state.roomBoxStart = pdf;
+      } else {
+        const x1 = Math.min(state.roomBoxStart.x, pdf.x), x2 = Math.max(state.roomBoxStart.x, pdf.x);
+        const y1 = Math.min(state.roomBoxStart.y, pdf.y), y2 = Math.max(state.roomBoxStart.y, pdf.y);
+        state.roomBoxStart = null;
+        App.openRoomBoxModal({ x1, y1, x2, y2 });
+      }
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.DELETE_ZONE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -6728,7 +6931,7 @@
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
           const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount;
+          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount + collected.roomBoxCount;
           if (total === 0) {
             showToast('No items in this area.', 2000);
           } else {
@@ -6740,6 +6943,7 @@
             if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
             if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
             if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
+            if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
             state.pendingDeleteZone = { ann, collected };
             document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
             showModal('deleteZoneModal');
@@ -6842,6 +7046,7 @@
       case TOOL.MULTIPLY_ZONE:
       case TOOL.SCALE_ZONE:
       case TOOL.DELETE_ZONE:
+      case TOOL.ROOM:
       case TOOL.NOTE:
         return true;
       case TOOL.POLYLINE:
@@ -7129,7 +7334,7 @@
         note.y = pdf.y - state.draggingNoteOffset.y;
         renderAnnotations();
       }
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart)) {
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart)) {
       renderAnnotations();
     }
     const t = hitTest(pdf);
@@ -7374,7 +7579,7 @@
       const moved = ptDist(state.touchPanStart, c) > 10;
       // A drag before the hold fires cancels precision mode (so a quick tap still places).
       if (state.aimPressTimer && moved) { clearTimeout(state.aimPressTimer); state.aimPressTimer = null; }
-      if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart)) && moved) {
+      if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart)) && moved) {
         if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
         const pt = canvasPointFromEvent(e);
         const pdf = canvasToPdf(pt.x, pt.y);
@@ -7388,7 +7593,7 @@
         state.pan = { x: state.touchPanStart.panX + (c.x - state.touchPanStart.x), y: state.touchPanStart.panY + (c.y - state.touchPanStart.y) };
         updateContainerTransform();
       } else if (moved && state.longPressTimer && state.longPressStart) {
-        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
+        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
         if (ptDist(state.longPressStart, c) > tapCancelThreshold) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
       }
     }
@@ -7460,6 +7665,21 @@
       updateUI();
       return;
     }
+    if (state.tool === TOOL.ROOM) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Room Sizer'); return; }
+      if (!state.roomBoxStart) {
+        state.roomBoxStart = pdf;
+      } else {
+        const x1 = Math.min(state.roomBoxStart.x, pdf.x), x2 = Math.max(state.roomBoxStart.x, pdf.x);
+        const y1 = Math.min(state.roomBoxStart.y, pdf.y), y2 = Math.max(state.roomBoxStart.y, pdf.y);
+        state.roomBoxStart = null;
+        App.openRoomBoxModal({ x1, y1, x2, y2 });
+      }
+      renderAnnotations();
+      updateUI();
+      return;
+    }
     if (state.tool === TOOL.SCALE_ZONE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       if (!getPageScale(state.currentPage)) {
@@ -7506,7 +7726,7 @@
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
           const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount;
+          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount + collected.roomBoxCount;
           if (total === 0) {
             showToast('No items in this area.', 2000);
           } else {
@@ -7518,6 +7738,7 @@
             if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
             if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
             if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
+            if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
             state.pendingDeleteZone = { ann, collected };
             document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
             showModal('deleteZoneModal');
@@ -7594,7 +7815,7 @@
       if (!state.longPressFired) {
         e.preventDefault();
         const c = getClientCoords(e);
-        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT || state.tool === TOOL.MULTIPLY_ZONE || state.tool === TOOL.SCALE_ZONE || state.tool === TOOL.NOTE) {
+        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT || state.tool === TOOL.MULTIPLY_ZONE || state.tool === TOOL.SCALE_ZONE || state.tool === TOOL.ROOM || state.tool === TOOL.NOTE) {
           handleTouchAsCanvasTap(c.x, c.y);
         } else {
           const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
@@ -7696,6 +7917,7 @@
         else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
         else if (k === 'h') { document.getElementById('highlightBtn').click(); e.preventDefault(); }
         else if (k === 'x') { document.getElementById('multiplyZoneBtn').click(); e.preventDefault(); }
+        else if (k === 'v') { document.getElementById('roomBtn').click(); e.preventDefault(); }
         else if (k === 'n') { document.getElementById('noteBtn').click(); e.preventDefault(); }
       }
     }
@@ -7729,6 +7951,9 @@
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
       else if (document.getElementById('deleteZoneModal').classList.contains('visible')) { hideModal('deleteZoneModal'); state.pendingDeleteZone = null; }
+      else if (document.getElementById('roomBoxModal')?.classList.contains('visible')) { hideModal('roomBoxModal'); state.pendingRoomBox = null; state.pendingRoomBoxEdit = null; }
+      else if (document.getElementById('roomEditModal')?.classList.contains('visible')) { hideModal('roomEditModal'); }
+      else if (document.getElementById('roomDeleteConfirmModal')?.classList.contains('visible')) { hideModal('roomDeleteConfirmModal'); }
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
       else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
@@ -7798,6 +8023,9 @@
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.DELETE_ZONE) {
         if (state.deleteZoneStart) { state.deleteZoneStart = null; renderPdf(); updateUI(); }
+        else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.ROOM) {
+        if (state.roomBoxStart) { state.roomBoxStart = null; renderPdf(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.NOTE) {
         state.tool = TOOL.NONE;
@@ -8172,6 +8400,10 @@
   App.scaleCheckDelta = scaleCheckDelta;
   App.convertUnitValue = convertUnitValue;
   App.formatFeetInchesFromVal = formatFeetInchesFromVal;
+  // Room Sizer deps (features/room-sizer.js).
+  App.roomBoxDimsFeet = roomBoxDimsFeet;
+  App.getEffectiveScaleForLine = getEffectiveScaleForLine;
+  App.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
   // Viewer scale sharing + view-only boot live in features/view-only.js
   // (App.shareViewerScale / noteViewerTempScale / applyViewerTempScales /

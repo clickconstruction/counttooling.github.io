@@ -33,7 +33,7 @@ test('makeAnnotations returns the canonical empty shape', () => {
   const m = createAnnotationModel(makeCtx({}).ctx);
   const a = m.makeAnnotations();
   assert.deepStrictEqual(Object.keys(a).sort(),
-    ['counterMarkers', 'highlights', 'legend', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'scaleZones']);
+    ['counterMarkers', 'highlights', 'legend', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'roomBoxes', 'scaleZones']);
   assert.deepStrictEqual(a.counterMarkers, {});
   assert.strictEqual(a.legend, null);
 });
@@ -218,4 +218,58 @@ test('applySnapshot clears in-flight drawing state and drops dangling active ids
   assert.strictEqual(state.quickLineStart, null);
   assert.strictEqual(state.activeCounterType, null);   // counter list emptied
   assert.strictEqual(state.activeLineTypeId, null);
+});
+
+test('mergeAnnotations concatenates roomBoxes across canvases', () => {
+  const m = createAnnotationModel(makeCtx({}).ctx);
+  const a = m.makeAnnotations(); a.roomBoxes.push({ x1: 0, y1: 0, x2: 5, y2: 5, heightFt: 8, roomId: 'r1' });
+  const b = m.makeAnnotations(); b.roomBoxes.push({ x1: 9, y1: 9, x2: 12, y2: 12, heightFt: 9, roomId: 'r2' });
+  const out = m.mergeAnnotations(a, b);
+  assert.strictEqual(out.roomBoxes.length, 2);
+});
+
+test('applyPageAnnotationsFromData sanitizes roomBoxes (array kept, junk dropped)', () => {
+  const state = { pages: [{}] };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const page = state.pages[0];
+  m.applyPageAnnotationsFromData(page, { canvases: [{ id: 'c1', annotations: { roomBoxes: [{ x1: 0, y1: 0, x2: 3, y2: 3, heightFt: 8, roomId: 'r1' }] } }] });
+  assert.strictEqual(page.canvases[0].annotations.roomBoxes.length, 1);
+  m.applyPageAnnotationsFromData(page, { canvases: [{ id: 'c2', annotations: { roomBoxes: 'junk' } }] });
+  assert.deepStrictEqual(page.canvases[0].annotations.roomBoxes, []);
+});
+
+test('pageHasAnyAnnotations counts a page with only room boxes as marked', () => {
+  const m = createAnnotationModel(makeCtx({}).ctx);
+  const ann = m.makeAnnotations(); ann.roomBoxes.push({ x1: 0, y1: 0, x2: 3, y2: 3 });
+  assert.strictEqual(m.pageHasAnyAnnotations({ canvases: [{ annotations: ann }] }), true);
+});
+
+test('reconcileOrphanedCountersAndLineTypes recreates a room referenced by an orphan box', () => {
+  const ann = { roomBoxes: [{ x1: 0, y1: 0, x2: 3, y2: 3, heightFt: 8, roomId: 'ghost' }] };
+  const state = { pages: [{ canvases: [{ id: 'c1', annotations: ann }] }], counters: [], lineTypes: [], rooms: [] };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.reconcileOrphanedCountersAndLineTypes();
+  assert.strictEqual(state.rooms.length, 1);
+  assert.strictEqual(state.rooms[0].id, 'ghost');
+});
+
+test('undo snapshot carries rooms; applySnapshot restores them and clears roomBoxStart', () => {
+  const state = {
+    pages: [{ canvases: [{ id: 'c1', annotations: null }], scale: null, rotation: 0, label: 'p1' }],
+    counters: [], lineTypes: [], groups: [],
+    rooms: [{ id: 'r1', name: 'Office', color: '#4a9eff' }],
+    roomBoxStart: { x: 1, y: 2 },
+    isViewer: false
+  };
+  const { ctx } = makeCtx(state);
+  ctx.markProjectDirty = () => {};
+  ctx.renderPdf = () => {};
+  ctx.updateUI = () => {};
+  const u = createUndoStack(ctx);
+  u.pushUndoSnapshot();
+  state.rooms = [];   // mutate after snapshot
+  u.undo();
+  assert.strictEqual(state.rooms.length, 1);
+  assert.strictEqual(state.rooms[0].name, 'Office');
+  assert.strictEqual(state.roomBoxStart, null);
 });

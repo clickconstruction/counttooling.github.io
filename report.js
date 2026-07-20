@@ -199,8 +199,13 @@
 
     html += '<section>';
     html += '<h2 class="page-header">Summary</h2>';
-    const hasSummary = orderedGroupIds.length > 0;
-    if (hasSummary) {
+    // Room Sizer volumes (features/room-sizer.js registers the totals fn on
+    // window.App after this file loads; resolved at call time, optional).
+    const roomTotals = (window.App && typeof window.App.getRoomVolumeTotals === 'function')
+      ? window.App.getRoomVolumeTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : [];
+    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0;
+    if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
         const groupName = getGroupName(gid);
         const counters = counterSummaryByGroup[gid] || {};
@@ -241,7 +246,21 @@
         });
         html += '</table>';
       });
-    } else {
+    }
+    if (roomTotals.length > 0) {
+      html += '<h3 class="section-header">Room Volumes</h3>';
+      html += '<table class="report-table"><tr><th>Room</th><th>Area (ft²)</th><th>Volume (ft³)</th><th>Pages</th></tr>';
+      roomTotals.forEach(t => {
+        const pagesStr = [...new Set(t.boxes.map(b => b.pageIdx + 1))].sort((a, b) => a - b).join(', ');
+        const swatchStyle = 'background:' + (t.color || '#47c88e') + ';';
+        html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(t.name) + (t.missingScale ? ' *' : '') + '</span></td><td>' + t.areaSqFt.toFixed(1) + '</td><td>' + t.volumeCuFt.toFixed(1) + '</td><td>' + pagesStr + '</td></tr>';
+      });
+      html += '</table>';
+      if (roomTotals.some(t => t.missingScale)) {
+        html += '<p class="report-group-totals">* Some boxes are on pages without a scale and are excluded from the totals.</p>';
+      }
+    }
+    if (!hasSummary) {
       html += '<p class="section-header">No items to summarize.</p>';
     }
     html += '</section>';
@@ -424,6 +443,24 @@
         });
         lines.push('');
       });
+    }
+    // Room Sizer volumes (optional — registered on window.App by features/room-sizer.js).
+    const roomTotals = (window.App && typeof window.App.getRoomVolumeTotals === 'function')
+      ? window.App.getRoomVolumeTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : [];
+    if (roomTotals.length > 0) {
+      if (!lines.length) {
+        lines.push('Takeoff Summary');
+        lines.push('---------------');
+        lines.push('');
+      }
+      lines.push('--- Rooms ---');
+      roomTotals.forEach(t => {
+        const pages = [...new Set(t.boxes.map(b => b.pageIdx + 1))].sort((a, b) => a - b);
+        const pagesStr = pages.length === 1 ? 'page ' + pages[0] : 'pages ' + pages.join(', ');
+        lines.push('• ' + (t.name || 'Room') + ': ' + t.volumeCuFt.toFixed(1) + ' ft³ (' + t.areaSqFt.toFixed(1) + ' ft², ' + pagesStr + ')' + (t.missingScale ? ' — some boxes missing scale' : ''));
+      });
+      lines.push('');
     }
     return lines.join('\n');
   }

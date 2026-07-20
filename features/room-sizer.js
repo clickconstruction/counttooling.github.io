@@ -112,10 +112,15 @@
     selectedRoomChoice = (selectedId !== '__new__' && rooms.some(r => r.id === selectedId)) ? selectedId : '__new__';
     const list = document.getElementById('roomBoxRoomList');
     list.style.display = rooms.length ? '' : 'none';
+    // Volume-so-far per room, shown on the row's right edge (rooms with no
+    // boxes yet show nothing rather than a misleading 0).
+    const volById = {};
+    getRoomVolumeTotals().forEach(t => { if (t.id) volById[t.id] = t.volumeCuFt; });
     list.innerHTML = rooms.map(r =>
       '<div class="room-picker-item' + (r.id === selectedRoomChoice ? ' selected' : '') + '" data-room-id="' + r.id + '">'
       + '<span class="room-swatch" style="background:' + (r.color || '#47c88e') + '"></span>'
       + '<span class="room-picker-name">' + escapeHtmlText(r.name || 'Room') + '</span>'
+      + (volById[r.id] != null ? '<span class="room-picker-vol">' + fmtVol(volById[r.id]) + '</span>' : '')
       + '</div>').join('');
     list.querySelectorAll('.room-picker-item').forEach(item => {
       item.onclick = () => {

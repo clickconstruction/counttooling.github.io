@@ -1261,3 +1261,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.room-picker-vol {
+  margin-left: auto;
+  color: var(--text2);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}

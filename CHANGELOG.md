@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## perf(instant): rung-riding, deeper warm-up, debounced click tail, latency telemetry
+
+For the zoom-several-times-a-second + rapid-placement workflow ("the feeling
+of loading really slows her down"):
+
+- **Rung-riding** — every wheel/pinch/rail frame (via syncZoomIndicators)
+  checks whether the continuous preview zoom is nearer a DIFFERENT cached
+  rung and blit-swaps the base MID-GESTURE (strictly blit-only; uncached
+  rungs are left to the prefetcher; nothing while a raster is in flight).
+  The view re-sharpens every ~15% of zoom travel instead of blurring until
+  the commit — never more than ~7% from a crisp raster while zooming.
+- **Deeper warm-up** — the idle prefetcher warms rung ±2 around the current
+  zoom (riding's ammunition); deviceMemory ≥ 8 machines get 10 cache slots /
+  48M px total budget.
+- **Placement hot path** — handleCanvasClick had a shared TAIL updateUI()
+  running on every canvas click IN ADDITION to per-branch calls: placements
+  rebuilt the sidebar twice per click, synchronously. Now exactly one
+  debounced (~120ms) refresh at the tail; the mark itself still paints
+  synchronously via renderAnnotations. Rapid counter/line placement no
+  longer pays O(sidebar) per click.
+- **desynchronized: true** presentation hint on the pdf/crop/ann canvases
+  (Chrome honors it; others ignore it) — lower input-to-photon latency.
+- **Interaction-latency telemetry** — sample rings (cap 200) for placeMs
+  (counter click → mark painted), zoomCrispMs (last gesture input → first
+  crisp base paint), and the per-piece costs undoSnapshotMs /
+  renderAnnotationsMs / updateUIMs; p50/p95 summaries via
+  `App.__perfSamples()` and riding the Save Status envelope through
+  captureDisplayInfoObj — "feels slow" reports now arrive with numbers from
+  the user's own machine and projects.
+
+New regression: [instant-feel.spec.js](instant-feel.spec.js) (mid-gesture
+base swaps via cache hits, sidebar sentinel survives a placement click and
+the debounced refresh lands, telemetry shape). Full suite 121 passed / 11
+cloud-gated skips.
+
+---
+
 ## perf(render-worker): pdf.js rasters move off the main thread (option 4)
 
 Wendi's "work jumps around while zooming" persisted after the caching work —

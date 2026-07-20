@@ -68,7 +68,7 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     await expect(previewTable).toContainText('108 ft² Floor Area');
     await page.locator('#roomBoxHeight').fill('8');
     // Typing the height fills in the Volume row live.
-    await expect(previewTable).toContainText('864 ft³ Volume');
+    await expect(previewTable).toContainText('864 ft³ Air Volume');
     // No rooms yet: the picker list is hidden and new-room mode is active.
     await expect(page.locator('#roomBoxRoomList')).toBeHidden();
     await expect(page.locator('#roomBoxNewRoomNameGroup')).toBeVisible();

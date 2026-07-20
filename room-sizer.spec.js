@@ -58,9 +58,17 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
       window.App.openRoomBoxModal({ x1: 0, y1: 0, x2: 120, y2: 90 });
     });
     await expect(page.locator('#roomBoxModal')).toHaveClass(/visible/);
-    // Live dims preview reflects the scale before any height is entered.
-    await expect(page.locator('#roomBoxDimsPreview')).toContainText('12\'-0" × 9\'-0"');
+    // Live dims table reflects the scale before any height is entered:
+    // Length | Width | Height | Totals, with a Floor Area row that needs no height.
+    const previewTable = page.locator('#roomBoxDimsPreview .room-dims-table');
+    await expect(previewTable).toBeVisible();
+    await expect(previewTable).toContainText('Length');
+    await expect(previewTable).toContainText('12\'-0"');
+    await expect(previewTable).toContainText('9\'-0"');
+    await expect(previewTable).toContainText('108 ft² Floor Area');
     await page.locator('#roomBoxHeight').fill('8');
+    // Typing the height fills in the Volume row live.
+    await expect(previewTable).toContainText('= 864 ft³ Volume');
     await page.locator('#roomBoxRoomSelect').selectOption('__new__');
     await page.locator('#roomBoxNewRoomName').fill('Office 101');
     await page.evaluate(() => { document.getElementById('roomBoxApply').click(); });

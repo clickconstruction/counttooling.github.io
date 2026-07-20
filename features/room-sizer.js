@@ -129,6 +129,9 @@
       };
     });
   }
+  // The modal's dims readout: a Length | Width | Height | Totals table with a
+  // Volume row (needs the height) and a Floor Area row (doesn't). Length is
+  // the box's longer side, Width the shorter — the way a room is spoken.
   function updateDimsPreview(rect, heightFt) {
     const state = App.state;
     const page = state.pages[state.currentPage];
@@ -136,9 +139,15 @@
     const dims = ann ? App.roomBoxDimsFeet({ ...rect, heightFt: heightFt || 0 }, App.getEffectiveScaleForLine(ann, rect, false, state.currentPage)) : null;
     const el = document.getElementById('roomBoxDimsPreview');
     if (!dims) { el.textContent = 'Set the page scale to size this box.'; return; }
-    let txt = fmtFtIn(dims.widthFt) + ' × ' + fmtFtIn(dims.lengthFt) + ' (' + fmtArea(dims.areaSqFt) + ')';
-    if (heightFt > 0) txt += ' × ' + fmtFtIn(heightFt) + ' = ' + fmtVol(dims.areaSqFt * heightFt);
-    el.textContent = txt;
+    const lengthFt = Math.max(dims.widthFt, dims.lengthFt);
+    const widthFt = Math.min(dims.widthFt, dims.lengthFt);
+    const hCell = heightFt > 0 ? fmtFtIn(heightFt) : '—';
+    const volCell = heightFt > 0 ? '= ' + fmtVol(dims.areaSqFt * heightFt) + ' Volume' : 'enter height for volume';
+    el.innerHTML = '<table class="room-dims-table">'
+      + '<tr><th>Length</th><th>Width</th><th>Height</th><th>Totals</th></tr>'
+      + '<tr><td>' + fmtFtIn(lengthFt) + '</td><td>' + fmtFtIn(widthFt) + '</td><td>' + hCell + '</td><td>' + volCell + '</td></tr>'
+      + '<tr><td>' + fmtFtIn(lengthFt) + '</td><td>' + fmtFtIn(widthFt) + '</td><td></td><td>' + fmtArea(dims.areaSqFt) + ' Floor Area</td></tr>'
+      + '</table>';
   }
   function currentHeightInput() {
     return App.parseRealWorldLength(document.getElementById('roomBoxHeight').value, 'ft');

@@ -1190,3 +1190,31 @@
 .room-box-delete:hover {
   color: var(--red, #e85447);
 }
+.room-dims-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.room-dims-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text2);
+  padding: 3px 10px 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.room-dims-table td {
+  padding: 4px 10px 4px 0;
+  color: var(--text);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.room-dims-table tr:last-child td {
+  border-bottom: none;
+}
+.room-dims-table td:last-child,
+.room-dims-table th:last-child {
+  padding-right: 0;
+  width: 100%;
+  text-align: right;
+  color: var(--text2);
+}

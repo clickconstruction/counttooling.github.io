@@ -26,6 +26,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./format.js')),
       Object.keys(require('./icon-render.js')),
       Object.keys(require('./line-metrics.js')),
+      Object.keys(require('./canvas-draw.js')),
     )
     .map((k) => [k, 'readonly']),
 );
@@ -192,6 +193,32 @@ module.exports = [
       globals: {
         ...globals.browser,
         ...geometryGlobals,
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  },
+  {
+    // canvas-draw.js: the annotation draw core (createCanvasDraw(deps)),
+    // extracted from app.js. Classic <script> loaded after geometry.js +
+    // icons.js, so it reads the pure geometry helpers (roomBoxDimsFeet,
+    // formatFeetInchesFromVal, ptDist, the bezier helpers) and the icon path
+    // data (RING_PATH, CIRCLE_PATH) by bare name; everything state-coupled
+    // arrives via deps. Its exports are consumed cross-file by app.js, so
+    // no-unused-vars is noise; it must NOT receive its own export names as
+    // globals (no-redeclare).
+    files: ['canvas-draw.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...geometryGlobals,
+        ...iconsGlobals,
         module: 'readonly',
       },
     },

@@ -5587,6 +5587,38 @@
       return doTurnInAndHandleResult(opts);
     }
     const headerEditBanner = document.getElementById('headerEditStatusBanner');
+    // Shared checkout action for the header/sidebar banner buttons and the
+    // Project Settings Check Out button (was two near-identical ~45-line
+    // blocks): RPC + server-clock update, expired-attention clear, state
+    // flip, section refresh, toasts. opts.onDenied runs before the
+    // permissions refresh on the not-ok path (Settings closes its modal
+    // there); returns true on success.
+    async function doCheckoutCurrentProject(opts) {
+      const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
+      updateServerClockFromRpc(data);
+      const result = data || (error ? { ok: false, error: error.message } : { ok: false });
+      if (result.ok) {
+        const wasSuspended = suspendAutoSaveUntilCheckout;
+        clearCheckoutExpiredAttention();
+        try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
+        if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: opts.debugTrigger });
+        state.checkedOutBy = state.supabaseSession?.user?.id;
+        state.checkedOutAt = result.checked_out_at || new Date().toISOString();
+        lastCheckoutRefreshAt = Date.now();
+        state.isViewer = false;
+        state.canCheckOut = false;
+        updateSettingsCheckoutSection();
+        updateUI();
+        updateStatus();
+        showToast('Project checked out. You can now edit.');
+        return true;
+      }
+      if (opts.onDenied) opts.onDenied();
+      await refreshProjectPermissions();
+      const msg = state.checkedOutEmail ? 'Project is checked out by ' + state.checkedOutEmail : (result.error || 'Failed to check out');
+      showToast(msg, 5000);
+      return false;
+    }
     async function handleEditStatusBannerClick(e) {
       const btn = e.target.closest('.header-edit-status-btn');
       if (!btn) return;
@@ -5600,29 +5632,7 @@
         btn.disabled = true;
         btn.textContent = 'Checking out...';
         try {
-          const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
-          updateServerClockFromRpc(data);
-          const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-          if (result.ok) {
-            const wasSuspended = suspendAutoSaveUntilCheckout;
-            clearCheckoutExpiredAttention();
-            try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
-            if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: 'header_banner_checkout' });
-            state.checkedOutBy = state.supabaseSession?.user?.id;
-            state.checkedOutAt = result.checked_out_at || new Date().toISOString();
-            lastCheckoutRefreshAt = Date.now();
-            state.isViewer = false;
-            state.canCheckOut = false;
-            updateSettingsCheckoutSection();
-            updateUI();
-            updateStatus();
-            showToast('Project checked out. You can now edit.');
-          } else {
-            await refreshProjectPermissions();
-            const msg = state.checkedOutEmail ? 'Project is checked out by ' + state.checkedOutEmail : (result.error || 'Failed to check out');
-            showToast(msg, 5000);
-            updateUI();
-          }
+          await doCheckoutCurrentProject({ debugTrigger: 'header_banner_checkout' });
         } finally {
           btn.disabled = false;
           updateUI();
@@ -5650,31 +5660,7 @@
       btn.disabled = true;
       btn.textContent = 'Checking out...';
       try {
-        const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
-        updateServerClockFromRpc(data);
-        const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-        if (result.ok) {
-          const wasSuspended = suspendAutoSaveUntilCheckout;
-          clearCheckoutExpiredAttention();
-          try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
-          if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: 'settings_checkout' });
-          state.checkedOutBy = state.supabaseSession?.user?.id;
-          state.checkedOutAt = result.checked_out_at || new Date().toISOString();
-          lastCheckoutRefreshAt = Date.now();
-          state.isViewer = false;
-          state.canCheckOut = false;
-          updateSettingsCheckoutSection();
-          updateUI();
-          updateStatus();
-          showToast('Project checked out. You can now edit.');
-        } else {
-          hideModal('settingsModal');
-          await refreshProjectPermissions();
-          const msg = state.checkedOutEmail
-            ? 'Project is checked out by ' + state.checkedOutEmail
-            : (result.error || 'Failed to check out');
-          showToast(msg, 5000);
-        }
+        await doCheckoutCurrentProject({ debugTrigger: 'settings_checkout', onDenied: () => hideModal('settingsModal') });
       } finally {
         btn.disabled = false;
         btn.textContent = origText;

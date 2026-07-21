@@ -13,7 +13,7 @@ const { IDBFactory } = require('fake-indexeddb');
 const C = require('./constants.js');
 Object.assign(globalThis, C);
 const idb = require('./idb.js');
-const { CUSTOM_ICONS_KEY, SAVE_LOGS_SNAPSHOT_MAX_ENTRIES } = C;
+const { CUSTOM_ICONS_KEY, SAVE_LOGS_SNAPSHOT_MAX_ENTRIES, ZOOM_RUNGS_MAX_PER_DOC, ZOOM_RUNGS_MAX_BYTES } = C;
 
 test.beforeEach(() => {
   globalThis.indexedDB = new IDBFactory();
@@ -134,4 +134,43 @@ test('saveLogsSnapshots: prunes to the max and returns newest-first', async () =
   assert.strictEqual(all.length, SAVE_LOGS_SNAPSHOT_MAX_ENTRIES);
   const remaining = all.map((e) => e.capturedAt);
   assert.ok(!remaining.includes(stamps[0]) && !remaining.includes(stamps[1]), 'two oldest pruned');
+});
+
+test('zoom rungs: key shape, per-page get, per-doc + global-byte eviction (oldest first)', async () => {
+  const mk = (doc, pageN, zoom, at, bytes) => ({
+    k: idb.idbZoomRungKey(doc, pageN, 0, zoom, 1),
+    dp: doc + '|' + pageN,
+    docHash: doc, pageNumber: pageN, rotation: 0, zoom, effDpr: 1,
+    w: 100, h: 100, bytes, at, blob: null,
+  });
+  assert.strictEqual(idb.idbZoomRungKey('h', 2, 90, 1.15, 2), 'h|2|90|1.150000|2.0000');
+
+  // Per-page get returns only that doc+page's rows.
+  await idb.idbZoomRungsPut(mk('docA', 1, 1.0, 1, 10));
+  await idb.idbZoomRungsPut(mk('docA', 1, 1.15, 2, 10));
+  await idb.idbZoomRungsPut(mk('docA', 2, 1.0, 3, 10));
+  await idb.idbZoomRungsPut(mk('docB', 1, 1.0, 4, 10));
+  const p1 = await idb.idbZoomRungsGetForPage('docA', 1);
+  assert.strictEqual(p1.length, 2);
+  assert.ok(p1.every((r) => r.docHash === 'docA' && r.pageNumber === 1));
+
+  // Per-doc cap sheds oldest entries of that doc.
+  globalThis.indexedDB = new IDBFactory();
+  for (let i = 0; i < ZOOM_RUNGS_MAX_PER_DOC + 3; i++) {
+    await idb.idbZoomRungsPut(mk('docC', 1, 1 + i * 0.01, i, 10));
+  }
+  const rows = await idb.idbZoomRungsGetForPage('docC', 1);
+  assert.strictEqual(rows.length, ZOOM_RUNGS_MAX_PER_DOC);
+  assert.ok(rows.every((r) => r.at >= 3), 'oldest three evicted');
+
+  // Global byte budget sheds oldest across docs.
+  globalThis.indexedDB = new IDBFactory();
+  const big = Math.ceil(ZOOM_RUNGS_MAX_BYTES / 3) + 1;
+  await idb.idbZoomRungsPut(mk('d1', 1, 1.0, 1, big));
+  await idb.idbZoomRungsPut(mk('d2', 1, 1.0, 2, big));
+  await idb.idbZoomRungsPut(mk('d3', 1, 1.0, 3, big));
+  const d1 = await idb.idbZoomRungsGetForPage('d1', 1);
+  const d3 = await idb.idbZoomRungsGetForPage('d3', 1);
+  assert.strictEqual(d1.length, 0);   // oldest evicted to fit the budget
+  assert.strictEqual(d3.length, 1);
 });

@@ -76,7 +76,7 @@
         return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
       }).join('');
       const applyIcon = (path) => {
-        App.pushUndoSnapshot();
+        App.pushUndoSnapshotCurrentPage();
         item.icon = path;
         App.markProjectDirty();
         App.updateUI();
@@ -106,7 +106,7 @@
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
-      App.pushUndoSnapshot();
+      App.pushUndoSnapshotCurrentPage();
       item.name = v || (kind === 'counter' ? 'Counter' : 'Line');
       App.markProjectDirty();
       App.updateUI();
@@ -115,7 +115,7 @@
     swatchEl.style.background = color;
     swatchEl.onclick = () => {
       App.showLineColorModal(color, (newColor) => {
-        App.pushUndoSnapshot();
+        App.pushUndoSnapshotCurrentPage();
         item.color = newColor;
         swatchEl.style.background = newColor;
         App.markProjectDirty();
@@ -125,7 +125,7 @@
     };
     if (kind === 'lineType') {
       document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => {
-        r.onchange = () => { App.pushUndoSnapshot(); item.curveStyle = r.value; App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
+        r.onchange = () => { App.pushUndoSnapshotCurrentPage(); item.curveStyle = r.value; App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
       });
     }
     let totalCount = 0;
@@ -181,7 +181,7 @@
 
   function performDeleteCounterLineType(kind, item) {
     const state = App.state;
-    App.pushUndoSnapshot();
+    App.pushUndoSnapshot();   // FULL snapshot — this delete cascades across every page's markers
     if (kind === 'counter') {
       const idx = state.counters.findIndex(c => c.id === item.id);
       if (idx >= 0) state.counters.splice(idx, 1);
@@ -245,14 +245,14 @@
     editVerticesGroup.style.display = it.type === 'poly' ? '' : 'none';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
-      App.pushUndoSnapshot();
+      App.pushUndoSnapshotCurrentPage();
       line.name = v || (it.type === 'poly' ? 'Polyline' : 'Quick line');
       App.markProjectDirty();
       App.updateUI();
     };
     swatchEl.onclick = () => {
       App.showLineColorModal(color, (newColor) => {
-        App.pushUndoSnapshot();
+        App.pushUndoSnapshotCurrentPage();
         line.color = newColor;
         swatchEl.style.background = newColor;
         App.markProjectDirty();
@@ -268,15 +268,15 @@
       line.startDropUnit = startDropUnitEl.value;
       line.endDropUnit = endDropUnitEl.value;
     };
-    startDropEl.onblur = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
-    endDropEl.onblur = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
-    startDropUnitEl.onchange = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
-    endDropUnitEl.onchange = () => { App.pushUndoSnapshot(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
+    startDropEl.onblur = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
+    endDropEl.onblur = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
+    startDropUnitEl.onchange = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
+    endDropUnitEl.onchange = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
     const adjustDrop = (el, unitEl, prop, delta) => {
       const v = parseInt(el.value, 10);
       const cur = isNaN(v) || v < 0 ? 0 : v;
       const next = Math.max(0, cur + delta);
-      App.pushUndoSnapshot();
+      App.pushUndoSnapshotCurrentPage();
       line[prop] = next;
       line[prop + 'Unit'] = unitEl.value;
       el.value = next || '';
@@ -289,7 +289,7 @@
     document.getElementById('linePropertiesStartDropMinus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -1);
     document.getElementById('linePropertiesStartDropMinus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -10);
     document.getElementById('linePropertiesClearStartDrop').onclick = () => {
-      App.pushUndoSnapshot();
+      App.pushUndoSnapshotCurrentPage();
       line.startDrop = 0;
       startDropEl.value = '';
       App.markProjectDirty();
@@ -301,7 +301,7 @@
     document.getElementById('linePropertiesEndDropMinus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -1);
     document.getElementById('linePropertiesEndDropMinus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -10);
     document.getElementById('linePropertiesClearEndDrop').onclick = () => {
-      App.pushUndoSnapshot();
+      App.pushUndoSnapshotCurrentPage();
       line.endDrop = 0;
       endDropEl.value = '';
       App.markProjectDirty();
@@ -333,7 +333,7 @@
       if (startDropUnitEl) line.startDropUnit = startDropUnitEl.value;
       if (endDropUnitEl) line.endDropUnit = endDropUnitEl.value;
     }
-    App.pushUndoSnapshot();
+    App.pushUndoSnapshotCurrentPage();
     App.markProjectDirty();
     App.hideModal('linePropertiesModal');
     pendingLineProperties = null;
@@ -347,7 +347,7 @@
     if (!g) return false;
     const count = App.countItemsInGroup(groupId);
     if (count > 0 && !confirm('This group has ' + count + ' item(s). Remove group and clear assignment from those items?')) return false;
-    App.pushUndoSnapshot();
+    App.pushUndoSnapshot();   // FULL snapshot — group removal clears assignments on every page
     state.groups = (state.groups || []).filter(x => x.id !== groupId);
     if (state.activeGroupId === groupId) state.activeGroupId = null;
     state.pages.forEach(p => {

@@ -13,6 +13,61 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(room-sizer): context-menu Delete now removes room boxes
+
+Field report (Wendi): right-clicking a placed room box showed the Delete
+item, but clicking it did nothing. The `ctxDelete` switch handled markers,
+lines, polylines, highlights, both zones, and notes — but never gained a
+`roomBox` branch when the Room Sizer shipped, so the menu closed and the box
+survived. Branch added (splices `ann.roomBoxes[t.index]`); the handler also
+moved to the page-scoped undo snapshot (every branch mutates only the
+current page's active canvas). Regression appended to
+[room-sizer.spec.js](room-sizer.spec.js) (seed box → right-click → target
+type `roomBox` → Delete actually deletes, menu closes, no errors).
+
+---
+
+## perf(endgame): tile grid, worker pool, persistent pyramid, page-scoped undo
+
+The four remaining roadmap items, together:
+
+- **Deep-zoom viewport TILE GRID** — the idle deep-zoom sharpening (the old
+  single-window crop tile) is now a compositor: fixed 512-css-px tiles
+  rastered at full dpr via the render service/worker into a budget-capped
+  cache (32M px high-mem / 12M px otherwise; farthest-from-center eviction),
+  composited onto #cropCanvas over the visible window. Panning re-composites
+  cached tiles instantly and rasters only newly exposed cells, center-out —
+  map-app behavior, raster cost bounded at ~one screen regardless of zoom or
+  sheet density. The commit-mode window-first tile is unchanged. New:
+  [tile-grid.spec.js](tile-grid.spec.js); the existing crop-tile.spec passes
+  unchanged against the compositor.
+- **Render worker POOL** — slot 0 stays interactive (full-page + tiles);
+  slot 1 (deviceMemory ≥ 8, docs ≤ 25MB — it holds another copy of the doc)
+  takes background prefetches so warm-up never queues behind an interactive
+  raster. Per-slot stats in the service snapshot; any slot failure falls the
+  whole pool back to main-thread for the session.
+- **Persistent pyramid** — rastered RUNG bitmaps persist to IndexedDB (store
+  `zoom_rungs`, DB v7; webp q0.85, keyed docHash|page|rotation|rung|effDpr;
+  caps 24/doc + ~96MB global, oldest-first eviction; node-tested). The doc
+  hash comes from `renderService.ensureDocHash` (guarded transport getData +
+  crypto.subtle — works with or without the worker). Restore is lazy per
+  (doc, page) on first render; restored entries feed the same cache and the
+  downsample pyramid re-derives below them — daily projects reopen with
+  yesterday's ladder warm. `persisted`/`restored` counters in the cache
+  stats. New: [pyramid-persist.spec.js](pyramid-persist.spec.js) (persists,
+  then restores across a real page reload).
+- **Page-scoped undo snapshots** — `pushUndoSnapshotPage(pageIdx)` in the
+  undo model deep-copies ONE page + the small palettes instead of every page
+  (O(current page), not O(project)); undo/redo capture their inverse at the
+  same scope, so redo entries stay small too. The high-frequency page-local
+  sites (counter/line/polyline/highlight placement incl. touch, measure,
+  drops, notes, line properties) switched over; cross-page cascades
+  (counter/line-type delete, group delete) deliberately keep full snapshots.
+  Unit-tested (page-scope isolation, interleaving with full snapshots,
+  scale/rotation/palette restore).
+
+---
+
 ## perf(pyramid): downsample pyramid + prefetch immediacy/momentum
 
 "See more pixels more quickly" — attack the remaining cost, COLD rasters:

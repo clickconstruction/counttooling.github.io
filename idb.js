@@ -28,7 +28,7 @@ const BACKUP_PDF_TO_INDEXEDDB = (typeof window !== 'undefined' && typeof window.
 
 function openPdfCacheDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(PDF_CACHE_DB, 6);
+    const req = indexedDB.open(PDF_CACHE_DB, 7);
     req.onerror = () => reject(req.error);
     req.onsuccess = () => resolve(req.result);
     req.onupgradeneeded = (e) => {
@@ -59,6 +59,11 @@ function openPdfCacheDb() {
       }
       if (!db.objectStoreNames.contains(PDF_UPLOAD_RESUME_STORE)) {
         db.createObjectStore(PDF_UPLOAD_RESUME_STORE, { keyPath: 'urlStorageKey' });
+      }
+      if (!db.objectStoreNames.contains(ZOOM_RUNGS_STORE)) {
+        const zr = db.createObjectStore(ZOOM_RUNGS_STORE, { keyPath: 'k' });
+        zr.createIndex('dp', 'dp');   // docHash|pageNumber — per-page restore reads
+        zr.createIndex('at', 'at');   // LRU eviction order
       }
     };
   });
@@ -375,10 +380,54 @@ async function idbPdfUploadResumeDeleteByFingerprint(fingerprint) {
   } catch (_) { /* ignore */ }
 }
 
+// --- Persistent zoom-rung bitmaps (cross-session pyramid) ---
+// Pure primitives: put with global-byte + per-doc-entry eviction (oldest
+// first), per-page get. Encoding/decoding (canvas -> webp blob ->
+// ImageBitmap) stays app-side.
+function idbZoomRungKey(docHash, pageNumber, rotation, zoom, effDpr) {
+  return docHash + '|' + pageNumber + '|' + rotation + '|' + zoom.toFixed(6) + '|' + effDpr.toFixed(4);
+}
+async function idbZoomRungsGetForPage(docHash, pageNumber) {
+  const db = await openPdfCacheDb();
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(ZOOM_RUNGS_STORE, 'readonly');
+      const idx = tx.objectStore(ZOOM_RUNGS_STORE).index('dp');
+      const req = idx.getAll(docHash + '|' + pageNumber);
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    } catch (_) { resolve([]); }
+  });
+}
+async function idbZoomRungsPut(entry) {
+  const db = await openPdfCacheDb();
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(ZOOM_RUNGS_STORE, 'readwrite');
+      const store = tx.objectStore(ZOOM_RUNGS_STORE);
+      store.put(entry);
+      // Evict: same-doc entries beyond the per-doc cap, then anything beyond
+      // the global byte budget — both oldest-first by `at`.
+      const all = store.getAll();
+      all.onsuccess = () => {
+        const rows = (all.result || []).slice().sort((a, b) => a.at - b.at);
+        const sameDoc = rows.filter((r) => r.docHash === entry.docHash);
+        let extra = sameDoc.length - ZOOM_RUNGS_MAX_PER_DOC;
+        for (const r of sameDoc) { if (extra <= 0) break; store.delete(r.k); extra--; }
+        let total = rows.reduce((s, r) => s + (r.bytes || 0), 0);
+        for (const r of rows) { if (total <= ZOOM_RUNGS_MAX_BYTES) break; store.delete(r.k); total -= (r.bytes || 0); }
+      };
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    } catch (_) { resolve(false); }
+  });
+}
+
 // Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    idbZoomRungKey, idbZoomRungsGetForPage, idbZoomRungsPut,
     openPdfCacheDb,
     viewCacheGet, viewCachePut, viewCacheGetMeta,
     pdfCacheGet, pdfCachePut, pdfCacheDelete,

@@ -40,7 +40,7 @@
         const color = state.editingNote ? (state.editingNote.color || DEFAULT_NOTE_COLOR) : (state.pendingNoteColor || DEFAULT_NOTE_COLOR);
         App.showLineColorModal(color, (newColor) => {
           if (state.editingNote) {
-            App.pushUndoSnapshot();
+            App.pushUndoSnapshotCurrentPage();
             state.editingNote.color = newColor;
             App.markProjectDirty();
             App.renderAnnotations();
@@ -69,7 +69,7 @@
     App.hideModal('noteModal');
     if (state.pendingNote) {
       if (text) {
-        App.pushUndoSnapshot();
+        App.pushUndoSnapshotCurrentPage();
         const page = state.pages[state.currentPage];
         const canvas = page && App.ensureActiveCanvas(page);
         if (canvas) {
@@ -80,7 +80,7 @@
       state.pendingNote = null;
       state.pendingNoteColor = null;
     } else if (state.editingNote) {
-      App.pushUndoSnapshot();
+      App.pushUndoSnapshotCurrentPage();
       state.editingNote.text = text;
       state.editingNote = null;
     }

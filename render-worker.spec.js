@@ -61,6 +61,14 @@ test.describe('Render worker', () => {
     });
     expect(result.workerGained).toBeGreaterThanOrEqual(1);
     expect(result.fallbacks).toBe(0);
+
+    // Pool: on a high-memory machine with a small doc, the background slot
+    // exists and has taken prefetch rasters (slot 0 stays interactive).
+    const pool = await page.evaluate(() => window.App.__renderServiceStats().slots);
+    if (pool.length > 1) {
+      expect(pool[1].loaded).toBe(true);
+      expect(pool[1].rastered).toBeGreaterThanOrEqual(1);
+    }
     expect(await page.evaluate(canvasHasContentFn)).toBe(true);
 
     // Page flip exercises the worker path end-to-end too.

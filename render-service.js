@@ -39,14 +39,18 @@ function createRenderService(deps) {
   const logEvent = (deps && deps.logEvent) || null;
 
   // -------- state --------
-  let worker = null;
+  // Worker POOL: slot 0 is the interactive renderer (full-page + crop tile);
+  // slot 1 (high-memory machines, small-enough docs) exists so background
+  // prefetches never queue behind an interactive raster — pdf.js serializes
+  // within one worker thread, so parallel warm-up needs a second instance
+  // (which also means a second copy of the document; hence the gates).
+  const slots = [];                // [{ worker, pending: Map, loadedGen, rastered }]
   let workerState = 'idle';        // idle | adopting | ready | failed  (failed = off for the session)
-  let adoptedTransport = null;     // the pdf.js transport whose bytes the worker holds
+  let adoptedTransport = null;     // the pdf.js transport whose bytes the workers hold
   let blockedTransport = null;     // per-document block (too large) — main-only for this doc
   let gen = 0;                     // document generation; stale worker messages self-discard
   let readyGen = 0;
   let seq = 0;
-  const pending = new Map();       // reqId -> { resolve, reject, box, canvasContext }
 
   const stats = { total: 0, byKind: {}, workerRastered: 0, mainRastered: 0, fallbacks: 0, log: [] };
   const STATS_LOG_MAX = 300;
@@ -81,37 +85,52 @@ function createRenderService(deps) {
     if (workerState === 'failed') return;
     workerState = 'failed';
     stats.fallbacks++;
-    try { worker && worker.terminate(); } catch (_) { /* already dead */ }
-    worker = null;
-    // In-flight worker requests re-run on the main thread via the retry path.
-    for (const [reqId, p] of Array.from(pending)) {
-      pending.delete(reqId);
-      const err = new Error('render worker failed: ' + reason);
-      err.__retryMain = true;
-      p.reject(err);
+    for (const slot of slots) {
+      try { slot.worker && slot.worker.terminate(); } catch (_) { /* already dead */ }
+      // In-flight requests re-run on the main thread via the retry path.
+      for (const [reqId, p] of Array.from(slot.pending)) {
+        slot.pending.delete(reqId);
+        const err = new Error('render worker failed: ' + reason);
+        err.__retryMain = true;
+        p.reject(err);
+      }
     }
+    slots.length = 0;
     log('render_worker_fallback', 'Render worker disabled for this session', { reason: String(reason) });
   }
-  function ensureWorker() {
-    if (worker) return worker;
-    worker = new Worker('/render-worker.js');
-    worker.onmessage = onWorkerMessage;
-    worker.onerror = (e) => failWorker('worker-error: ' + ((e && e.message) || 'unknown'));
-    return worker;
+  function makeSlot() {
+    const slot = { worker: new Worker('/render-worker.js'), pending: new Map(), loadedGen: 0, rastered: 0 };
+    slot.worker.onmessage = (e) => onWorkerMessage(slot, e);
+    slot.worker.onerror = (e) => failWorker('worker-error: ' + ((e && e.message) || 'unknown'));
+    return slot;
   }
-  function onWorkerMessage(e) {
+  function poolSizeFor(docBytes) {
+    const highMem = typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory >= 8;
+    return (highMem && docBytes <= 26214400) ? 2 : 1;   // 2nd doc copy only when cheap
+  }
+  function slotFor(kind) {
+    // Background prefetches use slot 1 when it's live so they never queue
+    // behind an interactive raster; everything else (and the fallback when
+    // slot 1 is absent/lagging) uses slot 0.
+    if (kind === 'prefetch' && slots.length > 1 && slots[1].loadedGen === gen) return slots[1];
+    return slots[0];
+  }
+  function onWorkerMessage(slot, e) {
     const m = e.data || {};
     if (m.type === 'loaded') {
       if (m.gen !== gen) return;                      // a newer document superseded this load
       if (!m.ok) { failWorker('doc-load: ' + m.error); return; }
-      workerState = 'ready';
-      readyGen = m.gen;
+      slot.loadedGen = m.gen;
+      if (slots[0] && slots[0].loadedGen === m.gen) {  // interactive slot ready = service ready
+        workerState = 'ready';
+        readyGen = m.gen;
+      }
       return;
     }
     if (m.type === 'result') {
-      const p = pending.get(m.reqId);
+      const p = slot.pending.get(m.reqId);
       if (!p) { if (m.bitmap) { try { m.bitmap.close(); } catch (_) {} } return; }   // late result after cancel/fallback
-      pending.delete(m.reqId);
+      slot.pending.delete(m.reqId);
       if (p.box.cancelled) {
         if (m.bitmap) { try { m.bitmap.close(); } catch (_) {} }
         p.reject(cancelError());
@@ -130,6 +149,7 @@ function createRenderService(deps) {
       } finally {
         try { m.bitmap.close(); } catch (_) { /* backing store already released */ }
       }
+      slot.rastered++;
       p.resolve();
       return;
     }
@@ -155,16 +175,39 @@ function createRenderService(deps) {
         log('render_worker_doc_skipped', 'Document too large for the render worker', { size, cap: WORKER_DOC_MAX_BYTES });
         return;
       }
-      // Ship a transferable copy; the typed array from getData may be a view.
-      const buf = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
-        ? bytes.buffer.slice(0)
-        : bytes.slice().buffer;
-      ensureWorker().postMessage({ type: 'load', gen: myGen, buffer: buf }, [buf]);
+      // One slot per pool seat, each with its own transferable copy of the
+      // bytes (the typed array from getData may be a view — normalize first).
+      const poolSize = poolSizeFor(size);
+      while (slots.length < poolSize) slots.push(makeSlot());
+      for (const slot of slots) {
+        const buf = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+          ? bytes.buffer.slice(0)
+          : bytes.slice().buffer;
+        slot.worker.postMessage({ type: 'load', gen: myGen, buffer: buf }, [buf]);
+      }
     }).catch((err) => failWorker('getData: ' + ((err && err.message) || err)));
   }
   function workerReadyFor(pdfPage) {
     return workerState === 'ready' && readyGen === gen &&
       adoptedTransport && pdfPage && pdfPage._transport === adoptedTransport;
+  }
+
+  // Content hash of the current document's bytes (via the same guarded
+  // transport getData used for adoption) — the key for cross-session
+  // persisted rung bitmaps. Cached per transport; null when unavailable.
+  const docHashByTransport = new Map();
+  function ensureDocHash(pdfPage) {
+    const t = pdfPage && pdfPage._transport;
+    if (!t || typeof t.getData !== 'function') return Promise.resolve(null);
+    if (!docHashByTransport.has(t)) {
+      docHashByTransport.set(t, Promise.resolve(t.getData()).then(async (bytes) => {
+        if (!bytes || !bytes.byteLength || typeof crypto === 'undefined' || !crypto.subtle) return null;
+        const buf = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength ? bytes.buffer : bytes.slice().buffer;
+        const digest = await crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }).catch(() => null));
+    }
+    return docHashByTransport.get(t);
   }
 
   // -------- backends --------
@@ -180,9 +223,11 @@ function createRenderService(deps) {
   function rasterWorker(params, box) {
     return new Promise((resolve, reject) => {
       const reqId = ++seq;
+      const slot = slotFor(params.kind);
       box.reqId = reqId;
-      pending.set(reqId, { resolve: () => { stats.workerRastered++; resolve(); }, reject, box, canvasContext: params.canvasContext });
-      worker.postMessage({
+      box.slot = slot;
+      slot.pending.set(reqId, { resolve: () => { stats.workerRastered++; resolve(); }, reject, box, canvasContext: params.canvasContext });
+      slot.worker.postMessage({
         type: 'render', reqId, gen,
         pageNumber: params.pdfPage.pageNumber,
         scale: params.scale, rotation: params.rotation,
@@ -213,7 +258,7 @@ function createRenderService(deps) {
       if (workerSupported() && workerState !== 'failed') {
         if (workerReadyFor(params.pdfPage)) {
           try {
-            await rasterWorker(params, box);
+            await rasterWorker(Object.assign({ kind }, params), box);
             return;
           } catch (err) {
             if (box.cancelled || !(err && err.__retryMain)) throw err;
@@ -232,13 +277,14 @@ function createRenderService(deps) {
       cancel() {
         box.cancelled = true;
         if (box.inner) { try { box.inner.cancel(); } catch (_) { /* settling */ } }
-        if (box.reqId != null && worker) { try { worker.postMessage({ type: 'cancel', reqId: box.reqId }); } catch (_) { /* worker gone */ } }
+        if (box.reqId != null && box.slot && box.slot.worker) { try { box.slot.worker.postMessage({ type: 'cancel', reqId: box.reqId }); } catch (_) { /* worker gone */ } }
       },
     };
   }
 
   return {
     raster,
+    ensureDocHash,
     mode: () => (workerState === 'ready' ? 'worker' : 'main'),
     workerState: () => workerState,
     statsSnapshot: () => ({
@@ -247,6 +293,7 @@ function createRenderService(deps) {
       workerRastered: stats.workerRastered,
       mainRastered: stats.mainRastered,
       fallbacks: stats.fallbacks,
+      slots: slots.map((s) => ({ loaded: s.loadedGen === gen, rastered: s.rastered })),
       log: stats.log.slice(),
     }),
     setTestDelay: (ms, kinds) => { testDelayMs = ms || 0; testDelayKinds = Array.isArray(kinds) && kinds.length ? kinds.slice() : null; },

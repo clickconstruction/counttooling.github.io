@@ -112,6 +112,12 @@ const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
 const CUSTOM_ICONS_STORE = 'custom_icons';
 const SAVE_LOGS_SNAPSHOT_STORE = 'save_logs_snapshots';
 const PDF_UPLOAD_RESUME_STORE = 'pdf_upload_resume';
+// Persistent zoom-rung bitmaps (the cross-session pyramid): compressed webp
+// blobs keyed by document hash + page + rotation + rung + effDpr, so daily
+// projects reopen with yesterday's zoom ladder already warm.
+const ZOOM_RUNGS_STORE = 'zoom_rungs';
+const ZOOM_RUNGS_MAX_PER_DOC = 24;          // entries per document
+const ZOOM_RUNGS_MAX_BYTES = 100663296;     // ~96MB across all documents
 const PDF_CACHE_MAX_ENTRIES = 10;
 const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
 const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
@@ -215,7 +221,7 @@ if (typeof module !== 'undefined' && module.exports) {
     PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE,
     PDF_CACHE_DB, PDF_CACHE_STORE, PDF_CACHE_META_STORE, VIEW_PDFS_STORE, VIEW_PDFS_META_STORE,
     TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE, CUSTOM_ICONS_STORE, SAVE_LOGS_SNAPSHOT_STORE,
-    PDF_UPLOAD_RESUME_STORE,
+    PDF_UPLOAD_RESUME_STORE, ZOOM_RUNGS_STORE, ZOOM_RUNGS_MAX_PER_DOC, ZOOM_RUNGS_MAX_BYTES,
     PDF_CACHE_MAX_ENTRIES, PDF_CACHE_MAX_BYTES, TAKEOFF_BACKUP_MAX_ENTRIES, TAKEOFF_BACKUP_MAX_BYTES,
     SAVE_LOGS_SNAPSHOT_MAX_ENTRIES, CUSTOM_ICONS_KEY,
     PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ,

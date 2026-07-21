@@ -494,6 +494,15 @@
     notePerfSample('undoSnapshotMs', performance.now() - t0);
     return r;
   }
+  // Page-scoped snapshot for high-frequency page-local mutations (placements,
+  // drops, notes): O(current page) instead of O(project). Cascade operations
+  // (group/room deletes, imports, canvas repair) must keep pushUndoSnapshot.
+  function pushUndoSnapshotCurrentPage() {
+    const t0 = performance.now();
+    const r = undoStackModel.pushUndoSnapshotPage(state.currentPage);
+    notePerfSample('undoSnapshotMs', performance.now() - t0);
+    return r;
+  }
   function undo() { return undoStackModel.undo(); }
   function redo() { return undoStackModel.redo(); }
   function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
@@ -1318,7 +1327,7 @@
   const PDF_BITMAP_CACHE_TOTAL_PX = PDF_BITMAP_LOW_MEM ? 12000000 : (PDF_BITMAP_HIGH_MEM ? 48000000 : 24000000);
   const pdfBitmapCache = [];                          // LRU: oldest first, [{pdfPage, rotation, zoom, effDpr, bitmap, w, h}]
   let pdfBitmapCacheGeneration = 0;                   // bumped on clear; async inserts self-discard if it moved
-  const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0, derived: 0 };
+  const pdfBitmapCacheStats = { hits: 0, misses: 0, prefetched: 0, derived: 0, persisted: 0, restored: 0 };
   function pdfBitmapCacheMaxArea() {
     return Math.min(PDF_BITMAP_CACHE_AREA_FRAC * getCanvasCaps().maxArea * renderAreaSafety, PDF_BITMAP_CACHE_AREA_ABS);
   }
@@ -1396,6 +1405,7 @@
       pdfBitmapCachePut(entry);
       if (prefetch) pdfBitmapCacheStats.prefetched++;
       schedulePyramidDerive(entry);
+      schedulePersistZoomRung(entry);   // cross-session pyramid (rung captures only)
     }).catch(() => { /* capture is best-effort; a miss just re-renders */ });
   }
 
@@ -1464,6 +1474,63 @@
       }
     }
     if (pyramidQueue.length && !pyramidTimer) pyramidTimer = setTimeout(runPyramidDerive, 0);
+  }
+
+  // --- Cross-session pyramid (persisted rung bitmaps) ---
+  // Rastered RUNG bitmaps persist to IndexedDB as webp blobs keyed by the
+  // document's content hash (renderService.ensureDocHash — works with or
+  // without the worker), so a daily project reopens with yesterday's zoom
+  // ladder warm. Restore is lazy per (doc, page) on first render; restored
+  // entries feed the same cache — and the downsample pyramid re-derives the
+  // levels below them for free. All best-effort; failures just stay cold.
+  const zoomRungsRestoreAttempted = new Set();
+  function schedulePersistZoomRung(entry) {
+    if (entry.derived) return;
+    if (Math.abs(snapZoomToRung(entry.zoom, 0.2, getMaxZoom()) - entry.zoom) > 1e-9) return;   // rungs only
+    renderService.ensureDocHash(entry.pdfPage).then((hash) => {
+      if (!hash || !pdfBitmapCache.includes(entry)) return;   // no identity, or already evicted
+      try {
+        const c = document.createElement('canvas');
+        c.width = entry.w;
+        c.height = entry.h;
+        c.getContext('2d').drawImage(entry.bitmap, 0, 0);
+        c.toBlob((blob) => {
+          c.width = 0; c.height = 0;
+          if (!blob) return;
+          idbZoomRungsPut({
+            k: idbZoomRungKey(hash, entry.pdfPage.pageNumber, entry.rotation, entry.zoom, entry.effDpr),
+            dp: hash + '|' + entry.pdfPage.pageNumber,
+            docHash: hash, pageNumber: entry.pdfPage.pageNumber,
+            rotation: entry.rotation, zoom: entry.zoom, effDpr: entry.effDpr,
+            w: entry.w, h: entry.h, bytes: blob.size, at: Date.now(), blob,
+          }).then((ok) => { if (ok) pdfBitmapCacheStats.persisted++; });
+        }, 'image/webp', 0.85);
+      } catch (_) { /* persistence is best-effort */ }
+    });
+  }
+  function maybeRestorePersistedRungs(page) {
+    if (!page || !page.pdfPage || typeof createImageBitmap !== 'function') return;
+    const pdfPage = page.pdfPage;
+    const gen = pdfBitmapCacheGeneration;
+    renderService.ensureDocHash(pdfPage).then((hash) => {
+      if (!hash) return;
+      const attemptKey = hash + '|' + pdfPage.pageNumber;
+      if (zoomRungsRestoreAttempted.has(attemptKey)) return;
+      zoomRungsRestoreAttempted.add(attemptKey);
+      idbZoomRungsGetForPage(hash, pdfPage.pageNumber).then((rows) => {
+        rows.forEach((row) => {
+          if (!row || !row.blob) return;
+          if (row.rotation !== (page.rotation ?? 0)) return;
+          if (pdfBitmapCacheGet(pdfPage, row.rotation, row.zoom, row.effDpr)) return;
+          createImageBitmap(row.blob).then((bitmap) => {
+            if (gen !== pdfBitmapCacheGeneration ||
+                pdfBitmapCacheGet(pdfPage, row.rotation, row.zoom, row.effDpr)) { try { bitmap.close(); } catch (_) {} return; }
+            pdfBitmapCachePut({ pdfPage, rotation: row.rotation, zoom: row.zoom, effDpr: row.effDpr, bitmap, w: row.w, h: row.h, restored: true });
+            pdfBitmapCacheStats.restored++;
+          }).catch(() => { /* a failed decode just stays cold */ });
+        });
+      });
+    });
   }
 
   // --- Idle prefetch of adjacent pages ---
@@ -1616,6 +1683,7 @@
     if (cropTileTask) { try { cropTileTask.cancel(); } catch (_) { /* settling */ } cropTileTask = null; }
     cropTileOnDone = null;   // the caller that clears owns (or abandons) the follow-up render
     cropTileKey = null;
+    flushTileGrid();
     if (cropCanvas && cropCanvas.width) { cropCanvas.width = 0; cropCanvas.height = 0; }
     if (cropCanvas) cropCanvas.style.display = 'none';
   }
@@ -1637,6 +1705,7 @@
     if (!page || !page.pdfPage) { clearCropTile(); if (onDone) onDone(); return; }
     const dpr = window.devicePixelRatio || 1;
     if (!force && (!(currentEffDpr > 0) || dpr / currentEffDpr < CROP_TILE_MIN_DEFICIT)) { clearCropTile(); return; }
+    if (!force) { ensureTileCoverage(); return; }   // idle deep-zoom sharpening = the tile compositor
     if (pdfRenderTask) {
       // A real raster is in flight. Forced (commit) mode falls through to the
       // full-render orchestration; idle mode just waits its turn.
@@ -1722,6 +1791,146 @@
     });
   }
 
+  // --- Deep-zoom viewport TILE COMPOSITOR (the idle mode of the crop tile) ---
+  // At deep zoom the full-page buffer is clamped soft and grows quadratically
+  // with zoom — so instead of one visible-window raster (which dies on every
+  // pan), keep a small cache of fixed-size TILES (TILE_CSS content-css px,
+  // rastered at full dpr via the render service/worker) and COMPOSITE the
+  // visible ones onto cropCanvas. Panning re-composites cached tiles
+  // instantly and rasters only newly exposed cells (center-out); the cache is
+  // keyed to (page, rotation, zoom) and budget-capped, evicting the tiles
+  // farthest from the viewport center. Map-app behavior: raster cost is
+  // bounded at ~one screen regardless of zoom or sheet density.
+  const TILE_CSS = 512;
+  const TILE_GRID_BUDGET_PX = (typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory >= 8) ? 32000000 : 12000000;
+  const tileGrid = new Map();          // 'tx|ty' -> { bitmap, w, h, tx, ty }
+  const tileTasks = new Map();         // 'tx|ty' -> render task (one in flight at a time)
+  let tileGridBase = null;             // { pdfPage, rot, zoom } the cache is valid for
+  let tileScratch = null;
+  function flushTileGrid() {
+    for (const t of tileGrid.values()) { try { t.bitmap.close(); } catch (_) { /* closed */ } }
+    tileGrid.clear();
+    for (const task of tileTasks.values()) { try { task.cancel(); } catch (_) { /* settling */ } }
+    tileTasks.clear();
+    tileGridBase = null;
+  }
+  function tileGridTotalPx() {
+    let s = 0;
+    for (const t of tileGrid.values()) s += t.w * t.h;
+    return s;
+  }
+  function ensureTileCoverage() {
+    const page = state.pages[state.currentPage];
+    if (!page || !page.pdfPage || !cropCanvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (!(currentEffDpr > 0) || dpr / currentEffDpr < CROP_TILE_MIN_DEFICIT) { clearCropTile(); return; }
+    if (Math.abs(state.zoom - lastRenderedZoom) > 0.001) return;   // mid-gesture: the commit flow owns sharpening
+    const rot = page.rotation ?? 0;
+    if (!tileGridBase || tileGridBase.pdfPage !== page.pdfPage || tileGridBase.rot !== rot || Math.abs(tileGridBase.zoom - state.zoom) > 1e-9) {
+      flushTileGrid();
+      tileGridBase = { pdfPage: page.pdfPage, rot, zoom: state.zoom };
+    }
+    const wrap = cWrapper;
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const pageCssW = parseFloat(pdfCanvas.style.width) || 0;
+    const pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+    if (!r.width || !pageCssW || !pageCssH) return;
+    const x0 = Math.max(0, -state.pan.x);
+    const y0 = Math.max(0, -state.pan.y);
+    const x1 = Math.min(pageCssW, x0 + r.width);
+    const y1 = Math.min(pageCssH, y0 + r.height);
+    if (x1 <= x0 || y1 <= y0) return;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const txMin = Math.floor(x0 / TILE_CSS), txMax = Math.floor((x1 - 0.01) / TILE_CSS);
+    const tyMin = Math.floor(y0 / TILE_CSS), tyMax = Math.floor((y1 - 0.01) / TILE_CSS);
+    const wanted = [];
+    for (let ty = tyMin; ty <= tyMax; ty++) {
+      for (let tx = txMin; tx <= txMax; tx++) {
+        const k = tx + '|' + ty;
+        if (!tileGrid.has(k) && !tileTasks.has(k)) {
+          const dcx = (tx + 0.5) * TILE_CSS - cx, dcy = (ty + 0.5) * TILE_CSS - cy;
+          wanted.push({ tx, ty, k, d: dcx * dcx + dcy * dcy });
+        }
+      }
+    }
+    compositeTileGrid(x0, y0, x1 - x0, y1 - y0, dpr);
+    if (!wanted.length || tileTasks.size > 0) return;   // one raster in flight at a time
+    wanted.sort((a, b) => a.d - b.d);                   // center-out
+    requestTileRaster(page, rot, wanted[0], dpr);
+  }
+  function requestTileRaster(page, rot, cell, dpr) {
+    const zoom = state.zoom;
+    const pageCssW = parseFloat(pdfCanvas.style.width) || 0;
+    const pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+    const ox = cell.tx * TILE_CSS, oy = cell.ty * TILE_CSS;
+    const wCss = Math.min(TILE_CSS, pageCssW - ox), hCss = Math.min(TILE_CSS, pageCssH - oy);
+    if (wCss <= 0 || hCss <= 0) return;
+    if (!tileScratch) tileScratch = document.createElement('canvas');
+    const bw = Math.ceil(wCss * dpr), bh = Math.ceil(hCss * dpr);
+    tileScratch.width = bw;
+    tileScratch.height = bh;
+    const task = renderService.raster({
+      pdfPage: page.pdfPage, scale: zoom * dpr, rotation: rot,
+      offsetX: -ox * dpr, offsetY: -oy * dpr,
+      canvasContext: tileScratch.getContext('2d'), kind: 'tile',
+    });
+    tileTasks.set(cell.k, task);
+    task.promise.then(() => {
+      tileTasks.delete(cell.k);
+      if (!tileGridBase || tileGridBase.pdfPage !== page.pdfPage || tileGridBase.rot !== rot || Math.abs(tileGridBase.zoom - zoom) > 1e-9) return;   // flushed mid-raster
+      const snap = createImageBitmap(tileScratch);
+      tileScratch.width = 0; tileScratch.height = 0;
+      snap.then((bitmap) => {
+        if (!tileGridBase || Math.abs(tileGridBase.zoom - zoom) > 1e-9) { try { bitmap.close(); } catch (_) {} return; }
+        tileGrid.set(cell.k, { bitmap, w: bw, h: bh, tx: cell.tx, ty: cell.ty });
+        evictTileGridToBudget();
+        scheduleCropTile();   // composite + request the next missing cell
+      }).catch(() => { /* best-effort */ });
+    }).catch((err) => {
+      tileTasks.delete(cell.k);
+      if (err && err.name !== 'RenderingCancelledException') { /* tile stays cold; coverage retries later */ }
+    });
+  }
+  function evictTileGridToBudget() {
+    if (tileGridTotalPx() <= TILE_GRID_BUDGET_PX) return;
+    const r = cWrapper ? cWrapper.getBoundingClientRect() : { width: 0, height: 0 };
+    const cx = Math.max(0, -state.pan.x) + r.width / 2;
+    const cy = Math.max(0, -state.pan.y) + r.height / 2;
+    const rows = Array.from(tileGrid.values()).sort((a, b) => {
+      const da = Math.pow((a.tx + 0.5) * TILE_CSS - cx, 2) + Math.pow((a.ty + 0.5) * TILE_CSS - cy, 2);
+      const db = Math.pow((b.tx + 0.5) * TILE_CSS - cx, 2) + Math.pow((b.ty + 0.5) * TILE_CSS - cy, 2);
+      return db - da;   // farthest first
+    });
+    for (const t of rows) {
+      if (tileGridTotalPx() <= TILE_GRID_BUDGET_PX) break;
+      tileGrid.delete(t.tx + '|' + t.ty);
+      try { t.bitmap.close(); } catch (_) { /* closed */ }
+    }
+  }
+  function compositeTileGrid(x0, y0, w, h, dpr) {
+    if (!tileGrid.size) return;
+    const bw = Math.ceil(w * dpr), bh = Math.ceil(h * dpr);
+    cropCanvas.width = bw;
+    cropCanvas.height = bh;
+    cropCanvas.style.width = w + 'px';
+    cropCanvas.style.height = h + 'px';
+    cropCanvas.style.left = x0 + 'px';
+    cropCanvas.style.top = y0 + 'px';
+    const g = cropCanvas.getContext('2d');
+    let drew = 0;
+    for (const t of tileGrid.values()) {
+      const dx = (t.tx * TILE_CSS - x0) * dpr, dy = (t.ty * TILE_CSS - y0) * dpr;
+      if (dx + t.w < 0 || dy + t.h < 0 || dx > bw || dy > bh) continue;
+      g.drawImage(t.bitmap, dx, dy);
+      drew++;
+    }
+    if (drew > 0) {
+      cropTileKey = { pdfPage: tileGridBase.pdfPage, rot: tileGridBase.rot, zoom: tileGridBase.zoom, baseZoom: lastRenderedZoom, grid: true };
+      cropCanvas.style.display = '';
+    }
+  }
+
   // After a commit was served from a RUNG bitmap (<=7% CSS residual), settle
   // to pixel-perfect once the user goes idle: re-render at the exact display
   // zoom. Cancelled by any newer render (renderPdf entry clears the timer).
@@ -1755,6 +1964,7 @@
       else if (cropTileTimer) { clearTimeout(cropTileTimer); cropTileTimer = null; }
     }
     const page = state.pages[state.currentPage];
+    if (page && page.pdfPage) maybeRestorePersistedRungs(page);   // lazy cross-session warm-up (Set-guarded)
     if (!page || !page.pdfPage) {
       pdfCanvas.width = 0;
       pdfCanvas.height = 0;
@@ -5524,7 +5734,7 @@
   document.getElementById('ctxDelete').onclick = () => {
     const t = state.ctxTarget;
     if (!t) return;
-    pushUndoSnapshot();
+    pushUndoSnapshotCurrentPage();   // every branch below mutates the current page's active canvas only
     const page = state.pages[state.currentPage];
     const canvas = page ? getActiveCanvas(page) : null;
     const ann = canvas?.annotations;
@@ -5556,6 +5766,8 @@
       if (ann.scaleZones) ann.scaleZones.splice(t.index, 1);
     } else if (t.type === 'note' || t.type === 'noteResize' || t.type === 'noteFontSize') {
       ann.notes.splice(t.index, 1);
+    } else if (t.type === 'roomBox') {
+      if (ann.roomBoxes) ann.roomBoxes.splice(t.index, 1);
     }
     markProjectDirty();
     document.getElementById('contextMenu').classList.remove('visible');
@@ -5643,7 +5855,7 @@
       } else {
         if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       }
-      pushUndoSnapshot();
+      pushUndoSnapshotCurrentPage();
       const page = state.pages[state.currentPage];
       const canvas = page && ensureActiveCanvas(page);
       if (canvas) { if (!canvas.annotations.quickLines) canvas.annotations.quickLines = []; canvas.annotations.quickLines.push({ x1: state.quickLineStart.x, y1: state.quickLineStart.y, x2, y2, color: lt?.color || '#4a9eff', id: uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null }); }
@@ -5665,7 +5877,7 @@
     } else {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
     }
-    pushUndoSnapshot();
+    pushUndoSnapshotCurrentPage();
     state.drawingPolyline.points.push(pt);
     markProjectDirty();
   }
@@ -5751,7 +5963,7 @@
     } else if (state.tool === TOOL.COUNTER && state.activeCounterType) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const placeT0 = performance.now();
-      pushUndoSnapshot();
+      pushUndoSnapshotCurrentPage();
       let pos = pdf;
       if (state.gridSettings?.snapToGrid && state.showGridOverlay) pos = snapToGrid(pdf, state.currentPage);
       const page = state.pages[state.currentPage];
@@ -5771,7 +5983,7 @@
       else {
         const canvas = page && ensureActiveCanvas(page);
         if (canvas) {
-          pushUndoSnapshot();
+          pushUndoSnapshotCurrentPage();
           if (!canvas.annotations.highlights) canvas.annotations.highlights = [];
           const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
           canvas.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
@@ -6627,7 +6839,7 @@
       } else {
         const canvas = page && ensureActiveCanvas(page);
         if (canvas) {
-          pushUndoSnapshot();
+          pushUndoSnapshotCurrentPage();
           if (!canvas.annotations.highlights) canvas.annotations.highlights = [];
           const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
           canvas.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
@@ -7256,6 +7468,7 @@
   App.applyRotationDeltaToAnnotations = applyRotationDeltaToAnnotations;
   App.reconcileOrphanedCountersAndLineTypes = reconcileOrphanedCountersAndLineTypes;
   App.pushUndoSnapshot = pushUndoSnapshot;
+  App.pushUndoSnapshotCurrentPage = pushUndoSnapshotCurrentPage;
   App.markProjectDirty = markProjectDirty;
   App.showModal = showModal;
   App.hideModal = hideModal;
@@ -7281,12 +7494,14 @@
   // features/load-project.js at their pages-rebuild sites; the stats object is
   // a debug/test seam (page-switch-cache.spec.js).
   App.clearPdfBitmapCache = clearPdfBitmapCache;
-  App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched, derived: pdfBitmapCacheStats.derived });
+  App.__pdfBitmapCacheStats = () => ({ size: pdfBitmapCache.length, hits: pdfBitmapCacheStats.hits, misses: pdfBitmapCacheStats.misses, prefetched: pdfBitmapCacheStats.prefetched, derived: pdfBitmapCacheStats.derived, persisted: pdfBitmapCacheStats.persisted, restored: pdfBitmapCacheStats.restored });
   App.__renderServiceStats = () => renderService.statsSnapshot();          // debug/spec introspection
   App.__perfSamples = () => ({ summary: perfSummary(), samples: JSON.parse(JSON.stringify(perfSamples)) });
   App.__renderServiceMode = () => renderService.mode();
   App.__renderWorkerState = () => renderService.workerState();
   App.__setRasterTestDelay = (ms, kinds) => renderService.setTestDelay(ms, kinds);   // spec hook (replaces pdfPage.render wrapping)
+  App.__tileGridStats = () => ({ tiles: tileGrid.size, totalPx: tileGridTotalPx(), inFlight: tileTasks.size });   // debug/spec introspection
+  App.__ensureTileCoverage = () => ensureTileCoverage();
   App.__pdfBitmapCacheKeys = () => pdfBitmapCache.map((e) => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h }));   // debug/spec introspection
   App.__pdfBitmapCacheDump = () => pdfBitmapCache.map(e => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h, pageIdx: state.pages.findIndex(p => p.pdfPage === e.pdfPage) }));
   App.getOrderedIcons = getOrderedIcons;

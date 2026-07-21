@@ -504,7 +504,49 @@ function createUndoStack(ctx) {
     redoStack = [];
   }
 
+  // Page-scoped snapshot for the HIGH-FREQUENCY page-local mutations (placing
+  // counters/lines/highlights, drops, notes): deep-copies ONE page + the small
+  // palettes instead of every page's annotations — O(current page), not
+  // O(project), which is what made rapid placement pay a hidden per-click tax
+  // on large projects. Cascade operations (group/room deletes, rotations of
+  // other pages, imports) MUST keep using the full pushUndoSnapshot.
+  function getPageSnapshot(pageIdx) {
+    const state = ctx.getState();
+    const p = state.pages[pageIdx];
+    return {
+      scope: 'page',
+      pageIdx,
+      page: p ? {
+        canvases: JSON.parse(JSON.stringify(p.canvases || [])),
+        scale: p.scale ? { ...p.scale } : null,
+        rotation: p.rotation ?? 0,
+        label: p.label
+      } : null,
+      counters: JSON.parse(JSON.stringify(state.counters)),
+      lineTypes: JSON.parse(JSON.stringify(state.lineTypes)),
+      groups: JSON.parse(JSON.stringify(state.groups || [])),
+      rooms: JSON.parse(JSON.stringify(state.rooms || []))
+    };
+  }
+  function pushUndoSnapshotPage(pageIdx) {
+    if (ctx.getState().isViewer || !ctx.getState().pages.length) return;
+    undoStack.push(getPageSnapshot(pageIdx));
+    if (undoStack.length > UNDO_STACK_SIZE) undoStack.shift();
+    redoStack = [];
+  }
+
   function applySnapshot(snap) {
+    if (snap.scope === 'page') {
+      const p = ctx.getState().pages[snap.pageIdx];
+      if (p && snap.page) {
+        p.canvases = snap.page.canvases;
+        p.scale = snap.page.scale;
+        p.rotation = snap.page.rotation ?? 0;
+        if (snap.page.label != null) p.label = snap.page.label;
+      }
+      applySharedSnapshotTail(snap);
+      return;
+    }
     ctx.getState().pages.forEach((p, i) => {
       if (snap.pages[i]) {
         if (Array.isArray(snap.pages[i].canvases)) p.canvases = snap.pages[i].canvases;
@@ -514,6 +556,10 @@ function createUndoStack(ctx) {
         if (snap.pages[i].label != null) p.label = snap.pages[i].label;
       }
     });
+    applySharedSnapshotTail(snap);
+  }
+
+  function applySharedSnapshotTail(snap) {
     ctx.getState().counters = snap.counters;
     ctx.getState().lineTypes = snap.lineTypes;
     if (Array.isArray(snap.groups)) ctx.getState().groups = ctx.ensureGroupColors(snap.groups);
@@ -532,8 +578,8 @@ function createUndoStack(ctx) {
 
   function undo() {
     if (undoStack.length === 0 || ctx.getState().isViewer) return;
-    redoStack.push(getUndoableSnapshot());
     const prev = undoStack.pop();
+    redoStack.push(prev.scope === 'page' ? getPageSnapshot(prev.pageIdx) : getUndoableSnapshot());
     applySnapshot(prev);
     ctx.markProjectDirty();
     ctx.renderPdf();
@@ -542,8 +588,8 @@ function createUndoStack(ctx) {
 
   function redo() {
     if (redoStack.length === 0 || ctx.getState().isViewer) return;
-    undoStack.push(getUndoableSnapshot());
     const next = redoStack.pop();
+    undoStack.push(next.scope === 'page' ? getPageSnapshot(next.pageIdx) : getUndoableSnapshot());
     applySnapshot(next);
     ctx.markProjectDirty();
     ctx.renderPdf();
@@ -557,7 +603,8 @@ function createUndoStack(ctx) {
 
   function canUndo() { return undoStack.length > 0; }
   function canRedo() { return redoStack.length > 0; }
-  return { getUndoableSnapshot, pushUndoSnapshot, applySnapshot, undo, redo, clearUndoStacks, canUndo, canRedo };
+  return { getUndoableSnapshot, pushUndoSnapshot,
+    pushUndoSnapshotPage, applySnapshot, undo, redo, clearUndoStacks, canUndo, canRedo };
 }
 
 // Dual-environment export (inert in the browser) for node --test + eslint.

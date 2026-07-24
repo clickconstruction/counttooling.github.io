@@ -173,3 +173,21 @@ test('zoom ladder: the clamp ends behave as rungs (drag-to-max commits max)', ()
   assert.ok(interior < hi, 'well below max stays on an interior rung');
   assert.ok(Math.abs(nextRungDown(hi, lo, hi) - 0.2 * Math.pow(ZOOM_LADDER_STEP, 21)) < 1e-9);
 });
+
+test('HOTKEYS: table shape — the handler/docs single source stays executable', () => {
+  assert.ok(Array.isArray(c.HOTKEYS) && c.HOTKEYS.length >= 20, 'HOTKEYS present');
+  const keys = [];
+  for (const h of c.HOTKEYS) {
+    assert.strictEqual(typeof h.action, 'string', 'action text');
+    assert.ok(h.section === 'Navigation' || h.section === 'Tools', 'known section');
+    if (h.bespoke) {
+      assert.ok(h.key === undefined, 'bespoke rows carry no runnable key');
+      continue;
+    }
+    assert.match(h.key, /^[a-z]$/, 'runnable key is a single lowercase char');
+    keys.push(h.key);
+    const ways = [h.btnId, h.runner].filter(Boolean).length;
+    assert.strictEqual(ways, 1, `${h.key}: exactly one of btnId/runner`);
+  }
+  assert.strictEqual(new Set(keys).size, keys.length, 'runnable keys unique');
+});

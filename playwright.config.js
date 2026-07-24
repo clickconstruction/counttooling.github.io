@@ -4,12 +4,15 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.js',
-  // CI runs the suite on ubuntu; render-pixels compares raw canvas bytes
-  // (maxDiffPixels: 0) against committed baselines that are machine-rasterized
-  // on darwin — a linux runner has no baseline files and text rendering differs
-  // anyway, so that one spec stays local-only. Cloud/dev-auth specs need no
-  // ignore: they self-skip when config carries no DEV_AUTH_* creds.
-  testIgnore: process.env.CI ? ['**/render-pixels.spec.js'] : [],
+  // render-pixels runs EVERYWHERE: per-platform baselines are committed
+  // (*-chromium-darwin.png for local Macs, *-chromium-linux.png for CI —
+  // generated in the official mcr.microsoft.com/playwright linux/amd64 image
+  // and verified bit-exact across cold container runs; regenerate the same way
+  // after an intentional draw change: docker run --rm --platform linux/amd64
+  // -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v<ver>-noble
+  // bash -lc "npx playwright test render-pixels.spec.js --update-snapshots").
+  // Cloud/dev-auth specs need no ignore: they self-skip without DEV_AUTH_*.
+  testIgnore: [],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

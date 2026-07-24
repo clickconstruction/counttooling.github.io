@@ -13,6 +13,188 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## ops(supabase): advisor backlog cleared — initplan rewrites + anon revoke
+
+The two deferred advisor items from the 2026-07-24 scan, both user-approved,
+applied to production via MCP and verified by re-running the advisors:
+
+- **auth_rls_initplan (9 WARNs → 0)** — migration
+  `20260724210000_rls_initplan_select_auth_uid`: every `auth.uid()` in the nine
+  flagged policies wrapped as `(select auth.uid())` so Postgres evaluates it
+  once per query instead of per row. Expressions are the pg_policies
+  definitions captured verbatim before the rewrite; behavior-identical.
+- **anon_security_definer_function_executable (24 WARNs → 0)** — after the
+  audit proved zero anon callers (rpcSupabase requires a session token; the
+  view-link path uses Edge Functions + signed URLs only; Edge Functions call
+  no public RPCs), TWO migrations: `20260724220000` revoked the direct anon
+  grants — and the advisor re-scan caught that `anon` STILL had execute via
+  the default `PUBLIC` grant (`=X/postgres` in proacl), which role membership
+  inherits. `20260724221000` revokes PUBLIC; authenticated + service_role keep
+  their explicit grants (verified in every ACL first), and ground truth
+  confirmed after: `has_function_privilege('anon', …)` false on all 24,
+  authenticated intact on all 23 it should keep (`handle_new_user`, a trigger
+  fn, lost authenticated too — nothing should reach it via the API).
+  **Lesson for future RPCs: CREATE FUNCTION grants PUBLIC execute by default —
+  every new RPC needs the same PUBLIC revoke.**
+
+Remaining advisor findings are INFO-level (unindexed audit-column FKs, two
+unused indexes) plus two dashboard toggles only an owner can click: leaked-
+password protection (Auth → HIBP) and percentage-based Auth DB connections.
+Field smoke still owed: one prod view-link click to confirm the anon path.
+
+---
+
+## feat(telemetry): field errors mirror to the admin activity feed
+
+Phase 2 of the client-error hooks: `reportClientError` now also fires
+`logUserEvent(kind, projectId, {message, source})`, so crashes land in the
+admin User Activity view PROACTIVELY instead of waiting for a user to export
+their Save Status envelope. Signed-in only (logUserEvent gates itself), message
++ source only (the stack stays client-side in the envelope), and the existing
+dedupe + 10/session cap bound the volume before it ever reaches the wire.
+
+---
+
+## feat(artboard): uploaded custom icons follow the account
+
+Both artboard apply-sites have checked `airboard.customIconPaths` since the
+artboard shipped — but `fetchUserAirboard` never selected such a column, so the
+check was dead code and a user moving devices got their palette back without
+their uploaded icon library (placed counters still rendered — the SVG path
+travels with the counter — but the picker lost the icons). New
+`user_airboard.custom_icon_paths` column (additive migration 20260724200000,
+user-approved), `saveUserAirboard` now sends `getUserCustomIcons()`, and the
+long-dead apply branches went live untouched. Clear artboard deliberately does
+NOT clear the icon library (it's a library, not palette state).
+my-settings.spec.js gains a stubbed-fetch test driving the real Load handler
+end-to-end: custom icons land in `getUserCustomIcons()`, bindings seed via the
+replace path.
+
+---
+
+## test(render-pixels): linux baselines — the draw core is now pixel-guarded in CI
+
+render-pixels (the maxDiffPixels: 0 safety net over canvas-draw.js, the ONE
+painter every mark renders through) was excluded from CI because its baselines
+were darwin-rasterized. Linux twins are now committed
+(`*-chromium-linux.png`), generated inside the official
+mcr.microsoft.com/playwright linux/amd64 image against this repo, and verified
+bit-exact on a second cold container run before committing. The CI testIgnore
+is gone — the draw core is pixel-guarded on every push, not just on a Mac.
+Regeneration recipe lives in playwright.config.js next to the (now empty)
+ignore. Playwright picks the platform suffix automatically, so local Mac runs
+keep using the darwin files untouched.
+
+---
+
+## ops(supabase): first production advisor scan — 2 fixed, the rest triaged
+
+First security + performance advisor pass over the production project
+(hrqxvfydmvtvwhvefmqc), 2026-07-24. No ERROR-level findings. Applied now
+(migration `20260724190000_pin_trigger_function_search_paths`): the two
+`function_search_path_mutable` warnings — `set_projects_updated_at` and
+`auto_checkout_on_project_insert` pinned to an empty search_path (both bodies
+touch only NEW.*/now(), so it's config-only, provably safe).
+
+Triaged, deliberately NOT auto-fixed:
+
+- **24 RPCs executable by `anon` as SECURITY DEFINER** (the advisor's top
+  class). Every RPC guards internally on auth.uid()/is_admin, so anon calls
+  return nothing — but revoking anon EXECUTE would be real defense-in-depth.
+  Blocked on an audit first: view-link viewers ARE anon, and any RPC the
+  viewer path calls client-side (touch_presence? log_user_event?) would 403
+  after a blanket revoke. Action: grep the viewer code paths, then revoke
+  anon on everything not on that list. `handle_new_user` (a trigger fn)
+  should likely leave the exposed API schema entirely.
+- **The matching `authenticated` SECURITY DEFINER warnings are by design** —
+  RPCs are the API for signed-in users and gate by role internally.
+- **9 `auth_rls_initplan` WARNs** (policies re-evaluating auth.uid() per
+  row): mechanical `(select auth.uid())` rewrites across profiles / projects /
+  project_shares / user_airboard / user_activity / view_link_access_log —
+  worth one focused migration when tables grow; today's row counts make it
+  low urgency.
+- **Dashboard toggles (can't be done via SQL)**: enable leaked-password
+  protection (Auth → HaveIBeenPwned check) and switch Auth's DB connection
+  strategy from absolute (10) to percentage.
+- **INFO-level**: 5 unindexed FKs on audit-ish columns and 2 never-used
+  indexes — noted, not worth churn yet.
+
+---
+
+## refactor(hotkeys): one table drives the handler, the Macros list, and the Map
+
+The keydown handler, the Macros shortcut table, and (transitively) the Keyboard
+Map were three hand-maintained surfaces — which is how the V (Room Sizer)
+hotkey shipped live with no documentation row for weeks. Now `HOTKEYS` in
+constants.js is the single source: the app.js handler EXECUTES it (non-bespoke
+entries click their `btnId` or run a named closure action from
+`HOTKEY_RUNNERS`; viewer gating rides the entry), and the new
+scripts/build-macros.js RENDERS it into the Macros table between generated
+markers in app/index.html — with `{btn}` row icons extracted live from the
+actual toolbar elements, so they can't diverge either. `npm run check` gains
+`build:macros -- --check`. The Keyboard Map keeps deriving from the generated
+table, so all three surfaces chain off one source.
+
+Bespoke rows (arrows, undo/redo, Escape, Space, Enter, Shift+Q, the Scale Zone
+note) stay documentation-only — their handling is structurally custom and
+remains hand-written. Guards: constants.test.js checks the table shape (unique
+keys, exactly one of btnId/runner); new hotkeys.spec.js asserts every runnable
+entry resolves to a real runner or element (both directions), smoke-drives
+d/m/j through the real keydown path, proves viewer gating (h no-ops, d works),
+and confirms every runnable key lights on the Keyboard Map end-to-end.
+
+---
+
+## feat(telemetry): field errors ride the Save Status envelope
+
+Save/sync failures were richly instrumented, but a plain JS exception in the
+field — a handler throwing on one odd project — vanished silently, so "it just
+stopped working" reports arrived with nothing. window.onerror +
+unhandledrejection now feed `pushSaveEvent` (`client_error` /
+`client_unhandled_rejection`, stack + source in the detail), landing in the
+saveStatusLog and exporting with the envelope — the diagnostic path users
+already know. Deduped by kind+message and capped at 10/session so a
+throw-in-a-loop can't flood the log; resource-load errors are skipped (no
+.error — the SW/network layer owns those); nothing is rethrown or
+preventDefault-ed, so the console story is unchanged. Inherits pushSaveEvent's
+disabled-Supabase drop, which is the right gate: cloud users are who export
+envelopes. New `[sync] Field-error telemetry` section marker; test appended to
+save-status.spec.js (real throw + real rejection, dedupe asserted, stack in the
+envelope).
+
+---
+
+## feat(quick-keys): bindings ride the Artboard — the muscle-memory hole closed
+
+Honest correction of the original ship: bindings were per-project and Save/Load
+Artboard did NOT carry them, so every new bid started with an empty number row
+even though the artboard restores the very ids the bindings point at. Now
+`user_airboard.number_key_bindings` (jsonb, additive migration
+20260724180000, applied to production via MCP with user approval) stores the
+layout with the palette.
+
+Lifecycle rules live in ONE place (features/quick-keys.js) so they can't drift:
+
+- `seedQuickKeysFromArtboard(raw, {replace})` — sign-in auto-restore seeds
+  FILL-IF-EMPTY (never stomps an active layout, order-independent vs project
+  restore); My Settings → Load from Cloud passes replace:true (the user just
+  confirmed "replace"). Sanitizes slots/kinds/ids on the way in.
+- `applyProjectQuickKeys(incoming)` — all three project intakes (cloud load,
+  PDF-intake restore, canvas-JSON import) funnel here: a payload WITH bindings
+  replaces and clears the artboard-lineage flag; a payload WITHOUT keeps an
+  artboard-seeded layout but drops a previous project's, so dead ids never leak
+  between unrelated projects.
+- `resetLocalSessionState` stays an UNCONDITIONAL wipe — it doubles as the
+  sign-out hygiene path, and bindings must never survive to the next user on a
+  shared machine. The seed survives the normal new-bid flow (sign in → upload),
+  which never passes through reset.
+
+Artboard export includes the bindings; Clear artboard clears them (the palette
+they point at is gone). quick-keys.spec.js gains the lifecycle test: seed rules,
+project replace-or-keep, and a real canvas-JSON import keeping a seeded layout.
+
+---
+
 ## chore(filemap): the Large-file map line counts are now generated
 
 The decomposition table's caption asked humans to "refresh when they drift" —

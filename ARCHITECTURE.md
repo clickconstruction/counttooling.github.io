@@ -28,16 +28,16 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,779 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,862 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,465 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [app/index.html](app/index.html) | 2,467 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 1,367 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 966 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
+| [features/load-project.js](features/load-project.js) | 969 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
 | [annotation-model.js](annotation-model.js) | 614 | Done — extracted canvas/annotation data model + node tests. |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 513 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (44 files) | 10,525 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (44 files) | 10,592 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -169,12 +169,15 @@ modules. Candidates in priority order:
 | [snap-angles.spec.js](snap-angles.spec.js) | Playwright regression for the **`J` 45° snap** — the behavioral counterpart to geometry.test.js's pure-math coverage of `snapLineToAngle`: it drives real mouse clicks through the actual draw path and asserts the **committed** annotation (not just the rubber-band preview) lands on a ray. A ~27° drag commits to exactly 45° (`|dx − dy| < 1e-9`), a ~14° drag stays horizontal with `y2 === y1` **bit-exact** (the guard against a unit-vector implementation reintroducing 6e-17 drift), all four diagonals are reachable from a center anchor, polyline legs snap against the previous vertex, and turning the toggle off restores freehand angles. Angles are read in PDF space off the stored annotation — the canvas transform is uniform scale + translate with no rotation, so a 27° screen drag is a 27° PDF delta and the test never needs the zoom/pan. `npx playwright test snap-angles.spec.js` |
 | [features/lines-list.js](features/lines-list.js) | The **sidebar Lines section renderer** (`renderLinesList`) — the FIRST split out of the UI Render Functions region, the region the decomposition table above names as the next candidate. Owns: grouping every quick line / polyline by line type, the per-type headers (run count + always-feet totals via `getLineLengthFeetForTotals`/`formatFeet`), the expand/collapse state (`state.linesTypeExpanded`, localStorage-persisted), the lines search filter, per-row length (or closed-polyline **area** via `formatArea`/`polygonArea`) + drop markers, row selection (click selects + jumps to the line's page via `fitZoom`; click again deselects), the color-swatch picker, and the Line Properties openers (edit pen + `onDoubleTapOrDblClick`). Registers `App.renderLinesList`. **updateUI calls it defensively** (`App.renderLinesList && App.renderLinesList()`) since boot-time updateUI precedes feature-file load — an empty Lines section for that instant is harmless (no project yet; burger-menu pattern); the search / show-only handlers call it plainly (user-action time). Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js globals routed through the registry — the pilot-#13 `ptDist` pattern), `pickScaleForLineType`, `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`. Zero moved state beyond the function itself. Regression: [lines-list.spec.js](lines-list.spec.js) |
 | [lines-list.spec.js](lines-list.spec.js) | Playwright regression for the Lines-list split — registry contract (entry point + the five publish-only deps), then the moved behavior end-to-end on a seeded 2-page takeoff (two named quick lines + a polyline, one type): per-type grouping with `3 lines · 25.00 ft` totals, expand/collapse persisting to `linesTypeExpanded` localStorage, the search input filtering by line name through the real handler, row click selecting + jumping to the line's page, and a second click deselecting. Renders through the real `updateUI()` path, so the defensive hot-path seam is exercised, not just the direct call. Note: the Lines *section* starts minimized (`state.linesListCollapsed`), so the spec expands it before clicking rows. `npx playwright test lines-list.spec.js` |
-| [features/quick-keys.js](features/quick-keys.js) | **Quick Keys** — binds the number row (`1`–`9`, `0`) to counters and line types so the user switches what they're placing with a keystroke instead of a trip to the sidebar. Owns the bindings modal (`#quickKeysModal`: ten slot rows, each a keycap + colour swatch + `<select>` of the project's counters/line types + a clear button) and its two openers: the desktop status-bar link (`#statusBarQuickKeys`, keypad icon + `keys` left of `macros`; hidden below 769px and re-shown **by ID** in the desktop media query — the house pattern; `.has-icon` deliberately sets no `display` so it can't out-cascade the mobile hide) and the Project Settings row (`#settingsQuickKeys`, the mobile path — the settings modal is reachable everywhere via the sidebar logo). Registers `App.openQuickKeysModal` / `App.triggerQuickKey(slot)` / `App.getQuickKeyLabels()` / `App.QUICK_KEY_SLOTS`. **ONE SELECTION PATH**: a number key does not activate anything itself — it calls `App.setActiveCounterType` / `App.setActiveLineType`, the same functions the sidebar rows call (extracted in app.js for exactly this), so toggle-off semantics, the tool switch, and the pages-section collapse can't drift between the two entry points. Data: `state.numberKeyBindings`, slot → `{kind:'counter'\|'lineType', id}` — per-project (ids are `uid()`-scoped), riding save/load, export/import, and the IDB takeoff backup. In practice bindings still follow a user across bids because Save/Load Artboard stores `state.counters`/`state.lineTypes` wholesale, **ids included**, so an artboard restore lands the same ids the bindings point at. A binding whose target was deleted resolves stale: it toasts rather than silently no-op'ing, and the id is **retained** so re-creating or re-importing that item revives the slot. Two new publish-only deps (`setActiveCounterType`/`setActiveLineType`); viewer-gated inside `triggerQuickKey`. **Sidebar badges**: bound rows show a keycap badge (`.quick-key-slot-badge`, accent digit on a dark chip echoing the Keyboard Map's lit keys) — `quickKeyBadgeHtml(kind, id)` in app.js's list renderers reads the feature-registered reverse lookup `App.getQuickKeySlotFor(kind, id)` deferred, and the modal's bind/clear handlers refresh both lists live, so the bindings teach themselves during normal work. Regression: [quick-keys.spec.js](quick-keys.spec.js) |
+| [features/quick-keys.js](features/quick-keys.js) | **Quick Keys** — binds the number row (`1`–`9`, `0`) to counters and line types so the user switches what they're placing with a keystroke instead of a trip to the sidebar. Owns the bindings modal (`#quickKeysModal`: ten slot rows, each a keycap + colour swatch + `<select>` of the project's counters/line types + a clear button) and its two openers: the desktop status-bar link (`#statusBarQuickKeys`, keypad icon + `keys` left of `macros`; hidden below 769px and re-shown **by ID** in the desktop media query — the house pattern; `.has-icon` deliberately sets no `display` so it can't out-cascade the mobile hide) and the Project Settings row (`#settingsQuickKeys`, the mobile path — the settings modal is reachable everywhere via the sidebar logo). Registers `App.openQuickKeysModal` / `App.triggerQuickKey(slot)` / `App.getQuickKeyLabels()` / `App.QUICK_KEY_SLOTS`. **ONE SELECTION PATH**: a number key does not activate anything itself — it calls `App.setActiveCounterType` / `App.setActiveLineType`, the same functions the sidebar rows call (extracted in app.js for exactly this), so toggle-off semantics, the tool switch, and the pages-section collapse can't drift between the two entry points. Data: `state.numberKeyBindings`, slot → `{kind:'counter'\|'lineType', id}` — per-project (ids are `uid()`-scoped), riding save/load, export/import, and the IDB takeoff backup. Bindings ALSO ride the cloud Artboard (`user_airboard.number_key_bindings`, migration 20260724180000): `seedQuickKeysFromArtboard(raw, {replace})` fills-if-empty on sign-in auto-restore and replaces on the explicit My Settings → Load; `applyProjectQuickKeys(incoming)` is the single funnel for all three project intakes (cloud load / PDF-intake restore / canvas-JSON import) — a payload with bindings replaces and clears the artboard-lineage flag, one without keeps a seeded layout but drops a previous project's; `resetLocalSessionState` wipes unconditionally (it doubles as sign-out hygiene). Artboard export includes bindings; Clear artboard clears them. A binding whose target was deleted resolves stale: it toasts rather than silently no-op'ing, and the id is **retained** so re-creating or re-importing that item revives the slot. Two new publish-only deps (`setActiveCounterType`/`setActiveLineType`); viewer-gated inside `triggerQuickKey`. **Sidebar badges**: bound rows show a keycap badge (`.quick-key-slot-badge`, accent digit on a dark chip echoing the Keyboard Map's lit keys) — `quickKeyBadgeHtml(kind, id)` in app.js's list renderers reads the feature-registered reverse lookup `App.getQuickKeySlotFor(kind, id)` deferred, and the modal's bind/clear handlers refresh both lists live, so the bindings teach themselves during normal work. Regression: [quick-keys.spec.js](quick-keys.spec.js) |
 | [quick-keys.spec.js](quick-keys.spec.js) | Playwright regression for Quick Keys (7 tests) — binding through the real status-bar → modal → `<select>` path and asserting `state.numberKeyBindings`; the number row then switching counter/line type with the right tool and toggling off on a second press; **an equivalence test** that a number key and `App.setActiveCounterType` leave byte-identical state (the guard on the one-selection-path claim); the keystrokes it must NOT steal (unbound digits, digits typed into an input, `Ctrl`+digit); a stale binding toasting via `#airboardToastText` while retaining its id and rendering a "deleted" marker; clear-slot; bindings surviving the canvas-JSON import; and the Keyboard Map lighting bound digits with their names (`1 — Floor Drain`) while unbound ones stay grey. Note: keydown is dispatched on `<body>`, not `document` — the handler's input guard calls `.matches`, which `document` doesn't have. `npx playwright test quick-keys.spec.js` |
 | [features/keyboard-map.js](features/keyboard-map.js) | The **Keyboard Map** — the visual companion to the Macros / Keyboard Shortcuts list. **Two hosts** picked by CSS at the 769px breakpoint: desktop renders it INLINE at the top of the Macros modal (`#macrosKeyboardInline`, built once at feature load since the source table is static markup and this script is last in the body); mobile hides that and the "See Keyboard" button (`#macrosSeeKeyboard`) opens the standalone `#keyboardMapModal` (rendered on each open). A "host" is any element wrapping a `.kb-board` + `.kb-caption`, and every function here takes one, so neither path is special-cased; both are built regardless of viewport so crossing the breakpoint needs no rebuild. Registers `App.openKeyboardMapModal` + `App.renderKeyboardMapInline`. Renders a 65%-ANSI keyboard silhouette (5 rows, each 15 width units over a 60-column grid so the 1.25/1.5/1.75/2.25-unit keys land on exact boundaries); keys carrying a shortcut light accent-yellow, modifiers (Shift/Ctrl/Cmd/Alt) get the softer outlined variant, everything else stays the grey silhouette. Hovering (mouse only — a touch "hover" would fire and vanish), tapping, or focusing a lit key names its action in `#keyboardMapCaption`. **The lit keys are DERIVED from the Macros table, not hand-declared**: `collectMacroKeys()` walks `#macrosModal .macros-table`, reading each row's `<kbd>` cells for the keys and the last cell for the action, so adding a shortcut row lights its key automatically and the two surfaces cannot drift (rows with no `<kbd>` — the section headers, the `<th>` row, the em-dash Scale Zone row — drop out on their own). `normalizeKeyToken` maps the table's glyphs/words (`←`, `Cmd`, `Esc`, `Space`, …) onto the board's key ids; single characters normalize to uppercase. A **zero-new-dep** split (only `App.showModal`/`App.hideModal`). Registers `App.openKeyboardMapModal`; the opener + close bindings are element-bound at load. The Escape branch in app.js checks this modal **before** `macrosModal` so one Escape closes the board and leaves the list up. Regression: [keyboard-map.spec.js](keyboard-map.spec.js) |
 | [keyboard-map.spec.js](keyboard-map.spec.js) | Playwright regression for the Keyboard Map — the load-bearing test is the **derivation guard**: it walks every `<kbd>` in the Macros table, normalizes it with a mirror of the feature's `normalizeKeyToken`, and asserts each one resolves to a board key that is lit (so a future shortcut row the board can't represent fails CI-adjacent local runs rather than silently going dark). Split by breakpoint: the **desktop** describe (default viewport) asserts the inline board is pre-built and visible on Macros-open with **no second click**, the See Keyboard button and its modal stay out of the way, the tool hotkeys `M/S/C/L/J/P/D/R/H/X/V/N/Z/Q` + Space/Escape/arrows are lit, modifiers are outlined rather than filled, an unmapped key (`G`) is a plain silhouette, and the hover caption names the action (incl. a two-action key); a second desktop test asserts the layout contract — card within the viewport, the **body** (not the card) scrolling, and the board sitting above it. The **mobile** describe (375×812) asserts the inverse visibility, that the button opens the modal on top of the list, that the board scrolls inside `.kb-board-wrap` without the page body overflowing, Escape ordering (board first, then the list), and the close button. Both run the derivation guard against their own host. Filters the gitignored `/config.local.js` 404 like [render-pixels.spec.js](render-pixels.spec.js). `npx playwright test keyboard-map.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
+| [scripts/build-filemap.js](scripts/build-filemap.js) | Node script (no deps) that restamps the "Large-file map" table above: each row's Lines cell, the `features/*.js (NN files) \| total` aggregate, and the caption date (only when a count moved, so `--check` is deterministic day to day). Generator owns the numbers; humans own which files are listed and the Status/verdict prose — a hand-added row gets its count kept fresh. `npm run build:filemap`; `--check` in `npm run check` |
+| [scripts/build-macros.js](scripts/build-macros.js) | Node script that renders the Macros (Keyboard Shortcuts) table rows in [app/index.html](app/index.html) between generated markers from the `HOTKEYS` table in [constants.js](constants.js) — the same single source the keydown handler executes, so handler/list/Keyboard-Map can't drift (the V-row bug class). Row icons declared `{btn: id}` are extracted LIVE from that element's SVG (missing element/SVG = hard error). Regenerating changes app/index.html, so run `npm run build:sw` after. `npm run build:macros`; `--check` in `npm run check` |
+| [hotkeys.spec.js](hotkeys.spec.js) | Playwright regression for hotkeys-as-data — the executable half of the contract (`build:macros --check` gates the rendered half): every non-bespoke `HOTKEYS` entry resolves to a registered runner (`App.__hotkeyRunnerNames`) or a real element, both directions; behavior smoke through the real keydown path (d arms Measure on a scaled page, m resets, j toggles snap); viewer gating riding the table (h no-ops for viewers, d still works); and every runnable key lit on the Keyboard Map end-to-end. `npx playwright test hotkeys.spec.js` |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
 High level: the `<head>` of [index.html](index.html) loads `config.js`, the
@@ -471,64 +474,65 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L300 - [sync] Sync recovery & client recycle
 - L381 - [sync] Global force reload
 - L464 - [sync] Save Status log & envelope
-- L477 - [sync] Dirty tracking & local session reset
-- L483 - Undo/redo stacks
-- L607 - [sync] Checkout probe, hashing & PDF cache
-- L669 - Math & Format Helpers
-- L1302 - Coordinate Helpers
-- L1310 - PDF render bitmap cache
-- L1659 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1954 - PDF Rendering
-- L2601 - UI Render Functions
-- L3595 - Inline rename & polyline edit mode
-- L3709 - Modal primitives (showModal / hideModal)
-- L3728 - Toasts & line color picker
-- L3782 - Airboard cloud sync
-- L3815 - Supabase RPC & presence heartbeat
-- L3855 - User activity / event telemetry
-- L3898 - Supabase auth & dev auth
-- L4027 - [sync] Checkout subscription & permission refresh
-- L4037 - Modals & Handlers
-- L4105 - PDF intake (upload, test PDF, hashing)
-- L4113 - Toolbar tool buttons
-- L4239 - Tool sidebar buttons & legend overlay
-- L4356 - Add Line Type modal
-- L4426 - Line color & sidebar handlers
-- L4568 - Polyline modal & drawing
-- L4599 - Zoom bar & page navigation
-- L4625 - Export canvas JSON
-- L4641 - PDF download helpers
-- L4650 - View-link URL helpers & show-highlights/notes
-- L4722 - Custom icon upload handler
-- L4732 - Export & report dropdown menus
-- L4822 - Sidebar drawer toggles
-- L4833 - Mobile actions burger menu pointer & header logo
-- L4845 - User Activity pointer (format.js + features/user-activity.js)
-- L4857 - My Settings pointer (features/my-settings.js)
-- L4880 - Auth & settings entry buttons
-  - L4925 - Project Settings checkout & Save Status bell
-  - L5026 - [sync] Checkout expired recovery
-  - L5082 - [sync] Turn In
-  - L5347 - Share modal pointer & copy-project openers
-  - L5378 - Settings menu actions
-  - L5399 - Auth sign-in form
-  - L5423 - Save Project modal
-  - L5436 - Checkout expired recovery modal wiring
-  - L5541 - Last-session restore prompt
-  - L5548 - Canvas Repair modal wiring
-- L5701 - Canvas Event Handlers
-- L6091 - Event Binding
-- L6101 - Aim loupe (mobile press-hold precise placement)
-- L6240 - Zoom transform preview & commit
-- L6319 - Canvas mouse, wheel & touch handlers
-- L6980 - Global dropdown dismissal & keyboard hotkeys
-- L7228 - [sync] Manual save to cloud
-- L7238 - [sync] Auto-save
-- L7245 - [sync] Local backup (IndexedDB takeoff state)
-- L7378 - [sync] Checkout keep-alive
-- L7392 - App feature registry
-- L7602 - View-only mode
-- L7608 - Init / boot
+- L467 - [sync] Field-error telemetry
+- L526 - [sync] Dirty tracking & local session reset
+- L532 - Undo/redo stacks
+- L661 - [sync] Checkout probe, hashing & PDF cache
+- L723 - Math & Format Helpers
+- L1356 - Coordinate Helpers
+- L1364 - PDF render bitmap cache
+- L1713 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L2008 - PDF Rendering
+- L2655 - UI Render Functions
+- L3649 - Inline rename & polyline edit mode
+- L3763 - Modal primitives (showModal / hideModal)
+- L3782 - Toasts & line color picker
+- L3836 - Airboard cloud sync
+- L3878 - Supabase RPC & presence heartbeat
+- L3918 - User activity / event telemetry
+- L3961 - Supabase auth & dev auth
+- L4093 - [sync] Checkout subscription & permission refresh
+- L4103 - Modals & Handlers
+- L4171 - PDF intake (upload, test PDF, hashing)
+- L4179 - Toolbar tool buttons
+- L4305 - Tool sidebar buttons & legend overlay
+- L4422 - Add Line Type modal
+- L4492 - Line color & sidebar handlers
+- L4634 - Polyline modal & drawing
+- L4665 - Zoom bar & page navigation
+- L4691 - Export canvas JSON
+- L4707 - PDF download helpers
+- L4716 - View-link URL helpers & show-highlights/notes
+- L4788 - Custom icon upload handler
+- L4798 - Export & report dropdown menus
+- L4888 - Sidebar drawer toggles
+- L4899 - Mobile actions burger menu pointer & header logo
+- L4911 - User Activity pointer (format.js + features/user-activity.js)
+- L4923 - My Settings pointer (features/my-settings.js)
+- L4946 - Auth & settings entry buttons
+  - L4991 - Project Settings checkout & Save Status bell
+  - L5092 - [sync] Checkout expired recovery
+  - L5148 - [sync] Turn In
+  - L5413 - Share modal pointer & copy-project openers
+  - L5444 - Settings menu actions
+  - L5465 - Auth sign-in form
+  - L5489 - Save Project modal
+  - L5502 - Checkout expired recovery modal wiring
+  - L5607 - Last-session restore prompt
+  - L5614 - Canvas Repair modal wiring
+- L5767 - Canvas Event Handlers
+- L6157 - Event Binding
+- L6167 - Aim loupe (mobile press-hold precise placement)
+- L6306 - Zoom transform preview & commit
+- L6385 - Canvas mouse, wheel & touch handlers
+- L7046 - Global dropdown dismissal & keyboard hotkeys
+- L7306 - [sync] Manual save to cloud
+- L7316 - [sync] Auto-save
+- L7323 - [sync] Local backup (IndexedDB takeoff state)
+- L7456 - [sync] Checkout keep-alive
+- L7470 - App feature registry
+- L7685 - View-only mode
+- L7691 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -600,6 +604,7 @@ Annotated, in rough order:
 - [sync] Global force reload — `checkGlobalForceReload`, `doGlobalReloadNow`
 - [sync] Save Status log & envelope — `pushSaveEvent`, `buildSaveLogsEnvelope(WithSnapshots)`, `autosaveEventDetail`, `captureNetworkInfoDetail`
 - [sync] Dirty tracking & local session reset — `markProjectDirty`, `dirtyGeneration`, `resetLocalSessionState`, `resetAutosaveDegradedState`
+- [sync] Field-error telemetry — `reportClientError` + the window `error`/`unhandledrejection` hooks (client_error / client_unhandled_rejection into the saveStatusLog; deduped, capped 10/session)
 - [sync] Checkout probe, hashing & PDF cache — `probeCheckoutLock`, `sha256Hex`, `pdfCachePut`/`pdfCacheGet`, takeoff backup IDB helpers
 - Math & Format Helpers — the state-coupled helpers: `getPageScale`, `pickScaleForLineType`, `quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `formatDist`, `formatArea`, `rotateAnnotations` (the pure primitives `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, bezier helpers, `pointInRect`, zone locators, `parseFraction`, etc. live in [geometry.js](geometry.js)). The wrappers `formatDistFeetInchesFromReal` / `formatDistFeetInches` keep their `getPageScale` lookup + px fallback then delegate to `formatFeetInchesFromVal`, and `formatSaveTime` / `formatSaveTimeParts` / the `updateStatus` inline delegate to `formatAgo` (both pure helpers live in [geometry.js](geometry.js))
 - Save Status modal — `renderSaveStatusModalContent`, `openSaveStatusModal`

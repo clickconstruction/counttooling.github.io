@@ -216,6 +216,67 @@ test.describe('Quick Keys', () => {
     expect(await page.evaluate(() => document.querySelectorAll('.quick-key-slot-badge').length)).toBe(1);
   });
 
+  test('artboard carry: seed rules, project replace-or-keep, import keeps a seeded layout', async ({ page }) => {
+    // seedQuickKeysFromArtboard: fill-if-empty; never stomps an active layout;
+    // replace:true (the explicit My Settings -> Load path) does.
+    const seedRules = await page.evaluate(() => {
+      const s = window.state;
+      const r = {};
+      s.numberKeyBindings = {};
+      r.filled = window.App.seedQuickKeysFromArtboard({ 1: { kind: 'counter', id: 'c1' }, bogus: { kind: 'counter', id: 'x' }, 2: { kind: 'nope', id: 'y' } });
+      r.afterFill = JSON.parse(JSON.stringify(s.numberKeyBindings));   // sanitized: slot 1 only
+      r.flag = s.numberKeyBindingsSeededFromArtboard;
+      r.refused = window.App.seedQuickKeysFromArtboard({ 3: { kind: 'lineType', id: 'lt9' } });
+      r.afterRefusal = Object.keys(s.numberKeyBindings);
+      r.replaced = window.App.seedQuickKeysFromArtboard({ 3: { kind: 'lineType', id: 'lt9' } }, { replace: true });
+      r.afterReplace = Object.keys(s.numberKeyBindings);
+      return r;
+    });
+    expect(seedRules.filled).toBe(true);
+    expect(seedRules.afterFill).toEqual({ 1: { kind: 'counter', id: 'c1' } });
+    expect(seedRules.flag).toBe(true);
+    expect(seedRules.refused).toBe(false);
+    expect(seedRules.afterRefusal).toEqual(['1']);
+    expect(seedRules.replaced).toBe(true);
+    expect(seedRules.afterReplace).toEqual(['3']);
+
+    // applyProjectQuickKeys: with bindings -> replace + clear lineage; without ->
+    // keep a seeded layout, drop a previous project's.
+    const projRules = await page.evaluate(() => {
+      const s = window.state;
+      const r = {};
+      window.App.applyProjectQuickKeys({ 5: { kind: 'counter', id: 'pc1' } });
+      r.projectWins = Object.keys(s.numberKeyBindings);
+      r.flagCleared = s.numberKeyBindingsSeededFromArtboard;
+      window.App.applyProjectQuickKeys(null);                 // next project has none, prior was project-owned
+      r.droppedAfterProject = Object.keys(s.numberKeyBindings);
+      window.App.seedQuickKeysFromArtboard({ 7: { kind: 'counter', id: 'c1' } });
+      window.App.applyProjectQuickKeys(null);                 // project has none, layout is artboard-seeded
+      r.keptWhenSeeded = Object.keys(s.numberKeyBindings);
+      return r;
+    });
+    expect(projRules.projectWins).toEqual(['5']);
+    expect(projRules.flagCleared).toBe(false);
+    expect(projRules.droppedAfterProject).toEqual([]);
+    expect(projRules.keptWhenSeeded).toEqual(['7']);
+
+    // End-to-end through a REAL intake path: canvas-JSON import with no
+    // bindings payload must keep the artboard-seeded layout.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      window.state.numberKeyBindings = {};
+      window.App.seedQuickKeysFromArtboard({ 4: { kind: 'counter', id: 'ci' } });
+    });
+    const payload = JSON.stringify({
+      counters: [{ id: 'ci', name: 'Imported Counter', icon: 'M0 0h24v24H0z', color: '#4a9eff' }],
+      lineTypes: [], groups: [], pages: [],
+    });
+    await page.locator('#importInput').setInputFiles({ name: 'canvas.json', mimeType: 'application/json', buffer: Buffer.from(payload) });
+    await page.waitForFunction(() => window.state.counters.some((c) => c.id === 'ci'));
+    expect(await page.evaluate(() => window.state.numberKeyBindings)).toEqual({ 4: { kind: 'counter', id: 'ci' } });
+  });
+
   test('mobile: status-bar entries hide; the settings-modal row is the path in', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/app/');

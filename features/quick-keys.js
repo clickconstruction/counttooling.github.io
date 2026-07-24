@@ -88,6 +88,59 @@
     App.renderLineTypesList && App.renderLineTypesList();
   }
 
+  /*
+   * ARTBOARD CARRY. Bindings are per-project (ids are uid()-scoped), but
+   * Save/Load Artboard stores the palette WITH its ids — so bindings saved
+   * alongside it (user_airboard.number_key_bindings) resolve against the
+   * restored palette, and a standard layout follows the user into every new
+   * bid. Two lifecycle rules, both here so they can't drift apart:
+   *
+   * seedQuickKeysFromArtboard(bindings, {replace}) — sign-in auto-restore seeds
+   * FILL-IF-EMPTY (never stomps an active layout); My Settings -> Load from
+   * Cloud passes replace:true (the user just confirmed "replace my artboard").
+   * Sets the seeded-lineage flag.
+   *
+   * applyProjectQuickKeys(incoming) — every project-data intake (cloud load,
+   * PDF-intake canvas restore, canvas-JSON import) funnels through this: a
+   * payload WITH bindings replaces (and clears the lineage flag — they're the
+   * project's now); a payload WITHOUT keeps an artboard-seeded layout but drops
+   * a previous project's, so dead ids never leak between unrelated projects.
+   */
+  function sanitizeBindings(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const cleaned = {};
+    SLOTS.forEach((slot) => {
+      const b = raw[slot];
+      if (b && typeof b === 'object' && (b.kind === 'counter' || b.kind === 'lineType') && typeof b.id === 'string' && b.id) {
+        cleaned[slot] = { kind: b.kind, id: b.id };
+      }
+    });
+    return Object.keys(cleaned).length ? cleaned : null;
+  }
+
+  function seedQuickKeysFromArtboard(raw, opts) {
+    const state = App.state;
+    const cleaned = sanitizeBindings(raw);
+    if (!cleaned) return false;
+    const replace = !!(opts && opts.replace);
+    if (!replace && Object.keys(state.numberKeyBindings || {}).length) return false;
+    state.numberKeyBindings = cleaned;
+    state.numberKeyBindingsSeededFromArtboard = true;
+    refreshSidebarBadges();
+    return true;
+  }
+
+  function applyProjectQuickKeys(incoming) {
+    const state = App.state;
+    const cleaned = sanitizeBindings(incoming);
+    if (cleaned) {
+      state.numberKeyBindings = cleaned;
+      state.numberKeyBindingsSeededFromArtboard = false;
+    } else if (!state.numberKeyBindingsSeededFromArtboard) {
+      state.numberKeyBindings = {};
+    }
+  }
+
   // Slot -> display name, for the Keyboard Map captions. Only bound, live slots.
   function getQuickKeyLabels() {
     const out = {};
@@ -188,5 +241,7 @@
   App.triggerQuickKey = triggerQuickKey;
   App.getQuickKeyLabels = getQuickKeyLabels;
   App.getQuickKeySlotFor = getQuickKeySlotFor;
+  App.seedQuickKeysFromArtboard = seedQuickKeysFromArtboard;
+  App.applyProjectQuickKeys = applyProjectQuickKeys;
   App.QUICK_KEY_SLOTS = SLOTS;
 })();

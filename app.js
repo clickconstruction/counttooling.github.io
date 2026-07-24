@@ -463,6 +463,55 @@
   function pruneSaveStatusLog() { return saveEngine.pruneSaveStatusLog(); }
   // SECTION: [sync] Save Status log & envelope
   function pushSaveEvent(kind, message, detail) { return saveEngine.pushSaveEvent(kind, message, detail); }
+
+  // SECTION: [sync] Field-error telemetry
+  // Save/sync failures arrive richly instrumented via the Save Status
+  // envelope, but a plain JS exception in the field (a handler throwing on an
+  // odd project) used to vanish silently — "it just stopped working" reports
+  // came with nothing. These hooks ride the SAME rails: client_error /
+  // client_unhandled_rejection events land in the saveStatusLog and export
+  // with the envelope. Deduped by kind+message and capped per session so a
+  // throw-in-a-loop can't flood the log (the log window prunes anyway; the cap
+  // keeps the envelope's tail useful). pushSaveEvent already drops everything
+  // when Supabase is disabled — cloud users are who export envelopes, so
+  // that's the right gate to inherit. Never rethrows, never preventDefaults:
+  // the console still shows the original error.
+  const CLIENT_ERROR_CAP = 10;
+  const clientErrorSeen = new Set();
+  let clientErrorCount = 0;
+  function reportClientError(kind, message, stack, source) {
+    try {
+      const msg = String(message || 'unknown').slice(0, 300);
+      const dedupeKey = kind + '|' + msg;
+      if (clientErrorSeen.has(dedupeKey) || clientErrorCount >= CLIENT_ERROR_CAP) return;
+      clientErrorSeen.add(dedupeKey);
+      clientErrorCount++;
+      pushSaveEvent(kind, msg, JSON.stringify({
+        source: String(source || '').slice(0, 200),
+        stack: String(stack || '').slice(0, 1500),
+        capped: clientErrorCount >= CLIENT_ERROR_CAP ? 'last reported this session' : undefined,
+      }));
+      // Mirror to the server-side activity feed (signed-in only — logUserEvent
+      // gates itself) so field crashes show up PROACTIVELY in the admin User
+      // Activity view instead of waiting for a user to export their envelope.
+      // Message + source only; the stack stays client-side in the envelope.
+      // The dedupe + session cap above already bound the volume.
+      logUserEvent(kind, state.currentProjectId || null, {
+        message: msg,
+        source: String(source || '').slice(0, 200),
+      });
+    } catch (_) { /* telemetry must never become its own error source */ }
+  }
+  window.addEventListener('error', (e) => {
+    // Resource-load errors (img/script) surface here with no .error — skip
+    // them; the SW/network layer owns those stories.
+    if (!e || (!e.error && !e.message)) return;
+    reportClientError('client_error', e.message, e.error && e.error.stack, (e.filename || '') + ':' + (e.lineno || 0));
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e && e.reason;
+    reportClientError('client_unhandled_rejection', (r && r.message) || String(r), r && r.stack, 'promise');
+  });
   // getProjectSummaryForLogs + buildSaveLogsEnvelope(+WithSnapshots) + the
   // per-tab session id live in save-engine.js (Stage 6). The wrapper keeps
   // the App registry + features/save-status.js contract frozen.
@@ -536,7 +585,12 @@
     state.rooms = [];
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
+    // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key
+    // bindings (and their artboard-seed lineage flag) never leak to the next
+    // user on a shared machine. The seed survives the normal new-bid flow
+    // (sign in -> upload PDF), which never passes through here.
     state.numberKeyBindings = {};
+    state.numberKeyBindingsSeededFromArtboard = false;
     state.checkedOutBy = null;
     state.checkedOutAt = null;
     state.checkedOutEmail = null;
@@ -3783,7 +3837,7 @@
   async function fetchUserAirboard() {
     const user = state.supabaseSession?.user;
     if (!supabase || !user) return null;
-    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order, plumbing_modifiers, line_modifiers').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order, plumbing_modifiers, line_modifiers, number_key_bindings, custom_icon_paths').eq('user_id', user.id).maybeSingle();
     if (error) return null;
     if (!data) return null;
     return {
@@ -3792,7 +3846,11 @@
       iconNames: (data.icon_names && typeof data.icon_names === 'object') ? data.icon_names : {},
       iconOrder: Array.isArray(data.icon_order) ? data.icon_order : null,
       plumbingModifiers: (data.plumbing_modifiers && typeof data.plumbing_modifiers === 'object') ? data.plumbing_modifiers : null,
-      lineModifiers: (data.line_modifiers && typeof data.line_modifiers === 'object') ? data.line_modifiers : null
+      lineModifiers: (data.line_modifiers && typeof data.line_modifiers === 'object') ? data.line_modifiers : null,
+      numberKeyBindings: (data.number_key_bindings && typeof data.number_key_bindings === 'object' && !Array.isArray(data.number_key_bindings)) ? data.number_key_bindings : null,
+      // Feeds the (previously dead) `airboard.customIconPaths` checks at both
+      // apply sites — the user's uploaded icon library now follows the account.
+      customIconPaths: Array.isArray(data.custom_icon_paths) ? data.custom_icon_paths : null
     };
   }
   async function saveUserAirboard() {
@@ -3806,6 +3864,11 @@
       icon_order: state.iconOrder || null,
       plumbing_modifiers: getPlumbingModifiers(),
       line_modifiers: getLineModifiers(),
+      // Quick Keys ride the artboard so a standard palette carries its number
+      // row into every new bid (column added 2026-07-24; requires the
+      // user_airboard_number_key_bindings migration before this client deploys).
+      number_key_bindings: state.numberKeyBindings || {},
+      custom_icon_paths: getUserCustomIcons() || [],
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('user_airboard').upsert(payload, { onConflict: 'user_id' });
@@ -3974,6 +4037,9 @@
             if (Array.isArray(airboard.customIconPaths)) saveUserCustomIcons(airboard.customIconPaths);
             if (airboard.plumbingModifiers && typeof airboard.plumbingModifiers === 'object') savePlumbingModifiers(airboard.plumbingModifiers);
             if (airboard.lineModifiers && typeof airboard.lineModifiers === 'object') saveLineModifiers(airboard.lineModifiers);
+            // Fill-if-empty only: this auto-restore must never stomp a layout the
+            // user already has going (e.g. a project restored before auth settled).
+            App.seedQuickKeysFromArtboard && App.seedQuickKeysFromArtboard(airboard.numberKeyBindings);
           }
         }
         reconcileOrphanedCountersAndLineTypes();
@@ -7006,6 +7072,31 @@
     }
   });
 
+  // The closure actions the HOTKEYS table (constants.js) names via `runner` —
+  // the pieces of a hotkey that aren't just "click this button". Keys here must
+  // match the table; hotkeys.spec.js asserts full coverage both directions.
+  const HOTKEY_RUNNERS = {
+    moveReset: () => {
+      state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null;
+      state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null;
+      state.pendingNote = null; state.editingNote = null;
+      if (state.drawingPolyline) state.drawingPolyline = null;
+      updateUI();
+    },
+    toggleSnap: () => {
+      state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
+      const cb = document.getElementById('lineTypeSnapToHV');
+      const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
+      const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
+      if (cb) { cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical; }
+      if (snapBtn) snapBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
+      if (snapHeaderEl) snapHeaderEl.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
+      renderAnnotations();
+      updateUI();
+    },
+    rotatePage: () => rotatePage90(),
+  };
+
   document.addEventListener('keydown', (e) => {
     if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
       if (document.getElementById('counterModal').classList.contains('visible')) {
@@ -7045,31 +7136,18 @@
       }
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
-      else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
-      else if (k === 'r') { rotatePage90(); e.preventDefault(); }
-      else if (k === 'j') {
-        state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
-        const cb = document.getElementById('lineTypeSnapToHV');
-        const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
-        const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
-        if (cb) { cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical; }
-        if (snapBtn) snapBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
-        if (snapHeaderEl) snapHeaderEl.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
-        renderAnnotations();
-        updateUI();
+      // Tool hotkeys are DATA-DRIVEN off the HOTKEYS table (constants.js) —
+      // the same source scripts/build-macros.js generates the Macros rows
+      // from, so a key can no longer work while being missing from the docs
+      // (the V/Room-Sizer gap). Non-bespoke entries either click their button
+      // or run a named closure action from HOTKEY_RUNNERS. Viewer gating rides
+      // the entry (m/d/r/j/s stay viewer-usable — S so viewers can set a temp
+      // scale to measure with).
+      const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
+      if (hk && (hk.viewerAllowed || !state.isViewer)) {
+        if (hk.runner) HOTKEY_RUNNERS[hk.runner]();
+        else document.getElementById(hk.btnId).click();
         e.preventDefault();
-      }
-      // S works for viewers too - they may set a temporary local scale to measure.
-      else if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
-      else if (!state.isViewer) {
-        if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
-        else if (k === 'l') { document.getElementById('quickLine').click(); e.preventDefault(); }
-        else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
-        else if (k === 'h') { document.getElementById('highlightBtn').click(); e.preventDefault(); }
-        else if (k === 'x') { document.getElementById('multiplyZoneBtn').click(); e.preventDefault(); }
-        else if (k === 'v') { document.getElementById('roomBtn').click(); e.preventDefault(); }
-        else if (k === 'n') { document.getElementById('noteBtn').click(); e.preventDefault(); }
       }
     }
     if (e.key === 'Escape') {
@@ -7492,6 +7570,11 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  // Hotkey coverage seam: hotkeys.spec.js asserts every non-bespoke HOTKEYS
+  // entry resolves to a runner here or a real element — the executable half of
+  // the hotkeys-as-data contract (build:macros gates the documentation half).
+  App.__hotkeyRunnerNames = Object.keys(HOTKEY_RUNNERS);
+  App.HOTKEYS = HOTKEYS;   // the constants.js single source (specs + future features)
   App.formatLastSignIn = formatLastSignIn;
   App.formatUserActivityDateTime = formatUserActivityDateTime;
   App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;

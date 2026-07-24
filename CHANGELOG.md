@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(undo): history deepened 5 → 50
+
+`UNDO_STACK_SIZE` (constants.js) was set to 5 back when every snapshot
+deep-copied the whole project. The perf-endgame work moved the high-frequency
+sites (counter/line/polyline/highlight placement, drops, notes) to
+**page-scoped** snapshots — O(current page), not O(project) — so the old cost
+rationale no longer held, while estimators doing rapid placement burned through
+5 steps in seconds. Now 50. The rare cross-page cascades (counter/line-type/
+group delete) still push full snapshots, but a heavy stack would need 50 of
+those *in a row*, which no real session produces. No test edits needed — the
+cap tests in annotation-model.test.js and constants.test.js derive from the
+symbol, which is exactly why the cap lives in constants.js.
+
+---
+
 ## polish(status-bar): icon for "macros", optical alignment for both
 
 Gave the status-bar `macros` link a keyboard glyph to match the keypad on `keys`

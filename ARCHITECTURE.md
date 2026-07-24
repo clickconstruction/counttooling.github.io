@@ -1087,7 +1087,10 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 
 ### Editing aids
 
-- **Undo/Redo** — last 5 moves in memory; `undoStack`/`redoStack`; Ctrl+Z /
+- **Undo/Redo** — last 50 moves in memory (`UNDO_STACK_SIZE`, constants.js —
+  raised from 5 in 2026-07-24 once the high-frequency placement sites moved to
+  page-scoped snapshots, O(current page) instead of O(project); the rare
+  cross-page cascades still push full snapshots); `undoStack`/`redoStack`; Ctrl+Z /
   Ctrl+Shift+Z; cleared on load/switch/viewer.
 - **Middle mouse pan** — hold middle button to pan regardless of tool.
 - **Zoom Rail** — clicking the footer zoom % toggles a giant floating vertical

@@ -491,6 +491,15 @@
         stack: String(stack || '').slice(0, 1500),
         capped: clientErrorCount >= CLIENT_ERROR_CAP ? 'last reported this session' : undefined,
       }));
+      // Mirror to the server-side activity feed (signed-in only — logUserEvent
+      // gates itself) so field crashes show up PROACTIVELY in the admin User
+      // Activity view instead of waiting for a user to export their envelope.
+      // Message + source only; the stack stays client-side in the envelope.
+      // The dedupe + session cap above already bound the volume.
+      logUserEvent(kind, state.currentProjectId || null, {
+        message: msg,
+        source: String(source || '').slice(0, 200),
+      });
     } catch (_) { /* telemetry must never become its own error source */ }
   }
   window.addEventListener('error', (e) => {

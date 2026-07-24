@@ -13,6 +13,17 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(telemetry): field errors mirror to the admin activity feed
+
+Phase 2 of the client-error hooks: `reportClientError` now also fires
+`logUserEvent(kind, projectId, {message, source})`, so crashes land in the
+admin User Activity view PROACTIVELY instead of waiting for a user to export
+their Save Status envelope. Signed-in only (logUserEvent gates itself), message
++ source only (the stack stays client-side in the envelope), and the existing
+dedupe + 10/session cap bound the volume before it ever reaches the wire.
+
+---
+
 ## feat(artboard): uploaded custom icons follow the account
 
 Both artboard apply-sites have checked `airboard.customIconPaths` since the

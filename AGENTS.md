@@ -104,7 +104,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **43 `features/*.js` registry files**, after app.js and before
+  - **44 `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -147,10 +147,15 @@
   [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
   `*.test.js` = Node unit tests.
 - **Aggregate check**: `npm run check` runs lint + `test:unit` + `build:toc --check`
+  + `build:filemap --check` (the ARCHITECTURE.md Large-file map line counts are
+  generated — see [scripts/build-filemap.js](scripts/build-filemap.js))
   + `build:guides --check` + `build:sw --check`
   (fast, no browser/cloud). [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  runs it on every push/PR (Node 20); Playwright is excluded from CI because it
-  needs a server + Supabase/dev-auth secrets.
+  runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
+  suite (chromium, own `npx serve` via the config's webServer; render-pixels is
+  CI-ignored — darwin-rasterized baselines — and cloud-gated specs self-skip
+  without dev-auth secrets; a stub `config.local.js` prevents the localhost-only
+  include from 404ing).
 - **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
   covers all the `.js` — the browser modules (`geometry.js`, `constants.js`,
   `idb.js`, `format.js`, `icons.js`, `icon-render.js`, `line-metrics.js`,

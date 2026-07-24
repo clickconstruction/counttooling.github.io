@@ -68,6 +68,26 @@
     return true;
   }
 
+  // Reverse lookup: which slot (if any) is bound to this item? Used by the
+  // sidebar list renderers to badge bound rows — the bindings teach themselves
+  // during normal work instead of living only in the modal. First match wins
+  // (binding the same item to two slots is pointless but not illegal).
+  function getQuickKeySlotFor(kind, id) {
+    const bindings = getBindings();
+    for (const slot of SLOTS) {
+      const b = bindings[slot];
+      if (b && b.kind === kind && b.id === id) return slot;
+    }
+    return null;
+  }
+
+  // The sidebar rows render badges from the bindings, so a binding change must
+  // refresh them. Defensive: both renderers live in app.js and are publish-only.
+  function refreshSidebarBadges() {
+    App.renderCountersList && App.renderCountersList();
+    App.renderLineTypesList && App.renderLineTypesList();
+  }
+
   // Slot -> display name, for the Keyboard Map captions. Only bound, live slots.
   function getQuickKeyLabels() {
     const out = {};
@@ -131,6 +151,7 @@
         }
         App.markProjectDirty();
         renderQuickKeysList();
+        refreshSidebarBadges();
         App.renderKeyboardMapInline && App.renderKeyboardMapInline();
       };
     });
@@ -139,6 +160,7 @@
         delete getBindings()[btn.dataset.slot];
         App.markProjectDirty();
         renderQuickKeysList();
+        refreshSidebarBadges();
         App.renderKeyboardMapInline && App.renderKeyboardMapInline();
       };
     });
@@ -151,6 +173,12 @@
 
   const opener = document.getElementById('statusBarQuickKeys');
   if (opener) opener.onclick = () => openQuickKeysModal();
+  // Project Settings row — the mobile path: the status-bar link is desktop-only,
+  // but the settings modal is reachable everywhere (sidebar logo on mobile), so a
+  // tablet-with-keyboard user can still set up bindings. Mirrors the
+  // settingsMacros handler in app.js: close settings, open ours.
+  const settingsOpener = document.getElementById('settingsQuickKeys');
+  if (settingsOpener) settingsOpener.onclick = () => { App.hideModal('settingsModal'); openQuickKeysModal(); };
   const closeBtn = document.getElementById('quickKeysModalClose');
   if (closeBtn) closeBtn.onclick = () => App.hideModal('quickKeysModal');
   const doneBtn = document.getElementById('quickKeysDone');
@@ -159,5 +187,6 @@
   App.openQuickKeysModal = openQuickKeysModal;
   App.triggerQuickKey = triggerQuickKey;
   App.getQuickKeyLabels = getQuickKeyLabels;
+  App.getQuickKeySlotFor = getQuickKeySlotFor;
   App.QUICK_KEY_SLOTS = SLOTS;
 })();

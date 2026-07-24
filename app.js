@@ -2986,7 +2986,7 @@
     document.body.classList.toggle('sidebar-reorder-mode-active', state.sidebarReorderModeActive);
     renderLineTypesList();
     renderGroupsList();
-    renderLinesList();
+    App.renderLinesList && App.renderLinesList();   // features/lines-list.js; boot-time no-op is fine (no project yet)
     renderSummary();
     // App.hasAnyHighlights / hasAnyNotes are registered by features/pdf-bundle.js,
     // which loads AFTER app.js. updateUI is a hot path that can run during boot
@@ -3282,6 +3282,15 @@
     updateUI();
   }
 
+  // Quick Key keycap badge for a bound sidebar row ('' when unbound). Deferred
+  // App.* read — features/quick-keys.js registers the lookup after app.js loads,
+  // and a boot-time render before then simply shows no badges (bindings only
+  // arrive with a project load anyway, and every later updateUI re-renders).
+  function quickKeyBadgeHtml(kind, id) {
+    const slot = App.getQuickKeySlotFor && App.getQuickKeySlotFor(kind, id);
+    return slot ? '<span class="quick-key-slot-badge" title="Quick Key ' + slot + ' — press to select">' + slot + '</span>' : '';
+  }
+
   function renderCountersList() {
     const el = document.getElementById('countersList');
     el.innerHTML = '';
@@ -3299,7 +3308,7 @@
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
       const count = state.pages.reduce((n, p, pi) => n + ((getActiveAnnotations(p, pi)?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');
@@ -3364,7 +3373,7 @@
       const scale = pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatFeet(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatFeet(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;
         const handle = div.querySelector('.line-type-drag-handle');
@@ -3440,129 +3449,12 @@
     return n;
   }
 
-  function renderLinesList() {
-    const el = document.getElementById('linesList');
-    el.innerHTML = '';
-    const esc = escapeHtml;
-    const byType = {};
-    state.pages.forEach((p, pi) => {
-      if (state.lineTypeSettings?.showOnlyLinesOnCurrentPage && state.pages.length > 0 && pi !== state.currentPage) return;
-      const ann = getActiveAnnotations(p, pi);
-      (ann?.polylines || []).forEach(poly => {
-        const tid = poly.lineTypeId || '_none';
-        if (!byType[tid]) byType[tid] = [];
-        byType[tid].push({ type: 'poly', poly, pageIdx: pi });
-      });
-      (ann?.quickLines || []).forEach(q => {
-        const tid = q.lineTypeId || '_none';
-        if (!byType[tid]) byType[tid] = [];
-        byType[tid].push({ type: 'quick', q, pageIdx: pi });
-      });
-    });
-    const linesQ = (state.linesSearch || '').trim().toLowerCase();
-    const filterItem = (it) => {
-      if (!linesQ) return true;
-      const name = it.type === 'poly' ? (it.poly.name || 'Polyline') : (it.q.name || 'Quick line');
-      return name.toLowerCase().includes(linesQ);
-    };
-    const showEdit = !state.isViewer;
-    Object.entries(byType).forEach(([tid, items]) => {
-      const filteredItems = linesQ ? items.filter(filterItem) : items;
-      if (linesQ && filteredItems.length === 0) return;
-      const lt = tid === '_none' ? null : state.lineTypes.find(l => l.id === tid);
-      const typeName = lt ? (lt.name || 'Line') : 'Unassigned';
-      const pageIndices = [...new Set(filteredItems.map(it => it.pageIdx))];
-      let totalLen = 0;
-      filteredItems.forEach(it => {
-        const p = state.pages[it.pageIdx];
-        const annIt = p ? getActiveAnnotations(p, it.pageIdx) : makeAnnotations();
-        totalLen += it.type === 'poly' ? getLineLengthFeetForTotals(it.poly, it.pageIdx, true, annIt) : getLineLengthFeetForTotals(it.q, it.pageIdx, false, annIt);
-      });
-      const scale = pickScaleForLineType(pageIndices);
-      const summary = filteredItems.length + ' lines · ' + formatFeet(totalLen, scale);
-      const expanded = !!state.linesTypeExpanded[tid];
-      const groupWrapper = document.createElement('div');
-      groupWrapper.className = 'lines-type-group' + (expanded ? '' : ' collapsed');
-      const header = document.createElement('div');
-      header.className = 'lines-type-header';
-      header.innerHTML = '<span class="lines-type-name">' + esc(typeName) + '</span><span class="lines-type-summary">' + summary + '</span><span class="collapse-icon lines-type-collapse-icon">' + (expanded ? '▼' : '▶') + '</span>';
-      header.onclick = () => {
-        state.linesTypeExpanded[tid] = !state.linesTypeExpanded[tid];
-        try { localStorage.setItem('linesTypeExpanded', JSON.stringify(state.linesTypeExpanded)); } catch (_) {}
-        groupWrapper.classList.toggle('collapsed', !state.linesTypeExpanded[tid]);
-        header.querySelector('.lines-type-collapse-icon').textContent = state.linesTypeExpanded[tid] ? '▼' : '▶';
-      };
-      groupWrapper.appendChild(header);
-      const itemsContainer = document.createElement('div');
-      itemsContainer.className = 'lines-type-items';
-      filteredItems.forEach(it => {
-      const lineId = it.type === 'poly' ? it.poly.id : it.q.id;
-      const isSelected = state.selectedLineId === lineId && state.selectedLinePageIdx === it.pageIdx;
-      const div = document.createElement('div');
-      div.className = 'sidebar-item sidebar-item-line-type' + (isSelected ? ' active' : '');
-      const ltItem = state.lineTypes.find(l => l.id === (it.type === 'poly' ? it.poly.lineTypeId : it.q.lineTypeId));
-      const color = (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff');
-      const pageScale = state.pages[it.pageIdx]?.scale;
-      const annRow = state.pages[it.pageIdx] ? getActiveAnnotations(state.pages[it.pageIdx], it.pageIdx) : makeAnnotations();
-      let dist, name;
-      if (it.type === 'poly') {
-        dist = it.poly.closed ? formatArea(polygonArea(it.poly.points || []), pageScale) : formatFeet(getLineRealWorldLengthFeet(it.poly, it.pageIdx, true, annRow), getEffectiveScaleForLine(annRow, it.poly, true, it.pageIdx));
-        name = it.poly.name || 'Polyline';
-      } else {
-        dist = formatFeet(getLineRealWorldLengthFeet(it.q, it.pageIdx, false, annRow), getEffectiveScaleForLine(annRow, it.q, false, it.pageIdx));
-        name = it.q.name || 'Quick line';
-      }
-      const line = it.type === 'poly' ? it.poly : it.q;
-      const sd = line.startDrop || 0, ed = line.endDrop || 0;
-      let dropsHtml = '';
-      if (sd > 0 || ed > 0) {
-        const su = line.startDropUnit || pageScale?.unit, eu = line.endDropUnit || pageScale?.unit;
-        const parts = [];
-        if (sd > 0) parts.push('↧ ' + sd + (su ? ' ' + su : ''));
-        if (ed > 0) parts.push('↧ ' + ed + (eu ? ' ' + eu : ''));
-        dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
-      }
-      div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
-      div.onclick = (e) => {
-        if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;
-        if (isSelected) {
-          state.selectedLineId = null;
-          state.selectedLineIsPoly = false;
-          state.selectedLinePageIdx = null;
-          updateUI();
-          renderAnnotations();
-        } else if (lineId) {
-          state.selectedLineId = lineId;
-          state.selectedLineIsPoly = it.type === 'poly';
-          state.selectedLinePageIdx = it.pageIdx;
-          state.currentPage = it.pageIdx;
-          fitZoom();
-        }
-      };
-      if (showEdit) {
-        const swatch = div.querySelector('.swatch');
-        if (swatch) swatch.addEventListener('click', (e) => {
-          e.stopPropagation();
-          App.showLineColorModal(
-            (it.type === 'poly' ? it.poly.color : it.q.color) || (ltItem?.color || '#4a9eff'),
-            (color) => {
-              pushUndoSnapshot();
-              if (it.type === 'poly') it.poly.color = color;
-              else it.q.color = color;
-              markProjectDirty();
-            }
-          );
-        });
-        const editBtn = div.querySelector('.edit-btn');
-        if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); App.openLinePropertiesModal(it); };
-        onDoubleTapOrDblClick(div.querySelector('.name'), () => App.openLinePropertiesModal(it));
-      }
-      itemsContainer.appendChild(div);
-    });
-      groupWrapper.appendChild(itemsContainer);
-      el.appendChild(groupWrapper);
-    });
-  }
+  // renderLinesList (the sidebar Lines section: per-type grouping + totals,
+  // expand/collapse, search, row selection/jump, swatch + Line Properties
+  // openers) moved to features/lines-list.js (window.App registry) — the first
+  // split out of the UI Render Functions region. updateUI reaches it
+  // defensively via App.renderLinesList; the search/show-only handlers call it
+  // plainly (user-action time). Five publish-only deps in the registry block.
 
   function renderSummary() {
     const el = document.getElementById('summaryList');
@@ -4583,7 +4475,7 @@
       state.lineTypeSearch = lineTypeSearchInput.value;
       localStorage.setItem('lineTypeSearch', state.lineTypeSearch);
       renderLineTypesList();
-      renderLinesList();
+      App.renderLinesList();
     };
   }
   const linesSearchInput = document.getElementById('linesSearchInput');
@@ -4592,7 +4484,7 @@
     linesSearchInput.oninput = () => {
       state.linesSearch = linesSearchInput.value;
       localStorage.setItem('linesSearch', state.linesSearch);
-      renderLinesList();
+      App.renderLinesList();
     };
   }
   const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
@@ -4616,7 +4508,7 @@
       if (cb) cb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
       if (modalBtn) modalBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
       renderLineTypesList();
-      renderLinesList();
+      App.renderLinesList();
       updateUI();
     };
   }
@@ -4625,7 +4517,7 @@
     linesShowOnlyOnPageBtn.onclick = () => {
       state.lineTypeSettings.showOnlyLinesOnCurrentPage = !state.lineTypeSettings.showOnlyLinesOnCurrentPage;
       linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
-      renderLinesList();
+      App.renderLinesList();
       updateUI();
     };
   }
@@ -7562,6 +7454,14 @@
   App.renderAnnotations = renderAnnotations;
   App.renderCountersList = renderCountersList;
   App.renderLineTypesList = renderLineTypesList;
+  // features/lines-list.js deps (publish-only). formatArea/polygonArea are
+  // geometry.js globals — lint-invisible to the features eslint group, so they
+  // route through the registry (the pilot-#13 ptDist pattern).
+  App.formatArea = formatArea;
+  App.polygonArea = polygonArea;
+  App.pickScaleForLineType = pickScaleForLineType;
+  App.getLineRealWorldLengthFeet = getLineRealWorldLengthFeet;
+  App.onDoubleTapOrDblClick = onDoubleTapOrDblClick;
   App.DROP_ICON_STYLES = DROP_ICON_STYLES;
   App.TOOL = TOOL;
   App.COLORS = COLORS;

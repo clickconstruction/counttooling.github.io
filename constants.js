@@ -99,7 +99,15 @@ const CHECKOUT_EXPIRED_TOAST_MSG = 'Your edit session expired while idle. Check 
 const PENDING_GLOBAL_RELOAD_STAMP_KEY = 'clickcount-pending-global-reload';
 
 // --- Undo/redo ---
-const UNDO_STACK_SIZE = 5;
+// 50, up from the original 5. The old cap dated from when EVERY snapshot
+// deep-copied the whole project; the high-frequency sites (counter/line/note
+// placement etc.) now push page-scoped snapshots — O(current page), not
+// O(project) — so a deep stack is cheap where it matters. The rare cross-page
+// cascades (counter/line-type/group delete) still push full snapshots, but
+// nobody performs 50 of those in a row, so the mixed stack stays small in
+// practice. Rapid counter placement burns 5 steps in seconds; 50 gives a real
+// safety margin.
+const UNDO_STACK_SIZE = 50;
 
 // --- IndexedDB store names & caps ---
 const PDF_CACHE_DB = 'clickcount-pdf-cache';

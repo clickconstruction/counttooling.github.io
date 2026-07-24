@@ -13,6 +13,105 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(filemap): the Large-file map line counts are now generated
+
+The decomposition table's caption asked humans to "refresh when they drift" —
+and they didn't (it sat three days stale carrying a 689-line undercount for
+app.js). New [scripts/build-filemap.js](scripts/build-filemap.js), the same
+committed-artifact-generator pattern as build-toc/build-sw: it restamps each
+row's Lines cell, the `features/*.js (NN files) | total` row, and the caption
+date (only when a count actually moved, so --check is deterministic across
+days). `npm run check` now includes `build:filemap -- --check`, so a stale
+table fails CI instead of waiting for someone to notice. Ownership split on
+purpose: the generator owns the numbers; humans own which files are listed and
+every Status / verdict — add a row by hand and its count stays fresh from then
+on.
+
+---
+
+## refactor(lines-list): first split out of the UI Render Functions region
+
+The decomposition table has named UI Render Functions (~1,065 lines) as the
+next candidate since the canvas-draw extraction: "the list renderers are
+separable per-list as feature files; updateUI itself stays core." This starts
+it with the cleanest unit — `renderLinesList` (123 lines, six inbound call
+sites, zero closure state) → [features/lines-list.js](features/lines-list.js).
+
+- **The hot-path seam**: updateUI (which can run at boot, before feature files
+  load) reaches it defensively — `App.renderLinesList && App.renderLinesList()`
+  — the burger-menu pattern; an empty Lines section for that instant is
+  harmless since no project is open yet. The search-input and show-only
+  handlers call it plainly (user-action time).
+- Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js
+  globals, lint-invisible to the features eslint group, routed through the
+  registry like pilot #13's `ptDist`), `pickScaleForLineType`,
+  `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`.
+- New [lines-list.spec.js](lines-list.spec.js) drives the moved surface through
+  the REAL updateUI path: grouping/totals (`3 lines · 25.00 ft`),
+  expand/collapse persistence, search, select-and-jump, deselect.
+
+app.js 7888 → 7779; the region drops to ~940 with the remaining renderers
+each separable by the same recipe.
+
+---
+
+## feat(quick-keys): mobile path via Project Settings + status-bar visibility fix
+
+The status-bar `keys` link is desktop-only (digits need a keyboard), which left
+tablets/phones with no way to reach the binding modal at all. A **quick keys**
+row now sits in the Project Settings links row next to `macros` — the settings
+modal is reachable everywhere (sidebar logo on mobile) — bound in
+features/quick-keys.js, mirroring the settingsMacros handler (close settings,
+open ours).
+
+Fixing that surfaced a shipped regression worth naming: the `.has-icon` class
+(status-bar icon links) carried a `display`, which out-cascaded the
+`.status-bar-desktop-only { display:none }` hide — equal specificity, later in
+the file — so `keys` and `macros` were **leaking into the cramped mobile status
+bar**, and the un-ID'd separator between them never showed on desktop at all
+(the house pattern re-shows these BY ID in the 769px media query, and it had no
+id). Fixed properly: `.has-icon` no longer sets display, the separator got
+`#statusBarQuickKeysSep`, and all three entries are re-shown by ID at 769px+
+(the two links as `inline-flex` so the icon alignment holds). A new mobile
+spec pins both the hide and the settings-modal path so this can't regress
+silently again.
+
+---
+
+## feat(quick-keys): bound rows wear their digit in the sidebar
+
+A user had to remember what they bound — the bindings lived only in the modal.
+Now a counter / line type with a Quick Key shows a small keycap badge next to
+its name in the sidebar (accent digit on a dark chip, echoing the Keyboard
+Map's lit-key look so the two surfaces read as one feature), so the bindings
+teach themselves during normal work.
+
+`quickKeyBadgeHtml(kind, id)` in app.js's `renderCountersList` /
+`renderLineTypesList` reads the feature-registered reverse lookup
+`App.getQuickKeySlotFor(kind, id)` **deferred** (a boot-time render before
+quick-keys.js loads just shows no badges; bindings only arrive with a project
+load anyway, and every later updateUI re-renders). The modal's bind/clear
+handlers call `refreshSidebarBadges()` so the sidebar tracks changes live while
+the modal is open. quick-keys.spec.js gains a badge test (digit/row pairing,
+unbound rows bare, live refresh on unbind).
+
+---
+
+## feat(undo): history deepened 5 → 50
+
+`UNDO_STACK_SIZE` (constants.js) was set to 5 back when every snapshot
+deep-copied the whole project. The perf-endgame work moved the high-frequency
+sites (counter/line/polyline/highlight placement, drops, notes) to
+**page-scoped** snapshots — O(current page), not O(project) — so the old cost
+rationale no longer held, while estimators doing rapid placement burned through
+5 steps in seconds. Now 50. The rare cross-page cascades (counter/line-type/
+group delete) still push full snapshots, but a heavy stack would need 50 of
+those *in a row*, which no real session produces. No test edits needed — the
+cap tests in annotation-model.test.js and constants.test.js derive from the
+symbol, which is exactly why the cap lives in constants.js.
+
+---
+
 ## polish(status-bar): icon for "macros", optical alignment for both
 
 Gave the status-bar `macros` link a keyboard glyph to match the keypad on `keys`

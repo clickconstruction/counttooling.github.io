@@ -15,6 +15,33 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Lint + unit tests + TOC freshness. Playwright is intentionally excluded:
-      # it needs a running server and Supabase/dev-auth secrets.
+      # Lint + unit tests + generated-artifact freshness (TOC / guides / SW hash).
       - run: npm run check
+
+  # The end-to-end suite, minus what genuinely can't run here: render-pixels
+  # (darwin-rasterized pixel baselines — see testIgnore in playwright.config.js)
+  # and the cloud-gated specs (they self-skip without DEV_AUTH_* creds; no
+  # secrets are configured, and none are needed — the local-only specs are the
+  # bulk of the suite and carried every regression this repo has caught).
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # app/index.html loads /config.local.js on any localhost (dev-auth
+      # overrides; gitignored). Without a file the 404 lands in the console and
+      # every spec asserting a clean console fails — so stub it.
+      - run: echo '// CI stub — real file is gitignored localhost dev-auth overrides' > config.local.js
+      - run: npx playwright install --with-deps chromium
+      # playwright.config.js starts its own webServer (npx serve -l 3456).
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-error-contexts
+          path: test-results/
+          retention-days: 7

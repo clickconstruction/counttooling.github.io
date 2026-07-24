@@ -185,6 +185,59 @@ test.describe('Quick Keys', () => {
     expect(await selection(page)).toMatchObject({ counter: 'ci' });
   });
 
+  test('bound rows show a keycap badge in the sidebar; it tracks binding changes', async ({ page }) => {
+    await page.evaluate(() => {
+      window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' }, 2: { kind: 'lineType', id: 'lt1' } };
+      window.App.renderCountersList();
+      window.App.renderLineTypesList();
+    });
+
+    // Badge digit + row pairing, both list kinds.
+    const badges = await page.evaluate(() =>
+      [...document.querySelectorAll('.quick-key-slot-badge')].map((b) => ({
+        digit: b.textContent,
+        row: b.closest('.sidebar-item')?.querySelector('.name')?.textContent || '',
+      })));
+    expect(badges.length).toBe(2);
+    expect(badges[0].digit).toBe('1');
+    expect(badges[0].row).toContain('Floor Drain');
+    expect(badges[1].digit).toBe('2');
+    expect(badges[1].row).toContain('2in Waste');
+    // Unbound rows carry no badge.
+    const cleanoutBadge = await page.evaluate(() =>
+      [...document.querySelectorAll('#countersList .sidebar-item')]
+        .find((r) => r.textContent.includes('Cleanout'))
+        ?.querySelector('.quick-key-slot-badge') || null);
+    expect(cleanoutBadge).toBeNull();
+
+    // Unbinding through the modal refreshes the sidebar live.
+    await page.evaluate(() => window.App.openQuickKeysModal());
+    await page.selectOption('.quick-key-select[data-slot="1"]', '');
+    expect(await page.evaluate(() => document.querySelectorAll('.quick-key-slot-badge').length)).toBe(1);
+  });
+
+  test('mobile: status-bar entries hide; the settings-modal row is the path in', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // The desktop-only status-bar cluster must actually hide on a phone. This
+    // regressed once: .has-icon carried a display that out-cascaded the
+    // .status-bar-desktop-only hide (equal specificity, later in the file), so
+    // the links leaked into the cramped mobile status bar.
+    await expect(page.locator('#statusBarQuickKeys')).toBeHidden();
+    await expect(page.locator('#statusBarQuickKeysSep')).toBeHidden();
+    await expect(page.locator('#statusBarMacros')).toBeHidden();
+
+    // The mobile path: Project Settings -> "quick keys" row.
+    await page.evaluate(() => window.App.showModal('settingsModal'));
+    await expect(page.locator('#settingsQuickKeys')).toBeVisible();
+    await page.locator('#settingsQuickKeys').click();
+    await expect(page.locator('#settingsModal')).not.toHaveClass(/visible/);
+    await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
+    expect(await page.locator('#quickKeysList .quick-key-row').count()).toBe(10);
+  });
+
   test('the Keyboard Map lights bound digits with their names', async ({ page }) => {
     await page.evaluate(() => {
       window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' }, 2: { kind: 'lineType', id: 'lt1' } };

@@ -1,9 +1,18 @@
 /*
- * features/keyboard-map.js - the Keyboard Map modal (keyboardMapModal), opened
- * by the "See Keyboard" button at the top of the Macros / Keyboard Shortcuts
- * modal. Renders a 65%-layout keyboard silhouette where every key that carries
- * a shortcut lights up (accent-yellow on the dark board) and hovering / tapping
- * a lit key names its action in the caption below.
+ * features/keyboard-map.js - the Keyboard Map: a 65%-layout keyboard silhouette
+ * where every key that carries a shortcut lights up (accent-yellow on the dark
+ * board) and hovering / tapping a lit key names its action in the caption below.
+ *
+ * TWO HOSTS, chosen by CSS at the 769px breakpoint (see styles.css .kb-inline):
+ *   - desktop: rendered INLINE at the top of the Macros modal
+ *     (#macrosKeyboardInline) — there is room, so it is always on screen and the
+ *     "See Keyboard" button is hidden.
+ *   - mobile: the inline host is hidden and "See Keyboard" (#macrosSeeKeyboard)
+ *     opens the standalone #keyboardMapModal, since a 560px board does not fit a
+ *     phone-width card.
+ * A "host" is just an element wrapping a .kb-board and a .kb-caption; every
+ * function here takes one, so neither path is special-cased. Both hosts are built
+ * regardless of viewport, so crossing the breakpoint needs no rebuild.
  *
  * Loaded as a classic <script src="features/keyboard-map.js"> AFTER app.js.
  * Its own IIFE: it reaches the shared helpers through the window.App registry,
@@ -138,8 +147,7 @@
     return NAMES[keyId] || displayLabel || keyId;
   }
 
-  function buildBoard() {
-    const board = document.getElementById('keyboardMapBoard');
+  function buildBoard(board) {
     if (!board) return;
     const macroKeys = collectMacroKeys();
     board.innerHTML = '';
@@ -179,21 +187,27 @@
     });
   }
 
-  function setCaption(text) {
-    const el = document.getElementById('keyboardMapCaption');
+  function setCaption(host, text) {
+    const el = host && host.querySelector('.kb-caption');
     if (el) el.textContent = text || DEFAULT_CAPTION;
   }
 
+  // Render one host (an element wrapping a .kb-board and a .kb-caption).
+  function renderInto(host) {
+    if (!host) return;
+    buildBoard(host.querySelector('.kb-board'));
+    setCaption(host, null);
+  }
+
   function openKeyboardMapModal() {
-    buildBoard();
-    setCaption(null);
+    renderInto(document.getElementById('keyboardMapModal'));
     App.showModal('keyboardMapModal');
   }
 
-  // Delegated interaction: pointer hover is mouse-only (a touch "hover" would
-  // fire and immediately vanish), taps and keyboard focus both pin the caption.
-  function wireBoardInteraction() {
-    const board = document.getElementById('keyboardMapBoard');
+  // Delegated interaction, per host: pointer hover is mouse-only (a touch "hover"
+  // would fire and immediately vanish), taps and keyboard focus both pin the caption.
+  function wireBoardInteraction(host) {
+    const board = host && host.querySelector('.kb-board');
     if (!board) return;
     const captionOf = (target) => {
       const key = target && target.closest ? target.closest('.kb-key') : null;
@@ -202,19 +216,19 @@
     board.addEventListener('pointerover', (e) => {
       if (e.pointerType !== 'mouse') return;
       const caption = captionOf(e.target);
-      if (caption) setCaption(caption);
+      if (caption) setCaption(host, caption);
     });
     board.addEventListener('pointerout', (e) => {
       if (e.pointerType !== 'mouse') return;
-      if (captionOf(e.target)) setCaption(null);
+      if (captionOf(e.target)) setCaption(host, null);
     });
     board.addEventListener('click', (e) => {
       const caption = captionOf(e.target);
-      if (caption) setCaption(caption);
+      if (caption) setCaption(host, caption);
     });
     board.addEventListener('focusin', (e) => {
       const caption = captionOf(e.target);
-      if (caption) setCaption(caption);
+      if (caption) setCaption(host, caption);
     });
   }
 
@@ -222,7 +236,21 @@
   if (seeKeyboardBtn) seeKeyboardBtn.onclick = () => openKeyboardMapModal();
   const closeBtn = document.getElementById('keyboardMapClose');
   if (closeBtn) closeBtn.onclick = () => App.hideModal('keyboardMapModal');
-  wireBoardInteraction();
+
+  const modalHost = document.getElementById('keyboardMapModal');
+  const inlineHost = document.getElementById('macrosKeyboardInline');
+  wireBoardInteraction(modalHost);
+  wireBoardInteraction(inlineHost);
+  /*
+   * The inline (desktop) host is rendered once, now: the Macros table it derives
+   * from is static markup in app/index.html and this script is the last one in the
+   * body, so the table is fully parsed and the derivation is valid at load. The
+   * modal host still renders on each open — costs nothing and keeps it correct if
+   * the table ever becomes dynamic. CSS decides which host is visible; both are
+   * always built, so a viewport resize across the 769px breakpoint needs no rebuild.
+   */
+  renderInto(inlineHost);
 
   App.openKeyboardMapModal = openKeyboardMapModal;
+  App.renderKeyboardMapInline = () => renderInto(document.getElementById('macrosKeyboardInline'));
 })();

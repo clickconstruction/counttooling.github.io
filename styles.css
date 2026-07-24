@@ -718,6 +718,20 @@
     .kb-swatch { display: inline-block; width: 14px; height: 14px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; }
     .kb-swatch.is-mapped { background: var(--accent); border-color: var(--accent); }
     .kb-swatch.is-modifier { background: transparent; border-color: var(--accent); }
+    /* Default (narrow / mobile): the board lives behind the "See Keyboard" button
+       in #keyboardMapModal — a 560px board does not fit a phone-width card. */
+    .kb-inline { display: none; }
+    @media (min-width: 769px) {
+      /* Desktop has the room, so pin the board inline at the top of the shortcut
+         list and retire the button. The card becomes a flex column with a viewport
+         cap so the TABLE scrolls underneath a fixed keyboard — modal cards only get
+         a max-height on mobile, so without this the taller card would run off the
+         bottom of the screen with no way to reach the rest of the list. */
+      .macros-see-keyboard { display: none; }
+      .kb-inline { display: block; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+      .macros-modal-card { max-width: 660px; max-height: 88vh; display: flex; flex-direction: column; }
+      .macros-modal-body { flex: 1 1 auto; min-height: 0; max-height: none; }
+    }
     .canvas-repair-table { width: 100%; border-collapse: collapse; }
     .canvas-repair-table th, .canvas-repair-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
     .canvas-repair-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }

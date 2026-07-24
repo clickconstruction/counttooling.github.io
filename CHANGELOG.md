@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(keyboard-map): inline on desktop, button-and-modal on mobile
+
+The board was good enough to stop being a click away. On **desktop** it now
+renders **inline at the top of the Macros modal** — open Macros and it is just
+there, above the shortcut list. **Mobile keeps the previous behavior** (the "See
+Keyboard" button opening `#keyboardMapModal`), because a 560px board does not fit
+a phone-width card.
+
+- **Two hosts, one code path.** A "host" is any element wrapping a `.kb-board`
+  and a `.kb-caption`; `buildBoard` / `setCaption` / `wireBoardInteraction` /
+  `renderInto` all take one, so neither surface is special-cased. CSS picks which
+  host is visible at the 769px breakpoint; **both are built regardless**, so
+  resizing across the breakpoint (or rotating a tablet) needs no rebuild and no
+  resize listener.
+- The inline host is built **once at feature load** — the Macros table it derives
+  from is static markup and this script is the last one in the body, so the
+  derivation is already valid. The modal host still renders per open.
+- **Two layout constraints had to be solved, not just styled around:**
+  `.macros-modal-card` was 400px wide against a 560px board, so on desktop it
+  widens to 660px; and modal cards only get a `max-height` inside the
+  `max-width: 768px` media query, meaning a taller card on desktop would have run
+  off the bottom of the screen with no way to scroll to the rest of the list. The
+  card is now a flex column capped at 88vh with the **body** flexing, so the
+  shortcut table scrolls underneath a pinned keyboard.
+- Mobile is the CSS *default* and desktop the `@media (min-width: 769px)`
+  enhancement, so the phone path is the one that cannot regress by omission.
+
+[keyboard-map.spec.js](keyboard-map.spec.js) split by breakpoint: a desktop
+describe (inline board present on Macros-open with **no second click**, button and
+modal both out of the way, plus a layout-contract test — card within the viewport,
+the body rather than the card scrolling, board above the body) and a mobile
+describe at 375×812 (inverted visibility, button → modal, horizontal containment,
+Escape ordering, close button). Both run the derivation guard against their own
+host.
+
+---
+
 ## feat(snap): J now snaps to 45° diagonals, not just horizontal/vertical
 
 Field request (Robert): the `J` snap only produced horizontal and vertical

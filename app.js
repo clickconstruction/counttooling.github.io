@@ -7059,6 +7059,31 @@
     }
   });
 
+  // The closure actions the HOTKEYS table (constants.js) names via `runner` —
+  // the pieces of a hotkey that aren't just "click this button". Keys here must
+  // match the table; hotkeys.spec.js asserts full coverage both directions.
+  const HOTKEY_RUNNERS = {
+    moveReset: () => {
+      state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null;
+      state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null;
+      state.pendingNote = null; state.editingNote = null;
+      if (state.drawingPolyline) state.drawingPolyline = null;
+      updateUI();
+    },
+    toggleSnap: () => {
+      state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
+      const cb = document.getElementById('lineTypeSnapToHV');
+      const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
+      const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
+      if (cb) { cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical; }
+      if (snapBtn) snapBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
+      if (snapHeaderEl) snapHeaderEl.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
+      renderAnnotations();
+      updateUI();
+    },
+    rotatePage: () => rotatePage90(),
+  };
+
   document.addEventListener('keydown', (e) => {
     if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
       if (document.getElementById('counterModal').classList.contains('visible')) {
@@ -7098,31 +7123,18 @@
       }
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (k === 'm') { state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null; state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null; state.pendingNote = null; state.editingNote = null; if (state.drawingPolyline) state.drawingPolyline = null; updateUI(); e.preventDefault(); }
-      else if (k === 'd') { document.getElementById('measureBtn').click(); e.preventDefault(); }
-      else if (k === 'r') { rotatePage90(); e.preventDefault(); }
-      else if (k === 'j') {
-        state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
-        const cb = document.getElementById('lineTypeSnapToHV');
-        const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
-        const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
-        if (cb) { cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical; }
-        if (snapBtn) snapBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
-        if (snapHeaderEl) snapHeaderEl.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
-        renderAnnotations();
-        updateUI();
+      // Tool hotkeys are DATA-DRIVEN off the HOTKEYS table (constants.js) —
+      // the same source scripts/build-macros.js generates the Macros rows
+      // from, so a key can no longer work while being missing from the docs
+      // (the V/Room-Sizer gap). Non-bespoke entries either click their button
+      // or run a named closure action from HOTKEY_RUNNERS. Viewer gating rides
+      // the entry (m/d/r/j/s stay viewer-usable — S so viewers can set a temp
+      // scale to measure with).
+      const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
+      if (hk && (hk.viewerAllowed || !state.isViewer)) {
+        if (hk.runner) HOTKEY_RUNNERS[hk.runner]();
+        else document.getElementById(hk.btnId).click();
         e.preventDefault();
-      }
-      // S works for viewers too - they may set a temporary local scale to measure.
-      else if (k === 's') { document.getElementById('setScale').click(); e.preventDefault(); }
-      else if (!state.isViewer) {
-        if (k === 'c') { document.getElementById('counterBtn').click(); e.preventDefault(); }
-        else if (k === 'l') { document.getElementById('quickLine').click(); e.preventDefault(); }
-        else if (k === 'p') { document.getElementById('polylineBtn').click(); e.preventDefault(); }
-        else if (k === 'h') { document.getElementById('highlightBtn').click(); e.preventDefault(); }
-        else if (k === 'x') { document.getElementById('multiplyZoneBtn').click(); e.preventDefault(); }
-        else if (k === 'v') { document.getElementById('roomBtn').click(); e.preventDefault(); }
-        else if (k === 'n') { document.getElementById('noteBtn').click(); e.preventDefault(); }
       }
     }
     if (e.key === 'Escape') {
@@ -7545,6 +7557,11 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  // Hotkey coverage seam: hotkeys.spec.js asserts every non-bespoke HOTKEYS
+  // entry resolves to a runner here or a real element — the executable half of
+  // the hotkeys-as-data contract (build:macros gates the documentation half).
+  App.__hotkeyRunnerNames = Object.keys(HOTKEY_RUNNERS);
+  App.HOTKEYS = HOTKEYS;   // the constants.js single source (specs + future features)
   App.formatLastSignIn = formatLastSignIn;
   App.formatUserActivityDateTime = formatUserActivityDateTime;
   App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;

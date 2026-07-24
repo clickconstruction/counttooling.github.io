@@ -13,6 +13,30 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(hotkeys): one table drives the handler, the Macros list, and the Map
+
+The keydown handler, the Macros shortcut table, and (transitively) the Keyboard
+Map were three hand-maintained surfaces — which is how the V (Room Sizer)
+hotkey shipped live with no documentation row for weeks. Now `HOTKEYS` in
+constants.js is the single source: the app.js handler EXECUTES it (non-bespoke
+entries click their `btnId` or run a named closure action from
+`HOTKEY_RUNNERS`; viewer gating rides the entry), and the new
+scripts/build-macros.js RENDERS it into the Macros table between generated
+markers in app/index.html — with `{btn}` row icons extracted live from the
+actual toolbar elements, so they can't diverge either. `npm run check` gains
+`build:macros -- --check`. The Keyboard Map keeps deriving from the generated
+table, so all three surfaces chain off one source.
+
+Bespoke rows (arrows, undo/redo, Escape, Space, Enter, Shift+Q, the Scale Zone
+note) stay documentation-only — their handling is structurally custom and
+remains hand-written. Guards: constants.test.js checks the table shape (unique
+keys, exactly one of btnId/runner); new hotkeys.spec.js asserts every runnable
+entry resolves to a real runner or element (both directions), smoke-drives
+d/m/j through the real keydown path, proves viewer gating (h no-ops, d works),
+and confirms every runnable key lights on the Keyboard Map end-to-end.
+
+---
+
 ## feat(telemetry): field errors ride the Save Status envelope
 
 Save/sync failures were richly instrumented, but a plain JS exception in the

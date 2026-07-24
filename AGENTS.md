@@ -149,6 +149,9 @@
 - **Aggregate check**: `npm run check` runs lint + `test:unit` + `build:toc --check`
   + `build:filemap --check` (the ARCHITECTURE.md Large-file map line counts are
   generated — see [scripts/build-filemap.js](scripts/build-filemap.js))
+  + `build:macros --check` (the Macros table rows in app/index.html are
+  generated from `HOTKEYS` in constants.js — edit the table there, then run
+  `npm run build:macros` AND `npm run build:sw`)
   + `build:guides --check` + `build:sw --check`
   (fast, no browser/cloud). [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
@@ -369,6 +372,10 @@ mode).
   `handleBackgroundCheckoutExpired`, `openCheckoutExpiredRecoveryModal`.
 
 ### Hotkeys
+
+**Single source: `HOTKEYS` in constants.js** — the keydown handler executes it
+and `npm run build:macros` renders the Macros table from it (Keyboard Map
+derives from that table). Add/change a hotkey THERE, never in the table markup.
 
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P

@@ -212,6 +212,51 @@ function nextRungDown(z, minZoom, maxZoom, step) {
 }
 
 // Node test harness only: in a classic browser <script> `module` is undefined,
+// --- Hotkeys: the single source of truth ---
+// The keydown handler in app.js EXECUTES this table (non-bespoke entries) and
+// scripts/build-macros.js GENERATES the Macros shortcut-table rows in
+// app/index.html from it (committed artifact; `npm run check` includes
+// `build:macros -- --check`). The Keyboard Map then derives from that
+// generated table — so handler, list, and board all chain off ONE source.
+// This exists because the three drifted by hand: the V (Room Sizer) hotkey
+// shipped live but its Macros row was missing for weeks.
+//
+// Fields: key (e.key, lowercase) + one of btnId (the element the handler
+// clicks) or runner (name of an app.js closure action: moveReset / toggleSnap
+// / rotatePage). viewerAllowed marks keys usable in view-link sessions.
+// bespoke: true = documentation-only row; its handling (arrows, undo, Escape,
+// modal-context keys) stays hand-written in app.js. Presentation fields:
+// section, action, kbd (custom <kbd> cell HTML; null = derive from key), icon
+// ({ btn: id } extracts that element's live SVG at generate time so the row
+// always matches the app; { glyph } is a text glyph; null = no icon).
+const HOTKEYS = [
+  { bespoke: true, section: 'Navigation', action: 'Previous page', kbd: '<kbd title="Left arrow">←</kbd>', icon: { glyph: '◀' } },
+  { bespoke: true, section: 'Navigation', action: 'Next page', kbd: '<kbd title="Right arrow">→</kbd>', icon: { glyph: '▶' } },
+  { bespoke: true, section: 'Navigation', action: 'Switch canvas (when multiple canvases)', kbd: '<kbd title="Up arrow">↑</kbd> <kbd title="Down arrow">↓</kbd>', icon: { glyph: '↕' } },
+  { bespoke: true, section: 'Navigation', action: 'Previous marked page', kbd: '<kbd>Shift</kbd>+<kbd>←</kbd>', icon: { glyph: '◀' } },
+  { bespoke: true, section: 'Navigation', action: 'Next marked page', kbd: '<kbd>Shift</kbd>+<kbd>→</kbd>', icon: { glyph: '▶' } },
+  { key: 'm', runner: 'moveReset', viewerAllowed: true, section: 'Tools', action: 'Move mode', kbd: null, icon: { btn: 'moveBtn' } },
+  { key: 's', btnId: 'setScale', viewerAllowed: true, section: 'Tools', action: 'Set Scale', kbd: null, icon: { btn: 'setScale' } },
+  { key: 'c', btnId: 'counterBtn', section: 'Tools', action: 'Counter mode', kbd: null, icon: { btn: 'counterBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Quick tab (when Counter or Line Type modal open)', kbd: '<kbd>Shift</kbd>+<kbd>Q</kbd>', icon: null },
+  { key: 'l', btnId: 'quickLine', section: 'Tools', action: 'Quick Line mode', kbd: null, icon: { btn: 'quickLine' } },
+  { key: 'j', runner: 'toggleSnap', viewerAllowed: true, section: 'Tools', action: 'Toggle snap to 45° angles', kbd: null, icon: { btn: 'lineTypeSnapToHVHeaderBtn' } },
+  { key: 'p', btnId: 'polylineBtn', section: 'Tools', action: 'Polyline mode', kbd: null, icon: { btn: 'polylineBtn' } },
+  { key: 'd', btnId: 'measureBtn', viewerAllowed: true, section: 'Tools', action: 'Measure Distance', kbd: null, icon: { btn: 'measureBtn' } },
+  { key: 'r', runner: 'rotatePage', viewerAllowed: true, section: 'Tools', action: 'Rotate page', kbd: null, icon: { glyph: '↻' } },
+  { key: 'h', btnId: 'highlightBtn', section: 'Tools', action: 'Highlight mode', kbd: null, icon: { btn: 'highlightBtn' } },
+  { key: 'x', btnId: 'multiplyZoneBtn', section: 'Tools', action: 'Multiply Zone mode', kbd: null, icon: { btn: 'multiplyZoneBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Scale Zone (rotated Scale icon in header/sidebar)', kbd: '—', icon: { btn: 'scaleZoneBtn' } },
+  { key: 'v', btnId: 'roomBtn', section: 'Tools', action: 'Room Sizer mode', kbd: null, icon: { btn: 'roomBtn' } },
+  { key: 'n', btnId: 'noteBtn', section: 'Tools', action: 'Note mode', kbd: null, icon: { btn: 'noteBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Undo', kbd: '<kbd>Ctrl</kbd>+<kbd>Z</kbd>', icon: { btn: 'undoBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Redo', kbd: '<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>', icon: { btn: 'redoBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Refresh', kbd: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Toggle sidebar (desktop)', kbd: '<kbd>Space</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Close modal / Cancel', kbd: '<kbd>Esc</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Finish polyline / Exit edit mode', kbd: '<kbd>Enter</kbd>', icon: null },
+];
+
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -226,7 +271,7 @@ if (typeof module !== 'undefined' && module.exports) {
     PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS, PDF_ONESHOT_BACKOFF_MS, PDF_ONESHOT_LARGE_BACKOFF_MS,
     ACTIVITY_HIGH_FREQ_MS, ACTIVITY_PROJECT_SAVE_MS,
     SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_EXPIRED_SAVE_STATUS_MSG, CHECKOUT_EXPIRED_TOAST_MSG,
-    PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE,
+    PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE, HOTKEYS,
     PDF_CACHE_DB, PDF_CACHE_STORE, PDF_CACHE_META_STORE, VIEW_PDFS_STORE, VIEW_PDFS_META_STORE,
     TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE, CUSTOM_ICONS_STORE, SAVE_LOGS_SNAPSHOT_STORE,
     PDF_UPLOAD_RESUME_STORE, ZOOM_RUNGS_STORE, ZOOM_RUNGS_MAX_PER_DOC, ZOOM_RUNGS_MAX_BYTES,

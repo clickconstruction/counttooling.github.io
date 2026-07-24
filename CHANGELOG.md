@@ -13,6 +13,40 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## ops(supabase): first production advisor scan — 2 fixed, the rest triaged
+
+First security + performance advisor pass over the production project
+(hrqxvfydmvtvwhvefmqc), 2026-07-24. No ERROR-level findings. Applied now
+(migration `20260724190000_pin_trigger_function_search_paths`): the two
+`function_search_path_mutable` warnings — `set_projects_updated_at` and
+`auto_checkout_on_project_insert` pinned to an empty search_path (both bodies
+touch only NEW.*/now(), so it's config-only, provably safe).
+
+Triaged, deliberately NOT auto-fixed:
+
+- **24 RPCs executable by `anon` as SECURITY DEFINER** (the advisor's top
+  class). Every RPC guards internally on auth.uid()/is_admin, so anon calls
+  return nothing — but revoking anon EXECUTE would be real defense-in-depth.
+  Blocked on an audit first: view-link viewers ARE anon, and any RPC the
+  viewer path calls client-side (touch_presence? log_user_event?) would 403
+  after a blanket revoke. Action: grep the viewer code paths, then revoke
+  anon on everything not on that list. `handle_new_user` (a trigger fn)
+  should likely leave the exposed API schema entirely.
+- **The matching `authenticated` SECURITY DEFINER warnings are by design** —
+  RPCs are the API for signed-in users and gate by role internally.
+- **9 `auth_rls_initplan` WARNs** (policies re-evaluating auth.uid() per
+  row): mechanical `(select auth.uid())` rewrites across profiles / projects /
+  project_shares / user_airboard / user_activity / view_link_access_log —
+  worth one focused migration when tables grow; today's row counts make it
+  low urgency.
+- **Dashboard toggles (can't be done via SQL)**: enable leaked-password
+  protection (Auth → HaveIBeenPwned check) and switch Auth's DB connection
+  strategy from absolute (10) to percentage.
+- **INFO-level**: 5 unindexed FKs on audit-ish columns and 2 never-used
+  indexes — noted, not worth churn yet.
+
+---
+
 ## refactor(hotkeys): one table drives the handler, the Macros list, and the Map
 
 The keydown handler, the Macros shortcut table, and (transitively) the Keyboard

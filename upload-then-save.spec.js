@@ -11,6 +11,18 @@ test.describe('Upload PDF then sign in then save', () => {
   test('PDF should be included in save when uploaded before sign-in', async ({ page }) => {
     const pdfPath = path.join(__dirname, 'test-2pages.pdf');
 
+    // Seed the global-force-reload stamp BEFORE boot. config.js points at the
+    // production Supabase, whose system_settings.force_reload_after stamp is
+    // always newer than a fresh Playwright context's empty localStorage (localTs
+    // 0) — so after the dev-auth sign-in below, checkGlobalForceReload would
+    // location.reload() mid-test, wiping state.pdfBuffer and failing whichever
+    // assertion the async check happened to land on (the "flaky" failures at
+    // different lines were all this one reload racing the test). Stamping "now"
+    // makes the boot check a no-op; global reload has its own engine tests.
+    await page.addInitScript(() => {
+      localStorage.setItem('clickcount-last-global-reload', String(Date.now()));
+    });
+
     // 1. Open app WITHOUT devAuth (user not signed in)
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');

@@ -231,7 +231,9 @@
       body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
       body.supabase-enabled .header #saveStatusBtnHeader.supabase-only { display: inline-flex !important; }
       body.supabase-enabled:not(.has-project) .header #saveStatusBtnHeader.supabase-only { display: none !important; }
-      .status-bar #statusBarMacros.status-bar-desktop-only { display: inline !important; }
+      .status-bar #statusBarQuickKeys.status-bar-desktop-only { display: inline-flex !important; }
+      .status-bar #statusBarQuickKeysSep.status-bar-desktop-only { display: inline !important; }
+      .status-bar #statusBarMacros.status-bar-desktop-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarMacrosSep.status-bar-desktop-only { display: inline !important; }
     }
     /* Sign In / account entry in the status bar — all widths (on mobile it is the
@@ -718,10 +720,15 @@
     .kb-swatch { display: inline-block; width: 14px; height: 14px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; }
     .kb-swatch.is-mapped { background: var(--accent); border-color: var(--accent); }
     .kb-swatch.is-modifier { background: transparent; border-color: var(--accent); }
-    /* Quick Keys — the number-row bindings modal + its status-bar entry. The entry
-       is icon-with-text so it sits comfortably beside the text-only "macros" link. */
-    /* Status-bar links that pair an icon with a label ("keys", "macros"). */
-    .status-bar-link.has-icon { display: inline-flex; align-items: center; gap: 5px; }
+    /* Quick Keys — the number-row bindings modal + its status-bar entry. */
+    /* Status-bar links that pair an icon with a label ("keys", "macros").
+       Deliberately NO display here: these are .status-bar-desktop-only, hidden by
+       the earlier `.status-bar .status-bar-desktop-only { display:none }` and
+       re-shown BY ID in the 769px media query (house pattern). A display on this
+       later, equal-specificity class would override the mobile hide and leak the
+       links into the cramped phone status bar — which is exactly the bug this
+       comment guards against. */
+    .status-bar-link.has-icon { align-items: center; gap: 5px; }
     .status-bar-link.has-icon svg { flex-shrink: 0; position: relative; }
     /* Optical vertical nudge is PER GLYPH — the two icons carry their ink
        differently inside the same 640 box, so a shared value can't level both:

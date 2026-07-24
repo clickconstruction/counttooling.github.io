@@ -173,6 +173,12 @@
 
   const opener = document.getElementById('statusBarQuickKeys');
   if (opener) opener.onclick = () => openQuickKeysModal();
+  // Project Settings row — the mobile path: the status-bar link is desktop-only,
+  // but the settings modal is reachable everywhere (sidebar logo on mobile), so a
+  // tablet-with-keyboard user can still set up bindings. Mirrors the
+  // settingsMacros handler in app.js: close settings, open ours.
+  const settingsOpener = document.getElementById('settingsQuickKeys');
+  if (settingsOpener) settingsOpener.onclick = () => { App.hideModal('settingsModal'); openQuickKeysModal(); };
   const closeBtn = document.getElementById('quickKeysModalClose');
   if (closeBtn) closeBtn.onclick = () => App.hideModal('quickKeysModal');
   const doneBtn = document.getElementById('quickKeysDone');

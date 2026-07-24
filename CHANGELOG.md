@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(quick-keys): mobile path via Project Settings + status-bar visibility fix
+
+The status-bar `keys` link is desktop-only (digits need a keyboard), which left
+tablets/phones with no way to reach the binding modal at all. A **quick keys**
+row now sits in the Project Settings links row next to `macros` — the settings
+modal is reachable everywhere (sidebar logo on mobile) — bound in
+features/quick-keys.js, mirroring the settingsMacros handler (close settings,
+open ours).
+
+Fixing that surfaced a shipped regression worth naming: the `.has-icon` class
+(status-bar icon links) carried a `display`, which out-cascaded the
+`.status-bar-desktop-only { display:none }` hide — equal specificity, later in
+the file — so `keys` and `macros` were **leaking into the cramped mobile status
+bar**, and the un-ID'd separator between them never showed on desktop at all
+(the house pattern re-shows these BY ID in the 769px media query, and it had no
+id). Fixed properly: `.has-icon` no longer sets display, the separator got
+`#statusBarQuickKeysSep`, and all three entries are re-shown by ID at 769px+
+(the two links as `inline-flex` so the icon alignment holds). A new mobile
+spec pins both the hide and the settings-modal path so this can't regress
+silently again.
+
+---
+
 ## feat(quick-keys): bound rows wear their digit in the sidebar
 
 A user had to remember what they bound — the bindings lived only in the modal.

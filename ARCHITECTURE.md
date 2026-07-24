@@ -44,7 +44,7 @@ modules. Candidates in priority order:
 | Region | Lines | Assessment |
 |--------|------:|------------|
 | PDF Rendering | ~589 | **DONE (2026-07-20)** — was ~1,576. The duplicated draw logic (`renderAnnotations` live / `renderAnnotationsToContext` export) was unified into [canvas-draw.js](canvas-draw.js)'s `drawAnnotationsCore(ctx, ann, env)`; both callers are now thin env-builders, and `drawDropMarker`/`drawRoomBoxesToContext`/`drawLegend`/`drawGrid`/`hexToRgb`/`lineStyleToDash` moved with it. What remains here is `renderPdf` (the pdf.js raster + bitmap-cache blit), the live-only scale-reference UI, and the in-progress rubber-band previews — all genuinely live-path code. Guarded by [render-pixels.spec.js](render-pixels.spec.js) (pixel baselines) + [canvas-draw.test.js](canvas-draw.test.js). |
-| UI Render Functions | ~1,065 | Second candidate. `updateUI` (~470 lines) plus the sidebar list renderers (`renderCanvasSwitcher`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `renderLinesList`, `renderSummary`). The list renderers are separable per-list as feature files (the summary-detail split already took `renderSummary`'s detail modal); `updateUI` itself stays core. |
+| UI Render Functions | ~940 | Second candidate — **decomposition started 2026-07-24**: `renderLinesList` (123 lines) moved to [features/lines-list.js](features/lines-list.js), proving the per-list recipe (defensive updateUI seam, five publish-only deps, zero moved state). Remaining: `updateUI` (~470 lines, stays core) plus `renderCanvasSwitcher`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `renderSummary` — each separable the same way. |
 | Canvas mouse, wheel & touch handlers + Canvas Event Handlers + Aim loupe | ~1,160 combined | The input layer — the most state-entangled code in the file (drag state, tool modes, gesture arbitration) with the lowest unit-test leverage. Extract **last**, if ever, as an input-controller seam module. |
 | Math & Format Helpers | ~617 | Mostly *already* thin wrappers over geometry/line-metrics/annotation-model, plus the status/footer-totals renderers. Low yield — mine stray pure helpers (`getNoteRotationRad`, `formatSaveTime*`) into format.js/geometry.js opportunistically; don't force it. |
 | The `[sync]` sections (Turn In, recovery wiring, local backup, …) | ~750 combined | Modal/UX wiring over the save-engine seam — the engine owns the logic. Leave. |
@@ -163,6 +163,8 @@ modules. Candidates in priority order:
 | [features/user-activity.js](features/user-activity.js) | Thirty-third feature-file split (`window.App` registry pilot #33; the last rung of the modal ladder) — the **admin User Activity modal** (`#userActivityModal`, the raw event log): `openUserActivityModal` (per-user events or the all-users view via raw `fetch()` against `list_user_activity_for_admin`), the Events/Summary view toggle (`list_user_activity_summary_for_admin`), the user-select dropdown (`list_users_for_admin`), the client-side filter over `state.userActivityAllRowsCache`, and the close binding; the `userActivitySelectSuppress` flag moves as a private `let`. ALSO owns the rich per-user **Activity overview** (`#userActivityOverviewModal`, moved from [features/user-admin.js](features/user-admin.js)): `openUserActivityOverview` → one `user_activity_detail_for_admin(uuid)` jsonb → summary card + stat tiles + a day-grouped, run-collapsed feed, plus the `#uaoClose`/`#mySettingsMyActivity` bindings — not admin-only (the RPC guard is **self-or-admin**; My Settings → My Activity opens it for the signed-in user). Both registrations (`App.openUserActivityModal`, `App.openUserActivityOverview`) **re-home here** — [features/user-admin.js](features/user-admin.js) consumes them at call time. Uses the published `SUPABASE_URL`/`SUPABASE_ANON_KEY` + the session token from `App.state` (these calls never used supabase-js). Three new publishes for the format.js helpers it renders with (`filterUserActivityRows`/`renderUserActivityAllUsersTableHtml`/`formatLastSignInUserActivity` — format.js globals are lint-invisible to the features eslint group); the pure formatters themselves stay in [format.js](format.js) |
 | [user-activity.spec.js](user-activity.spec.js) | Playwright regression for pilot #33 — always-run: the re-homed `App.openUserActivityModal` is wired; opening without an admin session is a safe no-op; the client-side filter pipeline works against a seeded rows cache (typing filters the rendered table, a non-match shows the no-match message, Clear restores the full table); the close binding hides the modal. The loaders stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test user-activity.spec.js` |
 | [snap-angles.spec.js](snap-angles.spec.js) | Playwright regression for the **`J` 45° snap** — the behavioral counterpart to geometry.test.js's pure-math coverage of `snapLineToAngle`: it drives real mouse clicks through the actual draw path and asserts the **committed** annotation (not just the rubber-band preview) lands on a ray. A ~27° drag commits to exactly 45° (`|dx − dy| < 1e-9`), a ~14° drag stays horizontal with `y2 === y1` **bit-exact** (the guard against a unit-vector implementation reintroducing 6e-17 drift), all four diagonals are reachable from a center anchor, polyline legs snap against the previous vertex, and turning the toggle off restores freehand angles. Angles are read in PDF space off the stored annotation — the canvas transform is uniform scale + translate with no rotation, so a 27° screen drag is a 27° PDF delta and the test never needs the zoom/pan. `npx playwright test snap-angles.spec.js` |
+| [features/lines-list.js](features/lines-list.js) | The **sidebar Lines section renderer** (`renderLinesList`) — the FIRST split out of the UI Render Functions region, the region the decomposition table above names as the next candidate. Owns: grouping every quick line / polyline by line type, the per-type headers (run count + always-feet totals via `getLineLengthFeetForTotals`/`formatFeet`), the expand/collapse state (`state.linesTypeExpanded`, localStorage-persisted), the lines search filter, per-row length (or closed-polyline **area** via `formatArea`/`polygonArea`) + drop markers, row selection (click selects + jumps to the line's page via `fitZoom`; click again deselects), the color-swatch picker, and the Line Properties openers (edit pen + `onDoubleTapOrDblClick`). Registers `App.renderLinesList`. **updateUI calls it defensively** (`App.renderLinesList && App.renderLinesList()`) since boot-time updateUI precedes feature-file load — an empty Lines section for that instant is harmless (no project yet; burger-menu pattern); the search / show-only handlers call it plainly (user-action time). Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js globals routed through the registry — the pilot-#13 `ptDist` pattern), `pickScaleForLineType`, `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`. Zero moved state beyond the function itself. Regression: [lines-list.spec.js](lines-list.spec.js) |
+| [lines-list.spec.js](lines-list.spec.js) | Playwright regression for the Lines-list split — registry contract (entry point + the five publish-only deps), then the moved behavior end-to-end on a seeded 2-page takeoff (two named quick lines + a polyline, one type): per-type grouping with `3 lines · 25.00 ft` totals, expand/collapse persisting to `linesTypeExpanded` localStorage, the search input filtering by line name through the real handler, row click selecting + jumping to the line's page, and a second click deselecting. Renders through the real `updateUI()` path, so the defensive hot-path seam is exercised, not just the direct call. Note: the Lines *section* starts minimized (`state.linesListCollapsed`), so the spec expands it before clicking rows. `npx playwright test lines-list.spec.js` |
 | [features/quick-keys.js](features/quick-keys.js) | **Quick Keys** — binds the number row (`1`–`9`, `0`) to counters and line types so the user switches what they're placing with a keystroke instead of a trip to the sidebar. Owns the bindings modal (`#quickKeysModal`: ten slot rows, each a keycap + colour swatch + `<select>` of the project's counters/line types + a clear button) and its two openers: the desktop status-bar link (`#statusBarQuickKeys`, keypad icon + `keys` left of `macros`; hidden below 769px and re-shown **by ID** in the desktop media query — the house pattern; `.has-icon` deliberately sets no `display` so it can't out-cascade the mobile hide) and the Project Settings row (`#settingsQuickKeys`, the mobile path — the settings modal is reachable everywhere via the sidebar logo). Registers `App.openQuickKeysModal` / `App.triggerQuickKey(slot)` / `App.getQuickKeyLabels()` / `App.QUICK_KEY_SLOTS`. **ONE SELECTION PATH**: a number key does not activate anything itself — it calls `App.setActiveCounterType` / `App.setActiveLineType`, the same functions the sidebar rows call (extracted in app.js for exactly this), so toggle-off semantics, the tool switch, and the pages-section collapse can't drift between the two entry points. Data: `state.numberKeyBindings`, slot → `{kind:'counter'\|'lineType', id}` — per-project (ids are `uid()`-scoped), riding save/load, export/import, and the IDB takeoff backup. In practice bindings still follow a user across bids because Save/Load Artboard stores `state.counters`/`state.lineTypes` wholesale, **ids included**, so an artboard restore lands the same ids the bindings point at. A binding whose target was deleted resolves stale: it toasts rather than silently no-op'ing, and the id is **retained** so re-creating or re-importing that item revives the slot. Two new publish-only deps (`setActiveCounterType`/`setActiveLineType`); viewer-gated inside `triggerQuickKey`. **Sidebar badges**: bound rows show a keycap badge (`.quick-key-slot-badge`, accent digit on a dark chip echoing the Keyboard Map's lit keys) — `quickKeyBadgeHtml(kind, id)` in app.js's list renderers reads the feature-registered reverse lookup `App.getQuickKeySlotFor(kind, id)` deferred, and the modal's bind/clear handlers refresh both lists live, so the bindings teach themselves during normal work. Regression: [quick-keys.spec.js](quick-keys.spec.js) |
 | [quick-keys.spec.js](quick-keys.spec.js) | Playwright regression for Quick Keys (7 tests) — binding through the real status-bar → modal → `<select>` path and asserting `state.numberKeyBindings`; the number row then switching counter/line type with the right tool and toggling off on a second press; **an equivalence test** that a number key and `App.setActiveCounterType` leave byte-identical state (the guard on the one-selection-path claim); the keystrokes it must NOT steal (unbound digits, digits typed into an input, `Ctrl`+digit); a stale binding toasting via `#airboardToastText` while retaining its id and rendering a "deleted" marker; clear-slot; bindings surviving the canvas-JSON import; and the Keyboard Map lighting bound digits with their names (`1 — Floor Drain`) while unbound ones stay grey. Note: keydown is dispatched on `<body>`, not `document` — the handler's input guard calls `.matches`, which `document` doesn't have. `npx playwright test quick-keys.spec.js` |
 | [features/keyboard-map.js](features/keyboard-map.js) | The **Keyboard Map** — the visual companion to the Macros / Keyboard Shortcuts list. **Two hosts** picked by CSS at the 769px breakpoint: desktop renders it INLINE at the top of the Macros modal (`#macrosKeyboardInline`, built once at feature load since the source table is static markup and this script is last in the body); mobile hides that and the "See Keyboard" button (`#macrosSeeKeyboard`) opens the standalone `#keyboardMapModal` (rendered on each open). A "host" is any element wrapping a `.kb-board` + `.kb-caption`, and every function here takes one, so neither path is special-cased; both are built regardless of viewport so crossing the breakpoint needs no rebuild. Registers `App.openKeyboardMapModal` + `App.renderKeyboardMapInline`. Renders a 65%-ANSI keyboard silhouette (5 rows, each 15 width units over a 60-column grid so the 1.25/1.5/1.75/2.25-unit keys land on exact boundaries); keys carrying a shortcut light accent-yellow, modifiers (Shift/Ctrl/Cmd/Alt) get the softer outlined variant, everything else stays the grey silhouette. Hovering (mouse only — a touch "hover" would fire and vanish), tapping, or focusing a lit key names its action in `#keyboardMapCaption`. **The lit keys are DERIVED from the Macros table, not hand-declared**: `collectMacroKeys()` walks `#macrosModal .macros-table`, reading each row's `<kbd>` cells for the keys and the last cell for the action, so adding a shortcut row lights its key automatically and the two surfaces cannot drift (rows with no `<kbd>` — the section headers, the `<th>` row, the em-dash Scale Zone row — drop out on their own). `normalizeKeyToken` maps the table's glyphs/words (`←`, `Cmd`, `Esc`, `Space`, …) onto the board's key ids; single characters normalize to uppercase. A **zero-new-dep** split (only `App.showModal`/`App.hideModal`). Registers `App.openKeyboardMapModal`; the opener + close bindings are element-bound at load. The Escape branch in app.js checks this modal **before** `macrosModal` so one Escape closes the board and leaves the list up. Regression: [keyboard-map.spec.js](keyboard-map.spec.js) |
@@ -474,55 +476,55 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1659 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1954 - PDF Rendering
 - L2601 - UI Render Functions
-- L3712 - Inline rename & polyline edit mode
-- L3826 - Modal primitives (showModal / hideModal)
-- L3845 - Toasts & line color picker
-- L3899 - Airboard cloud sync
-- L3932 - Supabase RPC & presence heartbeat
-- L3972 - User activity / event telemetry
-- L4015 - Supabase auth & dev auth
-- L4144 - [sync] Checkout subscription & permission refresh
-- L4154 - Modals & Handlers
-- L4222 - PDF intake (upload, test PDF, hashing)
-- L4230 - Toolbar tool buttons
-- L4356 - Tool sidebar buttons & legend overlay
-- L4473 - Add Line Type modal
-- L4543 - Line color & sidebar handlers
-- L4685 - Polyline modal & drawing
-- L4716 - Zoom bar & page navigation
-- L4742 - Export canvas JSON
-- L4758 - PDF download helpers
-- L4767 - View-link URL helpers & show-highlights/notes
-- L4839 - Custom icon upload handler
-- L4849 - Export & report dropdown menus
-- L4939 - Sidebar drawer toggles
-- L4950 - Mobile actions burger menu pointer & header logo
-- L4962 - User Activity pointer (format.js + features/user-activity.js)
-- L4974 - My Settings pointer (features/my-settings.js)
-- L4997 - Auth & settings entry buttons
-  - L5042 - Project Settings checkout & Save Status bell
-  - L5143 - [sync] Checkout expired recovery
-  - L5199 - [sync] Turn In
-  - L5464 - Share modal pointer & copy-project openers
-  - L5495 - Settings menu actions
-  - L5516 - Auth sign-in form
-  - L5540 - Save Project modal
-  - L5553 - Checkout expired recovery modal wiring
-  - L5658 - Last-session restore prompt
-  - L5665 - Canvas Repair modal wiring
-- L5818 - Canvas Event Handlers
-- L6208 - Event Binding
-- L6218 - Aim loupe (mobile press-hold precise placement)
-- L6357 - Zoom transform preview & commit
-- L6436 - Canvas mouse, wheel & touch handlers
-- L7097 - Global dropdown dismissal & keyboard hotkeys
-- L7345 - [sync] Manual save to cloud
-- L7355 - [sync] Auto-save
-- L7362 - [sync] Local backup (IndexedDB takeoff state)
-- L7495 - [sync] Checkout keep-alive
-- L7509 - App feature registry
-- L7711 - View-only mode
-- L7717 - Init / boot
+- L3595 - Inline rename & polyline edit mode
+- L3709 - Modal primitives (showModal / hideModal)
+- L3728 - Toasts & line color picker
+- L3782 - Airboard cloud sync
+- L3815 - Supabase RPC & presence heartbeat
+- L3855 - User activity / event telemetry
+- L3898 - Supabase auth & dev auth
+- L4027 - [sync] Checkout subscription & permission refresh
+- L4037 - Modals & Handlers
+- L4105 - PDF intake (upload, test PDF, hashing)
+- L4113 - Toolbar tool buttons
+- L4239 - Tool sidebar buttons & legend overlay
+- L4356 - Add Line Type modal
+- L4426 - Line color & sidebar handlers
+- L4568 - Polyline modal & drawing
+- L4599 - Zoom bar & page navigation
+- L4625 - Export canvas JSON
+- L4641 - PDF download helpers
+- L4650 - View-link URL helpers & show-highlights/notes
+- L4722 - Custom icon upload handler
+- L4732 - Export & report dropdown menus
+- L4822 - Sidebar drawer toggles
+- L4833 - Mobile actions burger menu pointer & header logo
+- L4845 - User Activity pointer (format.js + features/user-activity.js)
+- L4857 - My Settings pointer (features/my-settings.js)
+- L4880 - Auth & settings entry buttons
+  - L4925 - Project Settings checkout & Save Status bell
+  - L5026 - [sync] Checkout expired recovery
+  - L5082 - [sync] Turn In
+  - L5347 - Share modal pointer & copy-project openers
+  - L5378 - Settings menu actions
+  - L5399 - Auth sign-in form
+  - L5423 - Save Project modal
+  - L5436 - Checkout expired recovery modal wiring
+  - L5541 - Last-session restore prompt
+  - L5548 - Canvas Repair modal wiring
+- L5701 - Canvas Event Handlers
+- L6091 - Event Binding
+- L6101 - Aim loupe (mobile press-hold precise placement)
+- L6240 - Zoom transform preview & commit
+- L6319 - Canvas mouse, wheel & touch handlers
+- L6980 - Global dropdown dismissal & keyboard hotkeys
+- L7228 - [sync] Manual save to cloud
+- L7238 - [sync] Auto-save
+- L7245 - [sync] Local backup (IndexedDB takeoff state)
+- L7378 - [sync] Checkout keep-alive
+- L7392 - App feature registry
+- L7602 - View-only mode
+- L7608 - Init / boot
 
 <!-- END SECTION TOC -->
 

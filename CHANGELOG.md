@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(lines-list): first split out of the UI Render Functions region
+
+The decomposition table has named UI Render Functions (~1,065 lines) as the
+next candidate since the canvas-draw extraction: "the list renderers are
+separable per-list as feature files; updateUI itself stays core." This starts
+it with the cleanest unit — `renderLinesList` (123 lines, six inbound call
+sites, zero closure state) → [features/lines-list.js](features/lines-list.js).
+
+- **The hot-path seam**: updateUI (which can run at boot, before feature files
+  load) reaches it defensively — `App.renderLinesList && App.renderLinesList()`
+  — the burger-menu pattern; an empty Lines section for that instant is
+  harmless since no project is open yet. The search-input and show-only
+  handlers call it plainly (user-action time).
+- Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js
+  globals, lint-invisible to the features eslint group, routed through the
+  registry like pilot #13's `ptDist`), `pickScaleForLineType`,
+  `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`.
+- New [lines-list.spec.js](lines-list.spec.js) drives the moved surface through
+  the REAL updateUI path: grouping/totals (`3 lines · 25.00 ft`),
+  expand/collapse persistence, search, select-and-jump, deselect.
+
+app.js 7888 → 7779; the region drops to ~940 with the remaining renderers
+each separable by the same recipe.
+
+---
+
 ## feat(quick-keys): mobile path via Project Settings + status-bar visibility fix
 
 The status-bar `keys` link is desktop-only (digits need a keyboard), which left

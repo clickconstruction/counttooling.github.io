@@ -41,8 +41,10 @@ generator swaps it for the app's real icon (extracted from `app/index.html`, so 
 match). For example: `Pick the **Set Scale** [[set-scale]] tool.`
 
 Available names: `set-scale`, `move`, `measure`, `highlight`, `multiply-zone`, `scale-zone`,
-`delete-area`, `note`, `legend`, `grid`, `counter`, `line`, `polyline`, `hide-marks`. (Add a
-new one by extending `ICON_BTN` in `scripts/build-guides.js` with the button's id.)
+`delete-area`, `note`, `legend`, `grid`, `counter`, `line`, `polyline`, `hide-marks`, `room`,
+`save-status`, `share`, `keys`, `macros`. (Add a new one by extending `ICON_BTN` in
+`scripts/build-guides.js` with the element's id — buttons and status-bar `<span>` links both
+work.)
 
 ## Front-matter fields
 

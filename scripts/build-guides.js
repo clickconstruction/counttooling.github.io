@@ -65,13 +65,19 @@ const ICON_BTN = {
   note: 'noteBtn', legend: 'legendBtn', grid: 'gridBtn', counter: 'counterBtn',
   line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn', room: 'roomBtn',
   'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn',
+  keys: 'statusBarQuickKeys', macros: 'statusBarMacros',
 };
 function loadIcons() {
   const html = fs.readFileSync(APP_HTML, 'utf8');
   const icons = {};
   for (const [name, id] of Object.entries(ICON_BTN)) {
-    const btn = new RegExp(`<button id="${id}"([^>]*)>([\\s\\S]*?)</button>`).exec(html);
-    if (!btn) { console.warn(`icon: button #${id} not found in app/index.html`); continue; }
+    // Buttons carry id first; the status-bar links are <span>s with class before
+    // id — accept either element with the id anywhere in the tag. The close tag
+    // backreferences the open tag, so a button's inner <span>s can't end the
+    // match early (no element here nests its own type inside itself).
+    const m = new RegExp(`<(button|span)\\b([^>]*\\bid="${id}"[^>]*)>([\\s\\S]*?)</\\1>`).exec(html);
+    const btn = m ? [m[0], m[2], m[3]] : null;
+    if (!btn) { console.warn(`icon: element #${id} not found in app/index.html`); continue; }
     const svg = /<svg[^>]*\bviewBox="([^"]*)"[^>]*>([\s\S]*?)<\/svg>/.exec(btn[2]);
     if (!svg) { console.warn(`icon: svg for #${id} not found`); continue; }
     const titleM = /\btitle="([^"]*)"/.exec(btn[1]);

@@ -463,6 +463,46 @@
   function pruneSaveStatusLog() { return saveEngine.pruneSaveStatusLog(); }
   // SECTION: [sync] Save Status log & envelope
   function pushSaveEvent(kind, message, detail) { return saveEngine.pushSaveEvent(kind, message, detail); }
+
+  // SECTION: [sync] Field-error telemetry
+  // Save/sync failures arrive richly instrumented via the Save Status
+  // envelope, but a plain JS exception in the field (a handler throwing on an
+  // odd project) used to vanish silently — "it just stopped working" reports
+  // came with nothing. These hooks ride the SAME rails: client_error /
+  // client_unhandled_rejection events land in the saveStatusLog and export
+  // with the envelope. Deduped by kind+message and capped per session so a
+  // throw-in-a-loop can't flood the log (the log window prunes anyway; the cap
+  // keeps the envelope's tail useful). pushSaveEvent already drops everything
+  // when Supabase is disabled — cloud users are who export envelopes, so
+  // that's the right gate to inherit. Never rethrows, never preventDefaults:
+  // the console still shows the original error.
+  const CLIENT_ERROR_CAP = 10;
+  const clientErrorSeen = new Set();
+  let clientErrorCount = 0;
+  function reportClientError(kind, message, stack, source) {
+    try {
+      const msg = String(message || 'unknown').slice(0, 300);
+      const dedupeKey = kind + '|' + msg;
+      if (clientErrorSeen.has(dedupeKey) || clientErrorCount >= CLIENT_ERROR_CAP) return;
+      clientErrorSeen.add(dedupeKey);
+      clientErrorCount++;
+      pushSaveEvent(kind, msg, JSON.stringify({
+        source: String(source || '').slice(0, 200),
+        stack: String(stack || '').slice(0, 1500),
+        capped: clientErrorCount >= CLIENT_ERROR_CAP ? 'last reported this session' : undefined,
+      }));
+    } catch (_) { /* telemetry must never become its own error source */ }
+  }
+  window.addEventListener('error', (e) => {
+    // Resource-load errors (img/script) surface here with no .error — skip
+    // them; the SW/network layer owns those stories.
+    if (!e || (!e.error && !e.message)) return;
+    reportClientError('client_error', e.message, e.error && e.error.stack, (e.filename || '') + ':' + (e.lineno || 0));
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e && e.reason;
+    reportClientError('client_unhandled_rejection', (r && r.message) || String(r), r && r.stack, 'promise');
+  });
   // getProjectSummaryForLogs + buildSaveLogsEnvelope(+WithSnapshots) + the
   // per-tab session id live in save-engine.js (Stage 6). The wrapper keeps
   // the App registry + features/save-status.js contract frozen.

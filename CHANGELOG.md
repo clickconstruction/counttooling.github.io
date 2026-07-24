@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(telemetry): field errors ride the Save Status envelope
+
+Save/sync failures were richly instrumented, but a plain JS exception in the
+field — a handler throwing on one odd project — vanished silently, so "it just
+stopped working" reports arrived with nothing. window.onerror +
+unhandledrejection now feed `pushSaveEvent` (`client_error` /
+`client_unhandled_rejection`, stack + source in the detail), landing in the
+saveStatusLog and exporting with the envelope — the diagnostic path users
+already know. Deduped by kind+message and capped at 10/session so a
+throw-in-a-loop can't flood the log; resource-load errors are skipped (no
+.error — the SW/network layer owns those); nothing is rethrown or
+preventDefault-ed, so the console story is unchanged. Inherits pushSaveEvent's
+disabled-Supabase drop, which is the right gate: cloud users are who export
+envelopes. New `[sync] Field-error telemetry` section marker; test appended to
+save-status.spec.js (real throw + real rejection, dedupe asserted, stack in the
+envelope).
+
+---
+
 ## feat(quick-keys): bindings ride the Artboard — the muscle-memory hole closed
 
 Honest correction of the original ship: bindings were per-project and Save/Load

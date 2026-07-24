@@ -134,4 +134,34 @@ test.describe('window.App registry pilot - Save Status modal', () => {
     expect(project.highlights).toBe(2);
     expect(project.notes).toBe(1);
   });
+
+  test('field errors land in the Save Status log, deduped', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // A real uncaught throw + a real unhandled rejection, twice each (dedupe).
+    await page.evaluate(() => {
+      setTimeout(() => { throw new Error('spec-probe boom'); }, 0);
+      setTimeout(() => { throw new Error('spec-probe boom'); }, 5);
+      Promise.reject(new Error('spec-probe reject'));
+      Promise.reject(new Error('spec-probe reject'));
+    });
+    await page.waitForFunction(() => {
+      const log = window.App.getSaveStatusLog();
+      return log.some((e) => e.kind === 'client_error') && log.some((e) => e.kind === 'client_unhandled_rejection');
+    }, null, { timeout: 5000 });
+
+    const entries = await page.evaluate(() =>
+      window.App.getSaveStatusLog()
+        .filter((e) => e.kind === 'client_error' || e.kind === 'client_unhandled_rejection')
+        .map((e) => ({ kind: e.kind, message: e.message })));
+    // Dedupe: two throws + two rejections -> one entry each.
+    expect(entries.filter((e) => e.kind === 'client_error').length).toBe(1);
+    expect(entries.filter((e) => e.kind === 'client_unhandled_rejection').length).toBe(1);
+    expect(entries.find((e) => e.kind === 'client_error').message).toContain('spec-probe boom');
+    // The stack rides the detail into the exportable envelope.
+    const env = await page.evaluate(async () => window.App.buildSaveLogsEnvelopeWithSnapshots());
+    const evented = (env.events || []).find((e) => e.kind === 'client_error');
+    expect(evented).toBeTruthy();
+  });
 });

@@ -98,13 +98,13 @@
     `createSaveEngine(ctx)`; app.js instantiates it with live-value
     accessors and keeps same-named wrappers; staged extraction, Stage 1:
     global force reload + checkout keep-alive).
-  - [app.js](app.js) — the main IIFE (~7.1k lines), the bulk of the app
+  - [app.js](app.js) — the main IIFE (~7.8k lines), the bulk of the app
     logic. Resolves the sibling modules' values by bare name, publishes the
     shared surface onto the `window.App` registry near its tail
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **41 `features/*.js` registry files**, after app.js and before
+  - **43 `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -202,7 +202,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~7.1k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~7.8k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -223,7 +223,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~7.1k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~7.8k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").
@@ -272,7 +272,9 @@ Rules to follow when adding/editing a feature file:
 ### Persisted settings (localStorage unless noted)
 
 `counterSettings`, `lineTypeSettings` (includes `parallelEndsSize`,
-`lengthLabelSize`, `snapToHorizontalVertical`, `showOnlyLinesOnCurrentPage`),
+`lengthLabelSize`, `snapToHorizontalVertical` (the 8-way 45° snap toggle — the
+key keeps its original H/V-era name so saved settings aren't orphaned),
+`showOnlyLinesOnCurrentPage`),
 `legendSettings`, `multiplyZoneSettings`, `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),
 `recentRoomHeights` (Room Sizer recent ceiling heights, decimal feet, max 5),
@@ -359,7 +361,8 @@ mode).
 
 ### Hotkeys
 
-M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to H/V), P
+1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
+S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
 (Polyline), D (Measure), H (Highlight), X (Multiply Zone), V (Room Sizer), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z

@@ -117,7 +117,7 @@
         <button id="polylineBtn" class="sidebar-triggers" title="Polyline (right-click for Line Type settings)" aria-label="Polyline">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
         </button>
-        <button type="button" id="lineTypeSnapToHVHeaderBtn" class="sidebar-triggers sidebar-snap-icon-btn" title="Snap to horizontal/vertical" aria-pressed="false" style="display:none;">
+        <button type="button" id="lineTypeSnapToHVHeaderBtn" class="sidebar-triggers sidebar-snap-icon-btn" title="Snap to 45° angles" aria-pressed="false" style="display:none;">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg>
         </button>
       </span>
@@ -449,6 +449,11 @@
           <span id="statusCoords">—</span>
           <span id="statusTotals" class="status-totals" style="display:none;"></span>
           <div class="status-bar-actions" id="statusBarActions">
+            <span class="status-bar-link status-bar-desktop-only quick-keys-link" id="statusBarQuickKeys" title="Quick Keys — bind counters and line types to the number row">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M144 96C117.5 96 96 117.5 96 144L96 208C96 234.5 117.5 256 144 256L208 256C234.5 256 256 234.5 256 208L256 144C256 117.5 234.5 96 208 96L144 96zM288 144L288 208C288 234.5 309.5 256 336 256L400 256C426.5 256 448 234.5 448 208L448 144C448 117.5 426.5 96 400 96L336 96C309.5 96 288 117.5 288 144zM480 144L480 208C480 234.5 501.5 256 528 256L592 256C618.5 256 640 234.5 640 208L640 144C640 117.5 618.5 96 592 96L528 96C501.5 96 480 117.5 480 144zM96 336L96 400C96 426.5 117.5 448 144 448L208 448C234.5 448 256 426.5 256 400L256 336C256 309.5 234.5 288 208 288L144 288C117.5 288 96 309.5 96 336zM288 336L288 400C288 426.5 309.5 448 336 448L400 448C426.5 448 448 426.5 448 400L448 336C448 309.5 426.5 288 400 288L336 288C309.5 288 288 309.5 288 336zM480 336L480 400C480 426.5 501.5 448 528 448L592 448C618.5 448 640 426.5 640 400L640 336C640 309.5 618.5 288 592 288L528 288C501.5 288 480 309.5 480 336zM96 528L96 592C96 618.5 117.5 640 144 640L208 640C234.5 640 256 618.5 256 592L256 528C256 501.5 234.5 480 208 480L144 480C117.5 480 96 501.5 96 528zM288 528L288 592C288 618.5 309.5 640 336 640L400 640C426.5 640 448 618.5 448 592L448 528C448 501.5 426.5 480 400 480L336 480C309.5 480 288 501.5 288 528zM480 528L480 592C480 618.5 501.5 640 528 640L592 640C618.5 640 640 618.5 640 592L640 528C640 501.5 618.5 480 592 480L528 480C501.5 480 480 501.5 480 528z"/></svg>
+              keys
+            </span>
+            <span class="status-bar-sep status-bar-desktop-only">|</span>
             <span class="status-bar-link status-bar-desktop-only" id="statusBarMacros">macros</span>
             <span class="status-bar-sep supabase-only status-bar-desktop-only" id="statusBarMacrosSep">|</span>
             <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
@@ -886,8 +891,8 @@
         <input type="checkbox" id="lineTypeShowOnlyOnPage" hidden>
       </div>
       <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Snap to horizontal/vertical</span>
-        <button type="button" class="toggle-switch" id="lineTypeSnapToHVBtn" aria-pressed="false" title="Constrain lines to horizontal or vertical when placing">
+        <span>Snap to 45° angles</span>
+        <button type="button" class="toggle-switch" id="lineTypeSnapToHVBtn" aria-pressed="false" title="Constrain lines to horizontal, vertical, or 45° diagonals when placing">
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="lineTypeSnapToHV" hidden>
@@ -1221,6 +1226,26 @@
         <h2>Keyboard Shortcuts</h2>
         <button type="button" class="modal-close-btn" id="macrosModalClose" aria-label="Close">×</button>
       </div>
+      <button type="button" class="macros-see-keyboard" id="macrosSeeKeyboard">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M96 128C60.7 128 32 156.7 32 192L32 448C32 483.3 60.7 512 96 512L544 512C579.3 512 608 483.3 608 448L608 192C608 156.7 579.3 128 544 128L96 128zM128 208C128 199.2 135.2 192 144 192L176 192C184.8 192 192 199.2 192 208L192 240C192 248.8 184.8 256 176 256L144 256C135.2 256 128 248.8 128 240L128 208zM240 192L272 192C280.8 192 288 199.2 288 208L288 240C288 248.8 280.8 256 272 256L240 256C231.2 256 224 248.8 224 240L224 208C224 199.2 231.2 192 240 192zM320 208C320 199.2 327.2 192 336 192L368 192C376.8 192 384 199.2 384 208L384 240C384 248.8 376.8 256 368 256L336 256C327.2 256 320 248.8 320 240L320 208zM432 192L464 192C472.8 192 480 199.2 480 208L480 240C480 248.8 472.8 256 464 256L432 256C423.2 256 416 248.8 416 240L416 208C416 199.2 423.2 192 432 192zM128 304C128 295.2 135.2 288 144 288L176 288C184.8 288 192 295.2 192 304L192 336C192 344.8 184.8 352 176 352L144 352C135.2 352 128 344.8 128 336L128 304zM240 288L272 288C280.8 288 288 295.2 288 304L288 336C288 344.8 280.8 352 272 352L240 352C231.2 352 224 344.8 224 336L224 304C224 295.2 231.2 288 240 288zM320 304C320 295.2 327.2 288 336 288L368 288C376.8 288 384 295.2 384 304L384 336C384 344.8 376.8 352 368 352L336 352C327.2 352 320 344.8 320 336L320 304zM432 288L464 288C472.8 288 480 295.2 480 304L480 336C480 344.8 472.8 352 464 352L432 352C423.2 352 416 344.8 416 336L416 304C416 295.2 423.2 288 432 288zM192 400C192 391.2 199.2 384 208 384L432 384C440.8 384 448 391.2 448 400L448 432C448 440.8 440.8 448 432 448L208 448C199.2 448 192 440.8 192 432L192 400zM512 192L528 192C536.8 192 544 199.2 544 208L544 240C544 248.8 536.8 256 528 256L512 256C503.2 256 496 248.8 496 240L496 208C496 199.2 503.2 192 512 192zM496 304C496 295.2 503.2 288 512 288L528 288C536.8 288 544 295.2 544 304L544 336C544 344.8 536.8 352 528 352L512 352C503.2 352 496 344.8 496 336L496 304z"/></svg>
+        See Keyboard
+      </button>
+      <!-- Desktop shows the board inline here; mobile hides this and uses the
+           "See Keyboard" button above to open #keyboardMapModal instead (there is
+           no room for a 560px board on a phone). Both hosts are filled by
+           features/keyboard-map.js, which looks up .kb-board / .kb-caption inside
+           whichever host it is given. -->
+      <div class="kb-inline" id="macrosKeyboardInline">
+        <div class="kb-board-wrap">
+          <div class="kb-board" id="macrosKeyboardBoard" role="group" aria-label="Keyboard shortcut map"></div>
+        </div>
+        <p class="kb-caption" id="macrosKeyboardCaption"></p>
+        <div class="kb-legend">
+          <span class="kb-legend-item"><span class="kb-swatch is-mapped"></span>Shortcut key</span>
+          <span class="kb-legend-item"><span class="kb-swatch is-modifier"></span>Held with another key</span>
+          <span class="kb-legend-item"><span class="kb-swatch"></span>Not mapped</span>
+        </div>
+      </div>
       <div class="macros-modal-body">
         <table class="macros-table">
           <tr><th></th><th>Key</th><th>Action</th></tr>
@@ -1236,12 +1261,13 @@
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg></td><td><kbd>C</kbd></td><td>Counter mode</td></tr>
           <tr><td class="macros-icon-cell"></td><td><kbd>Shift</kbd>+<kbd>Q</kbd></td><td>Quick tab (when Counter or Line Type modal open)</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M566.6 342.6C579.1 330.1 579.1 309.8 566.6 297.3L406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3C348.8 149.8 348.8 170.1 361.3 182.6L466.7 288L96 288C78.3 288 64 302.3 64 320C64 337.7 78.3 352 96 352L466.7 352L361.3 457.4C348.8 469.9 348.8 490.2 361.3 502.7C373.8 515.2 394.1 515.2 406.6 502.7L566.6 342.7z"/></svg></td><td><kbd>L</kbd></td><td>Quick Line mode</td></tr>
-          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg></td><td><kbd>J</kbd></td><td>Toggle snap to horizontal/vertical</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg></td><td><kbd>J</kbd></td><td>Toggle snap to 45° angles</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg></td><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg></td><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
           <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↻</span></td><td><kbd>R</kbd></td><td>Rotate page</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg></td><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
           <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">×</span></td><td><kbd>X</kbd></td><td>Multiply Zone mode</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M234.5 5.7c13.9-5 29.1-5 43.1 0l192 68.6C495 83.4 512 107.5 512 134.6l0 242.9c0 27-17 51.2-42.5 60.3l-192 68.6c-13.9 5-29.1 5-43.1 0l-192-68.6C17 428.6 0 404.5 0 377.4L0 134.6c0-27 17-51.2 42.5-60.3l192-68.6zM256 66L82.3 128 256 190l173.7-62L256 66zm32 368.6l160-57.1 0-188L288 246.6l0 188z"/></svg></td><td><kbd>V</kbd></td><td>Room Sizer mode</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><g transform="rotate(180 320 320)"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></g></svg></td><td>—</td><td>Scale Zone (rotated Scale icon in header/sidebar)</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM281.6 217.6C281.6 207 290.2 198.4 300.8 198.4L339.2 198.4C349.8 198.4 358.4 207 358.4 217.6L358.4 265.6L406.4 265.6C417 265.6 425.6 274.2 425.6 284.8L425.6 323.2C425.6 333.8 417 342.4 406.4 342.4L358.4 342.4L358.4 390.4C358.4 401 349.8 409.6 339.2 409.6L300.8 409.6C290.2 409.6 281.6 401 281.6 390.4L281.6 342.4L233.6 342.4C223 342.4 214.4 333.8 214.4 323.2L214.4 284.8C214.4 274.2 223 265.6 233.6 265.6L281.6 265.6L281.6 217.6z"/></svg></td><td><kbd>N</kbd></td><td>Note mode</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z"/></svg></td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
@@ -1254,6 +1280,41 @@
         <div class="macros-scroll-hint-wrap">
           <p class="macros-scroll-hint">Scroll for more</p>
         </div>
+      </div>
+    </div>
+  </div>
+  <!-- Quick Keys: rows are BUILT by features/quick-keys.js from the project's
+       counters + line types. Bindings live in state.numberKeyBindings. -->
+  <div class="modal-overlay" id="quickKeysModal">
+    <div class="modal-card quick-keys-card">
+      <div class="modal-card-header">
+        <h2>Quick Keys</h2>
+        <button type="button" class="modal-close-btn" id="quickKeysModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="quick-keys-hint">Bind a counter or line type to a number key. Press the key while marking up to switch to it; press it again to deselect.</p>
+      <p class="quick-keys-empty" id="quickKeysEmpty" style="display:none;">This project has no counters or line types yet — add some first, then come back to bind them.</p>
+      <div class="quick-keys-list" id="quickKeysList"></div>
+      <div class="actions">
+        <button id="quickKeysDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <!-- Keyboard Map: the silhouette board is BUILT by features/keyboard-map.js from
+       the Macros table above (one source of truth for which keys are mapped). -->
+  <div class="modal-overlay" id="keyboardMapModal">
+    <div class="modal-card keyboard-map-card">
+      <div class="modal-card-header">
+        <h2>Keyboard Map</h2>
+        <button type="button" class="modal-close-btn" id="keyboardMapClose" aria-label="Close">×</button>
+      </div>
+      <div class="kb-board-wrap">
+        <div class="kb-board" id="keyboardMapBoard" role="group" aria-label="Keyboard shortcut map"></div>
+      </div>
+      <p class="kb-caption" id="keyboardMapCaption"></p>
+      <div class="kb-legend">
+        <span class="kb-legend-item"><span class="kb-swatch is-mapped"></span>Shortcut key</span>
+        <span class="kb-legend-item"><span class="kb-swatch is-modifier"></span>Held with another key</span>
+        <span class="kb-legend-item"><span class="kb-swatch"></span>Not mapped</span>
       </div>
     </div>
   </div>
@@ -2392,6 +2453,8 @@
   <script src="/features/canvas-layers.js"></script>
   <script src="/features/my-settings.js"></script>
   <script src="/features/user-activity.js"></script>
+  <script src="/features/quick-keys.js"></script>
+  <script src="/features/keyboard-map.js"></script>
   <script src="/report.js"></script>
 </body>
 </html>

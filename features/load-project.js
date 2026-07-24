@@ -777,6 +777,7 @@
         App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
       });
       if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') App.state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+      App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
       if (d.pageScales) {
         d.pageScales.forEach(function (scale, i) { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
       } else if (d.scale) {

@@ -13,6 +13,169 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(quick-keys): the number row binds to counters and line types
+
+Placing a mark was already one click; picking WHAT to place was the slow part of a
+takeoff — a mouse trip to the sidebar and a visual scan, repeated all day. The
+number row (`1`–`9`, `0`) now binds to counters and line types, so switching is a
+keystroke. Bound from a new status-bar `keys` link (keypad icon, left of
+`macros`) → `#quickKeysModal`, ten slot rows with a picker and a clear button.
+
+- **The number row was completely free** — no digit was bound anywhere in the
+  hotkey handler, and the existing `e.target.matches('input, textarea,
+  [contenteditable]')` guard already meant typing digits into a name field
+  couldn't fire them. Nothing to design around.
+- **ONE SELECTION PATH.** The sidebar row-click bodies were extracted into
+  `setActiveCounterType(id)` / `setActiveLineType(id)` (app.js), and **both** the
+  row click and the number key now call them. A number key does not implement its
+  own activation, so toggle-off semantics (second press deselects), the tool
+  switch, and the pages-section collapse cannot drift between the two entry
+  points. The spec asserts this directly: pressing `1` and calling
+  `App.setActiveCounterType('c1')` must leave identical state.
+- **Per-project bindings that still follow the user.** `state.numberKeyBindings`
+  maps slot → `{kind, id}`. Ids come from `uid()` and are project-scoped, so the
+  data is per-project and rides save/load, export/import, and the IDB takeoff
+  backup. But Save/Load Artboard stores `state.counters` / `state.lineTypes`
+  wholesale — **ids included** — so an artboard restore lands the same ids the
+  bindings point at, and a standard palette carries its key layout between bids.
+- A binding whose target was deleted resolves **stale**: it toasts rather than
+  silently doing nothing (the real "why didn't that work" moment), renders a
+  `deleted` marker in the modal, and **keeps the id** so re-creating or
+  re-importing that item revives the slot.
+- Modifier+digit falls through untouched, so `Ctrl`/`Cmd`+`1` browser tab
+  switching still works. Viewer-gated inside `triggerQuickKey`.
+- **Self-documenting via the Keyboard Map**: bound digits light up with their
+  names (`1 — Floor Drain`). This made Quick Keys the board's **second, dynamic
+  source** — `collectMacroKeys` merges `App.getQuickKeyLabels()` in on top of the
+  static Macros table, and the inline board rebuilds whenever Macros opens, since
+  bindings arrive with a project load long after the feature file ran.
+
+New regression: [quick-keys.spec.js](quick-keys.spec.js) (7 tests) — the modal
+binding path, the key switching + toggling off, the equivalence test above, the
+keystrokes it must NOT steal, stale-binding reporting, clear-slot, import
+survival, and the Keyboard Map pickup.
+
+---
+
+## feat(keyboard-map): inline on desktop, button-and-modal on mobile
+
+The board was good enough to stop being a click away. On **desktop** it now
+renders **inline at the top of the Macros modal** — open Macros and it is just
+there, above the shortcut list. **Mobile keeps the previous behavior** (the "See
+Keyboard" button opening `#keyboardMapModal`), because a 560px board does not fit
+a phone-width card.
+
+- **Two hosts, one code path.** A "host" is any element wrapping a `.kb-board`
+  and a `.kb-caption`; `buildBoard` / `setCaption` / `wireBoardInteraction` /
+  `renderInto` all take one, so neither surface is special-cased. CSS picks which
+  host is visible at the 769px breakpoint; **both are built regardless**, so
+  resizing across the breakpoint (or rotating a tablet) needs no rebuild and no
+  resize listener.
+- The inline host is built **once at feature load** — the Macros table it derives
+  from is static markup and this script is the last one in the body, so the
+  derivation is already valid. The modal host still renders per open.
+- **Two layout constraints had to be solved, not just styled around:**
+  `.macros-modal-card` was 400px wide against a 560px board, so on desktop it
+  widens to 660px; and modal cards only get a `max-height` inside the
+  `max-width: 768px` media query, meaning a taller card on desktop would have run
+  off the bottom of the screen with no way to scroll to the rest of the list. The
+  card is now a flex column capped at 88vh with the **body** flexing, so the
+  shortcut table scrolls underneath a pinned keyboard.
+- Mobile is the CSS *default* and desktop the `@media (min-width: 769px)`
+  enhancement, so the phone path is the one that cannot regress by omission.
+
+[keyboard-map.spec.js](keyboard-map.spec.js) split by breakpoint: a desktop
+describe (inline board present on Macros-open with **no second click**, button and
+modal both out of the way, plus a layout-contract test — card within the viewport,
+the body rather than the card scrolling, board above the body) and a mobile
+describe at 375×812 (inverted visibility, button → modal, horizontal containment,
+Escape ordering, close button). Both run the derivation guard against their own
+host.
+
+---
+
+## feat(snap): J now snaps to 45° diagonals, not just horizontal/vertical
+
+Field request (Robert): the `J` snap only produced horizontal and vertical
+lines, but 45° fittings are stock plumbing hardware (there is a `45-elbow.svg`
+in `my-counters/`), so any angled run had to be drawn freehand. `J` now
+constrains to the nearest of **8** rays — 0/45/90/135/180/225/270/315.
+
+- All five call sites (quick-line preview + commit, polyline preview + commit,
+  and the mobile aim loupe by way of those commits) already funneled through the
+  one pure primitive, so this is a single-function change. `geometry.js`'s
+  `snapToHorizontalOrVertical` became **`snapLineToAngle(x1, y1, x2, y2,
+  stepDeg)`** — the old name would have been a lie once diagonals landed, and
+  the repo renames things when their content drifts. `stepDeg` defaults to 45
+  and still accepts **90 for the original H/V-only behavior**, so reverting is
+  one argument.
+- The end point is still the **orthogonal projection** of the pointer onto the
+  chosen ray (what the H/V version did by keeping `x2` or `y2`), so the line
+  keeps tracking how far along the ray you've dragged.
+- The 8 rays are **integer** direction vectors `(1,0) (1,1) (0,1) (-1,1) …` with
+  the projection taken as `(d·v)/|v|²`, not unit vectors via cos/sin. That keeps
+  the arithmetic exact: `cos(90°)` is `6.1e-17` and `√½·√½` is
+  `0.5000000000000001`, either of which would bake ~1e-15 offsets into stored
+  PDF-space annotations and leave "vertical" lines a hair off vertical. Axis
+  snaps are bit-identical to the old implementation; an exact 45° drag returns
+  exactly `(t, t)`.
+- Labels updated (header button, Line Type Settings row + tooltip, and the
+  Macros row → "Toggle snap to 45° angles"). The **persisted setting key stays
+  `snapToHorizontalVertical`** — renaming it would orphan every saved
+  `lineTypeSettings` in localStorage and in per-project data.
+- The Macros-row edit flowed into the Keyboard Map caption for free, since that
+  board derives its captions from the table — the first payoff of that design.
+
+[geometry.test.js](geometry.test.js) gains 5 tests: the original two H/V cases
+kept verbatim (proving the axes didn't move), all four diagonals, the 22.5°
+decision boundary, `stepDeg: 90` parity, and the zero-length no-op.
+
+---
+
+## feat(keyboard-map): "See Keyboard" — a visual map of the mapped keys
+
+The Macros modal is a good reference but a poor *overview*: to learn what is
+mapped you have to read 25 rows. A **See Keyboard** button now sits pinned above
+that modal's scrolling body and opens `#keyboardMapModal`
+([features/keyboard-map.js](features/keyboard-map.js)) — a 65%-ANSI keyboard
+silhouette where every key carrying a shortcut lights accent-yellow against the
+near-black board, modifiers (Shift/Ctrl/Cmd) get a softer outlined variant so the
+action keys are what the eye lands on, and everything unmapped stays grey.
+Hovering (mouse only — a touch "hover" fires and vanishes), tapping, or focusing
+a lit key names its action in the caption below; a key used by two shortcuts
+lists both (`R — Rotate page · Refresh`).
+
+- **The lit keys are DERIVED from the Macros table, not hand-declared.**
+  `collectMacroKeys()` walks `#macrosModal .macros-table` at open time — each
+  row's `<kbd>` cells give the keys, the last cell gives the action — so adding
+  a shortcut row lights its key automatically and the list and the board cannot
+  drift. Rows with no `<kbd>` (section headers, the `<th>` row, the em-dash
+  Scale Zone row) drop out on their own. Same instinct as
+  [features/burger-menu.js](features/burger-menu.js) rebuilding its rows from
+  the currently-visible header controls.
+- **Found while building it: the Macros table was missing `V` (Room Sizer).**
+  The hotkey has been live since Room Sizer shipped (`k === 'v'` → `#roomBtn`)
+  but never got a table row — the same class of gap as the room-box Delete bug
+  below. Row added, so both the list and the board now show it.
+- Geometry: 5 rows, each 15 width units over a 60-column grid, so the
+  1.25/1.5/1.75/2.25-unit keys land on exact column boundaries and the rows
+  align like a real board. The board is deliberately a superset of the mapped
+  keys (it has to read as a keyboard); `.kb-board-wrap` scrolls it horizontally
+  on a phone without the page body overflowing.
+- A **zero-new-dep** split — `App.showModal` / `App.hideModal` were the only
+  deps, both already published (like pilots #5 and #7). Registers
+  `App.openKeyboardMapModal`; the opener and close bindings are element-bound at
+  load. The app.js Escape branch checks `keyboardMapModal` **before**
+  `macrosModal`, so one Escape closes the board and leaves the shortcut list up
+  behind it.
+
+New regression: [keyboard-map.spec.js](keyboard-map.spec.js) — the load-bearing
+test is the derivation guard (every `<kbd>` in the table must resolve to a lit
+board key), plus the real open path, the modifier/unmapped styling split, the
+hover caption, Escape ordering, and the phone-viewport containment.
+
+---
+
 ## fix(room-sizer): context-menu Delete now removes room boxes
 
 Field report (Wendi): right-clicking a placed room box showed the Delete

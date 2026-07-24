@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## ops(supabase): advisor backlog cleared — initplan rewrites + anon revoke
+
+The two deferred advisor items from the 2026-07-24 scan, both user-approved,
+applied to production via MCP and verified by re-running the advisors:
+
+- **auth_rls_initplan (9 WARNs → 0)** — migration
+  `20260724210000_rls_initplan_select_auth_uid`: every `auth.uid()` in the nine
+  flagged policies wrapped as `(select auth.uid())` so Postgres evaluates it
+  once per query instead of per row. Expressions are the pg_policies
+  definitions captured verbatim before the rewrite; behavior-identical.
+- **anon_security_definer_function_executable (24 WARNs → 0)** — after the
+  audit proved zero anon callers (rpcSupabase requires a session token; the
+  view-link path uses Edge Functions + signed URLs only; Edge Functions call
+  no public RPCs), TWO migrations: `20260724220000` revoked the direct anon
+  grants — and the advisor re-scan caught that `anon` STILL had execute via
+  the default `PUBLIC` grant (`=X/postgres` in proacl), which role membership
+  inherits. `20260724221000` revokes PUBLIC; authenticated + service_role keep
+  their explicit grants (verified in every ACL first), and ground truth
+  confirmed after: `has_function_privilege('anon', …)` false on all 24,
+  authenticated intact on all 23 it should keep (`handle_new_user`, a trigger
+  fn, lost authenticated too — nothing should reach it via the API).
+  **Lesson for future RPCs: CREATE FUNCTION grants PUBLIC execute by default —
+  every new RPC needs the same PUBLIC revoke.**
+
+Remaining advisor findings are INFO-level (unindexed audit-column FKs, two
+unused indexes) plus two dashboard toggles only an owner can click: leaked-
+password protection (Auth → HIBP) and percentage-based Auth DB connections.
+Field smoke still owed: one prod view-link click to confirm the anon path.
+
+---
+
 ## feat(telemetry): field errors mirror to the admin activity feed
 
 Phase 2 of the client-error hooks: `reportClientError` now also fires

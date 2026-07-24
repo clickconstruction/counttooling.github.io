@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(render-pixels): linux baselines — the draw core is now pixel-guarded in CI
+
+render-pixels (the maxDiffPixels: 0 safety net over canvas-draw.js, the ONE
+painter every mark renders through) was excluded from CI because its baselines
+were darwin-rasterized. Linux twins are now committed
+(`*-chromium-linux.png`), generated inside the official
+mcr.microsoft.com/playwright linux/amd64 image against this repo, and verified
+bit-exact on a second cold container run before committing. The CI testIgnore
+is gone — the draw core is pixel-guarded on every push, not just on a Mac.
+Regeneration recipe lives in playwright.config.js next to the (now empty)
+ignore. Playwright picks the platform suffix automatically, so local Mac runs
+keep using the darwin files untouched.
+
+---
+
 ## ops(supabase): first production advisor scan — 2 fixed, the rest triaged
 
 First security + performance advisor pass over the production project

@@ -4,7 +4,7 @@ Use this file to locate code in the app. The HTML shell + every modal live in
 [app/index.html](app/index.html) (~2.4k lines, served at `/app/`; the repo-root
 [index.html](index.html) is the static marketing landing); the bulk of the app
 logic (the main JS
-IIFE) lives in [app.js](app.js) (~7.1k lines, slimmed from ~16.2k as the pure
+IIFE) lives in [app.js](app.js) (~7.8k lines, slimmed from ~16.2k as the pure
 modules + the `window.App` feature-file splits were pulled out). The core data
 model and invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
 navigation map plus the catalog of features built on top of that core.
@@ -12,32 +12,32 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 [CHANGELOG.md](CHANGELOG.md).
 
 > Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
-> is ~7.1k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> is ~7.8k lines and edits shift them constantly. Navigate by the `// SECTION:`
 > markers in the code and by the grep patterns in the Search Hints table below.
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-07-20 — refresh when they
+Current first-party line counts (`wc -l`, 2026-07-23 — refresh when they
 drift; excludes `vendor/`, `node_modules/`, generated files, and tests/specs).
 Use this table to decide where the next decomposition effort pays off — and
 where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,147 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,836 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,913 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,394 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,275 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 2,422 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,317 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 965 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
 | [annotation-model.js](annotation-model.js) | 566 | Done — extracted canvas/annotation data model + node tests. |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 513 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (41 files) | 9,872 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (42 files) | 10,117 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
-The regions below account for ~3.5k of the 7.1k lines; every other section is
+The regions below account for ~3.5k of the 7.8k lines; every other section is
 already <300 lines — wiring, boot, and thin wrappers over the extracted
 modules. Candidates in priority order:
 
@@ -55,7 +55,7 @@ modules. Candidates in priority order:
 |------|---------|
 | [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines) |
 | [index.html](index.html) | The **static marketing landing** at `/` — plain HTML sharing `marketing.css`, no app JS, outside the SW scope; forwards old `/?t=`/`?devAuth=1` links to `/app/` |
-| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~7.1k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
+| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~7.8k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals **CUSTOM_ICONS moved out** to [icons-custom.js](icons-custom.js) (generated; loads right after this file) |
 | [icons-custom.js](icons-custom.js) | **The GENERATED bundled custom-icon data** — the `CUSTOM_ICONS` array (79KB, `{value, viewBox, name}` literals sourced from `my-counters/*.svg`). `npm run build:icons` ([scripts/build-custom-icons.js](scripts/build-custom-icons.js)) overwrites the file wholesale — no more paste-into-icons.js step, and regenerations stop churning the 246KB icons.js. Classic `<script src>` loaded between [icons.js](icons.js) and [icon-render.js](icon-render.js) (which builds `CUSTOM_ICON_META` from `CUSTOM_ICONS` at parse time — the load-order constraint). Guarded CommonJS footer for the Node tests + the eslint derived-globals wiring |
@@ -162,6 +162,8 @@ modules. Candidates in priority order:
 | [my-settings.spec.js](my-settings.spec.js) | Playwright regression for pilot #32 — always-run: `App.openMySettings` registered; signed-out open falls through to the auth modal; Export artboard yields a real `artboard-backup.json` download; Clear artboard empties the palette + resets active tool state; the close binding hides a force-shown modal. The airboard cloud round-trip and password change stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test my-settings.spec.js` |
 | [features/user-activity.js](features/user-activity.js) | Thirty-third feature-file split (`window.App` registry pilot #33; the last rung of the modal ladder) — the **admin User Activity modal** (`#userActivityModal`, the raw event log): `openUserActivityModal` (per-user events or the all-users view via raw `fetch()` against `list_user_activity_for_admin`), the Events/Summary view toggle (`list_user_activity_summary_for_admin`), the user-select dropdown (`list_users_for_admin`), the client-side filter over `state.userActivityAllRowsCache`, and the close binding; the `userActivitySelectSuppress` flag moves as a private `let`. ALSO owns the rich per-user **Activity overview** (`#userActivityOverviewModal`, moved from [features/user-admin.js](features/user-admin.js)): `openUserActivityOverview` → one `user_activity_detail_for_admin(uuid)` jsonb → summary card + stat tiles + a day-grouped, run-collapsed feed, plus the `#uaoClose`/`#mySettingsMyActivity` bindings — not admin-only (the RPC guard is **self-or-admin**; My Settings → My Activity opens it for the signed-in user). Both registrations (`App.openUserActivityModal`, `App.openUserActivityOverview`) **re-home here** — [features/user-admin.js](features/user-admin.js) consumes them at call time. Uses the published `SUPABASE_URL`/`SUPABASE_ANON_KEY` + the session token from `App.state` (these calls never used supabase-js). Three new publishes for the format.js helpers it renders with (`filterUserActivityRows`/`renderUserActivityAllUsersTableHtml`/`formatLastSignInUserActivity` — format.js globals are lint-invisible to the features eslint group); the pure formatters themselves stay in [format.js](format.js) |
 | [user-activity.spec.js](user-activity.spec.js) | Playwright regression for pilot #33 — always-run: the re-homed `App.openUserActivityModal` is wired; opening without an admin session is a safe no-op; the client-side filter pipeline works against a seeded rows cache (typing filters the rendered table, a non-match shows the no-match message, Clear restores the full table); the close binding hides the modal. The loaders stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test user-activity.spec.js` |
+| [features/keyboard-map.js](features/keyboard-map.js) | The **Keyboard Map** modal (`#keyboardMapModal`) — the visual companion to the Macros / Keyboard Shortcuts list, opened by the "See Keyboard" button (`#macrosSeeKeyboard`) pinned above that modal's scrolling body. Renders a 65%-ANSI keyboard silhouette into `#keyboardMapBoard` (5 rows, each 15 width units over a 60-column grid so the 1.25/1.5/1.75/2.25-unit keys land on exact boundaries); keys carrying a shortcut light accent-yellow, modifiers (Shift/Ctrl/Cmd/Alt) get the softer outlined variant, everything else stays the grey silhouette. Hovering (mouse only — a touch "hover" would fire and vanish), tapping, or focusing a lit key names its action in `#keyboardMapCaption`. **The lit keys are DERIVED from the Macros table, not hand-declared**: `collectMacroKeys()` walks `#macrosModal .macros-table`, reading each row's `<kbd>` cells for the keys and the last cell for the action, so adding a shortcut row lights its key automatically and the two surfaces cannot drift (rows with no `<kbd>` — the section headers, the `<th>` row, the em-dash Scale Zone row — drop out on their own). `normalizeKeyToken` maps the table's glyphs/words (`←`, `Cmd`, `Esc`, `Space`, …) onto the board's key ids; single characters normalize to uppercase. A **zero-new-dep** split (only `App.showModal`/`App.hideModal`). Registers `App.openKeyboardMapModal`; the opener + close bindings are element-bound at load. The Escape branch in app.js checks this modal **before** `macrosModal` so one Escape closes the board and leaves the list up. Regression: [keyboard-map.spec.js](keyboard-map.spec.js) |
+| [keyboard-map.spec.js](keyboard-map.spec.js) | Playwright regression for the Keyboard Map — the load-bearing test is the **derivation guard**: it walks every `<kbd>` in the Macros table, normalizes it with a mirror of the feature's `normalizeKeyToken`, and asserts each one resolves to a board key that is lit (so a future shortcut row the board can't represent fails CI-adjacent local runs rather than silently going dark). Plus: the registry contract, the real open path (status-bar macros → See Keyboard) with the list staying visible behind, the tool hotkeys `M/S/C/L/J/P/D/R/H/X/V/N/Z/Q` + Space/Escape/arrows lit, modifiers outlined rather than filled, an unmapped key (`G`) left as a plain silhouette, the hover caption (incl. a two-action key), Escape ordering (board first, then the list), and the close button. A second test asserts the board scrolls inside `.kb-board-wrap` on a 375px viewport without the page body overflowing. Filters the gitignored `/config.local.js` 404 like [render-pixels.spec.js](render-pixels.spec.js). `npx playwright test keyboard-map.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
@@ -194,7 +196,7 @@ resolves `app.js`'s output via `window.*`.
 
 ### Feature files / `window.App` registry
 
-`app.js` is one ~7.1k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
+`app.js` is one ~7.8k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
 are closure-locals, so a feature file in a separate `<script>` cannot see them
 by bare name. To split it incrementally without a build step, `app.js` publishes
 a small, named contract onto a shared global registry, and feature files read
@@ -511,13 +513,13 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6318 - Zoom transform preview & commit
 - L6397 - Canvas mouse, wheel & touch handlers
 - L7058 - Global dropdown dismissal & keyboard hotkeys
-- L7293 - [sync] Manual save to cloud
-- L7303 - [sync] Auto-save
-- L7310 - [sync] Local backup (IndexedDB takeoff state)
-- L7443 - [sync] Checkout keep-alive
-- L7457 - App feature registry
-- L7656 - View-only mode
-- L7662 - Init / boot
+- L7296 - [sync] Manual save to cloud
+- L7306 - [sync] Auto-save
+- L7313 - [sync] Local backup (IndexedDB takeoff state)
+- L7446 - [sync] Checkout keep-alive
+- L7460 - App feature registry
+- L7659 - View-only mode
+- L7665 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -733,6 +735,7 @@ Annotated, in rough order:
 | Legend overlay | `showLegendOverlay` or `legendSettingsModal` or `drawLegend` |
 | Grid overlay | `showGridOverlay` or `gridSettingsModal` or `drawGrid` or `snapToGrid` |
 | Undo / Redo | `undoStack` or `redoStack` or `pushUndoSnapshot` |
+| Macros / Keyboard Map | `macrosModal` or `macrosSeeKeyboard`; the board: `openKeyboardMapModal` / `keyboardMapBoard` / `collectMacroKeys` (features/keyboard-map.js) |
 | Middle mouse pan | `state.isPanning` or `state.panStart` |
 | Show Highlights / Notes | `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |
 | Note modal | `openNoteModal` |
@@ -1087,7 +1090,17 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Hotkeys** — M/S/C/L/J/P/D/H/X/N/R; Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows:
   Left/Right page nav (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z /
   Ctrl+Shift+Z; Ctrl+R refresh; ignored while focus is in an input/textarea.
-- **Macros modal** — Keyboard Shortcuts reference, opened from Project Settings.
+- **Macros modal** — Keyboard Shortcuts reference, opened from Project Settings
+  or the status-bar `macros` link.
+- **Keyboard Map** — the **See Keyboard** button pinned at the top of the Macros
+  modal opens `#keyboardMapModal` ([features/keyboard-map.js](features/keyboard-map.js)):
+  a 65%-ANSI keyboard silhouette where every key carrying a shortcut lights
+  accent-yellow, modifiers are outlined, and unmapped keys stay grey — so a user
+  can see the whole mapped surface at a glance instead of reading the list.
+  Hover / tap / focus a lit key to name its action underneath. The board stacks
+  **on top of** the Macros modal (one Escape closes it and leaves the list up).
+  The lit set is derived from the Macros table itself, so the list and the board
+  can never drift.
 
 ### Cloud (Supabase)
 

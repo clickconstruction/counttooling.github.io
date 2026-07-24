@@ -13,6 +13,50 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(keyboard-map): "See Keyboard" — a visual map of the mapped keys
+
+The Macros modal is a good reference but a poor *overview*: to learn what is
+mapped you have to read 25 rows. A **See Keyboard** button now sits pinned above
+that modal's scrolling body and opens `#keyboardMapModal`
+([features/keyboard-map.js](features/keyboard-map.js)) — a 65%-ANSI keyboard
+silhouette where every key carrying a shortcut lights accent-yellow against the
+near-black board, modifiers (Shift/Ctrl/Cmd) get a softer outlined variant so the
+action keys are what the eye lands on, and everything unmapped stays grey.
+Hovering (mouse only — a touch "hover" fires and vanishes), tapping, or focusing
+a lit key names its action in the caption below; a key used by two shortcuts
+lists both (`R — Rotate page · Refresh`).
+
+- **The lit keys are DERIVED from the Macros table, not hand-declared.**
+  `collectMacroKeys()` walks `#macrosModal .macros-table` at open time — each
+  row's `<kbd>` cells give the keys, the last cell gives the action — so adding
+  a shortcut row lights its key automatically and the list and the board cannot
+  drift. Rows with no `<kbd>` (section headers, the `<th>` row, the em-dash
+  Scale Zone row) drop out on their own. Same instinct as
+  [features/burger-menu.js](features/burger-menu.js) rebuilding its rows from
+  the currently-visible header controls.
+- **Found while building it: the Macros table was missing `V` (Room Sizer).**
+  The hotkey has been live since Room Sizer shipped (`k === 'v'` → `#roomBtn`)
+  but never got a table row — the same class of gap as the room-box Delete bug
+  below. Row added, so both the list and the board now show it.
+- Geometry: 5 rows, each 15 width units over a 60-column grid, so the
+  1.25/1.5/1.75/2.25-unit keys land on exact column boundaries and the rows
+  align like a real board. The board is deliberately a superset of the mapped
+  keys (it has to read as a keyboard); `.kb-board-wrap` scrolls it horizontally
+  on a phone without the page body overflowing.
+- A **zero-new-dep** split — `App.showModal` / `App.hideModal` were the only
+  deps, both already published (like pilots #5 and #7). Registers
+  `App.openKeyboardMapModal`; the opener and close bindings are element-bound at
+  load. The app.js Escape branch checks `keyboardMapModal` **before**
+  `macrosModal`, so one Escape closes the board and leaves the shortcut list up
+  behind it.
+
+New regression: [keyboard-map.spec.js](keyboard-map.spec.js) — the load-bearing
+test is the derivation guard (every `<kbd>` in the table must resolve to a lit
+board key), plus the real open path, the modifier/unmapped styling split, the
+hover caption, Escape ordering, and the phone-viewport containment.
+
+---
+
 ## fix(room-sizer): context-menu Delete now removes room boxes
 
 Field report (Wendi): right-clicking a placed room box showed the Delete

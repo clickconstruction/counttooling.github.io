@@ -695,6 +695,29 @@
     .macros-scroll-hint-wrap { position: sticky; bottom: 0; margin-top: -1px; padding: 32px 0 8px 0; background: linear-gradient(to bottom, transparent, var(--surface)); pointer-events: none; text-align: center; }
     .macros-scroll-hint { font-size: 0.85rem; color: var(--text2); margin: 0; padding: 0; }
     .macros-modal-card { max-width: 400px; }
+    .macros-see-keyboard { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
+    .macros-see-keyboard:hover { background: var(--surface3); border-color: var(--accent); color: var(--accent); }
+    .macros-see-keyboard svg { flex-shrink: 0; }
+    /* Keyboard Map: a 65% board silhouette. Keys carrying a shortcut light up
+       accent-yellow against the near-black board; modifiers get the outlined
+       variant so the primary action keys are what the eye lands on. The board is
+       built by features/keyboard-map.js from the Macros table. */
+    .keyboard-map-card { max-width: 720px; }
+    .kb-board-wrap { overflow-x: auto; overflow-y: hidden; }
+    .kb-board { min-width: 560px; display: flex; flex-direction: column; gap: 6px; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+    .kb-row { display: grid; gap: 6px; }
+    .kb-key { display: flex; align-items: center; justify-content: center; min-height: 34px; padding: 2px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; color: var(--text3); font-family: 'DM Mono', monospace; font-size: 0.72rem; line-height: 1; text-align: center; overflow: hidden; }
+    .kb-key.is-mapped { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer; }
+    .kb-key.is-mapped:hover, .kb-key.is-mapped:focus-visible { background: var(--text); border-color: var(--text); outline: none; }
+    .kb-key.is-modifier { background: transparent; border-color: var(--accent); color: var(--accent); font-weight: 600; cursor: pointer; }
+    .kb-key.is-modifier:hover, .kb-key.is-modifier:focus-visible { background: rgba(232,197,71,0.18); outline: none; }
+    /* Reserve both lines so pinning a caption never reflows the board. */
+    .kb-caption { min-height: 2.6em; margin: 12px 0 0 0; color: var(--text2); font-size: 0.9rem; line-height: 1.3; text-align: center; }
+    .kb-legend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; margin-top: 4px; color: var(--text2); font-size: 0.8rem; }
+    .kb-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .kb-swatch { display: inline-block; width: 14px; height: 14px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; }
+    .kb-swatch.is-mapped { background: var(--accent); border-color: var(--accent); }
+    .kb-swatch.is-modifier { background: transparent; border-color: var(--accent); }
     .canvas-repair-table { width: 100%; border-collapse: collapse; }
     .canvas-repair-table th, .canvas-repair-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
     .canvas-repair-table th { color: var(--text2); font-weight: 500; font-size: 0.85rem; }

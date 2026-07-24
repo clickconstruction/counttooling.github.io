@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(quick-keys): bound rows wear their digit in the sidebar
+
+A user had to remember what they bound — the bindings lived only in the modal.
+Now a counter / line type with a Quick Key shows a small keycap badge next to
+its name in the sidebar (accent digit on a dark chip, echoing the Keyboard
+Map's lit-key look so the two surfaces read as one feature), so the bindings
+teach themselves during normal work.
+
+`quickKeyBadgeHtml(kind, id)` in app.js's `renderCountersList` /
+`renderLineTypesList` reads the feature-registered reverse lookup
+`App.getQuickKeySlotFor(kind, id)` **deferred** (a boot-time render before
+quick-keys.js loads just shows no badges; bindings only arrive with a project
+load anyway, and every later updateUI re-renders). The modal's bind/clear
+handlers call `refreshSidebarBadges()` so the sidebar tracks changes live while
+the modal is open. quick-keys.spec.js gains a badge test (digit/row pairing,
+unbound rows bare, live refresh on unbind).
+
+---
+
 ## feat(undo): history deepened 5 → 50
 
 `UNDO_STACK_SIZE` (constants.js) was set to 5 back when every snapshot

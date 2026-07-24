@@ -743,6 +743,10 @@
     .quick-key-clear { flex-shrink: 0; width: 28px; height: 28px; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text2); font-size: 1.1rem; line-height: 1; cursor: pointer; }
     .quick-key-clear:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
     .quick-key-clear:disabled { opacity: 0.3; cursor: default; }
+    /* Quick Key keycap badge on bound sidebar rows — accent digit on a dark chip,
+       echoing the Keyboard Map's lit-key look so the two surfaces read as one
+       feature. Rendered by quickKeyBadgeHtml (app.js) inside the list renderers. */
+    .quick-key-slot-badge { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 3px; margin-left: 6px; background: var(--bg); border: 1px solid var(--accent2); border-radius: 3px; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.68rem; line-height: 1; vertical-align: middle; }
     /* Default (narrow / mobile): the board lives behind the "See Keyboard" button
        in #keyboardMapModal — a 560px board does not fit a phone-width card. */
     .kb-inline { display: none; }

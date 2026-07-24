@@ -185,6 +185,37 @@ test.describe('Quick Keys', () => {
     expect(await selection(page)).toMatchObject({ counter: 'ci' });
   });
 
+  test('bound rows show a keycap badge in the sidebar; it tracks binding changes', async ({ page }) => {
+    await page.evaluate(() => {
+      window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' }, 2: { kind: 'lineType', id: 'lt1' } };
+      window.App.renderCountersList();
+      window.App.renderLineTypesList();
+    });
+
+    // Badge digit + row pairing, both list kinds.
+    const badges = await page.evaluate(() =>
+      [...document.querySelectorAll('.quick-key-slot-badge')].map((b) => ({
+        digit: b.textContent,
+        row: b.closest('.sidebar-item')?.querySelector('.name')?.textContent || '',
+      })));
+    expect(badges.length).toBe(2);
+    expect(badges[0].digit).toBe('1');
+    expect(badges[0].row).toContain('Floor Drain');
+    expect(badges[1].digit).toBe('2');
+    expect(badges[1].row).toContain('2in Waste');
+    // Unbound rows carry no badge.
+    const cleanoutBadge = await page.evaluate(() =>
+      [...document.querySelectorAll('#countersList .sidebar-item')]
+        .find((r) => r.textContent.includes('Cleanout'))
+        ?.querySelector('.quick-key-slot-badge') || null);
+    expect(cleanoutBadge).toBeNull();
+
+    // Unbinding through the modal refreshes the sidebar live.
+    await page.evaluate(() => window.App.openQuickKeysModal());
+    await page.selectOption('.quick-key-select[data-slot="1"]', '');
+    expect(await page.evaluate(() => document.querySelectorAll('.quick-key-slot-badge').length)).toBe(1);
+  });
+
   test('the Keyboard Map lights bound digits with their names', async ({ page }) => {
     await page.evaluate(() => {
       window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' }, 2: { kind: 'lineType', id: 'lt1' } };

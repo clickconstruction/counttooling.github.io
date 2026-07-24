@@ -1,9 +1,19 @@
 name: CI
 
+# push is main-only: with branches:['**'] every PR push ran the whole workflow
+# TWICE (once for the push event, once for pull_request) — ~20 duplicate
+# runner-minutes per push now that e2e is in the pipeline. Feature branches get
+# CI through their PR; direct-to-branch pushes without a PR intentionally get
+# none.
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
+
+# A new push to the same PR obsoletes the in-flight run — cancel it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:

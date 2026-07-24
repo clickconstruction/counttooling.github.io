@@ -3828,7 +3828,7 @@
   async function fetchUserAirboard() {
     const user = state.supabaseSession?.user;
     if (!supabase || !user) return null;
-    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order, plumbing_modifiers, line_modifiers, number_key_bindings').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order, plumbing_modifiers, line_modifiers, number_key_bindings, custom_icon_paths').eq('user_id', user.id).maybeSingle();
     if (error) return null;
     if (!data) return null;
     return {
@@ -3838,7 +3838,10 @@
       iconOrder: Array.isArray(data.icon_order) ? data.icon_order : null,
       plumbingModifiers: (data.plumbing_modifiers && typeof data.plumbing_modifiers === 'object') ? data.plumbing_modifiers : null,
       lineModifiers: (data.line_modifiers && typeof data.line_modifiers === 'object') ? data.line_modifiers : null,
-      numberKeyBindings: (data.number_key_bindings && typeof data.number_key_bindings === 'object' && !Array.isArray(data.number_key_bindings)) ? data.number_key_bindings : null
+      numberKeyBindings: (data.number_key_bindings && typeof data.number_key_bindings === 'object' && !Array.isArray(data.number_key_bindings)) ? data.number_key_bindings : null,
+      // Feeds the (previously dead) `airboard.customIconPaths` checks at both
+      // apply sites — the user's uploaded icon library now follows the account.
+      customIconPaths: Array.isArray(data.custom_icon_paths) ? data.custom_icon_paths : null
     };
   }
   async function saveUserAirboard() {
@@ -3856,6 +3859,7 @@
       // row into every new bid (column added 2026-07-24; requires the
       // user_airboard_number_key_bindings migration before this client deploys).
       number_key_bindings: state.numberKeyBindings || {},
+      custom_icon_paths: getUserCustomIcons() || [],
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('user_airboard').upsert(payload, { onConflict: 'user_id' });

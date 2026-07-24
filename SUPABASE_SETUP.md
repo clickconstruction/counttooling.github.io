@@ -34,7 +34,7 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **006 — pdf_hash** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
 
-**007 — user_airboard** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`; migration `20260724180000_user_airboard_number_key_bindings` adds `number_key_bindings` (the Quick Keys number-row layout, so it carries with the palette). Used by Save Artboard / Load from Cloud in User Settings.
+**007 — user_airboard** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`; migration `20260724180000_user_airboard_number_key_bindings` adds `number_key_bindings` (the Quick Keys number-row layout, so it carries with the palette); migration `20260724200000_user_airboard_custom_icon_paths` adds `custom_icon_paths` (the uploaded custom-icon library, so it follows the account across devices). Used by Save Artboard / Load from Cloud in User Settings.
 
 **008 — auth_profile_trigger** — Auto-creates profile and user_airboard when a new user signs up.
 

@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(artboard): uploaded custom icons follow the account
+
+Both artboard apply-sites have checked `airboard.customIconPaths` since the
+artboard shipped — but `fetchUserAirboard` never selected such a column, so the
+check was dead code and a user moving devices got their palette back without
+their uploaded icon library (placed counters still rendered — the SVG path
+travels with the counter — but the picker lost the icons). New
+`user_airboard.custom_icon_paths` column (additive migration 20260724200000,
+user-approved), `saveUserAirboard` now sends `getUserCustomIcons()`, and the
+long-dead apply branches went live untouched. Clear artboard deliberately does
+NOT clear the icon library (it's a library, not palette state).
+my-settings.spec.js gains a stubbed-fetch test driving the real Load handler
+end-to-end: custom icons land in `getUserCustomIcons()`, bindings seed via the
+replace path.
+
+---
+
 ## test(render-pixels): linux baselines — the draw core is now pixel-guarded in CI
 
 render-pixels (the maxDiffPixels: 0 safety net over canvas-draw.js, the ONE

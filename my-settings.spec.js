@@ -59,4 +59,37 @@ test.describe('My Settings (features/my-settings.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('Load from Cloud applies custom icons + Quick Key bindings (stubbed fetch)', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // Stub the cloud fetch; drive the REAL #mySettingsLoadAirboard handler so
+    // the apply wiring (including the previously-dead customIconPaths branch
+    // and the replace:true bindings seed) is what's under test.
+    const applied = await page.evaluate(async () => {
+      window.App.fetchUserAirboard = async () => ({
+        counters: [{ id: 'c9', name: 'Cloud Counter', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
+        lineTypes: [],
+        iconNames: {},
+        iconOrder: null,
+        plumbingModifiers: null,
+        lineModifiers: null,
+        numberKeyBindings: { 1: { kind: 'counter', id: 'c9' } },
+        customIconPaths: [{ value: 'M0 0h10v10H0z', viewBox: '0 0 24 24', name: 'Spec Widget' }],
+      });
+      document.getElementById('mySettingsLoadAirboard').click();
+      await new Promise((r) => setTimeout(r, 150));
+      return {
+        counter: window.state.counters[0]?.name,
+        customIcons: window.App.getUserCustomIcons().map((i) => i.name),
+        bindings: JSON.parse(JSON.stringify(window.state.numberKeyBindings)),
+        seededFlag: window.state.numberKeyBindingsSeededFromArtboard,
+      };
+    });
+    expect(applied.counter).toBe('Cloud Counter');
+    expect(applied.customIcons).toContain('Spec Widget');
+    expect(applied.bindings).toEqual({ 1: { kind: 'counter', id: 'c9' } });
+    expect(applied.seededFlag).toBe(true);
+  });
 });

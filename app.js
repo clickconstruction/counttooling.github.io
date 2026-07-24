@@ -202,6 +202,10 @@
     recentRoomHeights: [],
     activeGroupId: null,
     activeCanvasIdByPage: {},
+    // Quick Keys: slot ('1'..'9','0') -> { kind: 'counter'|'lineType', id }.
+    // Per-project (ids are uid()-scoped to the project); rides save/load,
+    // export/import, and the IDB takeoff backup. See features/quick-keys.js.
+    numberKeyBindings: {},
     showLegendOverlay: true,
     showGridOverlay: false,
     showScaleRefLine: true,
@@ -532,6 +536,7 @@
     state.rooms = [];
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
+    state.numberKeyBindings = {};
     state.checkedOutBy = null;
     state.checkedOutAt = null;
     state.checkedOutEmail = null;
@@ -3252,6 +3257,31 @@
     });
   }
 
+  /*
+   * Selecting a counter / line type for placing. These are the ONE path: the
+   * sidebar row click and the Quick Keys number hotkeys both call them, so the
+   * toggle-off semantics (pressing the same target twice clears the selection),
+   * the tool switch, and the pages-section collapse can't drift between the two
+   * entry points. Published on App for features/quick-keys.js.
+   */
+  function collapsePagesSectionForPlacing() {
+    state.pagesListCollapsed = true;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
+  }
+  function setActiveCounterType(id) {
+    state.activeCounterType = state.activeCounterType === id ? null : id;
+    state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE;
+    if (state.activeCounterType) collapsePagesSectionForPlacing();
+    updateUI();
+  }
+  function setActiveLineType(id) {
+    state.activeLineTypeId = state.activeLineTypeId === id ? null : id;
+    state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE;
+    if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); }
+    updateUI();
+  }
+
   function renderCountersList() {
     const el = document.getElementById('countersList');
     el.innerHTML = '';
@@ -3298,7 +3328,7 @@
           markProjectDirty();
           updateUI();
         };
-        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !(state.sidebarReorderModeActive && e.target.closest('.counter-drag-handle'))) { state.activeCounterType = state.activeCounterType === c.id ? null : c.id; state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE; if (state.activeCounterType) { state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
+        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !(state.sidebarReorderModeActive && e.target.closest('.counter-drag-handle'))) { setActiveCounterType(c.id); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('counter', c); });
       }
@@ -3363,7 +3393,7 @@
           markProjectDirty();
           updateUI();
         };
-        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !e.target.closest('.line-type-drag-handle')) { state.activeLineTypeId = state.activeLineTypeId === lt.id ? null : lt.id; state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE; if (state.activeLineTypeId) { state.quickLineStart = null; state.pagesListCollapsed = true; document.getElementById('pagesSection').classList.add('collapsed'); document.getElementById('pagesCollapseIcon').textContent = '▶'; } updateUI(); } };
+        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !e.target.closest('.line-type-drag-handle')) { setActiveLineType(lt.id); } };
         div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
         div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('lineType', lt); });
       }
@@ -4707,7 +4737,7 @@
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], rooms: state.rooms || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], rooms: state.rooms || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -7105,6 +7135,15 @@
       }
       return;
     }
+    // Quick Keys: the number row switches the active counter / line type. Placed
+    // before the modifier checks but gated on none being held, so Ctrl+1 (browser
+    // tab switching) and friends are left alone. Unbound digits fall through as
+    // no-ops. The input/textarea guard above already protects typing digits into
+    // a name field. Viewer gating lives in App.triggerQuickKey.
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && /^[0-9]$/.test(e.key)) {
+      if (App.triggerQuickKey && App.triggerQuickKey(e.key)) e.preventDefault();
+      return;
+    }
     const k = e.key.toLowerCase();
     if (e.ctrlKey || e.metaKey) {
       if (k === 'z') {
@@ -7180,6 +7219,7 @@
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.
       else if (document.getElementById('keyboardMapModal').classList.contains('visible')) { hideModal('keyboardMapModal'); }
+      else if (document.getElementById('quickKeysModal').classList.contains('visible')) { hideModal('quickKeysModal'); }
       else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
       else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
@@ -7549,6 +7589,9 @@
   App.resetAutoRecheckoutCounter = (projectId) => resetAutoRecheckoutCounter(projectId);
   App.getSupabase = () => supabase;
   App.escapeHtml = escapeHtml;   // canonical HTML escaper (format.js)
+  // The single selection path, shared by the sidebar rows and Quick Keys.
+  App.setActiveCounterType = setActiveCounterType;
+  App.setActiveLineType = setActiveLineType;
   App.formatLastSignIn = formatLastSignIn;
   App.formatUserActivityDateTime = formatUserActivityDateTime;
   App.USER_ACTIVITY_ICON_SVG = USER_ACTIVITY_ICON_SVG;

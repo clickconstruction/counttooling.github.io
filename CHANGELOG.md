@@ -13,6 +13,50 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(quick-keys): the number row binds to counters and line types
+
+Placing a mark was already one click; picking WHAT to place was the slow part of a
+takeoff — a mouse trip to the sidebar and a visual scan, repeated all day. The
+number row (`1`–`9`, `0`) now binds to counters and line types, so switching is a
+keystroke. Bound from a new status-bar `keys` link (keypad icon, left of
+`macros`) → `#quickKeysModal`, ten slot rows with a picker and a clear button.
+
+- **The number row was completely free** — no digit was bound anywhere in the
+  hotkey handler, and the existing `e.target.matches('input, textarea,
+  [contenteditable]')` guard already meant typing digits into a name field
+  couldn't fire them. Nothing to design around.
+- **ONE SELECTION PATH.** The sidebar row-click bodies were extracted into
+  `setActiveCounterType(id)` / `setActiveLineType(id)` (app.js), and **both** the
+  row click and the number key now call them. A number key does not implement its
+  own activation, so toggle-off semantics (second press deselects), the tool
+  switch, and the pages-section collapse cannot drift between the two entry
+  points. The spec asserts this directly: pressing `1` and calling
+  `App.setActiveCounterType('c1')` must leave identical state.
+- **Per-project bindings that still follow the user.** `state.numberKeyBindings`
+  maps slot → `{kind, id}`. Ids come from `uid()` and are project-scoped, so the
+  data is per-project and rides save/load, export/import, and the IDB takeoff
+  backup. But Save/Load Artboard stores `state.counters` / `state.lineTypes`
+  wholesale — **ids included** — so an artboard restore lands the same ids the
+  bindings point at, and a standard palette carries its key layout between bids.
+- A binding whose target was deleted resolves **stale**: it toasts rather than
+  silently doing nothing (the real "why didn't that work" moment), renders a
+  `deleted` marker in the modal, and **keeps the id** so re-creating or
+  re-importing that item revives the slot.
+- Modifier+digit falls through untouched, so `Ctrl`/`Cmd`+`1` browser tab
+  switching still works. Viewer-gated inside `triggerQuickKey`.
+- **Self-documenting via the Keyboard Map**: bound digits light up with their
+  names (`1 — Floor Drain`). This made Quick Keys the board's **second, dynamic
+  source** — `collectMacroKeys` merges `App.getQuickKeyLabels()` in on top of the
+  static Macros table, and the inline board rebuilds whenever Macros opens, since
+  bindings arrive with a project load long after the feature file ran.
+
+New regression: [quick-keys.spec.js](quick-keys.spec.js) (7 tests) — the modal
+binding path, the key switching + toggling off, the equivalence test above, the
+keystrokes it must NOT steal, stale-binding reporting, clear-slot, import
+survival, and the Keyboard Map pickup.
+
+---
+
 ## feat(keyboard-map): inline on desktop, button-and-modal on mobile
 
 The board was good enough to stop being a click away. On **desktop** it now

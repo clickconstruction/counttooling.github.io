@@ -104,7 +104,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **42 `features/*.js` registry files**, after app.js and before
+  - **43 `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -361,7 +361,8 @@ mode).
 
 ### Hotkeys
 
-M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
+1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
+S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
 (Polyline), D (Measure), H (Highlight), X (Multiply Zone), V (Room Sizer), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z

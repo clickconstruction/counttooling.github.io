@@ -718,6 +718,23 @@
     .kb-swatch { display: inline-block; width: 14px; height: 14px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; }
     .kb-swatch.is-mapped { background: var(--accent); border-color: var(--accent); }
     .kb-swatch.is-modifier { background: transparent; border-color: var(--accent); }
+    /* Quick Keys — the number-row bindings modal + its status-bar entry. The entry
+       is icon-with-text so it sits comfortably beside the text-only "macros" link. */
+    .status-bar-link.quick-keys-link { display: inline-flex; align-items: center; gap: 5px; }
+    .status-bar-link.quick-keys-link svg { flex-shrink: 0; }
+    .quick-keys-card { max-width: 480px; }
+    .quick-keys-hint { color: var(--text2); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }
+    .quick-keys-empty { color: var(--yellow); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }
+    .quick-keys-list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+    .quick-key-row { display: flex; align-items: center; gap: 8px; }
+    .quick-key-cap { flex-shrink: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--text); }
+    .quick-key-swatch { flex-shrink: 0; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border2); }
+    .quick-key-swatch.is-empty { background: transparent; border-style: dashed; }
+    .quick-key-select { flex: 1; min-width: 0; padding: 6px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; font-size: 0.88rem; }
+    .quick-key-stale { flex-shrink: 0; font-size: 0.72rem; color: var(--red); text-transform: uppercase; letter-spacing: 0.04em; }
+    .quick-key-clear { flex-shrink: 0; width: 28px; height: 28px; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text2); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+    .quick-key-clear:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+    .quick-key-clear:disabled { opacity: 0.3; cursor: default; }
     /* Default (narrow / mobile): the board lives behind the "See Keyboard" button
        in #keyboardMapModal — a 560px board does not fit a phone-width card. */
     .kb-inline { display: none; }

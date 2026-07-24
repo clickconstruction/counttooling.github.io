@@ -449,6 +449,11 @@
           <span id="statusCoords">—</span>
           <span id="statusTotals" class="status-totals" style="display:none;"></span>
           <div class="status-bar-actions" id="statusBarActions">
+            <span class="status-bar-link status-bar-desktop-only quick-keys-link" id="statusBarQuickKeys" title="Quick Keys — bind counters and line types to the number row">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M144 96C117.5 96 96 117.5 96 144L96 208C96 234.5 117.5 256 144 256L208 256C234.5 256 256 234.5 256 208L256 144C256 117.5 234.5 96 208 96L144 96zM288 144L288 208C288 234.5 309.5 256 336 256L400 256C426.5 256 448 234.5 448 208L448 144C448 117.5 426.5 96 400 96L336 96C309.5 96 288 117.5 288 144zM480 144L480 208C480 234.5 501.5 256 528 256L592 256C618.5 256 640 234.5 640 208L640 144C640 117.5 618.5 96 592 96L528 96C501.5 96 480 117.5 480 144zM96 336L96 400C96 426.5 117.5 448 144 448L208 448C234.5 448 256 426.5 256 400L256 336C256 309.5 234.5 288 208 288L144 288C117.5 288 96 309.5 96 336zM288 336L288 400C288 426.5 309.5 448 336 448L400 448C426.5 448 448 426.5 448 400L448 336C448 309.5 426.5 288 400 288L336 288C309.5 288 288 309.5 288 336zM480 336L480 400C480 426.5 501.5 448 528 448L592 448C618.5 448 640 426.5 640 400L640 336C640 309.5 618.5 288 592 288L528 288C501.5 288 480 309.5 480 336zM96 528L96 592C96 618.5 117.5 640 144 640L208 640C234.5 640 256 618.5 256 592L256 528C256 501.5 234.5 480 208 480L144 480C117.5 480 96 501.5 96 528zM288 528L288 592C288 618.5 309.5 640 336 640L400 640C426.5 640 448 618.5 448 592L448 528C448 501.5 426.5 480 400 480L336 480C309.5 480 288 501.5 288 528zM480 528L480 592C480 618.5 501.5 640 528 640L592 640C618.5 640 640 618.5 640 592L640 528C640 501.5 618.5 480 592 480L528 480C501.5 480 480 501.5 480 528z"/></svg>
+              keys
+            </span>
+            <span class="status-bar-sep status-bar-desktop-only">|</span>
             <span class="status-bar-link status-bar-desktop-only" id="statusBarMacros">macros</span>
             <span class="status-bar-sep supabase-only status-bar-desktop-only" id="statusBarMacrosSep">|</span>
             <span class="status-bar-link supabase-only" id="statusBarAuth" style="display:none;">Sign In</span>
@@ -1275,6 +1280,22 @@
         <div class="macros-scroll-hint-wrap">
           <p class="macros-scroll-hint">Scroll for more</p>
         </div>
+      </div>
+    </div>
+  </div>
+  <!-- Quick Keys: rows are BUILT by features/quick-keys.js from the project's
+       counters + line types. Bindings live in state.numberKeyBindings. -->
+  <div class="modal-overlay" id="quickKeysModal">
+    <div class="modal-card quick-keys-card">
+      <div class="modal-card-header">
+        <h2>Quick Keys</h2>
+        <button type="button" class="modal-close-btn" id="quickKeysModalClose" aria-label="Close">×</button>
+      </div>
+      <p class="quick-keys-hint">Bind a counter or line type to a number key. Press the key while marking up to switch to it; press it again to deselect.</p>
+      <p class="quick-keys-empty" id="quickKeysEmpty" style="display:none;">This project has no counters or line types yet — add some first, then come back to bind them.</p>
+      <div class="quick-keys-list" id="quickKeysList"></div>
+      <div class="actions">
+        <button id="quickKeysDone">Done</button>
       </div>
     </div>
   </div>
@@ -2432,6 +2453,7 @@
   <script src="/features/canvas-layers.js"></script>
   <script src="/features/my-settings.js"></script>
   <script src="/features/user-activity.js"></script>
+  <script src="/features/quick-keys.js"></script>
   <script src="/features/keyboard-map.js"></script>
   <script src="/report.js"></script>
 </body>

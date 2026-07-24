@@ -126,6 +126,18 @@
         map.set(id, actions);
       });
     });
+    /*
+     * SECOND SOURCE: Quick Keys. The number row has no rows in the static Macros
+     * table — its meaning is per-project user data — so bindings are merged in
+     * here at build time. features/quick-keys.js loads before this file, but the
+     * guard keeps load order from being load-bearing.
+     */
+    const quick = App.getQuickKeyLabels ? App.getQuickKeyLabels() : {};
+    Object.keys(quick).forEach((slot) => {
+      const actions = map.get(slot) || [];
+      if (!actions.includes(quick[slot])) actions.push(quick[slot]);
+      map.set(slot, actions);
+    });
     return map;
   }
 
@@ -250,6 +262,16 @@
    * always built, so a viewport resize across the 769px breakpoint needs no rebuild.
    */
   renderInto(inlineHost);
+  /*
+   * ...but Quick Key bindings arrive with a project load, long after this file
+   * ran, so the inline board is rebuilt every time Macros opens — the one moment
+   * it becomes visible. addEventListener (not .onclick) so app.js's existing
+   * opener bindings are left intact.
+   */
+  ['statusBarMacros', 'settingsMacros'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => renderInto(inlineHost));
+  });
 
   App.openKeyboardMapModal = openKeyboardMapModal;
   App.renderKeyboardMapInline = () => renderInto(document.getElementById('macrosKeyboardInline'));

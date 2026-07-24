@@ -151,6 +151,7 @@ function createAnnotationModel(ctx) {
     if (Array.isArray(backup.iconOrder)) ctx.getState().iconOrder = backup.iconOrder;
     if (Array.isArray(backup.customIconPaths)) ctx.saveUserCustomIcons(backup.customIconPaths);
     if (backup.activeCanvasIdByPage && typeof backup.activeCanvasIdByPage === 'object') ctx.getState().activeCanvasIdByPage = backup.activeCanvasIdByPage;
+    if (backup.numberKeyBindings && typeof backup.numberKeyBindings === 'object') ctx.getState().numberKeyBindings = backup.numberKeyBindings;
     if (backup.pageCanvases && Array.isArray(backup.pageCanvases)) {
       backup.pageCanvases.forEach((canvases, i) => {
         if (ctx.getState().pages[i] && Array.isArray(canvases) && canvases.length) ctx.getState().pages[i].canvases = canvases;

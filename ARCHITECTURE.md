@@ -162,6 +162,7 @@ modules. Candidates in priority order:
 | [my-settings.spec.js](my-settings.spec.js) | Playwright regression for pilot #32 — always-run: `App.openMySettings` registered; signed-out open falls through to the auth modal; Export artboard yields a real `artboard-backup.json` download; Clear artboard empties the palette + resets active tool state; the close binding hides a force-shown modal. The airboard cloud round-trip and password change stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test my-settings.spec.js` |
 | [features/user-activity.js](features/user-activity.js) | Thirty-third feature-file split (`window.App` registry pilot #33; the last rung of the modal ladder) — the **admin User Activity modal** (`#userActivityModal`, the raw event log): `openUserActivityModal` (per-user events or the all-users view via raw `fetch()` against `list_user_activity_for_admin`), the Events/Summary view toggle (`list_user_activity_summary_for_admin`), the user-select dropdown (`list_users_for_admin`), the client-side filter over `state.userActivityAllRowsCache`, and the close binding; the `userActivitySelectSuppress` flag moves as a private `let`. ALSO owns the rich per-user **Activity overview** (`#userActivityOverviewModal`, moved from [features/user-admin.js](features/user-admin.js)): `openUserActivityOverview` → one `user_activity_detail_for_admin(uuid)` jsonb → summary card + stat tiles + a day-grouped, run-collapsed feed, plus the `#uaoClose`/`#mySettingsMyActivity` bindings — not admin-only (the RPC guard is **self-or-admin**; My Settings → My Activity opens it for the signed-in user). Both registrations (`App.openUserActivityModal`, `App.openUserActivityOverview`) **re-home here** — [features/user-admin.js](features/user-admin.js) consumes them at call time. Uses the published `SUPABASE_URL`/`SUPABASE_ANON_KEY` + the session token from `App.state` (these calls never used supabase-js). Three new publishes for the format.js helpers it renders with (`filterUserActivityRows`/`renderUserActivityAllUsersTableHtml`/`formatLastSignInUserActivity` — format.js globals are lint-invisible to the features eslint group); the pure formatters themselves stay in [format.js](format.js) |
 | [user-activity.spec.js](user-activity.spec.js) | Playwright regression for pilot #33 — always-run: the re-homed `App.openUserActivityModal` is wired; opening without an admin session is a safe no-op; the client-side filter pipeline works against a seeded rows cache (typing filters the rendered table, a non-match shows the no-match message, Clear restores the full table); the close binding hides the modal. The loaders stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test user-activity.spec.js` |
+| [snap-angles.spec.js](snap-angles.spec.js) | Playwright regression for the **`J` 45° snap** — the behavioral counterpart to geometry.test.js's pure-math coverage of `snapLineToAngle`: it drives real mouse clicks through the actual draw path and asserts the **committed** annotation (not just the rubber-band preview) lands on a ray. A ~27° drag commits to exactly 45° (`|dx − dy| < 1e-9`), a ~14° drag stays horizontal with `y2 === y1` **bit-exact** (the guard against a unit-vector implementation reintroducing 6e-17 drift), all four diagonals are reachable from a center anchor, polyline legs snap against the previous vertex, and turning the toggle off restores freehand angles. Angles are read in PDF space off the stored annotation — the canvas transform is uniform scale + translate with no rotation, so a 27° screen drag is a 27° PDF delta and the test never needs the zoom/pan. `npx playwright test snap-angles.spec.js` |
 | [features/keyboard-map.js](features/keyboard-map.js) | The **Keyboard Map** modal (`#keyboardMapModal`) — the visual companion to the Macros / Keyboard Shortcuts list, opened by the "See Keyboard" button (`#macrosSeeKeyboard`) pinned above that modal's scrolling body. Renders a 65%-ANSI keyboard silhouette into `#keyboardMapBoard` (5 rows, each 15 width units over a 60-column grid so the 1.25/1.5/1.75/2.25-unit keys land on exact boundaries); keys carrying a shortcut light accent-yellow, modifiers (Shift/Ctrl/Cmd/Alt) get the softer outlined variant, everything else stays the grey silhouette. Hovering (mouse only — a touch "hover" would fire and vanish), tapping, or focusing a lit key names its action in `#keyboardMapCaption`. **The lit keys are DERIVED from the Macros table, not hand-declared**: `collectMacroKeys()` walks `#macrosModal .macros-table`, reading each row's `<kbd>` cells for the keys and the last cell for the action, so adding a shortcut row lights its key automatically and the two surfaces cannot drift (rows with no `<kbd>` — the section headers, the `<th>` row, the em-dash Scale Zone row — drop out on their own). `normalizeKeyToken` maps the table's glyphs/words (`←`, `Cmd`, `Esc`, `Space`, …) onto the board's key ids; single characters normalize to uppercase. A **zero-new-dep** split (only `App.showModal`/`App.hideModal`). Registers `App.openKeyboardMapModal`; the opener + close bindings are element-bound at load. The Escape branch in app.js checks this modal **before** `macrosModal` so one Escape closes the board and leaves the list up. Regression: [keyboard-map.spec.js](keyboard-map.spec.js) |
 | [keyboard-map.spec.js](keyboard-map.spec.js) | Playwright regression for the Keyboard Map — the load-bearing test is the **derivation guard**: it walks every `<kbd>` in the Macros table, normalizes it with a mirror of the feature's `normalizeKeyToken`, and asserts each one resolves to a board key that is lit (so a future shortcut row the board can't represent fails CI-adjacent local runs rather than silently going dark). Plus: the registry contract, the real open path (status-bar macros → See Keyboard) with the list staying visible behind, the tool hotkeys `M/S/C/L/J/P/D/R/H/X/V/N/Z/Q` + Space/Escape/arrows lit, modifiers outlined rather than filled, an unmapped key (`G`) left as a plain silhouette, the hover caption (incl. a two-action key), Escape ordering (board first, then the list), and the close button. A second test asserts the board scrolls inside `.kb-board-wrap` on a 375px viewport without the page body overflowing. Filters the gitignored `/config.local.js` 404 like [render-pixels.spec.js](render-pixels.spec.js). `npx playwright test keyboard-map.spec.js` |
 | [item-details.spec.js](item-details.spec.js) | Playwright regression for pilot #25 — seeds a counter (markers on 2 pages) + line type + grouped quick line, then drives the moved surface end-to-end: sidebar edit pen opens the details modal (title, per-page usage rows, getter returns the open item), rename persists on blur, the moved close binding resets the item, the delete flow routes confirm-modal → `performDeleteCounterLineType` (counter + all markers gone, both modals hidden), Line Properties opens via the context-menu path and Escape closes it via `App.closeLinePropertiesModal` persisting a just-typed drop, and `App.deleteGroup` clears the group off annotations. Asserts no console / page errors; `npx playwright test item-details.spec.js` |
@@ -744,7 +745,7 @@ Annotated, in rough order:
 | Multiply Zone | `TOOL.MULTIPLY_ZONE` or `getMultiplyZoneForPoint` / `getMultiplyZoneForLine` |
 | Scale Zone | `TOOL.SCALE_ZONE` or `getScaleZoneForLine` or `scaleModalApplyTarget` |
 | Delete Zone | `TOOL.DELETE_ZONE` or `collectItemsToDeleteInRect` or `performDeleteZone` |
-| Snap to H/V | `lineTypeSnapToHVHeaderBtn` or `snapToHorizontalVertical` |
+| Snap to 45° angles | `lineTypeSnapToHVHeaderBtn` or `snapToHorizontalVertical` (persisted key) or `snapLineToAngle` (geometry.js) |
 
 ## Key Globals (used by report.js)
 
@@ -773,7 +774,7 @@ Events -> handlers -> state updates -> renderPdf() / renderAnnotations() / updat
 ## Layout
 
 - **Desktop header**: Logo + tools (Measure, Highlight, Note, Move, divider,
-  Counter, Line, Polyline, divider, Snap to H/V when Line/Polyline selected) on
+  Counter, Line, Polyline, divider, Snap to 45° when Line/Polyline selected) on
   the left; spacer; cloud import/export control (`#exportDropdown`, 28x28 icons):
   cloud-upload when editor has no pages (click triggers `#pdfInput`),
   cloud-download menu when pages exist (Canvas/Both gated by
@@ -923,8 +924,20 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   width and font size; moveable; double-click or context Edit to edit.
 - **Page rotation** (`R`) — per-page `page.rotation` (0/90/180/270); annotations
   and notes transform; persisted.
-- **Snap to H/V** (`J`) — header toggle (right of Polyline when Line/Polyline
-  selected) and Line Type Settings; `snapToHorizontalVertical`.
+- **Snap to 45° angles** (`J`) — header toggle (right of Polyline when
+  Line/Polyline selected) and Line Type Settings. Constrains quick lines and each
+  polyline leg to the nearest of **8** rays — horizontal, vertical, and the four
+  45° diagonals (45/135/225/315) — which is what plumbing runs actually do (45°
+  fittings are a stock part). Applies to the rubber-band preview and the commit
+  alike, on desktop click and the mobile aim loupe, since all five call sites
+  funnel through the one pure `snapLineToAngle(x1, y1, x2, y2, stepDeg)` in
+  [geometry.js](geometry.js). That helper projects the pointer orthogonally onto
+  the chosen ray (so the end still tracks how far along the ray you've dragged)
+  using **integer** direction vectors, which keeps axis snaps bit-exact — a
+  vertical line gets `x1` unchanged, not `x1 + 6e-17`. It was H/V-only until
+  2026-07-23; `stepDeg: 90` still selects that behavior, and the persisted
+  setting key stays `snapToHorizontalVertical` (renaming it would orphan saved
+  `lineTypeSettings`).
 
 ### Counters / line types / sidebar
 
@@ -933,7 +946,7 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   current page" filter. Ring section only visible when rings on.
 - **Line Type Settings** — click "Line Types" heading: opacity, line size, drop X
   size + icon style, orient length with line direction, parallel ends, length
-  label size, snap to H/V, "show only line types/lines on current page".
+  label size, snap to 45° angles, "show only line types/lines on current page".
 - **Counter button dynamic icon** — `counterBtn` / `counterBtnSidebar` show the
   active counter's icon + color when Counter tool is active.
 - **Counter/Line Type details modal** — edit pen opens

@@ -662,7 +662,7 @@
   // last-session restore flow); boot hands the candidate over via
   // App.openLastSessionRestorePrompt.
   // SECTION: Math & Format Helpers
-  // Pure geometry/parse primitives (ptDist, snapToHorizontalOrVertical, polylineDistance,
+  // Pure geometry/parse primitives (ptDist, snapLineToAngle, polylineDistance,
   // polygonArea, distToSegment, the quadratic-bezier helpers, rotatePoint90CW, pointInRect,
   // rectsOverlap, the zone locators, formatLineLengthRealSum, parseRealWorldLength,
   // parseFraction) live in geometry.js (loaded before this IIFE); referenced here by bare
@@ -2410,7 +2410,7 @@
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       const aPdf = state.quickLineStart;
       let bPdf = state.mousePos;
-      if (lts.snapToHorizontalVertical) bPdf = snapToHorizontalOrVertical(aPdf.x, aPdf.y, bPdf.x, bPdf.y);
+      if (lts.snapToHorizontalVertical) bPdf = snapLineToAngle(aPdf.x, aPdf.y, bPdf.x, bPdf.y);
       const a = toCanvas(aPdf), b = toCanvas(bPdf);
       const useArc = lt?.curveStyle === 'arc';
       const ctrlPdf = useArc ? getQuadraticBezierControlPoint(aPdf, bPdf, 1) : null;
@@ -2485,7 +2485,7 @@
         let pmPdf = state.mousePos;
         if (lts.snapToHorizontalVertical) {
           const prev = pts[pts.length - 1];
-          pmPdf = snapToHorizontalOrVertical(prev.x, prev.y, pmPdf.x, pmPdf.y);
+          pmPdf = snapLineToAngle(prev.x, prev.y, pmPdf.x, pmPdf.y);
         }
         const pm = toCanvas(pmPdf); ctx.lineTo(pm.x, pm.y);
       }
@@ -5846,7 +5846,7 @@
     } else {
       let x2 = pdf.x, y2 = pdf.y;
       if (state.lineTypeSettings.snapToHorizontalVertical) {
-        const end = snapToHorizontalOrVertical(state.quickLineStart.x, state.quickLineStart.y, pdf.x, pdf.y);
+        const end = snapLineToAngle(state.quickLineStart.x, state.quickLineStart.y, pdf.x, pdf.y);
         x2 = end.x; y2 = end.y;
         if (!isPointInPageBounds({ x: x2, y: y2 })) {
           const clamped = clampPointToPageBounds({ x: x2, y: y2 });
@@ -5872,7 +5872,7 @@
     let pt = pdf;
     if (state.drawingPolyline.points.length >= 1 && state.lineTypeSettings.snapToHorizontalVertical) {
       const prev = state.drawingPolyline.points[state.drawingPolyline.points.length - 1];
-      pt = snapToHorizontalOrVertical(prev.x, prev.y, pdf.x, pdf.y);
+      pt = snapLineToAngle(prev.x, prev.y, pdf.x, pdf.y);
       if (!isPointInPageBounds(pt)) pt = clampPointToPageBounds(pt);
     } else {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }

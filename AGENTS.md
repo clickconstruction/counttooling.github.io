@@ -272,7 +272,9 @@ Rules to follow when adding/editing a feature file:
 ### Persisted settings (localStorage unless noted)
 
 `counterSettings`, `lineTypeSettings` (includes `parallelEndsSize`,
-`lengthLabelSize`, `snapToHorizontalVertical`, `showOnlyLinesOnCurrentPage`),
+`lengthLabelSize`, `snapToHorizontalVertical` (the 8-way 45° snap toggle — the
+key keeps its original H/V-era name so saved settings aren't orphaned),
+`showOnlyLinesOnCurrentPage`),
 `legendSettings`, `multiplyZoneSettings`, `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),
 `recentRoomHeights` (Room Sizer recent ceiling heights, decimal feet, max 5),
@@ -359,7 +361,7 @@ mode).
 
 ### Hotkeys
 
-M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to H/V), P
+M (Move), S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
 (Polyline), D (Measure), H (Highlight), X (Multiply Zone), V (Room Sizer), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z

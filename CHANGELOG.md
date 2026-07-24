@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(snap): J now snaps to 45° diagonals, not just horizontal/vertical
+
+Field request (Robert): the `J` snap only produced horizontal and vertical
+lines, but 45° fittings are stock plumbing hardware (there is a `45-elbow.svg`
+in `my-counters/`), so any angled run had to be drawn freehand. `J` now
+constrains to the nearest of **8** rays — 0/45/90/135/180/225/270/315.
+
+- All five call sites (quick-line preview + commit, polyline preview + commit,
+  and the mobile aim loupe by way of those commits) already funneled through the
+  one pure primitive, so this is a single-function change. `geometry.js`'s
+  `snapToHorizontalOrVertical` became **`snapLineToAngle(x1, y1, x2, y2,
+  stepDeg)`** — the old name would have been a lie once diagonals landed, and
+  the repo renames things when their content drifts. `stepDeg` defaults to 45
+  and still accepts **90 for the original H/V-only behavior**, so reverting is
+  one argument.
+- The end point is still the **orthogonal projection** of the pointer onto the
+  chosen ray (what the H/V version did by keeping `x2` or `y2`), so the line
+  keeps tracking how far along the ray you've dragged.
+- The 8 rays are **integer** direction vectors `(1,0) (1,1) (0,1) (-1,1) …` with
+  the projection taken as `(d·v)/|v|²`, not unit vectors via cos/sin. That keeps
+  the arithmetic exact: `cos(90°)` is `6.1e-17` and `√½·√½` is
+  `0.5000000000000001`, either of which would bake ~1e-15 offsets into stored
+  PDF-space annotations and leave "vertical" lines a hair off vertical. Axis
+  snaps are bit-identical to the old implementation; an exact 45° drag returns
+  exactly `(t, t)`.
+- Labels updated (header button, Line Type Settings row + tooltip, and the
+  Macros row → "Toggle snap to 45° angles"). The **persisted setting key stays
+  `snapToHorizontalVertical`** — renaming it would orphan every saved
+  `lineTypeSettings` in localStorage and in per-project data.
+- The Macros-row edit flowed into the Keyboard Map caption for free, since that
+  board derives its captions from the table — the first payoff of that design.
+
+[geometry.test.js](geometry.test.js) gains 5 tests: the original two H/V cases
+kept verbatim (proving the axes didn't move), all four diagonals, the 22.5°
+decision boundary, `stepDeg: 90` parity, and the zero-length no-op.
+
+---
+
 ## feat(keyboard-map): "See Keyboard" — a visual map of the mapped keys
 
 The Macros modal is a good reference but a poor *overview*: to learn what is

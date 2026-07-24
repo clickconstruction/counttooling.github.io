@@ -720,8 +720,16 @@
     .kb-swatch.is-modifier { background: transparent; border-color: var(--accent); }
     /* Quick Keys — the number-row bindings modal + its status-bar entry. The entry
        is icon-with-text so it sits comfortably beside the text-only "macros" link. */
-    .status-bar-link.quick-keys-link { display: inline-flex; align-items: center; gap: 5px; }
-    .status-bar-link.quick-keys-link svg { flex-shrink: 0; }
+    /* Status-bar links that pair an icon with a label ("keys", "macros"). */
+    .status-bar-link.has-icon { display: inline-flex; align-items: center; gap: 5px; }
+    .status-bar-link.has-icon svg { flex-shrink: 0; position: relative; }
+    /* Optical vertical nudge is PER GLYPH — the two icons carry their ink
+       differently inside the same 640 box, so a shared value can't level both:
+       the keypad's ink sits low (renders a touch low → lift 1px); the keyboard's
+       ink is centred yet renders high against the text (drop 2px). Values found by
+       matching each icon's rendered ink-centre to the text. */
+    #statusBarQuickKeys.has-icon svg { top: -1px; }
+    #statusBarMacros.has-icon svg { top: 2px; }
     .quick-keys-card { max-width: 480px; }
     .quick-keys-hint { color: var(--text2); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }
     .quick-keys-empty { color: var(--yellow); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }

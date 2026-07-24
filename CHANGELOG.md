@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## polish(status-bar): icon for "macros", optical alignment for both
+
+Gave the status-bar `macros` link a keyboard glyph to match the keypad on `keys`
+(keyboard = all shortcuts, keypad = the number row — the See Keyboard button uses
+the same keyboard icon, so the three read as a set). Folded the shared layout into
+a `.has-icon` class.
+
+The vertical nudge that levels the glyph with the lowercase text turned out to be
+**per glyph**, not shared: the keypad's ink sits low in its 640-box (lift 1px),
+while the keyboard's ink is centred yet renders high against the text (drop 2px).
+A single value couldn't level both, so each icon carries its own `top`. Values
+were dialled in by magnifying the status bar and matching each icon's rendered
+ink-centre to the text — the programmatic metric jittered ±2px on text line-box
+rounding, so the eye was the tiebreaker. Desktop-only surface; no test change.
+
+---
+
 ## feat(quick-keys): the number row binds to counters and line types
 
 Placing a mark was already one click; picking WHAT to place was the slow part of a

@@ -17,23 +17,27 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-07-23 — refresh when they
-drift; excludes `vendor/`, `node_modules/`, generated files, and tests/specs).
-Use this table to decide where the next decomposition effort pays off — and
-where it doesn't.
+Current first-party line counts (`wc -l`, 2026-07-24 — the **numbers and this
+date are GENERATED** by `npm run build:filemap`
+([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
+when they drift, so don't edit counts by hand. Which files are listed and every
+Status / verdict stay human-written — add a row and the generator keeps its
+count fresh. Excludes `vendor/`, `node_modules/`, generated files, and
+tests/specs). Use this table to decide where the next decomposition effort pays
+off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,836 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 2,913 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 7,779 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,422 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,317 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 965 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
-| [annotation-model.js](annotation-model.js) | 566 | Done — extracted canvas/annotation data model + node tests. |
+| [app/index.html](app/index.html) | 2,465 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,367 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 966 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
+| [annotation-model.js](annotation-model.js) | 614 | Done — extracted canvas/annotation data model + node tests. |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 513 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (42 files) | 10,117 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (44 files) | 10,525 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 

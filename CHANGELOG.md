@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(filemap): the Large-file map line counts are now generated
+
+The decomposition table's caption asked humans to "refresh when they drift" —
+and they didn't (it sat three days stale carrying a 689-line undercount for
+app.js). New [scripts/build-filemap.js](scripts/build-filemap.js), the same
+committed-artifact-generator pattern as build-toc/build-sw: it restamps each
+row's Lines cell, the `features/*.js (NN files) | total` row, and the caption
+date (only when a count actually moved, so --check is deterministic across
+days). `npm run check` now includes `build:filemap -- --check`, so a stale
+table fails CI instead of waiting for someone to notice. Ownership split on
+purpose: the generator owns the numbers; humans own which files are listed and
+every Status / verdict — add a row by hand and its count stays fresh from then
+on.
+
+---
+
 ## refactor(lines-list): first split out of the UI Render Functions region
 
 The decomposition table has named UI Render Functions (~1,065 lines) as the

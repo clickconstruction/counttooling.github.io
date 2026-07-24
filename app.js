@@ -536,7 +536,12 @@
     state.rooms = [];
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
+    // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key
+    // bindings (and their artboard-seed lineage flag) never leak to the next
+    // user on a shared machine. The seed survives the normal new-bid flow
+    // (sign in -> upload PDF), which never passes through here.
     state.numberKeyBindings = {};
+    state.numberKeyBindingsSeededFromArtboard = false;
     state.checkedOutBy = null;
     state.checkedOutAt = null;
     state.checkedOutEmail = null;
@@ -3783,7 +3788,7 @@
   async function fetchUserAirboard() {
     const user = state.supabaseSession?.user;
     if (!supabase || !user) return null;
-    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order, plumbing_modifiers, line_modifiers').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await supabase.from('user_airboard').select('counters, line_types, icon_names, icon_order, plumbing_modifiers, line_modifiers, number_key_bindings').eq('user_id', user.id).maybeSingle();
     if (error) return null;
     if (!data) return null;
     return {
@@ -3792,7 +3797,8 @@
       iconNames: (data.icon_names && typeof data.icon_names === 'object') ? data.icon_names : {},
       iconOrder: Array.isArray(data.icon_order) ? data.icon_order : null,
       plumbingModifiers: (data.plumbing_modifiers && typeof data.plumbing_modifiers === 'object') ? data.plumbing_modifiers : null,
-      lineModifiers: (data.line_modifiers && typeof data.line_modifiers === 'object') ? data.line_modifiers : null
+      lineModifiers: (data.line_modifiers && typeof data.line_modifiers === 'object') ? data.line_modifiers : null,
+      numberKeyBindings: (data.number_key_bindings && typeof data.number_key_bindings === 'object' && !Array.isArray(data.number_key_bindings)) ? data.number_key_bindings : null
     };
   }
   async function saveUserAirboard() {
@@ -3806,6 +3812,10 @@
       icon_order: state.iconOrder || null,
       plumbing_modifiers: getPlumbingModifiers(),
       line_modifiers: getLineModifiers(),
+      // Quick Keys ride the artboard so a standard palette carries its number
+      // row into every new bid (column added 2026-07-24; requires the
+      // user_airboard_number_key_bindings migration before this client deploys).
+      number_key_bindings: state.numberKeyBindings || {},
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('user_airboard').upsert(payload, { onConflict: 'user_id' });
@@ -3974,6 +3984,9 @@
             if (Array.isArray(airboard.customIconPaths)) saveUserCustomIcons(airboard.customIconPaths);
             if (airboard.plumbingModifiers && typeof airboard.plumbingModifiers === 'object') savePlumbingModifiers(airboard.plumbingModifiers);
             if (airboard.lineModifiers && typeof airboard.lineModifiers === 'object') saveLineModifiers(airboard.lineModifiers);
+            // Fill-if-empty only: this auto-restore must never stomp a layout the
+            // user already has going (e.g. a project restored before auth settled).
+            App.seedQuickKeysFromArtboard && App.seedQuickKeysFromArtboard(airboard.numberKeyBindings);
           }
         }
         reconcileOrphanedCountersAndLineTypes();

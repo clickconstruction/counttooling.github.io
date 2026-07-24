@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(quick-keys): bindings ride the Artboard — the muscle-memory hole closed
+
+Honest correction of the original ship: bindings were per-project and Save/Load
+Artboard did NOT carry them, so every new bid started with an empty number row
+even though the artboard restores the very ids the bindings point at. Now
+`user_airboard.number_key_bindings` (jsonb, additive migration
+20260724180000, applied to production via MCP with user approval) stores the
+layout with the palette.
+
+Lifecycle rules live in ONE place (features/quick-keys.js) so they can't drift:
+
+- `seedQuickKeysFromArtboard(raw, {replace})` — sign-in auto-restore seeds
+  FILL-IF-EMPTY (never stomps an active layout, order-independent vs project
+  restore); My Settings → Load from Cloud passes replace:true (the user just
+  confirmed "replace"). Sanitizes slots/kinds/ids on the way in.
+- `applyProjectQuickKeys(incoming)` — all three project intakes (cloud load,
+  PDF-intake restore, canvas-JSON import) funnel here: a payload WITH bindings
+  replaces and clears the artboard-lineage flag; a payload WITHOUT keeps an
+  artboard-seeded layout but drops a previous project's, so dead ids never leak
+  between unrelated projects.
+- `resetLocalSessionState` stays an UNCONDITIONAL wipe — it doubles as the
+  sign-out hygiene path, and bindings must never survive to the next user on a
+  shared machine. The seed survives the normal new-bid flow (sign in → upload),
+  which never passes through reset.
+
+Artboard export includes the bindings; Clear artboard clears them (the palette
+they point at is gone). quick-keys.spec.js gains the lifecycle test: seed rules,
+project replace-or-keep, and a real canvas-JSON import keeping a seeded layout.
+
+---
+
 ## chore(filemap): the Large-file map line counts are now generated
 
 The decomposition table's caption asked humans to "refresh when they drift" —

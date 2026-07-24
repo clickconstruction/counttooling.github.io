@@ -295,6 +295,10 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode).
 
+- `numberKeyBindings` (Quick Keys) is per-project in save/load/export/import, AND
+  rides the cloud Artboard (`user_airboard.number_key_bindings`) so a standard
+  palette carries its number row into new bids — lifecycle rules in
+  features/quick-keys.js (`seedQuickKeysFromArtboard` / `applyProjectQuickKeys`).
 - `customIconPaths` lives in **IndexedDB** (in-memory cache, per-user key; one-time
   migration from localStorage / legacy key).
 - Per view token (localStorage): `view:allowed:<token>` (accepted viewer email),

@@ -31,7 +31,7 @@
       if (!res.ok) throw new Error('Fetch failed: ' + res.status);
       const buf = await res.arrayBuffer();
       const bufForDisplay = buf.slice(0);
-      const pdf = await pdfjsLib.getDocument(buf).promise;
+      const pdf = await App.getPdfDocument(buf).promise;
       const numPages = pdf.numPages;
       const pages = [];
       for (let i = 0; i < numPages; i++) {
@@ -86,7 +86,7 @@
         for (const f of filesToProcess) {
           const buf = await f.arrayBuffer();
           newBuffers.push(buf.slice(0));
-          const pdf = await pdfjsLib.getDocument(buf).promise;
+          const pdf = await App.getPdfDocument(buf).promise;
           const numPages = pdf.numPages;
           for (let i = 0; i < numPages; i++) {
             const pdfPage = await pdf.getPage(i + 1);
@@ -130,7 +130,7 @@
       const bufCopy = buf.slice(0);
       if (!firstBuf) firstBuf = bufCopy;
       buffersForMerge.push(bufCopy);
-      const pdf = await pdfjsLib.getDocument(buf).promise;
+      const pdf = await App.getPdfDocument(buf).promise;
       const numPages = pdf.numPages;
       for (let i = 0; i < numPages; i++) {
         const pdfPage = await pdf.getPage(i + 1);
@@ -165,7 +165,7 @@
       App.state.pdfBuffer = merged;
       App.state.pdfBufferSize = merged ? (merged.byteLength ?? merged.length ?? merged.size ?? 0) : 0;
       App.state.pdfStoragePath = null;
-      const mergedPdf = await pdfjsLib.getDocument(merged.slice ? merged.slice(0) : merged).promise;
+      const mergedPdf = await App.getPdfDocument(merged.slice ? merged.slice(0) : merged).promise;
       const numPages = mergedPdf.numPages;
       App.clearPdfBitmapCache();   // pdfPage proxies rebound below — cached bitmaps would pin the old document
       for (let i = 0; i < numPages && i < App.state.pages.length; i++) {

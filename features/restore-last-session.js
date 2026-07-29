@@ -66,7 +66,7 @@
     if (idbPdfBlob) {
       try {
         const buf = await idbPdfBlob.arrayBuffer();
-        pdf = await pdfjsLib.getDocument(buf).promise;
+        pdf = await App.getPdfDocument(buf).promise;
       } catch (e) {
         if (!cachedBlob && !proj.pdf_path) throw e;
       }
@@ -74,12 +74,12 @@
     if (!pdf && cachedBlob && cachedBlob.size > 0) {
       try {
         const buf = await cachedBlob.arrayBuffer();
-        pdf = await pdfjsLib.getDocument(buf).promise;
+        pdf = await App.getPdfDocument(buf).promise;
       } catch (e) {
         if (!proj.pdf_path) throw e;
         const { data: signed, error: urlErr } = await App.getSupabase().storage.from('pdfs').createSignedUrl(proj.pdf_path, 3600);
         if (urlErr) throw urlErr;
-        pdf = await pdfjsLib.getDocument({ url: signed.signedUrl }).promise;
+        pdf = await App.getPdfDocument({ url: signed.signedUrl }).promise;
         if (proj.pdf_hash) {
           App.getSupabase().storage.from('pdfs').download(proj.pdf_path).then(({ data: blob }) => {
             if (blob) pdfCachePut(proj.id, blob, proj.pdf_hash);
@@ -91,7 +91,7 @@
       const { data: blob, error: urlErr } = await App.getSupabase().storage.from('pdfs').download(proj.pdf_path);
       if (urlErr) throw urlErr;
       if (!blob || blob.size === 0) throw new Error('The PDF file in cloud storage is empty');
-      pdf = await pdfjsLib.getDocument(blob).promise;
+      pdf = await App.getPdfDocument(blob).promise;
       if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
     }
     if (!pdf) throw new Error('No PDF available for this project');

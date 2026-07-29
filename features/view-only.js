@@ -265,7 +265,7 @@
       throw new Error('No PDF available');
     }
 
-    const pdf = await pdfjsLib.getDocument(buf).promise;
+    const pdf = await App.getPdfDocument(buf).promise;
     clearPdfBitmapCache();
     state.pages = [];
     const numPages = pdf.numPages;

@@ -752,7 +752,7 @@
   async function buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup) {
     const bufPdf = buf.slice(0);
     const bufStorage = buf.slice(0);
-    const pdf = await pdfjsLib.getDocument(bufPdf).promise;
+    const pdf = await App.getPdfDocument(bufPdf).promise;
     App.clearPdfBitmapCache();
     App.state.pages = [];
     const numPages = pdf.numPages;

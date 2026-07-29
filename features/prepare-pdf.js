@@ -279,7 +279,7 @@
           try { alert(sizeCheck.message); } catch (_) {}
           return { ok: false, error: sizeCheck.message };
         }
-        const mergedPdf = await pdfjsLib.getDocument(mergedBuf.slice(0)).promise;
+        const mergedPdf = await App.getPdfDocument(mergedBuf.slice(0)).promise;
         const startIdx = state.pages.length;
         const totalPages = mergedPdf.numPages;
         const newPages = [];
@@ -321,7 +321,7 @@
       try { alert(sizeCheck.message); } catch (_) {}
       return { ok: false, error: sizeCheck.message };
     }
-    const pdf = await pdfjsLib.getDocument(trimmedBuf.slice(0)).promise;
+    const pdf = await App.getPdfDocument(trimmedBuf.slice(0)).promise;
     const numPages = pdf.numPages;
     App.clearPdfBitmapCache && App.clearPdfBitmapCache();
     state.pages = [];

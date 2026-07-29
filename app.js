@@ -2,6 +2,35 @@
   // SECTION: Constants
   if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min-3.11.174.js';
 
+  // All pdf.js getDocument calls go through here. pdf.js needs its bundled
+  // substitute fonts (standard_fonts/) for PDFs that reference fonts without
+  // embedding them (common in CAD-exported plan sets) and cmaps/ for
+  // predefined CID text encodings — without these, every glyph in such a PDF
+  // renders as the .notdef box. Accepts an ArrayBuffer/TypedArray, a Blob, a
+  // URL string, or a DocumentInitParameters object; returns an object with a
+  // .promise resolving to the PDFDocumentProxy (the only loading-task surface
+  // the app uses).
+  const PDF_OPEN_OPTIONS = {
+    standardFontDataUrl: '/vendor/standard_fonts/',
+    cMapUrl: '/vendor/cmaps/',
+    cMapPacked: true,
+  };
+  function getPdfDocument(src) {
+    if (typeof Blob !== 'undefined' && src instanceof Blob) {
+      // pdf.js 3.x does not accept a Blob directly — read it first.
+      return { promise: src.arrayBuffer().then((buf) => pdfjsLib.getDocument({ ...PDF_OPEN_OPTIONS, data: buf }).promise) };
+    }
+    let params;
+    if (typeof src === 'string' || (typeof URL !== 'undefined' && src instanceof URL)) {
+      params = { ...PDF_OPEN_OPTIONS, url: src };
+    } else if (src instanceof ArrayBuffer || ArrayBuffer.isView(src)) {
+      params = { ...PDF_OPEN_OPTIONS, data: src };
+    } else {
+      params = { ...PDF_OPEN_OPTIONS, ...src };
+    }
+    return pdfjsLib.getDocument(params);
+  }
+
   const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || '';
   const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) || '';
   const SUPABASE_ENABLED = !!(SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.includes('supabase'));
@@ -7940,6 +7969,7 @@
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;
   App.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
+  App.getPdfDocument = getPdfDocument;
   // Viewer scale sharing + view-only boot live in features/view-only.js
   // (App.shareViewerScale / noteViewerTempScale / applyViewerTempScales /
   // maybeShowViewerScaleNotice / App.initViewOnlyMode — all registered by the

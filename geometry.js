@@ -14,14 +14,45 @@
 
   // Distance & geometry primitives
   function ptDist(a, b) { return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2); }
-  function snapToHorizontalOrVertical(x1, y1, x2, y2) {
+  /*
+   * The 8 snap rays at 45° increments, starting east and going clockwise in PDF
+   * space (y grows downward). Deliberately INTEGER direction vectors rather than
+   * unit vectors: projecting with `(d·v)/|v|²` over these exact small integers is
+   * exact in floating point, so a vertical snap yields x1 unchanged and a 45° one
+   * yields exactly (t, t). Unit vectors would route through cos/sin — cos(90°) is
+   * 6.1e-17, not 0, and √½·√½ is 0.5000000000000001 — sprinkling 1e-15 offsets
+   * into stored PDF-space annotations and leaving "vertical" lines a hair off.
+   */
+  const SNAP_DIRS = [
+    { x: 1, y: 0 },     // 0°   E
+    { x: 1, y: 1 },     // 45°
+    { x: 0, y: 1 },     // 90°  S
+    { x: -1, y: 1 },    // 135°
+    { x: -1, y: 0 },    // 180° W
+    { x: -1, y: -1 },   // 225°
+    { x: 0, y: -1 },    // 270° N
+    { x: 1, y: -1 },    // 315°
+  ];
+  /*
+   * Constrain the segment (x1,y1)->(x2,y2) to the nearest snap ray and return the
+   * new end point. `stepDeg` 45 (the default) gives 8-way snapping — horizontal,
+   * vertical, and the four diagonals; pass 90 for the original horizontal/vertical
+   * -only behavior.
+   *
+   * The end point is the ORTHOGONAL PROJECTION of the pointer onto the chosen ray,
+   * which is what the H/V-only version did (it kept x2 for a horizontal snap and y2
+   * for a vertical one) — so the point still tracks how far along the ray the
+   * pointer has travelled, and the H/V results are bit-identical to before.
+   */
+  function snapLineToAngle(x1, y1, x2, y2, stepDeg) {
     const dx = x2 - x1, dy = y2 - y1;
-    const angle = Math.atan2(dy, dx);
-    const deg = (angle * 180 / Math.PI + 360) % 360;
-    const distToHorizontal = Math.min(deg, Math.abs(deg - 180));
-    const distToVertical = Math.min(Math.abs(deg - 90), Math.abs(deg - 270));
-    const toHorizontal = distToHorizontal < distToVertical;
-    return toHorizontal ? { x: x2, y: y1 } : { x: x1, y: y2 };
+    if (dx === 0 && dy === 0) return { x: x2, y: y2 };
+    const stride = stepDeg === 90 ? 2 : 1;   // table stride: 1 = every 45°, 2 = H/V only
+    const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+    const idx = (((Math.round(deg / (45 * stride)) * stride) % 8) + 8) % 8;
+    const v = SNAP_DIRS[idx];
+    const t = (dx * v.x + dy * v.y) / (v.x * v.x + v.y * v.y);   // |v|² is 1 (axes) or 2 (diagonals)
+    return { x: x1 + t * v.x, y: y1 + t * v.y };
   }
   function polylineDistance(pts, closed) {
     if (!pts || !Array.isArray(pts)) return 0;
@@ -371,7 +402,7 @@
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-      ptDist, snapToHorizontalOrVertical, polylineDistance, polygonArea, distToSegment,
+      ptDist, snapLineToAngle, polylineDistance, polygonArea, distToSegment,
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
       rotatePoint90CW, pointInRect, rectsOverlap,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,

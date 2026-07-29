@@ -13,6 +13,788 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## ops(supabase): advisor backlog cleared — initplan rewrites + anon revoke
+
+The two deferred advisor items from the 2026-07-24 scan, both user-approved,
+applied to production via MCP and verified by re-running the advisors:
+
+- **auth_rls_initplan (9 WARNs → 0)** — migration
+  `20260724210000_rls_initplan_select_auth_uid`: every `auth.uid()` in the nine
+  flagged policies wrapped as `(select auth.uid())` so Postgres evaluates it
+  once per query instead of per row. Expressions are the pg_policies
+  definitions captured verbatim before the rewrite; behavior-identical.
+- **anon_security_definer_function_executable (24 WARNs → 0)** — after the
+  audit proved zero anon callers (rpcSupabase requires a session token; the
+  view-link path uses Edge Functions + signed URLs only; Edge Functions call
+  no public RPCs), TWO migrations: `20260724220000` revoked the direct anon
+  grants — and the advisor re-scan caught that `anon` STILL had execute via
+  the default `PUBLIC` grant (`=X/postgres` in proacl), which role membership
+  inherits. `20260724221000` revokes PUBLIC; authenticated + service_role keep
+  their explicit grants (verified in every ACL first), and ground truth
+  confirmed after: `has_function_privilege('anon', …)` false on all 24,
+  authenticated intact on all 23 it should keep (`handle_new_user`, a trigger
+  fn, lost authenticated too — nothing should reach it via the API).
+  **Lesson for future RPCs: CREATE FUNCTION grants PUBLIC execute by default —
+  every new RPC needs the same PUBLIC revoke.**
+
+Remaining advisor findings are INFO-level (unindexed audit-column FKs, two
+unused indexes) plus two dashboard toggles only an owner can click: leaked-
+password protection (Auth → HIBP) and percentage-based Auth DB connections.
+Field smoke still owed: one prod view-link click to confirm the anon path.
+
+---
+
+## feat(telemetry): field errors mirror to the admin activity feed
+
+Phase 2 of the client-error hooks: `reportClientError` now also fires
+`logUserEvent(kind, projectId, {message, source})`, so crashes land in the
+admin User Activity view PROACTIVELY instead of waiting for a user to export
+their Save Status envelope. Signed-in only (logUserEvent gates itself), message
++ source only (the stack stays client-side in the envelope), and the existing
+dedupe + 10/session cap bound the volume before it ever reaches the wire.
+
+---
+
+## feat(artboard): uploaded custom icons follow the account
+
+Both artboard apply-sites have checked `airboard.customIconPaths` since the
+artboard shipped — but `fetchUserAirboard` never selected such a column, so the
+check was dead code and a user moving devices got their palette back without
+their uploaded icon library (placed counters still rendered — the SVG path
+travels with the counter — but the picker lost the icons). New
+`user_airboard.custom_icon_paths` column (additive migration 20260724200000,
+user-approved), `saveUserAirboard` now sends `getUserCustomIcons()`, and the
+long-dead apply branches went live untouched. Clear artboard deliberately does
+NOT clear the icon library (it's a library, not palette state).
+my-settings.spec.js gains a stubbed-fetch test driving the real Load handler
+end-to-end: custom icons land in `getUserCustomIcons()`, bindings seed via the
+replace path.
+
+---
+
+## test(render-pixels): linux baselines — the draw core is now pixel-guarded in CI
+
+render-pixels (the maxDiffPixels: 0 safety net over canvas-draw.js, the ONE
+painter every mark renders through) was excluded from CI because its baselines
+were darwin-rasterized. Linux twins are now committed
+(`*-chromium-linux.png`), generated inside the official
+mcr.microsoft.com/playwright linux/amd64 image against this repo, and verified
+bit-exact on a second cold container run before committing. The CI testIgnore
+is gone — the draw core is pixel-guarded on every push, not just on a Mac.
+Regeneration recipe lives in playwright.config.js next to the (now empty)
+ignore. Playwright picks the platform suffix automatically, so local Mac runs
+keep using the darwin files untouched.
+
+---
+
+## ops(supabase): first production advisor scan — 2 fixed, the rest triaged
+
+First security + performance advisor pass over the production project
+(hrqxvfydmvtvwhvefmqc), 2026-07-24. No ERROR-level findings. Applied now
+(migration `20260724190000_pin_trigger_function_search_paths`): the two
+`function_search_path_mutable` warnings — `set_projects_updated_at` and
+`auto_checkout_on_project_insert` pinned to an empty search_path (both bodies
+touch only NEW.*/now(), so it's config-only, provably safe).
+
+Triaged, deliberately NOT auto-fixed:
+
+- **24 RPCs executable by `anon` as SECURITY DEFINER** (the advisor's top
+  class). Every RPC guards internally on auth.uid()/is_admin, so anon calls
+  return nothing — but revoking anon EXECUTE would be real defense-in-depth.
+  Blocked on an audit first: view-link viewers ARE anon, and any RPC the
+  viewer path calls client-side (touch_presence? log_user_event?) would 403
+  after a blanket revoke. Action: grep the viewer code paths, then revoke
+  anon on everything not on that list. `handle_new_user` (a trigger fn)
+  should likely leave the exposed API schema entirely.
+- **The matching `authenticated` SECURITY DEFINER warnings are by design** —
+  RPCs are the API for signed-in users and gate by role internally.
+- **9 `auth_rls_initplan` WARNs** (policies re-evaluating auth.uid() per
+  row): mechanical `(select auth.uid())` rewrites across profiles / projects /
+  project_shares / user_airboard / user_activity / view_link_access_log —
+  worth one focused migration when tables grow; today's row counts make it
+  low urgency.
+- **Dashboard toggles (can't be done via SQL)**: enable leaked-password
+  protection (Auth → HaveIBeenPwned check) and switch Auth's DB connection
+  strategy from absolute (10) to percentage.
+- **INFO-level**: 5 unindexed FKs on audit-ish columns and 2 never-used
+  indexes — noted, not worth churn yet.
+
+---
+
+## refactor(hotkeys): one table drives the handler, the Macros list, and the Map
+
+The keydown handler, the Macros shortcut table, and (transitively) the Keyboard
+Map were three hand-maintained surfaces — which is how the V (Room Sizer)
+hotkey shipped live with no documentation row for weeks. Now `HOTKEYS` in
+constants.js is the single source: the app.js handler EXECUTES it (non-bespoke
+entries click their `btnId` or run a named closure action from
+`HOTKEY_RUNNERS`; viewer gating rides the entry), and the new
+scripts/build-macros.js RENDERS it into the Macros table between generated
+markers in app/index.html — with `{btn}` row icons extracted live from the
+actual toolbar elements, so they can't diverge either. `npm run check` gains
+`build:macros -- --check`. The Keyboard Map keeps deriving from the generated
+table, so all three surfaces chain off one source.
+
+Bespoke rows (arrows, undo/redo, Escape, Space, Enter, Shift+Q, the Scale Zone
+note) stay documentation-only — their handling is structurally custom and
+remains hand-written. Guards: constants.test.js checks the table shape (unique
+keys, exactly one of btnId/runner); new hotkeys.spec.js asserts every runnable
+entry resolves to a real runner or element (both directions), smoke-drives
+d/m/j through the real keydown path, proves viewer gating (h no-ops, d works),
+and confirms every runnable key lights on the Keyboard Map end-to-end.
+
+---
+
+## feat(telemetry): field errors ride the Save Status envelope
+
+Save/sync failures were richly instrumented, but a plain JS exception in the
+field — a handler throwing on one odd project — vanished silently, so "it just
+stopped working" reports arrived with nothing. window.onerror +
+unhandledrejection now feed `pushSaveEvent` (`client_error` /
+`client_unhandled_rejection`, stack + source in the detail), landing in the
+saveStatusLog and exporting with the envelope — the diagnostic path users
+already know. Deduped by kind+message and capped at 10/session so a
+throw-in-a-loop can't flood the log; resource-load errors are skipped (no
+.error — the SW/network layer owns those); nothing is rethrown or
+preventDefault-ed, so the console story is unchanged. Inherits pushSaveEvent's
+disabled-Supabase drop, which is the right gate: cloud users are who export
+envelopes. New `[sync] Field-error telemetry` section marker; test appended to
+save-status.spec.js (real throw + real rejection, dedupe asserted, stack in the
+envelope).
+
+---
+
+## feat(quick-keys): bindings ride the Artboard — the muscle-memory hole closed
+
+Honest correction of the original ship: bindings were per-project and Save/Load
+Artboard did NOT carry them, so every new bid started with an empty number row
+even though the artboard restores the very ids the bindings point at. Now
+`user_airboard.number_key_bindings` (jsonb, additive migration
+20260724180000, applied to production via MCP with user approval) stores the
+layout with the palette.
+
+Lifecycle rules live in ONE place (features/quick-keys.js) so they can't drift:
+
+- `seedQuickKeysFromArtboard(raw, {replace})` — sign-in auto-restore seeds
+  FILL-IF-EMPTY (never stomps an active layout, order-independent vs project
+  restore); My Settings → Load from Cloud passes replace:true (the user just
+  confirmed "replace"). Sanitizes slots/kinds/ids on the way in.
+- `applyProjectQuickKeys(incoming)` — all three project intakes (cloud load,
+  PDF-intake restore, canvas-JSON import) funnel here: a payload WITH bindings
+  replaces and clears the artboard-lineage flag; a payload WITHOUT keeps an
+  artboard-seeded layout but drops a previous project's, so dead ids never leak
+  between unrelated projects.
+- `resetLocalSessionState` stays an UNCONDITIONAL wipe — it doubles as the
+  sign-out hygiene path, and bindings must never survive to the next user on a
+  shared machine. The seed survives the normal new-bid flow (sign in → upload),
+  which never passes through reset.
+
+Artboard export includes the bindings; Clear artboard clears them (the palette
+they point at is gone). quick-keys.spec.js gains the lifecycle test: seed rules,
+project replace-or-keep, and a real canvas-JSON import keeping a seeded layout.
+
+---
+
+## chore(filemap): the Large-file map line counts are now generated
+
+The decomposition table's caption asked humans to "refresh when they drift" —
+and they didn't (it sat three days stale carrying a 689-line undercount for
+app.js). New [scripts/build-filemap.js](scripts/build-filemap.js), the same
+committed-artifact-generator pattern as build-toc/build-sw: it restamps each
+row's Lines cell, the `features/*.js (NN files) | total` row, and the caption
+date (only when a count actually moved, so --check is deterministic across
+days). `npm run check` now includes `build:filemap -- --check`, so a stale
+table fails CI instead of waiting for someone to notice. Ownership split on
+purpose: the generator owns the numbers; humans own which files are listed and
+every Status / verdict — add a row by hand and its count stays fresh from then
+on.
+
+---
+
+## refactor(lines-list): first split out of the UI Render Functions region
+
+The decomposition table has named UI Render Functions (~1,065 lines) as the
+next candidate since the canvas-draw extraction: "the list renderers are
+separable per-list as feature files; updateUI itself stays core." This starts
+it with the cleanest unit — `renderLinesList` (123 lines, six inbound call
+sites, zero closure state) → [features/lines-list.js](features/lines-list.js).
+
+- **The hot-path seam**: updateUI (which can run at boot, before feature files
+  load) reaches it defensively — `App.renderLinesList && App.renderLinesList()`
+  — the burger-menu pattern; an empty Lines section for that instant is
+  harmless since no project is open yet. The search-input and show-only
+  handlers call it plainly (user-action time).
+- Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js
+  globals, lint-invisible to the features eslint group, routed through the
+  registry like pilot #13's `ptDist`), `pickScaleForLineType`,
+  `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`.
+- New [lines-list.spec.js](lines-list.spec.js) drives the moved surface through
+  the REAL updateUI path: grouping/totals (`3 lines · 25.00 ft`),
+  expand/collapse persistence, search, select-and-jump, deselect.
+
+app.js 7888 → 7779; the region drops to ~940 with the remaining renderers
+each separable by the same recipe.
+
+---
+
+## feat(quick-keys): mobile path via Project Settings + status-bar visibility fix
+
+The status-bar `keys` link is desktop-only (digits need a keyboard), which left
+tablets/phones with no way to reach the binding modal at all. A **quick keys**
+row now sits in the Project Settings links row next to `macros` — the settings
+modal is reachable everywhere (sidebar logo on mobile) — bound in
+features/quick-keys.js, mirroring the settingsMacros handler (close settings,
+open ours).
+
+Fixing that surfaced a shipped regression worth naming: the `.has-icon` class
+(status-bar icon links) carried a `display`, which out-cascaded the
+`.status-bar-desktop-only { display:none }` hide — equal specificity, later in
+the file — so `keys` and `macros` were **leaking into the cramped mobile status
+bar**, and the un-ID'd separator between them never showed on desktop at all
+(the house pattern re-shows these BY ID in the 769px media query, and it had no
+id). Fixed properly: `.has-icon` no longer sets display, the separator got
+`#statusBarQuickKeysSep`, and all three entries are re-shown by ID at 769px+
+(the two links as `inline-flex` so the icon alignment holds). A new mobile
+spec pins both the hide and the settings-modal path so this can't regress
+silently again.
+
+---
+
+## feat(quick-keys): bound rows wear their digit in the sidebar
+
+A user had to remember what they bound — the bindings lived only in the modal.
+Now a counter / line type with a Quick Key shows a small keycap badge next to
+its name in the sidebar (accent digit on a dark chip, echoing the Keyboard
+Map's lit-key look so the two surfaces read as one feature), so the bindings
+teach themselves during normal work.
+
+`quickKeyBadgeHtml(kind, id)` in app.js's `renderCountersList` /
+`renderLineTypesList` reads the feature-registered reverse lookup
+`App.getQuickKeySlotFor(kind, id)` **deferred** (a boot-time render before
+quick-keys.js loads just shows no badges; bindings only arrive with a project
+load anyway, and every later updateUI re-renders). The modal's bind/clear
+handlers call `refreshSidebarBadges()` so the sidebar tracks changes live while
+the modal is open. quick-keys.spec.js gains a badge test (digit/row pairing,
+unbound rows bare, live refresh on unbind).
+
+---
+
+## feat(undo): history deepened 5 → 50
+
+`UNDO_STACK_SIZE` (constants.js) was set to 5 back when every snapshot
+deep-copied the whole project. The perf-endgame work moved the high-frequency
+sites (counter/line/polyline/highlight placement, drops, notes) to
+**page-scoped** snapshots — O(current page), not O(project) — so the old cost
+rationale no longer held, while estimators doing rapid placement burned through
+5 steps in seconds. Now 50. The rare cross-page cascades (counter/line-type/
+group delete) still push full snapshots, but a heavy stack would need 50 of
+those *in a row*, which no real session produces. No test edits needed — the
+cap tests in annotation-model.test.js and constants.test.js derive from the
+symbol, which is exactly why the cap lives in constants.js.
+
+---
+
+## polish(status-bar): icon for "macros", optical alignment for both
+
+Gave the status-bar `macros` link a keyboard glyph to match the keypad on `keys`
+(keyboard = all shortcuts, keypad = the number row — the See Keyboard button uses
+the same keyboard icon, so the three read as a set). Folded the shared layout into
+a `.has-icon` class.
+
+The vertical nudge that levels the glyph with the lowercase text turned out to be
+**per glyph**, not shared: the keypad's ink sits low in its 640-box (lift 1px),
+while the keyboard's ink is centred yet renders high against the text (drop 2px).
+A single value couldn't level both, so each icon carries its own `top`. Values
+were dialled in by magnifying the status bar and matching each icon's rendered
+ink-centre to the text — the programmatic metric jittered ±2px on text line-box
+rounding, so the eye was the tiebreaker. Desktop-only surface; no test change.
+
+---
+
+## feat(quick-keys): the number row binds to counters and line types
+
+Placing a mark was already one click; picking WHAT to place was the slow part of a
+takeoff — a mouse trip to the sidebar and a visual scan, repeated all day. The
+number row (`1`–`9`, `0`) now binds to counters and line types, so switching is a
+keystroke. Bound from a new status-bar `keys` link (keypad icon, left of
+`macros`) → `#quickKeysModal`, ten slot rows with a picker and a clear button.
+
+- **The number row was completely free** — no digit was bound anywhere in the
+  hotkey handler, and the existing `e.target.matches('input, textarea,
+  [contenteditable]')` guard already meant typing digits into a name field
+  couldn't fire them. Nothing to design around.
+- **ONE SELECTION PATH.** The sidebar row-click bodies were extracted into
+  `setActiveCounterType(id)` / `setActiveLineType(id)` (app.js), and **both** the
+  row click and the number key now call them. A number key does not implement its
+  own activation, so toggle-off semantics (second press deselects), the tool
+  switch, and the pages-section collapse cannot drift between the two entry
+  points. The spec asserts this directly: pressing `1` and calling
+  `App.setActiveCounterType('c1')` must leave identical state.
+- **Per-project bindings that still follow the user.** `state.numberKeyBindings`
+  maps slot → `{kind, id}`. Ids come from `uid()` and are project-scoped, so the
+  data is per-project and rides save/load, export/import, and the IDB takeoff
+  backup. But Save/Load Artboard stores `state.counters` / `state.lineTypes`
+  wholesale — **ids included** — so an artboard restore lands the same ids the
+  bindings point at, and a standard palette carries its key layout between bids.
+- A binding whose target was deleted resolves **stale**: it toasts rather than
+  silently doing nothing (the real "why didn't that work" moment), renders a
+  `deleted` marker in the modal, and **keeps the id** so re-creating or
+  re-importing that item revives the slot.
+- Modifier+digit falls through untouched, so `Ctrl`/`Cmd`+`1` browser tab
+  switching still works. Viewer-gated inside `triggerQuickKey`.
+- **Self-documenting via the Keyboard Map**: bound digits light up with their
+  names (`1 — Floor Drain`). This made Quick Keys the board's **second, dynamic
+  source** — `collectMacroKeys` merges `App.getQuickKeyLabels()` in on top of the
+  static Macros table, and the inline board rebuilds whenever Macros opens, since
+  bindings arrive with a project load long after the feature file ran.
+
+New regression: [quick-keys.spec.js](quick-keys.spec.js) (7 tests) — the modal
+binding path, the key switching + toggling off, the equivalence test above, the
+keystrokes it must NOT steal, stale-binding reporting, clear-slot, import
+survival, and the Keyboard Map pickup.
+
+---
+
+## feat(keyboard-map): inline on desktop, button-and-modal on mobile
+
+The board was good enough to stop being a click away. On **desktop** it now
+renders **inline at the top of the Macros modal** — open Macros and it is just
+there, above the shortcut list. **Mobile keeps the previous behavior** (the "See
+Keyboard" button opening `#keyboardMapModal`), because a 560px board does not fit
+a phone-width card.
+
+- **Two hosts, one code path.** A "host" is any element wrapping a `.kb-board`
+  and a `.kb-caption`; `buildBoard` / `setCaption` / `wireBoardInteraction` /
+  `renderInto` all take one, so neither surface is special-cased. CSS picks which
+  host is visible at the 769px breakpoint; **both are built regardless**, so
+  resizing across the breakpoint (or rotating a tablet) needs no rebuild and no
+  resize listener.
+- The inline host is built **once at feature load** — the Macros table it derives
+  from is static markup and this script is the last one in the body, so the
+  derivation is already valid. The modal host still renders per open.
+- **Two layout constraints had to be solved, not just styled around:**
+  `.macros-modal-card` was 400px wide against a 560px board, so on desktop it
+  widens to 660px; and modal cards only get a `max-height` inside the
+  `max-width: 768px` media query, meaning a taller card on desktop would have run
+  off the bottom of the screen with no way to scroll to the rest of the list. The
+  card is now a flex column capped at 88vh with the **body** flexing, so the
+  shortcut table scrolls underneath a pinned keyboard.
+- Mobile is the CSS *default* and desktop the `@media (min-width: 769px)`
+  enhancement, so the phone path is the one that cannot regress by omission.
+
+[keyboard-map.spec.js](keyboard-map.spec.js) split by breakpoint: a desktop
+describe (inline board present on Macros-open with **no second click**, button and
+modal both out of the way, plus a layout-contract test — card within the viewport,
+the body rather than the card scrolling, board above the body) and a mobile
+describe at 375×812 (inverted visibility, button → modal, horizontal containment,
+Escape ordering, close button). Both run the derivation guard against their own
+host.
+
+---
+
+## feat(snap): J now snaps to 45° diagonals, not just horizontal/vertical
+
+Field request (Robert): the `J` snap only produced horizontal and vertical
+lines, but 45° fittings are stock plumbing hardware (there is a `45-elbow.svg`
+in `my-counters/`), so any angled run had to be drawn freehand. `J` now
+constrains to the nearest of **8** rays — 0/45/90/135/180/225/270/315.
+
+- All five call sites (quick-line preview + commit, polyline preview + commit,
+  and the mobile aim loupe by way of those commits) already funneled through the
+  one pure primitive, so this is a single-function change. `geometry.js`'s
+  `snapToHorizontalOrVertical` became **`snapLineToAngle(x1, y1, x2, y2,
+  stepDeg)`** — the old name would have been a lie once diagonals landed, and
+  the repo renames things when their content drifts. `stepDeg` defaults to 45
+  and still accepts **90 for the original H/V-only behavior**, so reverting is
+  one argument.
+- The end point is still the **orthogonal projection** of the pointer onto the
+  chosen ray (what the H/V version did by keeping `x2` or `y2`), so the line
+  keeps tracking how far along the ray you've dragged.
+- The 8 rays are **integer** direction vectors `(1,0) (1,1) (0,1) (-1,1) …` with
+  the projection taken as `(d·v)/|v|²`, not unit vectors via cos/sin. That keeps
+  the arithmetic exact: `cos(90°)` is `6.1e-17` and `√½·√½` is
+  `0.5000000000000001`, either of which would bake ~1e-15 offsets into stored
+  PDF-space annotations and leave "vertical" lines a hair off vertical. Axis
+  snaps are bit-identical to the old implementation; an exact 45° drag returns
+  exactly `(t, t)`.
+- Labels updated (header button, Line Type Settings row + tooltip, and the
+  Macros row → "Toggle snap to 45° angles"). The **persisted setting key stays
+  `snapToHorizontalVertical`** — renaming it would orphan every saved
+  `lineTypeSettings` in localStorage and in per-project data.
+- The Macros-row edit flowed into the Keyboard Map caption for free, since that
+  board derives its captions from the table — the first payoff of that design.
+
+[geometry.test.js](geometry.test.js) gains 5 tests: the original two H/V cases
+kept verbatim (proving the axes didn't move), all four diagonals, the 22.5°
+decision boundary, `stepDeg: 90` parity, and the zero-length no-op.
+
+---
+
+## feat(keyboard-map): "See Keyboard" — a visual map of the mapped keys
+
+The Macros modal is a good reference but a poor *overview*: to learn what is
+mapped you have to read 25 rows. A **See Keyboard** button now sits pinned above
+that modal's scrolling body and opens `#keyboardMapModal`
+([features/keyboard-map.js](features/keyboard-map.js)) — a 65%-ANSI keyboard
+silhouette where every key carrying a shortcut lights accent-yellow against the
+near-black board, modifiers (Shift/Ctrl/Cmd) get a softer outlined variant so the
+action keys are what the eye lands on, and everything unmapped stays grey.
+Hovering (mouse only — a touch "hover" fires and vanishes), tapping, or focusing
+a lit key names its action in the caption below; a key used by two shortcuts
+lists both (`R — Rotate page · Refresh`).
+
+- **The lit keys are DERIVED from the Macros table, not hand-declared.**
+  `collectMacroKeys()` walks `#macrosModal .macros-table` at open time — each
+  row's `<kbd>` cells give the keys, the last cell gives the action — so adding
+  a shortcut row lights its key automatically and the list and the board cannot
+  drift. Rows with no `<kbd>` (section headers, the `<th>` row, the em-dash
+  Scale Zone row) drop out on their own. Same instinct as
+  [features/burger-menu.js](features/burger-menu.js) rebuilding its rows from
+  the currently-visible header controls.
+- **Found while building it: the Macros table was missing `V` (Room Sizer).**
+  The hotkey has been live since Room Sizer shipped (`k === 'v'` → `#roomBtn`)
+  but never got a table row — the same class of gap as the room-box Delete bug
+  below. Row added, so both the list and the board now show it.
+- Geometry: 5 rows, each 15 width units over a 60-column grid, so the
+  1.25/1.5/1.75/2.25-unit keys land on exact column boundaries and the rows
+  align like a real board. The board is deliberately a superset of the mapped
+  keys (it has to read as a keyboard); `.kb-board-wrap` scrolls it horizontally
+  on a phone without the page body overflowing.
+- A **zero-new-dep** split — `App.showModal` / `App.hideModal` were the only
+  deps, both already published (like pilots #5 and #7). Registers
+  `App.openKeyboardMapModal`; the opener and close bindings are element-bound at
+  load. The app.js Escape branch checks `keyboardMapModal` **before**
+  `macrosModal`, so one Escape closes the board and leaves the shortcut list up
+  behind it.
+
+New regression: [keyboard-map.spec.js](keyboard-map.spec.js) — the load-bearing
+test is the derivation guard (every `<kbd>` in the table must resolve to a lit
+board key), plus the real open path, the modifier/unmapped styling split, the
+hover caption, Escape ordering, and the phone-viewport containment.
+
+---
+
+## fix(room-sizer): context-menu Delete now removes room boxes
+
+Field report (Wendi): right-clicking a placed room box showed the Delete
+item, but clicking it did nothing. The `ctxDelete` switch handled markers,
+lines, polylines, highlights, both zones, and notes — but never gained a
+`roomBox` branch when the Room Sizer shipped, so the menu closed and the box
+survived. Branch added (splices `ann.roomBoxes[t.index]`); the handler also
+moved to the page-scoped undo snapshot (every branch mutates only the
+current page's active canvas). Regression appended to
+[room-sizer.spec.js](room-sizer.spec.js) (seed box → right-click → target
+type `roomBox` → Delete actually deletes, menu closes, no errors).
+
+---
+
+## perf(endgame): tile grid, worker pool, persistent pyramid, page-scoped undo
+
+The four remaining roadmap items, together:
+
+- **Deep-zoom viewport TILE GRID** — the idle deep-zoom sharpening (the old
+  single-window crop tile) is now a compositor: fixed 512-css-px tiles
+  rastered at full dpr via the render service/worker into a budget-capped
+  cache (32M px high-mem / 12M px otherwise; farthest-from-center eviction),
+  composited onto #cropCanvas over the visible window. Panning re-composites
+  cached tiles instantly and rasters only newly exposed cells, center-out —
+  map-app behavior, raster cost bounded at ~one screen regardless of zoom or
+  sheet density. The commit-mode window-first tile is unchanged. New:
+  [tile-grid.spec.js](tile-grid.spec.js); the existing crop-tile.spec passes
+  unchanged against the compositor.
+- **Render worker POOL** — slot 0 stays interactive (full-page + tiles);
+  slot 1 (deviceMemory ≥ 8, docs ≤ 25MB — it holds another copy of the doc)
+  takes background prefetches so warm-up never queues behind an interactive
+  raster. Per-slot stats in the service snapshot; any slot failure falls the
+  whole pool back to main-thread for the session.
+- **Persistent pyramid** — rastered RUNG bitmaps persist to IndexedDB (store
+  `zoom_rungs`, DB v7; webp q0.85, keyed docHash|page|rotation|rung|effDpr;
+  caps 24/doc + ~96MB global, oldest-first eviction; node-tested). The doc
+  hash comes from `renderService.ensureDocHash` (guarded transport getData +
+  crypto.subtle — works with or without the worker). Restore is lazy per
+  (doc, page) on first render; restored entries feed the same cache and the
+  downsample pyramid re-derives below them — daily projects reopen with
+  yesterday's ladder warm. `persisted`/`restored` counters in the cache
+  stats. New: [pyramid-persist.spec.js](pyramid-persist.spec.js) (persists,
+  then restores across a real page reload).
+- **Page-scoped undo snapshots** — `pushUndoSnapshotPage(pageIdx)` in the
+  undo model deep-copies ONE page + the small palettes instead of every page
+  (O(current page), not O(project)); undo/redo capture their inverse at the
+  same scope, so redo entries stay small too. The high-frequency page-local
+  sites (counter/line/polyline/highlight placement incl. touch, measure,
+  drops, notes, line properties) switched over; cross-page cascades
+  (counter/line-type delete, group delete) deliberately keep full snapshots.
+  Unit-tested (page-scope isolation, interleaving with full snapshots,
+  scale/rotation/palette restore).
+
+---
+
+## perf(pyramid): downsample pyramid + prefetch immediacy/momentum
+
+"See more pixels more quickly" — attack the remaining cost, COLD rasters:
+
+- **Downsample pyramid** — a full-page bitmap rastered at zoom Z produces
+  every rung below it (down to ~0.55×Z) by GPU downscale: after any cache
+  capture, the rungs below derive automatically (one drawImage per
+  macrotask, high-quality smoothing, always from the ORIGINAL source — never
+  derived-from-derived; generation-guarded; `derived` flag + stats counter).
+  One pdf.js operator-list walk now warms the whole ladder downward, so
+  zooming back OUT is warm everywhere she's ever zoomed in, and the idle
+  prefetcher spends real rasters only on UP-rungs.
+- **Prefetch immediacy** — idle delay 250ms → 50ms (the worker made the
+  main-thread cost a postMessage; interaction listeners still cancel
+  instantly). The next rung starts rastering before the finger leaves the
+  wheel.
+- **Momentum bias** — rung candidates warm the direction the user has been
+  zooming first (wheel + pinch tracked; down-rungs usually arrive free via
+  the pyramid anyway).
+- Spec-infra note: page-switch-cache / rung-prefetch now count VISIBLE-PATH
+  ('full') rasters only — background prefetches legitimately fire within
+  their old measurement windows at the 50ms delay.
+
+New regression: [pyramid.spec.js](pyramid.spec.js) (lower rungs appear
+derived with zero rasters, zoom-out commits blit from them with the miss
+stat frozen, derived bases carry ink).
+
+---
+
+## perf(instant): rung-riding, deeper warm-up, debounced click tail, latency telemetry
+
+For the zoom-several-times-a-second + rapid-placement workflow ("the feeling
+of loading really slows her down"):
+
+- **Rung-riding** — every wheel/pinch/rail frame (via syncZoomIndicators)
+  checks whether the continuous preview zoom is nearer a DIFFERENT cached
+  rung and blit-swaps the base MID-GESTURE (strictly blit-only; uncached
+  rungs are left to the prefetcher; nothing while a raster is in flight).
+  The view re-sharpens every ~15% of zoom travel instead of blurring until
+  the commit — never more than ~7% from a crisp raster while zooming.
+- **Deeper warm-up** — the idle prefetcher warms rung ±2 around the current
+  zoom (riding's ammunition); deviceMemory ≥ 8 machines get 10 cache slots /
+  48M px total budget.
+- **Placement hot path** — handleCanvasClick had a shared TAIL updateUI()
+  running on every canvas click IN ADDITION to per-branch calls: placements
+  rebuilt the sidebar twice per click, synchronously. Now exactly one
+  debounced (~120ms) refresh at the tail; the mark itself still paints
+  synchronously via renderAnnotations. Rapid counter/line placement no
+  longer pays O(sidebar) per click.
+- **desynchronized: true** presentation hint on the pdf/crop/ann canvases
+  (Chrome honors it; others ignore it) — lower input-to-photon latency.
+- **Interaction-latency telemetry** — sample rings (cap 200) for placeMs
+  (counter click → mark painted), zoomCrispMs (last gesture input → first
+  crisp base paint), and the per-piece costs undoSnapshotMs /
+  renderAnnotationsMs / updateUIMs; p50/p95 summaries via
+  `App.__perfSamples()` and riding the Save Status envelope through
+  captureDisplayInfoObj — "feels slow" reports now arrive with numbers from
+  the user's own machine and projects.
+
+New regression: [instant-feel.spec.js](instant-feel.spec.js) (mid-gesture
+base swaps via cache hits, sidebar sentinel survives a placement click and
+the debounced refresh lands, telemetry shape). Full suite 121 passed / 11
+cloud-gated skips.
+
+---
+
+## perf(render-worker): pdf.js rasters move off the main thread (option 4)
+
+Wendi's "work jumps around while zooming" persisted after the caching work —
+the remaining cause is that any raster (cold zoom, idle refine, prefetch) on
+a dense sheet blocks the main thread for seconds, starving the gesture rAF so
+queued input lands late. This lands the structural fix:
+
+- **[render-service.js](render-service.js)** — the single seam every pdf.js
+  raster flows through (`raster({pdfPage, scale, rotation, offsets,
+  canvasContext, kind})`, returning the exact RenderTask `{promise, cancel}`
+  + `RenderingCancelledException` contract, so renderPdf/prefetch/tile kept
+  their cancel/pending machinery unchanged).
+- **[render-worker.js](render-worker.js)** — a dedicated worker running its
+  own pdf.js 3.11.174 over its own copy of the document bytes, rastering
+  into OffscreenCanvas and posting back transferable ImageBitmaps. The
+  worker's pdf.js needs an explicit nested `workerPort` (no `window` in
+  worker scope ⇒ pdf.js assumes Node ⇒ its fake-worker fallback needs
+  `document` and dies — found by the new spec).
+- **Lazy, site-free document adoption** — instead of wiring the ~14
+  getDocument call sites, the first worker-eligible raster reads the bytes
+  back out of pdf.js via `pdfPage._transport.getData()` (pinned-version
+  private API, guarded) and ships them over; new docs re-adopt by transport
+  identity with generation guards; rasters run main-thread while adoption is
+  in flight.
+- **Gates + fallback**: Worker/OffscreenCanvas support, the
+  `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory ×
+  doc-size cap (the worker holds a second copy of the doc); ANY worker
+  failure permanently falls back to main for the session and logs
+  `render_worker_fallback` to the Save Status log for diagnosability.
+- **Spec infrastructure**: the specs that wrapped `pdfPage.render` to count
+  or delay rasters (page-switch-cache, rung-prefetch, commit-tile) now use
+  the seam's hooks (`App.__renderServiceStats` with a per-request kind+page
+  log, `App.__setRasterTestDelay`) — mode-agnostic, so the whole suite
+  exercises the worker path in Chromium. New: render-worker.spec.js
+  (adoption, worker rasters, escape hatch) + render-service.test.js (5 node
+  tests for the seam contract).
+
+---
+
+## fix(zoom): continuous zoom values + the intermittent black screen
+
+Field feedback on the zoom ladder (below): Wendi wanted her zoom percentages
+continuous (not snapped to 115%/132%…), and hit an intermittent black screen
+while zooming in and out. Both addressed:
+
+**Continuous zoom (the ladder becomes raster currency only).** state.zoom is
+never snapped again — `snapCommitZoom` is gone. Instead `renderPdf` gained a
+lookup ladder: the exact display zoom's bitmap if cached, else the nearest
+RUNG's bitmap — blitted with the ≤7% residual carried by CSS sizing (new
+`currentRenderZoom` global = the zoom the buffer actually represents; it
+feeds `toCanvas`, the overlay draw env, and the legend/grid scales so marks
+stay glued), else a fresh EXACT raster. A rung-served view schedules an idle
+**exact-refine** (600ms) that re-rasters at the precise display zoom, so the
+settled view is always pixel-perfect. The idle prefetcher now warms the rung
+nearest the current zoom plus both neighbors unconditionally, and
+`doZoomIn/Out` are back to the familiar ±0.1 steps (served from rung bitmaps
+→ still instant).
+
+**Black-screen fixes** — three real bugs from the ladder work:
+1. An idle/pan-end crop-tile call during a tile-first commit cleared the
+   force tile and DROPPED its chained full render — the view stuck on the
+   stretched preview (dark margins on dark sheets). Chain ownership is now
+   explicit (`cropTileOnDone`): idle calls never disturb a pending commit
+   tile, and only the owner runs or replaces the chain.
+2. `commitZoomRender` pre-set `lastRenderedZoom` before calling `renderPdf`;
+   when a raster was already in flight renderPdf early-returns, so the
+   preview transform snapped to scale 1 around OLD content — a wrong-scale
+   flash with dark background. `lastRenderedZoom` is now owned exclusively
+   by renderPdf's paint sites.
+3. A superseded crop-tile task's catch handler zeroed the canvas the
+   replacement tile was actively rendering into.
+
+Specs updated to the new contracts: zoom-ladder.spec.js (continuous commits,
+rung-served blits with frozen miss-stat, exact-refine lands the exact
+buffer), commit-tile.spec.js, rung-prefetch.spec.js (gate on actual cache
+keys — the `prefetched` stat is lifetime), zoom-rail.spec.js (±0.1
+restored), page-switch-cache.spec.js (neighbor-page prefetch now runs after
+the rung prefetches).
+
+---
+
+## perf(zoom): the zoom ladder — instant-feeling zoom on big files
+
+Follow-up to perf(render) below. Wendi's remaining report: after a zoom the
+page "takes a few moments to re-render to a higher pixel count" — a continuous
+wheel zoom commits at an arbitrary value (187.3%…), so the bitmap cache almost
+never had that exact level and nearly every commit was a fresh full-page
+raster. Three changes make committed zooms repeat-visited and the remaining
+cold rasters small:
+
+1. **Zoom ladder (commit-snap).** New pure helpers in constants.js
+   (`ZOOM_LADDER_STEP` 1.15, `snapZoomToRung`/`nextRungUp`/`nextRungDown`,
+   node-tested; the clamp ends count as rungs so drag-to-max commits max).
+   Gesture previews stay continuous; `commitWheelZoom`/`commitPinchZoom` snap
+   to the nearest rung with the gesture anchor preserved
+   (`snapCommitZoom`), and `doZoomIn`/`doZoomOut` step exactly one rung.
+   Repeat zooming now revisits identical zoom values → cache blits.
+   Regression: [zoom-ladder.spec.js](zoom-ladder.spec.js) (buttons step
+   rungs, wheel commits land on-rung with the anchor within ±2px, rung
+   revisits add zero visible-path rasters); the zoom-rail ± spec updated to
+   the rung contract.
+2. **Adjacent-rung idle prefetch.** `runPdfBitmapPrefetch` candidates are now
+   current page @ rung±1 first (when sitting on a rung), then neighbor pages
+   @ fit; cache slots 4 → 6 (the total-px budget stays the memory bound).
+   The next zoom step in either direction is typically a one-frame blit.
+   Regression: [rung-prefetch.spec.js](rung-prefetch.spec.js).
+3. **Window-first cold commits.** A commit onto an uncached rung paints the
+   VISIBLE WINDOW at the new zoom first (the crop tile in `force` mode —
+   bounded, screen-sized raster, skipped when it wouldn't beat ~70% of the
+   full-page raster), then chains the full-page raster via `onDone`;
+   `renderPdf` keeps a target-matching tile up during that raster and retires
+   it the moment the crisp base paints (tile keys carry `baseZoom` — during
+   the tile-first phase the tile is authored in old-base container units and
+   rastered at the new zoom, so it displays screen-sharp under the still-
+   scaled preview). Debug hook `App.__pdfBitmapCacheKeys` added alongside the
+   stats hook. Regression: [commit-tile.spec.js](commit-tile.spec.js) (slow
+   full rasters simulated by wrapping `pdfPage.render`; asserts the tile is
+   up mid-raster with the old base unswapped, retires on the crisp paint, and
+   that warm commits blit with no tile at all).
+
+---
+
+## perf(render): big-file zoom/edit responsiveness (the "jumps around as files get bigger" bug)
+
+User report (Wendi): on large sheets, "you zoom and then after the fact it
+moves beneath you", and "you go to add a drop and it loads several seconds
+after the fact". Root cause was one amplifier — pdf.js rasters the whole page
+on the main thread, seconds on dense sheets — multiplied by four app-side
+mistakes, each fixed here:
+
+1. **Annotation-only edits re-rastered the PDF.** ~60 call sites (drop
+   add/clear/±, line/counter colors, icons, curve style, group + room edits,
+   zone create, legend/grid settings, scale changes, canvas-layer switches,
+   Escape-clearing previews, …) ended in `renderPdf()` — and the overlay
+   repaint only ran in the raster's completion callback, so the new drop
+   appeared seconds later. All reclassified to `renderAnnotations()` (a few
+   ms, sheet-size-independent). The one deliberate keep discovered by test:
+   `rotatePage90` genuinely changes the raster (page-switch-cache.spec caught
+   the misclassification).
+2. **Queued wheel input landed "after the fact".** During a raster stall the
+   rAF is starved while wheel deltas accumulate; the backlog then applied as
+   one giant step at a stale anchor — and the old linear factor
+   `1 − delta·k` went NEGATIVE for big backlogs, slamming the zoom clamp to
+   20%. Now: sign-safe `exp(−x)` step (same feel for live gestures), per-frame
+   step clamp (±0.6 exponent ≈ 1.8× max), and accumulated deltas older than
+   150 ms are discarded as stall backlog.
+3. **The bitmap cache stored nothing on Retina displays.** The retention
+   budget `min(0.15 × maxArea × safety, 5M px)` sat BELOW a 2×-display
+   fit-zoom buffer (~6M px), so every zoom commit / page flip / re-render was
+   a full raster. New budgets: frac 0.35, per-entry 16M px + whole-cache 24M
+   px (halved via `navigator.deviceMemory ≤ 4`), total-area eviction in
+   `pdfBitmapCachePut`.
+4. **Zoom commits ran the full `updateUI()`.** Nothing in the sidebar rebuild
+   depends on zoom; commits (wheel/pinch/±) now run the light
+   `syncZoomIndicators()` only — the end-of-gesture jank spike is gone.
+   zoom-no-updateui-during-gesture.spec.js updated to the new contract (no
+   full updateUI anywhere on the zoom path, with a spy-validity check).
+5. **Deep zoom sharpening: the crop tile** (`// SECTION: Deep-zoom sharp crop
+   tile`, #cropCanvas). When `effectiveDpr` clamps below devicePixelRatio the
+   base render is soft; the app now rasters just the visible window at full
+   dpr into a small content-space canvas sandwiched between the PDF canvas and
+   the annotation overlay (rides the container transform, so pans keep it
+   glued and zoom previews scale it). Debounced 200 ms after a render/pan
+   settles; cleared at `renderPdf` entry; hidden until its raster completes;
+   guarded by the same render-area budget; best-effort. New regression:
+   [crop-tile.spec.js](crop-tile.spec.js).
+
+---
+
+## refactor(canvas-draw): unify the two annotation draw paths behind one core
+
+The PDF Rendering region's structural duplication — `renderAnnotations` (live
+overlay, ~620 lines) and `renderAnnotationsToContext` (export/thumbnail, ~450
+lines) painting the same eight mark kinds in two coordinate spaces — is gone.
+New [canvas-draw.js](canvas-draw.js) (766 lines) exports `createCanvasDraw(deps)`
+(the save-engine seam recipe: app.js instantiates once with live-value accessor
+arrows) plus the pure `drawDropMarker`/`hexToRgb`/`lineStyleToDash`. The factory
+owns `drawAnnotationsCore(ctx, ann, env)` — ONE painter for quickLines →
+polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes →
+counterMarkers — where `env` is the explicit **divergence register** between the
+paths (transform, constant-screen vs export-scaled line width, font scale, label
+pad, dot radius, counter sizes, `DM Sans` vs `sans-serif`, selection glow, note
+handles; historical quirks preserved and commented). `drawRoomBoxesToContext`,
+`drawLegend`, and `drawGrid` moved in too. Both former paths are now thin
+env-builders with frozen signatures (the 5-arg `renderAnnotationsToContext`
+contract consumed by export-pdfs/output/pdf-bundle/summary-detail is untouched)
+— **a new annotation kind is drawn once**. Executed in four gated stages:
+(0) [render-pixels.spec.js](render-pixels.spec.js), a pixel-regression safety
+net comparing the raw canvas buffers of both paths against committed baselines
+at `maxDiffPixels: 0` over a fixture exercising every mark kind; (1) pure moves;
+(2) core + export rewire; (3) live rewire; (4) legend/grid + docs. Every stage
+landed pixel-identical. [canvas-draw.test.js](canvas-draw.test.js) adds 10 node
+tests (recording 2D-context Proxy stub): env invariants (selection glow, font
+family flow, note-handle gating, dot radius, ring solid/hollow, paint order) +
+the pure helpers. app.js 8,134 → 7,147 lines; the PDF Rendering section 1,576 →
+589 (what remains is genuinely live-path: `renderPdf`, the scale-reference UI,
+the in-progress rubber-band previews).
+
+---
+
 ## feat(room-sizer): the Room Sizer — room boxes with heights and volumetric totals
 
 First HVAC-oriented feature. A new header tool (cube icon, `TOOL.ROOM`, hotkey

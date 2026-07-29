@@ -185,7 +185,7 @@
     state.scalePointA = null;
     state.scalePointB = null;
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
   }
   // The shared two-point apply (extracted from #scaleSet): recalibrate page.scale (or a zone) so
   // the picked line equals `val` in `unit`, stamping a refLine. Reused by #scaleSet and by the
@@ -207,7 +207,7 @@
     state.scalePointB = null;
     App.hideModal('scaleModal');
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     return true;
   }
   function applyScaleObjectToZoneOrPage(scaleObj) {
@@ -234,7 +234,7 @@
     }
     App.markProjectDirty();
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     return true;
   }
   function showScaleTab(tab) {
@@ -265,7 +265,7 @@
           App.shareViewerScale && App.shareViewerScale(state.currentPage);
           App.hideModal('scaleModal');
           App.updateUI();
-          App.renderPdf();
+          App.renderAnnotations();
           App.showToast('Scale set — verify it against a known dimension');
         };
         list.appendChild(btn);
@@ -291,7 +291,7 @@
   document.getElementById('scaleShowRefLine').onchange = (e) => {
     App.state.showScaleRefLine = e.target.checked;   // device view-preference, not project data
     try { localStorage.setItem('showScaleRefLine', String(e.target.checked)); } catch (_) { /* private mode */ }
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('scaleSelectOnPdf').onclick = () => {
     const state = App.state;
@@ -301,7 +301,7 @@
     state.scalePointA = null;
     state.scalePointB = null;
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('scalePresetsCancel').onclick = () => {
     const state = App.state;
@@ -333,7 +333,7 @@
     App.shareViewerScale && App.shareViewerScale(state.currentPage);
     App.hideModal('scaleModal');
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     App.showToast('Scale set — verify it against a known dimension');
   };
   const sheetSelectEl = document.getElementById('scaleSheetSelect');
@@ -403,7 +403,7 @@
     resetScaleCheckMode();
     App.hideModal('scaleModal');
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
   };
 
   App.openScaleModal = openScaleModal;

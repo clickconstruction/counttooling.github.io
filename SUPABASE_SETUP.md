@@ -34,7 +34,7 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **006 — pdf_hash** — Adds `pdf_hash` column to `projects` for hash-based skip on upload (avoids re-uploading unchanged PDFs) and IndexedDB cache validation.
 
-**007 — user_airboard** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`. Used by Save Artboard / Load from Cloud in User Settings.
+**007 — user_airboard** — Creates `user_airboard` table (one row per user) for saving counters and line types to the user's profile. Migration 031 adds `plumbing_modifiers` and `line_modifiers`; migration `20260724180000_user_airboard_number_key_bindings` adds `number_key_bindings` (the Quick Keys number-row layout, so it carries with the palette); migration `20260724200000_user_airboard_custom_icon_paths` adds `custom_icon_paths` (the uploaded custom-icon library, so it follows the account across devices). Used by Save Artboard / Load from Cloud in User Settings.
 
 **008 — auth_profile_trigger** — Auto-creates profile and user_airboard when a new user signs up.
 
@@ -109,6 +109,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 **list_users_for_admin_project_count** — Drops and recreates `list_users_for_admin()` with an added `project_count` (owned projects) column. Powers the **Projects** column in Manage Users / All Users (clicking the count opens a per-user Projects list, filtered from `list_projects_for_admin`).
 
 **user_activity_detail_for_admin** — Adds the per-user activity RPC `user_activity_detail_for_admin(uuid)` returning a single jsonb: identity/presence (email, role, member-since, last sign-in/seen, project count), all-time totals, per-event-type breakdown, rolling 1d/7d/30d windows, active days (CST), distinct projects touched, and the recent timeline (with resolved project names). Security-definer; a `guard` CTE is the single auth choke point. Applied in three steps: admin-only (`…000000`), guard relaxed to **self-or-admin** so a user can view their own (`…001000`), and the recent feed widened 40 → 200 events (`…002000`). Powers the **Activity overview** modal (admin: click a user row's stacked dates or heart icon; self: User Settings → **My Activity**). The client renders it as a summary card + stat tiles + a day-grouped, run-collapsed feed.
+
+**drop_schema_migrations_backup** — Idempotent cleanup: drops the leftover `_schema_migrations_backup_20260612` table from the 2026-06-12 migration-history reconciliation (it was created outside the migration system with RLS disabled, flagged by the security advisor). No-op on fresh databases.
 
 ### Migration file naming
 

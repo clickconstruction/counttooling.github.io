@@ -60,7 +60,7 @@
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.bgOpacity = parseInt(document.getElementById('legendBgOpacity').value, 10) / 100;
     document.getElementById('legendBgOpacityVal').textContent = Math.round(state.legendSettings.bgOpacity * 100);
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('legendBgColor').oninput = () => {
     const state = App.state;
@@ -68,7 +68,7 @@
     const hex = document.getElementById('legendBgColor').value;
     state.legendSettings.bgColor = hex;
     document.getElementById('legendBgColorHex').textContent = hex.toLowerCase();
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('legendShowBorderBtn').onclick = (e) => {
     e.preventDefault();
@@ -81,14 +81,14 @@
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showBorder = document.getElementById('legendShowBorder').checked;
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('legendScale').oninput = () => {
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.legendScale = parseInt(document.getElementById('legendScale').value, 10) / 100;
     document.getElementById('legendScaleVal').textContent = Math.round(state.legendSettings.legendScale * 100);
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('legendShowResizeHighlightBtn').onclick = (e) => {
     e.preventDefault();
@@ -101,7 +101,7 @@
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showResizeHighlight = document.getElementById('legendShowResizeHighlight').checked;
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('legendShowRoomsBtn').onclick = (e) => {
     e.preventDefault();
@@ -114,14 +114,14 @@
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showRooms = document.getElementById('legendShowRooms').checked;
-    App.renderPdf();
+    App.renderAnnotations();
   };
   document.getElementById('legendTextOpacity').oninput = () => {
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.textOpacity = parseInt(document.getElementById('legendTextOpacity').value, 10) / 100;
     document.getElementById('legendTextOpacityVal').textContent = Math.round(state.legendSettings.textOpacity * 100);
-    App.renderPdf();
+    App.renderAnnotations();
   };
 
   App.openLegendSettingsModal = openLegendSettingsModal;

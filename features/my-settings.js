@@ -79,13 +79,15 @@
     if (Array.isArray(data.customIconPaths)) App.saveUserCustomIcons(data.customIconPaths);
     if (data.plumbingModifiers && typeof data.plumbingModifiers === 'object') App.savePlumbingModifiers(data.plumbingModifiers);
     if (data.lineModifiers && typeof data.lineModifiers === 'object') App.saveLineModifiers(data.lineModifiers);
+    // Explicit load = the user just confirmed "replace" — bindings included.
+    App.seedQuickKeysFromArtboard && App.seedQuickKeysFromArtboard(data.numberKeyBindings, { replace: true });
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     App.showToast('Artboard loaded from cloud');
   };
   document.getElementById('mySettingsExportAirboard').onclick = () => {
     const state = App.state;
-    const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: App.getUserCustomIcons(), plumbingModifiers: App.getPlumbingModifiers(), lineModifiers: App.getLineModifiers() };
+    const data = { counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: App.getUserCustomIcons(), plumbingModifiers: App.getPlumbingModifiers(), lineModifiers: App.getLineModifiers(), numberKeyBindings: state.numberKeyBindings || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = 'artboard-backup.json';
@@ -102,11 +104,14 @@
     state.iconOrder = null;
     state.activeCounterType = null;
     state.activeLineTypeId = null;
+    // The palette these pointed at is gone — clear the bindings with it.
+    state.numberKeyBindings = {};
+    state.numberKeyBindingsSeededFromArtboard = false;
     App.savePlumbingModifiers({ sizes: [...App.PLUMBING_DEFAULTS.sizes], types: [...App.PLUMBING_DEFAULTS.types], materials: [...App.PLUMBING_DEFAULTS.materials], iconByType: {}, defaultColor: App.COLORS[2] });
     App.saveLineModifiers({ sizes: [...App.LINE_DEFAULTS.sizes], materials: [...App.LINE_DEFAULTS.materials], defaultColor: App.COLORS[2] });
     App.markProjectDirty();
     App.updateUI();
-    App.renderPdf();
+    App.renderAnnotations();
     App.showToast('Artboard cleared');
   };
   document.getElementById('mySettingsManageUsers').onclick = () => { App.hideModal('mySettingsModal'); document.getElementById('manageUsersBtn').click(); };

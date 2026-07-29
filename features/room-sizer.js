@@ -275,7 +275,7 @@
     state.pendingRoomBox = null;
     state.pendingRoomBoxEdit = null;
     App.hideModal('roomBoxModal');
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
   document.getElementById('roomBoxDelete').onclick = () => {
@@ -289,7 +289,7 @@
     state.pendingRoomBox = null;
     state.pendingRoomBoxEdit = null;
     App.hideModal('roomBoxModal');
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 
@@ -326,7 +326,7 @@
     delete document.getElementById('roomEditSwatch').dataset.pickedColor;
     App.markProjectDirty();
     App.hideModal('roomEditModal');
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
   document.getElementById('roomEditDelete').onclick = () => {
@@ -357,7 +357,7 @@
     App.state.rooms = (App.state.rooms || []).filter(r => r.id !== room.id);
     if (lastRoomId === room.id) lastRoomId = null;
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 
@@ -425,7 +425,7 @@
           App.pushUndoSnapshot();
           arr.splice(idx, 1);
           App.markProjectDirty();
-          App.renderPdf();
+          App.renderAnnotations();
           App.updateUI();
         }
       };

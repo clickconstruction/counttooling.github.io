@@ -14,7 +14,7 @@
  * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
  * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = 'd57965aa236c';
+const CACHE_VERSION = '2101e31737e8';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -33,6 +33,9 @@ const PRECACHE_URLS = [
   '/icon-render.js',
   '/geometry.js',
   '/line-metrics.js',
+  '/canvas-draw.js',
+  '/render-service.js',
+  '/render-worker.js',
   '/constants.js',
   '/idb.js',
   '/format.js',
@@ -83,6 +86,9 @@ const PRECACHE_URLS = [
   '/features/canvas-layers.js',
   '/features/my-settings.js',
   '/features/user-activity.js',
+  '/features/lines-list.js',
+  '/features/quick-keys.js',
+  '/features/keyboard-map.js',
   '/report.js',
   // vendored runtime libraries (incl. the lazily-fetched pdf.js worker — required for offline render)
   '/vendor/pdf.min-3.11.174.js',
@@ -92,22 +98,6 @@ const PRECACHE_URLS = [
   '/vendor/jspdf.umd-2.5.1.min.js',
   '/vendor/supabase-js-2.108.0.min.js',
   '/vendor/tus-js-client-4.3.1.min.js',
-  // pdf.js substitute fonts for PDFs with non-embedded fonts (CAD plan sets).
-  // cmaps/ (CJK CID encodings, rare) are runtime-cached on first use instead.
-  '/vendor/standard_fonts/FoxitDingbats.pfb',
-  '/vendor/standard_fonts/FoxitFixed.pfb',
-  '/vendor/standard_fonts/FoxitFixedBold.pfb',
-  '/vendor/standard_fonts/FoxitFixedBoldItalic.pfb',
-  '/vendor/standard_fonts/FoxitFixedItalic.pfb',
-  '/vendor/standard_fonts/FoxitSerif.pfb',
-  '/vendor/standard_fonts/FoxitSerifBold.pfb',
-  '/vendor/standard_fonts/FoxitSerifBoldItalic.pfb',
-  '/vendor/standard_fonts/FoxitSerifItalic.pfb',
-  '/vendor/standard_fonts/FoxitSymbol.pfb',
-  '/vendor/standard_fonts/LiberationSans-Bold.ttf',
-  '/vendor/standard_fonts/LiberationSans-BoldItalic.ttf',
-  '/vendor/standard_fonts/LiberationSans-Italic.ttf',
-  '/vendor/standard_fonts/LiberationSans-Regular.ttf',
   // self-hosted fonts
   '/vendor/fonts/fonts.css',
   '/vendor/fonts/dmsans-300-normal-latin.woff2',

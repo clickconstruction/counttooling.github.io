@@ -52,6 +52,9 @@
         state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
         state.groups = App.ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
         state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
+        // Same replace-or-keep rule as cloud load (quick-keys.js).
+        if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(data.numberKeyBindings);
+        else state.numberKeyBindings = (data.numberKeyBindings && typeof data.numberKeyBindings === 'object') ? data.numberKeyBindings : {};
         if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
@@ -99,7 +102,7 @@
       state.selectedLinePageIdx = null;
     }
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 

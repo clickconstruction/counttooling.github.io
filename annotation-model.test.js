@@ -392,3 +392,63 @@ test('deepCopyAnnotations: null gets the canonical shape; copies are detached', 
   copy.quickLines.push({ x1: 2 });
   assert.strictEqual(ann.quickLines.length, 1);
 });
+
+test('pushUndoSnapshotPage: undo restores ONLY the scoped page; other pages untouched; redo inverts at page scope', () => {
+  const mk = (n) => ({ canvases: [{ id: 'c' + n, name: 'Main', annotations: { counterMarkers: { t: [{ x: n, y: n }] }, quickLines: [], polylines: [], highlights: [], multiplyZones: [], scaleZones: [], roomBoxes: [], notes: [], legend: null } }], scale: null, rotation: 0, label: 'P' + n });
+  const state = { isViewer: false, pages: [mk(0), mk(1)], counters: [{ id: 't' }], lineTypes: [], groups: [], rooms: [] };
+  const { ctx } = undoCtx(state);
+  const u = createUndoStack(ctx);
+
+  // Snapshot page 0, then mutate BOTH pages.
+  u.pushUndoSnapshotPage(0);
+  state.pages[0].canvases[0].annotations.counterMarkers.t.push({ x: 99, y: 99 });
+  state.pages[1].canvases[0].annotations.counterMarkers.t.push({ x: 77, y: 77 });
+
+  u.undo();
+  // Page 0 restored to one marker; page 1's mutation SURVIVES (out of scope).
+  assert.strictEqual(state.pages[0].canvases[0].annotations.counterMarkers.t.length, 1);
+  assert.strictEqual(state.pages[1].canvases[0].annotations.counterMarkers.t.length, 2);
+
+  u.redo();
+  // Redo re-applies page 0's mutation; page 1 still untouched by undo/redo.
+  assert.strictEqual(state.pages[0].canvases[0].annotations.counterMarkers.t.length, 2);
+  assert.strictEqual(state.pages[1].canvases[0].annotations.counterMarkers.t.length, 2);
+});
+
+test('page-scoped and full snapshots interleave correctly on the same stack', () => {
+  const mk = (n) => ({ canvases: [{ id: 'c' + n, name: 'Main', annotations: { counterMarkers: {}, quickLines: [], polylines: [], highlights: [], multiplyZones: [], scaleZones: [], roomBoxes: [], notes: [], legend: null } }], scale: null, rotation: 0 });
+  const state = { isViewer: false, pages: [mk(0), mk(1)], counters: [], lineTypes: [{ id: 'l1' }], groups: [], rooms: [] };
+  const { ctx } = undoCtx(state);
+  const u = createUndoStack(ctx);
+
+  u.pushUndoSnapshot();                    // full
+  state.lineTypes.push({ id: 'l2' });
+  u.pushUndoSnapshotPage(1);               // page-scoped
+  state.pages[1].canvases[0].annotations.quickLines.push({ id: 'q', x1: 0, y1: 0, x2: 1, y2: 1 });
+
+  u.undo();                                // pops the page entry
+  assert.strictEqual(state.pages[1].canvases[0].annotations.quickLines.length, 0);
+  assert.strictEqual(state.lineTypes.length, 2);   // full entry not yet popped
+
+  u.undo();                                // pops the full entry
+  assert.strictEqual(state.lineTypes.length, 1);
+
+  u.redo();
+  assert.strictEqual(state.lineTypes.length, 2);
+  u.redo();
+  assert.strictEqual(state.pages[1].canvases[0].annotations.quickLines.length, 1);
+});
+
+test('pushUndoSnapshotPage restores page scale/rotation and palettes like the full path', () => {
+  const state = { isViewer: false, pages: [{ canvases: [], scale: { pixelsPerUnit: 4, unit: 'ft' }, rotation: 0 }], counters: [{ id: 'a' }], lineTypes: [], groups: [], rooms: [] };
+  const { ctx } = undoCtx(state);
+  const u = createUndoStack(ctx);
+  u.pushUndoSnapshotPage(0);
+  state.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft' };
+  state.pages[0].rotation = 90;
+  state.counters.push({ id: 'b' });
+  u.undo();
+  assert.strictEqual(state.pages[0].scale.pixelsPerUnit, 4);
+  assert.strictEqual(state.pages[0].rotation, 0);
+  assert.strictEqual(state.counters.length, 1);
+});

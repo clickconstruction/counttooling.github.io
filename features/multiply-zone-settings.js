@@ -69,7 +69,7 @@
     state.multiplyZoneSettings.labelPosition = validPos.includes(labelPosEl?.value) ? labelPosEl.value : 'center';
     App.markProjectDirty();
     App.hideModal('multiplyZoneSettingsModal');
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 

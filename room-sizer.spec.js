@@ -180,3 +180,49 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     expect(errors).toEqual([]);
   });
 });
+
+test('context-menu Delete removes a room box (regression: the ctxDelete switch lacked a roomBox branch)', async ({ page }) => {
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await page.waitForFunction(() => document.getElementById('pdfCanvas') && document.getElementById('pdfCanvas').width > 0);
+
+  // Seed a room + box, then right-click inside the box.
+  const seeded = await page.evaluate(() => {
+    const s = window.state;
+    const roomId = window.App.uid();
+    s.rooms = [{ id: roomId, name: 'CtxDel Room', color: '#8e6fd8' }];
+    const ann = window.App.ensureActiveCanvas(s.pages[0]).annotations;
+    ann.roomBoxes = [{ id: window.App.uid(), x1: 50, y1: 50, x2: 250, y2: 200, heightFt: 8, roomId }];
+    s.currentPage = 0;
+    window.App.renderAnnotations();
+    const wrapper = document.getElementById('canvasWrapper');
+    const rect = wrapper.getBoundingClientRect();
+    // A point inside the box, mapped to client coords.
+    const cx = rect.left + s.pan.x + 150 * s.zoom;
+    const cy = rect.top + s.pan.y + 120 * s.zoom;
+    wrapper.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: cx, clientY: cy }));
+    return {
+      boxes: ann.roomBoxes.length,
+      menuVisible: document.getElementById('contextMenu').classList.contains('visible'),
+      targetType: s.ctxTarget && s.ctxTarget.type,
+    };
+  });
+  expect(seeded.boxes).toBe(1);
+  expect(seeded.menuVisible).toBe(true);
+  expect(seeded.targetType).toBe('roomBox');
+
+  await page.locator('#ctxDelete').click();
+  const after = await page.evaluate(() => ({
+    boxes: window.App.ensureActiveCanvas(window.state.pages[0]).annotations.roomBoxes.length,
+    menuVisible: document.getElementById('contextMenu').classList.contains('visible'),
+    canUndo: window.App.canUndo ? window.App.canUndo() : null,
+  }));
+  expect(after.boxes).toBe(0);           // the box is actually gone now
+  expect(after.menuVisible).toBe(false);
+  expect(errors).toEqual([]);
+});

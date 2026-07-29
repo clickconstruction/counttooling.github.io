@@ -341,6 +341,7 @@ function createSaveEngine(ctx) {
       gridSettings: state.gridSettings,
       pageCanvases: state.pages.map(p => p.canvases),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {},
+      numberKeyBindings: state.numberKeyBindings || {},
       pageScales: state.pages.map(p => p.scale),
       pageRotations: state.pages.map(p => p.rotation ?? 0),
       pageBakeFrames: state.pages.map(p => ctx.computePageBakeFrame(p))
@@ -1997,7 +1998,8 @@ function createSaveEngine(ctx) {
       showGridOverlay: ctx.getState().showGridOverlay,
       gridSettings: ctx.getState().gridSettings,
       pages: ctx.getState().pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: ctx.computePageBakeFrame(p) })),
-      activeCanvasIdByPage: ctx.getState().activeCanvasIdByPage || {}
+      activeCanvasIdByPage: ctx.getState().activeCanvasIdByPage || {},
+      numberKeyBindings: ctx.getState().numberKeyBindings || {}
     };
     const counts = getProjectCounts(data);
     const tJson = Date.now();
@@ -2455,7 +2457,8 @@ function createSaveEngine(ctx) {
       showGridOverlay: ctx.getState().showGridOverlay,
       gridSettings: ctx.getState().gridSettings,
       pages: ctx.getState().pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: ctx.computePageBakeFrame(p) })),
-      activeCanvasIdByPage: ctx.getState().activeCanvasIdByPage || {}
+      activeCanvasIdByPage: ctx.getState().activeCanvasIdByPage || {},
+      numberKeyBindings: ctx.getState().numberKeyBindings || {}
     };
     const counts = getProjectCounts(data);
     const dataSize = JSON.stringify(data).length;

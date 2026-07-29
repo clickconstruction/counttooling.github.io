@@ -99,7 +99,15 @@ const CHECKOUT_EXPIRED_TOAST_MSG = 'Your edit session expired while idle. Check 
 const PENDING_GLOBAL_RELOAD_STAMP_KEY = 'clickcount-pending-global-reload';
 
 // --- Undo/redo ---
-const UNDO_STACK_SIZE = 5;
+// 50, up from the original 5. The old cap dated from when EVERY snapshot
+// deep-copied the whole project; the high-frequency sites (counter/line/note
+// placement etc.) now push page-scoped snapshots — O(current page), not
+// O(project) — so a deep stack is cheap where it matters. The rare cross-page
+// cascades (counter/line-type/group delete) still push full snapshots, but
+// nobody performs 50 of those in a row, so the mixed stack stays small in
+// practice. Rapid counter placement burns 5 steps in seconds; 50 gives a real
+// safety margin.
+const UNDO_STACK_SIZE = 50;
 
 // --- IndexedDB store names & caps ---
 const PDF_CACHE_DB = 'clickcount-pdf-cache';
@@ -112,6 +120,12 @@ const TAKEOFF_BACKUP_META_STORE = 'takeoff_backup_meta';
 const CUSTOM_ICONS_STORE = 'custom_icons';
 const SAVE_LOGS_SNAPSHOT_STORE = 'save_logs_snapshots';
 const PDF_UPLOAD_RESUME_STORE = 'pdf_upload_resume';
+// Persistent zoom-rung bitmaps (the cross-session pyramid): compressed webp
+// blobs keyed by document hash + page + rotation + rung + effDpr, so daily
+// projects reopen with yesterday's zoom ladder already warm.
+const ZOOM_RUNGS_STORE = 'zoom_rungs';
+const ZOOM_RUNGS_MAX_PER_DOC = 24;          // entries per document
+const ZOOM_RUNGS_MAX_BYTES = 100663296;     // ~96MB across all documents
 const PDF_CACHE_MAX_ENTRIES = 10;
 const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
 const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
@@ -152,7 +166,97 @@ function nextRecentColors(list, color, presets) {
   return [c].concat(base.filter(x => String(x).toLowerCase() !== c)).slice(0, RECENT_COLORS_MAX);
 }
 
+// --- Zoom ladder ---
+// The ladder (min 0.2 x 1.15^n) is RASTER CURRENCY, not displayed values:
+// state.zoom stays fully continuous. renderPdf serves a commit from the
+// nearest rung's cached bitmap (CSS carries the <=7% residual, an idle
+// exact-refine settles crisp), and the idle prefetcher warms the rungs
+// around the current zoom — so repeat zooming becomes a synchronous blit
+// instead of a multi-second re-raster on dense sheets.
+// Pure: callers pass minZoom/maxZoom (state.maxZoom is user-configurable).
+const ZOOM_LADDER_STEP = 1.15;
+const ZOOM_LADDER_MIN = 0.2;
+function snapZoomToRung(z, minZoom, maxZoom, step) {
+  const s = step || ZOOM_LADDER_STEP;
+  const lo = minZoom ?? ZOOM_LADDER_MIN;
+  const hi = maxZoom ?? 4;
+  if (!(z > 0)) return lo;
+  const zc = Math.max(lo, Math.min(hi, z));
+  const n = Math.round(Math.log(zc / lo) / Math.log(s));
+  let rung = Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
+  // The clamp ends are rungs too: a gesture that lands at/near maxZoom (rail
+  // dragged to the top, wheel against the ceiling) must commit to maxZoom
+  // itself, not get pulled down to the nearest interior rung. Pick whichever
+  // of {rung, hi} is nearer in log space (lo is covered by the clamp above).
+  if (Math.abs(Math.log(zc / hi)) < Math.abs(Math.log(zc / rung))) rung = hi;
+  return rung;
+}
+// Smallest rung strictly above z (clamped to maxZoom). The 0.1% epsilon makes
+// a value sitting ON a rung (within float noise) step to the NEXT rung.
+function nextRungUp(z, minZoom, maxZoom, step) {
+  const s = step || ZOOM_LADDER_STEP;
+  const lo = minZoom ?? ZOOM_LADDER_MIN;
+  const hi = maxZoom ?? 4;
+  const zc = Math.max(lo, Math.min(hi, z > 0 ? z : lo));
+  const n = Math.floor(Math.log(zc * 1.001 / lo) / Math.log(s)) + 1;
+  return Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
+}
+// Largest rung strictly below z (clamped to minZoom); same epsilon reasoning.
+function nextRungDown(z, minZoom, maxZoom, step) {
+  const s = step || ZOOM_LADDER_STEP;
+  const lo = minZoom ?? ZOOM_LADDER_MIN;
+  const hi = maxZoom ?? 4;
+  const zc = Math.max(lo, Math.min(hi, z > 0 ? z : lo));
+  const n = Math.ceil(Math.log(zc * 0.999 / lo) / Math.log(s)) - 1;
+  return Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
+}
+
 // Node test harness only: in a classic browser <script> `module` is undefined,
+// --- Hotkeys: the single source of truth ---
+// The keydown handler in app.js EXECUTES this table (non-bespoke entries) and
+// scripts/build-macros.js GENERATES the Macros shortcut-table rows in
+// app/index.html from it (committed artifact; `npm run check` includes
+// `build:macros -- --check`). The Keyboard Map then derives from that
+// generated table — so handler, list, and board all chain off ONE source.
+// This exists because the three drifted by hand: the V (Room Sizer) hotkey
+// shipped live but its Macros row was missing for weeks.
+//
+// Fields: key (e.key, lowercase) + one of btnId (the element the handler
+// clicks) or runner (name of an app.js closure action: moveReset / toggleSnap
+// / rotatePage). viewerAllowed marks keys usable in view-link sessions.
+// bespoke: true = documentation-only row; its handling (arrows, undo, Escape,
+// modal-context keys) stays hand-written in app.js. Presentation fields:
+// section, action, kbd (custom <kbd> cell HTML; null = derive from key), icon
+// ({ btn: id } extracts that element's live SVG at generate time so the row
+// always matches the app; { glyph } is a text glyph; null = no icon).
+const HOTKEYS = [
+  { bespoke: true, section: 'Navigation', action: 'Previous page', kbd: '<kbd title="Left arrow">←</kbd>', icon: { glyph: '◀' } },
+  { bespoke: true, section: 'Navigation', action: 'Next page', kbd: '<kbd title="Right arrow">→</kbd>', icon: { glyph: '▶' } },
+  { bespoke: true, section: 'Navigation', action: 'Switch canvas (when multiple canvases)', kbd: '<kbd title="Up arrow">↑</kbd> <kbd title="Down arrow">↓</kbd>', icon: { glyph: '↕' } },
+  { bespoke: true, section: 'Navigation', action: 'Previous marked page', kbd: '<kbd>Shift</kbd>+<kbd>←</kbd>', icon: { glyph: '◀' } },
+  { bespoke: true, section: 'Navigation', action: 'Next marked page', kbd: '<kbd>Shift</kbd>+<kbd>→</kbd>', icon: { glyph: '▶' } },
+  { key: 'm', runner: 'moveReset', viewerAllowed: true, section: 'Tools', action: 'Move mode', kbd: null, icon: { btn: 'moveBtn' } },
+  { key: 's', btnId: 'setScale', viewerAllowed: true, section: 'Tools', action: 'Set Scale', kbd: null, icon: { btn: 'setScale' } },
+  { key: 'c', btnId: 'counterBtn', section: 'Tools', action: 'Counter mode', kbd: null, icon: { btn: 'counterBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Quick tab (when Counter or Line Type modal open)', kbd: '<kbd>Shift</kbd>+<kbd>Q</kbd>', icon: null },
+  { key: 'l', btnId: 'quickLine', section: 'Tools', action: 'Quick Line mode', kbd: null, icon: { btn: 'quickLine' } },
+  { key: 'j', runner: 'toggleSnap', viewerAllowed: true, section: 'Tools', action: 'Toggle snap to 45° angles', kbd: null, icon: { btn: 'lineTypeSnapToHVHeaderBtn' } },
+  { key: 'p', btnId: 'polylineBtn', section: 'Tools', action: 'Polyline mode', kbd: null, icon: { btn: 'polylineBtn' } },
+  { key: 'd', btnId: 'measureBtn', viewerAllowed: true, section: 'Tools', action: 'Measure Distance', kbd: null, icon: { btn: 'measureBtn' } },
+  { key: 'r', runner: 'rotatePage', viewerAllowed: true, section: 'Tools', action: 'Rotate page', kbd: null, icon: { glyph: '↻' } },
+  { key: 'h', btnId: 'highlightBtn', section: 'Tools', action: 'Highlight mode', kbd: null, icon: { btn: 'highlightBtn' } },
+  { key: 'x', btnId: 'multiplyZoneBtn', section: 'Tools', action: 'Multiply Zone mode', kbd: null, icon: { btn: 'multiplyZoneBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Scale Zone (rotated Scale icon in header/sidebar)', kbd: '—', icon: { btn: 'scaleZoneBtn' } },
+  { key: 'v', btnId: 'roomBtn', section: 'Tools', action: 'Room Sizer mode', kbd: null, icon: { btn: 'roomBtn' } },
+  { key: 'n', btnId: 'noteBtn', section: 'Tools', action: 'Note mode', kbd: null, icon: { btn: 'noteBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Undo', kbd: '<kbd>Ctrl</kbd>+<kbd>Z</kbd>', icon: { btn: 'undoBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Redo', kbd: '<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>', icon: { btn: 'redoBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Refresh', kbd: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Toggle sidebar (desktop)', kbd: '<kbd>Space</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Close modal / Cancel', kbd: '<kbd>Esc</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Finish polyline / Exit edit mode', kbd: '<kbd>Enter</kbd>', icon: null },
+];
+
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -167,16 +271,17 @@ if (typeof module !== 'undefined' && module.exports) {
     PROJECTS_CHECKOUT_RECONNECT_BACKOFF_MS, PDF_ONESHOT_BACKOFF_MS, PDF_ONESHOT_LARGE_BACKOFF_MS,
     ACTIVITY_HIGH_FREQ_MS, ACTIVITY_PROJECT_SAVE_MS,
     SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_EXPIRED_SAVE_STATUS_MSG, CHECKOUT_EXPIRED_TOAST_MSG,
-    PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE,
+    PENDING_GLOBAL_RELOAD_STAMP_KEY, UNDO_STACK_SIZE, HOTKEYS,
     PDF_CACHE_DB, PDF_CACHE_STORE, PDF_CACHE_META_STORE, VIEW_PDFS_STORE, VIEW_PDFS_META_STORE,
     TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE, CUSTOM_ICONS_STORE, SAVE_LOGS_SNAPSHOT_STORE,
-    PDF_UPLOAD_RESUME_STORE,
+    PDF_UPLOAD_RESUME_STORE, ZOOM_RUNGS_STORE, ZOOM_RUNGS_MAX_PER_DOC, ZOOM_RUNGS_MAX_BYTES,
     PDF_CACHE_MAX_ENTRIES, PDF_CACHE_MAX_BYTES, TAKEOFF_BACKUP_MAX_ENTRIES, TAKEOFF_BACKUP_MAX_BYTES,
     SAVE_LOGS_SNAPSHOT_MAX_ENTRIES, CUSTOM_ICONS_KEY,
     PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ,
     PDF_UPLOAD_TIMEOUT_BASE_MS, PDF_UPLOAD_ASSUMED_BPS, PDF_UPLOAD_TIMEOUT_SLACK_MS,
     PDF_UPLOAD_TIMEOUT_MAX_MS, PDF_UPLOAD_VERIFY_ATTEMPTS, PDF_UPLOAD_VERIFY_GAP_MS,
     PDF_RESUMABLE_THRESHOLD_BYTES,
-    RECENT_COLORS_MAX, nextRecentColors
+    RECENT_COLORS_MAX, nextRecentColors,
+    ZOOM_LADDER_STEP, ZOOM_LADDER_MIN, snapZoomToRung, nextRungUp, nextRungDown
   };
 }

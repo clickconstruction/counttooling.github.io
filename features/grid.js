@@ -36,7 +36,7 @@
     if (state.showGridOverlay) {
       state.showGridOverlay = false;
       App.markProjectDirty();
-      App.renderPdf();
+      App.renderAnnotations();
       App.updateUI();
       return;
     }
@@ -107,7 +107,7 @@
     document.getElementById('gridOriginDisplay').style.display = 'none';
     document.getElementById('gridSetOriginFormGroup').style.display = '';
     document.getElementById('gridOriginText').textContent = '—';
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
   document.querySelectorAll('.gridSpacingPreset').forEach(btn => {
@@ -158,7 +158,7 @@
     state.showGridOverlay = true;
     App.hideModal('gridSettingsModal');
     App.markProjectDirty();
-    App.renderPdf();
+    App.renderAnnotations();
     App.updateUI();
   };
 

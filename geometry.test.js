@@ -11,11 +11,49 @@ test('ptDist', () => {
   assert.strictEqual(g.ptDist({ x: 1, y: 1 }, { x: 1, y: 1 }), 0);
 });
 
-test('snapToHorizontalOrVertical', () => {
+test('snapLineToAngle: axes are exact and unchanged from the H/V-only version', () => {
   // mostly horizontal -> snap y to start
-  assert.deepStrictEqual(g.snapToHorizontalOrVertical(0, 0, 10, 2), { x: 10, y: 0 });
-  // mostly vertical -> snap x to start
-  assert.deepStrictEqual(g.snapToHorizontalOrVertical(0, 0, 2, 10), { x: 0, y: 10 });
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 10, 2), { x: 10, y: 0 });
+  // mostly vertical -> snap x to start. Exactness matters: these land in stored
+  // PDF-space annotations, so a 6.1e-17 x here would be a permanently crooked line.
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 2, 10), { x: 0, y: 10 });
+  // ...in all four axis directions, from a non-zero origin.
+  assert.deepStrictEqual(g.snapLineToAngle(5, 5, -10, 4), { x: -10, y: 5 });
+  assert.deepStrictEqual(g.snapLineToAngle(5, 5, 4, -10), { x: 5, y: -10 });
+});
+
+test('snapLineToAngle: 45° diagonals', () => {
+  // Just off 45° -> exactly 45°, projected onto the ray (dx+dy)/2 either way.
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 10, 8), { x: 9, y: 9 });
+  // The other three diagonals (PDF space: +y is down).
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, -10, 8), { x: -9, y: 9 });
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, -10, -8), { x: -9, y: -9 });
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 10, -8), { x: 9, y: -9 });
+  // An exact 45° drag is left alone.
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 7, 7), { x: 7, y: 7 });
+});
+
+test('snapLineToAngle: chooses the nearest ray across the 22.5° boundaries', () => {
+  const near = (got, x, y) => {
+    assert.ok(Math.abs(got.x - x) < 1e-9 && Math.abs(got.y - y) < 1e-9,
+      `expected ~(${x}, ${y}), got (${got.x}, ${got.y})`);
+  };
+  // 20° -> horizontal (under the 22.5° midpoint); 25° -> the 45° diagonal.
+  const r20 = 20 * Math.PI / 180, r25 = 25 * Math.PI / 180;
+  near(g.snapLineToAngle(0, 0, 10 * Math.cos(r20), 10 * Math.sin(r20)), 10 * Math.cos(r20), 0);
+  const p25 = g.snapLineToAngle(0, 0, 10 * Math.cos(r25), 10 * Math.sin(r25));
+  near(p25, p25.x, p25.x);   // lands on y = x, i.e. exactly 45°
+  assert.ok(p25.x > 0);
+});
+
+test('snapLineToAngle: stepDeg 90 restores H/V-only behavior', () => {
+  // The same 40° drag that 8-way sends to the diagonal goes horizontal at 90°.
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 10, 8, 90), { x: 10, y: 0 });
+  assert.deepStrictEqual(g.snapLineToAngle(0, 0, 8, 10, 90), { x: 0, y: 10 });
+});
+
+test('snapLineToAngle: zero-length drag is a no-op', () => {
+  assert.deepStrictEqual(g.snapLineToAngle(3, 4, 3, 4), { x: 3, y: 4 });
 });
 
 test('polylineDistance open and closed', () => {

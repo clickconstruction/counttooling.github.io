@@ -2297,6 +2297,16 @@
   // seam — main-thread today, the render worker when available (option 4).
   const renderService = createRenderService({
     logEvent: (type, msg, detail) => { try { pushSaveEvent(type, msg, detail); } catch (_) { /* log ring not up yet */ } },
+    // A worker fallback silently degrades the whole session to main-thread
+    // rasters — mirror it into the admin activity feed (same idea as
+    // reportClientError) so it's visible without a user-exported log.
+    onFallback: (reason) => {
+      try {
+        logUserEvent('render_worker_fallback', state.currentProjectId || null, {
+          message: String(reason).slice(0, 300), source: 'render-service',
+        });
+      } catch (_) { /* telemetry only */ }
+    },
   });
   const canvasDraw = createCanvasDraw({
     getState: () => state,

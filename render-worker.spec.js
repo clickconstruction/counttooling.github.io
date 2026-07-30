@@ -11,6 +11,15 @@
  *      is worker-rastered, and the canvas has real content.
  *   2. Escape hatch: with window.DISABLE_RENDER_WORKER set (config-level),
  *      everything renders on the main thread exactly as before.
+ *   3. Dense-sheet PDF features survive worker scope. pdf.js's defaults reach
+ *      for `document` in two lazy paths that simple test PDFs never touch:
+ *      the aux-canvas factory (tiling patterns / transparency groups — the
+ *      first hatched CAD sheet threw "createElement of undefined" and wedged
+ *      the session into main-thread fallback) and FontLoader (embedded fonts
+ *      without a FontFaceSet raster every glyph as a black box). A crafted
+ *      tiling-pattern PDF must worker-raster with zero fallbacks, and the
+ *      embedded-font sample plan must render pixel-equivalent ink in worker
+ *      and main modes.
  *
  * (Every OTHER Playwright spec also exercises the worker path implicitly in
  * Chromium once this ships — this spec pins the mode transitions.)
@@ -26,6 +35,49 @@ async function boot(page, errors) {
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
+}
+
+// A minimal one-page PDF whose only fill is a TILING PATTERN — rendering it
+// makes pdf.js request an auxiliary canvas from its canvasFactory, the path
+// that used to crash in worker scope (DOMCanvasFactory -> document.createElement).
+// Assembled with a byte-accurate xref so pdf.js takes the normal parse path.
+function buildTilingPatternPdf() {
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Pattern << /P1 5 0 R >> >> /Contents 4 0 R >>',
+    null,   // content stream, built below
+    null,   // pattern stream, built below
+  ];
+  const content = '/Pattern cs /P1 scn\n50 50 500 700 re f\n';
+  objs[3] = `<< /Length ${content.length} >>\nstream\n${content}endstream`;
+  const tile = '0 g 2 w 0 0 m 20 20 l S\n';
+  objs[4] = `<< /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 20 20] /XStep 20 /YStep 20 /Resources << >> /Length ${tile.length} >>\nstream\n${tile}endstream`;
+  let pdf = '%PDF-1.4\n';
+  const offsets = [];
+  objs.forEach((body, i) => {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xrefAt = pdf.length;
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  for (const off of offsets) pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
+// Count of non-white pixels on the visible PDF canvas — stable across worker
+// vs main rasters (antialiasing jitter cancels out), but blown wide open by
+// the black-box glyph failure mode.
+function canvasInkCountFn() {
+  const c = /** @type {HTMLCanvasElement} */ (document.getElementById('pdfCanvas'));
+  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  let ink = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) ink++;
+  }
+  return { ink, w: c.width, h: c.height };
 }
 
 function canvasHasContentFn() {
@@ -96,6 +148,77 @@ test.describe('Render worker', () => {
     expect(s.stats.workerRastered).toBe(0);
     expect(s.stats.mainRastered).toBeGreaterThanOrEqual(1);
     expect(await page.evaluate(canvasHasContentFn)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('tiling-pattern pages raster in the worker (aux-canvas factory)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles({
+      name: 'tiling-pattern.pdf', mimeType: 'application/pdf', buffer: buildTilingPatternPdf(),
+    });
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
+
+    // Adoption must reach 'ready' and STAY there — the pattern raster is the
+    // one that used to throw and flip the session to permanent main fallback.
+    await page.waitForFunction(() => window.App.__renderWorkerState() === 'ready', null, { timeout: 15000 });
+    const result = await page.evaluate(async () => {
+      const before = window.App.__renderServiceStats().workerRastered;
+      window.App.clearPdfBitmapCache();
+      window.App.renderPdf();
+      await new Promise((r) => setTimeout(r, 1500));
+      const s = window.App.__renderServiceStats();
+      return {
+        workerGained: s.workerRastered - before,
+        fallbacks: s.fallbacks,
+        state: window.App.__renderWorkerState(),
+      };
+    });
+    expect(result.workerGained).toBeGreaterThanOrEqual(1);
+    expect(result.fallbacks).toBe(0);
+    expect(result.state).toBe('ready');
+    expect(await page.evaluate(canvasHasContentFn)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('embedded-font pages render identical ink in worker and main modes', async ({ page, context }) => {
+    const errors = [];
+    const samplePlan = path.join(__dirname, 'samples', 'sample-plan.pdf');
+
+    async function inkFor(p, disableWorker) {
+      if (disableWorker) await p.addInitScript(() => { window.DISABLE_RENDER_WORKER = true; });
+      p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+      p.on('pageerror', (e) => errors.push(e.message));
+      await p.goto('/app/');
+      await p.waitForLoadState('networkidle');
+      await p.locator('#pdfInput').setInputFiles(samplePlan);
+      await p.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+      await p.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
+      if (!disableWorker) {
+        await p.waitForFunction(() => window.App.__renderWorkerState() === 'ready', null, { timeout: 15000 });
+        // Force the crisp raster through the worker (the boot render may have
+        // run main-thread while adoption was still in flight).
+        await p.evaluate(() => { window.App.clearPdfBitmapCache(); window.App.renderPdf(); });
+      }
+      await p.waitForTimeout(1500);
+      const mode = await p.evaluate(() => window.App.__renderServiceMode());
+      expect(mode).toBe(disableWorker ? 'main' : 'worker');
+      return p.evaluate(canvasInkCountFn);
+    }
+
+    const worker = await inkFor(page, false);
+    const main = await inkFor(await context.newPage(), true);
+    expect(worker.w).toBe(main.w);
+    expect(worker.h).toBe(main.h);
+    // Broken embedded fonts raster as solid black boxes — a >1% ink swing.
+    // Healthy worker/main pairs measure identical (AA jitter cancels in the
+    // count); allow 0.3% for environment drift.
+    const delta = Math.abs(worker.ink - main.ink) / Math.max(main.ink, 1);
+    expect(delta).toBeLessThan(0.003);
     expect(errors).toEqual([]);
   });
 });

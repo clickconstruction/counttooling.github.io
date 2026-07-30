@@ -2,7 +2,7 @@
 // Run with: npm run test:unit  (uses the built-in node:test runner; no deps)
 const test = require('node:test');
 const assert = require('node:assert');
-const { escapeHtml, pickScaleForLineType } = require('./report.js');
+const { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId } = require('./report.js');
 
 test('escapeHtml returns empty string for null/undefined', () => {
   assert.strictEqual(escapeHtml(null), '');
@@ -58,4 +58,37 @@ test('pickScaleForLineType returns null when no page has a scale', () => {
   } finally {
     delete global.state;
   }
+});
+
+test('isUntaggedGroupId treats null/empty/stringified-null keys as untagged', () => {
+  assert.strictEqual(isUntaggedGroupId(null), true);
+  assert.strictEqual(isUntaggedGroupId(undefined), true);
+  assert.strictEqual(isUntaggedGroupId(''), true);
+  // Object keys are strings, so a null group id round-trips as the string 'null'.
+  assert.strictEqual(isUntaggedGroupId('null'), true);
+  assert.strictEqual(isUntaggedGroupId('undefined'), true);
+  assert.strictEqual(isUntaggedGroupId('g1'), false);
+});
+
+test('orderGroupIds sorts alphabetically by group name with untagged last', () => {
+  const names = { g1: 'Zeta', g2: 'Alpha', g3: 'Mid' };
+  const getGroupName = (gid) => names[gid] || 'Untagged';
+  const ordered = orderGroupIds({ g1: {}, null: {} }, { g2: {}, g3: {} }, getGroupName);
+  assert.deepStrictEqual(ordered, ['g2', 'g3', 'g1', 'null']);
+});
+
+test('orderGroupIds merges ids from both summaries without duplicates', () => {
+  const getGroupName = (gid) => ({ a: 'A', b: 'B' })[gid] || 'Untagged';
+  const ordered = orderGroupIds({ a: {}, b: {} }, { b: {}, a: {} }, getGroupName);
+  assert.deepStrictEqual(ordered, ['a', 'b']);
+});
+
+test('orderGroupIds tolerates a getGroupName that returns null for deleted groups', () => {
+  // getPipeToolingSummary's getGroupName returns null (no [Group] prefix) for
+  // untagged AND for ids whose group row was deleted; the comparator must not
+  // throw on null.localeCompare.
+  const getGroupName = (gid) => (gid === 'live' ? 'Live' : null);
+  const ordered = orderGroupIds({ live: {}, deleted: {} }, {}, getGroupName);
+  assert.strictEqual(ordered.length, 2);
+  assert.ok(ordered.includes('live') && ordered.includes('deleted'));
 });

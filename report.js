@@ -29,12 +29,77 @@
     return state.pages[0]?.scale ?? null;
   }
 
+  // Annotation source shared by every builder: the app's per-canvas resolver
+  // when present, else the page's legacy annotations, else an empty shape.
+  function defaultGetAnnotations(page, pageIdx) {
+    return (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations();
+  }
+
+  // The one aggregation walk behind all three summary builders. Records carry
+  // the superset of fields the builders need (icon/color for the HTML report,
+  // runs for the report + email summary); each renderer reads what it uses.
+  function collectSummaries(pageIndices, getAnn) {
+    const counterSummaryByGroup = {};
+    const lineTypeSummaryByGroup = {};
+    const addLine = (item, lt, i, isPoly, ann) => {
+      const gid = item.group || null;
+      if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
+      if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
+      const r = lineTypeSummaryByGroup[gid][lt.id];
+      r.runs++;
+      r.lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(item, i, isPoly, ann) : (getLineLengthPdfPts(item, i, isPoly) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, item, isPoly) : 1));
+      if (!r.pages.includes(i + 1)) r.pages.push(i + 1);
+    };
+    pageIndices.forEach((i) => {
+      const page = state.pages[i];
+      const ann = getAnn(page, i);
+      (state.counters || []).forEach(c => {
+        (ann.counterMarkers?.[c.id] || []).forEach(m => {
+          const gid = m.group || null;
+          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
+          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, icon: c.icon, color: c.color, total: 0, pages: [] };
+          const r = counterSummaryByGroup[gid][c.id];
+          r.total += (typeof getMultiplyZoneForPoint === 'function' ? getMultiplyZoneForPoint(ann, m) : 1);
+          if (!r.pages.includes(i + 1)) r.pages.push(i + 1);
+        });
+      });
+      (state.lineTypes || []).forEach(lt => {
+        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => addLine(q, lt, i, false, ann));
+        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => addLine(poly, lt, i, true, ann));
+      });
+    });
+    return { counterSummaryByGroup, lineTypeSummaryByGroup };
+  }
+
+  function isUntaggedGroupId(x) {
+    return x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
+  }
+
+  // Untagged last, then alphabetical by group name — the one ordering every
+  // summary surface uses. getGroupName may return null for a deleted group's
+  // id; treat that like Untagged for comparison purposes only.
+  function orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName) {
+    const all = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
+    return all.sort((a, b) => {
+      if (isUntaggedGroupId(a)) return 1;
+      if (isUntaggedGroupId(b)) return -1;
+      return (getGroupName(a) || 'Untagged').localeCompare(getGroupName(b) || 'Untagged');
+    });
+  }
+
+  // Room Sizer totals (features/room-sizer.js registers this on window.App
+  // after this file loads; resolved at call time, optional).
+  function getRoomTotals(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getRoomVolumeTotals === 'function')
+      ? window.App.getRoomVolumeTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : [];
+  }
+
   function buildReportHtml(options = {}) {
     if (!window.state || !state.pages || !state.pages.length) return '';
 
     const pageIndices = options.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = options.getAnnotations ?? ((page, pageIdx) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations());
+    const getAnn = options.getAnnotations ?? defaultGetAnnotations;
 
     const styles = `
       body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; color: #000; margin: 2em; }
@@ -59,51 +124,8 @@
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
 
-    const counterSummaryByGroup = {};
-    const lineTypeSummaryByGroup = {};
-    pageIndices.forEach((idx) => {
-      const page = state.pages[idx];
-      const i = idx;
-      const ann = getAnn(page, i);
-      (state.counters || []).forEach(c => {
-        const markers = (ann.counterMarkers?.[c.id] || []).filter(m => true);
-        markers.forEach(m => {
-          const gid = m.group || null;
-          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
-          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, icon: c.icon, color: c.color, total: 0, pages: [] };
-          counterSummaryByGroup[gid][c.id].total += (typeof getMultiplyZoneForPoint === 'function' ? getMultiplyZoneForPoint(ann, m) : 1);
-          if (!counterSummaryByGroup[gid][c.id].pages.includes(i + 1)) counterSummaryByGroup[gid][c.id].pages.push(i + 1);
-        });
-      });
-      (state.lineTypes || []).forEach(lt => {
-        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          const gid = q.group || null;
-          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
-          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
-        });
-        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          const gid = poly.group || null;
-          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
-          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
-        });
-      });
-    });
-
-    const allGroupIds = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
-    const orderedGroupIds = allGroupIds.sort((a, b) => {
-      const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
-      if (isUntagged(a)) return 1;
-      if (isUntagged(b)) return -1;
-      const na = getGroupName(a);
-      const nb = getGroupName(b);
-      return na.localeCompare(nb);
-    });
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
+    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
 
     let totalCounters = 0;
     let totalLineRuns = 0;
@@ -199,11 +221,7 @@
 
     html += '<section>';
     html += '<h2 class="page-header">Summary</h2>';
-    // Room Sizer volumes (features/room-sizer.js registers the totals fn on
-    // window.App after this file loads; resolved at call time, optional).
-    const roomTotals = (window.App && typeof window.App.getRoomVolumeTotals === 'function')
-      ? window.App.getRoomVolumeTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : [];
+    const roomTotals = getRoomTotals(pageIndices, getAnn);
     const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0;
     if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
@@ -273,44 +291,16 @@
     if (!window.state || !state.pages || !state.pages.length) return '';
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? ((page, pageIdx) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations());
+    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
-    const counterSummaryByGroup = {};
-    const lineTypeSummaryByGroup = {};
-    pageIndices.forEach((i) => {
-      const page = state.pages[i];
-      const ann = getAnn(page, i);
-      (state.counters || []).forEach(c => {
-        (ann.counterMarkers?.[c.id] || []).forEach(m => {
-          const gid = m.group || null;
-          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
-          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, total: 0, pages: [] };
-          counterSummaryByGroup[gid][c.id].total += (typeof getMultiplyZoneForPoint === 'function' ? getMultiplyZoneForPoint(ann, m) : 1);
-          if (!counterSummaryByGroup[gid][c.id].pages.includes(i + 1)) counterSummaryByGroup[gid][c.id].pages.push(i + 1);
-        });
-      });
-      (state.lineTypes || []).forEach(lt => {
-        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          const gid = q.group || null;
-          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
-          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
-        });
-        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          const gid = poly.group || null;
-          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
-          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
-        });
-      });
-    });
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const lines = [];
-    const allGroupIds = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
-    allGroupIds.forEach(gid => {
+    // Same Untagged-last, alphabetical order as the HTML report and the email
+    // summary (previously unsorted object-key order — the one surface that
+    // disagreed). Untagged rows still carry no [Group] prefix.
+    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
+    orderedGroupIds.forEach(gid => {
       const prefix = getGroupName(gid) ? '[' + getGroupName(gid) + '] ' : '';
       const counters = counterSummaryByGroup[gid] || {};
       const lineTypes = lineTypeSummaryByGroup[gid] || {};
@@ -343,8 +333,7 @@
   // large multi-page projects.
   function getPipeToolingHasData() {
     if (!window.state || !state.pages || !state.pages.length) return false;
-    const getAnn = (page, pageIdx) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations();
+    const getAnn = defaultGetAnnotations;
     const counterIds = new Set((state.counters || []).map(c => c.id));
     const lineTypeIds = new Set((state.lineTypes || []).map(lt => lt.id));
     for (let i = 0; i < state.pages.length; i++) {
@@ -366,50 +355,11 @@
     if (!window.state || !state.pages || !state.pages.length) return '';
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? ((page, pageIdx) =>
-      (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, pageIdx) : page?.annotations) || makeAnnotations());
+    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
-    const counterSummaryByGroup = {};
-    const lineTypeSummaryByGroup = {};
-    pageIndices.forEach((i) => {
-      const page = state.pages[i];
-      const ann = getAnn(page, i);
-      (state.counters || []).forEach(c => {
-        (ann.counterMarkers?.[c.id] || []).forEach(m => {
-          const gid = m.group || null;
-          if (!counterSummaryByGroup[gid]) counterSummaryByGroup[gid] = {};
-          if (!counterSummaryByGroup[gid][c.id]) counterSummaryByGroup[gid][c.id] = { name: c.name, total: 0, pages: [] };
-          counterSummaryByGroup[gid][c.id].total += (typeof getMultiplyZoneForPoint === 'function' ? getMultiplyZoneForPoint(ann, m) : 1);
-          if (!counterSummaryByGroup[gid][c.id].pages.includes(i + 1)) counterSummaryByGroup[gid][c.id].pages.push(i + 1);
-        });
-      });
-      (state.lineTypes || []).forEach(lt => {
-        (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          const gid = q.group || null;
-          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(q, i, false, ann) : (getLineLengthPdfPts(q, i, false) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, q, false) : 1));
-          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
-        });
-        (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          const gid = poly.group || null;
-          if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-          if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, runs: 0, lengthReal: 0, pages: [] };
-          lineTypeSummaryByGroup[gid][lt.id].runs++;
-          lineTypeSummaryByGroup[gid][lt.id].lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(poly, i, true, ann) : (getLineLengthPdfPts(poly, i, true) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, poly, true) : 1));
-          if (!lineTypeSummaryByGroup[gid][lt.id].pages.includes(i + 1)) lineTypeSummaryByGroup[gid][lt.id].pages.push(i + 1);
-        });
-      });
-    });
-    const allGroupIds = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
-    const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
-    const orderedGroupIds = allGroupIds.sort((a, b) => {
-      if (isUntagged(a)) return 1;
-      if (isUntagged(b)) return -1;
-      return getGroupName(a).localeCompare(getGroupName(b));
-    });
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
+    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
     const lines = [];
     if (orderedGroupIds.length > 0) {
       lines.push('Takeoff Summary');
@@ -444,10 +394,7 @@
         lines.push('');
       });
     }
-    // Room Sizer volumes (optional — registered on window.App by features/room-sizer.js).
-    const roomTotals = (window.App && typeof window.App.getRoomVolumeTotals === 'function')
-      ? window.App.getRoomVolumeTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : [];
+    const roomTotals = getRoomTotals(pageIndices, getAnn);
     if (roomTotals.length > 0) {
       if (!lines.length) {
         lines.push('Takeoff Summary');
@@ -508,6 +455,6 @@
 
   // Node test harness only: inert in the browser (where `module` is undefined).
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { escapeHtml, pickScaleForLineType };
+    module.exports = { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId };
   }
 })();

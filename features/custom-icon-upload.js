@@ -4,8 +4,8 @@
 
   // Custom icon upload (registry split #37) -- extracted from app.js: the
   // SVG parser (path/rect/circle/ellipse/line -> normalized path icon) and
-  // the #customIconUploadInput handler that refreshes the four custom icon
-  // grids (Create Counter, Plumbing, Quick Count, Details) after an upload.
+  // the #customIconUploadInput handler that refreshes the three custom icon
+  // grids (Create Counter, Quick Count, Details) after an upload.
 
   function parseUploadedSvg(file) {
     return new Promise((resolve, reject) => {
@@ -89,24 +89,6 @@
           newIconCell.classList.add('selected');
           const nameEl = document.getElementById('counterName');
           if (!nameEl.value.trim()) nameEl.value = icon.name;
-        }
-      }
-      const plumCustomGrid = document.getElementById('plumIconGridCustom');
-      if (plumCustomGrid) {
-        plumCustomGrid.innerHTML = uploadCell + iconCells;
-        plumCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            document.querySelectorAll('#plumIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-            plumCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-          };
-        });
-        const newIconCellPlum = Array.from(plumCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCellPlum) {
-          document.querySelectorAll('#plumIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          plumCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCellPlum.classList.add('selected');
         }
       }
       const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');

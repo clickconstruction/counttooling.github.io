@@ -1,15 +1,16 @@
 // @ts-check
 /**
- * Tests: the window.App registry pilot #23 - the Quick Plumbing + Quick Count
- * modals extracted to features/quick-modals.js. Non-cloud; the populators render
- * from local modifier/icon state, and the #plumBtn opener exercises the
- * bidirectional path into features/counter.js (showCounterTab('quickcount') ->
- * App.populateCounterQuickCountPanel).
+ * Tests: the window.App registry pilot #23 - the Quick Count panel extracted
+ * to features/quick-modals.js. Non-cloud; the populator renders from local
+ * modifier/icon state. The legacy #plumModal surface (and its
+ * App.populatePlumModal registration) was removed 2026-07-30 — the #plumBtn
+ * opener now only routes into the Counter modal's Quick Count tab
+ * (showCounterTab('quickcount') -> App.populateCounterQuickCountPanel).
  */
 const { test, expect } = require('@playwright/test');
 
 test.describe('window.App registry pilot - Quick modals', () => {
-  test('registry wired; both populators render without throwing', async ({ page }) => {
+  test('registry wired; the Quick Count populator renders without throwing', async ({ page }) => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
@@ -17,22 +18,24 @@ test.describe('window.App registry pilot - Quick modals', () => {
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
 
-    expect(await page.evaluate(() => typeof window.App?.populatePlumModal)).toBe('function');
     expect(await page.evaluate(() => typeof window.App?.populateCounterQuickCountPanel)).toBe('function');
     expect(await page.evaluate(() => typeof window.App?.updateCounterQuickCountNamePreview)).toBe('function');
+    // The legacy Quick Plumbing modal is gone: neither the registration nor
+    // its markup should exist.
+    expect(await page.evaluate(() => typeof window.App?.populatePlumModal)).toBe('undefined');
+    expect(await page.locator('#plumModal').count()).toBe(0);
 
-    // Both populators render from local modifier/icon state - no PDF needed.
+    // The populator renders from local modifier/icon state - no PDF needed.
     const result = await page.evaluate(() => {
       try {
-        window.App.populatePlumModal();
         window.App.populateCounterQuickCountPanel();
         return true;
       } catch (e) { return String(e && e.message || e); }
     });
     expect(result).toBe(true);
 
-    // The Quick Plumbing icon grid populated.
-    expect(await page.locator('#plumIconGrid .icon-cell').count()).toBeGreaterThan(0);
+    // The Quick Count icon grid populated.
+    expect(await page.locator('#counterQuickCountIconGrid .icon-cell').count()).toBeGreaterThan(0);
 
     expect(errors).toEqual([]);
   });

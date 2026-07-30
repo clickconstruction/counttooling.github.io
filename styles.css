@@ -281,7 +281,6 @@
     .plum-type-icon-box.has-icon { border-style: solid; }
     .plum-type-icon-box svg { width: 24px; height: 24px; }
     .plum-type-icon-box .plum-type-icon-placeholder { font-size: 1rem; color: var(--text3); }
-    #plumModal .plum-icon-grid { max-height: 148px; }
     .plum-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 4px 0; }
     .plum-name-row .icon-svg { width: 20px; height: 20px; flex-shrink: 0; }
     .plum-name-row .plum-name-input { flex: 0 1 auto; min-width: 0; max-width: 180px; padding: 6px 10px; background: transparent; border: none; border-radius: 0; color: var(--text); font-size: 1rem; font-family: inherit; }

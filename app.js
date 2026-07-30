@@ -4615,9 +4615,10 @@
   // #counterIconSearch, #counterCancel, #counterCreate) moved to
   // features/counter.js (window.App registry) alongside the choose-tab handlers.
 
-  // The Quick Plumbing + Quick Count modals (populatePlumModal,
-  // populateCounterQuickCountPanel, removePlumbingModifier, the icon-tab helpers,
-  // and the #plumBtn opener) moved to features/quick-modals.js.
+  // The Quick Count panel (populateCounterQuickCountPanel,
+  // removePlumbingModifier, the icon-tab helpers, and the #plumBtn opener)
+  // moved to features/quick-modals.js. The legacy #plumModal surface was
+  // removed 2026-07-30 (nothing opened it).
 
   // SECTION: Add Line Type modal
   // The Quick Line modal (populateQuickLineModal, updateQuickLineNamePreview,
@@ -5078,7 +5079,6 @@
   document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
-  document.getElementById('plumCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('customIconTipsClose').onclick = () => hideModal('customIconTipsModal');
   // The Note add/edit modal (openNoteModal + its Cancel/Done handlers) lives in
@@ -7750,7 +7750,7 @@
   App.savePlumbingModifiers = savePlumbingModifiers;
   App.getIconName = getIconName;
   App.getEffectiveCustomIcons = getEffectiveCustomIcons;
-  // populatePlumModal + populateCounterQuickCountPanel are registered from
+  // populateCounterQuickCountPanel is registered from
   // features/quick-modals.js (counter.js calls App.populateCounterQuickCountPanel).
   App.getCloudSaveSummary = getCloudSaveSummary;
   App.pruneSaveStatusLog = pruneSaveStatusLog;

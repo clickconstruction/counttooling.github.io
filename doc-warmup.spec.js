@@ -116,6 +116,10 @@ test.describe('Full-document warm-up', () => {
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
+    // Hold the prefetch chain back (each prefetch raster +400ms) so the walk
+    // cannot reach the far field before the marker below is seeded — the
+    // ordering assertion must not race the walk (flaked on CI without this).
+    await page.evaluate(() => window.App.__setRasterTestDelay(400, ['prefetch']));
     await page.locator('#pdfInput').setInputFiles({
       name: 'five-pages.pdf', mimeType: 'application/pdf', buffer: buildMultiPagePdf(5),
     });
@@ -127,6 +131,7 @@ test.describe('Full-document warm-up', () => {
     await page.evaluate(() => {
       const p = window.state.pages[3];
       p.canvases[0].annotations.counterMarkers = { seed: [{ x: 100, y: 100, id: 'seed1' }] };
+      window.App.__setRasterTestDelay(0);   // seed is in — release the chain
     });
 
     await page.waitForFunction(() => window.App.__docWarmupState().done === 4, null, { timeout: 30000 });

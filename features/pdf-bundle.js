@@ -4,11 +4,8 @@
   // PDF bundling helpers (report/notes/highlights -> jsPDF) -- extracted from
   // app.js via the window.App registry. Consumed by features/export-pdfs.js and
   // app.js's download/export flows via App.*. buildReportHtml/html2canvas are
-  // runtime globals resolved at export time (after report.js loads).
-  const {
-    state, renderAnnotationsToContext, getPageCanvases, getActiveAnnotations,
-    wrapNoteText,
-  } = App;
+  // runtime globals resolved at export time (after report.js loads). Shared
+  // deps are read from App.* at call time (never captured at load).
 
   async function addReportPagesToPdf(doc) {
     if (typeof window.buildReportHtml !== 'function' || typeof html2canvas !== 'function') return 0;
@@ -53,11 +50,11 @@
   }
 
   function hasAnyHighlights() {
-    return state.pages.some(p => getPageCanvases(p).some(c => (c.annotations?.highlights?.length || 0) > 0));
+    return App.state.pages.some(p => App.getPageCanvases(p).some(c => (c.annotations?.highlights?.length || 0) > 0));
   }
 
   function hasAnyNotes() {
-    return state.pages.some(p => getPageCanvases(p).some(c => (c.annotations?.notes?.length || 0) > 0));
+    return App.state.pages.some(p => App.getPageCanvases(p).some(c => (c.annotations?.notes?.length || 0) > 0));
   }
 
   async function addNotesToPdf(doc, options = {}) {
@@ -66,9 +63,9 @@
     const pageFilter = options.pageFilter ?? (() => true);
     const PT_TO_MM = 25.4 / 72;
     const items = [];
-    state.pages.forEach((page, pageIdx) => {
+    App.state.pages.forEach((page, pageIdx) => {
       if (!pageFilter(pageIdx)) return;
-      const notes = getActiveAnnotations(page)?.notes || [];
+      const notes = App.getActiveAnnotations(page)?.notes || [];
       notes.forEach(n => {
         if (n.text) items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), note: n });
       });
@@ -98,14 +95,14 @@
     let pageCount = doc.getNumberOfPages();
     for (let idx = 0; idx < items.length; idx++) {
       const it = items[idx];
-      const page = state.pages[it.pageIdx];
+      const page = App.state.pages[it.pageIdx];
       const n = it.note;
       const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
       const pageW = viewport.width / scale, pageH = viewport.height / scale;
       const noteW = n.width || 150;
       const noteFontSize = n.fontSize || 14;
       const font = (noteFontSize * scale) + 'px sans-serif';
-      const { height: noteH } = wrapNoteText(n.text, noteW * scale, font, noteFontSize * scale);
+      const { height: noteH } = App.wrapNoteText(n.text, noteW * scale, font, noteFontSize * scale);
       const pad = 8;
       const minX = Math.max(0, n.x - pad);
       const minY = Math.max(0, n.y - pad);
@@ -118,7 +115,7 @@
       fullCanvas.height = viewport.height;
       const ctx = fullCanvas.getContext('2d');
       await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-      renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+      App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
       const cropW = Math.max(1, Math.round(w * scale));
       const cropH = Math.max(1, Math.round(hh * scale));
       const cropCanvas = document.createElement('canvas');
@@ -152,9 +149,9 @@
     const pageFilter = options.pageFilter ?? (() => true);
     const PT_TO_MM = 25.4 / 72;
     const items = [];
-    state.pages.forEach((page, pageIdx) => {
+    App.state.pages.forEach((page, pageIdx) => {
       if (!pageFilter(pageIdx)) return;
-      const highlights = getActiveAnnotations(page)?.highlights || [];
+      const highlights = App.getActiveAnnotations(page)?.highlights || [];
       highlights.forEach(h => {
         items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), highlight: h });
       });
@@ -184,7 +181,7 @@
     let pageCount = doc.getNumberOfPages();
     for (let idx = 0; idx < items.length; idx++) {
       const it = items[idx];
-      const page = state.pages[it.pageIdx];
+      const page = App.state.pages[it.pageIdx];
       const h = it.highlight;
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
@@ -202,7 +199,7 @@
       fullCanvas.height = viewport.height;
       const ctx = fullCanvas.getContext('2d');
       await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-      renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+      App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
       const cropW = Math.max(1, Math.round(w * scale));
       const cropH = Math.max(1, Math.round(hh * scale));
       const cropCanvas = document.createElement('canvas');

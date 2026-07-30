@@ -69,4 +69,44 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('Download Trimmed PDF: builds the trimmed buffer and downloads with a sanitized name', async ({ page }) => {
+    // Regression: sanitizeForFilename/downloadPdfBuffer are registered by
+    // features/output.js, which loads AFTER features/prepare-pdf.js — the
+    // handler must read them from App.* at call time, not capture them at load
+    // (a load-time capture sees undefined and the click throws a TypeError).
+    const errors = [];
+    const isBenignRenderRace = (t) => /multiple render\(\) operations/i.test(t || '');
+    page.on('console', (msg) => { if (msg.type() === 'error' && !isBenignRenderRace(msg.text())) errors.push(msg.text()); });
+    page.on('pageerror', (err) => { if (!isBenignRenderRace(err.message)) errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // A default name that needs sanitizing (":", "/", spaces).
+    await page.evaluate(() =>
+      window.App.openPreparePdfModal(window.state.pages, window.state.pdfBuffer, 'Trim: Job/Site Plan'),
+    );
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 5000 });
+    const label = page.locator('#preparePdfPageLabel');
+    await expect(label).toContainText('of 2');
+
+    // Delete a page so the download exercises the buildTrimmedPdfBuffer path
+    // (kept.length !== pages.length), not the buffer passthrough.
+    await page.locator('#preparePdfDelete').click();
+    await expect(label).toContainText('of 1');
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
+    await page.locator('#preparePdfDownload').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('Trim__Job_Site_Plan.pdf');
+
+    // The modal stays open (download does not commit or close).
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/);
+
+    expect(errors).toEqual([]);
+  });
 });

@@ -5,12 +5,9 @@
   // app.js via the window.App registry. The PDF upload/file handler, loadTestPdf,
   // and the shared PDF helpers stay in app.js; the modal's #preparePdf* bindings
   // run at load below. Other flows open it via App.openPreparePdfModal().
-  const {
-    state, showModal, hideModal, updateUI, showToast, renderPdf, uid,
-    makeAnnotations, markProjectDirty, fitZoom, sanitizeForFilename,
-    assertPdfWithinLimit, mergePdfBuffers, buildTrimmedPdfBuffer, resetGridOrigin,
-    writeTakeoffStateBackup, downloadPdfBuffer, performSaveProjectToCloud, isAuthError,
-  } = App;
+  // Shared deps are read from App.* at call time (never captured at load):
+  // sanitizeForFilename / downloadPdfBuffer are registered by
+  // features/output.js, which loads AFTER this file.
 
   let preparePdfPages = [];
   let preparePdfBuffer = null;
@@ -114,7 +111,7 @@
     const descEl = document.getElementById('preparePdfDescription');
     const nameRowEl = document.getElementById('preparePdfNameRow');
     if (preparePdfMode === 'append') {
-      if (titleEl) titleEl.textContent = 'Add pages — ' + (state.currentProjectName || 'Untitled');
+      if (titleEl) titleEl.textContent = 'Add pages — ' + (App.state.currentProjectName || 'Untitled');
       if (descEl) descEl.textContent = 'Remove unnecessary pages before adding them to the current project.';
       if (nameRowEl) nameRowEl.style.display = 'none';
     } else {
@@ -124,14 +121,14 @@
     }
     renderPreparePdfPreview();
     updatePreparePdfControls();
-    showModal('preparePdfModal');
+    App.showModal('preparePdfModal');
     (async function computePageSizes() {
       if (typeof PDFLib === 'undefined' || !preparePdfBuffer) return;
       const indices = [...preparePdfKeptIndices].sort((a, b) => a - b);
       for (const i of indices) {
         if (!preparePdfBuffer) return;
         try {
-          const buf = await buildTrimmedPdfBuffer(preparePdfBuffer, [i]);
+          const buf = await App.buildTrimmedPdfBuffer(preparePdfBuffer, [i]);
           if (buf) preparePdfPageBytes[i] = buf.byteLength;
         } catch (_) {}
         if (document.getElementById('preparePdfModal')?.classList.contains('visible')) {
@@ -146,7 +143,7 @@
     preparePdfPageBytes = {};
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
-    hideModal('preparePdfModal');
+    App.hideModal('preparePdfModal');
   }
   window.closePreparePdfModal = closePreparePdfModal;
   document.getElementById('preparePdfCancel').onclick = () => closePreparePdfModal();
@@ -240,24 +237,24 @@
     const kept = preparePdfKeptIndices;
     if (!kept.length || !preparePdfBuffer) return { ok: false };
     const name = preparePdfMode === 'append'
-      ? (state.currentProjectName || preparePdfDefaultName)
+      ? (App.state.currentProjectName || preparePdfDefaultName)
       : (preparePdfProjectName || preparePdfDefaultName);
     const trimmedBuf = kept.length === preparePdfPages.length
       ? preparePdfBuffer
-      : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
+      : await App.buildTrimmedPdfBuffer(preparePdfBuffer, kept);
     if (!trimmedBuf) return { ok: false };
     const trimmedBufSize = trimmedBuf.byteLength ?? trimmedBuf.length ?? trimmedBuf.size ?? 0;
     if (preparePdfMode === 'append') {
       // #7a: Merge the new trimmed buffer onto the existing project buffer and
       // append pages. Enforce the size ceiling on the MERGED result so we do
       // not blow past the 50 MB cloud storage cap.
-      const existingBuf = state.pdfBuffer;
+      const existingBuf = App.state.pdfBuffer;
       const existingSize = existingBuf ? (existingBuf.byteLength ?? existingBuf.length ?? 0) : 0;
       // Pre-flight size check (worst-case sum) to avoid a wasted merge of a
       // buffer that obviously cannot fit. The post-merge check below is the
       // authoritative gate.
       const projectedSize = existingSize + trimmedBufSize;
-      const preCheck = assertPdfWithinLimit(projectedSize, 'commitPreparePdfToState.append.pre');
+      const preCheck = App.assertPdfWithinLimit(projectedSize, 'commitPreparePdfToState.append.pre');
       if (preCheck && !preCheck.ok) {
         try { alert(preCheck.message); } catch (_) {}
         return { ok: false, error: preCheck.message };
@@ -271,16 +268,16 @@
         try { alert(msg); } catch (_) {}
         return { ok: false, error: msg };
       } else {
-        const mergedBuf = await mergePdfBuffers([existingBuf, trimmedBuf]);
+        const mergedBuf = await App.mergePdfBuffers([existingBuf, trimmedBuf]);
         if (!mergedBuf) return { ok: false, error: 'Failed to merge PDFs.' };
         const mergedSize = mergedBuf.byteLength ?? mergedBuf.length ?? mergedBuf.size ?? 0;
-        const sizeCheck = assertPdfWithinLimit(mergedSize, 'commitPreparePdfToState.append.merged');
+        const sizeCheck = App.assertPdfWithinLimit(mergedSize, 'commitPreparePdfToState.append.merged');
         if (sizeCheck && !sizeCheck.ok) {
           try { alert(sizeCheck.message); } catch (_) {}
           return { ok: false, error: sizeCheck.message };
         }
         const mergedPdf = await App.getPdfDocument(mergedBuf.slice(0)).promise;
-        const startIdx = state.pages.length;
+        const startIdx = App.state.pages.length;
         const totalPages = mergedPdf.numPages;
         const newPages = [];
         for (let i = startIdx; i < totalPages; i++) {
@@ -288,9 +285,9 @@
           const keptOrigIdx = kept[i - startIdx];
           const label = preparePdfPages[keptOrigIdx]?.label || ('Page ' + (i + 1));
           const rotation = preparePdfPages[keptOrigIdx]?.rotation ?? 0;
-          const canvasId = uid();
-          newPages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation });
-          state.activeCanvasIdByPage[i] = canvasId;
+          const canvasId = App.uid();
+          newPages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation });
+          App.state.activeCanvasIdByPage[i] = canvasId;
         }
         // Re-bind existing state.pages to the merged pdf so all pages share a
         // single pdfjs document. This avoids holding the old detached buffer.
@@ -299,24 +296,24 @@
         // app.js, which always loads before this feature file).
         App.clearPdfBitmapCache && App.clearPdfBitmapCache();
         for (let i = 0; i < startIdx; i++) {
-          if (state.pages[i]) state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
+          if (App.state.pages[i]) App.state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
         }
-        state.pages = state.pages.concat(newPages);
-        state.pdfBuffer = mergedBuf;
-        state.pdfBufferSize = mergedSize;
+        App.state.pages = App.state.pages.concat(newPages);
+        App.state.pdfBuffer = mergedBuf;
+        App.state.pdfBufferSize = mergedSize;
         // Pdf binary changed: clear the hash so the next manual save triggers
         // an upload. KEEP state.pdfStoragePath set to the previous cloud path
         // so performSaveProjectToCloud can clean it up via its prevPdfStoragePath
         // remove(). The path is replaced with the new uploaded path on save.
-        state.pdfHash = null;
+        App.state.pdfHash = null;
       }
       preparePdfPages = [];
       preparePdfBuffer = null;
       preparePdfKeptIndices = [];
       preparePdfUndoStack = [];
-      return { ok: true, name, pdfBuffer: state.pdfBuffer, appended: true };
+      return { ok: true, name, pdfBuffer: App.state.pdfBuffer, appended: true };
     }
-    const sizeCheck = assertPdfWithinLimit(trimmedBufSize, 'commitPreparePdfToState');
+    const sizeCheck = App.assertPdfWithinLimit(trimmedBufSize, 'commitPreparePdfToState');
     if (sizeCheck && !sizeCheck.ok) {
       try { alert(sizeCheck.message); } catch (_) {}
       return { ok: false, error: sizeCheck.message };
@@ -324,27 +321,27 @@
     const pdf = await App.getPdfDocument(trimmedBuf.slice(0)).promise;
     const numPages = pdf.numPages;
     App.clearPdfBitmapCache && App.clearPdfBitmapCache();
-    state.pages = [];
-    state.activeCanvasIdByPage = {};
+    App.state.pages = [];
+    App.state.activeCanvasIdByPage = {};
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
       const origIdx = kept[i];
       const label = preparePdfPages[origIdx]?.label || ('Page ' + (i + 1));
       const rotation = preparePdfPages[origIdx]?.rotation ?? 0;
-      const canvasId = uid();
-      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation });
-      state.activeCanvasIdByPage[i] = canvasId;
+      const canvasId = App.uid();
+      App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation });
+      App.state.activeCanvasIdByPage[i] = canvasId;
     }
-    state.pdfBuffer = trimmedBuf;
-    state.pdfBufferSize = trimmedBufSize;
-    state.pdfStoragePath = null;
-    state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
-    state.currentPage = 0;
+    App.state.pdfBuffer = trimmedBuf;
+    App.state.pdfBufferSize = trimmedBufSize;
+    App.state.pdfStoragePath = null;
+    App.state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
+    App.state.currentPage = 0;
     preparePdfPages = [];
     preparePdfBuffer = null;
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
-    resetGridOrigin();
+    App.resetGridOrigin();
     return { ok: true, name, pdfBuffer: trimmedBuf };
     } catch (e) {
       console.error('[Prepare PDF]', e);
@@ -354,36 +351,36 @@
   document.getElementById('preparePdfDone').onclick = async () => {
     const r = await commitPreparePdfToState();
     if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
-    hideModal('preparePdfModal');
-    markProjectDirty();
-    updateUI();
-    requestAnimationFrame(() => { fitZoom(); renderPdf(); });
-    await writeTakeoffStateBackup();
+    App.hideModal('preparePdfModal');
+    App.markProjectDirty();
+    App.updateUI();
+    requestAnimationFrame(() => { App.fitZoom(); App.renderPdf(); });
+    await App.writeTakeoffStateBackup();
   };
   document.getElementById('preparePdfDownload').onclick = async () => {
     const kept = preparePdfKeptIndices;
     if (!kept.length || !preparePdfBuffer) return;
     const trimmedBuf = kept.length === preparePdfPages.length
       ? preparePdfBuffer
-      : await buildTrimmedPdfBuffer(preparePdfBuffer, kept);
+      : await App.buildTrimmedPdfBuffer(preparePdfBuffer, kept);
     if (!trimmedBuf) { alert('Failed to build PDF.'); return; }
     const name = preparePdfProjectName || preparePdfDefaultName;
-    downloadPdfBuffer(trimmedBuf, sanitizeForFilename(name) + '.pdf');
+    App.downloadPdfBuffer(trimmedBuf, App.sanitizeForFilename(name) + '.pdf');
   };
   document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
     const r = await commitPreparePdfToState();
     if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
-    hideModal('preparePdfModal');
-    markProjectDirty();
-    updateUI();
-    requestAnimationFrame(() => { fitZoom(); renderPdf(); });
-    const saveResult = await performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
+    App.hideModal('preparePdfModal');
+    App.markProjectDirty();
+    App.updateUI();
+    requestAnimationFrame(() => { App.fitZoom(); App.renderPdf(); });
+    const saveResult = await App.performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
     if (!saveResult.ok) {
-      if (isAuthError(saveResult.error)) {
-        showToast('Refresh the page to sync.', 4000);
+      if (App.isAuthError(saveResult.error)) {
+        App.showToast('Refresh the page to sync.', 4000);
       } else {
         const errMsg = (saveResult.error?.message) || (saveResult.error?.details) || (saveResult.error?.hint) || String(saveResult.error) || 'Save failed';
-        showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
+        App.showToast('Save failed: ' + errMsg + '. Open Project Settings to retry.', 4000);
       }
     }
   };

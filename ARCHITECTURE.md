@@ -37,7 +37,7 @@ off — and where it doesn't.
 | [annotation-model.js](annotation-model.js) | 614 | Done — extracted canvas/annotation data model + node tests. |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 513 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (44 files) | 10,592 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (44 files) | 10,586 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 

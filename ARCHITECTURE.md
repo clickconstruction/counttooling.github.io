@@ -28,7 +28,7 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,902 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 8,021 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 2,467 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
@@ -88,6 +88,7 @@ modules. Candidates in priority order:
 | [render-worker.js](render-worker.js) | **The dedicated pdf.js render worker** — its own pdf.js instance (same-origin importScripts of the vendored lib; an explicit nested `GlobalWorkerOptions.workerPort` bypasses pdf.js's no-`window`⇒Node fake-worker detection, which needs `document` and dies in worker scope) over its own copy of the document bytes; rasters pages (with crop offsets for the tile) into OffscreenCanvas and posts back transferable ImageBitmaps. `getDocument` gets three worker-scope shims for pdf.js defaults that lazily reach for `document`: a duck-typed **OffscreenCanvas canvasFactory** (aux canvases for tiling patterns / transparency groups / soft masks — routine on hatched CAD sheets; without it the first such raster threw "createElement of undefined" and wedged the session into main fallback), a **no-op filterFactory**, and an **`ownerDocument: {fonts: self.fonts}` shim** so FontLoader installs embedded fonts into the worker's own FontFaceSet (without it every glyph rasters as a black box; engines lacking `self.fonts` get `disableFontFace` glyph-outline drawing instead), and an explicit **`useWorkerFetch: true`** (with `cMapUrl`/`standardFontDataUrl` set but useWorkerFetch unset, pdf.js computes the default by touching `document.baseURI` — ReferenceError at doc load in worker scope). Generation-guarded load/render/cancel/dispose protocol (header comment). NOT a `<script>` tag — constructed as `new Worker('/render-worker.js')` by the service; precached in sw.js for offline |
 | [tile-grid.spec.js](tile-grid.spec.js) | Playwright regression for the **deep-zoom tile compositor** — forced DPR clamp + zoom 3: multiple 512-css-px tiles raster center-out (via the render service) and composite onto #cropCanvas with ink over the visible window; panning grows the cache and the compositor follows; a page flip empties the grid and a sharp zoom retires the overlay. `npx playwright test tile-grid.spec.js` |
 | [pyramid-persist.spec.js](pyramid-persist.spec.js) | Playwright regression for the **persistent pyramid** — rung captures persist to IndexedDB (`persisted` stat), then a REAL page reload + reload of the same file restores them (`restored` stat) without new rasters. `npx playwright test pyramid-persist.spec.js` |
+| [doc-warmup.spec.js](doc-warmup.spec.js) | Playwright regression for the **full-document warm-up** (prefetch tier 3) — a spec-crafted 5-page PDF: once the near-field candidates settle, the idle walk visits every page outward from the current one (prefetch rasters for pages beyond current±1 in the render-service log; `App.__docWarmupState()` reaches done = pages−1), fit rungs land in the persistent pyramid (`persisted` stat), and a first visit to the LAST page paints with cache hits gained. `npx playwright test doc-warmup.spec.js` |
 | [pyramid.spec.js](pyramid.spec.js) | Playwright regression for the **downsample pyramid** — after the initial render's capture, the rungs below the current zoom appear in the cache flagged `derived` (stats.derived ≥ 2) without raster requests; a zoom-out wheel commit then blits from a derived rung (miss stat frozen, hits gained); the derived base has real ink. `npx playwright test pyramid.spec.js` |
 | [instant-feel.spec.js](instant-feel.spec.js) | Playwright regression for the **instant-feel pass** — with rung ±2 prefetched, a continuous 8-tick wheel gesture swaps the base buffer MID-GESTURE via cache blits (distinct buffer sizes ≥ 2 before any commit debounce); a counter-placement click paints the mark immediately but leaves the sidebar sentinel alive (the debounced ~120ms tail refresh then lands); `App.__perfSamples` reports all five latency rings with p50/p95. `npx playwright test instant-feel.spec.js` |
 | [render-worker.spec.js](render-worker.spec.js) | Playwright regression for the render worker — lazy adoption reaches `ready` after boot, a forced cold raster is `workerRastered` with zero fallbacks and real canvas content, page flips work end-to-end, and the `DISABLE_RENDER_WORKER` escape hatch keeps everything main-thread (`mode 'main'`, adoption never kicks). Plus the **dense-sheet worker-scope guards**: a spec-crafted tiling-pattern PDF (byte-accurate inline builder) must worker-raster with zero fallbacks and the worker still `ready` (the aux-canvas factory crash), and the embedded-font `samples/sample-plan.pdf` must render ink-identical (<0.3%) between worker and main modes (the black-box glyph failure). Every other spec exercises the worker path implicitly in Chromium. `npx playwright test render-worker.spec.js` |
@@ -481,58 +482,58 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L752 - Math & Format Helpers
 - L1385 - Coordinate Helpers
 - L1393 - PDF render bitmap cache
-- L1742 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L2037 - PDF Rendering
-- L2694 - UI Render Functions
-- L3688 - Inline rename & polyline edit mode
-- L3802 - Modal primitives (showModal / hideModal)
-- L3821 - Toasts & line color picker
-- L3875 - Airboard cloud sync
-- L3917 - Supabase RPC & presence heartbeat
-- L3957 - User activity / event telemetry
-- L4000 - Supabase auth & dev auth
-- L4132 - [sync] Checkout subscription & permission refresh
-- L4142 - Modals & Handlers
-- L4210 - PDF intake (upload, test PDF, hashing)
-- L4218 - Toolbar tool buttons
-- L4344 - Tool sidebar buttons & legend overlay
-- L4461 - Add Line Type modal
-- L4531 - Line color & sidebar handlers
-- L4673 - Polyline modal & drawing
-- L4704 - Zoom bar & page navigation
-- L4730 - Export canvas JSON
-- L4746 - PDF download helpers
-- L4755 - View-link URL helpers & show-highlights/notes
-- L4827 - Custom icon upload handler
-- L4837 - Export & report dropdown menus
-- L4927 - Sidebar drawer toggles
-- L4938 - Mobile actions burger menu pointer & header logo
-- L4950 - User Activity pointer (format.js + features/user-activity.js)
-- L4962 - My Settings pointer (features/my-settings.js)
-- L4985 - Auth & settings entry buttons
-  - L5030 - Project Settings checkout & Save Status bell
-  - L5131 - [sync] Checkout expired recovery
-  - L5187 - [sync] Turn In
-  - L5452 - Share modal pointer & copy-project openers
-  - L5483 - Settings menu actions
-  - L5504 - Auth sign-in form
-  - L5528 - Save Project modal
-  - L5541 - Checkout expired recovery modal wiring
-  - L5646 - Last-session restore prompt
-  - L5653 - Canvas Repair modal wiring
-- L5806 - Canvas Event Handlers
-- L6196 - Event Binding
-- L6206 - Aim loupe (mobile press-hold precise placement)
-- L6345 - Zoom transform preview & commit
-- L6424 - Canvas mouse, wheel & touch handlers
-- L7085 - Global dropdown dismissal & keyboard hotkeys
-- L7345 - [sync] Manual save to cloud
-- L7355 - [sync] Auto-save
-- L7362 - [sync] Local backup (IndexedDB takeoff state)
-- L7495 - [sync] Checkout keep-alive
-- L7509 - App feature registry
-- L7725 - View-only mode
-- L7731 - Init / boot
+- L1860 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L2155 - PDF Rendering
+- L2812 - UI Render Functions
+- L3806 - Inline rename & polyline edit mode
+- L3920 - Modal primitives (showModal / hideModal)
+- L3939 - Toasts & line color picker
+- L3993 - Airboard cloud sync
+- L4035 - Supabase RPC & presence heartbeat
+- L4075 - User activity / event telemetry
+- L4118 - Supabase auth & dev auth
+- L4250 - [sync] Checkout subscription & permission refresh
+- L4260 - Modals & Handlers
+- L4328 - PDF intake (upload, test PDF, hashing)
+- L4336 - Toolbar tool buttons
+- L4462 - Tool sidebar buttons & legend overlay
+- L4579 - Add Line Type modal
+- L4649 - Line color & sidebar handlers
+- L4791 - Polyline modal & drawing
+- L4822 - Zoom bar & page navigation
+- L4848 - Export canvas JSON
+- L4864 - PDF download helpers
+- L4873 - View-link URL helpers & show-highlights/notes
+- L4945 - Custom icon upload handler
+- L4955 - Export & report dropdown menus
+- L5045 - Sidebar drawer toggles
+- L5056 - Mobile actions burger menu pointer & header logo
+- L5068 - User Activity pointer (format.js + features/user-activity.js)
+- L5080 - My Settings pointer (features/my-settings.js)
+- L5103 - Auth & settings entry buttons
+  - L5148 - Project Settings checkout & Save Status bell
+  - L5249 - [sync] Checkout expired recovery
+  - L5305 - [sync] Turn In
+  - L5570 - Share modal pointer & copy-project openers
+  - L5601 - Settings menu actions
+  - L5622 - Auth sign-in form
+  - L5646 - Save Project modal
+  - L5659 - Checkout expired recovery modal wiring
+  - L5764 - Last-session restore prompt
+  - L5771 - Canvas Repair modal wiring
+- L5924 - Canvas Event Handlers
+- L6314 - Event Binding
+- L6324 - Aim loupe (mobile press-hold precise placement)
+- L6463 - Zoom transform preview & commit
+- L6542 - Canvas mouse, wheel & touch handlers
+- L7203 - Global dropdown dismissal & keyboard hotkeys
+- L7463 - [sync] Manual save to cloud
+- L7473 - [sync] Auto-save
+- L7480 - [sync] Local backup (IndexedDB takeoff state)
+- L7613 - [sync] Checkout keep-alive
+- L7627 - App feature registry
+- L7844 - View-only mode
+- L7850 - Init / boot
 
 <!-- END SECTION TOC -->
 

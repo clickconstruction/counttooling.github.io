@@ -529,6 +529,22 @@ The four remaining roadmap items, together:
 
 ---
 
+## feat(telemetry): render-worker fallback mirrors to the admin activity feed
+
+The field lesson from the worker-scope fixes below: `render_worker_fallback`
+only landed in the LOCAL Save Status log, so a session (or a whole deploy)
+silently degraded to main-thread rasters and nobody saw it — it surfaced as
+"the app feels slow" weeks later. render-service gains an optional
+`deps.onFallback(reason)` hook, fired once per session at the moment the
+worker is disabled; app.js mirrors it into the admin activity feed
+(`logUserEvent('render_worker_fallback', projectId, {message, source})`,
+the reportClientError pattern), self-gated on Supabase + session. Node
+coverage: a stubbed-Worker adoption failure fires the hook exactly once
+with the reason, the session lands `failed`, and the raster still completes
+on main.
+
+---
+
 ## fix(render-worker): dense CAD sheets crashed the worker (patterns) and garbled text (fonts)
 
 Field case: a 39-page underground-plumbing set (7 MB, pages up to ~350k pdf.js

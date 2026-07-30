@@ -91,3 +91,32 @@ test('render failures propagate to the caller (non-cancel errors are not swallow
   const pdfPage = makePdfPage({ failWith: boom });
   await assert.rejects(svc.raster({ pdfPage, scale: 1, rotation: 0, canvasContext: ctxStub, kind: 'full' }).promise, /raster exploded/);
 });
+
+test('worker fallback fires onFallback once with the reason (and still rasters main)', async () => {
+  // Stub Worker/OffscreenCanvas so workerSupported() is true; a pdfPage with
+  // no _transport makes kickAdoption hit failWorker deterministically.
+  global.Worker = class { postMessage() {} terminate() {} };
+  global.OffscreenCanvas = class {};
+  try {
+    const events = [];
+    const fallbacks = [];
+    const svc = createRenderService({
+      logEvent: (type, msg, detail) => events.push({ type, detail }),
+      onFallback: (reason) => fallbacks.push(reason),
+    });
+    const pdfPage = makePdfPage({});
+    await svc.raster({ pdfPage, scale: 1, rotation: 0, canvasContext: ctxStub, kind: 'full' }).promise;
+    assert.strictEqual(fallbacks.length, 1);
+    assert.match(fallbacks[0], /no-transport/);
+    assert.strictEqual(svc.workerState(), 'failed');
+    assert.strictEqual(svc.statsSnapshot().fallbacks, 1);
+    assert.strictEqual(svc.statsSnapshot().mainRastered, 1);   // raster still landed, on main
+    assert.ok(events.some((e) => e.type === 'render_worker_fallback'));
+    // A second failure path is a no-op — the session is already failed.
+    await svc.raster({ pdfPage, scale: 1, rotation: 0, canvasContext: ctxStub, kind: 'full' }).promise;
+    assert.strictEqual(fallbacks.length, 1);
+  } finally {
+    delete global.Worker;
+    delete global.OffscreenCanvas;
+  }
+});

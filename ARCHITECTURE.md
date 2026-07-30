@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-07-29 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-07-30 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,7 +28,7 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,892 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,902 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 2,467 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
@@ -83,7 +83,7 @@ modules. Candidates in priority order:
 | [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
 | [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend`, and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
-| [render-service.js](render-service.js) | **The raster seam** (option 4) — exports `createRenderService(deps)`; every pdf.js raster (renderPdf's full-page pass, the idle bitmap prefetcher, the crop tile) flows through `renderService.raster({pdfPage, scale, rotation, offsetX, offsetY, canvasContext, kind})`, which returns the pdf.js RenderTask shape (`{promise, cancel}`, `RenderingCancelledException` on cancel) so callers' cancel/pending machinery is untouched. Two backends: MAIN (pdfPage.render, always available) and WORKER ([render-worker.js](render-worker.js)) — chosen automatically. Document adoption is LAZY and site-free: the first worker-eligible raster reads the doc bytes back via `pdfPage._transport.getData()` (a private field of the version-pinned pdf.js 3.11.174 — guarded; any shape change just disables the worker) and ships them to the worker; new documents re-adopt by transport identity with generation guards. Gates: Worker+OffscreenCanvas support, the `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory×doc-size cap; ANY worker failure falls back to main for the session and logs `render_worker_fallback` to the Save Status log. Debug/spec hooks on App: `__renderServiceStats` (incl. a per-request kind+page log — the spec-side replacement for wrapping `pdfPage.render`), `__renderServiceMode`, `__renderWorkerState`, `__setRasterTestDelay`. Guarded CommonJS footer for [render-service.test.js](render-service.test.js) |
+| [render-service.js](render-service.js) | **The raster seam** (option 4) — exports `createRenderService(deps)`; every pdf.js raster (renderPdf's full-page pass, the idle bitmap prefetcher, the crop tile) flows through `renderService.raster({pdfPage, scale, rotation, offsetX, offsetY, canvasContext, kind})`, which returns the pdf.js RenderTask shape (`{promise, cancel}`, `RenderingCancelledException` on cancel) so callers' cancel/pending machinery is untouched. Two backends: MAIN (pdfPage.render, always available) and WORKER ([render-worker.js](render-worker.js)) — chosen automatically. Document adoption is LAZY and site-free: the first worker-eligible raster reads the doc bytes back via `pdfPage._transport.getData()` (a private field of the version-pinned pdf.js 3.11.174 — guarded; any shape change just disables the worker) and ships them to the worker; new documents re-adopt by transport identity with generation guards. Gates: Worker+OffscreenCanvas support, the `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory×doc-size cap; ANY worker failure falls back to main for the session, logs `render_worker_fallback` to the Save Status log, and fires the optional `deps.onFallback(reason)` — app.js mirrors it into the admin activity feed via `logUserEvent`, so a silently-degraded session is admin-visible without a user-exported log. Debug/spec hooks on App: `__renderServiceStats` (incl. a per-request kind+page log — the spec-side replacement for wrapping `pdfPage.render`), `__renderServiceMode`, `__renderWorkerState`, `__setRasterTestDelay`. Guarded CommonJS footer for [render-service.test.js](render-service.test.js) |
 | [render-service.test.js](render-service.test.js) | Node `node:test` unit tests for the seam's main backend + contract (5 tests): param forwarding into `getViewport`/`render`, stats/log accounting, cancel parity (`RenderingCancelledException`, inner-task cancel), cancel-during-test-delay never starts the raster, per-kind test-delay filtering, and non-cancel error propagation; run with `npm run test:unit` |
 | [render-worker.js](render-worker.js) | **The dedicated pdf.js render worker** — its own pdf.js instance (same-origin importScripts of the vendored lib; an explicit nested `GlobalWorkerOptions.workerPort` bypasses pdf.js's no-`window`⇒Node fake-worker detection, which needs `document` and dies in worker scope) over its own copy of the document bytes; rasters pages (with crop offsets for the tile) into OffscreenCanvas and posts back transferable ImageBitmaps. `getDocument` gets three worker-scope shims for pdf.js defaults that lazily reach for `document`: a duck-typed **OffscreenCanvas canvasFactory** (aux canvases for tiling patterns / transparency groups / soft masks — routine on hatched CAD sheets; without it the first such raster threw "createElement of undefined" and wedged the session into main fallback), a **no-op filterFactory**, and an **`ownerDocument: {fonts: self.fonts}` shim** so FontLoader installs embedded fonts into the worker's own FontFaceSet (without it every glyph rasters as a black box; engines lacking `self.fonts` get `disableFontFace` glyph-outline drawing instead), and an explicit **`useWorkerFetch: true`** (with `cMapUrl`/`standardFontDataUrl` set but useWorkerFetch unset, pdf.js computes the default by touching `document.baseURI` — ReferenceError at doc load in worker scope). Generation-guarded load/render/cancel/dispose protocol (header comment). NOT a `<script>` tag — constructed as `new Worker('/render-worker.js')` by the service; precached in sw.js for offline |
 | [tile-grid.spec.js](tile-grid.spec.js) | Playwright regression for the **deep-zoom tile compositor** — forced DPR clamp + zoom 3: multiple 512-css-px tiles raster center-out (via the render service) and composite onto #cropCanvas with ink over the visible window; panning grows the cache and the compositor follows; a page flip empties the grid and a sharp zoom retires the overlay. `npx playwright test tile-grid.spec.js` |
@@ -483,56 +483,56 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1393 - PDF render bitmap cache
 - L1742 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L2037 - PDF Rendering
-- L2684 - UI Render Functions
-- L3678 - Inline rename & polyline edit mode
-- L3792 - Modal primitives (showModal / hideModal)
-- L3811 - Toasts & line color picker
-- L3865 - Airboard cloud sync
-- L3907 - Supabase RPC & presence heartbeat
-- L3947 - User activity / event telemetry
-- L3990 - Supabase auth & dev auth
-- L4122 - [sync] Checkout subscription & permission refresh
-- L4132 - Modals & Handlers
-- L4200 - PDF intake (upload, test PDF, hashing)
-- L4208 - Toolbar tool buttons
-- L4334 - Tool sidebar buttons & legend overlay
-- L4451 - Add Line Type modal
-- L4521 - Line color & sidebar handlers
-- L4663 - Polyline modal & drawing
-- L4694 - Zoom bar & page navigation
-- L4720 - Export canvas JSON
-- L4736 - PDF download helpers
-- L4745 - View-link URL helpers & show-highlights/notes
-- L4817 - Custom icon upload handler
-- L4827 - Export & report dropdown menus
-- L4917 - Sidebar drawer toggles
-- L4928 - Mobile actions burger menu pointer & header logo
-- L4940 - User Activity pointer (format.js + features/user-activity.js)
-- L4952 - My Settings pointer (features/my-settings.js)
-- L4975 - Auth & settings entry buttons
-  - L5020 - Project Settings checkout & Save Status bell
-  - L5121 - [sync] Checkout expired recovery
-  - L5177 - [sync] Turn In
-  - L5442 - Share modal pointer & copy-project openers
-  - L5473 - Settings menu actions
-  - L5494 - Auth sign-in form
-  - L5518 - Save Project modal
-  - L5531 - Checkout expired recovery modal wiring
-  - L5636 - Last-session restore prompt
-  - L5643 - Canvas Repair modal wiring
-- L5796 - Canvas Event Handlers
-- L6186 - Event Binding
-- L6196 - Aim loupe (mobile press-hold precise placement)
-- L6335 - Zoom transform preview & commit
-- L6414 - Canvas mouse, wheel & touch handlers
-- L7075 - Global dropdown dismissal & keyboard hotkeys
-- L7335 - [sync] Manual save to cloud
-- L7345 - [sync] Auto-save
-- L7352 - [sync] Local backup (IndexedDB takeoff state)
-- L7485 - [sync] Checkout keep-alive
-- L7499 - App feature registry
-- L7715 - View-only mode
-- L7721 - Init / boot
+- L2694 - UI Render Functions
+- L3688 - Inline rename & polyline edit mode
+- L3802 - Modal primitives (showModal / hideModal)
+- L3821 - Toasts & line color picker
+- L3875 - Airboard cloud sync
+- L3917 - Supabase RPC & presence heartbeat
+- L3957 - User activity / event telemetry
+- L4000 - Supabase auth & dev auth
+- L4132 - [sync] Checkout subscription & permission refresh
+- L4142 - Modals & Handlers
+- L4210 - PDF intake (upload, test PDF, hashing)
+- L4218 - Toolbar tool buttons
+- L4344 - Tool sidebar buttons & legend overlay
+- L4461 - Add Line Type modal
+- L4531 - Line color & sidebar handlers
+- L4673 - Polyline modal & drawing
+- L4704 - Zoom bar & page navigation
+- L4730 - Export canvas JSON
+- L4746 - PDF download helpers
+- L4755 - View-link URL helpers & show-highlights/notes
+- L4827 - Custom icon upload handler
+- L4837 - Export & report dropdown menus
+- L4927 - Sidebar drawer toggles
+- L4938 - Mobile actions burger menu pointer & header logo
+- L4950 - User Activity pointer (format.js + features/user-activity.js)
+- L4962 - My Settings pointer (features/my-settings.js)
+- L4985 - Auth & settings entry buttons
+  - L5030 - Project Settings checkout & Save Status bell
+  - L5131 - [sync] Checkout expired recovery
+  - L5187 - [sync] Turn In
+  - L5452 - Share modal pointer & copy-project openers
+  - L5483 - Settings menu actions
+  - L5504 - Auth sign-in form
+  - L5528 - Save Project modal
+  - L5541 - Checkout expired recovery modal wiring
+  - L5646 - Last-session restore prompt
+  - L5653 - Canvas Repair modal wiring
+- L5806 - Canvas Event Handlers
+- L6196 - Event Binding
+- L6206 - Aim loupe (mobile press-hold precise placement)
+- L6345 - Zoom transform preview & commit
+- L6424 - Canvas mouse, wheel & touch handlers
+- L7085 - Global dropdown dismissal & keyboard hotkeys
+- L7345 - [sync] Manual save to cloud
+- L7355 - [sync] Auto-save
+- L7362 - [sync] Local backup (IndexedDB takeoff state)
+- L7495 - [sync] Checkout keep-alive
+- L7509 - App feature registry
+- L7725 - View-only mode
+- L7731 - Init / boot
 
 <!-- END SECTION TOC -->
 

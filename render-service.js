@@ -19,7 +19,11 @@
 // RenderingCancelledException rejection contract — so renderPdf's
 // cancel/pending machinery is untouched.
 //
-// deps contract: { logEvent(type, msg, detailJson)? }
+// deps contract: { logEvent(type, msg, detailJson)?, onFallback(reason)? }
+// onFallback fires once per session, at the moment the worker is disabled —
+// the app mirrors it into the admin activity feed (logUserEvent), because a
+// silent fallback is a whole session of main-thread rasters that otherwise
+// only surfaces as "the app feels slow".
 //
 // Document adoption is LAZY and site-free: the first worker-eligible raster
 // reads the document bytes back out of pdf.js itself via the page proxy's
@@ -37,6 +41,7 @@
 
 function createRenderService(deps) {
   const logEvent = (deps && deps.logEvent) || null;
+  const onFallback = (deps && deps.onFallback) || null;
 
   // -------- state --------
   // Worker POOL: slot 0 is the interactive renderer (full-page + crop tile);
@@ -97,6 +102,7 @@ function createRenderService(deps) {
     }
     slots.length = 0;
     log('render_worker_fallback', 'Render worker disabled for this session', { reason: String(reason) });
+    if (onFallback) { try { onFallback(String(reason)); } catch (_) { /* telemetry only */ } }
   }
   function makeSlot() {
     const slot = { worker: new Worker('/render-worker.js'), pending: new Map(), loadedGen: 0, rastered: 0 };

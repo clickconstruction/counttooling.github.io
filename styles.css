@@ -457,6 +457,7 @@
     .status-bar .status-bar-link.danger:hover { color: var(--red); }
     .status-bar .status-bar-sep { color: var(--text2); opacity: 0.6; user-select: none; }
     .status-bar .status-totals { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
+    .status-bar .status-warmup { font-variant-numeric: tabular-nums; opacity: 0.55; white-space: nowrap; font-style: italic; }
     .status-bar .status-bar-desktop-only { display: none; }
     .status-bar .status-indicator-group { display: inline-flex; align-items: center; gap: 4px; }
     .status-bar .status-indicator-label { white-space: nowrap; }

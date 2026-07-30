@@ -1474,6 +1474,7 @@
     clearPyramidQueue();
     docWarmupDone.clear();          // new document (or rebind): the warm-up walk restarts
     zoomRungsPersistedKeys.clear();   // new doc identity: persist dedupe resets
+    updateDocWarmupIndicator();       // progress hint resets with the walk
     while (pdfBitmapCache.length) {
       const e = pdfBitmapCache.pop();
       try { e.bitmap.close(); } catch (_) { /* already closed */ }
@@ -1786,24 +1787,47 @@
   // resumes from where it left off at the next idle settle. Skipped on
   // low-memory devices and under memory pressure.
   const docWarmupDone = new Set();   // page indexes warmed (or found persisted) this document
+  // Subtle status-bar progress ("Preparing pages 22/38") while the walk runs —
+  // it makes the background work visible and teaches that letting a big set
+  // sit for a few seconds after opening pays off. Hidden once complete (and
+  // whenever no multi-page document is loaded).
+  function updateDocWarmupIndicator() {
+    const el = document.getElementById('statusWarmup');
+    if (!el) return;
+    const total = Math.max(0, state.pages.length - 1);
+    const done = Math.min(docWarmupDone.size, total);
+    const active = state.pages.length >= 2 && done > 0 && done < total;
+    el.style.display = active ? '' : 'none';
+    if (active) el.textContent = 'Preparing pages ' + done + '/' + total;
+  }
   function runDocWarmupStep() {
     if (typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory <= 4) return;
     if (state.pages.length < 2) return;
     const cur = state.currentPage;
     let idx = -1;
+    // MARKED pages first (nearest to the current page): the sheets carrying
+    // the user's annotations are the ones they actually jump to, so they warm
+    // in the first seconds instead of wherever the spiral reaches them.
+    let bestDist = Infinity;
+    for (const m of getMarkedPageIndices()) {
+      if (m === cur || docWarmupDone.has(m) || !state.pages[m]?.pdfPage) continue;
+      const d = Math.abs(m - cur);
+      if (d < bestDist) { bestDist = d; idx = m; }
+    }
+    // Then the outward spiral over everything else.
     for (let d = 1; d < state.pages.length && idx < 0; d++) {
       for (const cand of [cur + d, cur - d]) {
         if (cand >= 0 && cand < state.pages.length && !docWarmupDone.has(cand) && state.pages[cand]?.pdfPage) { idx = cand; break; }
       }
     }
-    if (idx < 0) return;   // whole document warm
+    if (idx < 0) { updateDocWarmupIndicator(); return; }   // whole document warm
     const page = state.pages[idx];
     const fitZ = predictedFitZoom(page);
     if (fitZ == null) return;
     const zoom = snapZoomToRung(fitZ, 0.2, getMaxZoom());
     const eff = effectiveDpr(page, zoom);
     const rot = page.rotation ?? 0;
-    const advance = (delayMs) => { docWarmupDone.add(idx); schedulePdfBitmapPrefetch(delayMs); };
+    const advance = (delayMs) => { docWarmupDone.add(idx); updateDocWarmupIndicator(); schedulePdfBitmapPrefetch(delayMs); };
     if (pdfBitmapCacheGet(page.pdfPage, rot, zoom, eff)) { advance(50); return; }
     const gen = pdfPrefetchGen;
     const stale = () => gen !== pdfPrefetchGen || document.hidden || pdfRenderTask || pdfPrefetchTask;
@@ -2297,6 +2321,25 @@
       pdfCanvas.style.height = viewport.height / eff + 'px';
       const pctx = pdfCanvas.getContext('2d');
       pctx.drawImage(preview.bitmap, 0, 0, preview.w, preview.h, 0, 0, viewport.width, viewport.height);
+      renderAnnotations();
+    } else if (pdfCanvas.width > 0 && lastPaintedPdfPage &&
+               (lastPaintedPdfPage !== keyPdfPage || lastPaintedRot !== keyRot)) {
+      // Truly cold flip: nothing of the TARGET page is cached at any zoom and
+      // the canvas is showing a DIFFERENT sheet. Leaving the old sheet up for
+      // the whole raster shows the WRONG drawing for seconds on dense pages
+      // and reads as "it ignored my click" — clear to paper-white immediately
+      // (the new page's annotations paint over it below as the response).
+      // Deliberately does NOT stamp lastPainted*: the canvas is a placeholder,
+      // so the restore-retrigger and stale-blit logic still treat it as stale
+      // and repaint the moment real pixels (pyramid restore / raster) arrive.
+      updateContainerTransform();
+      pdfCanvas.width = viewport.width;
+      pdfCanvas.height = viewport.height;
+      pdfCanvas.style.width = viewport.width / eff + 'px';
+      pdfCanvas.style.height = viewport.height / eff + 'px';
+      const wctx = pdfCanvas.getContext('2d');
+      wctx.fillStyle = '#ffffff';
+      wctx.fillRect(0, 0, viewport.width, viewport.height);
       renderAnnotations();
     }
 

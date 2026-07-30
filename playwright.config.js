@@ -28,7 +28,9 @@ module.exports = defineConfig({
   webServer: {
     command: 'npx serve -l 3456',
     url: 'http://localhost:3456',
-    reuseExistingServer: true,
+    // Reuse a locally running dev server, but never on CI — a stray process
+    // on :3456 there would silently serve the wrong tree.
+    reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
 });

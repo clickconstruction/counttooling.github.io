@@ -386,7 +386,8 @@
   // Core-function -> feature callback: hideModal('counterLineTypeDetailsModal')
   // resets the private details item through this.
   App.onCounterLineTypeDetailsHidden = () => { counterLineTypeDetailsItem = null; };
-  // Feature -> core getter: the shared custom-icon upload handler in app.js
-  // refreshes the open details modal's icon grid through this.
+  // Feature -> feature getter: the shared custom-icon upload handler in
+  // features/custom-icon-upload.js refreshes the open details modal's icon
+  // grid through this.
   App.getCounterLineTypeDetailsItem = () => counterLineTypeDetailsItem;
 })();

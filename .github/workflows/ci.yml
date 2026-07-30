@@ -28,11 +28,12 @@ jobs:
       # Lint + unit tests + generated-artifact freshness (TOC / guides / SW hash).
       - run: npm run check
 
-  # The end-to-end suite, minus what genuinely can't run here: render-pixels
-  # (darwin-rasterized pixel baselines — see testIgnore in playwright.config.js)
-  # and the cloud-gated specs (they self-skip without DEV_AUTH_* creds; no
-  # secrets are configured, and none are needed — the local-only specs are the
-  # bulk of the suite and carried every regression this repo has caught).
+  # The full end-to-end suite. render-pixels runs here too — per-platform
+  # baselines are committed (*-chromium-linux.png for CI; regeneration recipe
+  # in playwright.config.js). The cloud-gated specs self-skip without
+  # DEV_AUTH_* creds; no secrets are configured, and none are needed — the
+  # local-only specs are the bulk of the suite and carried every regression
+  # this repo has caught.
   e2e:
     runs-on: ubuntu-latest
     steps:

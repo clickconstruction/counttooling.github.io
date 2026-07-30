@@ -18,8 +18,8 @@
  * Two publish-only deps were added for this split: App.applyPageAnnotationsFromData
  * (the shared per-page deserialize funnel, also used by cloud load / view mode)
  * and App.getActiveCanvas. The shared custom-icon upload handler that lived in
- * the same app.js section stays there (icon-domain infrastructure feeding four
- * icon grids across app.js + three feature files).
+ * the same app.js section has since moved to features/custom-icon-upload.js
+ * (registry split #37).
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */

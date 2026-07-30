@@ -419,8 +419,6 @@
     getSupabase: () => supabase,
     isSupabaseEnabled: () => SUPABASE_ENABLED,
     withTimeout: (p, ms, label) => withTimeout(p, ms, label),
-    pushSaveEvent: (...a) => pushSaveEvent(...a),
-    saveDebugLog: (...a) => saveDebugLog(...a),
     isAutoSaveSuspended: () => suspendAutoSaveUntilCheckout,
     getLastCheckoutRefreshAt: () => lastCheckoutRefreshAt,
     // Stage 2 (dirty core): app-side state whose primary writers migrate later.

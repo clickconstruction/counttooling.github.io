@@ -211,7 +211,6 @@ function nextRungDown(z, minZoom, maxZoom, step) {
   return Math.max(lo, Math.min(hi, lo * Math.pow(s, n)));
 }
 
-// Node test harness only: in a classic browser <script> `module` is undefined,
 // --- Hotkeys: the single source of truth ---
 // The keydown handler in app.js EXECUTES this table (non-bespoke entries) and
 // scripts/build-macros.js GENERATES the Macros shortcut-table rows in
@@ -257,6 +256,7 @@ const HOTKEYS = [
   { bespoke: true, section: 'Tools', action: 'Finish polyline / Exit edit mode', kbd: '<kbd>Enter</kbd>', icon: null },
 ];
 
+// Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {

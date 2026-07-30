@@ -133,7 +133,9 @@
   }
 
   function renderUserActivityAllUsersTableHtml(rows) {
-    const esc = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // The canonical escaper (incl. the &#39; entity a private copy here once
+    // dropped) — this module exists to prevent exactly that divergence.
+    const esc = escapeHtml;
     const head = '<thead><tr><th>Email</th><th>Event</th><th title="US Central (Chicago)">Time</th><th>Project</th><th>Details</th></tr></thead>';
     const body = rows.map((row) => {
       const when = row.created_at ? formatUserActivityDateTime(row.created_at) : '—';

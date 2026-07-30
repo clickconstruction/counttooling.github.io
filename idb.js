@@ -13,13 +13,14 @@
  * same-named thin wrappers that call the pure primitives exported here. No build
  * step.
  *
- * Single IndexedDB database (clickcount-pdf-cache, version 6) with 9 stores:
+ * Single IndexedDB database (clickcount-pdf-cache, version 7) with 10 stores:
  *   pdfs / meta            - cloud PDF cache (LRU)
  *   view_pdfs / *_meta     - view-link PDF cache
  *   takeoff_backup / *_meta- tab-crash recovery backups (LRU)
  *   custom_icons           - per-user custom icon SVGs
  *   save_logs_snapshots    - rolling save-log envelopes
  *   pdf_upload_resume      - tus/resumable PDF upload URLs (cross-reload resume)
+ *   zoom_rungs             - persisted zoom-rung bitmaps (webp; per-doc + global caps)
  */
 
 // In a classic browser <script> this reads the optional window flag; in Node

@@ -163,6 +163,17 @@ test('zoom rungs: key shape, per-page get, per-doc + global-byte eviction (oldes
   assert.strictEqual(rows.length, ZOOM_RUNGS_MAX_PER_DOC);
   assert.ok(rows.every((r) => r.at >= 3), 'oldest three evicted');
 
+  // Caller-supplied per-doc cap overrides the default (page-count-aware
+  // pyramid: the full-document warm-up needs a fit rung per page).
+  globalThis.indexedDB = new IDBFactory();
+  const raised = ZOOM_RUNGS_MAX_PER_DOC + 6;
+  for (let i = 0; i < raised + 2; i++) {
+    await idb.idbZoomRungsPut(mk('docD', 1, 1 + i * 0.01, i, 10), raised);
+  }
+  const raisedRows = await idb.idbZoomRungsGetForPage('docD', 1);
+  assert.strictEqual(raisedRows.length, raised);
+  assert.ok(raisedRows.every((r) => r.at >= 2), 'only the two beyond the raised cap evicted');
+
   // Global byte budget sheds oldest across docs.
   globalThis.indexedDB = new IDBFactory();
   const big = Math.ceil(ZOOM_RUNGS_MAX_BYTES / 3) + 1;

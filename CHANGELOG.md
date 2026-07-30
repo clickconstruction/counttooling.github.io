@@ -529,6 +529,48 @@ The four remaining roadmap items, together:
 
 ---
 
+## perf(warmup): full-document background warm-up + the idle-prefetch runaway loop
+
+Part 2 of the "last pages are slow to load" fix (part 1 unwedged the render
+worker). Even with the worker healthy, the first jump deep into a set was
+always a cold multi-second raster — the prefetcher only warmed current±1.
+
+- **Full-document warm-up (prefetch tier 3)** — once the near-field
+  candidates (current-page rungs, neighbor pages) are warm, idle time walks
+  EVERY page outward from the current one at its rung-snapped fit zoom
+  through the same one-at-a-time prefetch slot (kind 'prefetch' → the worker
+  pool's background seat). Rung-snapped captures flow through the existing
+  persist path into the IndexedDB pyramid, so the walk warms this session
+  AND every later reopen; pages whose fit rung is already persisted cost one
+  IDB index read, no raster. Same interaction discipline (cancel on any
+  render/wheel/touch/pointer, `pdfPrefetchGen` invalidates in-flight async
+  continuations), 250ms cadence, skipped on low-memory devices. The 39-page
+  field set warms completely in ~14s of idle.
+- **Idle-prefetch runaway loop (pre-existing, exposed by the walk)** — a
+  capture's pyramid derives can evict a sibling candidate from the
+  slot-capped bitmap cache; the chain then re-rasters the evicted key, whose
+  derives evict another — observed at ~12 rasters/s FOREVER on dense sheets,
+  plus a duplicate IDB webp write per re-capture (366 writes in 40s), hidden
+  because any interaction cancels the chain. Fixed: one attempt per key per
+  chain (`pdfPrefetchAttempted`, cleared on cancel) + a session persist
+  dedupe (`zoomRungsPersistedKeys`). After the fix the same idle window does
+  41 rasters / 40 persists and goes quiet.
+- **Page-count-aware pyramid cap** — `idbZoomRungsPut` takes an optional
+  per-doc cap; app.js passes max(24, pages×2) so a 39-page walk no longer
+  self-evicts (the ~96MB global byte budget stays the true bound).
+- **Restore-retrigger** — a deep jump's cold raster used to race the lazy
+  IDB restore and win: the user stared at the PREVIOUS sheet while the dense
+  page rastered, with the restored bitmap arriving unused. When a restore
+  lands for the page the user is on and the canvas hasn't painted it yet,
+  renderPdf re-enters once and the ladder serves the restored rung
+  immediately. Measured on the field set: jump to page 36 swaps content in
+  ~22ms (was: full raster time).
+
+New regression: [doc-warmup.spec.js](doc-warmup.spec.js); idb.test.js covers
+the cap override. The full render-path battery (19 tests) passes.
+
+---
+
 ## feat(telemetry): render-worker fallback mirrors to the admin activity feed
 
 The field lesson from the worker-scope fixes below: `render_worker_fallback`

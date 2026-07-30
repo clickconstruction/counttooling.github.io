@@ -1472,6 +1472,8 @@
   function clearPdfBitmapCache() {
     pdfBitmapCacheGeneration++;
     clearPyramidQueue();
+    docWarmupDone.clear();          // new document (or rebind): the warm-up walk restarts
+    zoomRungsPersistedKeys.clear();   // new doc identity: persist dedupe resets
     while (pdfBitmapCache.length) {
       const e = pdfBitmapCache.pop();
       try { e.bitmap.close(); } catch (_) { /* already closed */ }
@@ -1572,11 +1574,21 @@
   // entries feed the same cache — and the downsample pyramid re-derives the
   // levels below them for free. All best-effort; failures just stay cold.
   const zoomRungsRestoreAttempted = new Set();
+  // Per-doc pyramid cap, page-count-aware: room for every page's fit rung
+  // (the full-document warm-up) plus a working set of zoomed rungs. The
+  // ~96MB global byte budget in idb.js remains the true bound.
+  function zoomRungsPerDocCap() {
+    return Math.max(ZOOM_RUNGS_MAX_PER_DOC, (state.pages.length || 0) * 2);
+  }
+  const zoomRungsPersistedKeys = new Set();   // session dedupe — re-captures of an evicted rung don't re-write the same webp
   function schedulePersistZoomRung(entry) {
     if (entry.derived) return;
     if (Math.abs(snapZoomToRung(entry.zoom, 0.2, getMaxZoom()) - entry.zoom) > 1e-9) return;   // rungs only
     renderService.ensureDocHash(entry.pdfPage).then((hash) => {
       if (!hash || !pdfBitmapCache.includes(entry)) return;   // no identity, or already evicted
+      const dedupeKey = idbZoomRungKey(hash, entry.pdfPage.pageNumber, entry.rotation, entry.zoom, entry.effDpr);
+      if (zoomRungsPersistedKeys.has(dedupeKey)) return;
+      zoomRungsPersistedKeys.add(dedupeKey);
       try {
         const c = document.createElement('canvas');
         c.width = entry.w;
@@ -1591,7 +1603,7 @@
             docHash: hash, pageNumber: entry.pdfPage.pageNumber,
             rotation: entry.rotation, zoom: entry.zoom, effDpr: entry.effDpr,
             w: entry.w, h: entry.h, bytes: blob.size, at: Date.now(), blob,
-          }).then((ok) => { if (ok) pdfBitmapCacheStats.persisted++; });
+          }, zoomRungsPerDocCap()).then((ok) => { if (ok) pdfBitmapCacheStats.persisted++; });
         }, 'image/webp', 0.85);
       } catch (_) { /* persistence is best-effort */ }
     });
@@ -1606,6 +1618,7 @@
       if (zoomRungsRestoreAttempted.has(attemptKey)) return;
       zoomRungsRestoreAttempted.add(attemptKey);
       idbZoomRungsGetForPage(hash, pdfPage.pageNumber).then((rows) => {
+        let retriggered = false;
         rows.forEach((row) => {
           if (!row || !row.blob) return;
           if (row.rotation !== (page.rotation ?? 0)) return;
@@ -1615,6 +1628,18 @@
                 pdfBitmapCacheGet(pdfPage, row.rotation, row.zoom, row.effDpr)) { try { bitmap.close(); } catch (_) {} return; }
             pdfBitmapCachePut({ pdfPage, rotation: row.rotation, zoom: row.zoom, effDpr: row.effDpr, bitmap, w: row.w, h: row.h, restored: true });
             pdfBitmapCacheStats.restored++;
+            // Restore raced the flip's cold raster: renderPdf committed to a
+            // full raster before this decode landed, so the user is staring
+            // at the previous sheet while a dense page rasters. Re-enter
+            // renderPdf once — the ladder now finds the restored rung and
+            // paints it immediately (rung blit or stale-blit preview); the
+            // crisp raster follows via the normal exact-refine/raster path.
+            if (!retriggered &&
+                state.pages[state.currentPage] === page &&
+                lastPaintedPdfPage !== pdfPage) {
+              retriggered = true;
+              renderPdf();
+            }
           }).catch(() => { /* a failed decode just stays cold */ });
         });
       });
@@ -1632,17 +1657,32 @@
   let pdfPrefetchTimer = null;
   let pdfPrefetchTask = null;
   let pdfPrefetchScratch = null;    // dedicated — never pdfOffscreenCanvas
+  let pdfPrefetchGen = 0;           // bumped on cancel; async warm-up continuations self-discard
+  // One attempt per key per CHAIN: a capture's pyramid derives can evict a
+  // sibling candidate from the slot-capped cache, and without this guard the
+  // idle chain re-rasters the evicted key, whose derives evict another —
+  // a perpetual raster + IDB-persist loop on dense sheets (observed at ~12
+  // rasters/s, hidden by interaction cancels). Cleared on cancel (user
+  // interaction / render entry starts a fresh context), kept across the
+  // chain's own re-arms.
+  const pdfPrefetchAttempted = new Set();
+  function pdfPrefetchKeyOf(pdfPage, rot, zoom, eff) {
+    return pdfPage.pageNumber + '|' + rot + '|' + zoom.toFixed(6) + '|' + eff.toFixed(4);
+  }
   function cancelPdfBitmapPrefetch() {
+    pdfPrefetchGen++;
+    pdfPrefetchAttempted.clear();
     if (pdfPrefetchTimer) { clearTimeout(pdfPrefetchTimer); pdfPrefetchTimer = null; }
     if (pdfPrefetchTask) { try { pdfPrefetchTask.cancel(); } catch (_) { /* settling */ } pdfPrefetchTask = null; }
   }
-  function schedulePdfBitmapPrefetch() {
+  function schedulePdfBitmapPrefetch(delayMs) {
     if (pdfPrefetchTimer) clearTimeout(pdfPrefetchTimer);
     // 50ms, not the old 250: with the render worker the main-thread cost of a
     // prefetch is a postMessage, and the wheel/touch/pointer listeners still
     // cancel instantly on interaction. The rung the user needs next should be
-    // rastering before their finger leaves the wheel.
-    pdfPrefetchTimer = setTimeout(runPdfBitmapPrefetch, 50);
+    // rastering before their finger leaves the wheel. (The document warm-up
+    // tier re-arms at a gentler 250ms — background work, no user waiting.)
+    pdfPrefetchTimer = setTimeout(runPdfBitmapPrefetch, delayMs || 50);
   }
   function predictedFitZoom(page) {
     const wrap = document.querySelector('.canvas-wrapper');
@@ -1700,8 +1740,11 @@
       const eff = effectiveDpr(page, zoom);
       const rot = page.rotation ?? 0;
       if (pdfBitmapCacheGet(page.pdfPage, rot, zoom, eff)) continue;   // already cached
+      const attemptKey = pdfPrefetchKeyOf(page.pdfPage, rot, zoom, eff);
+      if (pdfPrefetchAttempted.has(attemptKey)) continue;   // once per chain — evictions don't re-trigger
       const viewport = page.pdfPage.getViewport({ scale: zoom * eff, rotation: rot });
       if (viewport.width * viewport.height > pdfBitmapCacheMaxArea()) continue;
+      pdfPrefetchAttempted.add(attemptKey);
       if (!pdfPrefetchScratch) pdfPrefetchScratch = document.createElement('canvas');
       pdfPrefetchScratch.width = viewport.width;
       pdfPrefetchScratch.height = viewport.height;
@@ -1724,6 +1767,81 @@
       });
       return;   // one at a time
     }
+    // Near field fully warm — continue with the document warm-up walk.
+    runDocWarmupStep();
+  }
+
+  // --- Full-document warm-up (the "last pages load slow" fix, part 2) ---
+  // Once the near-field candidates (current-page rungs, neighbor pages) are
+  // warm, idle time walks EVERY page of the document outward from the current
+  // one, rastering each at its rung-snapped fit zoom through the same
+  // one-at-a-time prefetch slot (kind 'prefetch' → the worker pool's
+  // background seat when present). Rung-snapped captures flow through
+  // schedulePersistZoomRung into the IndexedDB pyramid, so a first visit to
+  // page 36 of a 39-page set blits warm — this session AND on tomorrow's
+  // reopen. Pages whose fit rung is already persisted cost one IDB index read
+  // and no raster. Same interaction discipline as the near-field tiers: any
+  // renderPdf entry or wheel/touch/pointerdown cancels instantly
+  // (pdfPrefetchGen invalidates in-flight async continuations), and the walk
+  // resumes from where it left off at the next idle settle. Skipped on
+  // low-memory devices and under memory pressure.
+  const docWarmupDone = new Set();   // page indexes warmed (or found persisted) this document
+  function runDocWarmupStep() {
+    if (typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory <= 4) return;
+    if (state.pages.length < 2) return;
+    const cur = state.currentPage;
+    let idx = -1;
+    for (let d = 1; d < state.pages.length && idx < 0; d++) {
+      for (const cand of [cur + d, cur - d]) {
+        if (cand >= 0 && cand < state.pages.length && !docWarmupDone.has(cand) && state.pages[cand]?.pdfPage) { idx = cand; break; }
+      }
+    }
+    if (idx < 0) return;   // whole document warm
+    const page = state.pages[idx];
+    const fitZ = predictedFitZoom(page);
+    if (fitZ == null) return;
+    const zoom = snapZoomToRung(fitZ, 0.2, getMaxZoom());
+    const eff = effectiveDpr(page, zoom);
+    const rot = page.rotation ?? 0;
+    const advance = (delayMs) => { docWarmupDone.add(idx); schedulePdfBitmapPrefetch(delayMs); };
+    if (pdfBitmapCacheGet(page.pdfPage, rot, zoom, eff)) { advance(50); return; }
+    const gen = pdfPrefetchGen;
+    const stale = () => gen !== pdfPrefetchGen || document.hidden || pdfRenderTask || pdfPrefetchTask;
+    renderService.ensureDocHash(page.pdfPage).then((hash) => {
+      if (stale()) return;
+      const raster = () => {
+        if (stale()) return;
+        const viewport = page.pdfPage.getViewport({ scale: zoom * eff, rotation: rot });
+        if (viewport.width * viewport.height > pdfBitmapCacheMaxArea()) { advance(250); return; }
+        pdfPrefetchAttempted.add(pdfPrefetchKeyOf(page.pdfPage, rot, zoom, eff));
+        if (!pdfPrefetchScratch) pdfPrefetchScratch = document.createElement('canvas');
+        pdfPrefetchScratch.width = viewport.width;
+        pdfPrefetchScratch.height = viewport.height;
+        const key = { pdfPage: page.pdfPage, rotation: rot, zoom, effDpr: eff };
+        const task = renderService.raster({ pdfPage: page.pdfPage, scale: zoom * eff, rotation: rot, canvasContext: pdfPrefetchScratch.getContext('2d'), kind: 'prefetch' });
+        pdfPrefetchTask = task;
+        task.promise.then(() => {
+          if (pdfPrefetchTask === task) pdfPrefetchTask = null;
+          pdfBitmapCacheCapture(pdfPrefetchScratch, key, { prefetch: true });
+          pdfPrefetchScratch.width = 0;
+          pdfPrefetchScratch.height = 0;
+          advance(250);   // gentler cadence — nobody is waiting on the far pages
+        }).catch((err) => {
+          if (pdfPrefetchTask === task) pdfPrefetchTask = null;
+          pdfPrefetchScratch.width = 0;
+          pdfPrefetchScratch.height = 0;
+          if (err && err.name !== 'RenderingCancelledException') { /* speculative: swallow */ }
+        });
+      };
+      if (!hash) { raster(); return; }   // no identity: still warm in-memory + pyramid-derive
+      idbZoomRungsGetForPage(hash, page.pdfPage.pageNumber).then((rows) => {
+        if (stale()) return;
+        const persisted = (rows || []).some((r) => r && r.rotation === rot &&
+          Math.abs(r.zoom - zoom) < 1e-6 && Math.abs(r.effDpr - eff) < 1e-3);
+        if (persisted) { advance(50); return; }   // lazy-restores on first visit — no raster needed
+        raster();
+      });
+    });
   }
 
   let pdfRenderTask = null;
@@ -7555,6 +7673,7 @@
   App.__tileGridStats = () => ({ tiles: tileGrid.size, totalPx: tileGridTotalPx(), inFlight: tileTasks.size });   // debug/spec introspection
   App.__ensureTileCoverage = () => ensureTileCoverage();
   App.__pdfBitmapCacheKeys = () => pdfBitmapCache.map((e) => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h }));   // debug/spec introspection
+  App.__docWarmupState = () => ({ done: docWarmupDone.size, pages: state.pages.length });   // full-document warm-up progress (debug/spec)
   App.__pdfBitmapCacheDump = () => pdfBitmapCache.map(e => ({ zoom: e.zoom, effDpr: e.effDpr, rotation: e.rotation, w: e.w, h: e.h, pageIdx: state.pages.findIndex(p => p.pdfPage === e.pdfPage) }));
   App.getOrderedIcons = getOrderedIcons;
   App.iconVbFor = iconVbFor;

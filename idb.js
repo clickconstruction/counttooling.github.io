@@ -399,8 +399,13 @@ async function idbZoomRungsGetForPage(docHash, pageNumber) {
     } catch (_) { resolve([]); }
   });
 }
-async function idbZoomRungsPut(entry) {
+async function idbZoomRungsPut(entry, maxPerDoc) {
   const db = await openPdfCacheDb();
+  // The per-doc cap is overridable so the caller can scale it with the
+  // document's page count (the full-document warm-up persists a fit rung per
+  // page — a fixed 24 would self-evict on a 39-page set). The global byte
+  // budget below stays the true memory bound.
+  const perDocCap = (Number.isFinite(maxPerDoc) && maxPerDoc > 0) ? maxPerDoc : ZOOM_RUNGS_MAX_PER_DOC;
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(ZOOM_RUNGS_STORE, 'readwrite');
@@ -412,7 +417,7 @@ async function idbZoomRungsPut(entry) {
       all.onsuccess = () => {
         const rows = (all.result || []).slice().sort((a, b) => a.at - b.at);
         const sameDoc = rows.filter((r) => r.docHash === entry.docHash);
-        let extra = sameDoc.length - ZOOM_RUNGS_MAX_PER_DOC;
+        let extra = sameDoc.length - perDocCap;
         for (const r of sameDoc) { if (extra <= 0) break; store.delete(r.k); extra--; }
         let total = rows.reduce((s, r) => s + (r.bytes || 0), 0);
         for (const r of rows) { if (total <= ZOOM_RUNGS_MAX_BYTES) break; store.delete(r.k); total -= (r.bytes || 0); }

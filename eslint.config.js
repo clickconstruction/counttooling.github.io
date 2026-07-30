@@ -110,7 +110,7 @@ const projectGlobals = {
 
 module.exports = [
   {
-    ignores: ['node_modules/', 'playwright-report/', 'test-results/', 'config*.js', 'eslint.config.js', 'vendor/'],
+    ignores: ['node_modules/', 'playwright-report/', 'test-results/', 'config*.js', 'eslint.config.js', 'vendor/', '.claude/'],
   },
   js.configs.recommended,
   {

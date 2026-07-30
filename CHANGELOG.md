@@ -529,6 +529,37 @@ The four remaining roadmap items, together:
 
 ---
 
+## polish(warmup): the walk is visible, marked-first, and cold flips never show the wrong sheet
+
+Three perception refinements over the full-document warm-up below:
+
+- **Status-bar hint** — `#statusWarmup` shows "Preparing pages N/M" (dim,
+  italic, tabular numerals) while the walk runs and disappears at
+  completion, making the background work visible and teaching that letting
+  a big set sit for ~15s after opening pays off. Driven from the walk's
+  `advance()`; reset on document change.
+- **Marked pages first** — `runDocWarmupStep` warms the pages carrying the
+  user's annotations (`getMarkedPageIndices`, nearest-first) before the
+  outward spiral, since those are the pages users actually jump to. Shrinks
+  cold-jump exposure for working pages from "wherever the spiral reaches
+  them" to the first seconds.
+- **Cold-flip white-out** — a flip to a page with NO cached bitmap at any
+  rung (and no same-page stale-blit candidate) used to leave the PREVIOUS
+  sheet on screen for the whole raster — the wrong drawing for seconds on
+  dense pages, reading as "it ignored my click". renderPdf now clears the
+  canvas to paper-white immediately (annotations of the new page paint over
+  it as the response). Deliberately does not stamp lastPainted*, so the
+  restore-retrigger and stale-blit logic still treat the placeholder as
+  stale and repaint the moment real pixels arrive. Gated on an actual page
+  or rotation change with prior content — first renders and zoom commits
+  keep their existing behavior.
+
+All three pinned in [doc-warmup.spec.js](doc-warmup.spec.js) (hint
+visible-then-hidden; a seeded far-page marker leads the far-field walk;
+raster-delayed cold flip samples paper-white, then crisp ink).
+
+---
+
 ## perf(warmup): full-document background warm-up + the idle-prefetch runaway loop
 
 Part 2 of the "last pages are slow to load" fix (part 1 unwedged the render

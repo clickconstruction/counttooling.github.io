@@ -529,6 +529,48 @@ The four remaining roadmap items, together:
 
 ---
 
+## fix(render-worker): dense CAD sheets crashed the worker (patterns) and garbled text (fonts)
+
+Field case: a 39-page underground-plumbing set (7 MB, pages up to ~350k pdf.js
+operators) always ran main-thread — `render_worker_fallback` with
+`raster: Cannot read properties of undefined (reading 'createElement')` on the
+FIRST raster, so every dense sheet blocked the UI for the whole session and the
+"last pages are slow to load" complaint came straight back. Two worker-scope
+holes in pdf.js 3.11's defaults, both invisible on simple test PDFs because the
+failing paths are lazy:
+
+- **Aux-canvas factory** — `DefaultCanvasFactory` in a non-Node scope is
+  `DOMCanvasFactory` (`document.createElement('canvas')`), consulted only when
+  a page needs an auxiliary canvas: tiling patterns, transparency groups, soft
+  masks — i.e. every hatched/shaded CAD sheet. The worker now passes a
+  duck-typed OffscreenCanvas factory (+ a no-op filterFactory) to
+  `getDocument`, so the raster that used to wedge the session into permanent
+  main fallback just renders.
+- **Embedded fonts** — FontLoader wants `ownerDocument.fonts` (a FontFaceSet);
+  without one it falls into a CSS-rule path that also needs the DOM and every
+  glyph rasters as a solid black box (caught by pixel-diffing worker vs main
+  output — ink delta 1.26% broken, 0.000% fixed). Worker scopes have their own
+  `self.fonts`, handed over via an `ownerDocument: {fonts: self.fonts}` shim;
+  engines without it get `disableFontFace` (glyph-outline drawing) instead.
+- **useWorkerFetch (third hole, exposed by the substitute-font merge)** — with
+  `cMapUrl`/`standardFontDataUrl` set but `useWorkerFetch` unset, pdf.js
+  computes the default by touching `document.baseURI` — a ReferenceError at
+  DOC LOAD in worker scope, so the fix/pdfjs-font-fallback merge silently
+  broke worker adoption for **every** PDF (caught when this branch's new
+  worker specs went red after syncing). The worker now passes
+  `useWorkerFetch: true` explicitly — also the right value: the nested pdf.js
+  worker fetches both URLs itself.
+
+Verified against the field PDF: worker `ready`, 93/93 rasters in the worker,
+zero fallbacks, main-thread page-switch stall 20-30ms → 5-9ms, and the
+worker/main renders pixel-equivalent (0.013% of channels, max delta 16 — AA
+jitter). [render-worker.spec.js](render-worker.spec.js) gained both guards: a
+spec-crafted tiling-pattern PDF must worker-raster with zero fallbacks, and
+the embedded-font sample plan must render ink-identical in both modes (both
+fail against the old worker).
+
+---
+
 ## perf(pyramid): downsample pyramid + prefetch immediacy/momentum
 
 "See more pixels more quickly" — attack the remaining cost, COLD rasters:

@@ -89,6 +89,37 @@ a { color: inherit; }
 .guide-card p { color: var(--text2); font-size: 0.95rem; margin-bottom: 10px; }
 .guide-meta { color: var(--text3); font-size: 0.8rem; font-family: 'DM Mono', monospace; }
 
+/* Learning paths */
+.paths-section { padding: 8px 0 8px; }
+.paths-section h2 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 1.7rem; }
+.paths-intro { color: var(--text2); margin: 8px 0 4px; }
+.paths-intro a { color: var(--accent); }
+.paths-list { padding-bottom: 24px; }
+.path-card h3 { font-size: 1.05rem; margin: 0; }
+.guides-all-heading { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 1.7rem; margin-top: 8px; }
+.path-page { max-width: 720px; margin: 0 auto; padding: 0 0 48px; }
+.path-prereq { color: var(--text2); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.95rem; }
+.path-prereq a { color: var(--accent); }
+.path-outcome { color: var(--text2); margin-bottom: 20px; }
+.path-steps { display: flex; flex-direction: column; gap: 12px; }
+.path-step { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; text-decoration: none; color: var(--text); transition: border-color 0.15s; }
+.path-step:hover { border-color: var(--accent); }
+.path-step-n { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #161617; font: 700 15px/30px 'DM Sans', sans-serif; text-align: center; }
+.path-step-body { display: flex; flex-direction: column; gap: 4px; }
+.path-step-head { display: flex; align-items: center; gap: 10px; }
+.path-step-head .guide-ico { width: 30px; height: 30px; padding: 6px; border-radius: 8px; }
+.path-step-title { font-weight: 600; }
+.path-step-desc { color: var(--text2); font-size: 0.92rem; }
+.path-banner { color: var(--text3); font-size: 0.9rem; margin: 4px 0 10px; }
+.path-banner a { color: var(--accent); text-decoration: none; }
+.path-banner a:hover { text-decoration: underline; }
+.path-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 36px; padding: 14px 0 0; border-top: 1px solid var(--border); }
+.path-nav-link { color: var(--text); text-decoration: none; font-weight: 600; }
+.path-nav-link:hover { color: var(--accent); }
+.path-nav-all { color: var(--text3); text-decoration: none; font-size: 0.9rem; }
+.path-nav-all:hover { color: var(--accent); }
+.path-nav-link[hidden] { display: none; }
+
 /* Article */
 .article { max-width: 720px; margin: 0 auto; padding: 16px 0 48px; }
 .article h1 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; margin-bottom: 8px; }

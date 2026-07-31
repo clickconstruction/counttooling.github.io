@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Custom icons — make the plan read like your trade</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/plumbing/">Plumbing track</a><span id="pathBannerStep"> — step 2 of 4</span></div>
       <h1>Custom icons — make the plan read like your trade</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -114,6 +115,30 @@
 <p>Uploaded icons are stored per browser — and when you save your <a href="/guides/artboard-and-palette-insights/">Artboard</a> to the cloud, your custom icon library rides along, so signing in on another device brings your symbols with your palette.</p>
 <p>Next: <a href="/guides/counting-with-counters/">Counting fixtures with counters</a> for the counting workflow itself.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" href="/guides/quick-creators/?path=plumbing">← Building your palette in two clicks</a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/plumbing/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/scale-zones-and-multiply-zones/?path=plumbing">Next: Scale zones and multiply zones →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"plumbing","byPath":{"plumbing":{"title":"Plumbing track","url":"/guides/path/plumbing/","step":2,"total":4,"prev":{"href":"/guides/quick-creators/?path=plumbing","label":"← Building your palette in two clicks"},"next":{"href":"/guides/scale-zones-and-multiply-zones/?path=plumbing","label":"Next: Scale zones and multiply zones →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

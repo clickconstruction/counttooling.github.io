@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Measuring runs with lines and polylines</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/basics/">The Basics</a><span id="pathBannerStep"> — step 6 of 8</span></div>
       <h1>Measuring runs with lines and polylines</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -117,6 +118,30 @@
 <p>Just need to check a dimension without adding it to a takeoff? The <strong>Measure</strong> <span class="ico" role="img" aria-label="Measure distance" title="Measure distance"><svg viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg></span> tool gives a distance in two clicks. If those two points fall inside a <a href="/guides/scale-zones-and-multiply-zones/">scale zone</a>, it uses that zone&#39;s scale automatically.</p>
 <p>With counts and runs both on the plan, you&#39;re ready to <a href="/guides/reports-and-exports/">review and export</a>.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" href="/guides/counting-with-counters/?path=basics">← Counting fixtures with counters</a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/basics/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/fixing-mistakes/?path=basics">Next: Fixing mistakes and editing marks →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"basics","byPath":{"basics":{"title":"The Basics","url":"/guides/path/basics/","step":6,"total":8,"prev":{"href":"/guides/counting-with-counters/?path=basics","label":"← Counting fixtures with counters"},"next":{"href":"/guides/fixing-mistakes/?path=basics","label":"Next: Fixing mistakes and editing marks →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Is your scale lying to you?</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/basics/">The Basics</a><span id="pathBannerStep"> — step 4 of 8</span></div>
       <h1>Is your scale lying to you?</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -116,6 +117,30 @@
 </ul>
 <p>Related: <a href="/guides/setting-the-scale/">Setting the scale on a plan</a> covers the three calibration methods themselves.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" href="/guides/setting-the-scale/?path=basics">← Setting the scale on a plan</a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/basics/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/counting-with-counters/?path=basics">Next: Counting fixtures with counters →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"basics","byPath":{"basics":{"title":"The Basics","url":"/guides/path/basics/","step":4,"total":8,"prev":{"href":"/guides/setting-the-scale/?path=basics","label":"← Setting the scale on a plan"},"next":{"href":"/guides/counting-with-counters/?path=basics","label":"Next: Counting fixtures with counters →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>How to do a takeoff from a PDF</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/basics/">The Basics</a><span id="pathBannerStep"> — step 1 of 8</span></div>
       <h1>How to do a takeoff from a PDF</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -128,6 +129,30 @@
 </ul>
 <p>That&#39;s a complete takeoff — counted, measured, reported, and shared, without leaving the browser.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" hidden></a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/basics/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/preparing-a-plan-set/?path=basics">Next: Preparing a plan set →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"basics","byPath":{"basics":{"title":"The Basics","url":"/guides/path/basics/","step":1,"total":8,"prev":null,"next":{"href":"/guides/preparing-a-plan-set/?path=basics","label":"Next: Preparing a plan set →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

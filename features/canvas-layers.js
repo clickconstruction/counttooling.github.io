@@ -134,6 +134,131 @@
     App.updateUI();
   };
 
+  // --- Selective peek chooser (right-click on the peek button) --------------
+  // #canvasPeekMenu: a checklist popover over the page's layers. The active
+  // layer is always shown (pinned row); checking others narrows the peek to
+  // that subset via state.peekCanvasIdsByPage (empty array = active only,
+  // absent = all). Same in-memory/visual-only contract as the peek flag.
+  // Dismissal follows the tool-context-menu pattern: listeners attached only
+  // while open; Escape is swallowed in the capture phase so the app's global
+  // Escape (modal close) never sees the press.
+  let peekMenuPageIdx = null;   // the page the open menu was built for
+
+  function hideCanvasPeekMenu() {
+    const menu = document.getElementById('canvasPeekMenu');
+    if (!menu || !menu.classList.contains('visible')) return;
+    menu.classList.remove('visible');
+    peekMenuPageIdx = null;
+    document.removeEventListener('pointerdown', onPeekDocPointerDown, true);
+    document.removeEventListener('keydown', onPeekDocKeyDown, true);
+    window.removeEventListener('resize', hideCanvasPeekMenu);
+  }
+  function onPeekDocPointerDown(e) {
+    const menu = document.getElementById('canvasPeekMenu');
+    if (menu && !menu.contains(e.target)) hideCanvasPeekMenu();
+  }
+  function onPeekDocKeyDown(e) {
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    hideCanvasPeekMenu();
+  }
+
+  function togglePeekCanvas(canvasId) {
+    const state = App.state;
+    const page = state.pages[peekMenuPageIdx];
+    if (!page || peekMenuPageIdx !== state.currentPage) { hideCanvasPeekMenu(); return; }
+    const canvases = App.getPageCanvases(page);
+    const active = App.getActiveCanvas(page);
+    const otherIds = canvases.filter(c => c !== active).map(c => c.id);
+    const map = state.peekCanvasIdsByPage;
+    // Absent selection = all: unchecking one layer materializes "all the others".
+    let sel = map[peekMenuPageIdx] ? map[peekMenuPageIdx].slice() : otherIds.slice();
+    sel = sel.includes(canvasId) ? sel.filter(id => id !== canvasId) : sel.concat(canvasId);
+    // Normalize: every non-active layer checked is just "all" again.
+    if (otherIds.every(id => sel.includes(id))) delete map[peekMenuPageIdx];
+    else map[peekMenuPageIdx] = sel;
+    state.showAllCanvases = true;
+    App.renderAnnotations();
+    App.updateUI();
+    renderCanvasPeekMenu();
+  }
+
+  function renderCanvasPeekMenu() {
+    const menu = document.getElementById('canvasPeekMenu');
+    const state = App.state;
+    if (!menu) return;
+    const page = state.pages[peekMenuPageIdx];
+    const canvases = page ? App.getPageCanvases(page) : [];
+    if (peekMenuPageIdx !== state.currentPage || canvases.length < 2) { hideCanvasPeekMenu(); return; }
+    const active = App.getActiveCanvas(page);
+    const sel = state.peekCanvasIdsByPage[peekMenuPageIdx] || null;   // null = all
+    menu.innerHTML = '';
+    const mkRow = (label, checked, onPick, opts) => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'canvas-menu-item canvas-peek-item';
+      const box = document.createElement('span');
+      box.className = 'canvas-peek-check' + (checked ? ' checked' : '');
+      box.textContent = checked ? '✓' : '';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'canvas-peek-name';
+      nameSpan.textContent = label;
+      row.appendChild(box);
+      row.appendChild(nameSpan);
+      if (opts && opts.pinned) {
+        const pin = document.createElement('span');
+        pin.className = 'canvas-peek-pinned';
+        pin.textContent = 'current';
+        row.appendChild(pin);
+        row.disabled = true;
+      }
+      if (onPick) row.onclick = (e) => { e.stopPropagation(); onPick(); };
+      menu.appendChild(row);
+    };
+    mkRow('All canvases', !sel, () => {
+      delete state.peekCanvasIdsByPage[peekMenuPageIdx];
+      state.showAllCanvases = true;
+      App.renderAnnotations();
+      App.updateUI();
+      renderCanvasPeekMenu();
+    });
+    canvases.forEach(c => {
+      if (c === active) mkRow(c.name || 'Main', true, null, { pinned: true });
+      else mkRow(c.name || 'Main', !sel || sel.includes(c.id), () => togglePeekCanvas(c.id));
+    });
+  }
+
+  function openCanvasPeekMenu() {
+    const state = App.state;
+    const btn = document.getElementById('showAllCanvasesBtn');
+    const menu = document.getElementById('canvasPeekMenu');
+    if (!btn || !menu || !state.pages.length) return;
+    const page = state.pages[state.currentPage];
+    if (App.getPageCanvases(page).length < 2) return;
+    if (menu.classList.contains('visible')) { hideCanvasPeekMenu(); return; }
+    peekMenuPageIdx = state.currentPage;
+    renderCanvasPeekMenu();
+    if (!menu.childNodes.length) return;
+    // Above the button, like the layers menu (footer anchor).
+    menu.style.left = '-9999px';
+    menu.classList.add('visible');
+    const btnRect = btn.getBoundingClientRect();
+    menu.style.left = Math.max(4, Math.min(btnRect.left, window.innerWidth - menu.offsetWidth - 4)) + 'px';
+    menu.style.top = Math.max(8, btnRect.top - menu.offsetHeight - 4) + 'px';
+    document.addEventListener('pointerdown', onPeekDocPointerDown, true);
+    document.addEventListener('keydown', onPeekDocKeyDown, true);
+    window.addEventListener('resize', hideCanvasPeekMenu);
+    // No scroll-dismiss (unlike tool-context-menu): the anchor button lives in
+    // the fixed footer, and the checkbox toggles themselves trigger updateUI
+    // scroll events that would close the menu mid-selection.
+  }
+
+  document.getElementById('showAllCanvasesBtn').oncontextmenu = (e) => {
+    e.preventDefault();
+    openCanvasPeekMenu();
+  };
+
   const addCanvasModalNew = document.getElementById('addCanvasModalNew');
   const addCanvasModalDuplicate = document.getElementById('addCanvasModalDuplicate');
   const addCanvasModalName = document.getElementById('addCanvasModalName');

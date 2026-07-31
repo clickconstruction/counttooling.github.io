@@ -324,7 +324,10 @@ mode).
 - In-memory only (not persisted): `state.pdfBufferSize` (bytes; set whenever
   `state.pdfBuffer` is set, because pdf.js detaches the buffer making `byteLength`
   0), `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
-  `state.showAllCanvases` (the desktop show-all-layers peek toggle).
+  `state.showAllCanvases` (the desktop show-all-layers peek toggle),
+  `state.peekCanvasIdsByPage` (the peek's optional per-page layer subset —
+  pageIdx → canvas-id array chosen via right-click on `#showAllCanvasesBtn`;
+  active layer always implied, empty array = active only, absent = all).
 - `config.example.js` is the template; `config.js` is committed for production.
 
 ### Cloud state (when Supabase enabled)

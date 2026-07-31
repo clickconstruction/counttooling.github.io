@@ -26,6 +26,8 @@ Everything you place lands on the **active** layer only, and the sidebar tallies
 
 The **show-all** peek (the eye-on-layers button next to the layer selector, shown when a page has two or more layers) temporarily draws *every* layer at once so you can compare options in place. It's purely visual — editing still targets the active layer, and nothing is saved differently.
 
+On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary — it isn't saved with the project, and it clears when a page is back to a single layer.
+
 ## Move marks between projects: canvas JSON
 
 The **Export Canvas** option writes your marks — palette, groups, and all — as a small JSON file, without the PDF. **Import Canvas** loads one into another project. Because the file is tiny, it's the easy way to hand a takeoff to a colleague who already has the plan set, or to reuse a typical layout.

@@ -98,6 +98,85 @@
     }
   }
 
+  // --- Pre-export scale check (#toolingScaleCheckModal) ---------------------
+  // Copying to /Tooling with unscaled lines silently exports pixel lengths.
+  // Before the copy, walk exactly the pages/annotations the chosen mode will
+  // export and flag pages where a summarized line (known lineTypeId — the
+  // getPipeToolingHasData rule) has no effective scale (page scale or its
+  // scale zone's). Pages without line marks never flag. On a hit, a confirm
+  // modal offers Set scale (jump + open the Set Scale modal), Export anyway,
+  // or Cancel. Counters need no scale, so counter-only pages pass untouched.
+  let pendingToolingExport = null;   // { getAnnFn, pageIndices, firstIdx } awaiting the modal's verdict
+
+  function collectUnscaledLinePages(getAnnFn, pageIndices) {
+    const state = App.state;
+    const indices = pageIndices != null ? pageIndices : state.pages.map((_, i) => i);
+    const lineTypeIds = new Set((state.lineTypes || []).map(lt => lt.id));
+    const getAnn = getAnnFn
+      || ((page, i) => (typeof window.getAnnotationsForReport === 'function' ? window.getAnnotationsForReport(page, i) : page?.annotations) || App.makeAnnotations());
+    const flagged = [];
+    indices.forEach(i => {
+      const page = state.pages[i];
+      if (!page) return;
+      const ann = getAnn(page, i) || App.makeAnnotations();
+      const unscaled = (line, isPoly) => {
+        if (!lineTypeIds.has(line.lineTypeId)) return false;
+        const eff = App.getEffectiveScaleForLine(ann, line, isPoly, i);
+        return !(eff && eff.pixelsPerUnit);   // the same test the length math uses for its px fallback
+      };
+      if ((ann.quickLines || []).some(l => unscaled(l, false)) || (ann.polylines || []).some(l => unscaled(l, true))) flagged.push(i);
+    });
+    return flagged;
+  }
+
+  async function runToolingExport(getAnnFn, pageIndices) {
+    const flagged = collectUnscaledLinePages(getAnnFn, pageIndices);
+    if (flagged.length) {
+      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0] };
+      const listEl = document.getElementById('toolingScaleCheckList');
+      if (listEl) {
+        listEl.innerHTML = '';
+        flagged.forEach(i => {
+          const li = document.createElement('li');
+          li.textContent = App.state.pages[i]?.label || 'Page ' + (i + 1);
+          listEl.appendChild(li);
+        });
+      }
+      App.showModal('toolingScaleCheckModal');
+      return;
+    }
+    await doCopyPipeTooling(getAnnFn, pageIndices);
+  }
+
+  const toolingScaleCheckCancel = document.getElementById('toolingScaleCheckCancel');
+  const toolingScaleCheckExport = document.getElementById('toolingScaleCheckExport');
+  const toolingScaleCheckGoSet = document.getElementById('toolingScaleCheckGoSet');
+  if (toolingScaleCheckCancel) toolingScaleCheckCancel.onclick = () => App.hideModal('toolingScaleCheckModal');
+  if (toolingScaleCheckExport) {
+    toolingScaleCheckExport.onclick = async () => {
+      const pending = pendingToolingExport;
+      App.hideModal('toolingScaleCheckModal');
+      // The click itself is the user gesture, so the clipboard write inside
+      // doCopyPipeTooling stays permitted (same constraint as the dropdown).
+      if (pending) await doCopyPipeTooling(pending.getAnnFn, pending.pageIndices);
+    };
+  }
+  if (toolingScaleCheckGoSet) {
+    toolingScaleCheckGoSet.onclick = () => {
+      const pending = pendingToolingExport;
+      App.hideModal('toolingScaleCheckModal');
+      if (!pending) return;
+      if (pending.firstIdx !== App.state.currentPage) {
+        App.state.currentPage = pending.firstIdx;
+        App.fitZoom();
+      }
+      App.openScaleModal();
+    };
+  }
+  // Core-function -> feature callback: any hide path (buttons, Escape) drops
+  // the stashed export so a later reopen can't fire a stale copy.
+  App.onToolingScaleCheckHidden = () => { pendingToolingExport = null; };
+
   const forPipeToolingBtn = document.getElementById('forPipeTooling');
   const forPipeToolingMenu = document.getElementById('forPipeToolingMenu');
   const forPipeToolingDropdown = document.getElementById('forPipeToolingDropdown');
@@ -131,9 +210,9 @@
         forPipeToolingMenu.classList.remove('visible');
         if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
       }
-      if (mode === 'this-canvas') await doCopyPipeTooling(null, [App.state.currentPage]);
-      else if (mode === 'visible') await doCopyPipeTooling(null);
-      else if (mode === 'all') await doCopyPipeTooling(window.getMergedAnnotationsForPage);
+      if (mode === 'this-canvas') await runToolingExport(null, [App.state.currentPage]);
+      else if (mode === 'visible') await runToolingExport(null);
+      else if (mode === 'all') await runToolingExport(window.getMergedAnnotationsForPage);
     };
   });
 

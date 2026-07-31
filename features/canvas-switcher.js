@@ -80,11 +80,28 @@
         // Only meaningful with 2+ layers; desktop only (the mobile switcher is
         // already the compact layers menu). Auto-off when layers drop to one.
         if (App.state.showAllCanvases && canvases.length < 2) App.state.showAllCanvases = false;
+        // Peek subset hygiene: drop ids that no longer exist on this page
+        // (layer deleted, pages reordered). An empty array stays meaningful —
+        // "active layer only"; only a sub-2-layer page clears the selection
+        // (absent = all, matching the auto-off rule above).
+        const peekMap = App.state.peekCanvasIdsByPage || {};
+        const rawPeek = peekMap[App.state.currentPage];
+        if (rawPeek) {
+          if (canvases.length < 2) delete peekMap[App.state.currentPage];
+          else {
+            const pruned = rawPeek.filter(id => canvases.some(c => c.id === id));
+            if (pruned.length !== rawPeek.length) peekMap[App.state.currentPage] = pruned;
+          }
+        }
+        const peekIds = peekMap[App.state.currentPage] || null;
         showAllBtn.style.display = (!isMobile && canvases.length > 1 && App.state.pages.length > 0) ? '' : 'none';
         showAllBtn.classList.toggle('active', !!App.state.showAllCanvases);
+        showAllBtn.classList.toggle('partial', !!(App.state.showAllCanvases && peekIds));
         showAllBtn.title = App.state.showAllCanvases
-          ? 'Showing all canvases — click to show only the active canvas'
-          : 'Temporarily show all canvases at once';
+          ? (peekIds
+            ? 'Showing ' + new Set([activeId, ...peekIds]).size + ' of ' + canvases.length + ' canvases — click to show only the active canvas, right-click to choose'
+            : 'Showing all canvases — click to show only the active canvas, right-click to choose which')
+          : 'Temporarily show all canvases at once — right-click to choose which';
       }
       menuList.innerHTML = '';
       canvases.forEach(c => {

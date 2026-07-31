@@ -108,6 +108,11 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > Observation recorded: pendingImportCanvasAfterPdf is never set true by any
 > caller — the importBothFollowUp path looks dead (left intact; verify +
 > remove separately).
+> #14a Tier-3 #10 row-HTML unification DONE: shared cell builders
+> (userEmailCellHtml / userRoleCellHtml / userDatesInnerHtml /
+> userActivityBtnHtml / userDataAttrs / userListHeaderHtml /
+> wireUserActivityButtons) — Manage Users and All Users now compose the same
+> cells; only the action column differs. Tier-3 #10 fully closed.
 
 ---
 

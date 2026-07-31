@@ -104,6 +104,32 @@
     }
   }
 
+  // Shared user-row cell builders (Tier-3 #10 row-HTML unification): the
+  // Manage Users list and the read-only All Users list render the same
+  // identity/dates/activity cells — only the action column differs, so each
+  // surface composes these instead of duplicating the row template.
+  const userDataAttrs = (u) => ' data-user-id="' + escHtml(u.id) + '" data-email="' + escHtml(u.email || '') + '"';
+  const userEmailCellHtml = (u) => '<span class="settings-user-email" title="' + escHtml(u.email) + '">' + escHtml(u.email || '—') + '</span>';
+  const userRoleCellHtml = (u) => '<span class="settings-user-role">' + (u.role || 'User') + '</span>';
+  const userDatesInnerHtml = (u) =>
+    '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
+    '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>';
+  const userActivityBtnHtml = (u) => '<button type="button" class="settings-user-activity" aria-label="View activity" title="View activity"' + userDataAttrs(u) + '>' + App.USER_ACTIVITY_ICON_SVG + '</button>';
+  function userListHeaderHtml(actionHeads) {
+    return '<div class="settings-user-row settings-user-header">' +
+      '<span class="settings-user-email">User</span>' +
+      '<span class="settings-user-role">Role</span>' +
+      '<span class="settings-user-count">Projects</span>' +
+      '<span class="settings-user-dates"><span>Last sign-in</span><span>Last active</span></span>' +
+      actionHeads +
+      '</div>';
+  }
+  function wireUserActivityButtons(listEl) {
+    listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
+      btn.onclick = () => App.openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
+    });
+  }
+
   function populateUserSelect(selectEl, excludeId) {
     const others = (lastUsers || []).filter((u) => u.id !== excludeId);
     if (!others.length) { selectEl.innerHTML = '<option value="">No other users</option>'; return; }
@@ -133,35 +159,27 @@
       }
       const esc = (s) => App.escapeHtml(s);
       const currentId = session.user?.id;
-      const headerHtml = '<div class="settings-user-row settings-user-header">' +
-        '<span class="settings-user-email">User</span>' +
-        '<span class="settings-user-role">Role</span>' +
-        '<span class="settings-user-count">Projects</span>' +
-        '<span class="settings-user-dates"><span>Last sign-in</span><span>Last active</span></span>' +
+      const headerHtml = userListHeaderHtml(
         '<span class="settings-user-set-password-head"></span>' +
         '<span class="settings-user-transfer-head"></span>' +
         '<span class="settings-user-activity-head"></span>' +
-        '<span class="settings-user-delete-head"></span>' +
-        '</div>';
+        '<span class="settings-user-delete-head"></span>');
       listEl.innerHTML = headerHtml + users.map((u) => {
         const isSelf = u.id === currentId;
         return '<div class="settings-user-row" data-user-id="' + esc(u.id) + '">' +
-          '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
-          '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
-          '<span class="settings-user-count">' + (u.project_count == null ? '' : (u.project_count > 0 ? '<button type="button" class="settings-user-count-link" title="View projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + u.project_count + '</button>' : '0')) + '</span>' +
-          '<button type="button" class="settings-user-dates settings-user-dates-btn" title="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' +
-            '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
-            '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
+          userEmailCellHtml(u) +
+          userRoleCellHtml(u) +
+          '<span class="settings-user-count">' + (u.project_count == null ? '' : (u.project_count > 0 ? '<button type="button" class="settings-user-count-link" title="View projects"' + userDataAttrs(u) + '>' + u.project_count + '</button>' : '0')) + '</span>' +
+          '<button type="button" class="settings-user-dates settings-user-dates-btn" title="View activity"' + userDataAttrs(u) + '>' +
+            userDatesInnerHtml(u) +
           '</button>' +
-          '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + KEY_ICON_SVG + '</button>' +
-          '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + TRANSFER_ICON_SVG + '</button>' +
-          '<button type="button" class="settings-user-activity" aria-label="View activity" title="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
-          '<button type="button" class="settings-user-delete" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '"' + (isSelf ? ' disabled' : '') + '>Delete</button>' +
+          '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password"' + userDataAttrs(u) + '>' + KEY_ICON_SVG + '</button>' +
+          '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects"' + userDataAttrs(u) + '>' + TRANSFER_ICON_SVG + '</button>' +
+          userActivityBtnHtml(u) +
+          '<button type="button" class="settings-user-delete"' + userDataAttrs(u) + (isSelf ? ' disabled' : '') + '>Delete</button>' +
           '</div>';
       }).join('');
-      listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
-        btn.onclick = () => App.openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
-      });
+      wireUserActivityButtons(listEl);
       listEl.querySelectorAll('.settings-user-dates-btn').forEach((btn) => {
         btn.onclick = () => App.openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
       });
@@ -200,29 +218,17 @@
         listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
         return;
       }
-      const esc = (s) => App.escapeHtml(s);
-      const headerHtml = '<div class="settings-user-row settings-user-header">' +
-        '<span class="settings-user-email">User</span>' +
-        '<span class="settings-user-role">Role</span>' +
-        '<span class="settings-user-count">Projects</span>' +
-        '<span class="settings-user-dates"><span>Last sign-in</span><span>Last active</span></span>' +
-        '<span class="settings-user-activity-head"></span>' +
-        '</div>';
+      const headerHtml = userListHeaderHtml('<span class="settings-user-activity-head"></span>');
       listEl.innerHTML = headerHtml + list.map((u) =>
         '<div class="settings-user-row">' +
-        '<span class="settings-user-email" title="' + esc(u.email) + '">' + esc(u.email || '—') + '</span>' +
-        '<span class="settings-user-role">' + (u.role || 'User') + '</span>' +
+        userEmailCellHtml(u) +
+        userRoleCellHtml(u) +
         '<span class="settings-user-count">' + (u.project_count == null ? '' : u.project_count) + '</span>' +
-        '<span class="settings-user-dates">' +
-        '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +
-        '<span class="settings-user-last" title="Last active">' + App.formatLastSignIn(u.last_seen_at) + '</span>' +
-        '</span>' +
-        '<button type="button" class="settings-user-activity" aria-label="View activity" title="View activity" data-user-id="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + App.USER_ACTIVITY_ICON_SVG + '</button>' +
+        '<span class="settings-user-dates">' + userDatesInnerHtml(u) + '</span>' +
+        userActivityBtnHtml(u) +
         '</div>'
       ).join('');
-      listEl.querySelectorAll('.settings-user-activity').forEach((btn) => {
-        btn.onclick = () => App.openUserActivityOverview(btn.dataset.userId, btn.dataset.email);
-      });
+      wireUserActivityButtons(listEl);
     }
     function showErr(msg, hint) {
       listEl.innerHTML = '<p style="color:var(--red);">' + (msg + '').replace(/</g, '&lt;') + '</p>' +

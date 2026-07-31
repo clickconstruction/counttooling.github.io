@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Setting the scale on a plan</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/basics/">The Basics</a><span id="pathBannerStep"> — step 3 of 8</span></div>
       <h1>Setting the scale on a plan</h1>
       <p class="article-meta">Last updated Jun 9, 2026</p>
       <div class="prose">
@@ -117,6 +118,30 @@
 </ul>
 <p>Once the scale is set, you&#39;re ready to <a href="/guides/measuring-runs-lines-and-polylines/">measure runs</a>.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" href="/guides/preparing-a-plan-set/?path=basics">← Preparing a plan set</a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/basics/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/verifying-your-scale/?path=basics">Next: Is your scale lying to you? →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"basics","byPath":{"basics":{"title":"The Basics","url":"/guides/path/basics/","step":3,"total":8,"prev":{"href":"/guides/preparing-a-plan-set/?path=basics","label":"← Preparing a plan set"},"next":{"href":"/guides/verifying-your-scale/?path=basics","label":"Next: Is your scale lying to you? →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

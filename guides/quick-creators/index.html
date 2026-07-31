@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Building your palette in two clicks</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/plumbing/">Plumbing track</a><span id="pathBannerStep"> — step 1 of 4</span></div>
       <h1>Building your palette in two clicks</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -113,6 +114,30 @@
 </ul>
 <p>Related: <a href="/guides/counting-with-counters/">Counting fixtures with counters</a> · <a href="/guides/measuring-runs-lines-and-polylines/">Measuring runs</a></p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" hidden></a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/plumbing/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/custom-icons/?path=plumbing">Next: Custom icons — make the plan read like your trade →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"plumbing","byPath":{"plumbing":{"title":"Plumbing track","url":"/guides/path/plumbing/","step":1,"total":4,"prev":null,"next":{"href":"/guides/custom-icons/?path=plumbing","label":"Next: Custom icons — make the plan read like your trade →"}},"working-faster":{"title":"Working faster","url":"/guides/path/working-faster/","step":2,"total":3,"prev":{"href":"/guides/working-faster-with-the-keyboard/?path=working-faster","label":"← Working faster with the keyboard"},"next":{"href":"/guides/artboard-and-palette-insights/?path=working-faster","label":"Next: Your palette, every bid — Artboard and Palette Insights →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

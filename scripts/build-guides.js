@@ -66,7 +66,10 @@ const ICON_BTN = {
   note: 'noteBtn', legend: 'legendBtn', grid: 'gridBtn', counter: 'counterBtn',
   line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn', room: 'roomBtn',
   'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn',
-  keys: 'statusBarQuickKeys', macros: 'statusBarMacros',
+  // keys: the keypad glyph's ink spans 96..640 inside a 0 0 640 640 viewBox
+  // (whitespace baked into the drawing), which rendered off-center in the
+  // square icon chips — the vb override crops the viewBox to the ink.
+  keys: { id: 'statusBarQuickKeys', vb: '96 96 544 544' }, macros: 'statusBarMacros',
   layers: 'canvasLayersBtn', undo: 'undoBtn',
   rotate: 'preparePdfRotate',
   // The header cloud control's button holds two svgs; the first is the
@@ -80,17 +83,62 @@ function loadIcons() {
   for (const [name, entry] of Object.entries(ICON_BTN)) {
     // Buttons carry id first; the status-bar links are <span>s with class before
     // id — extractAppIcon (scripts/lib/app-icons.js) accepts either element
-    // with the id anywhere in the tag. An entry may be {id, title} to override
-    // the element's title attribute for the chip label.
-    const { id, title } = typeof entry === 'string' ? { id: entry, title: null } : entry;
+    // with the id anywhere in the tag. An entry may be {id, title, vb} to
+    // override the element's title attribute (chip label) and/or its svg
+    // viewBox (recenter a glyph whose ink is offset inside its box).
+    const { id, title, vb } = typeof entry === 'string' ? { id: entry, title: null, vb: null } : entry;
     const ic = extractAppIcon(html, id);
     if (!ic) { console.warn(`icon: element #${id} not found in app/index.html`); continue; }
     if (!ic.svg) { console.warn(`icon: svg for #${id} not found`); continue; }
     const titleM = /\btitle="([^"]*)"/.exec(ic.attrs);
-    icons[name] = { title: (title || (titleM ? titleM[1] : name)).split('(')[0].trim(), viewBox: ic.svg.viewBox, inner: ic.svg.inner };
+    icons[name] = { title: (title || (titleM ? titleM[1] : name)).split('(')[0].trim(), viewBox: vb || ic.svg.viewBox, inner: ic.svg.inner };
   }
   return icons;
 }
+
+// --- learning paths -----------------------------------------------------------
+// Ordered walks through existing articles. Each becomes a landing page at
+// /guides/path/<slug>/, a card in the index's "Start here" section, and
+// step-navigation on member articles. Steps reference article slugs; the build
+// throws if one doesn't exist, so a renamed article can't silently break a path.
+const PATHS = [
+  {
+    slug: 'basics', title: 'The Basics', icon: 'measure',
+    blurb: 'Everything a first takeoff needs — upload to export, in order.',
+    outcome: 'By the end you can take a plan PDF from upload to a priced-ready export: scale set and verified, fixtures counted, runs measured, mistakes fixed, and the numbers delivered.',
+    steps: ['how-to-do-a-pdf-takeoff', 'preparing-a-plan-set', 'setting-the-scale', 'verifying-your-scale', 'counting-with-counters', 'measuring-runs-lines-and-polylines', 'fixing-mistakes', 'reports-and-exports'],
+  },
+  {
+    slug: 'plumbing', title: 'Plumbing track', icon: 'polyline', prereq: 'basics',
+    blurb: 'Fixture counting and pipe measuring, the plumbing way.',
+    outcome: 'Build a plumbing palette fast, make the plan read like your trade, handle mixed-scale sheets, and run a full plumbing takeoff.',
+    steps: ['quick-creators', 'custom-icons', 'scale-zones-and-multiply-zones', 'plumbing-takeoff'],
+  },
+  {
+    slug: 'electrical', title: 'Electrical track', icon: 'counter', prereq: 'basics',
+    blurb: 'Device counts, conduit runs, and typical floors.',
+    outcome: 'Organize device counts by panel, multiply typical floors instead of recounting them, and keep both hands moving through a full electrical takeoff.',
+    steps: ['organizing-a-busy-sheet', 'scale-zones-and-multiply-zones', 'electrical-takeoff', 'working-faster-with-the-keyboard'],
+  },
+  {
+    slug: 'hvac', title: 'HVAC track', icon: 'room', prereq: 'basics',
+    blurb: 'Room volumes first — then equipment and duct runs.',
+    outcome: 'Turn rooms into areas and air volumes for sizing, then count equipment and measure duct runs across mixed-scale sheets.',
+    steps: ['measuring-room-volumes', 'hvac-takeoff', 'scale-zones-and-multiply-zones'],
+  },
+  {
+    slug: 'working-faster', title: 'Working faster', icon: 'keys', prereq: 'basics',
+    blurb: 'The keyboard, quick creators, and a palette that follows you.',
+    outcome: 'Set up the shortcuts, the number row, and a cloud palette so every new bid starts at full speed.',
+    steps: ['working-faster-with-the-keyboard', 'quick-creators', 'artboard-and-palette-insights'],
+  },
+  {
+    slug: 'field-and-team', title: 'On the job site & with your team', icon: 'share', prereq: 'basics',
+    blurb: 'Offline, on a tablet, and shared without stepping on each other.',
+    outcome: 'Install the app, work with no signal, mark up on a tablet, share projects safely, and know exactly how your work is saved.',
+    steps: ['working-offline-and-installing', 'takeoff-on-a-tablet', 'sharing-and-view-links', 'how-your-work-is-saved'],
+  },
+];
 // Render an extracted icon as a labeled chip/badge <span> with the given class.
 function iconSpan(ic, cls) {
   return `<span class="${cls}" role="img" aria-label="${escAttr(ic.title)}" title="${escAttr(ic.title)}"><svg viewBox="${ic.viewBox}" aria-hidden="true">${ic.inner}</svg></span>`;
@@ -183,7 +231,23 @@ function breadcrumbLd(items) {
   };
 }
 
-function articlePage(a) {
+// Step-navigation data for one article across every path that contains it.
+// memberships: [{ path, step (1-based), total, prev: article|null, next: article|null }]
+function pathNavData(memberships) {
+  const byPath = {};
+  for (const m of memberships) {
+    byPath[m.path.slug] = {
+      title: m.path.title,
+      url: `/guides/path/${m.path.slug}/`,
+      step: m.step, total: m.total,
+      prev: m.prev ? { href: `/guides/${m.prev.slug}/?path=${m.path.slug}`, label: `← ${m.prev.title}` } : null,
+      next: m.next ? { href: `/guides/${m.next.slug}/?path=${m.path.slug}`, label: `Next: ${m.next.title} →` } : null,
+    };
+  }
+  return { primary: memberships[0].path.slug, byPath };
+}
+
+function articlePage(a, memberships) {
   const slug = `/guides/${a.slug}/`;
   const crumbs = [{ name: 'Home', url: '/' }, { name: 'Guides', url: '/guides/' }, { name: a.title, url: slug }];
   const ld = [
@@ -197,14 +261,47 @@ function articlePage(a) {
     },
     breadcrumbLd(crumbs),
   ];
+  let pathBanner = '', pathNav = '', pathScript = '';
+  if (memberships && memberships.length) {
+    const nav = pathNavData(memberships);
+    const p = nav.byPath[nav.primary];
+    pathBanner = `    <div class="path-banner">Part of <a id="pathBannerLink" href="${p.url}">${escHtml(p.title)}</a><span id="pathBannerStep"> — step ${p.step} of ${p.total}</span></div>\n`;
+    pathNav = `      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev"${p.prev ? ` href="${p.prev.href}"` : ' hidden'}>${p.prev ? escHtml(p.prev.label) : ''}</a>
+        <a class="path-nav-all" id="pathAll" href="${p.url}">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext"${p.next ? ` href="${p.next.href}"` : ' hidden'}>${p.next ? escHtml(p.next.label) : ''}</a>
+      </nav>\n`;
+    // Progressive enhancement: when the reader arrived from a non-primary path
+    // (?path=<slug>), retarget the banner + prev/next to that path. Static
+    // links (the primary path) remain correct without JS.
+    pathScript = `      <script id="pathData" type="application/json">${JSON.stringify(nav)}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>\n`;
+  }
   const body = `${breadcrumb(crumbs)}
     <article class="article">
-      <h1>${escHtml(a.h1 || a.title)}</h1>
+${pathBanner}      <h1>${escHtml(a.h1 || a.title)}</h1>
       <p class="article-meta">Last updated ${escHtml(fmtDate(a.updated))}</p>
       <div class="prose">
 ${a.bodyHtml}
       </div>
-      <div class="article-foot">
+${pathNav}${pathScript}      <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>
       </div>
@@ -212,8 +309,57 @@ ${a.bodyHtml}
   return layout({ title: `${a.title} — CountTooling`, description: a.description, slug, ogType: 'article', jsonLd: ld }, body);
 }
 
-function indexPage(articles) {
+function pathPage(p, stepArticles) {
+  const slug = `/guides/path/${p.slug}/`;
+  const crumbs = [{ name: 'Home', url: '/' }, { name: 'Guides', url: '/guides/' }, { name: p.title, url: slug }];
+  const ld = [
+    {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `${p.title} — CountTooling learning path`, description: p.blurb,
+      itemListElement: stepArticles.map((a, i) => ({ '@type': 'ListItem', position: i + 1, name: a.title, url: `${SITE}/guides/${a.slug}/` })),
+    },
+    breadcrumbLd(crumbs),
+  ];
+  const prereqP = PATHS.find((x) => x.slug === p.prereq);
+  const prereqHtml = prereqP
+    ? `      <p class="path-prereq">New here? Start with <a href="/guides/path/${prereqP.slug}/">${escHtml(prereqP.title)}</a> first — this track assumes it.</p>\n`
+    : '';
+  const steps = stepArticles.map((a, i) => `        <a class="path-step" href="/guides/${a.slug}/?path=${p.slug}">
+          <span class="path-step-n">${i + 1}</span>
+          <span class="path-step-body">
+            <span class="path-step-head">${a.iconHtml}<span class="path-step-title">${escHtml(a.title)}</span></span>
+            <span class="path-step-desc">${escHtml(a.description)}</span>
+          </span>
+        </a>`).join('\n');
+  const body = `${breadcrumb(crumbs)}
+    <section class="guides-hero">
+      <h1>${escHtml(p.title)}</h1>
+      <p>${escHtml(p.blurb)}</p>
+    </section>
+    <section class="path-page">
+${prereqHtml}      <p class="path-outcome">${escHtml(p.outcome)}</p>
+      <div class="path-steps">
+${steps}
+      </div>
+      <div class="article-foot">
+        <a class="back-link" href="/guides/">← All guides</a>
+        <a class="btn" href="/guides/${stepArticles[0].slug}/?path=${p.slug}">Start step 1</a>
+      </div>
+    </section>`;
+  return layout({ title: `${p.title} — CountTooling Guides`, description: p.blurb, slug, ogType: 'website', jsonLd: ld }, body);
+}
+
+function indexPage(articles, icons) {
   const crumbs = [{ name: 'Home', url: '/' }, { name: 'Guides', url: '/guides/' }];
+  const pathCards = PATHS.map((p) => {
+    const ic = icons[p.icon];
+    const iconHtml = ic ? iconSpan(ic, 'guide-ico') : '';
+    return `        <a class="guide-card path-card" href="/guides/path/${p.slug}/">
+          <div class="guide-card-head">${iconHtml}<h3>${escHtml(p.title)}</h3></div>
+          <p>${escHtml(p.blurb)}</p>
+          <span class="guide-meta">${p.steps.length} steps</span>
+        </a>`;
+  }).join('\n');
   const cards = articles.map((a) => `        <a class="guide-card" href="/guides/${a.slug}/">
           <div class="guide-card-head">${a.iconHtml}<h2>${escHtml(a.title)}</h2></div>
           <p>${escHtml(a.description)}</p>
@@ -232,6 +378,14 @@ function indexPage(articles) {
       <h1>Guides &amp; help</h1>
       <p>How to get the most out of CountTooling — from your first PDF takeoff to scale zones, reports, and exports.</p>
     </section>
+    <section class="paths-section">
+      <h2>Start here — pick a path</h2>
+      <p class="paths-intro">New to CountTooling? Take <a href="/guides/path/basics/">The Basics</a>, then pick the track for your trade. Each path walks the guides below in order.</p>
+      <div class="guides-list paths-list">
+${pathCards}
+      </div>
+    </section>
+    <h2 class="guides-all-heading">All guides</h2>
     <section class="guides-list">
 ${cards}
     </section>`;
@@ -239,7 +393,7 @@ ${cards}
 }
 
 function sitemap(articles) {
-  const urls = ['/', '/guides/', ...articles.map((a) => `/guides/${a.slug}/`)];
+  const urls = ['/', '/guides/', ...articles.map((a) => `/guides/${a.slug}/`), ...PATHS.map((p) => `/guides/path/${p.slug}/`)];
   const body = urls.map((u) => `  <url>\n    <loc>${SITE}${u}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>${u === '/' ? '1.0' : '0.7'}</priority>\n  </url>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
 }
@@ -271,10 +425,28 @@ function sitemap(articles) {
     };
   }).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
 
+  // Resolve learning-path steps to articles (hard error on a dangling slug) and
+  // index which paths each article belongs to, in PATHS order (first = primary).
+  const bySlug = new Map(articles.map((a) => [a.slug, a]));
+  const membershipsByArticle = new Map();
+  for (const p of PATHS) {
+    p.steps.forEach((slug, i) => {
+      const a = bySlug.get(slug);
+      if (!a) throw new Error(`PATHS: path "${p.slug}" step "${slug}" has no matching content/guides/${slug}.md`);
+      if (!membershipsByArticle.has(slug)) membershipsByArticle.set(slug, []);
+      membershipsByArticle.get(slug).push({
+        path: p, step: i + 1, total: p.steps.length,
+        prev: i > 0 ? bySlug.get(p.steps[i - 1]) : null,
+        next: i < p.steps.length - 1 ? bySlug.get(p.steps[i + 1]) : null,
+      });
+    });
+  }
+
   // Build the full set of expected files.
   const outputs = new Map();
-  outputs.set(path.join(OUT_DIR, 'index.html'), indexPage(articles));
-  for (const a of articles) outputs.set(path.join(OUT_DIR, a.slug, 'index.html'), articlePage(a));
+  outputs.set(path.join(OUT_DIR, 'index.html'), indexPage(articles, icons));
+  for (const a of articles) outputs.set(path.join(OUT_DIR, a.slug, 'index.html'), articlePage(a, membershipsByArticle.get(a.slug) || []));
+  for (const p of PATHS) outputs.set(path.join(OUT_DIR, 'path', p.slug, 'index.html'), pathPage(p, p.steps.map((s) => bySlug.get(s))));
   outputs.set(path.join(ROOT, 'sitemap.xml'), sitemap(articles));
 
   if (check) {

@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Installing the app and working offline</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/field-and-team/">On the job site &amp; with your team</a><span id="pathBannerStep"> — step 1 of 4</span></div>
       <h1>Installing the app and working offline</h1>
       <p class="article-meta">Last updated Jun 10, 2026</p>
       <div class="prose">
@@ -114,6 +115,30 @@
 <p><img src="/guides/img/on-a-tablet.png" alt="CountTooling on a tablet — the full toolbar, counters, and summary alongside a marked-up plan."></p>
 <p>For getting work to and from teammates, see <a href="/guides/sharing-and-view-links/">Sharing and view links</a>.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" hidden></a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/field-and-team/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/takeoff-on-a-tablet/?path=field-and-team">Next: Takeoffs on a tablet in the field →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"field-and-team","byPath":{"field-and-team":{"title":"On the job site & with your team","url":"/guides/path/field-and-team/","step":1,"total":4,"prev":null,"next":{"href":"/guides/takeoff-on-a-tablet/?path=field-and-team","label":"Next: Takeoffs on a tablet in the field →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

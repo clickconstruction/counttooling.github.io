@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Doing a plumbing takeoff</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/plumbing/">Plumbing track</a><span id="pathBannerStep"> — step 4 of 4</span></div>
       <h1>Doing a plumbing takeoff</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -107,6 +108,30 @@
 <p>Because it runs in the browser and saves as you go, you can start a plumbing takeoff on a desktop and pick it up on a tablet in the field.</p>
 <p>For the full step-by-step, see <a href="/guides/how-to-do-a-pdf-takeoff/">How to do a takeoff from a PDF</a>.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" href="/guides/scale-zones-and-multiply-zones/?path=plumbing">← Scale zones and multiply zones</a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/plumbing/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" hidden></a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"plumbing","byPath":{"plumbing":{"title":"Plumbing track","url":"/guides/path/plumbing/","step":4,"total":4,"prev":{"href":"/guides/scale-zones-and-multiply-zones/?path=plumbing","label":"← Scale zones and multiply zones"},"next":null}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

@@ -3952,176 +3952,13 @@
     // reach the re-checkout through this wrapper.
     function reCheckOutAfterExpiry(trigger, opts) { return saveEngine.reCheckOutAfterExpiry(trigger, opts); }
     // SECTION: [sync] Turn In
-    // doTurnIn (the staged release: pre-probe, local backup, PDF/canvas
-    // flush, raw-fetch check-in fallback + retry) lives in save-engine.js
-    // (Stage 5). The result-handling UX below stays here with the modals.
-    async function doTurnInAndHandleResult(opts) {
-      opts = opts || {};
-      if (checkoutExpiredNeedsAttention && state.currentProjectId && !state.isViewer) {
-        pushSaveEvent('turn_in_short_circuit_expired', 'Turn In short-circuited to recovery modal');
-        if (opts.hideSettings) { try { hideModal('settingsModal'); } catch (_) {} }
-        openCheckoutExpiredRecoveryModal({ trigger: 'turn_in_short_circuit' });
-        return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-      }
-      const result = await saveEngine.doTurnIn();
-      if (result.ok) {
-        clearCheckoutExpiredAttention();
-        await refreshProjectPermissions();
-        updateSettingsCheckoutSection();
-        if (opts.hideSettings) hideModal('settingsModal');
-        showToast(result.releasedByServer ? 'Edit session had already expired — turned in.' : 'Project turned in.');
-        if (state.pdfBuffer && !state.pdfStoragePath) {
-          showToast('PDF saved locally—use Name / Upload / Save Project to add it to the project.', 3000);
-        }
-        updateUI();
-      } else {
-        if (result.code === 'CHECKOUT_EXPIRED') {
-          pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-          checkoutExpiredNeedsAttention = true;
-          suspendAutoSaveUntilCheckout = true;
-          refreshProjectPermissions().catch(() => {});
-          updateSaveStatusIndicator();
-          if (opts.hideSettings) { try { hideModal('settingsModal'); } catch (_) {} }
-          openCheckoutExpiredRecoveryModal({ trigger: 'turn_in_button' });
-        } else if (typeof result.error === 'string' && /do not have .* checked out|NOT_CHECKED_OUT|not_owned/i.test(result.error)) {
-          pushSaveEvent('turn_in_already_released', 'Turn In: checkout was already released elsewhere');
-          showToast('You no longer hold the checkout - refreshing.', 4000);
-          await refreshProjectPermissions();
-          updateSettingsCheckoutSection();
-          if (opts.hideSettings) hideModal('settingsModal');
-          updateUI();
-        } else {
-          showToast(result.error || 'Failed to turn in', 3000);
-        }
-      }
-      return result;
-    }
-    async function tryTurnIn(opts) {
-      opts = opts || {};
-      return doTurnInAndHandleResult(opts);
-    }
-    const headerEditBanner = document.getElementById('headerEditStatusBanner');
-    // Shared checkout action for the header/sidebar banner buttons and the
-    // Project Settings Check Out button (was two near-identical ~45-line
-    // blocks): RPC + server-clock update, expired-attention clear, state
-    // flip, section refresh, toasts. opts.onDenied runs before the
-    // permissions refresh on the not-ok path (Settings closes its modal
-    // there); returns true on success.
-    async function doCheckoutCurrentProject(opts) {
-      const { data, error } = await supabase.rpc('check_out_project', { p_project_id: state.currentProjectId });
-      updateServerClockFromRpc(data);
-      const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-      if (result.ok) {
-        const wasSuspended = suspendAutoSaveUntilCheckout;
-        clearCheckoutExpiredAttention();
-        try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
-        if (wasSuspended) saveDebugLog('autosave.resumed', { trigger: opts.debugTrigger });
-        state.checkedOutBy = state.supabaseSession?.user?.id;
-        state.checkedOutAt = result.checked_out_at || new Date().toISOString();
-        lastCheckoutRefreshAt = Date.now();
-        state.isViewer = false;
-        state.canCheckOut = false;
-        updateSettingsCheckoutSection();
-        updateUI();
-        updateStatus();
-        showToast('Project checked out. You can now edit.');
-        return true;
-      }
-      if (opts.onDenied) opts.onDenied();
-      await refreshProjectPermissions();
-      const msg = state.checkedOutEmail ? 'Project is checked out by ' + state.checkedOutEmail : (result.error || 'Failed to check out');
-      showToast(msg, 5000);
-      return false;
-    }
-    async function handleEditStatusBannerClick(e) {
-      const btn = e.target.closest('.header-edit-status-btn');
-      if (!btn) return;
-      const action = btn.dataset.action;
-      if (action === 'save') {
-        document.getElementById('saveProjectBtn').click();
-        return;
-      }
-      if (!state.currentProjectId || !supabase) return;
-      if (action === 'checkout') {
-        btn.disabled = true;
-        btn.textContent = 'Checking out...';
-        try {
-          await doCheckoutCurrentProject({ debugTrigger: 'header_banner_checkout' });
-        } finally {
-          btn.disabled = false;
-          updateUI();
-        }
-      } else if (action === 'checkin') {
-        btn.disabled = true;
-        btn.textContent = 'Turning in...';
-        try {
-          await tryTurnIn({});
-        } finally {
-          btn.disabled = false;
-          updateUI();
-        }
-      } else if (action === 'checkout_expired_recover') {
-        openCheckoutExpiredRecoveryModal({ trigger: 'expired_banner' });
-      }
-    }
-    if (headerEditBanner) headerEditBanner.addEventListener('click', handleEditStatusBannerClick);
-    const sidebarCheckoutBanner = document.getElementById('sidebarCheckoutBanner');
-    if (sidebarCheckoutBanner) sidebarCheckoutBanner.addEventListener('click', handleEditStatusBannerClick);
-    document.getElementById('settingsCheckOut').onclick = async () => {
-      if (!state.currentProjectId || !supabase) return;
-      const btn = document.getElementById('settingsCheckOut');
-      const origText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Checking out...';
-      try {
-        await doCheckoutCurrentProject({ debugTrigger: 'settings_checkout', onDenied: () => hideModal('settingsModal') });
-      } finally {
-        btn.disabled = false;
-        btn.textContent = origText;
-      }
-    };
-    document.getElementById('settingsCheckIn').onclick = async () => {
-      if (!state.currentProjectId || !supabase) return;
-      const btn = document.getElementById('settingsCheckIn');
-      const origText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Turning in...';
-      try {
-        await tryTurnIn({ hideSettings: true });
-      } finally {
-        btn.disabled = false;
-        btn.textContent = origText;
-      }
-    };
-    document.getElementById('settingsForceCheckIn').onclick = async () => {
-      if (!state.currentProjectId || !supabase) return;
-      setTurnInProgress('Force turning in…');
-      let data, error;
-      try {
-        ({ data, error } = await supabase.rpc('force_check_in_project', { p_project_id: state.currentProjectId }));
-      } finally {
-        setTurnInProgress(null);
-      }
-      updateServerClockFromRpc(data);
-      const result = data || (error ? { ok: false, error: error.message } : { ok: false });
-      if (result.ok) {
-        state.checkedOutBy = null;
-        state.checkedOutAt = null;
-        state.checkedOutEmail = null;
-        clearUndoStacks();
-        state.isViewer = true;
-        state.canCheckOut = true;
-        try { clearCheckoutExpiredAttention(); } catch (_) {}
-        try { if (state.currentProjectId) resetAutoRecheckoutCounter(state.currentProjectId); } catch (_) {}
-        updateSettingsCheckoutSection();
-        updateUI();
-        updateStatus();
-        hideModal('settingsModal');
-        showToast('Project force turned in.');
-      } else {
-        showToast(result.error || 'Failed to force turn-in', 3000);
-      }
-    };
+    // The Turn In / Check Out UX (doTurnInAndHandleResult, tryTurnIn,
+    // doCheckoutCurrentProject, the edit-status banner handler, and the
+    // Project Settings checkout buttons) moved to features/turn-in.js
+    // (window.App registry). The engine still owns the staged release
+    // (saveEngine.doTurnIn, published as App.doTurnIn); every call site was
+    // internal to the moved cluster, so no wrappers were needed here.
+
     document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
     document.getElementById('settingsAddAdditionalPages').onclick = async () => {
       // #7b: Route through Prepare PDF in append mode. We need the current
@@ -6452,6 +6289,11 @@
   App.sha256Hex = (buf) => saveEngine.sha256Hex(buf);
   App.refreshProjectPermissions = () => refreshProjectPermissions();
   App.setCheckoutExpiredAttention = () => { checkoutExpiredNeedsAttention = true; suspendAutoSaveUntilCheckout = true; };
+  App.isAutoSaveSuspended = () => suspendAutoSaveUntilCheckout;
+  App.setLastCheckoutRefreshAt = (ms) => { lastCheckoutRefreshAt = ms; };
+  App.doTurnIn = () => saveEngine.doTurnIn();
+  App.setTurnInProgress = (msg) => setTurnInProgress(msg);
+  App.updateSettingsCheckoutSection = (...a2) => updateSettingsCheckoutSection(...a2);
   App.applyTakeoffBackupToState = applyTakeoffBackupToState;
   App.logProjectOpenEvent = logProjectOpenEvent;
   // Annex-B hoisted from the SUPABASE_ENABLED block; resolved at call time.

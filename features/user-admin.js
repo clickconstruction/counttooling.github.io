@@ -43,6 +43,67 @@
   const KEY_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12.65 10A5.99 5.99 0 0 0 7 6a6 6 0 0 0 0 12 5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
   const projectCountNote = (u) => (u && u.project_count != null) ? ('Owns ' + u.project_count + ' project' + (u.project_count === 1 ? '' : 's') + '.') : '';
 
+  // One admin-headers builder for the six fetch sites in this file (the
+  // Authorization/apikey/Content-Type literals had already drifted apart
+  // across copies).
+  function adminHeaders(session, json) {
+    const h = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY };
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+  }
+
+  // The shared admin user-list ladder (previously two near-identical
+  // implementations): the list_users_for_admin RPC first (6s abort), falling
+  // back to the admin-list-users Edge Function. onError(msg, fromEdge) lets
+  // the All Users surface attach its deploy hint to edge-side failures.
+  function fetchAdminUsers(session, { edgeTimeoutMs, onUsers, onError }) {
+    const headers = adminHeaders(session);
+    function tryEdgeFn() {
+      const ctrl = edgeTimeoutMs ? new AbortController() : null;
+      if (ctrl) setTimeout(() => ctrl.abort(), edgeTimeoutMs);
+      fetch(App.SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers, signal: ctrl ? ctrl.signal : undefined })
+        .then(async (res) => {
+          let data;
+          try { data = await res.json(); } catch (_) { data = {}; }
+          if (res.ok && data.users) onUsers(data.users);
+          else onError((data && data.error) || ('HTTP ' + res.status), true);
+        }).catch((e) => onError((e && e.name === 'AbortError') ? 'Request timed out' : ((e && e.message) || 'Network error'), true));
+    }
+    const rpcCtrl = new AbortController();
+    setTimeout(() => rpcCtrl.abort(), 6000);
+    fetch(App.SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', { method: 'POST', headers: adminHeaders(session, true), body: '{}', signal: rpcCtrl.signal })
+      .then(async (res) => {
+        let data;
+        try { data = await res.json(); } catch (_) { data = {}; }
+        if (res.ok && Array.isArray(data)) { onUsers(data); return; }
+        tryEdgeFn();
+      }).catch(() => tryEdgeFn());
+  }
+
+  // The shared admin-action submit envelope (previously the same five-step
+  // shape hand-rolled in the delete / transfer / set-password dialogs):
+  // disable + busy label, POST the Edge Function, res.ok && data.ok -> onOk,
+  // else surface the error; always restore the button (re-enabling a button
+  // inside an already-hidden modal is harmless).
+  async function submitAdminAction({ path, body, btn, busyText, idleText, fallbackError, errEl, onOk }) {
+    const session = App.state.supabaseSession;
+    if (!session?.access_token) return;
+    errEl.style.display = 'none';
+    btn.disabled = true; btn.textContent = busyText;
+    try {
+      const res = await fetch(App.SUPABASE_URL + '/functions/v1/' + path, {
+        method: 'POST', headers: adminHeaders(session, true), body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) { onOk(data); }
+      else { errEl.textContent = data.error || fallbackError; errEl.style.display = 'block'; }
+    } catch (e) {
+      errEl.textContent = (e && e.message) || fallbackError; errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = idleText;
+    }
+  }
+
   function populateUserSelect(selectEl, excludeId) {
     const others = (lastUsers || []).filter((u) => u.id !== excludeId);
     if (!others.length) { selectEl.innerHTML = '<option value="">No other users</option>'; return; }
@@ -58,26 +119,11 @@
     listEl.innerHTML = '<p style="color:var(--text3);">Loading…</p>';
     App.hideModal('mySettingsModal');
     App.showModal('manageUserModal');
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY };
     function fetchAndRender() {
-      function tryEdgeFn() {
-        fetch(App.SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers })
-          .then(async (res) => {
-            let data;
-            try { data = await res.json(); } catch (_) { data = {}; }
-            if (res.ok && data.users) renderList(data.users);
-            else listEl.innerHTML = '<p style="color:var(--red);">' + ((data && data.error) || ('HTTP ' + res.status)).replace(/</g, '&lt;') + '</p>';
-          }).catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
-      }
-      const rpcCtrl = new AbortController();
-      setTimeout(() => rpcCtrl.abort(), 6000);
-      fetch(App.SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}', signal: rpcCtrl.signal })
-        .then(async (res) => {
-          let data;
-          try { data = await res.json(); } catch (_) { data = {}; }
-          if (res.ok && Array.isArray(data)) { renderList(data); return; }
-          tryEdgeFn();
-        }).catch(() => tryEdgeFn());
+      fetchAdminUsers(session, {
+        onUsers: renderList,
+        onError: (msg) => { listEl.innerHTML = '<p style="color:var(--red);">' + (msg + '').replace(/</g, '&lt;') + '</p>'; },
+      });
     }
     function renderList(users) {
       lastUsers = users || [];
@@ -182,31 +228,11 @@
       listEl.innerHTML = '<p style="color:var(--red);">' + (msg + '').replace(/</g, '&lt;') + '</p>' +
         (hint ? '<p style="font-size:12px;color:var(--text3);margin-top:8px;">' + hint + '</p>' : '');
     }
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY };
-    function tryEdgeFn() {
-      const ctrl = new AbortController();
-      setTimeout(() => ctrl.abort(), 10000);
-      fetch(App.SUPABASE_URL + '/functions/v1/admin-list-users', { method: 'GET', headers, signal: ctrl.signal })
-        .then(async (res) => {
-          let data;
-          try { data = await res.json(); } catch (_) { data = {}; }
-          if (res.ok && data.users) renderUsers(data.users);
-          else showErr((data && data.error) || ('HTTP ' + res.status), 'Deploy: supabase functions deploy admin-list-users --no-verify-jwt');
-        }).catch((e) => showErr((e && e.name === 'AbortError') ? 'Request timed out' : (e && e.message)));
-    }
-    const rpcCtrl = new AbortController();
-    setTimeout(() => rpcCtrl.abort(), 6000);
-    fetch(App.SUPABASE_URL + '/rest/v1/rpc/list_users_for_admin', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: '{}',
-      signal: rpcCtrl.signal
-    }).then(async (res) => {
-      let data;
-      try { data = await res.json(); } catch (_) { data = {}; }
-      if (res.ok && Array.isArray(data)) { renderUsers(data); return; }
-      tryEdgeFn();
-    }).catch(() => tryEdgeFn());
+    fetchAdminUsers(session, {
+      edgeTimeoutMs: 10000,
+      onUsers: renderUsers,
+      onError: (msg, fromEdge) => showErr(msg, fromEdge ? 'Deploy: supabase functions deploy admin-list-users --no-verify-jwt' : undefined),
+    });
   }
 
   // Opens the delete dialog (delete-with-projects vs reassign-then-delete). The actual
@@ -256,28 +282,18 @@
     errEl.style.display = 'none'; okEl.style.display = 'none';
     if (!newPw || newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; errEl.style.display = 'block'; return; }
     if (newPw !== confirmPw) { errEl.textContent = 'Passwords do not match'; errEl.style.display = 'block'; return; }
-    const session = App.state.supabaseSession;
-    if (!session?.access_token) return;
-    const btn = document.getElementById('setPasswordConfirmBtn');
-    btn.disabled = true; btn.textContent = 'Setting…';
-    try {
-      const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-set-password', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId: pendingSetPwUserId, newPassword: newPw })
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
+    await submitAdminAction({
+      path: 'admin-set-password',
+      body: { targetUserId: pendingSetPwUserId, newPassword: newPw },
+      btn: document.getElementById('setPasswordConfirmBtn'),
+      busyText: 'Setting…', idleText: 'Set Password', fallbackError: 'Failed to set password',
+      errEl,
+      onOk: () => {
         okEl.textContent = 'Password updated. Share it with the user.'; okEl.style.display = 'block';
         document.getElementById('setPasswordNew').value = '';
         document.getElementById('setPasswordConfirm').value = '';
-      } else {
-        errEl.textContent = data.error || 'Failed to set password'; errEl.style.display = 'block';
-      }
-    } catch (e) {
-      errEl.textContent = (e && e.message) || 'Failed to set password'; errEl.style.display = 'block';
-    }
-    btn.disabled = false; btn.textContent = 'Set Password';
+      },
+    });
   }
 
   // Read-only: lists a single user's owned projects (name + last edit date), filtered
@@ -289,9 +305,8 @@
     App.showModal('userProjectsModal');
     const session = App.state.supabaseSession;
     if (!session?.access_token) { listEl.innerHTML = '<p style="color:var(--red);">Not authenticated.</p>'; return; }
-    const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
     try {
-      const res = await fetch(App.SUPABASE_URL + '/rest/v1/rpc/list_projects_for_admin', { method: 'POST', headers, body: '{}' });
+      const res = await fetch(App.SUPABASE_URL + '/rest/v1/rpc/list_projects_for_admin', { method: 'POST', headers: adminHeaders(session, true), body: '{}' });
       let data; try { data = await res.json(); } catch (_) { data = null; }
       if (!res.ok || !Array.isArray(data)) {
         listEl.innerHTML = '<p style="color:var(--red);">' + (((data && (data.message || data.error)) || ('HTTP ' + res.status)) + '').replace(/</g, '&lt;') + '</p>';
@@ -324,18 +339,14 @@
       if (!to) { errEl.textContent = 'Choose a user to reassign to.'; errEl.style.display = 'block'; return; }
       body.reassignToUserId = to;
     }
-    const session = App.state.supabaseSession;
-    if (!session?.access_token) return;
-    const confirmBtn = document.getElementById('deleteUserConfirmBtn');
-    confirmBtn.disabled = true; confirmBtn.textContent = mode === 'reassign' ? 'Reassigning…' : 'Deleting…';
-    try {
-      const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-delete-user', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
+    await submitAdminAction({
+      path: 'admin-delete-user',
+      body,
+      btn: document.getElementById('deleteUserConfirmBtn'),
+      busyText: mode === 'reassign' ? 'Reassigning…' : 'Deleting…',
+      idleText: 'Delete User', fallbackError: 'Delete failed',
+      errEl,
+      onOk: () => {
         App.hideModal('deleteUserConfirmModal');
         if (pendingDeleteBtn) { const row = pendingDeleteBtn.closest('.settings-user-row'); if (row) row.remove(); }
         lastUsers = (lastUsers || []).filter((x) => x.id !== pendingDeleteUserId);
@@ -343,14 +354,8 @@
         if (lst && !lst.querySelector('.settings-user-row:not(.settings-user-header)')) {
           lst.innerHTML = '<p style="color:var(--text3);">No users</p>';
         }
-      } else {
-        errEl.textContent = data.error || 'Delete failed'; errEl.style.display = 'block';
-        confirmBtn.disabled = false; confirmBtn.textContent = 'Delete User';
-      }
-    } catch (e) {
-      errEl.textContent = (e && e.message) || 'Delete failed'; errEl.style.display = 'block';
-      confirmBtn.disabled = false; confirmBtn.textContent = 'Delete User';
-    }
+      },
+    });
   }
 
   async function submitTransfer() {
@@ -358,28 +363,17 @@
     const errEl = document.getElementById('transferError');
     errEl.style.display = 'none';
     if (!to) { errEl.textContent = 'Choose a user to transfer to.'; errEl.style.display = 'block'; return; }
-    const session = App.state.supabaseSession;
-    if (!session?.access_token) return;
-    const btn = document.getElementById('transferConfirmBtn');
-    btn.disabled = true; btn.textContent = 'Transferring…';
-    try {
-      const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-reassign-projects', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromUserId: pendingTransferUserId, toUserId: to })
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
+    await submitAdminAction({
+      path: 'admin-reassign-projects',
+      body: { fromUserId: pendingTransferUserId, toUserId: to },
+      btn: document.getElementById('transferConfirmBtn'),
+      busyText: 'Transferring…', idleText: 'Transfer', fallbackError: 'Transfer failed',
+      errEl,
+      onOk: () => {
         App.hideModal('transferProjectsModal');
         openManageUserModal(); // refresh so both users' counts update
-      } else {
-        errEl.textContent = data.error || 'Transfer failed'; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Transfer';
-      }
-    } catch (e) {
-      errEl.textContent = (e && e.message) || 'Transfer failed'; errEl.style.display = 'block';
-      btn.disabled = false; btn.textContent = 'Transfer';
-    }
+      },
+    });
   }
 
   document.getElementById('manageUsersBtn').onclick = () => {
@@ -429,7 +423,7 @@
     try {
       const res = await fetch(App.SUPABASE_URL + '/functions/v1/admin-create-user', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        headers: adminHeaders(session, true),
         body: JSON.stringify({ email, password })
       });
       const json = await res.json();

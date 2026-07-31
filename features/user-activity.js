@@ -31,6 +31,18 @@
 (function() {
   const App = (window.App = window.App || {});
 
+  // The shared RPC-error renderer (this exact msg-extract + escape + red <p>
+  // idiom was hand-rolled at five fetch sites in this file).
+  function showListError(listEl, msgOrErr, data) {
+    if (!listEl) return;
+    let msg;
+    if (typeof msgOrErr === 'string') msg = msgOrErr;
+    else if (msgOrErr && msgOrErr.status != null) msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + msgOrErr.status);
+    else msg = (msgOrErr && msgOrErr.message) || 'Network error';
+    listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
+  }
+
+
   let userActivitySelectSuppress = false;
 
   function applyUserActivityFilter() {
@@ -127,8 +139,7 @@
         let data;
         try { data = await res.json(); } catch (_) { data = []; }
         if (!res.ok) {
-          const msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + res.status);
-          if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
+          showListError(listEl, res, data);
           return;
         }
         const rows = Array.isArray(data) ? data : [];
@@ -138,7 +149,7 @@
         }
         if (listEl) listEl.innerHTML = renderUserActivitySummaryTableHtml(rows);
       }).catch((e) => {
-        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
+        showListError(listEl, e);
       });
       return;
     }
@@ -180,7 +191,7 @@
     }).catch((e) => {
       state.userActivityAllRowsCache = null;
       if (toolbar) toolbar.classList.add('user-activity-toolbar-hidden');
-      if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
+      showListError(listEl, e);
     });
   }
 
@@ -223,8 +234,7 @@
         let data;
         try { data = await res.json(); } catch (_) { data = []; }
         if (!res.ok) {
-          const msg = (data && (data.message || data.error || data.hint)) ? String(data.message || data.error || data.hint) : ('HTTP ' + res.status);
-          if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + msg.replace(/</g, '&lt;') + '</p>';
+          showListError(listEl, res, data);
           return;
         }
         if (!Array.isArray(data) || data.length === 0) {
@@ -245,7 +255,7 @@
           }).join('');
         }
       }).catch((e) => {
-        if (listEl) listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>';
+        showListError(listEl, e);
       });
       return;
     }

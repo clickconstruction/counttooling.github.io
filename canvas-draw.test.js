@@ -238,3 +238,117 @@ test('core: paint order is quickLines -> polylines -> highlights -> zones -> roo
   const translates = callsOf(ctx, 'translate');
   assert.ok(translates.length > 0, 'counter icon transform ran');
 });
+
+// --- drawLegend / drawGrid (previously zero-coverage regions) --------------
+
+function makePage(w, h) {
+  return { pdfPage: { getViewport: () => ({ width: w, height: h }) }, rotation: 0 };
+}
+function legendState(overrides) {
+  return makeState(Object.assign({
+    showLegendOverlay: true,
+    legendSettings: { legendScale: 1, bgColor: '#ffffff', bgOpacity: 1, textOpacity: 1, showBorder: true },
+    counters: [{ id: 'c1', name: 'WC', icon: CIRCLE_PATH, color: '#e8c547' }],
+    lineTypes: [{ id: 'lt1', name: 'Waste', color: '#47c88e' }],
+    rooms: [{ id: 'r1', name: 'Bath', color: '#8e6fd8' }],
+  }, overrides));
+}
+function legendDeps(state) {
+  return Object.assign(makeDeps(state), {
+    getPageScale: () => ({ pixelsPerUnit: 10, unit: 'ft' }),
+    getLineLengthFeetForTotals: () => 12,
+    getEffectiveScaleForLine: () => ({ pixelsPerUnit: 10, unit: 'ft' }),
+    iconRenderVb: () => 640,
+    iconRenderCenter: () => ({ x: 320, y: 320 }),
+  });
+}
+function legendAnn() {
+  return {
+    legend: { x: 20, y: 20, w: 100, h: 60 },
+    counterMarkers: { c1: [{ x: 10, y: 10 }, { x: 300, y: 300 }] },
+    multiplyZones: [{ x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 2 }],
+    quickLines: [{ x1: 0, y1: 0, x2: 120, y2: 0, lineTypeId: 'lt1' }],
+    polylines: [],
+    roomBoxes: [{ x1: 0, y1: 0, x2: 100, y2: 80, heightFt: 10, roomId: 'r1' }],
+  };
+}
+
+test('drawLegend: gated off when hidden or when the canvas has no legend', () => {
+  const state = legendState({ showLegendOverlay: false });
+  const draw = createCanvasDraw(legendDeps(state));
+  const ctx = makeCtx();
+  draw.drawLegend(ctx, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  assert.strictEqual(ctx.calls.length, 0);
+
+  const state2 = legendState();
+  const draw2 = createCanvasDraw(legendDeps(state2));
+  const ctx2 = makeCtx();
+  draw2.drawLegend(ctx2, makePage(612, 792), 0, { legend: null }, 1, tc1);
+  assert.strictEqual(ctx2.calls.length, 0);
+});
+
+test('drawLegend: rows render with multiply-zone counts, feet totals, and room volumes', () => {
+  const state = legendState();
+  const draw = createCanvasDraw(legendDeps(state));
+  const ctx = makeCtx();
+  const ann = legendAnn();
+  draw.drawLegend(ctx, makePage(612, 792), 0, ann, 1, tc1);
+  const texts = callsOf(ctx, 'fillText').map(c => c[1]);
+  // Counter: marker inside the x2 zone + one outside = 3 effective.
+  assert.ok(texts.includes('WC [3]'), 'counter row with zone-adjusted count; got ' + JSON.stringify(texts));
+  // Line: 12 feet through the injected tally, formatted via formatFeet.
+  assert.ok(texts.includes('Waste 12.00 ft'), 'line row with feet total; got ' + JSON.stringify(texts));
+  // Room: 100x80pt at 10px/ft = 10ft x 8ft x 10ft = 800 cubic feet.
+  assert.ok(texts.includes('Bath 800 ft³'), 'room row with volume; got ' + JSON.stringify(texts));
+  // Background paints before any row text.
+  const fillRects = callsOf(ctx, 'fillRect');
+  assert.ok(fillRects.length >= 1, 'legend background fillRect');
+  // Auto-size wrote the legend box back in PDF units, clamped inside the page.
+  assert.ok(ann.legend.w >= 60 && ann.legend.w <= 612 - ann.legend.x - 10);
+  assert.ok(ann.legend.h >= 40 && ann.legend.h <= 792 - ann.legend.y - 10);
+});
+
+test('drawLegend: no rows -> "No items" placeholder', () => {
+  const state = legendState({ counters: [], lineTypes: [], rooms: [] });
+  const draw = createCanvasDraw(legendDeps(state));
+  const ctx = makeCtx();
+  draw.drawLegend(ctx, makePage(612, 792), 0, { legend: { x: 10, y: 10, w: 80, h: 40 }, counterMarkers: {}, quickLines: [], polylines: [], roomBoxes: [] }, 1, tc1);
+  const texts = callsOf(ctx, 'fillText').map(c => c[1]);
+  assert.deepStrictEqual(texts, ['No items']);
+});
+
+test('drawGrid: gated off without the overlay flag, spacing, or a page scale', () => {
+  const mk = (stateOver, depsOver) => {
+    const state = makeState(Object.assign({ showGridOverlay: true, gridSettings: { spacing: 1 } }, stateOver));
+    const deps = Object.assign(makeDeps(state), { getPageScale: () => ({ pixelsPerUnit: 10, unit: 'ft' }) }, depsOver);
+    const ctx = makeCtx();
+    createCanvasDraw(deps).drawGrid(ctx, makePage(100, 100), 0, 1, tc1);
+    return ctx.calls.length;
+  };
+  assert.strictEqual(mk({ showGridOverlay: false }), 0);
+  assert.strictEqual(mk({ gridSettings: { spacing: 0 } }), 0);
+  assert.strictEqual(mk({}, { getPageScale: () => null }), 0);
+});
+
+test('drawGrid: line counts from spacing; major-interval lines double width with solid dash', () => {
+  const state = makeState({
+    showGridOverlay: true,
+    gridSettings: { spacing: 1, opacity: 0.5, color: '#e8c547', lineWidth: 1, lineStyle: 'dashed', majorInterval: 5 },
+  });
+  const deps = Object.assign(makeDeps(state), { getPageScale: () => ({ pixelsPerUnit: 10, unit: 'ft' }) });
+  const ctx = makeCtx();
+  // 100x100pt page, 1ft grid @ 10px/ft = 10pt spacing -> 11 verticals + 11
+  // horizontals (x/y = 0,10,...,100), no negative-offset lines.
+  createCanvasDraw(deps).drawGrid(ctx, makePage(100, 100), 0, 1, tc1);
+  const strokes = callsOf(ctx, 'stroke');
+  assert.strictEqual(strokes.length, 22);
+  // Major every 5th: indices 0,5,10 per axis = 3 majors x 2 axes.
+  const dashes = callsOf(ctx, 'setLineDash').map(c => c[1]);
+  assert.strictEqual(dashes.filter(d => Array.isArray(d) && d.length === 0).length, 6);
+  const widths = setsOf(ctx, 'lineWidth');
+  assert.strictEqual(widths.filter(w => w === 2).length, 6);
+  assert.strictEqual(widths.filter(w => w === 1).length, 16);
+  // Opacity + color applied once around the pass.
+  assert.deepStrictEqual(setsOf(ctx, 'globalAlpha'), [0.5]);
+  assert.ok(setsOf(ctx, 'strokeStyle').includes('rgb(232,197,71)'));
+});

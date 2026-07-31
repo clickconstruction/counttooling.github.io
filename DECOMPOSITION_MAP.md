@@ -94,6 +94,10 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > #10 scale-zone-tool.spec.js: 11-line placeholder → 2 real tests (activation
 > gate + toast, zone endpoint-containment rules, zone-scoped feet math for
 > quick lines and polylines incl. the straddle-uses-page-scale rule).
+> #11 drawLegend/drawGrid covered: +5 node cases (gating, zone-adjusted
+> counter counts + feet totals + room volumes in legend rows, No-items
+> placeholder, grid line counts + major-interval width/dash rules). The two
+> zero-coverage canvas-draw regions from §10 are closed.
 
 ---
 

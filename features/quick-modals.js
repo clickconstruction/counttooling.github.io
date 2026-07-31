@@ -111,7 +111,7 @@
     const icons = App.getOrderedIcons();
     const grid = document.getElementById('counterQuickCountIconGrid');
     if (grid) {
-      grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+      grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === 0);
       grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
         document.querySelectorAll('#counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
         grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
@@ -120,11 +120,9 @@
       });
     }
     const effectiveCustom = App.getEffectiveCustomIcons();
-    const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
-    const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
     const customGrid = document.getElementById('counterQuickCountIconGridCustom');
     if (customGrid) {
-      customGrid.innerHTML = uploadCell + iconCells;
+      customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom);
       customGrid.querySelectorAll('.icon-cell').forEach(c => {
         c.onclick = () => {
           if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }

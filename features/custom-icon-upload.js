@@ -72,10 +72,9 @@
       const customGrid = document.getElementById('counterIconGridCustom');
       const detailsCustomGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
       const effectiveCustom = App.getEffectiveCustomIcons();
-      const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
-      const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+      const customCells = App.customIconCellsHtml(effectiveCustom);
       if (customGrid) {
-        refreshCustomGrid(customGrid, '#counterIconGrid', uploadCell + iconCells, (c) => {
+        refreshCustomGrid(customGrid, '#counterIconGrid', customCells, (c) => {
           const path = c.dataset.path;
           if (path) {
             const nameEl = document.getElementById('counterName');
@@ -89,7 +88,7 @@
       }
       const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');
       if (counterQuickCountCustomGrid) {
-        refreshCustomGrid(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', uploadCell + iconCells, () => {
+        refreshCustomGrid(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', customCells, () => {
           App.updateCounterQuickCountNamePreview();
         });
         if (selectUploadedIcon(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', icon.value)) {
@@ -99,11 +98,7 @@
       if (detailsCustomGrid) {
         const item = App.getCounterLineTypeDetailsItem ? App.getCounterLineTypeDetailsItem() : null;
         const currentIcon = item?.icon || '';
-        const iconCellsDetails = effectiveCustom.map((ic) => {
-          const sel = ic.value === currentIcon ? ' selected' : '';
-          return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
-        }).join('');
-        refreshCustomGrid(detailsCustomGrid, '#counterLineTypeDetailsIconGrid', uploadCell + iconCellsDetails, (c) => {
+        refreshCustomGrid(detailsCustomGrid, '#counterLineTypeDetailsIconGrid', App.customIconCellsHtml(effectiveCustom, currentIcon), (c) => {
           if (item) {
             App.pushUndoSnapshot();
             item.icon = c.dataset.path;

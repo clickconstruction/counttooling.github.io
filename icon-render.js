@@ -60,6 +60,25 @@
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + viewBoxString + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
   }
 
+  // Icon-picker grid cells: the single source for the cell markup that was
+  // copy-pasted across counter.js / item-details.js / quick-modals.js /
+  // custom-icon-upload.js. Pure string builders — callers wire the clicks
+  // (each picker's selection-clearing pairs and pick callbacks differ).
+  const ICON_UPLOAD_CELL_HTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
+  function iconCellHtml(pathValue, viewBox, selected) {
+    return '<div class="icon-cell' + (selected ? ' selected' : '') + '" data-path="' + pathValue + '"><svg viewBox="' + viewBox + '" width="24" height="24"><path fill="currentColor" d="' + pathValue + '"/></svg></div>';
+  }
+  // Built-in grid: vbFor(value) resolves the viewBox (the caller injects the
+  // cache-coupled App.iconVbFor); isSelected(ic, i) marks the selected cell.
+  function iconGridCellsHtml(icons, vbFor, isSelected) {
+    return icons.map((ic, i) => iconCellHtml(ic.value, vbFor(ic.value), !!(isSelected && isSelected(ic, i)))).join('');
+  }
+  // Custom grid: always leads with the upload cell; each custom icon carries
+  // its own viewBox. selectedValue (optional) marks the matching cell.
+  function customIconCellsHtml(effectiveCustom, selectedValue) {
+    return ICON_UPLOAD_CELL_HTML + effectiveCustom.map((ic) => iconCellHtml(ic.value, ic.viewBox, ic.value === selectedValue)).join('');
+  }
+
 
 // The SVG-shape -> path-data converter behind custom icon upload
 // (features/custom-icon-upload.js walks the uploaded document with DOMParser
@@ -99,6 +118,10 @@ function svgShapeToPath(tag, attr) {
       iconRenderCenterRule,
       iconViewBoxStringRule,
       iconSvgHtml,
+      ICON_UPLOAD_CELL_HTML,
+      iconCellHtml,
+      iconGridCellsHtml,
+      customIconCellsHtml,
       svgShapeToPath,
     };
   }

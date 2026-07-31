@@ -72,6 +72,12 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > build:sw restamped; ARCHITECTURE rows updated (incl. the stale "gate stays in
 > app.js" claim); copy-project.spec.js added (4 always-run tests). Full
 > Playwright suite green (180 passed).
+> #6 Tier-3 #13 CLOSED: shared picker-grid cell builders (iconCellHtml /
+> iconGridCellsHtml / customIconCellsHtml) in icon-render.js (+3 node tests)
+> replaced the 8 copy-pasted cell-markup blocks across counter.js /
+> item-details.js / quick-modals.js / custom-icon-upload.js (click wiring
+> stays per-picker); custom-icon-upload.spec.js added (3 always-run tests,
+> real FileReader/DOMParser upload path incl. rejection).
 
 ---
 

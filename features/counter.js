@@ -87,7 +87,7 @@
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const icons = App.getOrderedIcons();
-    grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === 0);
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => { grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); });
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
     App.showModal('counterModal');
@@ -118,9 +118,9 @@
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
-    grid.innerHTML = icons.map((ic, i) => '<div class="icon-cell' + (i === 0 ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === 0);
     const effectiveCustom = App.getEffectiveCustomIcons();
-    customGrid.innerHTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>' + effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+    customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom);
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
@@ -153,7 +153,7 @@
     const icons = App.getOrderedIcons();
     const filtered = q ? icons.filter(ic => ic.terms.some(t => t.includes(q))) : icons;
     const hadCustomSelected = customGrid.querySelector('.icon-cell.selected');
-    grid.innerHTML = filtered.map((ic, i) => '<div class="icon-cell' + (i === 0 && !hadCustomSelected ? ' selected' : '') + '" data-path="' + ic.value + '"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
+    grid.innerHTML = App.iconGridCellsHtml(filtered, App.iconVbFor, (ic, i) => i === 0 && !hadCustomSelected);
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));

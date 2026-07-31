@@ -6164,6 +6164,8 @@
   App.getOrderedIcons = getOrderedIcons;
   App.iconVbFor = iconVbFor;
   App.svgShapeToPath = svgShapeToPath;   // pure (icon-render.js) — custom-icon-upload feeds DOMParser shapes through it
+  App.iconGridCellsHtml = iconGridCellsHtml;     // pure (icon-render.js) — shared picker-grid cell markup
+  App.customIconCellsHtml = customIconCellsHtml; // pure (icon-render.js) — upload cell + custom icon cells
   App.getUserCustomIcons = getUserCustomIcons;
   App.saveUserCustomIcons = saveUserCustomIcons;
   App.showToast = showToast;

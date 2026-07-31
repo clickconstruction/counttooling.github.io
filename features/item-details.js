@@ -67,14 +67,8 @@
       const effectiveCustom = App.getEffectiveCustomIcons();
       const allIcons = [...icons, ...effectiveCustom];
       const currentIcon = item.icon && allIcons.some(ic => ic.value === item.icon) ? item.icon : (icons[0]?.value || '');
-      grid.innerHTML = icons.map((ic) => {
-        const sel = ic.value === currentIcon ? ' selected' : '';
-        return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
-      }).join('');
-      customGrid.innerHTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>' + effectiveCustom.map((ic) => {
-        const sel = ic.value === currentIcon ? ' selected' : '';
-        return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
-      }).join('');
+      grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic) => ic.value === currentIcon);
+      customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom, currentIcon);
       const applyIcon = (path) => {
         App.pushUndoSnapshotCurrentPage();
         item.icon = path;

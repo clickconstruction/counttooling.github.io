@@ -87,3 +87,30 @@ test('svgShapeToPath converts each supported shape and rejects the rest', () => 
   assert.strictEqual(ir.svgShapeToPath('polygon', attrs({ points: '0,0 1,1' })), null);
   assert.strictEqual(ir.svgShapeToPath('g', attrs({})), null);
 });
+
+test('iconCellHtml: cell markup with viewBox, path, and optional selection', () => {
+  const html = ir.iconCellHtml('M0 0h24v24H0z', '0 0 24 24', false);
+  assert.strictEqual(html, '<div class="icon-cell" data-path="M0 0h24v24H0z"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M0 0h24v24H0z"/></svg></div>');
+  assert.match(ir.iconCellHtml('M0 0', '0 0 24 24', true), /class="icon-cell selected"/);
+});
+
+test('iconGridCellsHtml: maps icons through vbFor and the isSelected predicate', () => {
+  const iconsList = [{ value: 'A' }, { value: 'B' }];
+  const html = ir.iconGridCellsHtml(iconsList, (v) => '0 0 ' + v.length + ' 10', (ic, i) => i === 1);
+  assert.match(html, /data-path="A"/);
+  assert.match(html, /viewBox="0 0 1 10"/);
+  assert.strictEqual((html.match(/icon-cell selected/g) || []).length, 1);
+  assert.match(html, /class="icon-cell selected" data-path="B"/);
+  // No predicate -> nothing selected.
+  assert.doesNotMatch(ir.iconGridCellsHtml(iconsList, () => '0 0 24 24'), /selected/);
+});
+
+test('customIconCellsHtml: leads with the upload cell; selects by value', () => {
+  const custom = [{ value: 'C1', viewBox: '0 0 10 10' }, { value: 'C2', viewBox: '0 0 20 20' }];
+  const html = ir.customIconCellsHtml(custom, 'C2');
+  assert.ok(html.startsWith(ir.ICON_UPLOAD_CELL_HTML));
+  assert.match(html, /class="icon-cell selected" data-path="C2"/);
+  assert.match(html, /viewBox="0 0 20 20"/);
+  // No selectedValue -> only the upload cell precedes unselected cells.
+  assert.doesNotMatch(ir.customIconCellsHtml(custom), /icon-cell selected/);
+});

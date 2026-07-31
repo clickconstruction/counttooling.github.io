@@ -91,6 +91,9 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > check) gates the styles.css ↔ marketing.css token mirror + manifest
 > theme/background colors + all three theme-color metas; the "keep in sync"
 > comment is no longer the only guard.
+> #10 scale-zone-tool.spec.js: 11-line placeholder → 2 real tests (activation
+> gate + toast, zone endpoint-containment rules, zone-scoped feet math for
+> quick lines and polylines incl. the straddle-uses-page-scale rule).
 
 ---
 

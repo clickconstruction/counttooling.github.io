@@ -87,6 +87,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Sharing takeoffs and view links</span></nav>
     <article class="article">
+    <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/field-and-team/">On the job site &amp; with your team</a><span id="pathBannerStep"> — step 3 of 4</span></div>
       <h1>Sharing takeoffs and view links</h1>
       <p class="article-meta">Last updated Jul 31, 2026</p>
       <div class="prose">
@@ -121,6 +122,30 @@
 <h2>Your work is saved as you go</h2>
 <p>Whether or not a project is shared, CountTooling <strong>auto-saves every few seconds</strong> with local backups, and — once you&#39;ve loaded a project in the <a href="/guides/working-offline-and-installing/">installed app</a> — keeps working even without a connection, syncing back up when you reconnect. For what the save indicators mean (and what happens if an edit session expires), see <a href="/guides/how-your-work-is-saved/">How your work is saved</a>.</p>
       </div>
+      <nav class="path-nav" aria-label="Learning path">
+        <a class="path-nav-link" id="pathPrev" href="/guides/takeoff-on-a-tablet/?path=field-and-team">← Takeoffs on a tablet in the field</a>
+        <a class="path-nav-all" id="pathAll" href="/guides/path/field-and-team/">All steps</a>
+        <a class="path-nav-link path-nav-next" id="pathNext" href="/guides/how-your-work-is-saved/?path=field-and-team">Next: How your work is saved (and how to tell) →</a>
+      </nav>
+      <script id="pathData" type="application/json">{"primary":"field-and-team","byPath":{"field-and-team":{"title":"On the job site & with your team","url":"/guides/path/field-and-team/","step":3,"total":4,"prev":{"href":"/guides/takeoff-on-a-tablet/?path=field-and-team","label":"← Takeoffs on a tablet in the field"},"next":{"href":"/guides/how-your-work-is-saved/?path=field-and-team","label":"Next: How your work is saved (and how to tell) →"}}}}</script>
+      <script>(function () {
+        var el = document.getElementById('pathData'); if (!el) return;
+        var d; try { d = JSON.parse(el.textContent); } catch (_) { return; }
+        var q = null; try { q = new URLSearchParams(location.search).get('path'); } catch (_) {}
+        if (!q || q === d.primary || !d.byPath[q]) return;
+        var m = d.byPath[q];
+        var link = document.getElementById('pathBannerLink');
+        if (link) { link.href = m.url; link.textContent = m.title; }
+        var stepEl = document.getElementById('pathBannerStep');
+        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        var all = document.getElementById('pathAll'); if (all) all.href = m.url;
+        function set(id, e) {
+          var a = document.getElementById(id); if (!a) return;
+          if (e) { a.hidden = false; a.href = e.href; a.textContent = e.label; }
+          else { a.hidden = true; a.removeAttribute('href'); a.textContent = ''; }
+        }
+        set('pathPrev', m.prev); set('pathNext', m.next);
+      })();</script>
       <div class="article-foot">
         <a class="back-link" href="/guides/">← All guides</a>
         <a class="btn" href="/app/">Open the app</a>

@@ -67,19 +67,27 @@ const ICON_BTN = {
   line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn', room: 'roomBtn',
   'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn',
   keys: 'statusBarQuickKeys', macros: 'statusBarMacros',
+  layers: 'canvasLayersBtn', undo: 'undoBtn',
+  rotate: 'preparePdfRotate',
+  // The header cloud control's button holds two svgs; the first is the
+  // cloud-UPLOAD glyph (shown when no pages are loaded), which is the one the
+  // regex extracts — but its title says "Export project", so override it.
+  upload: { id: 'exportDropdownBtn', title: 'Upload PDF' },
 };
 function loadIcons() {
   const html = fs.readFileSync(APP_HTML, 'utf8');
   const icons = {};
-  for (const [name, id] of Object.entries(ICON_BTN)) {
+  for (const [name, entry] of Object.entries(ICON_BTN)) {
     // Buttons carry id first; the status-bar links are <span>s with class before
     // id — extractAppIcon (scripts/lib/app-icons.js) accepts either element
-    // with the id anywhere in the tag.
+    // with the id anywhere in the tag. An entry may be {id, title} to override
+    // the element's title attribute for the chip label.
+    const { id, title } = typeof entry === 'string' ? { id: entry, title: null } : entry;
     const ic = extractAppIcon(html, id);
     if (!ic) { console.warn(`icon: element #${id} not found in app/index.html`); continue; }
     if (!ic.svg) { console.warn(`icon: svg for #${id} not found`); continue; }
     const titleM = /\btitle="([^"]*)"/.exec(ic.attrs);
-    icons[name] = { title: (titleM ? titleM[1] : name).split('(')[0].trim(), viewBox: ic.svg.viewBox, inner: ic.svg.inner };
+    icons[name] = { title: (title || (titleM ? titleM[1] : name)).split('(')[0].trim(), viewBox: ic.svg.viewBox, inner: ic.svg.inner };
   }
   return icons;
 }

@@ -120,8 +120,62 @@ async function roomSetup(page) {
   await page.waitForTimeout(350);
 }
 
+// A stubbed view-link session (no cloud needed): the get-view-project Edge Function
+// is answered by a Playwright route (the view-only.spec.js recipe) with a takeoff
+// laid out on the sample plan, and the "signed URL" is the same-origin sample PDF.
+const VIEW_TOKEN = 'demo-view-token';
+function viewProjectPayload() {
+  const pw = 921.6, ph = 597.6; // sample-plan.pdf page size in points (12.8 × 8.3 in)
+  const wcX = [0.3717, 0.4003, 0.4289, 0.5310, 0.5596, 0.5882, 0.6168];
+  const lavX = [0.3676, 0.3962, 0.4248, 0.5270, 0.5556, 0.5841, 0.6127];
+  let n = 0; const uid = () => 'view-demo-' + (++n);
+  return {
+    projectId: 'proj-view-demo', name: 'Sample Plan', pdfHash: 'hash-view-demo',
+    updatedAt: '2026-07-31T12:00:00Z', pdfSignedUrl: '/samples/sample-plan.pdf',
+    data: {
+      counters: [
+        { id: 'wc', name: 'Water Closet', icon: DOT, color: '#e8c547' },
+        { id: 'lav', name: 'Lavatory', icon: DOT, color: '#4a9eff' },
+      ],
+      lineTypes: [{ id: 'lt', name: 'Waste line', color: '#47c88e', curveStyle: 'straight' }],
+      groups: [], rooms: [],
+      pages: [{
+        index: 0,
+        scale: { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' },
+        rotation: 0,
+        canvases: [{
+          id: 'cv1', name: 'Main',
+          annotations: {
+            counterMarkers: {
+              wc: wcX.map((fx) => ({ x: fx * pw, y: 0.4962 * ph, id: uid(), group: null })),
+              lav: lavX.map((fx) => ({ x: fx * pw, y: 0.7134 * ph, id: uid(), group: null })),
+            },
+            quickLines: [{ id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: 'lt', color: '#47c88e', group: null }],
+            polylines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [],
+            legend: { x: pw - 210, y: 16, w: 195, h: 60, userResized: false },
+          },
+        }],
+      }],
+      activeCanvasIdByPage: { 0: 'cv1' },
+    },
+  };
+}
+async function routeViewProject(page) {
+  const CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+  await page.route('**/functions/v1/get-view-project', async (route) => {
+    if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: CORS }); return; }
+    await route.fulfill({ status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(viewProjectPayload()) });
+  });
+}
+
 // --- shot manifest ------------------------------------------------------------
 // clip: a selector whose bounding box is captured.
+// noLoad: skip the default upload-a-PDF loadApp (the shot's setup drives its own
+//         navigation, e.g. the view-link boot via /app/?t=…; setup receives baseUrl).
 // callouts: [{ n, sel?, x?, y? }]  (sel → anchored to that element; else x/y are
 //           relative to the clip box). boxes: [{ sel?, rect? }].
 const SHOTS = [
@@ -272,6 +326,367 @@ const SHOTS = [
       { n: 3, sel: '#chooseLineTypeModal >> text=Color' },
     ],
   },
+
+  // Prepare PDF dialog — trim/rotate the set before starting (preparing-a-plan-set guide).
+  {
+    name: 'prepare-pdf',
+    clip: '#preparePdfModal',
+    async setup(page) {
+      await page.evaluate(() => {
+        window.App.openPreparePdfModal(window.state.pages, window.state.pdfBuffer, 'Sample Plan');
+      });
+      await page.waitForSelector('#preparePdfModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(300);
+    },
+    callouts: [
+      { n: 1, sel: '#preparePdfRotate' },
+      { n: 2, sel: '#preparePdfDelete' },
+      { n: 3, sel: '#preparePdfSaveAndOpen' },
+    ],
+  },
+
+  // Set Scale presets tab on a rescaled sheet: the sheet-size warning + the verify
+  // advisory (verifying-your-scale guide). The analysis is stubbed (the synthetic
+  // sample plan is a standard sheet, so the real detector would stay silent), which
+  // exercises the exact UI path a compressed PDF triggers.
+  {
+    name: 'sheet-warning',
+    clip: '#scaleModal',
+    async setup(page) {
+      await page.evaluate(() => {
+        const App = window.App;
+        const vp = window.state.pages[0].pdfPage.getViewport({ scale: 1 });
+        const best = App.STANDARD_SHEETS.find((s) => /arch/i.test(s.id)) || App.STANDARD_SHEETS[0];
+        App.getPageSheetAnalysis = () => ({ isStandard: false, widthPt: vp.width, heightPt: vp.height, bestGuessSheet: best, candidates: [best] });
+        App.openScaleModal();
+      });
+      await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(200);
+    },
+    boxes: [
+      { sel: '#scaleSheetWarning', label: 'Rescaled-sheet warning' },
+      { sel: '#scaleVerifyAdvisory', label: 'Verify your scale' },
+    ],
+  },
+
+  // Delete Area confirm — the count of what a rubber-banded region holds
+  // (fixing-mistakes guide). Drives the real two-click tool path over the takeoff.
+  {
+    name: 'delete-area',
+    clip: '#deleteZoneModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => { window.state.tool = window.App.TOOL.DELETE_ZONE; window.App.updateUI(); });
+      const box = await page.locator('#annCanvas').boundingBox();
+      await page.mouse.click(box.x + box.width * 0.30, box.y + box.height * 0.42);
+      await page.waitForTimeout(150);
+      await page.mouse.click(box.x + box.width * 0.68, box.y + box.height * 0.80);
+      await page.waitForSelector('#deleteZoneModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+  },
+
+  // Manage Icons dialog (custom-icons guide).
+  {
+    name: 'manage-icons',
+    clip: '#manageIconsModal',
+    async setup(page) {
+      await page.evaluate(() => window.App.openManageIconsModal && window.App.openManageIconsModal());
+      await page.waitForSelector('#manageIconsModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(200);
+    },
+  },
+
+  // Quick Count tab — Size / Type / Material pickers (quick-creators guide).
+  {
+    name: 'quick-count',
+    clip: '#counterModal',
+    async setup(page) {
+      await page.evaluate(() => { const b = document.querySelector('#addCounter'); if (b) b.click(); });
+      await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+      await page.evaluate(() => window.App.showCounterTab && window.App.showCounterTab('quickcount'));
+      await page.waitForTimeout(300);
+    },
+    callouts: [
+      { n: 1, sel: '#counterQuickCountSize' },
+      { n: 2, sel: '#counterQuickCountType' },
+      { n: 3, sel: '#counterQuickCountMaterial' },
+    ],
+  },
+
+  // Add Canvas dialog — new vs duplicate layer (canvas-layers guide).
+  {
+    name: 'add-canvas',
+    clip: '#addCanvasModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => { const b = document.querySelector('#addCanvasBtn'); if (b) b.click(); });
+      await page.waitForSelector('#addCanvasModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+    callouts: [
+      { n: 1, sel: '#addCanvasModalNew' },
+      { n: 2, sel: '#addCanvasModalDuplicate' },
+    ],
+  },
+
+  // Save Status dialog — the activity log + Copy/Export (how-your-work-is-saved guide).
+  {
+    name: 'save-status',
+    clip: '#saveStatusModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => window.App.openSaveStatusModal && window.App.openSaveStatusModal());
+      await page.waitForSelector('#saveStatusModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(200);
+    },
+    callouts: [
+      { n: 1, sel: '#saveStatusVerboseToggle' },
+      { n: 2, sel: '#saveStatusCopyBtn' },
+      { n: 3, sel: '#saveStatusExportBtn' },
+    ],
+  },
+
+  // Macros modal with the inline Keyboard Map (working-faster guide).
+  {
+    name: 'keyboard-map',
+    clip: '#macrosModal',
+    async setup(page) {
+      await page.evaluate(() => window.App.showModal('macrosModal'));
+      await page.waitForSelector('#macrosModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(250);
+    },
+    boxes: [{ sel: '#macrosKeyboardInline', label: 'Every mapped key lights up' }],
+  },
+
+  // Quick Keys binding modal with two seeded bindings (working-faster guide).
+  {
+    name: 'quick-keys',
+    clip: '#quickKeysModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state;
+        const wc = s.counters.find((c) => c.name === 'Water Closet');
+        const lt = s.lineTypes.find((l) => l.name === 'Waste line');
+        s.numberKeyBindings = { 1: { kind: 'counter', id: wc.id }, 2: { kind: 'lineType', id: lt.id } };
+        window.App.openQuickKeysModal();
+      });
+      await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(200);
+    },
+  },
+
+  // Quick Line tab — Size / Material pickers (quick-creators guide).
+  {
+    name: 'quick-line',
+    clip: '#chooseLineTypeModal',
+    async setup(page) {
+      await page.evaluate(() => {
+        window.App.showChooseLineTypeModal();
+        window.App.showLineTypeTab('quick');
+      });
+      await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(250);
+    },
+    callouts: [
+      { n: 1, sel: '#quickLineSize' },
+      { n: 2, sel: '#quickLineMaterial' },
+    ],
+  },
+
+  // Highlight + note on the plan (annotating guide).
+  {
+    name: 'annotate',
+    clip: '#canvasWrapper',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state, App = window.App;
+        const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
+        const pw = vp.width, ph = vp.height;
+        const ann = s.pages[0].canvases[0].annotations;
+        ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid() });
+        ann.notes.push({ x: 0.135 * pw, y: 0.56 * ph, text: 'Confirm fixture spec — see addendum 2', id: App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' });
+        App.renderAnnotations();
+      });
+      await page.waitForTimeout(250);
+    },
+  },
+
+  // Right-click context menu on a placed mark (fixing-mistakes guide).
+  {
+    name: 'context-menu',
+    clip: '#canvasWrapper',
+    async setup(page) {
+      await takeoffSetup(page);
+      const box = await page.locator('#annCanvas').boundingBox();
+      await page.mouse.click(box.x + box.width * 0.4003, box.y + box.height * 0.4962, { button: 'right' });
+      await page.waitForSelector('#contextMenu', { state: 'visible', timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+    boxes: [{ sel: '#contextMenu', label: 'Right-click any mark' }],
+  },
+
+  // Line Properties — name, color, drops (measuring guide).
+  {
+    name: 'line-properties',
+    clip: '#linePropertiesModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const q = window.state.pages[0].canvases[0].annotations.quickLines[0];
+        q.startDrop = 3;
+        window.App.openLinePropertiesModal({ type: 'quick', q });
+      });
+      await page.waitForSelector('#linePropertiesModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(200);
+    },
+  },
+
+  // Scale verify-check panel — Expected vs reads + % error (verifying guide).
+  // Drives the REAL flow: Verify button → two clicks on the 25 ft waste line →
+  // known length 25 ft → Check.
+  {
+    name: 'scale-check',
+    clip: '#scaleModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => window.App.openScaleModal());
+      await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+      await page.locator('#scaleVerifyBtn').click();
+      await page.waitForTimeout(500);
+      const box = await page.locator('#annCanvas').boundingBox();
+      await page.mouse.click(box.x + box.width * 0.372, box.y + box.height * 0.655);
+      await page.waitForTimeout(500); // scale taps are debounced 400ms
+      await page.mouse.click(box.x + box.width * 0.617, box.y + box.height * 0.655);
+      await page.waitForSelector('#scaleCheckPanel', { state: 'visible', timeout: 5000 });
+      await page.locator('#scaleCheckValue').fill('25');
+      await page.locator('#scaleCheckBtn').click();
+      await page.waitForTimeout(250);
+    },
+  },
+
+  // Group Assign dialog (organizing guide).
+  {
+    name: 'group-assign',
+    clip: '#groupAssignModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state, App = window.App;
+        s.groups.push({ id: App.uid(), name: 'Restroom 105', color: '#e8c547' });
+        s.groups.push({ id: App.uid(), name: 'Restroom 106', color: '#4a9eff' });
+        const wc = s.counters.find((c) => c.name === 'Water Closet');
+        const item = s.pages[0].canvases[0].annotations.counterMarkers[wc.id][0];
+        App.openGroupAssignModal(item);
+      });
+      await page.waitForSelector('#groupAssignModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+  },
+
+  // Counter Settings dialog (organizing guide).
+  {
+    name: 'counter-settings',
+    clip: '#counterSettingsModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => window.App.openCounterSettingsModal());
+      await page.waitForSelector('#counterSettingsModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(200);
+    },
+  },
+
+  // Multiply Zone value dialog (zones guide).
+  {
+    name: 'multiply-zone-value',
+    clip: '#multiplyZoneModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const el = document.getElementById('multiplyZoneMultiplier');
+        if (el) el.value = '3';
+        window.App.showModal('multiplyZoneModal');
+      });
+      await page.waitForSelector('#multiplyZoneModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+  },
+
+  // Footer canvas switcher with two layers + the show-all peek (canvas-layers guide).
+  {
+    name: 'canvas-switcher',
+    clip: '.app',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state, App = window.App;
+        s.pages[0].canvases.push({ id: App.uid(), name: 'Alternate', annotations: App.makeAnnotations() });
+        App.updateUI();
+      });
+      await page.waitForTimeout(250);
+    },
+    boxes: [{ sel: '#canvasSwitcher', label: 'Layers on this page — with the show-all peek' }],
+  },
+
+  // The zoom rail on a tablet viewport (tablet guide).
+  {
+    name: 'zoom-rail',
+    clip: '.app',
+    viewport: { width: 1024, height: 1366 },
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => window.App.openZoomRail());
+      await page.waitForTimeout(400);
+    },
+    boxes: [{ sel: '#zoomRail', label: 'Zoom rail' }],
+  },
+
+  // Summary count-detail drill-down — per-page breakdown with thumbnails
+  // (how-to-do-a-pdf-takeoff guide, "review the summary" step).
+  {
+    name: 'summary-detail',
+    clip: '#summaryCountDetailModal',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => window.App.openSummaryCountDetailModal('counter', window.state.counters[0].id));
+      await page.waitForSelector('#summaryCountDetailModal.visible', { timeout: 5000 });
+      // let the async pdf.js thumbnail render land
+      await page.waitForTimeout(1500);
+    },
+  },
+
+  // View-link email gate — what a recipient sees first (sharing guide).
+  {
+    name: 'view-link-gate',
+    clip: '#viewLinkEmailModal',
+    noLoad: true,
+    async setup(page, baseUrl) {
+      await routeViewProject(page);
+      await page.goto(baseUrl + '/app/?t=' + VIEW_TOKEN, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
+      await page.locator('#viewLinkEmailInput').fill('inspector@clickplumbing.com');
+      await page.waitForTimeout(150);
+    },
+  },
+
+  // View-link viewer session — the live takeoff with the viewer toolbar (sharing guide).
+  {
+    name: 'view-link-viewer',
+    clip: '.app',
+    noLoad: true,
+    async setup(page, baseUrl) {
+      await routeViewProject(page);
+      await page.addInitScript((token) => {
+        try { localStorage.setItem('view:allowed:' + token, 'inspector@clickplumbing.com'); } catch (_) {}
+      }, VIEW_TOKEN);
+      await page.goto(baseUrl + '/app/?t=' + VIEW_TOKEN, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0 && window.state && window.state.isViewer; }, { timeout: 20000 });
+      await page.waitForTimeout(500);
+    },
+    boxes: [{ sel: '#hideMarksBtn', label: 'Hide marks' }],
+  },
 ];
 
 async function loadApp(page, baseUrl) {
@@ -295,8 +710,8 @@ async function loadApp(page, baseUrl) {
   try {
     for (const shot of shots) {
       const page = await browser.newPage({ viewport: shot.viewport || { width: 1380, height: 900 }, deviceScaleFactor: 2 });
-      await loadApp(page, baseUrl);
-      if (shot.setup) await shot.setup(page);
+      if (!shot.noLoad) await loadApp(page, baseUrl);
+      if (shot.setup) await shot.setup(page, baseUrl);
       const clip = await page.locator(shot.clip).boundingBox();
       if (!clip) throw new Error(`${shot.name}: clip ${shot.clip} not found`);
       const items = [];

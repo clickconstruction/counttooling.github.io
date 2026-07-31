@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Is your scale lying to you? — CountTooling</title>
+  <meta name="description" content="Compressed PDFs silently break preset scales. How CountTooling detects rescaled sheets, corrects presets, and lets you verify a scale before you trust a bid to it.">
+  <link rel="canonical" href="https://counttooling.com/guides/verifying-your-scale/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CountTooling">
+  <meta property="og:title" content="Is your scale lying to you? — CountTooling">
+  <meta property="og:description" content="Compressed PDFs silently break preset scales. How CountTooling detects rescaled sheets, corrects presets, and lets you verify a scale before you trust a bid to it.">
+  <meta property="og:url" content="https://counttooling.com/guides/verifying-your-scale/">
+  <meta property="og:image" content="https://counttooling.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Is your scale lying to you? — CountTooling">
+  <meta name="twitter:description" content="Compressed PDFs silently break preset scales. How CountTooling detects rescaled sheets, corrects presets, and lets you verify a scale before you trust a bid to it.">
+  <meta name="twitter:image" content="https://counttooling.com/og-image.png">
+  <meta name="theme-color" content="#17171a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/marketing.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Is your scale lying to you?",
+  "description": "Compressed PDFs silently break preset scales. How CountTooling detects rescaled sheets, corrects presets, and lets you verify a scale before you trust a bid to it.",
+  "image": "https://counttooling.com/og-image.png",
+  "datePublished": "2026-07-31",
+  "dateModified": "2026-07-31",
+  "author": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "url": "https://counttooling.com/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://counttooling.com/icons/icon-512.png"
+    }
+  },
+  "mainEntityOfPage": "https://counttooling.com/guides/verifying-your-scale/"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://counttooling.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://counttooling.com/guides/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Is your scale lying to you?",
+      "item": "https://counttooling.com/guides/verifying-your-scale/"
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap site-header-wrap">
+      <a class="logo" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8c547"/><g fill="none" stroke="#161617" stroke-width="30" stroke-linecap="round"><circle cx="256" cy="256" r="118"/><line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/><line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/></g><circle cx="256" cy="256" r="34" fill="#161617"/></svg><span>CountTooling</span></a>
+      <nav class="site-nav">
+        <a href="/guides/">Guides</a>
+        <a class="btn" href="/app/"><span class="btn-label-full">Open the app</span><span class="btn-label-short">App</span></a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Is your scale lying to you?</span></nav>
+    <article class="article">
+      <h1>Is your scale lying to you?</h1>
+      <p class="article-meta">Last updated Jul 31, 2026</p>
+      <div class="prose">
+<p>A preset scale like <code>1/4&quot; = 1&#39;</code> is an <strong>assumption</strong>: it&#39;s only right if the PDF&#39;s page is still the true physical sheet size it was drawn at. Plenty of real-world PDFs aren&#39;t — they&#39;ve been &quot;compressed&quot;, re-boxed, or re-plotted at a smaller size somewhere along the way. On a half-size page, that preset reports a 10-foot wall as 5 feet, and nothing looks wrong until the bid is.</p>
+<p>CountTooling has three layers of defense. Use them.</p>
+<h2>1. The sheet-size warning (automatic)</h2>
+<p>When you open the <strong>Set Scale</strong> <span class="ico" role="img" aria-label="Set Scale" title="Set Scale"><svg viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg></span> presets tab, the app compares the page against standard sheet sizes (ANSI, ARCH, ISO). If the page matches a standard sheet, nothing changes — your preset applies as-is.</p>
+<p>If it <em>doesn&#39;t</em> match, a yellow warning appears with a sheet picker, defaulted to the app&#39;s best guess of what the sheet was originally.</p>
+<p><img src="/guides/img/sheet-warning.png" alt="The Set Scale presets tab on a rescaled sheet: the yellow non-standard-sheet warning with its sheet picker, under the blue verify-your-scale advisory."> Apply a preset with the picker set, and the scale is corrected by the rescale ratio automatically — the scale label carries the sheet name (e.g. <code>· ARCH D</code>) so you can see the correction was applied.</p>
+<h2>2. Verify by measuring (thirty seconds, worth it)</h2>
+<p>Any time a preset or custom scale is set, a blue advisory in the scale dialog offers <strong>Verify by measuring two points</strong>:</p>
+<ol>
+<li>Click two points a <em>known</em> distance apart — a dimension line, a door width, a grid spacing.</li>
+<li>Enter the known length.</li>
+<li>The app shows what the current scale <strong>reads</strong> for that distance, next to the expected value, with the <strong>% error</strong> — green when it&#39;s under 1%.</li>
+</ol>
+<p>From there, <strong>Keep current scale</strong> if it checks out, or <strong>Use measured</strong> to recalibrate from your two points (the same math as two-point calibration, which is always ground truth).</p>
+<p><img src="/guides/img/scale-check.png" alt="The verify check: a known 25-foot line measured against the current scale — Expected vs. what the scale reads, with the % error in green when it&#39;s right."></p>
+<h2>3. The on-sheet scale bar (passive check)</h2>
+<p>For preset and custom scales, the app draws a dashed reference bar of a round length (1 ft, 5 ft, 10 ft…) near the corner of the page — the same &quot;show the scale line on the plan&quot; toggle used by two-point calibration. Glance at it against anything you know on the drawing: if a 10-foot bar spans a 20-foot corridor, the scale is wrong.</p>
+<p>This matters most in the one case detection can&#39;t catch: a compression that lands <em>exactly</em> on another standard sheet size (a half-size ARCH D is a perfect ARCH B). The warning stays silent — but the scale bar won&#39;t look right.</p>
+<h2>Rules of thumb</h2>
+<ul>
+<li><strong>Two-point calibration is immune</strong> to all of this — it derives scale from the drawing itself. When a sheet has a trustworthy dimension, prefer it.</li>
+<li>Verify at least one sheet per plan set, and any sheet whose numbers feel off.</li>
+<li>A wrong page scale also flows into <a href="/guides/scale-zones-and-multiply-zones/">scale zones</a> comparisons and every export — catching it early is the whole game.</li>
+</ul>
+<p>Related: <a href="/guides/setting-the-scale/">Setting the scale on a plan</a> covers the three calibration methods themselves.</p>
+      </div>
+      <div class="article-foot">
+        <a class="back-link" href="/guides/">← All guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 CountTooling</span>
+      <span class="fam">
+        Part of the Tooling family:
+        <a href="/guides/">Guides</a>
+        <a href="https://pipetooling.com/" rel="noopener">PipeTooling</a>
+        <a href="https://takeofftooling.com/" rel="noopener">TakeoffTooling</a>
+        <a href="/app/">Open the app</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

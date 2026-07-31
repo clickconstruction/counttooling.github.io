@@ -16,7 +16,17 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/preparing-a-plan-set/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/setting-the-scale/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/verifying-your-scale/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -26,7 +36,27 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/custom-icons/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/organizing-a-busy-sheet/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/quick-creators/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/measuring-runs-lines-and-polylines/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/fixing-mistakes/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -41,6 +71,16 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/canvas-layers/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/annotating-and-reviewing/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/reports-and-exports/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -51,7 +91,17 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/artboard-and-palette-insights/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/sharing-and-view-links/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/how-your-work-is-saved/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -61,7 +111,32 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/takeoff-on-a-tablet/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/plumbing-takeoff/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/hvac-takeoff/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/electrical-takeoff/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/browser-based-vs-desktop-takeoff/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/guides/admin-handbook/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

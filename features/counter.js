@@ -92,11 +92,7 @@
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
     App.showModal('counterModal');
   };
-  document.getElementById('counterBtn').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (App.state.isViewer) return;
-    document.getElementById('countersSectionTitle').click();
-  };
+  // counterBtn's right-click handler lives in features/tool-context-menu.js.
   document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
   const counterModalSearchInput = document.getElementById('counterModalSearchInput');
   if (counterModalSearchInput) {

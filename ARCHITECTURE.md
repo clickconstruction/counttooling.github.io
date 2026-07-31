@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 6,529 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 6,488 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,451 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [app/index.html](app/index.html) | 2,452 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 1,385 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 693 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 510 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 152 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 460 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (53 files) | 11,720 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (54 files) | 11,778 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -176,6 +176,8 @@ modules. Candidates in priority order:
 | [user-activity.spec.js](user-activity.spec.js) | Playwright regression for pilot #33 — always-run: the re-homed `App.openUserActivityModal` is wired; opening without an admin session is a safe no-op; the client-side filter pipeline works against a seeded rows cache (typing filters the rendered table, a non-match shows the no-match message, Clear restores the full table); the close binding hides the modal. The loaders stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test user-activity.spec.js` |
 | [features/user-activity-overview.js](features/user-activity-overview.js) | The rich per-user **Activity overview** (`#userActivityOverviewModal`), split out of [features/user-activity.js](features/user-activity.js) 2026-07-30 at that file's documented domain seam (the raw log and the overview shared zero symbols): `openUserActivityOverview` → one `user_activity_detail_for_admin(uuid)` jsonb → summary card + stat tiles + windows + breakdown + a day-grouped, run-collapsed feed, plus the `#uaoClose`/`#mySettingsMyActivity` bindings — not admin-only (the RPC guard is **self-or-admin**; My Settings → My Activity opens it for the signed-in user). Registers `App.openUserActivityOverview`; [features/user-admin.js](features/user-admin.js)'s row buttons consume it at call time, so load order is irrelevant. Regression: [user-activity-overview.spec.js](user-activity-overview.spec.js) |
 | [user-activity-overview.spec.js](user-activity-overview.spec.js) | Always-run Playwright regression for the overview split — registry contract, the self-or-admin no-op gate, a full stubbed render (the detail RPC routed: header/tiles/windows/breakdown/empty-timeline placeholder + the close binding), and the My Settings → My Activity route. `npx playwright test user-activity-overview.spec.js` |
+| [features/tool-context-menu.js](features/tool-context-menu.js) | **Tool right-click (contextmenu) handlers**, centralized from the nine one-off handlers that had accumulated in app.js + features/counter.js. One declarative map (`TOOL_CONTEXT`: buttonId → `[{label, run}]` action list; header/sidebar twins and the active-line-type chip alias shared lists) is the single source; right-click runs the primary action (Counter → Counter Settings, Quick Line/Polyline/chip → Line Type Settings, Multiply Zone → Multiply Zone Settings — the same modals the old handlers reached via the sidebar section-title relay). Viewer-gated. Registers only the `App.__toolContextMap` test seam (element-bound-only split, the zone-modals pattern). The action-list shape anticipates the mini-menu popover that will surface every entry. Regression: [tool-context-menu.spec.js](tool-context-menu.spec.js) |
+| [tool-context-menu.spec.js](tool-context-menu.spec.js) | Always-run Playwright regression — map coverage via the `App.__toolContextMap` seam (nine ids + labels), real right-clicks opening the mapped settings modals, the viewer no-op gate, and default-context-menu suppression. `npx playwright test tool-context-menu.spec.js` |
 | [snap-angles.spec.js](snap-angles.spec.js) | Playwright regression for the **`J` 45° snap** — the behavioral counterpart to geometry.test.js's pure-math coverage of `snapLineToAngle`: it drives real mouse clicks through the actual draw path and asserts the **committed** annotation (not just the rubber-band preview) lands on a ray. A ~27° drag commits to exactly 45° (`|dx − dy| < 1e-9`), a ~14° drag stays horizontal with `y2 === y1` **bit-exact** (the guard against a unit-vector implementation reintroducing 6e-17 drift), all four diagonals are reachable from a center anchor, polyline legs snap against the previous vertex, and turning the toggle off restores freehand angles. Angles are read in PDF space off the stored annotation — the canvas transform is uniform scale + translate with no rotation, so a 27° screen drag is a 27° PDF delta and the test never needs the zoom/pan. `npx playwright test snap-angles.spec.js` |
 | [features/lines-list.js](features/lines-list.js) | The **sidebar Lines section renderer** (`renderLinesList`) — the FIRST split out of the UI Render Functions region, the region the decomposition table above names as the next candidate. Owns: grouping every quick line / polyline by line type, the per-type headers (run count + always-feet totals via `getLineLengthFeetForTotals`/`formatFeet`), the expand/collapse state (`state.linesTypeExpanded`, localStorage-persisted), the lines search filter, per-row length (or closed-polyline **area** via `formatArea`/`polygonArea`) + drop markers, row selection (click selects + jumps to the line's page via `fitZoom`; click again deselects), the color-swatch picker, and the Line Properties openers (edit pen + `onDoubleTapOrDblClick`). Registers `App.renderLinesList`. **updateUI calls it defensively** (`App.renderLinesList && App.renderLinesList()`) since boot-time updateUI precedes feature-file load — an empty Lines section for that instant is harmless (no project yet; burger-menu pattern); the search / show-only handlers call it plainly (user-action time). Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js globals routed through the registry — the pilot-#13 `ptDist` pattern), `pickScaleForLineType`, `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`. Zero moved state beyond the function itself. Regression: [lines-list.spec.js](lines-list.spec.js) |
 | [lines-list.spec.js](lines-list.spec.js) | Playwright regression for the Lines-list split — registry contract (entry point + the five publish-only deps), then the moved behavior end-to-end on a seeded 2-page takeoff (two named quick lines + a polyline, one type): per-type grouping with `3 lines · 25.00 ft` totals, expand/collapse persisting to `linesTypeExpanded` localStorage, the search input filtering by line name through the real handler, row click selecting + jumping to the line's page, and a second click deselecting. Renders through the real `updateUI()` path, so the defensive hot-path seam is exercised, not just the direct call. Note: the Lines *section* starts minimized (`state.linesListCollapsed`), so the spec expands it before clicking rows. `npx playwright test lines-list.spec.js` |
@@ -512,44 +514,44 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2910 - Modals & Handlers
 - L2978 - PDF intake (upload, test PDF, hashing)
 - L2986 - Toolbar tool buttons
-- L3112 - Tool sidebar buttons & legend overlay
-- L3230 - Add Line Type modal
-- L3300 - Line color & sidebar handlers
-- L3442 - Polyline modal & drawing
-- L3473 - Zoom bar & page navigation
-- L3499 - Export canvas JSON
-- L3515 - PDF download helpers
-- L3524 - View-link URL helpers & show-highlights/notes
-- L3596 - Custom icon upload handler
-- L3606 - Export & report dropdown menus
-- L3695 - Sidebar drawer toggles
-- L3706 - Mobile actions burger menu pointer & header logo
-- L3718 - User Activity pointer (format.js + features/user-activity.js)
-- L3730 - My Settings pointer (features/my-settings.js)
-- L3753 - Auth & settings entry buttons
-  - L3798 - Project Settings checkout & Save Status bell
-  - L3899 - [sync] Checkout expired recovery
-  - L3955 - [sync] Turn In
-  - L4057 - Share modal pointer & copy-project openers
-  - L4088 - Settings menu actions
-  - L4109 - Auth sign-in form
-  - L4133 - Save Project modal
-  - L4146 - Checkout expired recovery modal wiring
-  - L4251 - Last-session restore prompt
-  - L4258 - Canvas Repair modal wiring
-- L4411 - Canvas Event Handlers
-- L4801 - Event Binding
-- L4811 - Aim loupe (mobile press-hold precise placement)
-- L4950 - Zoom transform preview & commit
-- L5029 - Canvas mouse, wheel & touch handlers
-- L5690 - Global dropdown dismissal & keyboard hotkeys
-- L5950 - [sync] Manual save to cloud
-- L5960 - [sync] Auto-save
-- L5967 - [sync] Local backup (IndexedDB takeoff state)
-- L6100 - [sync] Checkout keep-alive
-- L6114 - App feature registry
-- L6352 - View-only mode
-- L6358 - Init / boot
+- L3099 - Tool sidebar buttons & legend overlay
+- L3189 - Add Line Type modal
+- L3259 - Line color & sidebar handlers
+- L3401 - Polyline modal & drawing
+- L3432 - Zoom bar & page navigation
+- L3458 - Export canvas JSON
+- L3474 - PDF download helpers
+- L3483 - View-link URL helpers & show-highlights/notes
+- L3555 - Custom icon upload handler
+- L3565 - Export & report dropdown menus
+- L3654 - Sidebar drawer toggles
+- L3665 - Mobile actions burger menu pointer & header logo
+- L3677 - User Activity pointer (format.js + features/user-activity.js)
+- L3689 - My Settings pointer (features/my-settings.js)
+- L3712 - Auth & settings entry buttons
+  - L3757 - Project Settings checkout & Save Status bell
+  - L3858 - [sync] Checkout expired recovery
+  - L3914 - [sync] Turn In
+  - L4016 - Share modal pointer & copy-project openers
+  - L4047 - Settings menu actions
+  - L4068 - Auth sign-in form
+  - L4092 - Save Project modal
+  - L4105 - Checkout expired recovery modal wiring
+  - L4210 - Last-session restore prompt
+  - L4217 - Canvas Repair modal wiring
+- L4370 - Canvas Event Handlers
+- L4760 - Event Binding
+- L4770 - Aim loupe (mobile press-hold precise placement)
+- L4909 - Zoom transform preview & commit
+- L4988 - Canvas mouse, wheel & touch handlers
+- L5649 - Global dropdown dismissal & keyboard hotkeys
+- L5909 - [sync] Manual save to cloud
+- L5919 - [sync] Auto-save
+- L5926 - [sync] Local backup (IndexedDB takeoff state)
+- L6059 - [sync] Checkout keep-alive
+- L6073 - App feature registry
+- L6311 - View-only mode
+- L6317 - Init / boot
 
 <!-- END SECTION TOC -->
 

@@ -3027,11 +3027,8 @@
     }
     App.showChooseLineTypeModal();
   };
-  document.getElementById('quickLine').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    document.getElementById('lineTypesSectionTitle').click();
-  };
+  // Tool right-click (contextmenu) handlers live in
+  // features/tool-context-menu.js (one declarative map for all tools).
   document.getElementById('undoBtn').onclick = () => { undo(); };
   document.getElementById('redoBtn').onclick = () => { redo(); };
   document.getElementById('polylineBtn').onclick = () => {
@@ -3045,11 +3042,6 @@
     cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
     cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
     showModal('polylineModal');
-  };
-  document.getElementById('polylineBtn').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    document.getElementById('lineTypesSectionTitle').click();
   };
   document.getElementById('highlightBtn').onclick = () => {
     state.highlightStart = null;
@@ -3104,11 +3096,6 @@
     state.tool = TOOL.ROOM;
     updateUI();
   };
-  document.getElementById('multiplyZoneBtn').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    App.openMultiplyZoneSettingsModal();
-  };
   // SECTION: Tool sidebar buttons & legend overlay
   // The Counter modal (showCounterTab, showCounterIconTab, populateCounterChooseList,
   // the #counterBtn/.counter-tab/#counterModalSearchInput/#counterChooseCancel
@@ -3120,42 +3107,14 @@
 
   document.getElementById('moveBtnSidebar').onclick = () => document.getElementById('moveBtn').click();
   document.getElementById('counterBtnSidebar').onclick = () => document.getElementById('counterBtn').click();
-  document.getElementById('counterBtnSidebar').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    document.getElementById('countersSectionTitle').click();
-  };
   document.getElementById('quickLineSidebar').onclick = () => document.getElementById('quickLine').click();
-  document.getElementById('quickLineSidebar').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    document.getElementById('lineTypesSectionTitle').click();
-  };
   document.getElementById('polylineBtnSidebar').onclick = () => document.getElementById('polylineBtn').click();
-  document.getElementById('polylineBtnSidebar').oncontextmenu = (e) => {
-    e.preventDefault();
-    if (state.isViewer) return;
-    document.getElementById('lineTypesSectionTitle').click();
-  };
-  const headerActiveLineTypeEl = document.getElementById('headerActiveLineType');
-  if (headerActiveLineTypeEl) {
-    headerActiveLineTypeEl.oncontextmenu = (e) => {
-      e.preventDefault();
-      if (state.isViewer) return;
-      document.getElementById('lineTypesSectionTitle').click();
-    };
-  }
   document.getElementById('highlightBtnSidebar').onclick = () => document.getElementById('highlightBtn').click();
   const roomBtnSidebarWire = document.getElementById('roomBtnSidebar');
   if (roomBtnSidebarWire) roomBtnSidebarWire.onclick = () => document.getElementById('roomBtn').click();
   const multiplyZoneBtnSidebarEl = document.getElementById('multiplyZoneBtnSidebar');
   if (multiplyZoneBtnSidebarEl) {
     multiplyZoneBtnSidebarEl.onclick = () => document.getElementById('multiplyZoneBtn').click();
-    multiplyZoneBtnSidebarEl.oncontextmenu = (e) => {
-      e.preventDefault();
-      if (state.isViewer) return;
-      App.openMultiplyZoneSettingsModal();
-    };
   }
   const scaleZoneBtnSidebarEl = document.getElementById('scaleZoneBtnSidebar');
   if (scaleZoneBtnSidebarEl) scaleZoneBtnSidebarEl.onclick = () => document.getElementById('scaleZoneBtn').click();

@@ -146,14 +146,18 @@
   runs them on full-ICU (browser-equivalent / CI Node 20). Naming split (enforced by `testMatch` in
   [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
   `*.test.js` = Node unit tests.
-- **Aggregate check**: `npm run check` runs lint + `test:unit` + `build:toc --check`
+- **Aggregate check**: `npm run check` runs [scripts/check.js](scripts/check.js),
+  which executes EVERY step and reports all failures at once (one stale stamp
+  no longer hides the next): lint + `test:unit` + `build:toc --check`
   + `build:filemap --check` (the ARCHITECTURE.md Large-file map line counts are
   generated — see [scripts/build-filemap.js](scripts/build-filemap.js))
   + `build:macros --check` (the Macros table rows in app/index.html are
   generated from `HOTKEYS` in constants.js — edit the table there, then run
   `npm run build:macros` AND `npm run build:sw`)
   + `build:guides --check` + `build:sw --check`
-  (fast, no browser/cloud). [.github/workflows/ci.yml](.github/workflows/ci.yml)
+  + `check-brand-tokens` (the styles.css ↔ marketing.css ↔ manifest token
+  mirror). Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is
   CI-ignored — darwin-rasterized baselines — and cloud-gated specs self-skip

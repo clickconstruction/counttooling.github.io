@@ -98,6 +98,9 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > counter counts + feet totals + room volumes in legend rows, No-items
 > placeholder, grid line counts + major-interval width/dash rules). The two
 > zero-coverage canvas-draw regions from §10 are closed.
+> #12 Tier-4 #22 DONE: npm run check → scripts/check.js — all 8 steps always
+> run, failures replay their output at the end (verified: a forced token
+> drift exits 1 with the other 7 steps still reporting). AGENTS.md updated.
 
 ---
 

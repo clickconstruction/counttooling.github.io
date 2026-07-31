@@ -1832,6 +1832,7 @@
             <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Artboard</button>
             <button type="button" class="settings-menu-btn" id="mySettingsLoadAirboard">Load from Cloud</button>
             <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Artboard</button>
+            <button type="button" class="settings-menu-btn" id="mySettingsPaletteInsights">Analyze My Usage</button>
             <button type="button" class="settings-menu-btn danger" id="mySettingsClearAirboard">Clear Artboard</button>
           </div>
           <p id="mySettingsAirboardStatus" class="form-group" style="margin:8px 0 0 0;font-size:0.85rem;color:var(--text3);"></p>
@@ -1839,6 +1840,25 @@
       </div>
       <div class="form-group">
         <button type="button" class="settings-menu-btn danger" id="mySettingsSignOut">Sign Out</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="paletteInsightsModal">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-card-header">
+        <h2>Palette Insights</h2>
+        <button type="button" id="paletteInsightsAddAll" class="plum-header-add-btn">Add all frequently used</button>
+      </div>
+      <p id="paletteInsightsSubtitle" class="form-group" style="margin:0 0 10px 0;color:var(--text3);font-size:0.85rem;"></p>
+      <div id="paletteInsightsBody" style="max-height:52vh;overflow-y:auto;">
+        <label>Counters</label>
+        <div id="paletteInsightsCounters"></div>
+        <label style="display:block;margin-top:12px;">Line Types</label>
+        <div id="paletteInsightsLines"></div>
+      </div>
+      <p class="form-group" style="margin:10px 0 0 0;font-size:0.8rem;color:var(--text3);">Added items ride your Artboard into every new bid (sign-in restore or Load from Cloud).</p>
+      <div class="actions">
+        <button type="button" id="paletteInsightsClose">Done</button>
       </div>
     </div>
   </div>
@@ -2412,6 +2432,7 @@
   <script src="/features/canvas-switcher.js"></script>
   <script src="/features/summary-list.js"></script>
   <script src="/features/my-settings.js"></script>
+  <script src="/features/palette-insights.js"></script>
   <script src="/features/user-activity.js"></script>
   <script src="/features/lines-list.js"></script>
   <script src="/features/pages-list.js"></script>

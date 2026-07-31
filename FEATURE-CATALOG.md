@@ -237,8 +237,9 @@ know exactly what you're touching.
 **Right-click tool settings**
 *Problem:* Settings buried in menus mean most users never find them.
 *Useful because:* Right-click any tool button for its settings — options are discoverable exactly
-where the tool lives. The Move tool's entry is **Set / edit scale**, so the page's scale stays one
-right-click away after it's set instead of hiding behind the Set Scale tool.
+where the tool lives. The Move and Measure tools' entry is **Set / edit scale**, so the page's
+scale stays one right-click away after it's set instead of hiding behind the Set Scale tool —
+and a wrong Measure readout is one right-click from its fix.
 
 **Delete Area tool**
 *Problem:* Clearing a region of marks one by one (a redesigned area, a wrong count) is minutes of

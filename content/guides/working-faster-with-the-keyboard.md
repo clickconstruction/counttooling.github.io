@@ -64,9 +64,9 @@ bid after bid.
 
 Every tool button answers a **right-click** with a small menu of its actions —
 Counter and Line offer their settings plus a quick "Add…", Legend, Grid, and
-Multiply Zone open their settings directly, and **Move** offers **Set / edit
-scale** — the fastest way back to a page's scale once it's set. No hunting
-through menus. (Building palette items fast is its own trick — see
+Multiply Zone open their settings directly, and **Move** and **Measure** offer
+**Set / edit scale** — the fastest way back to a page's scale once it's set,
+right where you notice it's wrong. No hunting through menus. (Building palette items fast is its own trick — see
 [Building your palette in two clicks](/guides/quick-creators/).)
 
 ## 45° snap for straight runs

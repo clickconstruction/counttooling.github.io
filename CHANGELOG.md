@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tools): right-click any tool button for its settings
+
+Right-click (desktop/tablet) on a header or sidebar tool button now opens a
+small context menu with that tool's actions — the discoverable, uniform
+version of what four tools had as hidden one-off handlers:
+
+- **Counter** (+ chip): Counter Settings… / Add counter…; **Quick Line /
+  Polyline** (+ chip): Line Type Settings… / Add line type…; **Multiply
+  Zone**, **Legend**, **Grid**: their Settings modals. Grid's entry uses a
+  new `openGridSettingsModal` (the toggle's enable path extracted) so
+  right-click opens settings without flipping the overlay.
+- Tools with no settings (Move, Set Scale, Measure, Highlight, Scale Zone,
+  Delete Area, Note, Room Sizer, Hide Marks) answer with a toast, so the
+  gesture always visibly responds.
+- One declarative map in `features/tool-context-menu.js` replaced the nine
+  scattered `oncontextmenu` handlers in app.js + counter.js (which reached
+  the same modals through the sidebar section-title relay). Dismissal
+  listeners attach only while the menu is open; Escape closes only the menu
+  (capture-phase, so the global modal-Escape never sees the press);
+  ArrowUp/Down cycle items. Viewer-gated. Tooltips advertise the gesture on
+  wired tools; the Macros modal carries a static tip. Phone long-press +
+  burger-drawer wiring is a deliberate follow-up.
+
+Spec: `tool-context-menu.spec.js` (7 always-run tests).
+
+---
+
 ## polish(warmup): the walk is visible, marked-first, and cold flips never show the wrong sheet
 
 Three perception refinements over the full-document warm-up below:

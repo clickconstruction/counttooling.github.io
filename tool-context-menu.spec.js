@@ -1,13 +1,15 @@
 // @ts-check
 /**
  * features/tool-context-menu.js: right-click (contextmenu) on the tool
- * buttons, centralized from the nine one-off handlers that lived in app.js
- * and features/counter.js. Pins: the declarative map's coverage (ids +
- * action labels, via the App.__toolContextMap seam), the primary action
- * firing on real right-clicks (Counter -> Counter Settings, Quick Line /
- * Polyline / active-line-type chip -> Line Type Settings, Multiply Zone ->
- * Multiply Zone Settings), default-context-menu suppression, and the viewer
- * no-op gate.
+ * buttons opens the #toolContextMenu mini menu; tools with no settings
+ * answer with a toast. Pins: the declarative map's coverage (ids + action
+ * labels + the toast list, via the App.__toolContextMap seam), the popover
+ * flow (items rendered, click routes to the target modal, menu closes),
+ * multi-action menus (Counter -> Settings + Add), the Grid target opening
+ * settings WITHOUT toggling the overlay, Escape closing only the menu (the
+ * app's global Escape handler must not also fire), outside-click dismissal,
+ * the toast fallback, the viewer no-op gate, and default-context-menu
+ * suppression.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -21,65 +23,129 @@ async function bootWithPdf(page, errors) {
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 }
 
-async function rightClickOpens(page, buttonId, modalId) {
-  await page.locator('#' + buttonId).click({ button: 'right' });
-  await expect(page.locator('#' + modalId)).toHaveClass(/visible/, { timeout: 5000 });
-  await page.evaluate((id) => window.App.hideModal(id), modalId);
+async function menuLabels(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('#toolContextMenu button')].map((b) => b.textContent));
 }
 
 test.describe('Tool context menu (features/tool-context-menu.js)', () => {
-  test('map coverage: all nine ids wired with their action labels', async ({ page }) => {
+  test('map coverage: wired ids, action labels, and the toast list', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
     const map = await page.evaluate(() => window.App.__toolContextMap());
-    expect(map).toEqual({
-      counterBtn: ['Counter Settings…'],
-      counterBtnSidebar: ['Counter Settings…'],
-      quickLine: ['Line Type Settings…'],
-      quickLineSidebar: ['Line Type Settings…'],
-      polylineBtn: ['Line Type Settings…'],
-      polylineBtnSidebar: ['Line Type Settings…'],
-      headerActiveLineType: ['Line Type Settings…'],
-      multiplyZoneBtn: ['Multiply Zone Settings…'],
-      multiplyZoneBtnSidebar: ['Multiply Zone Settings…'],
+    const counter = ['Counter Settings…', 'Add counter…'];
+    const lineType = ['Line Type Settings…', 'Add line type…'];
+    expect(map.tools).toEqual({
+      counterBtn: counter, counterBtnSidebar: counter, headerActiveCounter: counter,
+      quickLine: lineType, quickLineSidebar: lineType,
+      polylineBtn: lineType, polylineBtnSidebar: lineType, headerActiveLineType: lineType,
+      multiplyZoneBtn: ['Multiply Zone Settings…'], multiplyZoneBtnSidebar: ['Multiply Zone Settings…'],
+      legendBtn: ['Legend Settings…'], legendBtnSidebar: ['Legend Settings…'],
+      gridBtn: ['Grid Settings…'], gridBtnSidebar: ['Grid Settings…'],
     });
+    expect(map.noSettings).toContain('moveBtn');
+    expect(map.noSettings).toContain('measureBtn');
+    expect(map.noSettings).toContain('hideMarksBtn');
     expect(errors).toEqual([]);
   });
 
-  test('right-click opens the mapped settings modal (header buttons)', async ({ page }) => {
+  test('counter menu: two items; Settings routes to the modal and closes the menu', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
-    await rightClickOpens(page, 'counterBtn', 'counterSettingsModal');
-    await rightClickOpens(page, 'quickLine', 'lineTypeSettingsModal');
-    await rightClickOpens(page, 'polylineBtn', 'lineTypeSettingsModal');
-    await rightClickOpens(page, 'multiplyZoneBtn', 'multiplyZoneSettingsModal');
+    await page.locator('#counterBtn').click({ button: 'right' });
+    await expect(page.locator('#toolContextMenu')).toBeVisible();
+    expect(await menuLabels(page)).toEqual(['Counter Settings…', 'Add counter…']);
+
+    await page.locator('#toolContextMenu button', { hasText: 'Counter Settings' }).click();
+    await expect(page.locator('#counterSettingsModal')).toHaveClass(/visible/);
+    await expect(page.locator('#toolContextMenu')).toBeHidden();
+    await page.evaluate(() => window.App.hideModal('counterSettingsModal'));
+
+    // The second item opens the Create Counter flow.
+    await page.locator('#counterBtn').click({ button: 'right' });
+    await page.locator('#toolContextMenu button', { hasText: 'Add counter' }).click();
+    await expect(page.locator('#counterModal')).toHaveClass(/visible/);
     expect(errors).toEqual([]);
   });
 
-  test('viewer gate: right-click is a no-op for view-link sessions', async ({ page }) => {
+  test('single-action menus route to their settings modals', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
-    await page.evaluate(() => {
+    for (const [btn, modal] of [
+      ['quickLine', 'lineTypeSettingsModal'],
+      ['multiplyZoneBtn', 'multiplyZoneSettingsModal'],
+      ['legendBtn', 'legendSettingsModal'],
+    ]) {
+      await page.locator('#' + btn).click({ button: 'right' });
+      await expect(page.locator('#toolContextMenu')).toBeVisible();
+      await page.locator('#toolContextMenu button').first().click();
+      await expect(page.locator('#' + modal)).toHaveClass(/visible/, { timeout: 5000 });
+      await page.evaluate((id) => window.App.hideModal(id), modal);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('grid: right-click opens Grid Settings without toggling the overlay', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    await page.evaluate(() => { window.App.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' }; });
+    const overlayBefore = await page.evaluate(() => !!window.App.state.showGridOverlay);
+    await page.locator('#gridBtn').click({ button: 'right' });
+    await page.locator('#toolContextMenu button', { hasText: 'Grid Settings' }).click();
+    await expect(page.locator('#gridSettingsModal')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => !!window.App.state.showGridOverlay)).toBe(overlayBefore);
+    expect(errors).toEqual([]);
+  });
+
+  test('Escape closes only the menu; outside click dismisses too', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    // Open a modal underneath, then the menu on top: Escape must close the
+    // menu and leave the modal up (capture-phase stopImmediatePropagation).
+    await page.evaluate(() => window.App.openLegendSettingsModal());
+    await expect(page.locator('#legendSettingsModal')).toHaveClass(/visible/);
+    await page.locator('#counterBtn').click({ button: 'right' });
+    await expect(page.locator('#toolContextMenu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#toolContextMenu')).toBeHidden();
+    await expect(page.locator('#legendSettingsModal')).toHaveClass(/visible/);
+    await page.evaluate(() => window.App.hideModal('legendSettingsModal'));
+
+    await page.locator('#counterBtn').click({ button: 'right' });
+    await expect(page.locator('#toolContextMenu')).toBeVisible();
+    await page.locator('#pdfCanvas').click({ position: { x: 200, y: 200 }, force: true });
+    await expect(page.locator('#toolContextMenu')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('tools with no settings toast instead of opening a menu', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    await page.locator('#measureBtn').click({ button: 'right' });
+    await expect(page.locator('#toolContextMenu')).toBeHidden();
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    expect(await page.locator('#airboardToastText').textContent()).toContain('No settings');
+    expect(errors).toEqual([]);
+  });
+
+  test('viewer gate + default-context-menu suppression', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    const res = await page.evaluate(() => {
       window.App.state.isViewer = true;
-      // Dispatch directly — the buttons are hidden for viewers, so a real
-      // pointer click can't reach them; the handler's own gate is the pin.
-      document.getElementById('counterBtn').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
-      document.getElementById('multiplyZoneBtn').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      const ev1 = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      document.getElementById('counterBtn').dispatchEvent(ev1);
+      const ev2 = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      document.getElementById('measureBtn').dispatchEvent(ev2);
+      return {
+        menuHidden: document.getElementById('toolContextMenu').hidden,
+        toastVisible: document.getElementById('airboardToastModal').classList.contains('visible'),
+        prevented: ev1.defaultPrevented && ev2.defaultPrevented,
+      };
     });
-    await expect(page.locator('#counterSettingsModal')).not.toHaveClass(/visible/);
-    await expect(page.locator('#multiplyZoneSettingsModal')).not.toHaveClass(/visible/);
-    expect(errors).toEqual([]);
-  });
-
-  test('default browser context menu is suppressed on wired buttons', async ({ page }) => {
-    const errors = [];
-    await bootWithPdf(page, errors);
-    const prevented = await page.evaluate(() => {
-      const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
-      document.getElementById('quickLine').dispatchEvent(ev);
-      return ev.defaultPrevented;
-    });
-    expect(prevented).toBe(true);
+    expect(res.menuHidden).toBe(true);
+    expect(res.toastVisible).toBe(false);
+    expect(res.prevented).toBe(true);
     expect(errors).toEqual([]);
   });
 });

@@ -40,6 +40,14 @@
       App.updateUI();
       return;
     }
+    openGridSettingsModal();
+  }
+  // Populate + show the Grid Settings modal (the enable path of the toggle,
+  // and the tool-context-menu right-click target). Same guards as before:
+  // needs pages and a page scale.
+  function openGridSettingsModal() {
+    const state = App.state;
+    if (!state.pages.length) return;
     if (!App.getPageScale(state.currentPage)) {
       App.showSetScaleFirstToast('Grid overlay');
       return;
@@ -163,4 +171,5 @@
   };
 
   App.toggleGridOverlay = toggleGridOverlay;
+  App.openGridSettingsModal = openGridSettingsModal;
 })();

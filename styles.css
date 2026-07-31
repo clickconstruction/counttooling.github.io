@@ -1383,3 +1383,11 @@
 .pi-seg button { border: none; background: var(--surface2); color: var(--text3); font-size: 0.78rem; padding: 4px 12px; cursor: pointer; }
 .pi-seg button.active { background: var(--accent); color: #161617; font-weight: 600; }
 .pi-hidden { margin-left: auto; font-size: 0.78rem; color: var(--text3); }
+
+/* ============ Tool context menu (right-click on tool buttons) ============ */
+/* features/tool-context-menu.js builds the items; fixed-positioned near the
+   invoking button, above the modal overlay (200) and below the zoom rail (300). */
+.tool-context-menu { position: fixed; z-index: 250; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 4px; min-width: 190px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.tool-context-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--text); font-size: 0.9rem; border-radius: 5px; cursor: pointer; }
+.tool-context-menu button:hover, .tool-context-menu button:focus { background: var(--surface3); outline: none; }
+.macros-context-tip { margin-top: 10px; font-size: 0.8rem; color: var(--text3); }

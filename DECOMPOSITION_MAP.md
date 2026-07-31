@@ -118,6 +118,14 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > binding + re-homed App.openUserActivityOverview; zero shared symbols
 > verified). Shell tag + PRECACHE_URLS + build:sw; ARCHITECTURE rows;
 > user-activity-overview.spec.js (3 always-run tests). Tier-3 #11 closed.
+> #15 Tier-4 #18/#19 (core): scripts/lib/markers.js (BEGIN/END splice, shared
+> by build-toc + build-macros) + scripts/lib/app-icons.js (the byte-identical
+> icon-extraction regex pair, shared by build-macros + build-guides) — all
+> three generators verified byte-identical via --check; eslint.config.js 439
+> → 308 via the browserModule(files, extraGlobals) factory collapsing the 8
+> verbatim blocks (lint still 0 warnings). Deliberately deferred from #18:
+> the artifact.js --check-protocol, brand.js reticle, and render.js withPage
+> seams — softer duplication, extract when those generators are next edited.
 
 ---
 

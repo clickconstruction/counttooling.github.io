@@ -11,6 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spliceMarkedRegion } = require('./lib/markers');
 
 const ROOT = path.join(__dirname, '..');
 const SOURCE = path.join(ROOT, 'app.js');
@@ -42,18 +43,15 @@ function main() {
   const sourceText = fs.readFileSync(SOURCE, 'utf8');
   const docText = fs.readFileSync(DOC, 'utf8');
 
-  const beginIdx = docText.indexOf(BEGIN);
-  const endIdx = docText.indexOf(END);
-  if (beginIdx === -1 || endIdx === -1 || endIdx < beginIdx) {
+  const toc = buildToc(sourceText);
+  const updated = spliceMarkedRegion(docText, BEGIN, END, buildBlock(toc));
+  if (updated === null) {
     console.error(`Could not find BEGIN/END SECTION TOC markers in ${path.relative(ROOT, DOC)}.`);
     console.error('Add these two lines where the generated index should live:');
     console.error(`  ${BEGIN}`);
     console.error(`  ${END}`);
     process.exit(1);
   }
-
-  const toc = buildToc(sourceText);
-  const updated = docText.slice(0, beginIdx) + buildBlock(toc) + docText.slice(endIdx + END.length);
 
   if (updated === docText) {
     console.log('Section TOC already up to date.');

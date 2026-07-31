@@ -115,147 +115,58 @@ const projectGlobals = {
   PDFLib: 'readonly',
 };
 
+// One shape for every extracted classic-script module group: browser globals
+// + the group's cross-file dependency globals (NEVER a module's own exports —
+// no-redeclare would flag the local declarations) + `module` for the dual-env
+// CommonJS footers; no-unused-vars off (the declarations exist to be consumed
+// cross-file), no-undef stays an error from the recommended set. Collapses
+// what were 8 verbatim-identical blocks (DECOMPOSITION_MAP Tier-4 #19); the
+// per-group rationale stays as a comment at each call site.
+function browserModule(files, extraGlobals) {
+  return {
+    files,
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...(extraGlobals || {}),
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
+      eqeqeq: ['warn', 'always', { null: 'ignore' }],
+    },
+  };
+}
+
 module.exports = [
   {
     ignores: ['node_modules/', 'playwright-report/', 'test-results/', 'config*.js', 'eslint.config.js', 'vendor/', '.claude/'],
   },
   js.configs.recommended,
-  {
-    // Definition modules: classic scripts whose top-level declarations exist
-    // solely to be consumed cross-file by the index.html IIFE / report.js, so
-    // no-unused-vars is pure noise here. `module` covers the dual-env footers.
-    files: ['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'icons.js', 'icons-custom.js', 'save-utils.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        module: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
-  {
-    // idb.js / format.js: pure modules extracted from app.js. Classic <script>s
-    // loaded after constants.js, so they reference constants (store names / caps,
-    // USER_ACTIVITY_TZ) by bare name (provided via constantsGlobals). Their
-    // exported functions are consumed cross-file by app.js, so no-unused-vars is
-    // noise here. no-undef stays an error (inherited from recommended) to catch
-    // typo'd constants. They must NOT receive their own export names as globals
-    // (no-redeclare would flag the local declarations), hence constants-only.
-    files: ['idb.js', 'format.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        ...constantsGlobals,
-        module: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
-  {
-    // icon-render.js: pure icon geometry / render-rule helpers extracted from
-    // app.js. Classic <script> loaded after icons.js, so it reads the icon-data
-    // globals (CUSTOM_ICONS / VB_384_512_PATHS / FA_PATHS) by bare name (provided
-    // via iconsGlobals). Its exports are consumed cross-file by app.js, so
-    // no-unused-vars is noise; no-undef stays an error. Like the constants-only
-    // group, it must NOT receive its own export names as globals (no-redeclare).
-    files: ['icon-render.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        ...iconsGlobals,
-        module: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
-  {
-    // line-metrics.js: pure line-length / scale math extracted from app.js.
-    // Classic <script> loaded after geometry.js, so it reads the geometry helpers
-    // (ptDist / polylineDistance / the bezier helpers / getScaleZoneForLine /
-    // getMultiplyZoneForLine) by bare name (provided via geometryGlobals). Its
-    // exports are consumed cross-file by app.js, so no-unused-vars is noise;
-    // no-undef stays an error. Like the constants-only / icons-only groups, it
-    // must NOT receive its own export names as globals (no-redeclare).
-    files: ['line-metrics.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        ...geometryGlobals,
-        module: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
-  {
-    // canvas-draw.js: the annotation draw core (createCanvasDraw(deps)),
-    // extracted from app.js. Classic <script> loaded after geometry.js +
-    // icons.js, so it reads the pure geometry helpers (roomBoxDimsFeet,
-    // formatFeetInchesFromVal, ptDist, the bezier helpers) and the icon path
-    // data (RING_PATH, CIRCLE_PATH) by bare name; everything state-coupled
-    // arrives via deps. Its exports are consumed cross-file by app.js, so
-    // no-unused-vars is noise; it must NOT receive its own export names as
-    // globals (no-redeclare).
-    files: ['canvas-draw.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        ...geometryGlobals,
-        ...iconsGlobals,
-        module: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
-  {
-    // render-service.js: the raster seam (createRenderService(deps)) — main
-    // thread pdf.js today, the render worker when available. Browser globals
-    // only (Worker, OffscreenCanvas, navigator); everything else arrives via
-    // params/deps. Consumed cross-file by app.js, so no-unused-vars is noise.
-    files: ['render-service.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        module: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
+  // Definition modules: classic scripts whose top-level declarations exist
+  // solely to be consumed cross-file by the index.html IIFE / report.js.
+  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
+  // idb.js / format.js: classic <script>s loaded after constants.js, so they
+  // reference constants (store names / caps, USER_ACTIVITY_TZ) by bare name.
+  // Constants-only globals — NOT their own exports (no-redeclare).
+  browserModule(['idb.js', 'format.js'], constantsGlobals),
+  // icon-render.js: loaded after icons.js; reads the icon-data globals
+  // (CUSTOM_ICONS / VB_384_512_PATHS / FA_PATHS) by bare name.
+  browserModule(['icon-render.js'], iconsGlobals),
+  // line-metrics.js: loaded after geometry.js; reads the geometry helpers
+  // (ptDist / polylineDistance / bezier / zone locators) by bare name.
+  browserModule(['line-metrics.js'], geometryGlobals),
+  // canvas-draw.js: the annotation draw core (createCanvasDraw(deps));
+  // loaded after geometry.js + icons.js, reads both by bare name; everything
+  // state-coupled arrives via deps.
+  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals }),
+  // render-service.js: the raster seam (createRenderService(deps)) — browser
+  // globals only (Worker, OffscreenCanvas, navigator); the rest arrives via deps.
+  browserModule(['render-service.js']),
   {
     // render-worker.js: the dedicated pdf.js render worker. Worker global
     // scope (self/importScripts/OffscreenCanvas) + the pdfjsLib it imports.
@@ -274,67 +185,25 @@ module.exports = [
       eqeqeq: ['warn', 'always', { null: 'ignore' }],
     },
   },
-  {
-    // save-engine.js: the save/sync engine module (createSaveEngine(ctx)),
-    // extracted from app.js in stages. Classic <script> loaded after
-    // constants.js + save-utils.js, so it reads their exports by bare name
-    // (saveEngineGlobals); everything state/closure-coupled arrives via ctx.
-    // Its export is consumed cross-file by app.js, so no-unused-vars is noise.
-    // pdf-tile-cache.js follows the same seam recipe (createPdfTileCache(ctx))
-    // and reads constants.js + idb.js exports by bare name, both covered by
-    // saveEngineGlobals.
-    files: ['save-engine.js', 'annotation-model.js', 'undo-stack.js', 'pdf-tile-cache.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        ...saveEngineGlobals,
-        module: 'readonly',
-        // CDN library loaded via <script> in index.html (resumable PDF upload).
-        tus: 'readonly',
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
-  {
-    // features/*.js: incremental splits of the app.js IIFE (window.App registry
-    // pilot). Each is its own classic-script IIFE loaded AFTER app.js; it reads
-    // shared state/helpers from the local `App` it declares (window.App) at call
-    // time and registers its public entry points back onto it. no-undef stays an
-    // error to catch typos / missing browser globals; no-unused-vars is off
-    // (these files exist to publish onto App, not to be self-contained).
-    files: ['features/*.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        module: 'readonly',
-        // CDN libraries loaded via <script> in index.html before app.js
-        pdfjsLib: 'readonly',
-        jspdf: 'readonly',
-        html2canvas: 'readonly',
-        PDFLib: 'readonly',
-        // report.js global, resolved at export time (report.js loads after)
-        buildReportHtml: 'readonly',
-        // idb.js storage primitives + constants (classic-script globals,
-        // loaded before app.js; view-only reads the view cache directly and
-        // load-project's save-before-load branch reads the CHECKOUT_* msgs)
-        ...Object.fromEntries(Object.keys(require('./idb.js')).map((k) => [k, 'readonly'])),
-        ...constantsGlobals,
-      },
-    },
-    rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      eqeqeq: ['warn', 'always', { null: 'ignore' }],
-    },
-  },
+  // save-engine.js + the other seam modules (createX(ctx)): loaded after
+  // constants.js/save-utils.js/idb.js, read their exports by bare name
+  // (saveEngineGlobals); everything state/closure-coupled arrives via ctx.
+  // `tus` is the vendored resumable-upload lib (classic <script>).
+  browserModule(['save-engine.js', 'annotation-model.js', 'undo-stack.js', 'pdf-tile-cache.js'], { ...saveEngineGlobals, tus: 'readonly' }),
+  // features/*.js: incremental splits of the app.js IIFE (window.App registry).
+  // Each is its own classic-script IIFE loaded AFTER app.js; reads shared
+  // state/helpers from App at call time. Extra globals: the vendored libs
+  // loaded before app.js, report.js's buildReportHtml (resolved at call time),
+  // and the idb.js/constants classic-script globals some features read bare.
+  browserModule(['features/*.js'], {
+    pdfjsLib: 'readonly',
+    jspdf: 'readonly',
+    html2canvas: 'readonly',
+    PDFLib: 'readonly',
+    buildReportHtml: 'readonly',
+    ...Object.fromEntries(Object.keys(require('./idb.js')).map((k) => [k, 'readonly'])),
+    ...constantsGlobals,
+  }),
   {
     // sw.js — the PWA service worker; its own ServiceWorkerGlobalScope (self,
     // caches, clients, skipWaiting, FetchEvent, ...), not the window globals.

@@ -17,7 +17,23 @@
 (function() {
   const App = (window.App = window.App || {});
 
+  // Thumbnail-render cancellation: the per-page thumbnails render
+  // sequentially after the modal opens; without a guard they kept rastering
+  // (competing with the live page render) after the modal closed. A
+  // generation token invalidates the loop: bumped on every open (a re-open
+  // supersedes the previous run) and on close via the core->feature callback
+  // App.onSummaryCountDetailHidden (hideModal in app.js). The in-flight
+  // pdf.js RenderTask is also cancelled so the current raster stops
+  // immediately, not just the loop.
+  let detailRenderGen = 0;
+  let inFlightRenderTask = null;
+  App.onSummaryCountDetailHidden = () => {
+    detailRenderGen++;
+    if (inFlightRenderTask) { try { inFlightRenderTask.cancel(); } catch (_) {} inFlightRenderTask = null; }
+  };
+
   async function openSummaryCountDetailModal(type, id) {
+    const gen = ++detailRenderGen;
     const titleEl = document.getElementById('summaryCountDetailTitle');
     const listEl = document.getElementById('summaryCountDetailList');
     const exportOverrides = { markerScale: App.state.exportSettings?.markerScale ?? 0.75, lineScale: App.state.exportSettings?.lineScale ?? 0.75 };
@@ -53,6 +69,7 @@
     App.showModal('summaryCountDetailModal');
     listEl.innerHTML = '';
     for (let i = 0; i < items.length; i++) {
+      if (gen !== detailRenderGen) return;   // modal closed / re-opened: stop rendering
       const it = items[i];
       const page = App.state.pages[it.pageIdx];
       const fullLabel = it.pageLabel || 'Page ' + (it.pageIdx + 1);
@@ -88,7 +105,14 @@
           canvas.width = pageW;
           canvas.height = pageH;
           const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'display' }).promise;
+          const renderTask = page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'display' });
+          inFlightRenderTask = renderTask;
+          try {
+            await renderTask.promise;
+          } finally {
+            if (inFlightRenderTask === renderTask) inFlightRenderTask = null;
+          }
+          if (gen !== detailRenderGen) return;   // cancelled while rastering
           App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
           const previewWrap = document.createElement('div');
           previewWrap.className = 'summary-count-detail-preview';
@@ -102,6 +126,7 @@
           previewWrap.appendChild(docSpan);
           row.appendChild(previewWrap);
         } catch (e) {
+          if (gen !== detailRenderGen) return;   // cancelled: expected rejection, not an error
           console.error('[Summary detail thumbnail]', e);
         }
       }

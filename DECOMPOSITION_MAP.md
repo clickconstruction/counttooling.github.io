@@ -78,6 +78,11 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > item-details.js / quick-modals.js / custom-icon-upload.js (click wiring
 > stays per-picker); custom-icon-upload.spec.js added (3 always-run tests,
 > real FileReader/DOMParser upload path incl. rejection).
+> #7 summary-detail perf item fixed: thumbnail loop is generation-token
+> cancelled on modal close/re-open (core→feature callback
+> App.onSummaryCountDetailHidden in hideModal) + the in-flight pdf.js
+> RenderTask is cancelled; spec extended to pin it (§6's "no cancel on modal
+> close" note is resolved).
 
 ---
 

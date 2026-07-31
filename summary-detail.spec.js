@@ -68,4 +68,43 @@ test.describe('Summary count detail (features/summary-detail.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('closing the modal cancels the in-flight thumbnail loop', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Markers on both pages so the loop has more than one thumbnail to render.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters.push({ id: 'c1', name: 'WC', icon: 'M0 0h10v10H0z', color: '#e8c547' });
+      for (const p of s.pages) {
+        const canvas = window.App.ensureActiveCanvas(p);
+        canvas.annotations.counterMarkers.c1 = [{ x: 10, y: 10, id: 'm-' + p.label }];
+      }
+      window.App.updateUI();
+    });
+
+    // Open, then close immediately: the hideModal callback bumps the
+    // generation token, so the loop must stop early. Pin via the callback's
+    // presence + the row count staying short of the full item count.
+    const rows = await page.evaluate(async () => {
+      const openPromise = window.App.openSummaryCountDetailModal('counter', 'c1');
+      window.App.hideModal('summaryCountDetailModal');   // fires onSummaryCountDetailHidden
+      await openPromise;                                  // loop returns early, no throw
+      return document.querySelectorAll('#summaryCountDetailList .summary-count-detail-row').length;
+    });
+    expect(rows).toBeLessThan(2);   // 2 pages seeded; the cancelled loop never appends both
+
+    // A fresh open still works after a cancelled one (token superseded cleanly).
+    await page.evaluate(() => window.App.openSummaryCountDetailModal('counter', 'c1'));
+    await expect(page.locator('#summaryCountDetailList .summary-count-detail-row')).toHaveCount(2, { timeout: 15000 });
+
+    expect(errors).toEqual([]);
+  });
 });

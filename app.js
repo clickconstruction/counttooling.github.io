@@ -2573,6 +2573,7 @@
     if (id === 'counterLineTypeDetailsModal') App.onCounterLineTypeDetailsHidden && App.onCounterLineTypeDetailsHidden();
     if (id === 'canvasDetailsModal') App.onCanvasDetailsHidden && App.onCanvasDetailsHidden();
     if (id === 'deleteCanvasConfirmModal') App.onDeleteCanvasConfirmHidden && App.onDeleteCanvasConfirmHidden();
+    if (id === 'summaryCountDetailModal') App.onSummaryCountDetailHidden && App.onSummaryCountDetailHidden();
     document.getElementById(id).classList.remove('visible');
   }
 

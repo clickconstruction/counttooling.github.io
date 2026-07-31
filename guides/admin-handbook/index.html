@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Admin handbook — CountTooling</title>
+  <meta name="description" content="Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.">
+  <link rel="canonical" href="https://counttooling.com/guides/admin-handbook/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CountTooling">
+  <meta property="og:title" content="Admin handbook — CountTooling">
+  <meta property="og:description" content="Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.">
+  <meta property="og:url" content="https://counttooling.com/guides/admin-handbook/">
+  <meta property="og:image" content="https://counttooling.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Admin handbook — CountTooling">
+  <meta name="twitter:description" content="Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.">
+  <meta name="twitter:image" content="https://counttooling.com/og-image.png">
+  <meta name="theme-color" content="#17171a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/marketing.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Admin handbook",
+  "description": "Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.",
+  "image": "https://counttooling.com/og-image.png",
+  "datePublished": "2026-07-31",
+  "dateModified": "2026-07-31",
+  "author": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "url": "https://counttooling.com/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CountTooling",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://counttooling.com/icons/icon-512.png"
+    }
+  },
+  "mainEntityOfPage": "https://counttooling.com/guides/admin-handbook/"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://counttooling.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://counttooling.com/guides/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Admin handbook",
+      "item": "https://counttooling.com/guides/admin-handbook/"
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap site-header-wrap">
+      <a class="logo" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8c547"/><g fill="none" stroke="#161617" stroke-width="30" stroke-linecap="round"><circle cx="256" cy="256" r="118"/><line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/><line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/></g><circle cx="256" cy="256" r="34" fill="#161617"/></svg><span>CountTooling</span></a>
+      <nav class="site-nav">
+        <a href="/guides/">Guides</a>
+        <a class="btn" href="/app/"><span class="btn-label-full">Open the app</span><span class="btn-label-short">App</span></a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Admin handbook</span></nav>
+    <article class="article">
+      <h1>Admin handbook</h1>
+      <p class="article-meta">Last updated Jul 31, 2026</p>
+      <div class="prose">
+<p>CountTooling accounts are admin-provisioned — there&#39;s no self-signup — so admins run the team from inside the app. Everything below lives in <strong>User Settings</strong> and <strong>Project Settings</strong> and appears only for admin accounts.</p>
+<h2>Users</h2>
+<ul>
+<li><strong>Add User</strong> — create an account with email + password and hand the credentials over; new users can sign in immediately.</li>
+<li><strong>Manage User</strong> — the full user table: role, owned-project count, last sign-in, and last active. Per-row actions:<ul>
+<li><strong>Set password</strong> (🔑) — reset any user&#39;s password.</li>
+<li><strong>Transfer projects</strong> (⇄) — move <em>all</em> of a user&#39;s projects to someone else; stored PDFs and inherited view links move with them.</li>
+<li><strong>View activity</strong> (♥) — the per-user activity overview.</li>
+<li><strong>Delete</strong> — with a choice: delete the user&#39;s projects too, or <strong>reassign them to another user first</strong>. You can&#39;t delete yourself.</li>
+</ul>
+</li>
+<li><strong>All Users</strong> — the same table, read-only.</li>
+</ul>
+<h2>Projects</h2>
+<ul>
+<li><strong>Manage Projects</strong> (Project Settings) lists every project across all users with owner, size, and counts. From here you can <strong>delete</strong> any project (including its stored PDF) or <strong>Force turn-in</strong> one that&#39;s checked out — the escape hatch when someone left for the day holding the lock. (Checkout also expires on its own after ~30 minutes of inactivity; see <a href="/guides/sharing-and-view-links/">Sharing</a>.)</li>
+<li>Admins see <strong>all projects</strong> in Load Project, can check any of them out, and the Load Project list has an admin-only <strong>Advanced</strong> toggle showing who has access to each row.</li>
+</ul>
+<h2>Activity</h2>
+<ul>
+<li><strong>User Activity</strong> — the raw event log (per user or all users), plus a summary view with rolling 1/7/30-day counts.</li>
+<li><strong>Activity overview</strong> — click a user&#39;s dates cell or heart icon for the rich view: totals, per-event breakdown, active days, and a day-grouped recent feed (&quot;Placed 22 counters · Lobby · 1:56–2:17 PM&quot;).</li>
+<li>Every signed-in user has the same view of <em>their own</em> history via <strong>My Activity</strong> in User Settings.</li>
+</ul>
+<h2>Pushing an update</h2>
+<p><strong>Project Settings → Advanced → Global force reload</strong> tells every signed-in tab to refresh (active tabs get a Reload banner; everyone else reloads on next visit), with an optional note like &quot;v1.42 update&quot;. Use it after a deploy when you want the whole team on the new version now.</p>
+<h2>Sharing controls worth knowing</h2>
+<p>View links are email-domain-gated, and every access is logged (Share dialog → Access log). Any link can be revoked at any time — see <a href="/guides/sharing-and-view-links/">Sharing takeoffs and view links</a>.</p>
+      </div>
+      <div class="article-foot">
+        <a class="back-link" href="/guides/">← All guides</a>
+        <a class="btn" href="/app/">Open the app</a>
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 CountTooling</span>
+      <span class="fam">
+        Part of the Tooling family:
+        <a href="/guides/">Guides</a>
+        <a href="https://pipetooling.com/" rel="noopener">PipeTooling</a>
+        <a href="https://takeofftooling.com/" rel="noopener">TakeoffTooling</a>
+        <a href="/app/">Open the app</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,7 +1,7 @@
 ---
 title: Reports, exports, and sending a takeoff onward
 description: Turn your marked-up plan into numbers and deliverables — the on-canvas legend, Show Report, Export PDF, Copy to PipeTooling, and email summaries.
-updated: 2026-06-09
+updated: 2026-07-31
 order: 6
 icon: legend
 category: Output
@@ -11,8 +11,11 @@ A takeoff is only useful once it's numbers someone can price or check. CountTool
 
 ## See the totals as you work
 
-- **Legend** [[legend]] — the on-canvas summary shows your counts and lengths by type, right on the plan. It's draggable and resizable, so park it wherever it doesn't cover your work.
+- **Legend** [[legend]] — the on-canvas summary shows your counts and lengths by type, right on the plan. It's draggable and resizable, so park it wherever it doesn't cover your work (styling options: [Highlights, notes, and the legend](/guides/annotating-and-reviewing/)).
 - **Footer totals** — the status bar keeps a running `[count | length]` across every page and canvas, with multiply and scale zones already applied.
+- **Count detail** — click any count or line total in the Summary for a per-page breakdown with thumbnails showing exactly where each item sits. The takeoff audits itself.
+
+![Clicking a Summary total opens the by-page breakdown — the count per sheet, with a thumbnail showing where the marks are.](/guides/img/summary-detail.png)
 
 ## Show Report
 
@@ -39,6 +42,8 @@ You can export specific pages, just the marked ones, or the whole set.
 
 - **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. It even appends a **view link** back to the source takeoff, so a bid can point at the plan it came from.
 - **Copy Summary (email/text)** — a plain-text summary for dropping into an email or message.
+- **Download current page** — the yellow printer button downloads the sheet you're on as a PDF; on multi-page or multi-layer projects it offers a scope menu (this canvas, all canvases on the page, all pages).
+- **Export / Import Canvas** — your marks alone (palette, groups, and all) as a small JSON file, without the PDF — the easy way to hand a takeoff to someone who already has the plan set. See [Canvas layers](/guides/canvas-layers/).
 
 ## Reading the bare drawing
 

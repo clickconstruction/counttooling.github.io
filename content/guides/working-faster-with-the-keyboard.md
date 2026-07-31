@@ -1,7 +1,7 @@
 ---
 title: Working faster with the keyboard
 description: Tool hotkeys, the visual Keyboard Map, Quick Keys for your counters and line types, and 45° snap — how experienced estimators keep both hands moving.
-updated: 2026-07-24
+updated: 2026-07-31
 order: 6.5
 icon: keys
 category: Working faster
@@ -17,6 +17,8 @@ Click **macros** [[macros]] in the bottom-right status bar to open the full
 shortcut list. On desktop, a **keyboard map** sits right at the top of it: every
 key that does something lights up yellow, and hovering a lit key tells you what
 it does. On a phone or tablet, tap **See Keyboard** to open the same map.
+
+![The Macros dialog with the keyboard map on top — every mapped key lights up, and the shortcut list scrolls underneath.](/guides/img/keyboard-map.png)
 
 The ones worth learning first:
 
@@ -48,11 +50,21 @@ number row.
 3. Done. Press `1` while marking up and you're placing that counter; press `2`
    and you're drawing that line type. Press the same key again to deselect.
 
+![The Quick Keys dialog: each number key gets a counter or line type from the project — here 1 is bound to Water Closet and 2 to the waste line.](/guides/img/quick-keys.png)
+
 Bound items wear their digit as a small badge in the sidebar, so you don't have
 to memorize the layout — and bound keys light up on the keyboard map with their
 names. Bindings are saved with the project. If you keep a standard palette in
 your saved [Artboard](/guides/counting-with-counters/), the same bindings work
 bid after bid.
+
+## Right-click a tool for its settings
+
+Every tool button answers a **right-click** with a small menu of its actions —
+Counter and Line offer their settings plus a quick "Add…", and Legend, Grid, and
+Multiply Zone open their settings directly. No hunting through menus. (Building
+palette items fast is its own trick — see
+[Building your palette in two clicks](/guides/quick-creators/).)
 
 ## 45° snap for straight runs
 

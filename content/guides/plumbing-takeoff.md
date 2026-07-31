@@ -1,13 +1,15 @@
 ---
 title: Doing a plumbing takeoff
 description: Count fixtures, measure pipe runs, and price plumbing work straight off the plan PDF — custom counters, scale zones, and exports built for plumbing estimating.
-updated: 2026-06-09
+updated: 2026-07-31
 order: 9
 icon: polyline
 category: By trade
 ---
 
 Plumbing takeoffs are equal parts counting and measuring — fixtures, and the pipe that connects them. CountTooling handles both on the same plan.
+
+![A plumbing takeoff in CountTooling — water closets and lavatories counted with trade icons, a measured waste line, and the live legend tallying it all.](/guides/img/plan-takeoff.png)
 
 ## Count the fixtures
 

@@ -1,7 +1,7 @@
 ---
 title: Scale zones and multiply zones
 description: Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
-updated: 2026-06-09
+updated: 2026-07-31
 order: 5
 icon: scale-zone
 category: Working with plans
@@ -26,6 +26,8 @@ When the same layout repeats — typical floors, identical units, a row of match
 
 1. Draw a multiply-zone rectangle around the area.
 2. Set how many times it repeats.
+
+![After drawing the zone rectangle, the multiplier dialog asks how many times the area repeats — everything inside counts that many times in the totals.](/guides/img/multiply-zone-value.png)
 
 Every counter and line whose anchor falls inside is multiplied by that factor in the totals. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten.
 

@@ -13,6 +13,81 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(quick-keys): searchable slot selection
+
+On a real palette (dozens of counters/line types), picking an item in each
+Quick Keys slot's native `<select>` was a scroll hunt. `#quickKeysSearch` (a
+`.sidebar-search-input` above `#quickKeysList` in app/index.html) now filters
+all ten dropdowns live: `optionsHtml(selected, filter)` grew a lowercased
+name-substring filter (features/quick-keys.js) that ALWAYS keeps a slot's
+currently-bound item listed and selected even when it doesn't match — an
+active filter can never blank out or silently rebind a slot. The input sits
+outside the re-rendered list so typing keeps focus; it hides in the empty
+state and resets on every modal open (a stale filter hiding the palette is
+worse than retyping). Spec: quick-keys.spec.js test 8 (filtering, bound-item
+survival, focus retention, binding through a filtered list, reset-on-reopen).
+Docs: ARCHITECTURE quick-keys rows + the working-faster guide.
+
+## feat(tools): Move right-click → Set / edit scale
+
+Move was in the tool-context-menu's `NO_SETTINGS_TOOLS` toast list, and once a
+page's scale was set the only way back to it was the header S tool — easy to
+miss. Move now carries a real context action: `MOVE_ACTIONS` = "Set / edit
+scale…" → `App.openScaleModal()` (features/scale.js's registered opener;
+registry-mediated, read at call time), with an "Open a plan first." toast when
+no pages are loaded. `moveBtn`/`moveBtnSidebar` moved from `NO_SETTINGS_TOOLS`
+into `TOOL_CONTEXT` in features/tool-context-menu.js — a map-only change, no
+new mechanism. Spec: tool-context-menu.spec.js map expectations updated + a
+new test (menu label, routes to `#scaleModal`, active tool unchanged by the
+right-click). Docs: ARCHITECTURE rows, FEATURES/FEATURE-CATALOG, the
+working-faster-with-the-keyboard guide.
+
+## feat(export): pre-export scale check for Copy to /Tooling
+
+Copying a takeoff to PipeTooling with unscaled lines silently exported pixel
+lengths ("px of Copper 120") into the bid. Now every `.pipe-tooling-option`
+routes through `runToolingExport` (features/output.js):
+`collectUnscaledLinePages` walks exactly the pages/annotations the chosen mode
+will export and flags pages where a summarized line (known `lineTypeId` — the
+`getPipeToolingHasData` rule) has no effective scale — the same
+`getEffectiveScaleForLine(...).pixelsPerUnit` test the length math uses for
+its px fallback, so scale-zone-scaled lines on unscaled pages pass. **Pages
+without line marks never flag** (counter-only pages export untouched). On a
+hit, `#toolingScaleCheckModal` lists the flagged page labels with three
+actions: Cancel, Export anyway (the button click is the clipboard user
+gesture, so the write stays permitted), and Set scale (jumps to the first
+flagged page via `fitZoom` and opens the Set Scale modal). The pending export
+stash is dropped on ANY hide path via the `App.onToolingScaleCheckHidden`
+callback (hideModal special-case + the global Escape branch). New `.secondary`
+modal-action button style. Also hardened `getMergedAnnotationsForPage`'s new
+`onlyIds` param to be **array-gated**: report.js/export paths pass the
+function around as a generic `(page, pageIdx)` getter, so a numeric second
+argument must keep meaning "merge everything" (was a latent TypeError on the
+All Canvases copy of a 2+-page project; unit-pinned in
+annotation-model.test.js). Spec: output.spec.js second test (flag / cancel /
+export-anyway px copy / set-scale jump / counter-only pass / zone pass).
+
+## feat(canvas): selective show-canvases peek (right-click chooser)
+
+The show-all-canvases peek can now show a chosen subset of layers instead of
+all of them. Left-click on `#showAllCanvasesBtn` keeps its toggle behavior;
+**right-click** opens `#canvasPeekMenu` (features/canvas-layers.js) — a
+checklist over the page's layers where the active layer is pinned on, other
+layers check on/off, and "All canvases" restores the full merge. Selection
+lives in the new in-memory `state.peekCanvasIdsByPage` (pageIdx → id array;
+empty array = active only, absent = all — unchecking a layer from "all" mode
+materializes the rest). `getMergedAnnotationsForPage(page, onlyIds)` grew the
+optional filter (annotation-model.js; active canvas always included, so the
+no-arg report.js/export paths are untouched). renderCanvasSwitcher prunes ids
+whose layer was deleted, dots the button (`.partial`) and titles it "N of M";
+flag + selection still auto-clear below two layers. Same contract as the peek
+itself: purely visual, viewer-allowed, no dirty, no persistence. Dismissal
+follows the tool-context-menu recipe (listeners only while open;
+capture-phase Escape swallow). Tests: annotation-model.test.js filter cases +
+two new show-all-canvases.spec.js scenarios (subset render via pixel
+read-back, prune-on-delete). Docs: AGENTS.md in-memory list, ARCHITECTURE.md
+catalog + canvas-layers row, FEATURES/FEATURE-CATALOG, guides/canvas-layers.
+
 ## feat(tools): right-click any tool button for its settings
 
 Right-click (desktop/tablet) on a header or sidebar tool button now opens a

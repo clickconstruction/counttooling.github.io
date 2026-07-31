@@ -60,6 +60,29 @@ test('mergeAnnotations combines markers per counter id and concatenates lists', 
   assert.strictEqual(out.quickLines.length, 1);
 });
 
+test('getMergedAnnotationsForPage: onlyIds narrows to selection + active; empty = active only', () => {
+  const mkAnn = (tag) => {
+    const a = { counterMarkers: {}, polylines: [], quickLines: [{ id: tag }], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], legend: null };
+    return a;
+  };
+  const page = { canvases: [
+    { id: 'c1', annotations: mkAnn('l1') },
+    { id: 'c2', annotations: mkAnn('l2') },
+    { id: 'c3', annotations: mkAnn('l3') },
+  ] };
+  const state = { pages: [page], activeCanvasIdByPage: { 0: 'c2' } };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const ids = (out) => out.quickLines.map(q => q.id).sort();
+  assert.deepStrictEqual(ids(m.getMergedAnnotationsForPage(page)), ['l1', 'l2', 'l3']);          // no filter = all
+  assert.deepStrictEqual(ids(m.getMergedAnnotationsForPage(page, ['c1'])), ['l1', 'l2']);        // selection + active
+  assert.deepStrictEqual(ids(m.getMergedAnnotationsForPage(page, [])), ['l2']);                  // empty = active only
+  assert.deepStrictEqual(ids(m.getMergedAnnotationsForPage(page, ['c2'])), ['l2']);              // active in list: no double merge
+  assert.deepStrictEqual(ids(m.getMergedAnnotationsForPage(page, ['ghost'])), ['l2']);           // unknown ids ignored
+  // report.js/export paths pass this around as a (page, pageIdx) getter — a
+  // non-array second arg (the page index) must still mean "merge everything".
+  assert.deepStrictEqual(ids(m.getMergedAnnotationsForPage(page, 1)), ['l1', 'l2', 'l3']);
+});
+
 test('migratePageToCanvases wraps legacy page.annotations exactly once', () => {
   const m = createAnnotationModel(makeCtx({}).ctx);
   const legacyAnn = { counterMarkers: { x: [{}] } };

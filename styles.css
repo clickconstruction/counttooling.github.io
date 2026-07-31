@@ -401,6 +401,17 @@
     .show-all-canvases-btn.active { background: var(--accent); border-color: var(--accent2); color: #000; }
     @media (max-width: 768px) { .show-all-canvases-btn { display: none !important; } }
     .canvas-layers-btn.canvas-layers-multi { color: var(--yellow); }
+    /* Selective peek: a subset of layers is chosen (right-click chooser) */
+    .show-all-canvases-btn { position: relative; }
+    .show-all-canvases-btn.partial::after { content: ''; position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); border: 1px solid var(--surface); }
+    .canvas-peek-item { gap: 6px; }
+    .canvas-peek-item:disabled { cursor: default; }
+    .canvas-peek-item:disabled:hover { background: none; }
+    .canvas-peek-check { width: 16px; min-width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; line-height: 1; color: transparent; }
+    .canvas-peek-check.checked { background: var(--accent); border-color: var(--accent2); color: #000; }
+    .canvas-peek-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .canvas-peek-pinned { font-size: 0.7rem; color: var(--text2); flex-shrink: 0; }
+    .quick-keys-search { margin-bottom: 10px; }
     .canvas-current-name { font-size: 0.85rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
     .canvas-index-display { font-size: 0.8rem; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; flex: 1; justify-content: flex-end; }
@@ -646,6 +657,8 @@
     .share-view-link-revoke { color: var(--red); font-weight: 700; background: transparent; border: none; }
     .share-view-link-revoke:hover { color: var(--red); font-weight: 700; background: rgba(232,84,71,0.2); }
     .modal-card .actions button:last-child:hover { background: var(--accent2); }
+    .modal-card .actions button.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .modal-card .actions button.secondary:hover { background: var(--surface3); border-color: var(--border2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
     .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
     .prepare-pdf-controls { display: flex; flex-direction: column; gap: 10px; align-items: stretch; width: 100%; }

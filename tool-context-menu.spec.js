@@ -36,6 +36,7 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
     const counter = ['Counter Settings…', 'Add counter…'];
     const lineType = ['Line Type Settings…', 'Add line type…'];
     expect(map.tools).toEqual({
+      moveBtn: ['Set / edit scale…'], moveBtnSidebar: ['Set / edit scale…'],
       counterBtn: counter, counterBtnSidebar: counter, headerActiveCounter: counter,
       quickLine: lineType, quickLineSidebar: lineType,
       polylineBtn: lineType, polylineBtnSidebar: lineType, headerActiveLineType: lineType,
@@ -43,9 +44,31 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
       legendBtn: ['Legend Settings…'], legendBtnSidebar: ['Legend Settings…'],
       gridBtn: ['Grid Settings…'], gridBtnSidebar: ['Grid Settings…'],
     });
-    expect(map.noSettings).toContain('moveBtn');
+    expect(map.noSettings).not.toContain('moveBtn');
     expect(map.noSettings).toContain('measureBtn');
     expect(map.noSettings).toContain('hideMarksBtn');
+    expect(errors).toEqual([]);
+  });
+
+  test('move: right-click offers Set / edit scale and opens the Set Scale modal', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    // With a scale already set, the same entry is the EDIT path — the modal
+    // opens showing the current scale instead of being buried behind S.
+    await page.evaluate(() => {
+      window.App.state.pages[0].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
+      window.App.updateUI();
+    });
+    await page.locator('#moveBtn').click({ button: 'right' });
+    await expect(page.locator('#toolContextMenu')).toBeVisible();
+    expect(await menuLabels(page)).toEqual(['Set / edit scale…']);
+    await page.locator('#toolContextMenu button').first().click();
+    await expect(page.locator('#scaleModal')).toHaveClass(/visible/);
+    await expect(page.locator('#toolContextMenu')).toBeHidden();
+    // Right-clicking Move must not have switched the active tool.
+    const toolState = await page.evaluate(() => ({ tool: window.App.state.tool, none: window.App.TOOL.NONE }));
+    expect(toolState.tool).toBe(toolState.none);
+    await page.keyboard.press('Escape');
     expect(errors).toEqual([]);
   });
 

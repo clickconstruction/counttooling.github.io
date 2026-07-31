@@ -144,7 +144,7 @@
   function getPageCanvases(page) { return annotationModel.getPageCanvases(page); }
   function getActiveCanvas(page, pageIdxHint) { return annotationModel.getActiveCanvas(page, pageIdxHint); }
   function getActiveAnnotations(page, pageIdxHint) { return annotationModel.getActiveAnnotations(page, pageIdxHint); }
-  function getMergedAnnotationsForPage(page) { return annotationModel.getMergedAnnotationsForPage(page); }
+  function getMergedAnnotationsForPage(page, onlyIds) { return annotationModel.getMergedAnnotationsForPage(page, onlyIds); }
   function ensureActiveCanvas(page) { return annotationModel.ensureActiveCanvas(page); }
   function pageHasAnyAnnotations(p) { return annotationModel.pageHasAnyAnnotations(p); }
   function projectHasAnyCanvasMarkup() { return annotationModel.projectHasAnyCanvasMarkup(); }
@@ -223,6 +223,7 @@
     viewToken: null,
     hideMarks: false,
     showAllCanvases: false,   // in-memory peek: render every canvas layer of the page at once
+    peekCanvasIdsByPage: {},  // in-memory peek subset: pageIdx -> [canvasId,...] to show besides the active one (absent = all); chosen via right-click on #showAllCanvasesBtn
     canCheckOut: false,
     projectOwnerId: null,
     maxZoom: null,
@@ -1556,10 +1557,14 @@
     // Hide-marks mode: the overlay is sized + cleared (so the bare PDF shows
     // through) but nothing is painted on it. Toggle via the header eye button.
     if (state.hideMarks) return;
-    // Show-all-canvases peek (the opposite of hide-marks): draw every layer of
-    // the page merged instead of just the active canvas. Purely visual — hit
-    // testing / editing / exports still target the active canvas only.
-    const ann = state.showAllCanvases ? getMergedAnnotationsForPage(page) : getActiveAnnotations(page);
+    // Show-canvases peek (the opposite of hide-marks): draw the page's layers
+    // merged instead of just the active canvas — every layer, or only the
+    // right-click-chosen subset in state.peekCanvasIdsByPage (active always
+    // included). Purely visual — hit testing / editing / exports still target
+    // the active canvas only.
+    const ann = state.showAllCanvases
+      ? getMergedAnnotationsForPage(page, state.peekCanvasIdsByPage[state.currentPage] || null)
+      : getActiveAnnotations(page);
     if (state.scalePointA) {
       const a = toCanvas(state.scalePointA), b = toCanvas(state.scalePointB || state.scalePointA);
       ctx.strokeStyle = '#e8c547'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -2574,6 +2579,7 @@
     if (id === 'canvasDetailsModal') App.onCanvasDetailsHidden && App.onCanvasDetailsHidden();
     if (id === 'deleteCanvasConfirmModal') App.onDeleteCanvasConfirmHidden && App.onDeleteCanvasConfirmHidden();
     if (id === 'summaryCountDetailModal') App.onSummaryCountDetailHidden && App.onSummaryCountDetailHidden();
+    if (id === 'toolingScaleCheckModal') App.onToolingScaleCheckHidden && App.onToolingScaleCheckHidden();
     document.getElementById(id).classList.remove('visible');
   }
 
@@ -5780,6 +5786,7 @@
       else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
+      else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
       else if (document.getElementById('deleteZoneModal').classList.contains('visible')) { hideModal('deleteZoneModal'); state.pendingDeleteZone = null; }

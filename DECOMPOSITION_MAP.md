@@ -113,6 +113,11 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > userActivityBtnHtml / userDataAttrs / userListHeaderHtml /
 > wireUserActivityButtons) — Manage Users and All Users now compose the same
 > cells; only the action column differs. Tier-3 #10 fully closed.
+> #14b Tier-3 #11 DONE: features/user-activity.js split at the documented
+> seam → user-activity-overview.js (174 ln; overview modal + My Activity
+> binding + re-homed App.openUserActivityOverview; zero shared symbols
+> verified). Shell tag + PRECACHE_URLS + build:sw; ARCHITECTURE rows;
+> user-activity-overview.spec.js (3 always-run tests). Tier-3 #11 closed.
 
 ---
 

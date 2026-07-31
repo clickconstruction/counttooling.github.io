@@ -163,6 +163,42 @@ test('reconcileOrphanedCountersAndLineTypes backfills Unknown rows for orphaned 
   assert.strictEqual(state.lineTypes[0].id, 'phantom');
 });
 
+test('hydrateStateFromProjectData fills palettes, prefs, pages, and view settings from one payload', () => {
+  const state = {
+    pages: [{ canvases: [], scale: null, rotation: 0 }],
+    activeCanvasIdByPage: {},
+    legendSettings: { showRooms: true },
+    multiplyZoneSettings: { showLabel: true },
+  };
+  const { ctx, calls } = makeCtx(state);
+  const m = createAnnotationModel(ctx);
+  m.hydrateStateFromProjectData({
+    counters: [{ id: 'c1', name: 'WC' }],
+    lineTypes: 'not-an-array',
+    groups: [{ id: 'g1' }],
+    iconNames: { p: 'Custom' },
+    iconOrder: ['p'],
+    customIconPaths: [{ value: 'p', name: 'Custom' }],
+    pages: [{ index: 0, canvases: [{ id: 'cv', name: 'Main', annotations: { quickLines: [{ id: 'q' }] } }] }],
+    activeCanvasIdByPage: { 0: 'cv' },
+    maxZoom: 7,
+    legendSettings: { opacity: 0.5 },
+    showGridOverlay: 1,
+    gridSettings: { spacing: 2 },
+  });
+  assert.strictEqual(state.counters[0].id, 'c1');
+  assert.deepStrictEqual(state.lineTypes, []);           // junk payload -> empty, not junk
+  assert.strictEqual(calls.groupColors, 1);              // groups routed through ensureGroupColors
+  assert.deepStrictEqual(calls.savedIcons[0][0].value, 'p');
+  assert.strictEqual(state.pages[0].canvases[0].id, 'cv');
+  assert.strictEqual(state.activeCanvasIdByPage[0], 'cv');
+  assert.strictEqual(state.maxZoom, 7);
+  // Settings objects MERGE (existing keys survive a partial payload).
+  assert.deepStrictEqual(state.legendSettings, { showRooms: true, opacity: 0.5 });
+  assert.strictEqual(state.showGridOverlay, true);
+  assert.deepStrictEqual(state.gridSettings, { spacing: 2 });
+});
+
 // --- createUndoStack --------------------------------------------------------
 
 function undoCtx(state) {

@@ -108,22 +108,7 @@
     if (useIdbBackup && idbBackup.data) {
       App.applyTakeoffBackupToState(idbBackup.data);
     } else {
-      state.counters = Array.isArray(d.counters) ? d.counters : [];
-      state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-      state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-      state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-      if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-      if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-      if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-      (d.pages || []).forEach(p => {
-        App.applyPageAnnotationsFromData(state.pages[p.index], p);
-      });
-      if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-      state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-      if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-      if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-      if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-      if (d.gridSettings) state.gridSettings = d.gridSettings;
+      App.hydrateStateFromProjectData(d);   // the shared intake (annotation-model.js)
     }
     App.reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = proj.id === 'local' ? null : proj.id;

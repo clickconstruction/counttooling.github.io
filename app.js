@@ -152,6 +152,7 @@
   function computePageBakeFrame(p) { return annotationModel.computePageBakeFrame(p); }
   function applyTakeoffBackupToState(backup) { return annotationModel.applyTakeoffBackupToState(backup); }
   function applyPageAnnotationsFromData(page, p, scaleFallback) { return annotationModel.applyPageAnnotationsFromData(page, p, scaleFallback); }
+  function hydrateStateFromProjectData(d) { return annotationModel.hydrateStateFromProjectData(d); }
   function reconcileOrphanedCountersAndLineTypes() { return annotationModel.reconcileOrphanedCountersAndLineTypes(); }
 
   function getIconName(path) {
@@ -6416,6 +6417,7 @@
   App.fitZoom = fitZoom;
   // Import Canvas / Clear Page deps (features/import-clear.js).
   App.applyPageAnnotationsFromData = applyPageAnnotationsFromData;
+  App.hydrateStateFromProjectData = hydrateStateFromProjectData;
   App.getActiveCanvas = getActiveCanvas;
   // Zone/page-action modal dep (features/zone-modals.js).
   App.performDeleteZone = performDeleteZone;

@@ -173,6 +173,33 @@ function createAnnotationModel(ctx) {
     if (backup.gridSettings) ctx.getState().gridSettings = backup.gridSettings;
   }
 
+  // The shared cloud-project hydration block: palettes, icon prefs, per-page
+  // annotations, and the per-project view settings. ONE home for the contract
+  // — used by the view-link boot (features/view-only.js) and the last-session
+  // restore (features/restore-last-session.js), which carried verbatim copies
+  // until 2026-07-30; a new persisted field added to one intake could silently
+  // drop from the other. Callers construct state.pages first; this fills in
+  // everything the project data payload carries.
+  function hydrateStateFromProjectData(d) {
+    const state = ctx.getState();
+    state.counters = Array.isArray(d.counters) ? d.counters : [];
+    state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+    state.groups = ctx.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+    state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
+    if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+    if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+    if (Array.isArray(d.customIconPaths)) ctx.saveUserCustomIcons(d.customIconPaths);
+    (d.pages || []).forEach(p => {
+      applyPageAnnotationsFromData(state.pages[p.index], p);
+    });
+    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+    state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+    if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+    if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+    if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+    if (d.gridSettings) state.gridSettings = d.gridSettings;
+  }
+
   function applyPageAnnotationsFromData(page, p, scaleFallback) {
     if (!page) return;
     if (p.canvases && Array.isArray(p.canvases) && p.canvases.length) {
@@ -461,6 +488,7 @@ function createAnnotationModel(ctx) {
     verifyPageBakeFrame,
     applyTakeoffBackupToState,
     applyPageAnnotationsFromData,
+    hydrateStateFromProjectData,
     reconcileOrphanedCountersAndLineTypes,
     countItemsInRect,
     collectItemsToDeleteInRect,

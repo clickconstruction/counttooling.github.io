@@ -276,22 +276,7 @@
       state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       state.activeCanvasIdByPage[i] = canvasId;
     }
-    state.counters = Array.isArray(d.counters) ? d.counters : [];
-    state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-    state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-    state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-    if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-    if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-    if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-    (d.pages || []).forEach(p => {
-      applyPageAnnotationsFromData(state.pages[p.index], p);
-    });
-    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-    state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-    if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-    if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-    if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-    if (d.gridSettings) state.gridSettings = d.gridSettings;
+    App.hydrateStateFromProjectData(d);   // the shared intake (annotation-model.js)
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;
     state.currentProjectName = projectData.name || 'Untitled';

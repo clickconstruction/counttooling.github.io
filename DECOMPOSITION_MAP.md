@@ -27,6 +27,21 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > (Tier-1 #2; → 7,411), undo-stack.js split (Tier-2 #6). Remaining from §1: Tier-1 #3–#5
 > (status bar, summary/canvas-switcher renderers, Turn In), Tier-2 #7–#8 (constants split,
 > report.js file-level), Tier-3/4.
+>
+> **STATUS 2026-07-31:** the follow-up batch N1–N12 is also DONE on main: save-project
+> preflight named + specced (6 tests), my-counters names fixed (48→45 icons),
+> features/status-bar.js (Tier-1 #3), features/canvas-switcher.js + summary-list.js
+> (Tier-1 #4), pdf-tile-cache STAGE 2 (crop tile + tile grid — substrate complete),
+> hydrateStateFromProjectData in annotation-model (Tier-3 #12), svgShapeToPath pure +
+> custom-grid dedupe (Tier-3 #13, picker-side renderIconGrid still open),
+> features/turn-in.js (Tier-1 #5), user-admin/user-activity low-risk dedupes (Tier-3
+> #10/#11 — row-HTML unification + line-301 split still open), supabase _shared
+> adminGuard/json/viewLink (Tier-4 #20 — **committed but NOT deployed**), constants.js
+> split into zoom-ladder/hotkeys/recent-colors (Tier-2 #7), and the Playwright suite now
+> runs 4-worker per-file parallel (6.7m → 2.1m). app.js: 8,062 → ~6,300. Remaining
+> highlights: report.js file split (optional), load-project L653 split, user-activity
+> split, renderIconGrid picker dedupe, scripts/lib + eslint-factory tooling items, and
+> deploying the refactored edge functions.
 
 ---
 

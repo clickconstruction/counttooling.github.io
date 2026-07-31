@@ -17,6 +17,9 @@ const moduleGlobals = Object.fromEntries(
     .concat(
       Object.keys(require('./geometry.js')),
       Object.keys(require('./constants.js')),
+      Object.keys(require('./zoom-ladder.js')),
+      Object.keys(require('./hotkeys.js')),
+      Object.keys(require('./recent-colors.js')),
       Object.keys(require('./save-utils.js')),
       Object.keys(require('./save-engine.js')),
       Object.keys(require('./annotation-model.js')),
@@ -39,7 +42,9 @@ const moduleGlobals = Object.fromEntries(
 // (no-redeclare would flag the local function declarations), so derive a
 // constants-only set for them.
 const constantsGlobals = Object.fromEntries(
-  Object.keys(require('./constants.js')).map((k) => [k, 'readonly']),
+  []
+    .concat(Object.keys(require('./constants.js')), Object.keys(require('./zoom-ladder.js')), Object.keys(require('./hotkeys.js')), Object.keys(require('./recent-colors.js')))
+    .map((k) => [k, 'readonly']),
 );
 
 // icon-render.js reaches for the icon-data globals (CUSTOM_ICONS,
@@ -52,7 +57,7 @@ const constantsGlobals = Object.fromEntries(
 // those modules' export sets (not its own).
 const saveEngineGlobals = Object.fromEntries(
   []
-    .concat(Object.keys(require('./constants.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')), Object.keys(require('./geometry.js')), Object.keys(require('./icons.js')), Object.keys(require('./icons-custom.js')))
+    .concat(Object.keys(require('./constants.js')), Object.keys(require('./zoom-ladder.js')), Object.keys(require('./save-utils.js')), Object.keys(require('./idb.js')), Object.keys(require('./geometry.js')), Object.keys(require('./icons.js')), Object.keys(require('./icons-custom.js')))
     .map((k) => [k, 'readonly']),
 );
 
@@ -119,7 +124,7 @@ module.exports = [
     // Definition modules: classic scripts whose top-level declarations exist
     // solely to be consumed cross-file by the index.html IIFE / report.js, so
     // no-unused-vars is pure noise here. `module` covers the dual-env footers.
-    files: ['geometry.js', 'constants.js', 'icons.js', 'icons-custom.js', 'save-utils.js'],
+    files: ['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'icons.js', 'icons-custom.js', 'save-utils.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

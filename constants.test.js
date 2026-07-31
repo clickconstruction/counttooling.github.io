@@ -2,7 +2,13 @@
 // Run with: npm run test:unit  (uses the built-in node:test runner; no deps)
 const test = require('node:test');
 const assert = require('node:assert');
-const c = require('./constants.js');
+const c = Object.assign({},
+  require('./constants.js'),
+  // Split out 2026-07-30 (behavior/build-input, not literals) — the reflective
+  // sweeps below still cover the whole family:
+  require('./zoom-ladder.js'),
+  require('./hotkeys.js'),
+  require('./recent-colors.js'));
 
 const isStrictlyIncreasing = (arr) => arr.every((v, i) => i === 0 || v > arr[i - 1]);
 

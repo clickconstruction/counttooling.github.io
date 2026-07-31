@@ -49,6 +49,10 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > #1 Tier-4 #20 deploy VERIFIED DONE: all 9 edge functions redeployed 2026-07-31
 > 01:33–01:37 UTC, ~30 min after the _shared refactor commit (0c6f173) — the
 > "committed but NOT deployed" flag above is stale; no action was needed.
+> #2 view-only.spec.js added (5 tests, always-run — get-view-project stubbed via
+> Playwright routes): email gate, hydration + viewer flags, domain_restricted
+> re-prompt, cancel, and the IndexedDB offline-snapshot fallback. Closes the
+> §2/§10 "no view-only.spec" gap; viewer-scale.spec.js still owns the scale layer.
 
 ---
 

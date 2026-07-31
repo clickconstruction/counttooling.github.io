@@ -1377,3 +1377,9 @@
 .pi-add-btn:disabled { opacity: 0.6; cursor: default; }
 .pi-on-badge { flex-shrink: 0; font-size: 0.75rem; color: var(--green); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; white-space: nowrap; }
 .pi-empty { color: var(--text3); font-size: 0.85rem; padding: 6px 2px; }
+.pi-filter-row { display: flex; align-items: center; gap: 10px; margin: 0 0 10px 0; }
+.pi-filter-label { font-size: 0.8rem; color: var(--text3); }
+.pi-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.pi-seg button { border: none; background: var(--surface2); color: var(--text3); font-size: 0.78rem; padding: 4px 12px; cursor: pointer; }
+.pi-seg button.active { background: var(--accent); color: #161617; font-weight: 600; }
+.pi-hidden { margin-left: auto; font-size: 0.78rem; color: var(--text3); }

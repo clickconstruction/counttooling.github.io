@@ -24,8 +24,17 @@
   let insightRows = [];   // last fetched usage rows (RPC shape)
   const onArtboard = { counter: new Set(), lineType: new Set() };   // name keys
 
+  // Minimum-projects threshold: filters BOTH lists and drives "Add all shown"
+  // (one control, two jobs — no invisible add-all rule). Persisted per device.
+  const MIN_PROJECT_OPTIONS = [{ v: 1, label: 'Any' }, { v: 2, label: '2+' }, { v: 3, label: '3+' }, { v: 5, label: '5+' }];
+  const MIN_PROJECTS_LS_KEY = 'paletteInsightsMinProjects';
+  let minProjects = (() => {
+    const v = parseInt(localStorage.getItem(MIN_PROJECTS_LS_KEY) || '2', 10);
+    return MIN_PROJECT_OPTIONS.some((o) => o.v === v) ? v : 2;
+  })();
+
   function nameKey(s) { return String(s || '').trim().toLowerCase(); }
-  function isFrequent(it) { return (it.project_count || 0) >= 2; }
+  function visibleRows() { return insightRows.filter((r) => (r.project_count || 0) >= minProjects); }
   function isOnArtboard(it) { return onArtboard[it.kind === 'counter' ? 'counter' : 'lineType'].has(nameKey(it.name)); }
 
   // Narrow, additive merge of the given usage rows into user_airboard's
@@ -63,6 +72,37 @@
     return true;
   }
 
+  // The "where did it go?" fix (Wendi, 2026-07-30): a successful Artboard add
+  // ALSO drops the item into the OPEN project's palette (name-deduped), so it
+  // appears in the sidebar picker immediately instead of only in future bids.
+  // Full undo snapshot (palette adds are cross-page), dirty + updateUI.
+  function addToCurrentProject(items) {
+    const state = App.state;
+    if (state.isViewer) return 0;
+    const cNames = new Set((state.counters || []).map((c) => nameKey(c.name)));
+    const ltNames = new Set((state.lineTypes || []).map((lt) => nameKey(lt.name)));
+    let added = 0;
+    let snapshotTaken = false;
+    items.forEach((it) => {
+      const isCounter = it.kind === 'counter';
+      if (isCounter ? cNames.has(nameKey(it.name)) : ltNames.has(nameKey(it.name))) return;
+      if (!snapshotTaken) { App.pushUndoSnapshot(); snapshotTaken = true; }
+      if (isCounter) {
+        state.counters.push({ id: it.item_id || App.uid(), name: it.name, icon: it.icon || '', color: it.color || '#e8c547' });
+        cNames.add(nameKey(it.name));
+      } else {
+        state.lineTypes.push({ id: it.item_id || App.uid(), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight' });
+        ltNames.add(nameKey(it.name));
+      }
+      added++;
+    });
+    if (added) {
+      App.markProjectDirty();
+      App.updateUI();
+    }
+    return added;
+  }
+
   function rowEl(it) {
     const esc = App.escapeHtml;
     const div = document.createElement('div');
@@ -91,6 +131,9 @@
           badge.className = 'pi-on-badge';
           badge.textContent = '✓ Added';
           btn.replaceWith(badge);
+          updateAddAllLabel();
+          if (addToCurrentProject([it])) App.showToast('Added to your Artboard and this project.', 2500);
+          else App.showToast('Added to your Artboard.', 2500);
         } else {
           btn.disabled = false;
           btn.textContent = '+ Add';
@@ -102,19 +145,46 @@
     return div;
   }
 
+  function renderMinSeg() {
+    const segEl = document.getElementById('paletteInsightsMinSeg');
+    segEl.innerHTML = '';
+    MIN_PROJECT_OPTIONS.forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = o.label;
+      b.className = o.v === minProjects ? 'active' : '';
+      b.onclick = () => {
+        minProjects = o.v;
+        localStorage.setItem(MIN_PROJECTS_LS_KEY, String(o.v));
+        renderRows();
+      };
+      segEl.appendChild(b);
+    });
+  }
+
+  function updateAddAllLabel() {
+    const addable = visibleRows().filter((it) => !isOnArtboard(it)).length;
+    document.getElementById('paletteInsightsAddAll').textContent = 'Add all shown (' + addable + ')';
+  }
+
   function renderRows() {
+    renderMinSeg();
     const countersEl = document.getElementById('paletteInsightsCounters');
     const linesEl = document.getElementById('paletteInsightsLines');
     countersEl.innerHTML = '';
     linesEl.innerHTML = '';
+    const shown = visibleRows();
+    const hiddenCount = insightRows.length - shown.length;
+    document.getElementById('paletteInsightsHidden').textContent = hiddenCount ? hiddenCount + ' hidden' : '';
+    updateAddAllLabel();
     const rank = (a, b) => (isOnArtboard(a) - isOnArtboard(b)) ||
       (b.project_count - a.project_count) || (b.placement_count - a.placement_count) ||
       String(a.name).localeCompare(String(b.name));
-    const counters = insightRows.filter((r) => r.kind === 'counter').sort(rank);
-    const lines = insightRows.filter((r) => r.kind !== 'counter').sort(rank);
-    if (!counters.length) countersEl.innerHTML = '<p class="pi-empty">No counters found in your cloud projects yet.</p>';
+    const counters = shown.filter((r) => r.kind === 'counter').sort(rank);
+    const lines = shown.filter((r) => r.kind !== 'counter').sort(rank);
+    if (!counters.length) countersEl.innerHTML = '<p class="pi-empty">No counters at this threshold.</p>';
     counters.forEach((it) => countersEl.appendChild(rowEl(it)));
-    if (!lines.length) linesEl.innerHTML = '<p class="pi-empty">No line types found in your cloud projects yet.</p>';
+    if (!lines.length) linesEl.innerHTML = '<p class="pi-empty">No line types at this threshold.</p>';
     lines.forEach((it) => linesEl.appendChild(rowEl(it)));
   }
 
@@ -152,13 +222,14 @@
   document.getElementById('paletteInsightsClose').onclick = () => App.hideModal('paletteInsightsModal');
   document.getElementById('paletteInsightsAddAll').onclick = async () => {
     const btn = document.getElementById('paletteInsightsAddAll');
-    const targets = insightRows.filter((it) => !isOnArtboard(it) && isFrequent(it));
-    if (!targets.length) { App.showToast('Everything you use frequently is already on your Artboard.', 3000); return; }
+    const targets = visibleRows().filter((it) => !isOnArtboard(it));
+    if (!targets.length) { App.showToast('Everything shown is already on your Artboard.', 3000); return; }
     btn.disabled = true;
     const ok = await mergeIntoArtboard(targets);
     btn.disabled = false;
     if (ok) {
-      App.showToast('Added ' + targets.length + ' item' + (targets.length === 1 ? '' : 's') + ' to your Artboard.', 3000);
+      const inProject = addToCurrentProject(targets);
+      App.showToast('Added ' + targets.length + ' item' + (targets.length === 1 ? '' : 's') + ' to your Artboard' + (inProject ? ' and this project' : '') + '.', 3000);
       renderRows();
     } else {
       App.showToast('Could not update your Artboard. Try again.', 4000);

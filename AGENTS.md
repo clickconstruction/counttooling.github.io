@@ -292,6 +292,7 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 `iconOrder`, `pageScales`, `zoomSettings`,
 `groupColorDisplay`, `pagesTitlesTruncated`, `hideUnmarkedPagesFromSidebar`,
 `counterSearch`, `lineTypeSearch`, `linesSearch`, `linesTypeExpanded`,
+`paletteInsightsMinProjects` (the Palette Insights min-projects threshold),
 `loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
 Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`),
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-last-project`,

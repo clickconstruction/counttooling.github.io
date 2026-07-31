@@ -4,8 +4,10 @@
  * modal with one-click additive adds to the cloud Artboard. Non-cloud: the
  * user_palette_usage RPC, the artboard fetch, and the upsert are stubbed
  * per-test (every dep is read via App.* / getSupabase() at call time), so the
- * ranking, the on-Artboard detection, the ADDITIVE merge payload, and the
- * add-all filter are all pinned without secrets.
+ * ranking, the on-Artboard detection, the ADDITIVE merge payload, the
+ * min-projects threshold (filters the lists AND drives "Add all shown"), the
+ * immediate add-to-open-project behavior, and localStorage persistence are
+ * all pinned without secrets.
  */
 const { test, expect } = require('@playwright/test');
 
@@ -60,26 +62,40 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
     expect(page.__errors).toEqual([]);
   });
 
-  test('rows render ranked unadded-first with on-Artboard badges', async ({ page }) => {
+  test('rows render ranked unadded-first; default 2+ threshold hides one-offs', async ({ page }) => {
     await openWithStubs(page);
     expect(await page.evaluate(() => document.getElementById('paletteInsightsModal').classList.contains('visible'))).toBe(true);
-    // Counters: Water Closet (unadded, 11) first, Hose Bibb (unadded, 1) next,
-    // Floor Drain (already on artboard) last despite 9 projects.
+    // Default threshold is 2+: Hose Bibb (1 project) is hidden, with the
+    // hidden-count chip explaining why; Water Closet (unadded, 11) sorts
+    // before Floor Drain (on artboard, 9).
     const counterNames = await page.locator('#paletteInsightsCounters .pi-name').allTextContents();
-    expect(counterNames).toEqual(['Water Closet', 'Hose Bibb', 'Floor Drain']);
+    expect(counterNames).toEqual(['Water Closet', 'Floor Drain']);
+    await expect(page.locator('#paletteInsightsHidden')).toHaveText('1 hidden');
+    await expect(page.locator('#paletteInsightsAddAll')).toHaveText('Add all shown (2)');
     await expect(page.locator('#paletteInsightsCounters .pi-row').last().locator('.pi-on-badge')).toHaveText(/On Artboard/);
     // Stats read "N projects · M placed/runs".
     await expect(page.locator('#paletteInsightsCounters .pi-row').first().locator('.pi-stat')).toHaveText('11 projects · 431 placed');
     await expect(page.locator('#paletteInsightsLines .pi-row').first().locator('.pi-stat')).toHaveText('9 projects · 340 runs');
+    // "Any" reveals the one-off; the chip clears; the choice persists.
+    await page.locator('#paletteInsightsMinSeg button', { hasText: 'Any' }).click();
+    await expect(page.locator('#paletteInsightsCounters .pi-name')).toHaveCount(3);
+    await expect(page.locator('#paletteInsightsHidden')).toHaveText('');
+    expect(await page.evaluate(() => localStorage.getItem('paletteInsightsMinProjects'))).toBe('1');
     // @ts-ignore
     expect(page.__errors).toEqual([]);
   });
 
-  test('one-click add merges ADDITIVELY into the artboard and flips the row', async ({ page }) => {
+  test('one-click add merges ADDITIVELY into the artboard, flips the row, and lands in the open project', async ({ page }) => {
     await openWithStubs(page);
     const wcRow = page.locator('#paletteInsightsCounters .pi-row', { hasText: 'Water Closet' });
     await wcRow.locator('.pi-add-btn').click();
     await expect(wcRow.locator('.pi-on-badge')).toHaveText(/Added/);
+    // The Wendi fix: the item is usable NOW — it joins the open project's
+    // palette (with the RPC's id) and renders in the sidebar picker.
+    expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toContain('Water Closet');
+    await expect(page.locator('#countersList .sidebar-item', { hasText: 'Water Closet' })).toHaveCount(1);
+    // The Add-all count follows single adds too.
+    await expect(page.locator('#paletteInsightsAddAll')).toHaveText('Add all shown (1)');
     const upsert = await page.evaluate(() => window.__upserts[0]);
     expect(upsert.table).toBe('user_airboard');
     // Additive: the existing artboard counter survives, the new one is appended
@@ -93,18 +109,37 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
     expect(page.__errors).toEqual([]);
   });
 
-  test('add-all adds only frequently-used unadded items (>= 2 projects)', async ({ page }) => {
+  test('add-all adds exactly the visible unadded set (threshold-driven)', async ({ page }) => {
     await openWithStubs(page);
     await page.locator('#paletteInsightsAddAll').click();
     await page.waitForFunction(() => window.__upserts.length === 1);
     const payload = await page.evaluate(() => window.__upserts[0].payload);
-    // Water Closet (11 projects) + 2in Waste (9) qualify; Hose Bibb (1 project)
-    // does not; the two already-on-artboard items are not duplicated.
+    // At the default 2+ threshold: Water Closet (11) + 2in Waste (9) are the
+    // visible unadded items; Hose Bibb (1 project) is filtered out; the two
+    // already-on-artboard items are not duplicated.
     expect(payload.counters.map((c) => c.name)).toEqual(['floor drain', 'Water Closet']);
     expect(payload.line_types.map((lt) => lt.name)).toEqual(['3/4IN COPPER SUPPLY', '2in Waste']);
-    // Rows re-rank: every remaining unadded row is the infrequent one.
-    await expect(page.locator('#paletteInsightsCounters .pi-add-btn')).toHaveCount(1);
+    // Both also land in the open project.
+    expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toContain('Water Closet');
+    expect(await page.evaluate(() => window.state.lineTypes.map((lt) => lt.name))).toContain('2in Waste');
+    // At 2+ every shown row is now added — no add buttons remain; the hidden
+    // one-off is still reachable via "Any".
+    await expect(page.locator('#paletteInsightsCounters .pi-add-btn')).toHaveCount(0);
     await expect(page.locator('#paletteInsightsLines .pi-add-btn')).toHaveCount(0);
+    await expect(page.locator('#paletteInsightsAddAll')).toHaveText('Add all shown (0)');
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
+  test('threshold choice persists across reopen', async ({ page }) => {
+    await openWithStubs(page);
+    await page.locator('#paletteInsightsMinSeg button', { hasText: '5+' }).click();
+    await expect(page.locator('#paletteInsightsCounters .pi-name')).toHaveCount(2);
+    await page.locator('#paletteInsightsClose').click();
+    await page.evaluate(() => window.App.openPaletteInsightsModal());
+    await page.waitForSelector('#paletteInsightsCounters .pi-row');
+    await expect(page.locator('#paletteInsightsMinSeg button.active')).toHaveText('5+');
+    await expect(page.locator('#paletteInsightsCounters .pi-name')).toHaveCount(2);
     // @ts-ignore
     expect(page.__errors).toEqual([]);
   });

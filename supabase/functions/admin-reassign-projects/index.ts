@@ -1,4 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireUser, requireAdmin } from '../_shared/adminGuard.ts'
+import { jsonRes } from '../_shared/json.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { reassignProjects } from '../_shared/reassignProjects.ts'
 
@@ -7,26 +8,21 @@ import { reassignProjects } from '../_shared/reassignProjects.ts'
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!)
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
-    if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-    const { data: profile } = await adminClient.from('profiles').select('is_admin').eq('user_id', user.id).single()
-    if (!profile?.is_admin) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const ctx = await requireUser(req)
+    if (ctx instanceof Response) return ctx
+    const denied = await requireAdmin(ctx)
+    if (denied) return denied
+    const { adminClient } = ctx
     const { fromUserId, toUserId } = await req.json()
-    if (!fromUserId || !toUserId) return new Response(JSON.stringify({ error: 'fromUserId and toUserId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    if (fromUserId === toUserId) return new Response(JSON.stringify({ error: 'Source and target must differ' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    if (!fromUserId || !toUserId) return jsonRes(400, { error: 'fromUserId and toUserId required' })
+    if (fromUserId === toUserId) return jsonRes(400, { error: 'Source and target must differ' })
     const { data: from, error: fromErr } = await adminClient.auth.admin.getUserById(fromUserId)
-    if (fromErr || !from?.user) return new Response(JSON.stringify({ error: 'Source user not found' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    if (fromErr || !from?.user) return jsonRes(400, { error: 'Source user not found' })
     const { data: to, error: toErr } = await adminClient.auth.admin.getUserById(toUserId)
-    if (toErr || !to?.user) return new Response(JSON.stringify({ error: 'Target user not found' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    if (toErr || !to?.user) return jsonRes(400, { error: 'Target user not found' })
     const result = await reassignProjects(adminClient, fromUserId, toUserId)
-    return new Response(JSON.stringify({ ok: true, reassigned: result.reassigned }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    return jsonRes(200, { ok: true, reassigned: result.reassigned })
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return jsonRes(500, { error: String(e) })
   }
 })

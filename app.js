@@ -2561,7 +2561,7 @@
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
     App.renderPagesList && App.renderPagesList();
-    renderCanvasSwitcher();
+    App.renderCanvasSwitcher && App.renderCanvasSwitcher();
     App.renderCountersList && App.renderCountersList();
     const sidebarReorderBanner = document.getElementById('sidebarReorderBanner');
     const canReorder = state.counters.length >= 2 || state.lineTypes.length >= 2;
@@ -2570,7 +2570,7 @@
     App.renderLineTypesList && App.renderLineTypesList();
     App.renderGroupsList && App.renderGroupsList();
     App.renderLinesList && App.renderLinesList();   // features/lines-list.js; boot-time no-op is fine (no project yet)
-    renderSummary();
+    App.renderSummary && App.renderSummary();
     // App.hasAnyHighlights / hasAnyNotes are registered by features/pdf-bundle.js,
     // which loads AFTER app.js. updateUI is a hot path that can run during boot
     // before that feature <script> executes: supabase-js emits INITIAL_SESSION to
@@ -2667,117 +2667,10 @@
     if (SUPABASE_ENABLED && state.currentProjectId) updateSaveStatusIndicator();
   }
 
-  function renderCanvasSwitcher() {
-    const switcher = document.getElementById('canvasSwitcher');
-    const pillsEl = document.getElementById('canvasPills');
-    const addBtn = document.getElementById('addCanvasBtn');
-    const layersBtn = document.getElementById('canvasLayersBtn');
-    const menuList = document.getElementById('canvasMenuList');
-    const canvasMenu = document.getElementById('canvasMenu');
-    if (!switcher || !pillsEl || !addBtn) return;
-    const page = state.pages[state.currentPage];
-    const canvases = page ? getPageCanvases(page) : [];
-    const activeId = page ? (state.activeCanvasIdByPage[state.currentPage] || (canvases[0]?.id)) : null;
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    const canvasNameEl = document.getElementById('canvasCurrentName');
-    if (canvasNameEl) {
-      const activeCanvas = activeId ? canvases.find(c => c.id === activeId) : canvases[0];
-      canvasNameEl.textContent = activeCanvas?.name || 'Main';
-      canvasNameEl.style.display = state.pages.length > 0 ? '' : 'none';
-    }
-    const indexEl = document.getElementById('canvasIndexDisplay');
-    if (indexEl) {
-      if (canvases.length > 0 && activeId) {
-        const idx = canvases.findIndex(c => c.id === activeId);
-        const oneBased = idx >= 0 ? idx + 1 : 1;
-        indexEl.textContent = '(' + oneBased + '/' + canvases.length + ')';
-        indexEl.style.display = '';
-      } else {
-        indexEl.textContent = '';
-        indexEl.style.display = 'none';
-      }
-    }
-    pillsEl.innerHTML = '';
-    if (canvases.length === 0) {
-      pillsEl.style.display = 'none';
-      addBtn.style.display = state.pages.length > 0 && !state.isViewer ? '' : 'none';
-      if (pillsEl && !isMobile) pillsEl.classList.remove('canvas-pills-multi');
-    } else {
-      pillsEl.style.display = 'flex';
-      addBtn.style.display = state.isViewer ? 'none' : '';
-      if (pillsEl && !isMobile) pillsEl.classList.toggle('canvas-pills-multi', canvases.length >= 3);
-      canvases.forEach(c => {
-        const pill = document.createElement('button');
-        pill.type = 'button';
-        pill.className = 'canvas-pill' + (c.id === activeId ? ' active' : '');
-        pill.textContent = c.name || 'Main';
-        pill.title = c.name || 'Main';
-        pill.dataset.canvasId = c.id;
-        pill.onclick = (e) => {
-          e.stopPropagation();
-          state.activeCanvasIdByPage[state.currentPage] = c.id;
-          if (!state.isViewer) markProjectDirty();
-          renderAnnotations();
-          updateUI();
-        };
-        pillsEl.appendChild(pill);
-      });
-    }
-    if (layersBtn && menuList && canvasMenu) {
-      const showLayersDropdown = (isMobile || (!isMobile && canvases.length >= 1)) && state.pages.length > 0;
-      layersBtn.style.display = showLayersDropdown ? '' : 'none';
-      layersBtn.classList.toggle('canvas-layers-multi', canvases.length > 1);
-      const canvasMenuAdd = document.getElementById('canvasMenuAdd');
-      if (canvasMenuAdd) canvasMenuAdd.style.display = state.isViewer ? 'none' : '';
-      switcher?.classList.toggle('canvas-layers-desktop-visible', !isMobile && canvases.length >= 1);
-      const showAllBtn = document.getElementById('showAllCanvasesBtn');
-      if (showAllBtn) {
-        // Only meaningful with 2+ layers; desktop only (the mobile switcher is
-        // already the compact layers menu). Auto-off when layers drop to one.
-        if (state.showAllCanvases && canvases.length < 2) state.showAllCanvases = false;
-        showAllBtn.style.display = (!isMobile && canvases.length > 1 && state.pages.length > 0) ? '' : 'none';
-        showAllBtn.classList.toggle('active', !!state.showAllCanvases);
-        showAllBtn.title = state.showAllCanvases
-          ? 'Showing all canvases — click to show only the active canvas'
-          : 'Temporarily show all canvases at once';
-      }
-      menuList.innerHTML = '';
-      canvases.forEach(c => {
-        const row = document.createElement('div');
-        row.className = 'canvas-menu-item' + (c.id === activeId ? ' active' : '');
-        row.dataset.canvasId = c.id;
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = c.name || 'Main';
-        nameSpan.style.flex = '1';
-        nameSpan.style.minWidth = '0';
-        nameSpan.style.overflow = 'hidden';
-        nameSpan.style.textOverflow = 'ellipsis';
-        nameSpan.style.whiteSpace = 'nowrap';
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.className = 'canvas-menu-item-edit';
-        editBtn.title = 'Edit';
-        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16"><path fill="currentColor" d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/></svg>';
-        editBtn.onclick = (e) => {
-          e.stopPropagation();
-          if (state.isViewer) return;
-          App.openCanvasDetailsModal(c);
-        };
-        row.appendChild(editBtn);
-        row.appendChild(nameSpan);
-        row.onclick = (e) => {
-          if (e.target.closest('.canvas-menu-item-edit')) return;
-          e.stopPropagation();
-          state.activeCanvasIdByPage[state.currentPage] = c.id;
-          if (!state.isViewer) markProjectDirty();
-          renderAnnotations();
-          updateUI();
-          canvasMenu.classList.remove('visible');
-        };
-        menuList.appendChild(row);
-      });
-    }
-  }
+  // renderCanvasSwitcher (the footer canvas switcher: name label, (n/N)
+  // index, pills, layers dropdown rows, show-all peek visibility) moved to
+  // features/canvas-switcher.js (window.App registry) per the lines-list
+  // recipe; updateUI reaches it defensively via App.renderCanvasSwitcher.
 
   // formatPageTitleStartEnd + renderPagesList (the sidebar Pages section:
   // truncated titles, scale/annotation badges, canvas-count badge, rename /
@@ -2828,139 +2721,9 @@
   // defensively via App.renderLinesList; the search/show-only handlers call it
   // plainly (user-action time). Five publish-only deps in the registry block.
 
-  function renderSummary() {
-    const el = document.getElementById('summaryList');
-    el.innerHTML = '';
-    const esc = escapeHtml;
-    const groups = state.groups || [];
-    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
-    let hasAnyGroups = false;
-    state.pages.forEach((p, pi) => {
-      const ann = getActiveAnnotations(p, pi);
-      Object.values(ann?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
-      (ann?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
-      (ann?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
-    });
-    const counterByGroup = {};
-    const lineTypeByGroup = {};
-    state.pages.forEach((p, pi) => {
-      const ann = getActiveAnnotations(p, pi);
-      (state.counters || []).forEach(c => {
-        (ann?.counterMarkers?.[c.id] || []).forEach(m => {
-          const gid = m.group || null;
-          if (!counterByGroup[gid]) counterByGroup[gid] = {};
-          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, pageIndices: [] };
-          counterByGroup[gid][c.id].total += getMultiplyZoneForPoint(ann, m);
-          if (!counterByGroup[gid][c.id].pageIndices.includes(pi)) counterByGroup[gid][c.id].pageIndices.push(pi);
-        });
-      });
-      (state.lineTypes || []).forEach(lt => {
-        (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          const gid = q.group || null;
-          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
-          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
-          lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += getLineLengthFeetForTotals(q, pi, false, ann);
-          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
-        });
-        (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          const gid = poly.group || null;
-          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
-          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
-          lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += getLineLengthFeetForTotals(poly, pi, true, ann);
-          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
-        });
-      });
-    });
-    const allGroupIds = [...new Set([...Object.keys(counterByGroup), ...Object.keys(lineTypeByGroup)])];
-    const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
-    const orderedGroupIds = hasAnyGroups ? allGroupIds.sort((a, b) => {
-      if (isUntagged(a)) return 1;
-      if (isUntagged(b)) return -1;
-      return getGroupName(a).localeCompare(getGroupName(b));
-    }) : [];
-    const renderItems = (gid) => {
-      const counters = counterByGroup[gid] || {};
-      const lineTypes = lineTypeByGroup[gid] || {};
-      (state.counters || []).forEach(c => {
-        const r = counters[c.id];
-        if (r && r.total > 0) {
-          const div = document.createElement('div');
-          div.className = 'sidebar-item summary-item-clickable';
-          div.dataset.type = 'counter';
-          div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
-          div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
-          el.appendChild(div);
-        }
-      });
-      (state.lineTypes || []).forEach(lt => {
-        const r = lineTypes[lt.id];
-        if (r && r.runs > 0) {
-          const scale = pickScaleForLineType(r.pageIndices);
-          const div = document.createElement('div');
-          div.className = 'sidebar-item summary-item-clickable summary-line-item';
-          div.dataset.type = 'lineType';
-          div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + formatFeet(r.len, scale) + '</span>';
-          div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
-          el.appendChild(div);
-        }
-      });
-    };
-    if (hasAnyGroups && orderedGroupIds.length > 0) {
-      orderedGroupIds.forEach(gid => {
-        const groupName = getGroupName(gid);
-        const hasItems = Object.keys(counterByGroup[gid] || {}).some(cid => (counterByGroup[gid][cid]?.total || 0) > 0) ||
-          Object.keys(lineTypeByGroup[gid] || {}).some(lid => (lineTypeByGroup[gid][lid]?.runs || 0) > 0);
-        if (!hasItems) return;
-        const h = document.createElement('h3');
-        h.style.cssText = 'font-size:0.7rem;color:var(--text3);margin:8px 0 4px 0;';
-        h.textContent = 'Group: ' + groupName;
-        el.appendChild(h);
-        renderItems(gid);
-      });
-    } else {
-      state.counters.forEach(c => {
-        const count = state.pages.reduce((n, p, pi) => {
-          const ann = getActiveAnnotations(p);
-          return n + ((ann?.counterMarkers?.[c.id] || []).reduce((s, m) => s + getMultiplyZoneForPoint(ann, m), 0));
-        }, 0);
-        if (count > 0) {
-          const div = document.createElement('div');
-          div.className = 'sidebar-item summary-item-clickable';
-          div.dataset.type = 'counter';
-          div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
-          div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
-          el.appendChild(div);
-        }
-      });
-      state.lineTypes.forEach(lt => {
-        let runs = 0, len = 0;
-        const pageIndices = [];
-        state.pages.forEach((p, pi) => {
-          const ann = getActiveAnnotations(p);
-          const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-          const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-          if (qLines.length || polys.length) pageIndices.push(pi);
-          qLines.forEach(q => { runs++; len += getLineLengthFeetForTotals(q, pi, false, ann); });
-          polys.forEach(poly => { runs++; len += getLineLengthFeetForTotals(poly, pi, true, ann); });
-        });
-        if (runs > 0) {
-          const scale = pickScaleForLineType(pageIndices);
-          const div = document.createElement('div');
-          div.className = 'sidebar-item summary-item-clickable summary-line-item';
-          div.dataset.type = 'lineType';
-          div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + formatFeet(len, scale) + '</span>';
-          div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
-          el.appendChild(div);
-        }
-      });
-    }
-  }
+  // renderSummary (the sidebar Summary section: per-group / flat rollups)
+  // moved to features/summary-list.js (window.App registry) per the
+  // lines-list recipe; updateUI reaches it defensively via App.renderSummary.
 
   // openSummaryCountDetailModal moved to features/summary-detail.js
   // (window.App registry); the renderSummary rows call it via App.*.

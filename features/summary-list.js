@@ -1,0 +1,150 @@
+(function () {
+  'use strict';
+  const App = (window.App = window.App || {});
+  /*
+   * features/summary-list.js - the sidebar Summary section renderer
+   * (renderSummary: per-group or flat counter/line-type rollups with
+   * multiply-zone-adjusted counts and always-feet lengths; rows open
+   * features/summary-detail.js via App.openSummaryCountDetailModal),
+   * extracted from app.js's UI Render Functions region per the lines-list
+   * recipe. updateUI reaches it defensively via App.renderSummary. Zero new
+   * publish-only deps — everything it reads was already on the registry.
+   * Boundary rule: read shared deps from App.* at call time, never at load.
+   */
+
+  function renderSummary() {
+    const el = document.getElementById('summaryList');
+    el.innerHTML = '';
+    const esc = App.escapeHtml;
+    const groups = App.state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
+    let hasAnyGroups = false;
+    App.state.pages.forEach((p, pi) => {
+      const ann = App.getActiveAnnotations(p, pi);
+      Object.values(ann?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
+      (ann?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
+      (ann?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
+    });
+    const counterByGroup = {};
+    const lineTypeByGroup = {};
+    App.state.pages.forEach((p, pi) => {
+      const ann = App.getActiveAnnotations(p, pi);
+      (App.state.counters || []).forEach(c => {
+        (ann?.counterMarkers?.[c.id] || []).forEach(m => {
+          const gid = m.group || null;
+          if (!counterByGroup[gid]) counterByGroup[gid] = {};
+          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, pageIndices: [] };
+          counterByGroup[gid][c.id].total += App.getMultiplyZoneForPoint(ann, m);
+          if (!counterByGroup[gid][c.id].pageIndices.includes(pi)) counterByGroup[gid][c.id].pageIndices.push(pi);
+        });
+      });
+      (App.state.lineTypes || []).forEach(lt => {
+        (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
+          const gid = q.group || null;
+          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
+          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
+          lineTypeByGroup[gid][lt.id].runs++;
+          lineTypeByGroup[gid][lt.id].len += App.getLineLengthFeetForTotals(q, pi, false, ann);
+          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
+        });
+        (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
+          const gid = poly.group || null;
+          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
+          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
+          lineTypeByGroup[gid][lt.id].runs++;
+          lineTypeByGroup[gid][lt.id].len += App.getLineLengthFeetForTotals(poly, pi, true, ann);
+          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
+        });
+      });
+    });
+    const allGroupIds = [...new Set([...Object.keys(counterByGroup), ...Object.keys(lineTypeByGroup)])];
+    const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
+    const orderedGroupIds = hasAnyGroups ? allGroupIds.sort((a, b) => {
+      if (isUntagged(a)) return 1;
+      if (isUntagged(b)) return -1;
+      return getGroupName(a).localeCompare(getGroupName(b));
+    }) : [];
+    const renderItems = (gid) => {
+      const counters = counterByGroup[gid] || {};
+      const lineTypes = lineTypeByGroup[gid] || {};
+      (App.state.counters || []).forEach(c => {
+        const r = counters[c.id];
+        if (r && r.total > 0) {
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable';
+          div.dataset.type = 'counter';
+          div.dataset.id = c.id;
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
+          div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
+          el.appendChild(div);
+        }
+      });
+      (App.state.lineTypes || []).forEach(lt => {
+        const r = lineTypes[lt.id];
+        if (r && r.runs > 0) {
+          const scale = App.pickScaleForLineType(r.pageIndices);
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable summary-line-item';
+          div.dataset.type = 'lineType';
+          div.dataset.id = lt.id;
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + App.formatFeet(r.len, scale) + '</span>';
+          div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
+          el.appendChild(div);
+        }
+      });
+    };
+    if (hasAnyGroups && orderedGroupIds.length > 0) {
+      orderedGroupIds.forEach(gid => {
+        const groupName = getGroupName(gid);
+        const hasItems = Object.keys(counterByGroup[gid] || {}).some(cid => (counterByGroup[gid][cid]?.total || 0) > 0) ||
+          Object.keys(lineTypeByGroup[gid] || {}).some(lid => (lineTypeByGroup[gid][lid]?.runs || 0) > 0);
+        if (!hasItems) return;
+        const h = document.createElement('h3');
+        h.style.cssText = 'font-size:0.7rem;color:var(--text3);margin:8px 0 4px 0;';
+        h.textContent = 'Group: ' + groupName;
+        el.appendChild(h);
+        renderItems(gid);
+      });
+    } else {
+      App.state.counters.forEach(c => {
+        const count = App.state.pages.reduce((n, p, pi) => {
+          const ann = App.getActiveAnnotations(p);
+          return n + ((ann?.counterMarkers?.[c.id] || []).reduce((s, m) => s + App.getMultiplyZoneForPoint(ann, m), 0));
+        }, 0);
+        if (count > 0) {
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable';
+          div.dataset.type = 'counter';
+          div.dataset.id = c.id;
+          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
+          div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
+          el.appendChild(div);
+        }
+      });
+      App.state.lineTypes.forEach(lt => {
+        let runs = 0, len = 0;
+        const pageIndices = [];
+        App.state.pages.forEach((p, pi) => {
+          const ann = App.getActiveAnnotations(p);
+          const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
+          const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
+          if (qLines.length || polys.length) pageIndices.push(pi);
+          qLines.forEach(q => { runs++; len += App.getLineLengthFeetForTotals(q, pi, false, ann); });
+          polys.forEach(poly => { runs++; len += App.getLineLengthFeetForTotals(poly, pi, true, ann); });
+        });
+        if (runs > 0) {
+          const scale = App.pickScaleForLineType(pageIndices);
+          const div = document.createElement('div');
+          div.className = 'sidebar-item summary-item-clickable summary-line-item';
+          div.dataset.type = 'lineType';
+          div.dataset.id = lt.id;
+          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + App.formatFeet(len, scale) + '</span>';
+          div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
+          el.appendChild(div);
+        }
+      });
+    }
+  }
+
+  App.renderSummary = renderSummary;
+})();

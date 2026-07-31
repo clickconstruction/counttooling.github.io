@@ -14,7 +14,8 @@ Object.assign(globalThis, require('./icons.js'));
 Object.assign(globalThis, require('./constants.js'));   // UNDO_STACK_SIZE
 const { UNDO_STACK_SIZE } = require('./constants.js');
 
-const { createAnnotationModel, createUndoStack } = require('./annotation-model.js');
+const { createAnnotationModel } = require('./annotation-model.js');
+const { createUndoStack } = require('./undo-stack.js');
 
 let nextId = 0;
 function makeCtx(state) {

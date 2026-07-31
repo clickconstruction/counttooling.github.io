@@ -50,7 +50,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Canvas layers (multiple canvases per page)** — Keep alternates, trades, or bid options as separate overlays on the same sheet and switch with the arrow keys.
 - **Show-all-canvases peek** — See every layer at once to compare, without changing what you're editing — or right-click the peek button to show just the current layer plus one or two chosen others.
 - **Context menus (right-click / long-press)** — Edit or delete any mark in place instead of hunting the sidebar.
-- **Right-click tool settings** — Right-click any tool button for its settings menu, so options are discoverable where the tool lives — including Set / edit scale on the Move tool, so a set scale is never buried.
+- **Right-click tool settings** — Right-click any tool button for its settings menu, so options are discoverable where the tool lives — including Set / edit scale on the Move and Measure tools, so a set scale is never buried.
 - **Delete Area tool** — Rubber-band a rectangle and clear every mark inside it, with a confirming count before anything is deleted.
 - **Undo/redo (50 steps)** — Rapid clicking is safe; mistakes are a keystroke away from gone.
 

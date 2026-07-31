@@ -13,6 +13,17 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tools): Measure right-click → Set / edit scale
+
+Measuring is where a wrong scale gets noticed, so Measure now carries the
+same context action Move gained: `MOVE_ACTIONS` renamed to the shared
+`SCALE_EDIT_ACTIONS`, `measureBtn`/`measureBtnSidebar` moved from
+`NO_SETTINGS_TOOLS` into `TOOL_CONTEXT` (features/tool-context-menu.js) —
+map-only, no new mechanism. The two spec tests that used Measure as the
+no-settings example (toast fallback, viewer gate) now use Highlight; the
+move routing test loops over both buttons. Docs: ARCHITECTURE rows,
+FEATURES/FEATURE-CATALOG, the working-faster guide.
+
 ## feat(quick-keys): searchable slot selection
 
 On a real palette (dozens of counters/line types), picking an item in each

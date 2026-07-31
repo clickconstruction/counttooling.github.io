@@ -87,6 +87,10 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > file is committed; anon key is RLS-gated public; secrets go in
 > config.local.js), and generate-config.js refuses to overwrite the
 > git-tracked config.js (CONFIG_FORCE=1 to override).
+> #9 D13 FIXED: scripts/check-brand-tokens.js (pure verifier, in npm run
+> check) gates the styles.css ↔ marketing.css token mirror + manifest
+> theme/background colors + all three theme-color metas; the "keep in sync"
+> comment is no longer the only guard.
 
 ---
 

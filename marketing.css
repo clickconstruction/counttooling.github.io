@@ -1,7 +1,7 @@
 /* Marketing site (landing + /guides/) styles. Shared by index.html and the pages
    emitted by scripts/build-guides.js. The app UI uses styles.css, not this file. */
 
-/* Brand tokens — mirror of styles.css :root; keep in sync. */
+/* Brand tokens — mirror of styles.css :root; drift is CI-gated by scripts/check-brand-tokens.js (npm run check). */
 :root {
   --bg: #0f0f11; --surface: #17171a; --surface2: #1e1e22; --border: #2e2e36; --border2: #3a3a44;
   --accent: #e8c547; --text: #f0ede8; --text2: #9e9b96; --text3: #5e5c58;

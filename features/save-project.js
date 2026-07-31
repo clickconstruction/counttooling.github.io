@@ -98,6 +98,70 @@
     checkboxEl.checked = !checkboxEl.checked;
     checkboxEl.dispatchEvent(new Event('change'));
   };
+  /*
+   * The manual-save checkout-expiry preflight — the three-tier guard that
+   * decides whether a Save may proceed while this user holds the edit lock:
+   *   fresh (inside the near-expiry window)      -> proceed, no server call
+   *   near-expiry                                -> probe the server lock;
+   *                                                 alive -> proceed,
+   *                                                 probe failure -> toast + stop
+   *   past inactivity + soft grace (clock skew)  -> expired without probing
+   * On confirmed expiry it routes through the shared background-recovery flow;
+   * a silent re-checkout stops this save (the session is fresh again — the
+   * user just clicks Save again), and anything else opens the recovery modal.
+   * Returns true when the save may proceed, false when it must stop.
+   * Registered on App as a spec seam (save-project.spec.js) — every dep is
+   * read via App.* at call time, so tests stub them per-call.
+   */
+  async function preflightCheckoutExpiry(user, errEl) {
+    if (!(App.state.currentProjectId && App.state.checkedOutBy === user.id && App.state.checkedOutAt)) return true;
+    const checkedAt = new Date(App.state.checkedOutAt).getTime();
+    const ageMs = App.serverNowMs() - checkedAt;
+    let confirmedExpired = false;
+    if (ageMs > CHECKOUT_INACTIVITY_MS + CHECKOUT_SOFT_GRACE_MS) {
+      confirmedExpired = true;
+      App.saveDebugLog('manual.save.expired', { ageMs, mode: 'hard_skew' });
+    } else if (ageMs > CHECKOUT_INACTIVITY_MS - CHECKOUT_NEAR_EXPIRY_MS) {
+      const probe = await App.probeCheckoutLock();
+      if (probe.expired) {
+        confirmedExpired = true;
+        App.saveDebugLog('manual.save.expired', { ageMs, mode: 'probe' });
+      } else if (!probe.ok) {
+        App.showToast('Could not verify edit session. Try again.', 4000);
+        return false;
+      }
+    }
+    if (!confirmedExpired) return true;
+    // Note: keep App.state.checkedOutBy/At/Email populated until recovery resolves.
+    // Nulling them eagerly lets a re-click during a slow recovery bypass the
+    // preflight expiry guard and fall through to performSaveProjectToCloud
+    // against a wedged client.
+    App.clearUndoStacks();
+    App.updateSaveStatusIndicator();
+    const recovered = await App.handleBackgroundCheckoutExpired('manual_save');
+    await App.refreshProjectPermissions().catch(() => {});
+    if (recovered && recovered.silentlyRecovered) {
+      errEl.style.display = 'none';
+      App.updateUI();
+      return false;
+    }
+    // Only zero locally when refresh did not reassign the lock to a
+    // different user. If refresh repopulated App.state.checkedOutBy with a
+    // new holder, preserve their info so the header banner / settings
+    // checkout row can show "Checked out by <email>" while the recovery
+    // modal is open.
+    if (App.state.checkedOutBy === user.id || !App.state.checkedOutBy) {
+      App.state.checkedOutBy = null;
+      App.state.checkedOutAt = null;
+      App.state.checkedOutEmail = null;
+    }
+    App.updateUI();
+    App.hideModal('saveProjectModal');
+    App.openCheckoutExpiredRecoveryModal({ trigger: 'manual_save' });
+    return false;
+  }
+  App.preflightCheckoutExpiry = preflightCheckoutExpiry;
+
   document.getElementById('saveProjectDo').onclick = async () => {
     const name = document.getElementById('saveProjectName').value.trim() || 'Untitled';
     const errEl = document.getElementById('saveProjectError');
@@ -114,53 +178,7 @@
       errEl.style.display = 'block';
       return;
     }
-    if (App.state.currentProjectId && App.state.checkedOutBy === user.id && App.state.checkedOutAt) {
-      const checkedAt = new Date(App.state.checkedOutAt).getTime();
-      const ageMs = App.serverNowMs() - checkedAt;
-      let confirmedExpired = false;
-      if (ageMs > CHECKOUT_INACTIVITY_MS + CHECKOUT_SOFT_GRACE_MS) {
-        confirmedExpired = true;
-        App.saveDebugLog('manual.save.expired', { ageMs, mode: 'hard_skew' });
-      } else if (ageMs > CHECKOUT_INACTIVITY_MS - CHECKOUT_NEAR_EXPIRY_MS) {
-        const probe = await App.probeCheckoutLock();
-        if (probe.expired) {
-          confirmedExpired = true;
-          App.saveDebugLog('manual.save.expired', { ageMs, mode: 'probe' });
-        } else if (!probe.ok) {
-          App.showToast('Could not verify edit session. Try again.', 4000);
-          return;
-        }
-      }
-      if (confirmedExpired) {
-        // Note: keep App.state.checkedOutBy/At/Email populated until recovery resolves.
-        // Nulling them eagerly lets a re-click during a slow recovery bypass the
-        // preflight expiry guard and fall through to performSaveProjectToCloud
-        // against a wedged client.
-        App.clearUndoStacks();
-        App.updateSaveStatusIndicator();
-        const recovered = await App.handleBackgroundCheckoutExpired('manual_save');
-        await App.refreshProjectPermissions().catch(() => {});
-        if (recovered && recovered.silentlyRecovered) {
-          errEl.style.display = 'none';
-          App.updateUI();
-          return;
-        }
-        // Only zero locally when refresh did not reassign the lock to a
-        // different user. If refresh repopulated App.state.checkedOutBy with a
-        // new holder, preserve their info so the header banner / settings
-        // checkout row can show "Checked out by <email>" while the recovery
-        // modal is open.
-        if (App.state.checkedOutBy === user.id || !App.state.checkedOutBy) {
-          App.state.checkedOutBy = null;
-          App.state.checkedOutAt = null;
-          App.state.checkedOutEmail = null;
-        }
-        App.updateUI();
-        App.hideModal('saveProjectModal');
-        App.openCheckoutExpiredRecoveryModal({ trigger: 'manual_save' });
-        return;
-      }
-    }
+    if (!(await preflightCheckoutExpiry(user, errEl))) return;
     const origText = saveBtn.textContent;
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving…';

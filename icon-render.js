@@ -60,6 +60,34 @@
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + viewBoxString + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
   }
 
+
+// The SVG-shape -> path-data converter behind custom icon upload
+// (features/custom-icon-upload.js walks the uploaded document with DOMParser
+// and feeds each shape element here). Pure: `attr` is a lookup function
+// (name -> string|null), so Node tests need no DOM. Returns null for
+// unsupported tags / a path with no data.
+function svgShapeToPath(tag, attr) {
+  if (tag === 'path' && attr('d')) return attr('d');
+  if (tag === 'rect') {
+    const x = Number(attr('x')) || 0, y = Number(attr('y')) || 0, w = Number(attr('width')) || 0, h = Number(attr('height')) || 0;
+    return 'M' + x + ' ' + y + ' L' + (x + w) + ' ' + y + ' L' + (x + w) + ' ' + (y + h) + ' L' + x + ' ' + (y + h) + ' Z';
+  }
+  if (tag === 'circle') {
+    const cx = Number(attr('cx')) || 0, cy = Number(attr('cy')) || 0, r = Number(attr('r')) || 0;
+    return 'M' + cx + ' ' + cy + ' m -' + r + ' 0 a ' + r + ' ' + r + ' 0 1 1 0 ' + (2 * r) + ' a ' + r + ' ' + r + ' 0 1 1 0 -' + (2 * r);
+  }
+  if (tag === 'ellipse') {
+    const cx = Number(attr('cx')) || 0, cy = Number(attr('cy')) || 0, rx = Number(attr('rx')) || 0, ry = Number(attr('ry')) || 0;
+    return 'M' + cx + ' ' + cy + ' m -' + rx + ' 0 a ' + rx + ' ' + ry + ' 0 1 1 0 ' + (2 * ry) + ' a ' + rx + ' ' + ry + ' 0 1 1 0 -' + (2 * ry);
+  }
+  if (tag === 'line') {
+    const x1 = Number(attr('x1')) || 0, y1 = Number(attr('y1')) || 0, x2 = Number(attr('x2')) || 0, y2 = Number(attr('y2')) || 0;
+    return 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2;
+  }
+  return null;
+}
+
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -71,5 +99,6 @@
       iconRenderCenterRule,
       iconViewBoxStringRule,
       iconSvgHtml,
+      svgShapeToPath,
     };
   }

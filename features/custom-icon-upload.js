@@ -6,6 +6,8 @@
   // SVG parser (path/rect/circle/ellipse/line -> normalized path icon) and
   // the #customIconUploadInput handler that refreshes the three custom icon
   // grids (Create Counter, Quick Count, Details) after an upload.
+  // The pure shape->path core lives in icon-render.js (svgShapeToPath,
+  // node-tested); this file owns only the DOMParser walk and the DOM refresh.
 
   function parseUploadedSvg(file) {
     return new Promise((resolve, reject) => {
@@ -17,29 +19,8 @@
           if (!svg) { reject(new Error('Invalid SVG')); return; }
           const vb = svg.getAttribute('viewBox') || svg.getAttribute('viewbox') || '0 0 24 24';
           const paths = [];
-          function toPath(el) {
-            const tag = (el.tagName || '').toLowerCase();
-            if (tag === 'path' && el.getAttribute('d')) return el.getAttribute('d');
-            if (tag === 'rect') {
-              const x = Number(el.getAttribute('x')) || 0, y = Number(el.getAttribute('y')) || 0, w = Number(el.getAttribute('width')) || 0, h = Number(el.getAttribute('height')) || 0;
-              return 'M' + x + ' ' + y + ' L' + (x + w) + ' ' + y + ' L' + (x + w) + ' ' + (y + h) + ' L' + x + ' ' + (y + h) + ' Z';
-            }
-            if (tag === 'circle') {
-              const cx = Number(el.getAttribute('cx')) || 0, cy = Number(el.getAttribute('cy')) || 0, r = Number(el.getAttribute('r')) || 0;
-              return 'M' + cx + ' ' + cy + ' m -' + r + ' 0 a ' + r + ' ' + r + ' 0 1 1 0 ' + (2 * r) + ' a ' + r + ' ' + r + ' 0 1 1 0 -' + (2 * r);
-            }
-            if (tag === 'ellipse') {
-              const cx = Number(el.getAttribute('cx')) || 0, cy = Number(el.getAttribute('cy')) || 0, rx = Number(el.getAttribute('rx')) || 0, ry = Number(el.getAttribute('ry')) || 0;
-              return 'M' + cx + ' ' + cy + ' m -' + rx + ' 0 a ' + rx + ' ' + ry + ' 0 1 1 0 ' + (2 * ry) + ' a ' + rx + ' ' + ry + ' 0 1 1 0 -' + (2 * ry);
-            }
-            if (tag === 'line') {
-              const x1 = Number(el.getAttribute('x1')) || 0, y1 = Number(el.getAttribute('y1')) || 0, x2 = Number(el.getAttribute('x2')) || 0, y2 = Number(el.getAttribute('y2')) || 0;
-              return 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2;
-            }
-            return null;
-          }
           doc.querySelectorAll('path, rect, circle, ellipse, line').forEach(el => {
-            const d = toPath(el);
+            const d = App.svgShapeToPath((el.tagName || '').toLowerCase(), (n) => el.getAttribute(n));
             if (d) paths.push(d);
           });
           const value = paths.join(' ');
@@ -51,6 +32,32 @@
       r.onerror = () => reject(new Error('Failed to read file'));
       r.readAsText(file);
     });
+  }
+
+  // One refresh for the paired built-in/custom grid pattern (previously three
+  // near-verbatim blocks): rebuild the custom grid's cells, wire clicks
+  // (upload cell re-opens the file picker; a pick clears BOTH grids'
+  // selections before selecting), and optionally select the just-uploaded
+  // icon. onPick(cell) runs after selection for surface-specific behavior.
+  function refreshCustomGrid(gridEl, pairedGridSel, html, onPick) {
+    gridEl.innerHTML = html;
+    gridEl.querySelectorAll('.icon-cell').forEach(c => {
+      c.onclick = () => {
+        if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
+        document.querySelectorAll(pairedGridSel + ' .icon-cell').forEach(x => x.classList.remove('selected'));
+        gridEl.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+        if (onPick) onPick(c);
+      };
+    });
+  }
+  function selectUploadedIcon(gridEl, pairedGridSel, iconValue) {
+    const cell = Array.from(gridEl.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === iconValue);
+    if (!cell) return null;
+    document.querySelectorAll(pairedGridSel + ' .icon-cell').forEach(x => x.classList.remove('selected'));
+    gridEl.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+    cell.classList.add('selected');
+    return cell;
   }
 
   document.getElementById('customIconUploadInput').onchange = (e) => {
@@ -68,78 +75,44 @@
       const uploadCell = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
       const iconCells = effectiveCustom.map((ic) => '<div class="icon-cell" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>').join('');
       if (customGrid) {
-        customGrid.innerHTML = uploadCell + iconCells;
-        customGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            document.querySelectorAll('#counterIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-            customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-            const path = c.dataset.path;
-            if (path) {
-              const nameEl = document.getElementById('counterName');
-              if (!nameEl.value.trim()) nameEl.value = App.getIconName(path);
-            }
-          };
+        refreshCustomGrid(customGrid, '#counterIconGrid', uploadCell + iconCells, (c) => {
+          const path = c.dataset.path;
+          if (path) {
+            const nameEl = document.getElementById('counterName');
+            if (!nameEl.value.trim()) nameEl.value = App.getIconName(path);
+          }
         });
-        const newIconCell = Array.from(customGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCell) {
-          document.querySelectorAll('#counterIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCell.classList.add('selected');
+        if (selectUploadedIcon(customGrid, '#counterIconGrid', icon.value)) {
           const nameEl = document.getElementById('counterName');
           if (!nameEl.value.trim()) nameEl.value = icon.name;
         }
       }
       const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');
       if (counterQuickCountCustomGrid) {
-        counterQuickCountCustomGrid.innerHTML = uploadCell + iconCells;
-        counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-            counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-            App.updateCounterQuickCountNamePreview();
-          };
+        refreshCustomGrid(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', uploadCell + iconCells, () => {
+          App.updateCounterQuickCountNamePreview();
         });
-        const newIconCellQC = Array.from(counterQuickCountCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCellQC) {
-          document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
-          counterQuickCountCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCellQC.classList.add('selected');
+        if (selectUploadedIcon(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', icon.value)) {
           App.updateCounterQuickCountNamePreview();
         }
       }
       if (detailsCustomGrid) {
-        const grid = document.getElementById('counterLineTypeDetailsIconGrid');
         const item = App.getCounterLineTypeDetailsItem ? App.getCounterLineTypeDetailsItem() : null;
         const currentIcon = item?.icon || '';
         const iconCellsDetails = effectiveCustom.map((ic) => {
           const sel = ic.value === currentIcon ? ' selected' : '';
           return '<div class="icon-cell' + sel + '" data-path="' + ic.value + '"><svg viewBox="' + ic.viewBox + '" width="24" height="24"><path fill="currentColor" d="' + ic.value + '"/></svg></div>';
         }).join('');
-        detailsCustomGrid.innerHTML = uploadCell + iconCellsDetails;
-        detailsCustomGrid.querySelectorAll('.icon-cell').forEach(c => {
-          c.onclick = () => {
-            if (c.dataset.upload) { document.getElementById('customIconUploadInput').click(); return; }
-            if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            detailsCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-            c.classList.add('selected');
-            if (item) {
-              App.pushUndoSnapshot();
-              item.icon = c.dataset.path;
-              App.markProjectDirty();
-              App.updateUI();
-              App.renderAnnotations();
-            }
-          };
+        refreshCustomGrid(detailsCustomGrid, '#counterLineTypeDetailsIconGrid', uploadCell + iconCellsDetails, (c) => {
+          if (item) {
+            App.pushUndoSnapshot();
+            item.icon = c.dataset.path;
+            App.markProjectDirty();
+            App.updateUI();
+            App.renderAnnotations();
+          }
         });
-        const newIconCellDetails = Array.from(detailsCustomGrid.querySelectorAll('.icon-cell[data-path]')).find(c => c.dataset.path === icon.value);
-        if (newIconCellDetails && item) {
-          if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          detailsCustomGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-          newIconCellDetails.classList.add('selected');
+        if (item && selectUploadedIcon(detailsCustomGrid, '#counterLineTypeDetailsIconGrid', icon.value)) {
           App.pushUndoSnapshot();
           item.icon = icon.value;
           App.markProjectDirty();

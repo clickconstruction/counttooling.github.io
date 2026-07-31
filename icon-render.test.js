@@ -74,3 +74,16 @@ test('iconSvgHtml: embeds viewBox + path d; default color when omitted', () => {
   assert.ok(html.includes('fill="#abcdef"'));
   assert.ok(ir.iconSvgHtml('M0 0', undefined, '0 0 640 640').includes('fill="#e8c547"'));
 });
+
+test('svgShapeToPath converts each supported shape and rejects the rest', () => {
+  const attrs = (o) => (n) => (o[n] != null ? String(o[n]) : null);
+  assert.strictEqual(ir.svgShapeToPath('path', attrs({ d: 'M0 0 L1 1' })), 'M0 0 L1 1');
+  assert.strictEqual(ir.svgShapeToPath('path', attrs({})), null);
+  assert.strictEqual(ir.svgShapeToPath('rect', attrs({ x: 1, y: 2, width: 3, height: 4 })), 'M1 2 L4 2 L4 6 L1 6 Z');
+  assert.strictEqual(ir.svgShapeToPath('rect', attrs({})), 'M0 0 L0 0 L0 0 L0 0 Z');   // missing attrs coerce to 0
+  assert.strictEqual(ir.svgShapeToPath('circle', attrs({ cx: 5, cy: 5, r: 2 })), 'M5 5 m -2 0 a 2 2 0 1 1 0 4 a 2 2 0 1 1 0 -4');
+  assert.strictEqual(ir.svgShapeToPath('ellipse', attrs({ cx: 5, cy: 5, rx: 2, ry: 3 })), 'M5 5 m -2 0 a 2 3 0 1 1 0 6 a 2 3 0 1 1 0 -6');
+  assert.strictEqual(ir.svgShapeToPath('line', attrs({ x1: 0, y1: 1, x2: 2, y2: 3 })), 'M0 1 L2 3');
+  assert.strictEqual(ir.svgShapeToPath('polygon', attrs({ points: '0,0 1,1' })), null);
+  assert.strictEqual(ir.svgShapeToPath('g', attrs({})), null);
+});

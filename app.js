@@ -6326,6 +6326,7 @@
   App.__pdfBitmapCacheDump = () => pdfTileCache.debugDump();
   App.getOrderedIcons = getOrderedIcons;
   App.iconVbFor = iconVbFor;
+  App.svgShapeToPath = svgShapeToPath;   // pure (icon-render.js) — custom-icon-upload feeds DOMParser shapes through it
   App.getUserCustomIcons = getUserCustomIcons;
   App.saveUserCustomIcons = saveUserCustomIcons;
   App.showToast = showToast;

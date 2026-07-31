@@ -46,6 +46,9 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > **STATUS 2026-07-30 (session 3, ranked-table batch):** #0 stray tool-call scaffolding
 > (`</content>`/`</invoke>`) removed from content/guides/working-offline-and-installing.md
 > + regenerated page (was rendering as visible body text on the live Help site).
+> #1 Tier-4 #20 deploy VERIFIED DONE: all 9 edge functions redeployed 2026-07-31
+> 01:33–01:37 UTC, ~30 min after the _shared refactor commit (0c6f173) — the
+> "committed but NOT deployed" flag above is stale; no action was needed.
 
 ---
 

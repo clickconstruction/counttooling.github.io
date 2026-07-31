@@ -1,6 +1,10 @@
-// Copy this file to config.js and add your Supabase credentials.
-// Add config.js to .gitignore (already done) to keep credentials out of the repo.
-// Add <script src="config.js"></script> in index.html head, before the pdf.js script, to enable Supabase.
+// Production Supabase config. This file IS committed on purpose: the site is
+// a static deploy and the anon key is a public, RLS-gated credential (never
+// put a service-role key here). Secrets and dev-only overrides belong in
+// config.local.js (gitignored, loaded on localhost only) — see
+// config.example.js. NOTE: `npm run test:cloud` regenerates this file from
+// env vars; scripts/generate-config.js refuses to overwrite the tracked copy
+// unless CONFIG_FORCE=1.
 
 // Optional: set to false to disable full canvas+PDF backup to IndexedDB (default: true)
 // window.BACKUP_PDF_TO_INDEXEDDB = false;

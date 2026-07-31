@@ -6,6 +6,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
@@ -29,5 +30,25 @@ if (DEV_AUTH_EMAIL && DEV_AUTH_PASSWORD) {
 }
 
 const outPath = path.join(__dirname, '..', 'config.js');
+
+// Guard (DECOMPOSITION_MAP D7): config.js is a git-TRACKED file in this repo
+// (the committed production config). Refuse to silently clobber it — only
+// overwrite an untracked/previously-generated copy, or when CONFIG_FORCE=1.
+function isGitTracked(file) {
+  try {
+    execSync('git ls-files --error-unmatch ' + JSON.stringify(file), {
+      cwd: path.join(__dirname, '..'), stdio: 'ignore',
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+if (isGitTracked('config.js') && process.env.CONFIG_FORCE !== '1') {
+  console.error('Refusing to overwrite the git-tracked config.js with generated content.');
+  console.error('This would clobber the committed production config. Set CONFIG_FORCE=1 to override.');
+  process.exit(1);
+}
+
 fs.writeFileSync(outPath, lines.join('\n') + '\n', 'utf8');
 console.log('Wrote config.js from env vars');

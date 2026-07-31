@@ -1,5 +1,8 @@
 // Copy this file to config.js and add your Supabase credentials.
-// config.js is in .gitignore to keep credentials out of the repo.
+// NOTE: config.js is COMMITTED in this repo (static deploy; the anon key is a
+// public, RLS-gated credential — never put a service-role key or password in
+// it). Dev-only overrides (DEV_AUTH_*, debug flags) belong in config.local.js,
+// which IS gitignored and loaded on localhost only.
 // Add <script src="config.js"></script> in index.html head, before the pdf.js script, to enable Supabase.
 
 window.SUPABASE_URL = 'https://your-project.supabase.co';

@@ -83,6 +83,10 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > App.onSummaryCountDetailHidden in hideModal) + the in-flight pdf.js
 > RenderTask is cancelled; spec extended to pin it (§6's "no cancel on modal
 > close" note is resolved).
+> #8 D7 FIXED: config.js/config.example.js headers now state the truth (the
+> file is committed; anon key is RLS-gated public; secrets go in
+> config.local.js), and generate-config.js refuses to overwrite the
+> git-tracked config.js (CONFIG_FORCE=1 to override).
 
 ---
 

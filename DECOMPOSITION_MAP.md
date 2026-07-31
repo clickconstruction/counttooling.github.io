@@ -53,6 +53,11 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > Playwright routes): email gate, hydration + viewer flags, domain_restricted
 > re-prompt, cancel, and the IndexedDB offline-snapshot fallback. Closes the
 > §2/§10 "no view-only.spec" gap; viewer-scale.spec.js still owns the scale layer.
+> #3 share-links.spec.js 56 → ~320 lines (1 → 8 tests, all always-run): the RPC
+> surface covered via an App.getSupabase() fake-client stub (the feature's own
+> call-time accessor rule makes this a supported seam) + a routed invite-to-project
+> stub — render/escaping, role change, remove, confirm-gated revoke + onViewLinkRevoked
+> hook, access log, create, invite success/failure, error surfacing, viewer gate.
 
 ---
 

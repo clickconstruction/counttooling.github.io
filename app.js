@@ -2787,15 +2787,15 @@
     if (advancedImport) advancedImport.style.display = state.isViewer ? 'none' : '';
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
-    renderPagesList();
+    App.renderPagesList && App.renderPagesList();
     renderCanvasSwitcher();
-    renderCountersList();
+    App.renderCountersList && App.renderCountersList();
     const sidebarReorderBanner = document.getElementById('sidebarReorderBanner');
     const canReorder = state.counters.length >= 2 || state.lineTypes.length >= 2;
     if (sidebarReorderBanner) sidebarReorderBanner.style.display = (state.sidebarReorderModeActive && !state.isViewer && canReorder) ? 'flex' : 'none';
     document.body.classList.toggle('sidebar-reorder-mode-active', state.sidebarReorderModeActive);
-    renderLineTypesList();
-    renderGroupsList();
+    App.renderLineTypesList && App.renderLineTypesList();
+    App.renderGroupsList && App.renderGroupsList();
     App.renderLinesList && App.renderLinesList();   // features/lines-list.js; boot-time no-op is fine (no project yet)
     renderSummary();
     // App.hasAnyHighlights / hasAnyNotes are registered by features/pdf-bundle.js,
@@ -3006,66 +3006,13 @@
     }
   }
 
-  function formatPageTitleStartEnd(label, truncated) {
-    if (!truncated || !label || label.length <= 28) return label;
-    const half = Math.floor((label.length - 6) / 2);
-    const nFirst = Math.min(24, half);
-    const nLast = Math.min(14, half);
-    if (nFirst <= 0 && nLast <= 0) return label.slice(0, 37) + '...';
-    return { first: label.slice(0, nFirst), last: label.slice(-nLast) };
-  }
-
-  function renderPagesList() {
-    const el = document.getElementById('pagesList');
-    el.classList.toggle('pages-titles-truncated', !!state.pagesTitlesTruncated);
-    el.innerHTML = '';
-    const showEdit = !state.isViewer;
-    const esc = escapeHtml;
-    state.pages.forEach((p, i) => {
-      if (state.hideUnmarkedPagesFromSidebar && !pageHasAnyAnnotations(p)) return;
-      const div = document.createElement('div');
-      div.className = 'sidebar-item' + (state.currentPage === i ? ' active' : '');
-      const hasAnn = pageHasAnyAnnotations(p);
-      const hasScale = !!p.scale;
-      const rawLabel = p.label || 'Page ' + (i + 1);
-      const formatted = formatPageTitleStartEnd(rawLabel, state.pagesTitlesTruncated);
-      let nameHtml;
-      const nameTitle = typeof formatted === 'object' ? rawLabel : '';
-      if (typeof formatted === 'object') {
-        nameHtml = '<span class="name-line name-line-start">' + esc(formatted.first) + '...</span><span class="name-line name-line-end">...' + esc(formatted.last) + '</span>';
-      } else {
-        nameHtml = esc(formatted);
-      }
-      const canvasCount = getPageCanvases(p).length;
-      const canvasBadge = canvasCount > 1 ? '<span class="badge badge-canvas-count" title="' + canvasCount + ' canvases">' + canvasCount + '</span>' : '';
-      const pageNumBadgeClass = 'badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + (showEdit ? ' page-num-badge-editable' : '');
-      div.innerHTML = '<span class="page-num-badge-wrap"><span class="' + pageNumBadgeClass + '" title="' + (showEdit ? 'Click to rename or delete' : '') + '">' + (i + 1) + '</span>' + canvasBadge + '</span><span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>';
-      div.onclick = (e) => { if (!e.target.closest('.page-num-badge-wrap') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; fitZoom(); } };
-      if (showEdit) {
-        const deletePage = () => {
-          if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
-          pushUndoSnapshot();
-          state.pages.splice(i, 1);
-          if (state.currentPage >= state.pages.length) state.currentPage = Math.max(0, state.pages.length - 1);
-          else if (state.currentPage > i) state.currentPage--;
-          if (state.selectedLinePageIdx === i) { state.selectedLineId = null; state.selectedLinePageIdx = null; }
-          else if (state.selectedLinePageIdx > i) state.selectedLinePageIdx--;
-          if (state.editingPolyline && state.editingPolyIndex === i) exitEditMode(false);
-          else if (state.editingPolyline && state.editingPolyIndex > i) state.editingPolyIndex--;
-          markProjectDirty();
-          updateUI();
-          renderAnnotations();
-          fitZoom();
-        };
-        const pageName = p.label || 'Page ' + (i + 1);
-        const openRename = () => startRename(div.querySelector('.name'), (v) => { pushUndoSnapshot(); p.label = v; markProjectDirty(); updateUI(); }, { onDelete: deletePage, pageName });
-        const pageNumBadge = div.querySelector('.page-num-badge-editable');
-        if (pageNumBadge) pageNumBadge.addEventListener('click', (e) => { e.stopPropagation(); openRename(); });
-        onDoubleTapOrDblClick(div.querySelector('.name'), openRename);
-      }
-      el.appendChild(div);
-    });
-  }
+  // formatPageTitleStartEnd + renderPagesList (the sidebar Pages section:
+  // truncated titles, scale/annotation badges, canvas-count badge, rename /
+  // delete affordances) moved to features/pages-list.js (window.App registry)
+  // per the lines-list recipe. updateUI reaches it defensively via
+  // App.renderPagesList; features/page-settings.js consumes it via App.* at
+  // call time. New publish-only deps: pageHasAnyAnnotations, startRename,
+  // exitEditMode (registry block).
 
   /*
    * Selecting a counter / line type for placing. These are the ONE path: the
@@ -3092,172 +3039,14 @@
     updateUI();
   }
 
-  // Quick Key keycap badge for a bound sidebar row ('' when unbound). Deferred
-  // App.* read — features/quick-keys.js registers the lookup after app.js loads,
-  // and a boot-time render before then simply shows no badges (bindings only
-  // arrive with a project load anyway, and every later updateUI re-renders).
-  function quickKeyBadgeHtml(kind, id) {
-    const slot = App.getQuickKeySlotFor && App.getQuickKeySlotFor(kind, id);
-    return slot ? '<span class="quick-key-slot-badge" title="Quick Key ' + slot + ' — press to select">' + slot + '</span>' : '';
-  }
-
-  function renderCountersList() {
-    const el = document.getElementById('countersList');
-    el.innerHTML = '';
-    const esc = escapeHtml;
-    const showEdit = !state.isViewer;
-    const q = (state.counterSearch || '').trim().toLowerCase();
-    const filtered = q ? state.counters.filter(c => (c.name || 'Counter').toLowerCase().includes(q)) : state.counters;
-    filtered.forEach(c => {
-      if (state.counterSettings?.showOnlyCountersOnCurrentPage && state.pages.length > 0) {
-        const page = state.pages[state.currentPage];
-        const ann = getActiveAnnotations(page, state.currentPage);
-        const markers = (ann?.counterMarkers?.[c.id] || []);
-        if (markers.length === 0) return;
-      }
-      const div = document.createElement('div');
-      div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p, pi) => n + ((getActiveAnnotations(p, pi)?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
-      if (showEdit) {
-        div.dataset.counterId = c.id;
-        const handle = div.querySelector('.counter-drag-handle');
-        if (handle) {
-          handle.draggable = state.sidebarReorderModeActive && state.counters.length >= 2;
-          handle.ondragstart = (e) => {
-            e.dataTransfer.setData('text/plain', c.id);
-            e.dataTransfer.effectAllowed = 'move';
-            div.classList.add('counter-dragging');
-          };
-          handle.ondragend = () => div.classList.remove('counter-dragging');
-        }
-        div.ondragover = (e) => { if (!state.sidebarReorderModeActive) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-        div.ondrop = (e) => {
-          e.preventDefault();
-          if (!state.sidebarReorderModeActive) return;
-          const fromId = e.dataTransfer.getData('text/plain');
-          const toId = div.dataset.counterId;
-          if (fromId === toId) return;
-          const fromIdx = state.counters.findIndex(x => x.id === fromId);
-          const toIdx = state.counters.findIndex(x => x.id === toId);
-          if (fromIdx < 0 || toIdx < 0) return;
-          const [moved] = state.counters.splice(fromIdx, 1);
-          state.counters.splice(toIdx, 0, moved);
-          pushUndoSnapshot();
-          markProjectDirty();
-          updateUI();
-        };
-        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !(state.sidebarReorderModeActive && e.target.closest('.counter-drag-handle'))) { setActiveCounterType(c.id); } };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(c.color || '#e8c547', (color) => { pushUndoSnapshot(); c.color = color; markProjectDirty(); }); });
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('counter', c); });
-      }
-      el.appendChild(div);
-    });
-  }
-
-  function renderLineTypesList() {
-    const el = document.getElementById('lineTypesList');
-    el.innerHTML = '';
-    const esc = escapeHtml;
-    const showEdit = !state.isViewer;
-    const q = (state.lineTypeSearch || '').trim().toLowerCase();
-    const filtered = q ? state.lineTypes.filter(lt => (lt.name || 'Line').toLowerCase().includes(q)) : state.lineTypes;
-    filtered.forEach(lt => {
-      if (state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage && state.pages.length > 0) {
-        const page = state.pages[state.currentPage];
-        const ann = getActiveAnnotations(page, state.currentPage);
-        const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-        const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-        if (qLines.length === 0 && polys.length === 0) return;
-      }
-      let runs = 0, len = 0;
-      const pageIndices = [];
-      state.pages.forEach((p, pi) => {
-        const ann = getActiveAnnotations(p, pi);
-        const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-        const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-        if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += getLineLengthFeetForTotals(q, pi, false, ann); });
-        polys.forEach(poly => { runs++; len += getLineLengthFeetForTotals(poly, pi, true, ann); });
-      });
-      const scale = pickScaleForLineType(pageIndices);
-      const div = document.createElement('div');
-      div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + formatFeet(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
-      if (showEdit) {
-        div.dataset.lineTypeId = lt.id;
-        const handle = div.querySelector('.line-type-drag-handle');
-        if (handle) {
-          handle.draggable = state.sidebarReorderModeActive && state.lineTypes.length >= 2;
-          handle.ondragstart = (e) => {
-            e.dataTransfer.setData('text/plain', lt.id);
-            e.dataTransfer.effectAllowed = 'move';
-            div.classList.add('line-type-dragging');
-          };
-          handle.ondragend = () => div.classList.remove('line-type-dragging');
-        }
-        div.ondragover = (e) => { if (!state.sidebarReorderModeActive) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-        div.ondrop = (e) => {
-          e.preventDefault();
-          if (!state.sidebarReorderModeActive) return;
-          const fromId = e.dataTransfer.getData('text/plain');
-          const toId = div.dataset.lineTypeId;
-          if (fromId === toId) return;
-          const fromIdx = state.lineTypes.findIndex(x => x.id === fromId);
-          const toIdx = state.lineTypes.findIndex(x => x.id === toId);
-          if (fromIdx < 0 || toIdx < 0) return;
-          const [moved] = state.lineTypes.splice(fromIdx, 1);
-          state.lineTypes.splice(toIdx, 0, moved);
-          pushUndoSnapshot();
-          markProjectDirty();
-          updateUI();
-        };
-        div.onclick = (e) => { if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn') && !e.target.closest('.line-type-drag-handle')) { setActiveLineType(lt.id); } };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(lt.color || '#4a9eff', (color) => { pushUndoSnapshot(); lt.color = color; markProjectDirty(); }); });
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openCounterLineTypeDetailsModal('lineType', lt); });
-      }
-      el.appendChild(div);
-    });
-  }
-
-  function renderGroupsList() {
-    const el = document.getElementById('groupsList');
-    if (!el) return;
-    el.innerHTML = '';
-    const esc = escapeHtml;
-    const showEdit = !state.isViewer;
-    const groups = state.groups || [];
-    groups.forEach(g => {
-      const count = countItemsInGroup(g.id);
-      const div = document.createElement('div');
-      div.className = 'sidebar-item sidebar-item-line-type' + (state.activeGroupId === g.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
-      if (showEdit) {
-        div.onclick = (e) => {
-          if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) {
-            state.activeGroupId = state.activeGroupId === g.id ? null : g.id;
-            updateUI();
-          }
-        };
-        div.querySelector('.swatch')?.addEventListener('click', (e) => { e.stopPropagation(); App.showLineColorModal(g.color || COLORS[0], (color) => { pushUndoSnapshot(); g.color = color; markProjectDirty(); updateUI(); renderAnnotations(); }); });
-        div.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); App.openGroupModal(g); });
-      }
-      el.appendChild(div);
-    });
-  }
-
-  function countItemsInGroup(groupId) {
-    let n = 0;
-    state.pages.forEach(p => {
-      getPageCanvases(p).forEach(c => {
-        const ann = c.annotations || makeAnnotations();
-        Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) n++; }));
-        (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) n++; });
-        (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) n++; });
-      });
-    });
-    return n;
-  }
+  // quickKeyBadgeHtml + renderCountersList + renderLineTypesList +
+  // renderGroupsList + countItemsInGroup (the sidebar Counters / Line Types /
+  // Groups section renderers) moved to features/sidebar-lists.js (window.App
+  // registry) per the lines-list recipe. updateUI reaches them defensively via
+  // App.render*List; quick-keys.js / counter-settings.js /
+  // line-type-settings.js / item-details.js consume them via App.* at call
+  // time. Row activation still funnels through setActiveCounterType /
+  // setActiveLineType above (the ONE selection path).
 
   // renderLinesList (the sidebar Lines section: per-type grouping + totals,
   // expand/collapse, search, row selection/jump, swatch + Line Properties
@@ -4288,7 +4077,7 @@
     counterSearchInput.oninput = () => {
       state.counterSearch = counterSearchInput.value;
       localStorage.setItem('counterSearch', state.counterSearch);
-      renderCountersList();
+      App.renderCountersList();
     };
   }
   const lineTypeSearchInput = document.getElementById('lineTypeSearchInput');
@@ -4297,7 +4086,7 @@
     lineTypeSearchInput.oninput = () => {
       state.lineTypeSearch = lineTypeSearchInput.value;
       localStorage.setItem('lineTypeSearch', state.lineTypeSearch);
-      renderLineTypesList();
+      App.renderLineTypesList();
       App.renderLinesList();
     };
   }
@@ -4318,7 +4107,7 @@
       const modalBtn = document.getElementById('counterShowOnlyOnPageBtn');
       if (cb) cb.checked = !!state.counterSettings.showOnlyCountersOnCurrentPage;
       if (modalBtn) modalBtn.setAttribute('aria-pressed', state.counterSettings.showOnlyCountersOnCurrentPage);
-      renderCountersList();
+      App.renderCountersList();
       updateUI();
     };
   }
@@ -4330,7 +4119,7 @@
       const modalBtn = document.getElementById('lineTypeShowOnlyOnPageBtn');
       if (cb) cb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
       if (modalBtn) modalBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
-      renderLineTypesList();
+      App.renderLineTypesList();
       App.renderLinesList();
       updateUI();
     };
@@ -7285,10 +7074,13 @@
   // hasAnyNotes are registered from features/pdf-bundle.js.
   App.wrapNoteText = wrapNoteText;
   App.logUserEvent = logUserEvent;
-  App.renderPagesList = renderPagesList;
   App.renderAnnotations = renderAnnotations;
-  App.renderCountersList = renderCountersList;
-  App.renderLineTypesList = renderLineTypesList;
+  // renderPagesList / renderCountersList / renderLineTypesList /
+  // renderGroupsList / countItemsInGroup are registered from
+  // features/pages-list.js + features/sidebar-lists.js.
+  App.pageHasAnyAnnotations = pageHasAnyAnnotations;
+  App.startRename = startRename;
+  App.exitEditMode = exitEditMode;
   // features/lines-list.js deps (publish-only). formatArea/polygonArea are
   // geometry.js globals — lint-invisible to the features eslint group, so they
   // route through the registry (the pilot-#13 ptDist pattern).
@@ -7408,7 +7200,6 @@
   // Item detail & properties modal deps (features/item-details.js; deleteGroup's
   // App registration moved there too — groups.js keeps consuming App.deleteGroup).
   App.enterEditMode = enterEditMode;
-  App.countItemsInGroup = countItemsInGroup;
   App.getPageScale = getPageScale;
   App.getPageSheetAnalysis = getPageSheetAnalysis;
   App.STANDARD_SHEETS = STANDARD_SHEETS;

@@ -126,6 +126,13 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > verbatim blocks (lint still 0 warnings). Deliberately deferred from #18:
 > the artifact.js --check-protocol, brand.js reticle, and render.js withPage
 > seams — softer duplication, extract when those generators are next edited.
+> #16 CHANGELOG + doc drift: the four 2026-07-30 entries that were inserted
+> mid-file (L532) moved to the top (newest-first restored, git-log verified
+> order); AGENTS/ARCHITECTURE "~7.8k" app.js claims → ~6.5k; ARCHITECTURE's
+> idb copy fixed to v7/10 stores (the D5 fix hadn't reached it); the
+> "two coexisting migration naming schemes" claim corrected (all 55 files
+> are timestamped; legacy NNN survives only as embedded labels); the "44
+> feature files" count → 53.
 
 ---
 

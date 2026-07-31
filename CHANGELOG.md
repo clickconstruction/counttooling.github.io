@@ -13,6 +13,137 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## polish(warmup): the walk is visible, marked-first, and cold flips never show the wrong sheet
+
+Three perception refinements over the full-document warm-up below:
+
+- **Status-bar hint** — `#statusWarmup` shows "Preparing pages N/M" (dim,
+  italic, tabular numerals) while the walk runs and disappears at
+  completion, making the background work visible and teaching that letting
+  a big set sit for ~15s after opening pays off. Driven from the walk's
+  `advance()`; reset on document change.
+- **Marked pages first** — `runDocWarmupStep` warms the pages carrying the
+  user's annotations (`getMarkedPageIndices`, nearest-first) before the
+  outward spiral, since those are the pages users actually jump to. Shrinks
+  cold-jump exposure for working pages from "wherever the spiral reaches
+  them" to the first seconds.
+- **Cold-flip white-out** — a flip to a page with NO cached bitmap at any
+  rung (and no same-page stale-blit candidate) used to leave the PREVIOUS
+  sheet on screen for the whole raster — the wrong drawing for seconds on
+  dense pages, reading as "it ignored my click". renderPdf now clears the
+  canvas to paper-white immediately (annotations of the new page paint over
+  it as the response). Deliberately does not stamp lastPainted*, so the
+  restore-retrigger and stale-blit logic still treat the placeholder as
+  stale and repaint the moment real pixels arrive. Gated on an actual page
+  or rotation change with prior content — first renders and zoom commits
+  keep their existing behavior.
+
+All three pinned in [doc-warmup.spec.js](doc-warmup.spec.js) (hint
+visible-then-hidden; a seeded far-page marker leads the far-field walk;
+raster-delayed cold flip samples paper-white, then crisp ink).
+
+---
+
+## perf(warmup): full-document background warm-up + the idle-prefetch runaway loop
+
+Part 2 of the "last pages are slow to load" fix (part 1 unwedged the render
+worker). Even with the worker healthy, the first jump deep into a set was
+always a cold multi-second raster — the prefetcher only warmed current±1.
+
+- **Full-document warm-up (prefetch tier 3)** — once the near-field
+  candidates (current-page rungs, neighbor pages) are warm, idle time walks
+  EVERY page outward from the current one at its rung-snapped fit zoom
+  through the same one-at-a-time prefetch slot (kind 'prefetch' → the worker
+  pool's background seat). Rung-snapped captures flow through the existing
+  persist path into the IndexedDB pyramid, so the walk warms this session
+  AND every later reopen; pages whose fit rung is already persisted cost one
+  IDB index read, no raster. Same interaction discipline (cancel on any
+  render/wheel/touch/pointer, `pdfPrefetchGen` invalidates in-flight async
+  continuations), 250ms cadence, skipped on low-memory devices. The 39-page
+  field set warms completely in ~14s of idle.
+- **Idle-prefetch runaway loop (pre-existing, exposed by the walk)** — a
+  capture's pyramid derives can evict a sibling candidate from the
+  slot-capped bitmap cache; the chain then re-rasters the evicted key, whose
+  derives evict another — observed at ~12 rasters/s FOREVER on dense sheets,
+  plus a duplicate IDB webp write per re-capture (366 writes in 40s), hidden
+  because any interaction cancels the chain. Fixed: one attempt per key per
+  chain (`pdfPrefetchAttempted`, cleared on cancel) + a session persist
+  dedupe (`zoomRungsPersistedKeys`). After the fix the same idle window does
+  41 rasters / 40 persists and goes quiet.
+- **Page-count-aware pyramid cap** — `idbZoomRungsPut` takes an optional
+  per-doc cap; app.js passes max(24, pages×2) so a 39-page walk no longer
+  self-evicts (the ~96MB global byte budget stays the true bound).
+- **Restore-retrigger** — a deep jump's cold raster used to race the lazy
+  IDB restore and win: the user stared at the PREVIOUS sheet while the dense
+  page rastered, with the restored bitmap arriving unused. When a restore
+  lands for the page the user is on and the canvas hasn't painted it yet,
+  renderPdf re-enters once and the ladder serves the restored rung
+  immediately. Measured on the field set: jump to page 36 swaps content in
+  ~22ms (was: full raster time).
+
+New regression: [doc-warmup.spec.js](doc-warmup.spec.js); idb.test.js covers
+the cap override. The full render-path battery (19 tests) passes.
+
+---
+
+## feat(telemetry): render-worker fallback mirrors to the admin activity feed
+
+The field lesson from the worker-scope fixes below: `render_worker_fallback`
+only landed in the LOCAL Save Status log, so a session (or a whole deploy)
+silently degraded to main-thread rasters and nobody saw it — it surfaced as
+"the app feels slow" weeks later. render-service gains an optional
+`deps.onFallback(reason)` hook, fired once per session at the moment the
+worker is disabled; app.js mirrors it into the admin activity feed
+(`logUserEvent('render_worker_fallback', projectId, {message, source})`,
+the reportClientError pattern), self-gated on Supabase + session. Node
+coverage: a stubbed-Worker adoption failure fires the hook exactly once
+with the reason, the session lands `failed`, and the raster still completes
+on main.
+
+---
+
+## fix(render-worker): dense CAD sheets crashed the worker (patterns) and garbled text (fonts)
+
+Field case: a 39-page underground-plumbing set (7 MB, pages up to ~350k pdf.js
+operators) always ran main-thread — `render_worker_fallback` with
+`raster: Cannot read properties of undefined (reading 'createElement')` on the
+FIRST raster, so every dense sheet blocked the UI for the whole session and the
+"last pages are slow to load" complaint came straight back. Two worker-scope
+holes in pdf.js 3.11's defaults, both invisible on simple test PDFs because the
+failing paths are lazy:
+
+- **Aux-canvas factory** — `DefaultCanvasFactory` in a non-Node scope is
+  `DOMCanvasFactory` (`document.createElement('canvas')`), consulted only when
+  a page needs an auxiliary canvas: tiling patterns, transparency groups, soft
+  masks — i.e. every hatched/shaded CAD sheet. The worker now passes a
+  duck-typed OffscreenCanvas factory (+ a no-op filterFactory) to
+  `getDocument`, so the raster that used to wedge the session into permanent
+  main fallback just renders.
+- **Embedded fonts** — FontLoader wants `ownerDocument.fonts` (a FontFaceSet);
+  without one it falls into a CSS-rule path that also needs the DOM and every
+  glyph rasters as a solid black box (caught by pixel-diffing worker vs main
+  output — ink delta 1.26% broken, 0.000% fixed). Worker scopes have their own
+  `self.fonts`, handed over via an `ownerDocument: {fonts: self.fonts}` shim;
+  engines without it get `disableFontFace` (glyph-outline drawing) instead.
+- **useWorkerFetch (third hole, exposed by the substitute-font merge)** — with
+  `cMapUrl`/`standardFontDataUrl` set but `useWorkerFetch` unset, pdf.js
+  computes the default by touching `document.baseURI` — a ReferenceError at
+  DOC LOAD in worker scope, so the fix/pdfjs-font-fallback merge silently
+  broke worker adoption for **every** PDF (caught when this branch's new
+  worker specs went red after syncing). The worker now passes
+  `useWorkerFetch: true` explicitly — also the right value: the nested pdf.js
+  worker fetches both URLs itself.
+
+Verified against the field PDF: worker `ready`, 93/93 rasters in the worker,
+zero fallbacks, main-thread page-switch stall 20-30ms → 5-9ms, and the
+worker/main renders pixel-equivalent (0.013% of channels, max delta 16 — AA
+jitter). [render-worker.spec.js](render-worker.spec.js) gained both guards: a
+spec-crafted tiling-pattern PDF must worker-raster with zero fallbacks, and
+the embedded-font sample plan must render ink-identical in both modes (both
+fail against the old worker).
+
+---
+
 ## ops(supabase): advisor backlog cleared — initplan rewrites + anon revoke
 
 The two deferred advisor items from the 2026-07-24 scan, both user-approved,
@@ -526,137 +657,6 @@ The four remaining roadmap items, together:
   (counter/line-type delete, group delete) deliberately keep full snapshots.
   Unit-tested (page-scope isolation, interleaving with full snapshots,
   scale/rotation/palette restore).
-
----
-
-## polish(warmup): the walk is visible, marked-first, and cold flips never show the wrong sheet
-
-Three perception refinements over the full-document warm-up below:
-
-- **Status-bar hint** — `#statusWarmup` shows "Preparing pages N/M" (dim,
-  italic, tabular numerals) while the walk runs and disappears at
-  completion, making the background work visible and teaching that letting
-  a big set sit for ~15s after opening pays off. Driven from the walk's
-  `advance()`; reset on document change.
-- **Marked pages first** — `runDocWarmupStep` warms the pages carrying the
-  user's annotations (`getMarkedPageIndices`, nearest-first) before the
-  outward spiral, since those are the pages users actually jump to. Shrinks
-  cold-jump exposure for working pages from "wherever the spiral reaches
-  them" to the first seconds.
-- **Cold-flip white-out** — a flip to a page with NO cached bitmap at any
-  rung (and no same-page stale-blit candidate) used to leave the PREVIOUS
-  sheet on screen for the whole raster — the wrong drawing for seconds on
-  dense pages, reading as "it ignored my click". renderPdf now clears the
-  canvas to paper-white immediately (annotations of the new page paint over
-  it as the response). Deliberately does not stamp lastPainted*, so the
-  restore-retrigger and stale-blit logic still treat the placeholder as
-  stale and repaint the moment real pixels arrive. Gated on an actual page
-  or rotation change with prior content — first renders and zoom commits
-  keep their existing behavior.
-
-All three pinned in [doc-warmup.spec.js](doc-warmup.spec.js) (hint
-visible-then-hidden; a seeded far-page marker leads the far-field walk;
-raster-delayed cold flip samples paper-white, then crisp ink).
-
----
-
-## perf(warmup): full-document background warm-up + the idle-prefetch runaway loop
-
-Part 2 of the "last pages are slow to load" fix (part 1 unwedged the render
-worker). Even with the worker healthy, the first jump deep into a set was
-always a cold multi-second raster — the prefetcher only warmed current±1.
-
-- **Full-document warm-up (prefetch tier 3)** — once the near-field
-  candidates (current-page rungs, neighbor pages) are warm, idle time walks
-  EVERY page outward from the current one at its rung-snapped fit zoom
-  through the same one-at-a-time prefetch slot (kind 'prefetch' → the worker
-  pool's background seat). Rung-snapped captures flow through the existing
-  persist path into the IndexedDB pyramid, so the walk warms this session
-  AND every later reopen; pages whose fit rung is already persisted cost one
-  IDB index read, no raster. Same interaction discipline (cancel on any
-  render/wheel/touch/pointer, `pdfPrefetchGen` invalidates in-flight async
-  continuations), 250ms cadence, skipped on low-memory devices. The 39-page
-  field set warms completely in ~14s of idle.
-- **Idle-prefetch runaway loop (pre-existing, exposed by the walk)** — a
-  capture's pyramid derives can evict a sibling candidate from the
-  slot-capped bitmap cache; the chain then re-rasters the evicted key, whose
-  derives evict another — observed at ~12 rasters/s FOREVER on dense sheets,
-  plus a duplicate IDB webp write per re-capture (366 writes in 40s), hidden
-  because any interaction cancels the chain. Fixed: one attempt per key per
-  chain (`pdfPrefetchAttempted`, cleared on cancel) + a session persist
-  dedupe (`zoomRungsPersistedKeys`). After the fix the same idle window does
-  41 rasters / 40 persists and goes quiet.
-- **Page-count-aware pyramid cap** — `idbZoomRungsPut` takes an optional
-  per-doc cap; app.js passes max(24, pages×2) so a 39-page walk no longer
-  self-evicts (the ~96MB global byte budget stays the true bound).
-- **Restore-retrigger** — a deep jump's cold raster used to race the lazy
-  IDB restore and win: the user stared at the PREVIOUS sheet while the dense
-  page rastered, with the restored bitmap arriving unused. When a restore
-  lands for the page the user is on and the canvas hasn't painted it yet,
-  renderPdf re-enters once and the ladder serves the restored rung
-  immediately. Measured on the field set: jump to page 36 swaps content in
-  ~22ms (was: full raster time).
-
-New regression: [doc-warmup.spec.js](doc-warmup.spec.js); idb.test.js covers
-the cap override. The full render-path battery (19 tests) passes.
-
----
-
-## feat(telemetry): render-worker fallback mirrors to the admin activity feed
-
-The field lesson from the worker-scope fixes below: `render_worker_fallback`
-only landed in the LOCAL Save Status log, so a session (or a whole deploy)
-silently degraded to main-thread rasters and nobody saw it — it surfaced as
-"the app feels slow" weeks later. render-service gains an optional
-`deps.onFallback(reason)` hook, fired once per session at the moment the
-worker is disabled; app.js mirrors it into the admin activity feed
-(`logUserEvent('render_worker_fallback', projectId, {message, source})`,
-the reportClientError pattern), self-gated on Supabase + session. Node
-coverage: a stubbed-Worker adoption failure fires the hook exactly once
-with the reason, the session lands `failed`, and the raster still completes
-on main.
-
----
-
-## fix(render-worker): dense CAD sheets crashed the worker (patterns) and garbled text (fonts)
-
-Field case: a 39-page underground-plumbing set (7 MB, pages up to ~350k pdf.js
-operators) always ran main-thread — `render_worker_fallback` with
-`raster: Cannot read properties of undefined (reading 'createElement')` on the
-FIRST raster, so every dense sheet blocked the UI for the whole session and the
-"last pages are slow to load" complaint came straight back. Two worker-scope
-holes in pdf.js 3.11's defaults, both invisible on simple test PDFs because the
-failing paths are lazy:
-
-- **Aux-canvas factory** — `DefaultCanvasFactory` in a non-Node scope is
-  `DOMCanvasFactory` (`document.createElement('canvas')`), consulted only when
-  a page needs an auxiliary canvas: tiling patterns, transparency groups, soft
-  masks — i.e. every hatched/shaded CAD sheet. The worker now passes a
-  duck-typed OffscreenCanvas factory (+ a no-op filterFactory) to
-  `getDocument`, so the raster that used to wedge the session into permanent
-  main fallback just renders.
-- **Embedded fonts** — FontLoader wants `ownerDocument.fonts` (a FontFaceSet);
-  without one it falls into a CSS-rule path that also needs the DOM and every
-  glyph rasters as a solid black box (caught by pixel-diffing worker vs main
-  output — ink delta 1.26% broken, 0.000% fixed). Worker scopes have their own
-  `self.fonts`, handed over via an `ownerDocument: {fonts: self.fonts}` shim;
-  engines without it get `disableFontFace` (glyph-outline drawing) instead.
-- **useWorkerFetch (third hole, exposed by the substitute-font merge)** — with
-  `cMapUrl`/`standardFontDataUrl` set but `useWorkerFetch` unset, pdf.js
-  computes the default by touching `document.baseURI` — a ReferenceError at
-  DOC LOAD in worker scope, so the fix/pdfjs-font-fallback merge silently
-  broke worker adoption for **every** PDF (caught when this branch's new
-  worker specs went red after syncing). The worker now passes
-  `useWorkerFetch: true` explicitly — also the right value: the nested pdf.js
-  worker fetches both URLs itself.
-
-Verified against the field PDF: worker `ready`, 93/93 rasters in the worker,
-zero fallbacks, main-thread page-switch stall 20-30ms → 5-9ms, and the
-worker/main renders pixel-equivalent (0.013% of channels, max delta 16 — AA
-jitter). [render-worker.spec.js](render-worker.spec.js) gained both guards: a
-spec-crafted tiling-pattern PDF must worker-raster with zero fallbacks, and
-the embedded-font sample plan must render ink-identical in both modes (both
-fail against the old worker).
 
 ---
 

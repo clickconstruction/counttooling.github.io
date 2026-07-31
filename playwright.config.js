@@ -13,10 +13,16 @@ module.exports = defineConfig({
   // bash -lc "npx playwright test render-pixels.spec.js --update-snapshots").
   // Cloud/dev-auth specs need no ignore: they self-skip without DEV_AUTH_*.
   testIgnore: [],
+  // Per-FILE parallelism only (fullyParallel stays false, so tests within a
+  // spec keep their in-file ordering). Each test gets an isolated browser
+  // context (own storage/IndexedDB) against the shared static server, so
+  // files are independent; measured locally 2026-07-30: 4 workers ran the
+  // full suite in 2.1m vs 6.7m serial, twice, with zero flakes — including
+  // the timing-sensitive perf specs. CI runners have fewer cores; 2 there.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: process.env.CI ? 2 : 4,
   reporter: 'list',
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3456',

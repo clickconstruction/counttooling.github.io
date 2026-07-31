@@ -41,5 +41,3 @@ CountTooling is touch-friendly: single-finger pan, pinch to zoom, and long-press
 ![CountTooling on a tablet — the full toolbar, counters, and summary alongside a marked-up plan.](/guides/img/on-a-tablet.png)
 
 For getting work to and from teammates, see [Sharing and view links](/guides/sharing-and-view-links/).
-</content>
-</invoke>

@@ -42,6 +42,10 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > highlights: report.js file split (optional), load-project L653 split, user-activity
 > split, renderIconGrid picker dedupe, scripts/lib + eslint-factory tooling items, and
 > deploying the refactored edge functions.
+>
+> **STATUS 2026-07-30 (session 3, ranked-table batch):** #0 stray tool-call scaffolding
+> (`</content>`/`</invoke>`) removed from content/guides/working-offline-and-installing.md
+> + regenerated page (was rendering as visible body text on the live Help site).
 
 ---
 

@@ -20,6 +20,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./save-utils.js')),
       Object.keys(require('./save-engine.js')),
       Object.keys(require('./annotation-model.js')),
+      Object.keys(require('./pdf-tile-cache.js')),
       Object.keys(require('./icons.js')),
       Object.keys(require('./icons-custom.js')),
       Object.keys(require('./idb.js')),
@@ -273,7 +274,10 @@ module.exports = [
     // constants.js + save-utils.js, so it reads their exports by bare name
     // (saveEngineGlobals); everything state/closure-coupled arrives via ctx.
     // Its export is consumed cross-file by app.js, so no-unused-vars is noise.
-    files: ['save-engine.js', 'annotation-model.js'],
+    // pdf-tile-cache.js follows the same seam recipe (createPdfTileCache(ctx))
+    // and reads constants.js + idb.js exports by bare name, both covered by
+    // saveEngineGlobals.
+    files: ['save-engine.js', 'annotation-model.js', 'pdf-tile-cache.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

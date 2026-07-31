@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-07-30 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-07-31 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,10 +28,11 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,062 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,620 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [pdf-tile-cache.js](pdf-tile-cache.js) | 547 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,412 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [app/index.html](app/index.html) | 2,413 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 1,367 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 969 | Largest feature file (Load Project modal + filters + checkout dedupe), recently flattened. Healthy internally — watch; consider splitting modal UI from data-fetch if it clears ~1.2k. |
 | [annotation-model.js](annotation-model.js) | 614 | Done — extracted canvas/annotation data model + node tests. |
@@ -47,6 +48,7 @@ modules. Candidates in priority order:
 
 | Region | Lines | Assessment |
 |--------|------:|------------|
+| PDF render bitmap cache | ~35 | **DONE (2026-07-30)** — was ~478. The whole substrate (page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up walk) moved to [pdf-tile-cache.js](pdf-tile-cache.js) (`createPdfTileCache(ctx)`, stage 1). What remains under the marker is the instantiation, the ctx (13 live-value accessors), and same-named thin wrappers. The Sharp crop tile / tile grid section is the pre-identified stage 2. |
 | PDF Rendering | ~589 | **DONE (2026-07-20)** — was ~1,576. The duplicated draw logic (`renderAnnotations` live / `renderAnnotationsToContext` export) was unified into [canvas-draw.js](canvas-draw.js)'s `drawAnnotationsCore(ctx, ann, env)`; both callers are now thin env-builders, and `drawDropMarker`/`drawRoomBoxesToContext`/`drawLegend`/`drawGrid`/`hexToRgb`/`lineStyleToDash` moved with it. What remains here is `renderPdf` (the pdf.js raster + bitmap-cache blit), the live-only scale-reference UI, and the in-progress rubber-band previews — all genuinely live-path code. Guarded by [render-pixels.spec.js](render-pixels.spec.js) (pixel baselines) + [canvas-draw.test.js](canvas-draw.test.js). |
 | UI Render Functions | ~940 | Second candidate — **decomposition started 2026-07-24**: `renderLinesList` (123 lines) moved to [features/lines-list.js](features/lines-list.js), proving the per-list recipe (defensive updateUI seam, five publish-only deps, zero moved state). Remaining: `updateUI` (~470 lines, stays core) plus `renderCanvasSwitcher`, `renderPagesList`, `renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `renderSummary` — each separable the same way. |
 | Canvas mouse, wheel & touch handlers + Canvas Event Handlers + Aim loupe | ~1,160 combined | The input layer — the most state-entangled code in the file (drag state, tool modes, gesture arbitration) with the lowest unit-test leverage. Extract **last**, if ever, as an input-controller seam module. |
@@ -73,6 +75,7 @@ modules. Candidates in priority order:
 | [save-utils.test.js](save-utils.test.js) | Node `node:test` unit tests for [save-utils.js](save-utils.js) (the `isTransientSaveError` transient/non-transient matrix ported from the old localhost `console.assert` block, `getProjectCounts` shape/sum cases, plus the pure-mined helpers: `serializeSaveError` fields/null/`String(e)` fallback, `formatSaveStatusErrDetail`, `backoffDelayMs` clamp, `computeClockOffsetMs` string/numeric/null, and `percentile` p95/empty); run with `npm run test:unit` |
 | [annotation-model.js](annotation-model.js) | **The canvas/annotation data model** (Tier-2 item 7) — exports `createAnnotationModel(ctx)` + `createUndoStack(ctx)`, the same seam recipe as the save engine. Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `bakeFramesMatch`/`rotatePoint90CW`/`pointInRect`/`CIRCLE_PATH` by bare name) and before [save-engine.js](save-engine.js); app.js instantiates both once and keeps same-named thin wrappers so call sites, the App registry, and the feature-file contracts stay frozen. The model owns: `makeAnnotations` (the canonical shape), canvas-layer accessors (`getPageCanvases`/`getActiveCanvas`/`getActiveAnnotations`/`ensureActiveCanvas`/`getMergedAnnotationsForPage`/`mergeAnnotations`/`migratePageToCanvases`), has-any checks, backup↔proj format conversion, bake-frame stamp/verify, the backup/data appliers (`applyTakeoffBackupToState`/`applyPageAnnotationsFromData`), orphan reconcile, the **rect-select operations** (`countItemsInRect`, `collectItemsToDeleteInRect`, `deleteCollectedItems` — the Delete Area splice core with its load-bearing descending-index order; app.js's `performDeleteZone` keeps the undo/dirty/re-render choreography, ctx supplies `getLineRealWorldLengthFeet`), the **page-rotation math** (`rotateAnnotations`/`applyRotationDeltaToAnnotations` — node-tested 4×90° round trips), and `deepCopyAnnotations`. `createUndoStack` owns the undo/redo snapshot stacks (pages/counters/lineTypes/groups/rooms). Guarded CommonJS footer so [annotation-model.test.js](annotation-model.test.js) can `require()` it |
 | [save-engine.js](save-engine.js) | **The save/sync engine module** (staged extraction; Stages 1–4 landed) — exports `createSaveEngine(ctx)`. Classic `<script src>` loaded after [constants.js](constants.js) + [save-utils.js](save-utils.js) (reads their exports by bare name — `GLOBAL_RELOAD_*`/`CHECKOUT_*`/`SAVE_STATUS_LOG_*` constants, `serializeSaveError`) and before [app.js](app.js), which instantiates it once near the top of its IIFE with a **ctx of accessors/callbacks** whose live contract is documented in the file header and grows per stage — arrows that resolve live values at call time, so client recycles and `let` reassignments are always seen. app.js keeps **same-named thin wrappers** so call sites, the App registry, and `window.*` contracts stay frozen as clusters migrate behind the seam. **Stage 1:** the `[sync] Global force reload` cluster (check + reload + the pending-stamp commit listener installed via `installGlobalReloadStampCommit()` + banner) and the `[sync] Checkout keep-alive` probe. **Stage 4 (client resilience):** `noteSupabaseJsFailure` + the wedge stamp, `runRecoveryProbe` (raw-fetch connection probe), `runSupabaseClientProbe`, `recreateSupabaseClient` (reassigns the app-side client via `ctx.setSupabase`; re-subscribes via `ctx.resubscribeCheckout`), the two orchestrators (`runRecoveryProbeAndMaybeRecycle`, `recycleClientIfWedgedOnIdleReturn`), and the four raw-fetch fallbacks (`rawProjectsUpdate`/`rawProjectsInsert`/`rawCheckInProject`/`rawListAccessibleProjects`) — with engine-owned in-flight guards, the recycle cooldown/count, and getters (`getLastSupabaseJsFailureAt`/`getClientRecycleCount`/`isClientRecycleInFlight`) for the app-side turn-in/save/envelope readers. **Stage 3 (storage ring):** `probeCheckoutLock` (graduated from ctx to engine-internal), `sha256Hex`, the `takeoffBackupGet`/`takeoffBackupPut` mismatch/warn wrappers, and the three-layer local-backup writer (`writeTakeoffStateBackup` → `writeTakeoffBackupToIndexedDB` → the serializer) with engine-owned `takeoffBackupWriteInFlight`/`takeoffBackupWarnShown`/`lastLocalBackupAt`/`lastLocalBackupOk` + the 1s dirty→backup debounce (also graduated from ctx); the 5s interval + visibilitychange kick stay app-side calling wrappers. **Stage 2 (the engine's first owned state):** the Save Status **log core** (the `saveStatusLog` array + `pushSaveEvent`/`pruneSaveStatusLog`/window + the `[SaveDebug]` helpers; `App.getSaveStatusLog` delegates to the engine getter) and the **dirty core** (`markProjectDirty` + engine-owned `dirtyGeneration`/`dirtyStartedAt` with `getDirtyGeneration`/`getDirtyStartedAt`/`clearDirtyStartedAt`/`resetDirtyTracking` for the app-side save paths; `autoSaveDirty`/`lastModifiedAt` stay app-side via ctx get/set until their primary writers migrate; the debounced backup kick stays app-side as `ctx.scheduleTakeoffBackup`). Guarded CommonJS footer so [save-engine.test.js](save-engine.test.js) can `require()` it |
+| [pdf-tile-cache.js](pdf-tile-cache.js) | **The PDF raster-cache substrate** (`createPdfTileCache(ctx)` — the save-engine seam recipe, stage 1 of the pdf-tile-cache extraction): the page-bitmap LRU (self-validating key: pdfPage proxy + rotation + zoom + effDpr; per-entry and whole-cache pixel budgets), the downsample pyramid (derive-from-original, one level per macrotask), the cross-session persisted zoom rungs (webp blobs in IndexedDB keyed by doc content hash), the idle neighbor/rung prefetcher (momentum-biased, one-attempt-per-chain), and the full-document warm-up walk (marked pages first, then the outward spiral; `#statusWarmup` progress). Instantiated once in app.js with a 13-entry ctx of live-value accessors (`renderAreaSafety`, `pdfRenderTask`, `lastPaintedPdfPage`, `zoomGestureDirection`, `renderService` all resolve at call time); app.js keeps same-named thin wrappers plus a shared-reference `pdfBitmapCacheStats` alias (renderPdf increments `.hits`/`.misses` in place). Reads `snapZoomToRung`/`nextRungUp`/`nextRungDown`/`ZOOM_RUNGS_MAX_PER_DOC` (constants.js) and `idbZoomRung*` (idb.js) as bare classic-script globals. The App debug seams (`__pdfBitmapCacheStats`/`Keys`/`Dump`, `__docWarmupState`) delegate to its `debug*`/`warmupState` members — shapes frozen (specs). The Sharp crop tile / tile grid stays in app.js for stage 2. Guarded by the nine cache/zoom/warm-up specs. |
 | [save-engine.test.js](save-engine.test.js) | Node `node:test` unit tests for [save-engine.js](save-engine.js) — `createSaveEngine` with a fully stubbed ctx + stubbed idb primitives (21 tests). Stage 1: the keep-alive skip ladder / expiry routing / contained recovery throw (asserted against the engine's own log) and the force-reload decision matrix. Stage 2: log push/get/clear round-trip + disabled-Supabase drop, verbose-mode window widening + `saveDebugLog` gating, and `markProjectDirty` semantics (viewer/empty no-ops, generation bump, first-dirty stamped once, backup kick, 2s dirty-event throttle, holder-only checkout refresh + debounce, `resetDirtyTracking`). Stage 3: the backup writer (viewer/empty no-ops; local-key serialization + success stamps; the debounced markProjectDirty→backup landing in the idb stub), takeoffBackupGet cross-user delete-and-hide, and probeCheckoutLock (non-holder expired; healthy refresh stamping clocks). Stage 4: noteSupabaseJsFailure filtering, the recycle happy-path/cooldown (client swap + resubscribe + count), the orchestrator's zero-failures early exit, and the raw-insert no-token shape. Constants + save-utils exports come via `Object.assign(globalThis, require(...))` per the line-metrics pattern; run with `npm run test:unit` |
 | [idb.js](idb.js) | IndexedDB storage layer extracted from app.js — the single `openPdfCacheDb` (one DB `clickcount-pdf-cache` v6, 9 stores) plus the context-free accessors `viewCache*`, `pdfCache*` (LRU), `takeoffBackupDelete`, `readSaveLogsSnapshots`, the resumable-upload URL store accessors `idbPdfUploadResume*` (get-all / get-by-fingerprint / put / delete / delete-by-fingerprint — backs tus's `UrlStorage` for cross-reload resume of large PDF uploads), and the pure primitives `idbTakeoffBackupGetRaw`, `idbTakeoffBackupPut` (eviction + stale-skip, returns a status), `idbPutSaveLogsSnapshot` (put + prune), `idbCustomIconsGet`/`idbCustomIconsPut`. Classic `<script src>` loaded after [constants.js](constants.js) (whose store-name/cap globals it reads by bare name) and before [app.js](app.js). Depends only on constants + `indexedDB` + args — no `state`/loggers; the state/logging concerns stay in app.js as same-named thin wrappers (`takeoffBackupGet`, `takeoffBackupPut`, `writeSaveLogsSnapshot`, `customIconsGetFromIndexedDB`/`customIconsPutToIndexedDB`). Guarded CommonJS export footer so the primitives can be `require()`d by [idb.test.js](idb.test.js) |
 | [idb.test.js](idb.test.js) | Node `node:test` unit tests for [idb.js](idb.js) using `fake-indexeddb` (a fresh `IDBFactory` per test) — pdf-cache hash-mismatch + byte-cap LRU eviction, takeoff-backup round-trip + stale-skip + delete, custom-icon legacy→per-user migration, and save-logs-snapshot prune/newest-first ordering; run with `npm run test:unit` |
@@ -487,58 +490,58 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L750 - Math & Format Helpers
 - L1383 - Coordinate Helpers
 - L1391 - PDF render bitmap cache
-- L1882 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L2177 - PDF Rendering
-- L2853 - UI Render Functions
-- L3847 - Inline rename & polyline edit mode
-- L3961 - Modal primitives (showModal / hideModal)
-- L3980 - Toasts & line color picker
-- L4034 - Airboard cloud sync
-- L4076 - Supabase RPC & presence heartbeat
-- L4116 - User activity / event telemetry
-- L4159 - Supabase auth & dev auth
-- L4291 - [sync] Checkout subscription & permission refresh
-- L4301 - Modals & Handlers
-- L4369 - PDF intake (upload, test PDF, hashing)
-- L4377 - Toolbar tool buttons
-- L4503 - Tool sidebar buttons & legend overlay
-- L4621 - Add Line Type modal
-- L4691 - Line color & sidebar handlers
-- L4833 - Polyline modal & drawing
-- L4864 - Zoom bar & page navigation
-- L4890 - Export canvas JSON
-- L4906 - PDF download helpers
-- L4915 - View-link URL helpers & show-highlights/notes
-- L4987 - Custom icon upload handler
-- L4997 - Export & report dropdown menus
-- L5086 - Sidebar drawer toggles
-- L5097 - Mobile actions burger menu pointer & header logo
-- L5109 - User Activity pointer (format.js + features/user-activity.js)
-- L5121 - My Settings pointer (features/my-settings.js)
-- L5144 - Auth & settings entry buttons
-  - L5189 - Project Settings checkout & Save Status bell
-  - L5290 - [sync] Checkout expired recovery
-  - L5346 - [sync] Turn In
-  - L5611 - Share modal pointer & copy-project openers
-  - L5642 - Settings menu actions
-  - L5663 - Auth sign-in form
-  - L5687 - Save Project modal
-  - L5700 - Checkout expired recovery modal wiring
-  - L5805 - Last-session restore prompt
-  - L5812 - Canvas Repair modal wiring
-- L5965 - Canvas Event Handlers
-- L6355 - Event Binding
-- L6365 - Aim loupe (mobile press-hold precise placement)
-- L6504 - Zoom transform preview & commit
-- L6583 - Canvas mouse, wheel & touch handlers
-- L7244 - Global dropdown dismissal & keyboard hotkeys
-- L7504 - [sync] Manual save to cloud
-- L7514 - [sync] Auto-save
-- L7521 - [sync] Local backup (IndexedDB takeoff state)
-- L7654 - [sync] Checkout keep-alive
-- L7668 - App feature registry
-- L7885 - View-only mode
-- L7891 - Init / boot
+- L1440 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1735 - PDF Rendering
+- L2411 - UI Render Functions
+- L3405 - Inline rename & polyline edit mode
+- L3519 - Modal primitives (showModal / hideModal)
+- L3538 - Toasts & line color picker
+- L3592 - Airboard cloud sync
+- L3634 - Supabase RPC & presence heartbeat
+- L3674 - User activity / event telemetry
+- L3717 - Supabase auth & dev auth
+- L3849 - [sync] Checkout subscription & permission refresh
+- L3859 - Modals & Handlers
+- L3927 - PDF intake (upload, test PDF, hashing)
+- L3935 - Toolbar tool buttons
+- L4061 - Tool sidebar buttons & legend overlay
+- L4179 - Add Line Type modal
+- L4249 - Line color & sidebar handlers
+- L4391 - Polyline modal & drawing
+- L4422 - Zoom bar & page navigation
+- L4448 - Export canvas JSON
+- L4464 - PDF download helpers
+- L4473 - View-link URL helpers & show-highlights/notes
+- L4545 - Custom icon upload handler
+- L4555 - Export & report dropdown menus
+- L4644 - Sidebar drawer toggles
+- L4655 - Mobile actions burger menu pointer & header logo
+- L4667 - User Activity pointer (format.js + features/user-activity.js)
+- L4679 - My Settings pointer (features/my-settings.js)
+- L4702 - Auth & settings entry buttons
+  - L4747 - Project Settings checkout & Save Status bell
+  - L4848 - [sync] Checkout expired recovery
+  - L4904 - [sync] Turn In
+  - L5169 - Share modal pointer & copy-project openers
+  - L5200 - Settings menu actions
+  - L5221 - Auth sign-in form
+  - L5245 - Save Project modal
+  - L5258 - Checkout expired recovery modal wiring
+  - L5363 - Last-session restore prompt
+  - L5370 - Canvas Repair modal wiring
+- L5523 - Canvas Event Handlers
+- L5913 - Event Binding
+- L5923 - Aim loupe (mobile press-hold precise placement)
+- L6062 - Zoom transform preview & commit
+- L6141 - Canvas mouse, wheel & touch handlers
+- L6802 - Global dropdown dismissal & keyboard hotkeys
+- L7062 - [sync] Manual save to cloud
+- L7072 - [sync] Auto-save
+- L7079 - [sync] Local backup (IndexedDB takeoff state)
+- L7212 - [sync] Checkout keep-alive
+- L7226 - App feature registry
+- L7443 - View-only mode
+- L7449 - Init / boot
 
 <!-- END SECTION TOC -->
 

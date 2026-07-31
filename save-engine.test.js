@@ -913,3 +913,242 @@ test('envelope: schema, per-tab session id, timing block, and project summary', 
   assert.strictEqual(env.project.multiplyZones, 1);
   assert.strictEqual(env.events.length, 1);
 });
+
+// --- Raw-REST wrappers (rawProjectsUpdate / rawCheckInProject / rawList) ---
+// A fetch router: records every call and answers from a URL-matched table.
+function routeFetch(routes) {
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), init });
+    for (const r of routes) {
+      if (String(url).includes(r.match)) {
+        if (r.throws) throw r.throws;
+        return {
+          ok: r.status ? r.status < 400 : true,
+          status: r.status || 200,
+          headers: { get: (h) => (r.headers && r.headers[h]) || null },
+          text: async () => (r.body != null ? (typeof r.body === 'string' ? r.body : JSON.stringify(r.body)) : ''),
+        };
+      }
+    }
+    return { ok: true, status: 200, headers: { get: () => null }, text: async () => '' };
+  };
+  return calls;
+}
+
+function rawCtx(overrides) {
+  const state = saveTestState({ supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1' } });
+  return makeCtx({ getState: () => state, ...overrides });
+}
+
+test('sha256Hex hashes an ArrayBuffer to the canonical hex digest', async () => {
+  const engine = createSaveEngine(rawCtx().ctx);
+  const buf = new TextEncoder().encode('abc').buffer;
+  assert.strictEqual(
+    await engine.sha256Hex(buf),
+    'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+  );
+});
+
+test('rawProjectsUpdate: PATCH with auth headers + minimal-return; ok contract', async () => {
+  const calls = routeFetch([{ match: '/rest/v1/projects?id=eq.p1', status: 204 }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  const res = await engine.rawProjectsUpdate('p1', { name: 'N' }, undefined);
+  assert.deepStrictEqual(res, { ok: true, status: 204 });
+  assert.strictEqual(calls.length, 1);
+  assert.ok(calls[0].url.endsWith('/rest/v1/projects?id=eq.p1'));
+  assert.strictEqual(calls[0].init.method, 'PATCH');
+  assert.strictEqual(calls[0].init.headers.Authorization, 'Bearer tok-1');
+  assert.strictEqual(calls[0].init.headers.apikey, 'anon');
+  assert.strictEqual(calls[0].init.headers.Prefer, 'return=minimal');
+  assert.strictEqual(calls[0].init.body, JSON.stringify({ name: 'N' }));
+});
+
+test('rawProjectsUpdate: HTTP failure throws with status, code, body slice, and diag', async () => {
+  routeFetch([{ match: '/rest/v1/projects', status: 500, body: 'boom detail', headers: { 'x-request-id': 'req-9' } }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  await assert.rejects(engine.rawProjectsUpdate('p1', {}, undefined), (e) => {
+    assert.strictEqual(e.status, 500);
+    assert.strictEqual(e.code, 'RAW_UPDATE_HTTP_500');
+    assert.match(e.message, /500 boom detail/);
+    assert.strictEqual(e.diag.requestId, 'req-9');
+    return true;
+  });
+});
+
+test('rawProjectsUpdate: missing token throws before any fetch', async () => {
+  const calls = routeFetch([]);
+  const state = saveTestState({ supabaseSession: { user: { id: 'u1' } } });
+  const engine = createSaveEngine(makeCtx({ getState: () => state }).ctx);
+  await assert.rejects(engine.rawProjectsUpdate('p1', {}, undefined), /No access token/);
+  assert.strictEqual(calls.length, 0);
+});
+
+test('rawProjectsInsert: fetch rejection maps to the RAW_INSERT_FETCH_ERR shape', async () => {
+  const err = Object.assign(new Error('socket hang up'), { name: 'FetchError' });
+  routeFetch([{ match: '/rest/v1/projects', throws: err }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  const res = await engine.rawProjectsInsert({}, undefined);
+  assert.strictEqual(res.data, null);
+  assert.strictEqual(res.error.code, 'RAW_INSERT_FETCH_ERR');
+  assert.strictEqual(res.error.status, 0);
+  assert.strictEqual(res.error.name, 'FetchError');
+});
+
+test('rawProjectsInsert: HTTP error prefers the server body message/code', async () => {
+  routeFetch([{ match: '/rest/v1/projects', status: 409, body: { message: 'duplicate name', code: '23505' } }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  const res = await engine.rawProjectsInsert({}, undefined);
+  assert.strictEqual(res.data, null);
+  assert.strictEqual(res.error.message, 'duplicate name');
+  assert.strictEqual(res.error.code, '23505');
+  assert.strictEqual(res.error.status, 409);
+});
+
+test('rawProjectsInsert: representation array unwraps to the first row', async () => {
+  routeFetch([{ match: '/rest/v1/projects', body: [{ id: 'p-new', name: 'N' }] }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  const res = await engine.rawProjectsInsert({ name: 'N' }, undefined);
+  assert.strictEqual(res.error, null);
+  assert.strictEqual(res.data.id, 'p-new');
+});
+
+test('rawCheckInProject: ok parses the RPC body; HTTP error RETURNS (not throws) the raw error', async () => {
+  routeFetch([{ match: '/rest/v1/rpc/check_in_project', body: { ok: true, server_now: 't' } }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  const ok = await engine.rawCheckInProject('p1', undefined);
+  assert.strictEqual(ok.error, null);
+  assert.deepStrictEqual(ok.data, { ok: true, server_now: 't' });
+
+  routeFetch([{ match: '/rest/v1/rpc/check_in_project', status: 503, body: { hint: 'later' } }]);
+  const bad = await engine.rawCheckInProject('p1', undefined);
+  assert.ok(bad.error instanceof Error);
+  assert.strictEqual(bad.error.status, 503);
+  assert.strictEqual(bad.error.code, 'RAW_RPC_HTTP_503');
+  assert.deepStrictEqual(bad.data, { hint: 'later' });
+});
+
+test('rawListAccessibleProjects: POSTs an empty object; mirrors the rawCheckIn contract', async () => {
+  const calls = routeFetch([{ match: '/rest/v1/rpc/list_accessible_projects', body: [{ id: 'p1' }] }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  const res = await engine.rawListAccessibleProjects(undefined);
+  assert.strictEqual(res.error, null);
+  assert.deepStrictEqual(res.data, [{ id: 'p1' }]);
+  assert.strictEqual(calls[0].init.body, '{}');
+  assert.strictEqual(calls[0].init.method, 'POST');
+
+  routeFetch([{ match: '/rest/v1/rpc/list_accessible_projects', status: 500 }]);
+  const bad = await engine.rawListAccessibleProjects(undefined);
+  assert.strictEqual(bad.error.code, 'RAW_RPC_HTTP_500');
+});
+
+// --- The PDF upload ladder, driven through performSaveProjectToCloud --------
+// (uploadPdfToStorage / confirmPdfUploaded are engine-internal; the public
+// create-project-with-PDF path exercises them.)
+
+globalThis.pdfCachePut = async () => {};
+
+// Storage recorder: upload/info/remove behaviors injectable per test.
+function makeUploadSupabase(opts) {
+  opts = opts || {};
+  const rec = { uploads: [], infos: [], updates: [] };
+  const { supabase } = makeChannelSupabase();
+  supabase.storage = {
+    from: () => ({
+      upload: async (path, body, o) => { rec.uploads.push({ path, bytes: body.byteLength || body.size || 0, o }); return opts.upload ? opts.upload() : { error: null }; },
+      info: async (path) => { rec.infos.push(path); return opts.info ? opts.info() : { data: null }; },
+      remove: async () => ({ error: null }),
+    }),
+  };
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const chain = origFrom(table);
+    const origUpdate = chain.update;
+    chain.update = (payload) => { rec.updates.push({ table, payload }); return origUpdate(payload); };
+    return chain;
+  };
+  return { supabase, rec };
+}
+
+function pdfSaveSetup(supabase) {
+  const pdfBuf = new TextEncoder().encode('%PDF-1.4 spec bytes').buffer;
+  const state = saveTestState({
+    supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1' },
+    currentProjectId: null,
+    pdfBuffer: pdfBuf, pdfBufferSize: pdfBuf.byteLength,
+    pages: [{ label: 'p1', canvases: [], scale: null, rotation: 0 }],
+  });
+  routeFetch([{ match: '/rest/v1/projects', body: [{ id: 'p-new' }] }]);
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  return { state, ctx, calls, pdfBuf };
+}
+
+test('performSaveProjectToCloud (new project + PDF): raw insert, storage upload at uid/project/document.pdf, update stamps pdf_path + pdf_hash', async () => {
+  const { supabase, rec } = makeUploadSupabase();
+  const { state, ctx, pdfBuf } = pdfSaveSetup(supabase);
+  const engine = createSaveEngine(ctx);
+  const res = await engine.performSaveProjectToCloud({ name: 'Bid 1', includePdf: true });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(rec.uploads.length, 1);
+  assert.strictEqual(rec.uploads[0].path, 'u1/p-new/document.pdf');
+  assert.strictEqual(rec.uploads[0].bytes, pdfBuf.byteLength);
+  const upd = rec.updates.find((u) => u.table === 'projects' && u.payload.pdf_path);
+  assert.ok(upd, 'projects.update after the upload');
+  assert.strictEqual(upd.payload.pdf_path, 'u1/p-new/document.pdf');
+  const expectedHash = await engine.sha256Hex(new TextEncoder().encode('%PDF-1.4 spec bytes').buffer);
+  assert.strictEqual(upd.payload.pdf_hash, expectedHash);
+  // Post-save state hydration: id adopted, buffer released, storage path kept.
+  assert.strictEqual(state.currentProjectId, 'p-new');
+  assert.strictEqual(state.pdfStoragePath, 'u1/p-new/document.pdf');
+  assert.strictEqual(state.pdfHash, expectedHash);
+  assert.strictEqual(state.pdfBuffer, null);
+  assert.ok(logKinds(engine).includes('manual_save_ok'));
+});
+
+test('upload verify net: a timed-out upload confirmed by storage.info() still succeeds (viaVerify)', async () => {
+  const bytes = new TextEncoder().encode('%PDF-1.4 spec bytes').buffer.byteLength;
+  const { supabase, rec } = makeUploadSupabase({
+    upload: () => { throw Object.assign(new Error('PDF upload timed out'), { name: 'TimeoutError' }); },
+    info: () => ({ data: { metadata: { size: bytes } } }),
+  });
+  const { ctx } = pdfSaveSetup(supabase);
+  const engine = createSaveEngine(ctx);
+  const res = await engine.performSaveProjectToCloud({ name: 'Bid 2', includePdf: true });
+  assert.strictEqual(res.ok, true);
+  assert.ok(rec.infos.length >= 1, 'storage.info() polled');
+  assert.ok(logKinds(engine).includes('pdf_upload_verified_after_timeout'));
+});
+
+test('upload failure with no server-side object fails the save and pushes manual_save_err', async () => {
+  const { supabase } = makeUploadSupabase({
+    upload: () => ({ error: Object.assign(new Error('exceeded quota'), { status: 413 }) }),
+  });
+  const { state, ctx } = pdfSaveSetup(supabase);
+  const engine = createSaveEngine(ctx);
+  const res = await engine.performSaveProjectToCloud({ name: 'Bid 3', includePdf: true });
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error.message, /exceeded quota/);
+  assert.ok(logKinds(engine).includes('manual_save_err'));
+  assert.strictEqual(state.pdfStoragePath, null);
+});
+
+// --- uploadLocalPdfToCloudIfNeeded: the one-shot skip ladder ----------------
+
+test('uploadLocalPdfToCloudIfNeeded: every skip-ladder rung reports its reason', async () => {
+  const run = async (stateExtra, ctxExtra) => {
+    const state = saveTestState(Object.assign({
+      supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1' },
+      pages: [{}], pdfBuffer: null, pdfBufferSize: 0,
+    }, stateExtra));
+    const { ctx } = makeCtx({ getState: () => state, ...ctxExtra });
+    return createSaveEngine(ctx).uploadLocalPdfToCloudIfNeeded('spec');
+  };
+  assert.deepStrictEqual(await run({}, { isSupabaseEnabled: () => false }), { skipped: true, reason: 'no_supabase' });
+  assert.deepStrictEqual(await run({ currentProjectId: null }), { skipped: true, reason: 'no_project' });
+  assert.deepStrictEqual(await run({ pages: [] }), { skipped: true, reason: 'no_pages' });
+  assert.deepStrictEqual(await run({ pdfStoragePath: 'u1/p1/document.pdf' }), { skipped: true, reason: 'already_in_cloud' });
+  assert.deepStrictEqual(await run({ isViewer: true }), { skipped: true, reason: 'viewer' });
+  assert.deepStrictEqual(await run({}, { isAutoSaveSuspended: () => true }), { skipped: true, reason: 'suspended' });
+  // Nothing in memory and nothing recoverable from the cache:
+  assert.deepStrictEqual(await run({}), { skipped: true, reason: 'no_usable_buffer' });
+});

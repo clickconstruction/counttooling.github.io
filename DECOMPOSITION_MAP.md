@@ -58,6 +58,11 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > call-time accessor rule makes this a supported seam) + a routed invite-to-project
 > stub — render/escaping, role change, remove, confirm-gated revoke + onViewLinkRevoked
 > hook, access log, create, invite success/failure, error surfacing, viewer gate.
+> #4 save-engine untested-cluster tests: +14 node cases (raw-REST wrappers'
+> full contracts, sha256Hex vector, the PDF upload ladder driven through
+> performSaveProjectToCloud incl. the verify-after-timeout net and failure
+> path, uploadLocalPdfToCloudIfNeeded skip ladder). §2's "close that gap
+> before extracting the upload cluster" prerequisite is now met.
 
 ---
 

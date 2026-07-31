@@ -6,13 +6,21 @@
   // window.App registry. Deps are read from App; the supabase client is re-read
   // via App.getSupabase() in the outer function and in each nested async helper
   // because it can be recycled. The save-before-load gate
-  // (openLoadProjectModalOrPromptSave) and the #loadProject* bindings stay in
-  // app.js and call App.openLoadProjectModal().
+  // (openLoadProjectModalOrPromptSave) and the whole copy/fork domain live in
+  // features/copy-project.js (split at this file's documented domain boundary);
+  // the #loadProject* bindings stay in app.js. Cross-file names travel through
+  // the registry at call time in both directions (this file reads
+  // App.openCopyProjectModalOrPromptSave / App.hydrateProjectFromCloudRow /
+  // App.resolvePdfBufferForCloudProject /
+  // App.buildPagesFromPdfArrayBufferAndProjectData; copy-project.js reads
+  // App.openLoadProjectModal), so load order between the two is irrelevant.
   // The per-open helpers (access panel fill/fetch, invite user select,
-  // canvas download, list filtering, row rendering) are hoisted to the IIFE
-  // top level; openLoadProjectModal threads them a per-open `lp` context
-  // object ({ projectsAll, listEl, emptyEl, accessCache }) instead of
-  // nesting them as closures.
+  // canvas download, list filtering) are hoisted to the IIFE top level and
+  // threaded a per-open `lp` context object ({ projectsAll, listEl, emptyEl,
+  // accessCache }); the row renderer is decomposed along its action
+  // boundaries (computeLoadProjectRowSizeBytes / buildLoadProjectRowHtml /
+  // bindLoadProjectRowActions / bindLoadProjectAdminAccess /
+  // bindLoadProjectRowLoad) with renderLoadProjectListRows as a thin loop.
 
   // Pure formatting helpers shared by the hoisted per-open list helpers.
   const esc = (s) => App.escapeHtml(s);
@@ -131,32 +139,10 @@
     }
     return filtered;
   }
-  async function renderLoadProjectListRows(lp) {
-    const {
-      state, showModal, hideModal, showToast, sanitizeForFilename,
-      deleteProjectAsOwner, openCopyProjectModalOrPromptSave,
-      hydrateProjectFromCloudRow, clearCheckoutExpiredAttention,
-      saveUserCustomIcons, reconcileOrphanedCountersAndLineTypes,
-      clearUndoStacks, subscribeToProjectCheckoutChanges,
-      checkInCurrentProjectIfHeld, takeoffBackupGet,
-      resolvePdfBufferForCloudProject, ensureGroupColors,
-      openCanvasOnlyNeedsPdfModal, buildPagesFromPdfArrayBufferAndProjectData,
-      backupDataToProjFormat, fitZoom, updateUI, SUPABASE_URL,
-      setAutoSaveDirty, setLastModifiedAt, setLastLocalBackupAt,
-      setLastSaveIncludedPdf,
-    } = App;
+  // Row-size resolution: prefer the RPC row's size_bytes; otherwise fall back
+  // to data-JSON length (+ the storage object's size when a PDF exists).
+  async function computeLoadProjectRowSizeBytes(proj) {
     const supabase = App.getSupabase();
-    const { listEl, emptyEl, projectsAll } = lp;
-    listEl.innerHTML = '';
-    const filtered = getFilteredLoadProjects(lp);
-    if (filtered.length === 0) {
-      listEl.innerHTML = '<p class="load-project-no-match" style="color:var(--text2);margin:0;">No projects match filters.</p>';
-      showModal('loadProjectModal');
-      return;
-    }
-    let loadProjectInProgress = false;
-    for (let i = 0; i < filtered.length; i++) {
-      const proj = filtered[i];
     let sizeBytes = proj.size_bytes;
     if (sizeBytes == null && proj.pdf_path) {
       try {
@@ -167,8 +153,12 @@
     } else if (sizeBytes == null) {
       sizeBytes = proj.data ? JSON.stringify(proj.data).length : 0;
     }
-    const div = document.createElement('div');
-    div.className = 'load-project-item';
+    return sizeBytes;
+  }
+  // Row markup (name/meta/badges/actions + the admin access block). Pure
+  // string build -- all bindings happen in the bind* helpers below.
+  function buildLoadProjectRowHtml(proj, sizeBytes) {
+    const state = App.state;
     const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
     const sizeStr = formatSizeMb(sizeBytes);
     const canvasOnlyBadge = !proj.pdf_path ? '<button type="button" class="badge load-project-canvas-download" title="Download canvas (.json)" aria-label="Download canvas">Canvas only</button>' : '';
@@ -209,14 +199,23 @@
         '<div id="loadProjectAccess_' + proj.id + '" class="load-project-access-panel"></div>' +
         '</div>'
       : '';
-    div.innerHTML = '<div class="load-project-row-main">' +
+    return '<div class="load-project-row-main">' +
       '<div class="load-project-info"><span class="load-project-name">' + esc(proj.name || 'Untitled') + '</span><div class="load-project-meta">' + meta + '</div></div>' +
       actionsHtml + '</div>' + adminAccessHtml;
+  }
+  // Row actions: delete-from-cloud, canvas-only JSON download, copy-to-new.
+  function bindLoadProjectRowActions(lp, proj, div) {
+    const { listEl, emptyEl, projectsAll } = lp;
     const deleteBtn = div.querySelector('.load-project-delete');
     if (deleteBtn) {
       deleteBtn.onclick = async (e) => {
         e.stopPropagation();
         if (!confirm('Delete "' + (proj.name || 'Untitled') + '" from cloud? This cannot be undone.')) return;
+        const {
+          state, showToast, deleteProjectAsOwner, clearUndoStacks,
+          subscribeToProjectCheckoutChanges, setLastLocalBackupAt,
+          clearCheckoutExpiredAttention, updateUI,
+        } = App;
         try {
           await deleteProjectAsOwner(proj.id, proj.pdf_path);
           div.remove();
@@ -255,7 +254,7 @@
             updateUI();
           }
         } catch (err) {
-          showToast(err?.message || 'Failed to delete project', 4000);
+          App.showToast(err?.message || 'Failed to delete project', 4000);
         }
       };
     }
@@ -264,6 +263,8 @@
       canvasDlBtn.onclick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        const { showToast, sanitizeForFilename } = App;
+        const supabase = App.getSupabase();
         if (!supabase) {
           showToast('Cloud not configured.', 3000);
           return;
@@ -289,212 +290,250 @@
       copyNewBtn.onclick = function (e) {
         e.stopPropagation();
         e.preventDefault();
-        openCopyProjectModalOrPromptSave(proj);
+        App.openCopyProjectModalOrPromptSave(proj);
       };
     }
-    if (state.isAdmin) {
-      const toggleBtn = div.querySelector('.load-project-access-toggle');
-      const accessPanel = div.querySelector('.load-project-access-panel');
-      const addWrap = div.querySelector('.load-project-access-add-wrap');
-      if (addWrap) {
-        addWrap.addEventListener('click', function (e) { e.stopPropagation(); });
-      }
-      if (toggleBtn && accessPanel) {
-        toggleBtn.onclick = async function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-          const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
-          const chev = toggleBtn.querySelector('.load-project-access-chevron');
-          if (expanded) {
-            toggleBtn.setAttribute('aria-expanded', 'false');
-            accessPanel.hidden = true;
-            if (chev) chev.textContent = '▶';
-            return;
-          }
-          toggleBtn.setAttribute('aria-expanded', 'true');
-          accessPanel.hidden = false;
-          if (chev) chev.textContent = '▼';
-          await fetchLoadProjectAccessIntoPanel(lp, accessPanel, proj);
-        };
-        const addBtn = div.querySelector('.load-project-access-add-btn');
-        const userSelect = div.querySelector('.load-project-access-user-select');
-        const roleSel = div.querySelector('.load-project-access-role-select');
-        const addErrEl = div.querySelector('.load-project-access-add-error');
-        if (addBtn && userSelect && roleSel) {
-          addBtn.onclick = async function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            if (addErrEl) {
-              addErrEl.style.display = 'none';
-              addErrEl.textContent = '';
-            }
-            const email = (userSelect.value || '').trim().toLowerCase();
-            if (!email) {
-              if (addErrEl) {
-                addErrEl.textContent = 'Select a user';
-                addErrEl.style.display = 'block';
-              }
-              return;
-            }
-            if (!supabase) {
-              showToast('Cloud not configured.', 3000);
-              return;
-            }
-            addBtn.disabled = true;
-            try {
-              const res = await fetch((typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/invite-to-project', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (state.supabaseSession?.access_token || '') },
-                body: JSON.stringify({ project_id: proj.id, email: email, role: roleSel.value || 'viewer' })
-              });
-              const data = await res.json();
-              if (data.ok) {
-                delete lp.accessCache[proj.id];
-                userSelect.value = '';
-                await fetchLoadProjectAccessIntoPanel(lp, accessPanel, proj);
-                showToast('Added ' + (data.email || email));
-              } else {
-                const msg = data.error || 'Failed to add user';
-                if (addErrEl) {
-                  addErrEl.textContent = msg;
-                  addErrEl.style.display = 'block';
-                }
-                showToast(msg, 4000);
-              }
-            } catch (err) {
-              const msg = err.message || 'Failed to add user';
-              if (addErrEl) {
-                addErrEl.textContent = msg;
-                addErrEl.style.display = 'block';
-              }
-              showToast(msg, 4000);
-            } finally {
-              addBtn.disabled = false;
-            }
-          };
-        }
-        void fetchLoadProjectAccessIntoPanel(lp, accessPanel, proj);
-        if (userSelect) void populateLoadProjectUserSelect(userSelect, proj);
-      }
+  }
+  // Admin "Who has access" block: expand/collapse, access-list fetch, invite.
+  function bindLoadProjectAdminAccess(lp, proj, div) {
+    if (!App.state.isAdmin) return;
+    const toggleBtn = div.querySelector('.load-project-access-toggle');
+    const accessPanel = div.querySelector('.load-project-access-panel');
+    const addWrap = div.querySelector('.load-project-access-add-wrap');
+    if (addWrap) {
+      addWrap.addEventListener('click', function (e) { e.stopPropagation(); });
     }
-    const rowMain = div.querySelector('.load-project-row-main');
-    const loadRowClick = async () => {
-    if (loadProjectInProgress) return;
-    loadProjectInProgress = true;
-    div.classList.add('loading');
-    listEl.classList.add('loading');
-    const metaEl = div.querySelector('.load-project-meta');
-    const origMeta = metaEl ? metaEl.textContent : '';
-    if (metaEl) metaEl.textContent = 'Loading…';
-    try {
-    // A1: Clear any stale pendingCanvasLoad from a previous canvas-only
-    // load whose file picker the user dismissed, so it can't apply to
-    // the project we're about to open.
-    state.pendingCanvasLoad = null;
-    if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
-    let d = proj.data || {};
-    try {
-      const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
-      if (!error && full && full.data) d = full.data;
-    } catch (_) {}
-    const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-    const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
-    const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
-    if (proj.pdf_path) {
-      try {
-        const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
-        if (!buf) {
-            /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
-            state.pdfStoragePath = null;
-            state.pdfBuffer = null;
-            state.pdfBufferSize = 0;
-            App.clearPdfBitmapCache && App.clearPdfBitmapCache();
-            state.pages = [];
-            state.counters = Array.isArray(d.counters) ? d.counters : [];
-            state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-            state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-            if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-            if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-            if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-            if (d.legendSettings) state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-            if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-            if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-            if (d.gridSettings) state.gridSettings = d.gridSettings;
-            reconcileOrphanedCountersAndLineTypes();
-            clearUndoStacks();
-            hydrateProjectFromCloudRow(proj, { reusePdfHash: null, source: 'load_project' });
-            // The cloud PDF object is empty/missing even though pdf_path
-            // is set; correct the status-bar indicator so the user sees
-            // the project as missing its PDF (matches original behavior
-            // before the helper extraction).
-            setLastSaveIncludedPdf(false);
-            // hydrateProjectFromCloudRow clears pendingCanvasLoad, but this
-            // path needs it set so the next PDF upload knows which project
-            // these annotations belong to.
-            state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
-            hideModal('loadProjectModal');
-            state.sidebarReorderModeActive = false;
-            // C1: Replaced the toast + auto-pdfInput.click() pair with a
-            // dedicated modal so the user has a clear next action.
-            openCanvasOnlyNeedsPdfModal({ reason: 'pdf_missing' });
-            return;
-        }
-        await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
-        state.pdfStoragePath = proj.pdf_path;
-        state.pdfBuffer = null;
-        state.pdfBufferSize = 0;
-      } catch (e) {
-        listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
+    if (!toggleBtn || !accessPanel) return;
+    toggleBtn.onclick = async function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+      const chev = toggleBtn.querySelector('.load-project-access-chevron');
+      if (expanded) {
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        accessPanel.hidden = true;
+        if (chev) chev.textContent = '▶';
         return;
       }
-    } else {
-      state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: backupDataToProjFormat(useIdbBackup && idbBackup.data ? idbBackup.data : d), pdf_hash: proj.pdf_hash || null };
-      state.pdfStoragePath = null;
-      state.pdfBuffer = null;
-      state.pdfBufferSize = 0;
-      App.clearPdfBitmapCache && App.clearPdfBitmapCache();
-      state.pages = [];
-      const canvasData = useIdbBackup && idbBackup.data ? idbBackup.data : d;
-      state.counters = Array.isArray(canvasData.counters) ? canvasData.counters : [];
-      state.lineTypes = Array.isArray(canvasData.lineTypes) ? canvasData.lineTypes : [];
-      state.groups = ensureGroupColors(Array.isArray(canvasData.groups) ? canvasData.groups : []);
-      if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
-      if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
-      if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
-      if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
-      if (canvasData.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...canvasData.multiplyZoneSettings };
-      if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
-      if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
-      reconcileOrphanedCountersAndLineTypes();
-      clearUndoStacks();
-      setAutoSaveDirty(false);
-      setLastModifiedAt(0);
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      accessPanel.hidden = false;
+      if (chev) chev.textContent = '▼';
+      await fetchLoadProjectAccessIntoPanel(lp, accessPanel, proj);
+    };
+    const addBtn = div.querySelector('.load-project-access-add-btn');
+    const userSelect = div.querySelector('.load-project-access-user-select');
+    const roleSel = div.querySelector('.load-project-access-role-select');
+    const addErrEl = div.querySelector('.load-project-access-add-error');
+    if (addBtn && userSelect && roleSel) {
+      addBtn.onclick = async function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const { state, showToast, SUPABASE_URL } = App;
+        if (addErrEl) {
+          addErrEl.style.display = 'none';
+          addErrEl.textContent = '';
+        }
+        const email = (userSelect.value || '').trim().toLowerCase();
+        if (!email) {
+          if (addErrEl) {
+            addErrEl.textContent = 'Select a user';
+            addErrEl.style.display = 'block';
+          }
+          return;
+        }
+        if (!App.getSupabase()) {
+          showToast('Cloud not configured.', 3000);
+          return;
+        }
+        addBtn.disabled = true;
+        try {
+          const res = await fetch((typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/invite-to-project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (state.supabaseSession?.access_token || '') },
+            body: JSON.stringify({ project_id: proj.id, email: email, role: roleSel.value || 'viewer' })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            delete lp.accessCache[proj.id];
+            userSelect.value = '';
+            await fetchLoadProjectAccessIntoPanel(lp, accessPanel, proj);
+            showToast('Added ' + (data.email || email));
+          } else {
+            const msg = data.error || 'Failed to add user';
+            if (addErrEl) {
+              addErrEl.textContent = msg;
+              addErrEl.style.display = 'block';
+            }
+            showToast(msg, 4000);
+          }
+        } catch (err) {
+          const msg = err.message || 'Failed to add user';
+          if (addErrEl) {
+            addErrEl.textContent = msg;
+            addErrEl.style.display = 'block';
+          }
+          showToast(msg, 4000);
+        } finally {
+          addBtn.disabled = false;
+        }
+      };
     }
-    // B1: Capture pendingCanvasLoad that the no-PDF branch above set, so
-    // the helper does not clear it. (For the with-PDF path this is null.)
-    const preservedPendingCanvasLoad = state.pendingCanvasLoad;
-    hydrateProjectFromCloudRow(proj, { source: 'load_project' });
-    if (preservedPendingCanvasLoad) state.pendingCanvasLoad = preservedPendingCanvasLoad;
-    hideModal('loadProjectModal');
-    state.sidebarReorderModeActive = false;
-    if (!proj.pdf_path) {
-      // C1: Replaced the toast + auto-pdfInput.click() pair with a
-      // dedicated modal so the user has a clear next action.
-      openCanvasOnlyNeedsPdfModal({ reason: 'no_pdf_stored' });
-    }
-    fitZoom();
-    updateUI();
-    } finally {
-      loadProjectInProgress = false;
-      div.classList.remove('loading');
-      listEl.classList.remove('loading');
-      if (metaEl) metaEl.textContent = origMeta;
-    }
-  };
-    if (rowMain) rowMain.onclick = loadRowClick;
-    listEl.appendChild(div);
+    void fetchLoadProjectAccessIntoPanel(lp, accessPanel, proj);
+    if (userSelect) void populateLoadProjectUserSelect(userSelect, proj);
   }
-  showModal('loadProjectModal');
+  // The row's main click: the actual project load. `shared.inProgress` is the
+  // per-render mutex (one load at a time across all rows).
+  function bindLoadProjectRowLoad(lp, proj, div, shared) {
+    const rowMain = div.querySelector('.load-project-row-main');
+    if (!rowMain) return;
+    rowMain.onclick = async () => {
+      if (shared.inProgress) return;
+      shared.inProgress = true;
+      const {
+        state, hideModal, showToast,
+        hydrateProjectFromCloudRow, clearCheckoutExpiredAttention,
+        saveUserCustomIcons, reconcileOrphanedCountersAndLineTypes,
+        clearUndoStacks, checkInCurrentProjectIfHeld, takeoffBackupGet,
+        resolvePdfBufferForCloudProject, ensureGroupColors,
+        openCanvasOnlyNeedsPdfModal, buildPagesFromPdfArrayBufferAndProjectData,
+        backupDataToProjFormat, fitZoom, updateUI,
+        setAutoSaveDirty, setLastModifiedAt, setLastSaveIncludedPdf,
+      } = App;
+      const supabase = App.getSupabase();
+      const { listEl } = lp;
+      div.classList.add('loading');
+      listEl.classList.add('loading');
+      const metaEl = div.querySelector('.load-project-meta');
+      const origMeta = metaEl ? metaEl.textContent : '';
+      if (metaEl) metaEl.textContent = 'Loading…';
+      try {
+      // A1: Clear any stale pendingCanvasLoad from a previous canvas-only
+      // load whose file picker the user dismissed, so it can't apply to
+      // the project we're about to open.
+      state.pendingCanvasLoad = null;
+      if (state.currentProjectId && state.currentProjectId !== proj.id) await checkInCurrentProjectIfHeld();
+      let d = proj.data || {};
+      try {
+        const { data: full, error } = await supabase.from('projects').select('data').eq('id', proj.id).single();
+        if (!error && full && full.data) d = full.data;
+      } catch (_) {}
+      const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
+      const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
+      const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
+      if (proj.pdf_path) {
+        try {
+          const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
+          if (!buf) {
+              /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
+              state.pdfStoragePath = null;
+              state.pdfBuffer = null;
+              state.pdfBufferSize = 0;
+              App.clearPdfBitmapCache && App.clearPdfBitmapCache();
+              state.pages = [];
+              state.counters = Array.isArray(d.counters) ? d.counters : [];
+              state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+              state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+              if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
+              if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
+              if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
+              if (d.legendSettings) state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
+              if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+              if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
+              if (d.gridSettings) state.gridSettings = d.gridSettings;
+              reconcileOrphanedCountersAndLineTypes();
+              clearUndoStacks();
+              hydrateProjectFromCloudRow(proj, { reusePdfHash: null, source: 'load_project' });
+              // The cloud PDF object is empty/missing even though pdf_path
+              // is set; correct the status-bar indicator so the user sees
+              // the project as missing its PDF (matches original behavior
+              // before the helper extraction).
+              setLastSaveIncludedPdf(false);
+              // hydrateProjectFromCloudRow clears pendingCanvasLoad, but this
+              // path needs it set so the next PDF upload knows which project
+              // these annotations belong to.
+              state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
+              hideModal('loadProjectModal');
+              state.sidebarReorderModeActive = false;
+              // C1: Replaced the toast + auto-pdfInput.click() pair with a
+              // dedicated modal so the user has a clear next action.
+              openCanvasOnlyNeedsPdfModal({ reason: 'pdf_missing' });
+              return;
+          }
+          await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
+          state.pdfStoragePath = proj.pdf_path;
+          state.pdfBuffer = null;
+          state.pdfBufferSize = 0;
+        } catch (e) {
+          listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
+          return;
+        }
+      } else {
+        state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: backupDataToProjFormat(useIdbBackup && idbBackup.data ? idbBackup.data : d), pdf_hash: proj.pdf_hash || null };
+        state.pdfStoragePath = null;
+        state.pdfBuffer = null;
+        state.pdfBufferSize = 0;
+        App.clearPdfBitmapCache && App.clearPdfBitmapCache();
+        state.pages = [];
+        const canvasData = useIdbBackup && idbBackup.data ? idbBackup.data : d;
+        state.counters = Array.isArray(canvasData.counters) ? canvasData.counters : [];
+        state.lineTypes = Array.isArray(canvasData.lineTypes) ? canvasData.lineTypes : [];
+        state.groups = ensureGroupColors(Array.isArray(canvasData.groups) ? canvasData.groups : []);
+        if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
+        if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
+        if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
+        if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
+        if (canvasData.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...canvasData.multiplyZoneSettings };
+        if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
+        if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
+        reconcileOrphanedCountersAndLineTypes();
+        clearUndoStacks();
+        setAutoSaveDirty(false);
+        setLastModifiedAt(0);
+      }
+      // B1: Capture pendingCanvasLoad that the no-PDF branch above set, so
+      // the helper does not clear it. (For the with-PDF path this is null.)
+      const preservedPendingCanvasLoad = state.pendingCanvasLoad;
+      hydrateProjectFromCloudRow(proj, { source: 'load_project' });
+      if (preservedPendingCanvasLoad) state.pendingCanvasLoad = preservedPendingCanvasLoad;
+      hideModal('loadProjectModal');
+      state.sidebarReorderModeActive = false;
+      if (!proj.pdf_path) {
+        // C1: Replaced the toast + auto-pdfInput.click() pair with a
+        // dedicated modal so the user has a clear next action.
+        openCanvasOnlyNeedsPdfModal({ reason: 'no_pdf_stored' });
+      }
+      fitZoom();
+      updateUI();
+      } finally {
+        shared.inProgress = false;
+        div.classList.remove('loading');
+        listEl.classList.remove('loading');
+        if (metaEl) metaEl.textContent = origMeta;
+      }
+    };
+  }
+  async function renderLoadProjectListRows(lp) {
+    const { listEl } = lp;
+    listEl.innerHTML = '';
+    const filtered = getFilteredLoadProjects(lp);
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p class="load-project-no-match" style="color:var(--text2);margin:0;">No projects match filters.</p>';
+      App.showModal('loadProjectModal');
+      return;
+    }
+    const shared = { inProgress: false };
+    for (let i = 0; i < filtered.length; i++) {
+      const proj = filtered[i];
+      const sizeBytes = await computeLoadProjectRowSizeBytes(proj);
+      const div = document.createElement('div');
+      div.className = 'load-project-item';
+      div.innerHTML = buildLoadProjectRowHtml(proj, sizeBytes);
+      bindLoadProjectRowActions(lp, proj, div);
+      bindLoadProjectAdminAccess(lp, proj, div);
+      bindLoadProjectRowLoad(lp, proj, div, shared);
+      listEl.appendChild(div);
+    }
+    App.showModal('loadProjectModal');
   }
 
   async function openLoadProjectModal() {
@@ -651,319 +690,4 @@
     }
 
   App.openLoadProjectModal = openLoadProjectModal;
-
-  // --- Copy/fork domain + save-before-load gate (registry split #35) -------
-  // Moved from app.js: the copy-project modal openers + confirm binding, the
-  // cloud hydrate/fork cluster, and the save-before-load modal. This file
-  // owns pendingCopyProject / copyProjectModalTarget now; app.js reaches
-  // them via the accessors registered at the bottom.
-  let pendingCopyProject = null;
-  let copyProjectModalTarget = null;
-
-  function openCopyProjectModal(proj) {
-    copyProjectModalTarget = proj;
-    const inp = document.getElementById('copyProjectNameInput');
-    const confirmBtn = document.getElementById('copyProjectModalConfirm');
-    if (inp) inp.value = (proj.name || 'Untitled') + ' (copy)';
-    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Open copy'; }
-    App.showModal('copyProjectModal');
-    if (inp) setTimeout(function () { inp.focus(); inp.select && inp.select(); }, 0);
-  }
-  function openCopyProjectModalOrPromptSave(proj) {
-    if (!App.getAutoSaveDirty()) {
-      pendingCopyProject = null;
-      openCopyProjectModal(proj);
-      return;
-    }
-    pendingCopyProject = proj;
-    const msgEl = document.querySelector('#saveBeforeLoadModal p');
-    const cancelBtn = document.getElementById('saveBeforeLoadCancel');
-    const discardBtn = document.getElementById('saveBeforeLoadDiscard');
-    const saveBtn = document.getElementById('saveBeforeLoadSave');
-    if (msgEl) msgEl.textContent = 'You have unsaved changes. Save before copying another project?';
-    if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancel'; }
-    if (discardBtn) discardBtn.style.display = '';
-    if (saveBtn) saveBtn.style.display = '';
-    App.showModal('saveBeforeLoadModal');
-  }
-
-  // SECTION: Cloud project hydrate / copy / fork
-  function hydrateProjectFromCloudRow(proj, opts) {
-    opts = opts || {};
-    App.state.pendingCanvasLoad = null;
-    App.state.currentProjectId = proj.id;
-    App.state.currentProjectName = proj.name || 'Untitled';
-    App.state.pdfHash = opts.reusePdfHash !== undefined ? opts.reusePdfHash : (proj.pdf_hash || null);
-    if (opts.reusePdfStoragePath !== undefined) App.state.pdfStoragePath = opts.reusePdfStoragePath;
-    App.setLastSaveIncludedPdf(!!proj.pdf_path);
-    App.state.lastSavedAt = proj.updated_at || null;
-    App.setLastLocalBackupAt(null);
-    App.state.currentPage = App.state.pages.length > 0
-      ? Math.min(App.state.currentPage, Math.max(0, App.state.pages.length - 1))
-      : 0;
-    App.setAutoSaveDirty(false);
-    App.setLastModifiedAt(0);
-    App.state.checkedOutBy = proj.checked_out_by || null;
-    App.state.checkedOutAt = proj.checked_out_at || null;
-    App.state.checkedOutEmail = proj.checked_out_email || null;
-    App.state.loadedViaViewLink = false;
-    App.state.isViewer = !proj.can_edit;
-    App.state.canCheckOut = proj.can_check_out || false;
-    try { App.clearCheckoutExpiredAttention(); } catch (_) {}
-    App.state.projectOwnerId = proj.user_id || null;
-    App.subscribeToProjectCheckoutChanges(proj.id);
-    App.logProjectOpenEvent();
-    if (App.SUPABASE_ENABLED && App.state.supabaseSession?.user) {
-      try {
-        localStorage.setItem('clickcount-last-project', JSON.stringify({
-          projectId: App.state.currentProjectId,
-          projectName: App.state.currentProjectName || 'Untitled',
-          pdfStoragePath: App.state.pdfStoragePath || null,
-          pdfHash: App.state.pdfHash || null,
-          userId: App.state.supabaseSession.user.id
-        }));
-      } catch (_) {}
-    }
-  }
-
-  async function resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup) {
-    let buf;
-    if (useIdbBackup && idbBackup.pdfBlob) {
-      buf = await idbBackup.pdfBlob.arrayBuffer();
-    }
-    if (buf === undefined || !buf || buf.byteLength === 0) {
-      const cachedBlob = proj.pdf_hash ? await pdfCacheGet(proj.id, proj.pdf_hash) : null;
-      if (cachedBlob && cachedBlob.size > 0) {
-        buf = await cachedBlob.arrayBuffer();
-      }
-      if (cachedBlob && (!buf || buf.byteLength === 0)) {
-        pdfCacheDelete(proj.id);
-      }
-    }
-    if (buf === undefined || !buf || buf.byteLength === 0) {
-      const { data: blob, error: dlErr } = await App.getSupabase().storage.from('pdfs').download(proj.pdf_path);
-      const emptyOrMissing = dlErr || !blob || blob.size === 0;
-      if (emptyOrMissing) return null;
-      buf = await blob.arrayBuffer();
-      if (proj.pdf_hash) pdfCachePut(proj.id, blob, proj.pdf_hash);
-    }
-    return (buf && buf.byteLength > 0) ? buf : null;
-  }
-  async function buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup) {
-    const bufPdf = buf.slice(0);
-    const bufStorage = buf.slice(0);
-    const pdf = await App.getPdfDocument(bufPdf).promise;
-    App.clearPdfBitmapCache();
-    App.state.pages = [];
-    const numPages = pdf.numPages;
-    for (let i = 0; i < numPages; i++) {
-      const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
-      const canvasId = App.uid();
-      App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
-      App.state.activeCanvasIdByPage[i] = canvasId;
-    }
-    if (useIdbBackup && idbBackup.data) {
-      App.applyTakeoffBackupToState(idbBackup.data);
-    } else {
-      App.state.counters = Array.isArray(d.counters) ? d.counters : [];
-      App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-      App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-      App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-      if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
-      if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
-      if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-      (d.pages || []).forEach(function (p) {
-        App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
-      });
-      if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') App.state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-      // Project bindings replace when present; when absent, an artboard-seeded
-      // layout survives but a previous project's is dropped (quick-keys.js).
-      if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
-      else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
-      if (d.pageScales) {
-        d.pageScales.forEach(function (scale, i) { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
-      } else if (d.scale) {
-        App.state.pages.forEach(function (p) { p.scale = d.scale; });
-      }
-      App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-      if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-      if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-      if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
-      if (d.gridSettings) App.state.gridSettings = d.gridSettings;
-    }
-    App.reconcileOrphanedCountersAndLineTypes();
-    App.clearUndoStacks();
-    return bufStorage;
-  }
-  async function applyLocalForkAfterPdfLoad(forkName, pdfArrayBuffer) {
-    App.state.pdfStoragePath = null;
-    App.state.pendingCanvasLoad = null;
-    App.state.currentProjectId = null;
-    App.state.currentProjectName = forkName || 'Untitled';
-    App.state.pdfBuffer = pdfArrayBuffer;
-    App.state.pdfBufferSize = pdfArrayBuffer.byteLength;
-    App.state.pdfHash = await App.sha256Hex(pdfArrayBuffer);
-    App.subscribeToProjectCheckoutChanges(null);
-    App.state.checkedOutBy = null;
-    App.state.checkedOutAt = null;
-    App.state.checkedOutEmail = null;
-    App.state.isViewer = false;
-    App.state.canCheckOut = false;
-    App.state.projectOwnerId = null;
-    App.state.loadedViaViewLink = false;
-    App.state.lastSavedAt = null;
-    App.setLastSaveIncludedPdf(false);
-    App.setLastLocalBackupAt(null);
-    App.setAutoSaveDirty(false);
-    try { App.clearCheckoutExpiredAttention(); } catch (_) {}
-    App.setLastModifiedAt(0);
-    App.state.currentPage = Math.min(App.state.currentPage, Math.max(0, App.state.pages.length - 1));
-    try { localStorage.removeItem('clickcount-last-project'); } catch (_) {}
-    App.hideModal('copyProjectModal');
-    App.hideModal('loadProjectModal');
-    App.state.sidebarReorderModeActive = false;
-    copyProjectModalTarget = null;
-    App.fitZoom();
-    App.updateUI();
-    App.showToast('Local copy opened. Save to cloud from Project Settings when you are ready.', 5000);
-  }
-  async function forkCloudProjectToLocalWorkingCopy(proj, forkName) {
-    if (!App.getSupabase()) {
-      App.showToast('Cloud not configured.', 3000);
-      return;
-    }
-    if (App.state.currentProjectId && App.state.currentProjectId !== proj.id) await App.checkInCurrentProjectIfHeld();
-    let d = proj.data || {};
-    try {
-      const { data: full, error } = await App.getSupabase().from('projects').select('data').eq('id', proj.id).single();
-      if (!error && full && full.data) d = full.data;
-    } catch (_) {}
-    const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-    const idbBackup = await App.takeoffBackupGet(proj.id, App.state.supabaseSession?.user?.id || null);
-    const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
-    if (!proj.pdf_path) {
-      App.showToast('Copy to new requires a PDF in the project.', 4000);
-      return;
-    }
-    try {
-      const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
-      if (!buf) {
-        App.showToast('Cannot copy: PDF is missing from storage. Open the project and upload a PDF if needed.', 5000);
-        return;
-      }
-      const bufStorage = await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
-      const nameTrim = (forkName || '').trim() || 'Untitled';
-      await applyLocalForkAfterPdfLoad(nameTrim, bufStorage);
-    } catch (e) {
-      console.error('[Fork project]', e);
-      App.showToast(e.message || 'Failed to copy project.', 5000);
-    }
-  }
-  function openLoadProjectModalOrPromptSave() {
-    if (!App.getAutoSaveDirty()) {
-      pendingCopyProject = null;
-      App.openLoadProjectModal().catch(e => {
-        console.error('[Load Project]', e);
-        App.showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
-      });
-      return;
-    }
-    pendingCopyProject = null;
-    const msgEl = document.querySelector('#saveBeforeLoadModal p');
-    const cancelBtn = document.getElementById('saveBeforeLoadCancel');
-    const discardBtn = document.getElementById('saveBeforeLoadDiscard');
-    const saveBtn = document.getElementById('saveBeforeLoadSave');
-    if (msgEl) msgEl.textContent = 'You have unsaved changes. Save before loading another project?';
-    if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancel'; }
-    if (discardBtn) discardBtn.style.display = '';
-    if (saveBtn) saveBtn.style.display = '';
-    App.showModal('saveBeforeLoadModal');
-  }
-
-  // SECTION: Copy project modal
-  document.getElementById('copyProjectModalConfirm').onclick = async () => {
-    const proj = copyProjectModalTarget;
-    const inp = document.getElementById('copyProjectNameInput');
-    const confirmBtn = document.getElementById('copyProjectModalConfirm');
-    if (!proj) {
-      App.hideModal('copyProjectModal');
-      return;
-    }
-    const name = inp ? inp.value : '';
-    if (confirmBtn) {
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Opening…';
-    }
-    try {
-      await forkCloudProjectToLocalWorkingCopy(proj, name);
-    } finally {
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Open copy';
-      }
-    }
-  };
-
-  // SECTION: Save-before-load modal
-  document.getElementById('saveBeforeLoadCancel').onclick = () => {
-    pendingCopyProject = null;
-    App.hideModal('saveBeforeLoadModal');
-  };
-  document.getElementById('saveBeforeLoadDiscard').onclick = () => {
-    App.hideModal('saveBeforeLoadModal');
-    const p = pendingCopyProject;
-    pendingCopyProject = null;
-    if (p) openCopyProjectModal(p);
-    else App.openLoadProjectModal();
-  };
-  document.getElementById('saveBeforeLoadSave').onclick = async () => {
-    const cancelBtn = document.getElementById('saveBeforeLoadCancel');
-    const discardBtn = document.getElementById('saveBeforeLoadDiscard');
-    const saveBtn = document.getElementById('saveBeforeLoadSave');
-    const msgEl = document.querySelector('#saveBeforeLoadModal p');
-    msgEl.textContent = 'Saving Now...';
-    discardBtn.style.display = 'none';
-    saveBtn.style.display = 'none';
-    cancelBtn.disabled = true;
-    cancelBtn.textContent = 'Cancel';
-    const result = await App.performAutoSave();
-    if (result.ok) {
-      App.hideModal('saveBeforeLoadModal');
-      const p = pendingCopyProject;
-      pendingCopyProject = null;
-      if (p) openCopyProjectModal(p);
-      else App.openLoadProjectModal();
-    } else {
-      if (result.error?.code === 'CHECKOUT_EXPIRED') {
-        App.pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
-        App.setCheckoutExpiredAttention();
-        App.refreshProjectPermissions().catch(() => {});
-        App.updateSaveStatusIndicator();
-        App.hideModal('saveBeforeLoadModal');
-        pendingCopyProject = null;
-        App.openCheckoutExpiredRecoveryModal({ trigger: 'save_before_load' });
-        return;
-      } else if (App.isAuthError(result.error)) {
-        App.showToast('Refresh the page to sync.', 4000);
-      } else {
-        const errMsg = result.error ? ((result.error?.message) || (result.error?.details) || (result.error?.hint) || String(result.error)) : '';
-        App.showToast('Save failed' + (errMsg ? ': ' + errMsg : '') + '. Open Project Settings to retry.', 4000);
-      }
-      msgEl.textContent = pendingCopyProject
-        ? 'You have unsaved changes. Save before copying another project?'
-        : 'You have unsaved changes. Save before loading another project?';
-      discardBtn.style.display = '';
-      saveBtn.style.display = '';
-      cancelBtn.disabled = false;
-    }
-  };
-
-  App.openCopyProjectModalOrPromptSave = openCopyProjectModalOrPromptSave;
-  App.openLoadProjectModalOrPromptSave = openLoadProjectModalOrPromptSave;
-  App.hydrateProjectFromCloudRow = hydrateProjectFromCloudRow;
-  App.resolvePdfBufferForCloudProject = resolvePdfBufferForCloudProject;
-  App.buildPagesFromPdfArrayBufferAndProjectData = buildPagesFromPdfArrayBufferAndProjectData;
-  App.resetCopyProjectState = () => { pendingCopyProject = null; copyProjectModalTarget = null; };
-  App.clearCopyProjectModalTarget = () => { copyProjectModalTarget = null; };
 })();

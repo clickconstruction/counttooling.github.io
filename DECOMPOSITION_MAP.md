@@ -63,6 +63,15 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > performSaveProjectToCloud incl. the verify-after-timeout net and failure
 > path, uploadLocalPdfToCloudIfNeeded skip ladder). §2's "close that gap
 > before extracting the upload cluster" prerequisite is now met.
+> #5 Tier-3 #14 DONE: features/load-project.js split at its documented L653/655
+> boundary → features/copy-project.js (329 ln: copy/fork domain + save-before-load
+> gate + hydrate/resolve/build helpers, 7 registry names unchanged), and
+> renderLoadProjectListRows decomposed along its action boundaries (size / row
+> HTML / actions / admin access / load click; the renderer is now a thin loop).
+> load-project.js 969 → 693. New shell file: script tag + PRECACHE_URLS +
+> build:sw restamped; ARCHITECTURE rows updated (incl. the stale "gate stays in
+> app.js" claim); copy-project.spec.js added (4 always-run tests). Full
+> Playwright suite green (180 passed).
 
 ---
 

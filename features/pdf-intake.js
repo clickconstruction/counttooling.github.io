@@ -56,63 +56,229 @@
       App.showToast('Failed to load test PDF: ' + (e?.message || 'Unknown error'), 4000);
     }
   }
-  document.getElementById('pdfInput').onchange = async (e) => {
-    // #7b: Capture and clear the "Add additional PDF pages" flag immediately
-    // so it can never leak across calls (e.g. user dismisses picker, then
-    // uses Upload PDF from elsewhere).
-    const isAddAdditional = pendingAddAdditionalPages;
-    pendingAddAdditionalPages = false;
-    const files = e.target.files;
-    if (!files?.length) {
-      pendingImportCanvasAfterPdf = false;
-      return;
-    }
-    // #7b: When this upload is an explicit "add additional pages" request and
-    // we have a project already, route through Prepare PDF in append mode.
-    // Single-file & multi-file uploads both work: multi-file is merged into a
-    // single new buffer first so Prepare PDF can show one continuous preview.
-    if (isAddAdditional && App.state.currentProjectId && App.state.pages.length > 0) {
-      const filesToProcess = Array.from(files);
-      for (const f of filesToProcess) {
-        if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-          alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
-          e.target.value = '';
-          return;
-        }
-      }
-      const newBuffers = [];
-      const newPages = [];
-      try {
-        for (const f of filesToProcess) {
-          const buf = await f.arrayBuffer();
-          newBuffers.push(buf.slice(0));
-          const pdf = await App.getPdfDocument(buf).promise;
-          const numPages = pdf.numPages;
-          for (let i = 0; i < numPages; i++) {
-            const pdfPage = await pdf.getPage(i + 1);
-            const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-            newPages.push({ pdfPage, label, rotation: 0 });
-          }
-        }
-      } catch (err) {
-        alert('Failed to read uploaded PDF: ' + (err?.message || 'unknown error'));
+
+  // --- #pdfInput outcome branches (named per DECOMPOSITION_MAP Tier-3 #17;
+  // the onchange binding at the bottom is now a small dispatcher) ----------
+
+  // #7b: An explicit "add additional PDF pages" request with a live project:
+  // read + merge the files into one new buffer and route through Prepare PDF
+  // in append mode (single- and multi-file uploads both merge first so the
+  // preview is one continuous document).
+  async function handleAppendPages(e, filesToProcess) {
+    for (const f of filesToProcess) {
+      if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
+        alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
         e.target.value = '';
         return;
       }
-      const newBuf = newBuffers.length === 1
-        ? newBuffers[0]
-        : await App.mergePdfBuffers(newBuffers);
-      e.target.value = '';
-      if (!newBuf || !newPages.length) {
-        alert('Failed to read uploaded PDF.');
-        return;
+    }
+    const newBuffers = [];
+    const newPages = [];
+    try {
+      for (const f of filesToProcess) {
+        const buf = await f.arrayBuffer();
+        newBuffers.push(buf.slice(0));
+        const pdf = await App.getPdfDocument(buf).promise;
+        const numPages = pdf.numPages;
+        for (let i = 0; i < numPages; i++) {
+          const pdfPage = await pdf.getPage(i + 1);
+          const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
+          newPages.push({ pdfPage, label, rotation: 0 });
+        }
       }
-      App.openPreparePdfModal(newPages, newBuf, App.state.currentProjectName || 'Untitled', { mode: 'append' });
+    } catch (err) {
+      alert('Failed to read uploaded PDF: ' + (err?.message || 'unknown error'));
+      e.target.value = '';
       return;
     }
-    const importBothFollowUp = pendingImportCanvasAfterPdf;
-    pendingImportCanvasAfterPdf = false;
-    const filesToProcess = Array.from(files);
+    const newBuf = newBuffers.length === 1
+      ? newBuffers[0]
+      : await App.mergePdfBuffers(newBuffers);
+    e.target.value = '';
+    if (!newBuf || !newPages.length) {
+      alert('Failed to read uploaded PDF.');
+      return;
+    }
+    App.openPreparePdfModal(newPages, newBuf, App.state.currentProjectName || 'Untitled', { mode: 'append' });
+  }
+
+  // A canvas-only project is waiting for its PDF (state.pendingCanvasLoad):
+  // hash-match the upload against the project's recorded pdf_hash, confirm on
+  // mismatch, and hydrate the project's palette/annotations onto the fresh
+  // pages. On decline the session becomes a plain local upload.
+  async function matchPendingCanvasLoad(filesToProcess, firstBuf) {
+    const d = App.state.pendingCanvasLoad.data;
+    const hashBuf = App.state.pdfBuffer || firstBuf;
+    const uploadHash = await App.sha256Hex(hashBuf);
+    const hashMatches = !App.state.pendingCanvasLoad.pdf_hash || App.state.pendingCanvasLoad.pdf_hash === uploadHash;
+    if (!hashMatches && !confirm('This PDF doesn\'t match the project. Annotations may not align. Load anyway?')) {
+      App.state.pendingCanvasLoad = null;
+      App.state.currentProjectId = null;
+      App.state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
+      try { App.clearCheckoutExpiredAttention(); } catch (_) {}
+    } else {
+      const projName = App.state.pendingCanvasLoad.name;
+      App.state.counters = Array.isArray(d.counters) ? d.counters : [];
+      App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+      App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+      App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
+      if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
+      if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
+      if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
+      (d.pages || []).forEach(p => {
+        App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
+      });
+      if (d.pageScales) {
+        d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
+      } else if (d.scale) {
+        App.state.pages.forEach(p => { p.scale = d.scale; });
+      }
+      App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+      if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
+      if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+      if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
+      if (d.gridSettings) App.state.gridSettings = d.gridSettings;
+      App.reconcileOrphanedCountersAndLineTypes();
+      App.clearUndoStacks();
+      App.state.pendingCanvasLoad = null;
+      App.state.currentProjectName = projName;
+      App.state.pdfHash = uploadHash;
+      // Do NOT push this hash to the cloud row here: the locally-uploaded PDF
+      // has not been stored, so recording its hash would make the row claim a
+      // PDF that isn't in storage (or that differs from the file pdf_path
+      // points to). That both reintroduces the "saved but no PDF" bug and can
+      // cause the manual-save hash-skip to skip the real upload. The next real
+      // save (performSaveProjectToCloud with Include PDF) writes pdf_hash and
+      // pdf_path together once the file is actually uploaded.
+    }
+  }
+
+  // The list row's click in the load-annotations prompt: fetch the full
+  // accessible row, warn on page-count mismatch, hydrate palette +
+  // annotations, and adopt the project (reusing the in-memory PDF by hash).
+  async function applyAnnotationsFromCloudMatch(proj, uploadHash) {
+    // B1b: Fetch the full project row via list_accessible_projects so
+    // we have can_edit / can_check_out / checked_out_* / user_id and
+    // can hydrate checkout/permissions via the shared helper.
+    let fullProj;
+    try {
+      const { data: allProjects, error: allErr } = await App.getSupabase().rpc('list_accessible_projects');
+      if (allErr) throw allErr;
+      fullProj = (allProjects || []).find(p => p.id === proj.id) || null;
+    } catch (fetchErr) {
+      App.showToast('Failed to load project: ' + ((fetchErr && fetchErr.message) || 'unknown error'), 4000);
+      return;
+    }
+    if (!fullProj) {
+      App.showToast('Project is no longer accessible.', 4000);
+      return;
+    }
+    const d = fullProj.data || {};
+    // B2: Page-count mismatch warning. If the cloud project's pages
+    // count differs from the just-uploaded PDF, the user might lose
+    // annotations or end up with them on wrong pages. Only warn when
+    // the cloud project actually has per-page data; an empty d.pages
+    // array means nothing to misalign.
+    const cloudPages = Array.isArray(d.pages) ? d.pages : [];
+    const cloudPageCount = cloudPages.reduce((m, p) => Math.max(m, (p?.index ?? -1) + 1), 0) || cloudPages.length;
+    if (cloudPages.length > 0 && cloudPageCount !== App.state.pages.length) {
+      const ok = confirm(
+        'These annotations were saved for a ' + cloudPageCount + '-page PDF; ' +
+        'the PDF you uploaded has ' + App.state.pages.length + ' pages. ' +
+        'Some annotations may be missing or misplaced. Continue?'
+      );
+      if (!ok) return;
+    }
+    App.state.counters = Array.isArray(d.counters) ? d.counters : [];
+    App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
+    App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+    App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
+    if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
+    if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
+    if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
+    cloudPages.forEach(p => {
+      if (App.state.pages[p.index]) App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
+    });
+    // B2: Sanitize activeCanvasIdByPage to indices that exist in the
+    // current PDF so we never reference canvases on pages that aren't
+    // present.
+    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') {
+      const sanitized = {};
+      Object.entries(d.activeCanvasIdByPage).forEach(([k, v]) => {
+        const idx = Number(k);
+        if (Number.isFinite(idx) && App.state.pages[idx]) sanitized[idx] = v;
+      });
+      App.state.activeCanvasIdByPage = sanitized;
+    }
+    // Same replace-or-keep rule as cloud load (quick-keys.js).
+    if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
+    else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
+    if (d.pageScales) {
+      d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
+    } else if (d.scale) {
+      App.state.pages.forEach(p => { p.scale = d.scale; });
+    }
+    App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+    if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
+    if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+    if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
+    if (d.gridSettings) App.state.gridSettings = d.gridSettings;
+    App.reconcileOrphanedCountersAndLineTypes();
+    App.clearUndoStacks();
+    // B1b: Shared helper sets currentProjectId/Name, checkout/permissions,
+    // realtime subscription, clickcount-last-project, etc. Reuse the
+    // in-memory PDF (matched by hash) so next save doesn't re-upload.
+    App.hydrateProjectFromCloudRow(fullProj, {
+      reusePdfHash: uploadHash,
+      reusePdfStoragePath: fullProj.pdf_path || null,
+      source: 'load_annotations'
+    });
+    App.state.sidebarReorderModeActive = false;
+    App.hideModal('loadAnnotationsModal');
+    App.fitZoom();
+    App.updateUI();
+    App.renderPdf();
+  }
+
+  // Post-upload prompt for a signed-in user with no project open: offer any
+  // cloud projects whose pdf_hash matches the upload; with no match on a
+  // first upload, hand off to Prepare PDF.
+  async function promptLoadAnnotations(hashBufForMatch, startPageIdx) {
+    const uploadHash = await App.sha256Hex(hashBufForMatch);
+    const user = App.state.supabaseSession.user;
+    const { data: matches } = await App.getSupabase().from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
+    if (matches && matches.length > 0) {
+      const listEl = document.getElementById('loadAnnotationsList');
+      listEl.innerHTML = '';
+      const esc = (s) => App.escapeHtml(s);
+      matches.forEach(proj => {
+        const div = document.createElement('div');
+        const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
+        div.className = 'sidebar-item load-annotations-item';
+        div.innerHTML = '<span class="name">' + esc(proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + esc(date) + '</span>';
+        div.onclick = () => applyAnnotationsFromCloudMatch(proj, uploadHash);
+        listEl.appendChild(div);
+      });
+      App.showModal('loadAnnotationsModal');
+    } else if (startPageIdx === 0) {
+      App.openPreparePdfModal(App.state.pages, App.state.pdfBuffer, App.state.currentProjectName);
+      App.clearPdfBitmapCache();
+      App.state.pages = [];
+      App.state.activeCanvasIdByPage = {};
+      App.state.pdfBuffer = null;
+      App.state.pdfBufferSize = 0;
+      App.state.currentProjectName = 'Untitled';
+      App.state.currentPage = 0;
+      App.updateUI();
+      App.renderPdf();
+    }
+  }
+
+  // The default path: read every file into pages, enforce the 50 MB cap
+  // (per-file and post-merge), merge into one buffer, rebind the pdf.js page
+  // proxies, then route to the pending-canvas match / load-annotations
+  // prompt / Prepare PDF handoff.
+  async function handleFreshUpload(e, filesToProcess, importBothFollowUp) {
     const startPageIdx = App.state.pages.length;
     if (startPageIdx === 0) App.resetGridOrigin();
     let firstBuf = null;
@@ -174,50 +340,7 @@
       if (!App.state.pendingCanvasLoad) App.markProjectDirty();
     }
     if (App.state.pendingCanvasLoad && firstBuf) {
-      const d = App.state.pendingCanvasLoad.data;
-      const hashBuf = App.state.pdfBuffer || firstBuf;
-      const uploadHash = await App.sha256Hex(hashBuf);
-      const hashMatches = !App.state.pendingCanvasLoad.pdf_hash || App.state.pendingCanvasLoad.pdf_hash === uploadHash;
-      if (!hashMatches && !confirm('This PDF doesn\'t match the project. Annotations may not align. Load anyway?')) {
-        App.state.pendingCanvasLoad = null;
-        App.state.currentProjectId = null;
-        App.state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
-        try { App.clearCheckoutExpiredAttention(); } catch (_) {}
-      } else {
-        const projName = App.state.pendingCanvasLoad.name;
-        App.state.counters = Array.isArray(d.counters) ? d.counters : [];
-        App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-        App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-        App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-        if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
-        if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
-        if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-        (d.pages || []).forEach(p => {
-          App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
-        });
-        if (d.pageScales) {
-          d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
-        } else if (d.scale) {
-          App.state.pages.forEach(p => { p.scale = d.scale; });
-        }
-        App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-        if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-        if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-        if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
-        if (d.gridSettings) App.state.gridSettings = d.gridSettings;
-        App.reconcileOrphanedCountersAndLineTypes();
-        App.clearUndoStacks();
-        App.state.pendingCanvasLoad = null;
-        App.state.currentProjectName = projName;
-        App.state.pdfHash = uploadHash;
-        // Do NOT push this hash to the cloud row here: the locally-uploaded PDF
-        // has not been stored, so recording its hash would make the row claim a
-        // PDF that isn't in storage (or that differs from the file pdf_path
-        // points to). That both reintroduces the "saved but no PDF" bug and can
-        // cause the manual-save hash-skip to skip the real upload. The next real
-        // save (performSaveProjectToCloud with Include PDF) writes pdf_hash and
-        // pdf_path together once the file is actually uploaded.
-      }
+      await matchPendingCanvasLoad(filesToProcess, firstBuf);
     } else {
       App.state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
     }
@@ -234,120 +357,32 @@
     // attaching/adding a PDF to their active project and these prompts would
     // either offer to switch projects (destructive) or clobber the project name.
     if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId && App.SUPABASE_ENABLED && App.getSupabase() && App.state.supabaseSession?.user && hashBufForMatch) {
-      const uploadHash = await App.sha256Hex(hashBufForMatch);
-      const user = App.state.supabaseSession.user;
-      const { data: matches } = await App.getSupabase().from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
-      if (matches && matches.length > 0) {
-        const listEl = document.getElementById('loadAnnotationsList');
-        listEl.innerHTML = '';
-        const esc = (s) => App.escapeHtml(s);
-        matches.forEach(proj => {
-          const div = document.createElement('div');
-          const date = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : '';
-          div.className = 'sidebar-item load-annotations-item';
-          div.innerHTML = '<span class="name">' + esc(proj.name || 'Untitled') + '</span><span class="load-annotations-date">' + esc(date) + '</span>';
-          div.onclick = async () => {
-            // B1b: Fetch the full project row via list_accessible_projects so
-            // we have can_edit / can_check_out / checked_out_* / user_id and
-            // can hydrate checkout/permissions via the shared helper.
-            let fullProj;
-            try {
-              const { data: allProjects, error: allErr } = await App.getSupabase().rpc('list_accessible_projects');
-              if (allErr) throw allErr;
-              fullProj = (allProjects || []).find(p => p.id === proj.id) || null;
-            } catch (fetchErr) {
-              App.showToast('Failed to load project: ' + ((fetchErr && fetchErr.message) || 'unknown error'), 4000);
-              return;
-            }
-            if (!fullProj) {
-              App.showToast('Project is no longer accessible.', 4000);
-              return;
-            }
-            const d = fullProj.data || {};
-            // B2: Page-count mismatch warning. If the cloud project's pages
-            // count differs from the just-uploaded PDF, the user might lose
-            // annotations or end up with them on wrong pages. Only warn when
-            // the cloud project actually has per-page data; an empty d.pages
-            // array means nothing to misalign.
-            const cloudPages = Array.isArray(d.pages) ? d.pages : [];
-            const cloudPageCount = cloudPages.reduce((m, p) => Math.max(m, (p?.index ?? -1) + 1), 0) || cloudPages.length;
-            if (cloudPages.length > 0 && cloudPageCount !== App.state.pages.length) {
-              const ok = confirm(
-                'These annotations were saved for a ' + cloudPageCount + '-page PDF; ' +
-                'the PDF you uploaded has ' + App.state.pages.length + ' pages. ' +
-                'Some annotations may be missing or misplaced. Continue?'
-              );
-              if (!ok) return;
-            }
-            App.state.counters = Array.isArray(d.counters) ? d.counters : [];
-            App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-            App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-            App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-            if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
-            if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
-            if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-            cloudPages.forEach(p => {
-              if (App.state.pages[p.index]) App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
-            });
-            // B2: Sanitize activeCanvasIdByPage to indices that exist in the
-            // current PDF so we never reference canvases on pages that aren't
-            // present.
-            if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') {
-              const sanitized = {};
-              Object.entries(d.activeCanvasIdByPage).forEach(([k, v]) => {
-                const idx = Number(k);
-                if (Number.isFinite(idx) && App.state.pages[idx]) sanitized[idx] = v;
-              });
-              App.state.activeCanvasIdByPage = sanitized;
-            }
-            // Same replace-or-keep rule as cloud load (quick-keys.js).
-            if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
-            else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
-            if (d.pageScales) {
-              d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
-            } else if (d.scale) {
-              App.state.pages.forEach(p => { p.scale = d.scale; });
-            }
-            App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-            if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-            if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-            if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
-            if (d.gridSettings) App.state.gridSettings = d.gridSettings;
-            App.reconcileOrphanedCountersAndLineTypes();
-            App.clearUndoStacks();
-            // B1b: Shared helper sets currentProjectId/Name, checkout/permissions,
-            // realtime subscription, clickcount-last-project, etc. Reuse the
-            // in-memory PDF (matched by hash) so next save doesn't re-upload.
-            App.hydrateProjectFromCloudRow(fullProj, {
-              reusePdfHash: uploadHash,
-              reusePdfStoragePath: fullProj.pdf_path || null,
-              source: 'load_annotations'
-            });
-            App.state.sidebarReorderModeActive = false;
-            App.hideModal('loadAnnotationsModal');
-            App.fitZoom();
-            App.updateUI();
-            App.renderPdf();
-          };
-          listEl.appendChild(div);
-        });
-        App.showModal('loadAnnotationsModal');
-      } else if (startPageIdx === 0) {
-        App.openPreparePdfModal(App.state.pages, App.state.pdfBuffer, App.state.currentProjectName);
-        App.clearPdfBitmapCache();
-        App.state.pages = [];
-        App.state.activeCanvasIdByPage = {};
-        App.state.pdfBuffer = null;
-        App.state.pdfBufferSize = 0;
-        App.state.currentProjectName = 'Untitled';
-        App.state.currentPage = 0;
-        App.updateUI();
-        App.renderPdf();
-      }
+      await promptLoadAnnotations(hashBufForMatch, startPageIdx);
     }
     if (importBothFollowUp && App.state.pages.length > 0) {
       App.showModal('importCanvasAfterPdfModal');
     }
+  }
+
+  // The dispatcher: capture-and-clear the intake flags, then route.
+  document.getElementById('pdfInput').onchange = async (e) => {
+    // #7b: Capture and clear the "Add additional PDF pages" flag immediately
+    // so it can never leak across calls (e.g. user dismisses picker, then
+    // uses Upload PDF from elsewhere).
+    const isAddAdditional = pendingAddAdditionalPages;
+    pendingAddAdditionalPages = false;
+    const files = e.target.files;
+    if (!files?.length) {
+      pendingImportCanvasAfterPdf = false;
+      return;
+    }
+    if (isAddAdditional && App.state.currentProjectId && App.state.pages.length > 0) {
+      await handleAppendPages(e, Array.from(files));
+      return;
+    }
+    const importBothFollowUp = pendingImportCanvasAfterPdf;
+    pendingImportCanvasAfterPdf = false;
+    await handleFreshUpload(e, Array.from(files), importBothFollowUp);
   };
 
   App.loadTestPdf = loadTestPdf;

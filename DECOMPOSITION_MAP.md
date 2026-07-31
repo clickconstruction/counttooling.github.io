@@ -101,6 +101,13 @@ see Defects §D8), 209 in `vendor/`, 135 at root, 67 `supabase/`, 48 `my-counter
 > #12 Tier-4 #22 DONE: npm run check → scripts/check.js — all 8 steps always
 > run, failures replay their output at the end (verified: a forced token
 > drift exits 1 with the other 7 steps still reporting). AGENTS.md updated.
+> #13 Tier-3 #17 DONE: pdf-intake's 290-line anonymous onchange decomposed
+> into named outcome branches (handleAppendPages / handleFreshUpload /
+> matchPendingCanvasLoad / promptLoadAnnotations /
+> applyAnnotationsFromCloudMatch); the binding is now a small dispatcher.
+> Observation recorded: pendingImportCanvasAfterPdf is never set true by any
+> caller — the importBothFollowUp path looks dead (left intact; verify +
+> remove separately).
 
 ---
 

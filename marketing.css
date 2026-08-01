@@ -113,7 +113,7 @@ a { color: inherit; }
 .path-banner { color: var(--text3); font-size: 0.9rem; margin: 4px 0 10px; }
 .path-banner a { color: var(--accent); text-decoration: none; }
 .path-banner a:hover { text-decoration: underline; }
-.path-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 36px; padding: 14px 0 0; border-top: 1px solid var(--border); }
+.path-nav { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; margin-top: 36px; padding: 14px 0 0; border-top: 1px solid var(--border); }
 .path-nav-link { color: var(--text); text-decoration: none; font-weight: 600; }
 .path-nav-link:hover { color: var(--accent); }
 .path-nav-all { color: var(--text3); text-decoration: none; font-size: 0.9rem; }

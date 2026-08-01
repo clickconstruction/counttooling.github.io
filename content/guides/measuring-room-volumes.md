@@ -1,7 +1,7 @@
 ---
 title: Measuring room volumes with the Room Sizer
 description: Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.
-updated: 2026-07-19
+updated: 2026-07-31
 order: 5.5
 icon: room
 category: Measuring
@@ -13,7 +13,7 @@ Counting fixtures and measuring runs covers most of a takeoff, but HVAC work sta
 
 ## Draw a room box
 
-1. [Set the page scale](/guides/setting-the-scale/) first — room sizes come from the drawing, so the tool won't start without one.
+1. [Set the page scale](/guides/setting-the-scale/) [[set-scale]] first — room sizes come from the drawing, so the tool won't start without one.
 2. Pick the **Room Sizer** [[room]] tool in the header (or press **V**).
 3. Click one corner of the room, then the opposite corner. While you move, a live readout shows the box's length × width.
 
@@ -34,12 +34,16 @@ The tool stays armed after Apply, so the loop for the next room is just two clic
 ## Where the totals show up
 
 - **The Rooms section** appears in the left sidebar as soon as the first box exists — per-room floor area and air volume, with each box listed underneath (click a box row to jump to its page; click the room to rename, recolor, or delete it).
-- **The summary legend** gets a row per room with its volume (turn this off in Legend Settings if you don't want it on the sheet).
+
+![The Rooms sidebar section: each room's floor area and air volume, with its boxes' dimensions listed underneath.](/guides/img/rooms-sidebar.png)
+- **The summary legend** [[legend]] gets a row per room with its volume (turn this off in Legend Settings — right-click the legend button — if you don't want it on the sheet).
 - **Reports and summaries** include a Room Volumes table with area, volume, and pages per room — see [Reports and exports](/guides/reports-and-exports/).
 
 ## Good to know
 
 - On-canvas labels read **L × W × H** with the longer side always shown as (L), so the plan reads the way you'd say it out loud.
-- Room boxes respect [scale zones](/guides/scale-zones-and-multiply-zones/): a box drawn fully inside a zone uses that zone's scale. Multiply zones deliberately do **not** multiply volumes — a room spanning identical floors is drawn once per floor.
+- Room boxes respect [scale zones](/guides/scale-zones-and-multiply-zones/) [[scale-zone]]: a box drawn fully inside a zone uses that zone's scale. Multiply zones [[multiply-zone]] deliberately do **not** multiply volumes — a room spanning identical floors is drawn once per floor.
 - Totals are always decimal feet (ft² / ft³), no matter what unit the page scale uses.
 - Right-click a box for **Edit room box** (change its height or room, or delete it). The **Delete area** [[delete-area]] tool removes room boxes too.
+
+![Right-clicking a room box: Edit room box changes its height or room; Delete removes it. The rooms legend keeps the per-room ft³ in view.](/guides/img/room-context-menu.png)

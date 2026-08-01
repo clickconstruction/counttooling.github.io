@@ -6,3 +6,4 @@ playwright-report/
 test-results/
 .claude/launch.json
 .cursor/
+samples/candidates/

@@ -643,6 +643,54 @@ const SHOTS = [
     boxes: [{ sel: '#zoomRail', label: 'Zoom rail' }],
   },
 
+  // The Rooms sidebar section — per-room area/volume + box rows (room-volumes guide).
+  {
+    name: 'rooms-sidebar',
+    clip: '#roomsSection',
+    async setup(page) {
+      await roomSetup(page);
+      await page.waitForSelector('#roomsSection', { state: 'visible', timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+  },
+
+  // Right-click menu on a room box — Edit room box / Delete (room-volumes guide).
+  {
+    name: 'room-context-menu',
+    clip: '#canvasWrapper',
+    async setup(page) {
+      await roomSetup(page);
+      const box = await page.locator('#annCanvas').boundingBox();
+      await page.mouse.click(box.x + box.width * 0.24, box.y + box.height * 0.29, { button: 'right' });
+      await page.waitForSelector('#contextMenu', { state: 'visible', timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+    boxes: [{ sel: '#contextMenu', label: 'Right-click a room box' }],
+  },
+
+  // Real zone chrome on the plan — a live multiply zone and scale zone rendered by
+  // the actual draw core (zones guide).
+  {
+    name: 'zones-on-plan',
+    clip: '#canvasWrapper',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state, App = window.App;
+        const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
+        const pw = vp.width, ph = vp.height;
+        const ann = s.pages[0].canvases[0].annotations;
+        // Zone labels render at the rectangle's CENTER (canvas-draw.js), so both
+        // rects are placed with their centers on empty floor — clear of room
+        // names, fixtures, and the title block — and inside the building.
+        ann.multiplyZones.push({ x1: 0.512 * pw, y1: 0.615 * ph, x2: 0.745 * pw, y2: 0.73 * ph, multiplier: 3, id: App.uid() });
+        ann.scaleZones.push({ x1: 0.16 * pw, y1: 0.61 * ph, x2: 0.335 * pw, y2: 0.725 * ph, scale: { pixelsPerUnit: 18, unit: 'ft', label: '1/4" = 1\'' }, id: App.uid() });
+        App.renderAnnotations();
+      });
+      await page.waitForTimeout(250);
+    },
+  },
+
   // Summary count-detail drill-down — per-page breakdown with thumbnails
   // (how-to-do-a-pdf-takeoff guide, "review the summary" step).
   {

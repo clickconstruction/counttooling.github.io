@@ -15,10 +15,10 @@ Real plan sets aren't always one clean scale per sheet. Two tools handle the awk
 
 A sheet often has the main plan at one scale and a blown-up detail or isometric at another. A **scale zone** [[scale-zone]] lets a region carry its own scale:
 
-1. Draw a scale-zone rectangle around the detail.
-2. Give that zone its own scale (the same way you'd [set the page scale](/guides/setting-the-scale/)).
+1. Pick the **Scale Zone** [[scale-zone]] tool and draw a rectangle around the detail.
+2. Give that zone its own scale [[set-scale]] (the same way you'd [set the page scale](/guides/setting-the-scale/)).
 
-Any line fully inside the zone is measured with the zone's scale; everything else uses the page scale. The **Measure** tool respects it too, so a quick check inside the detail comes out right.
+Any line fully inside the zone is measured with the zone's scale; everything else uses the page scale. The **Measure** [[measure]] tool respects it too, so a quick check inside the detail comes out right.
 
 ## Multiply zones — for repeated areas
 
@@ -30,6 +30,10 @@ When the same layout repeats — typical floors, identical units, a row of match
 ![After drawing the zone rectangle, the multiplier dialog asks how many times the area repeats — everything inside counts that many times in the totals.](/guides/img/multiply-zone-value.png)
 
 Every counter and line whose anchor falls inside is multiplied by that factor in the totals. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten.
+
+Here's both zones live on a sheet — note the legend: the four lavatories inside the ×3 zone count as twelve, so the Lavatory total reads 15, not 7:
+
+![A scale zone (yellow, carrying its own 1/4" = 1' scale) and a ×3 multiply zone (green) on the plan — the legend's Lavatory count already reflects the multiplication.](/guides/img/zones-on-plan.png)
 
 ## Good to know
 

@@ -62,9 +62,18 @@ function createAnnotationModel(ctx) {
     });
     return out;
   }
-  function getMergedAnnotationsForPage(page) {
+  // onlyIds (optional): an ARRAY of canvas ids to include — the selective
+  // show-canvases peek. The active canvas is always included regardless of the
+  // list; omitted/null means every canvas (the classic show-all merge).
+  // Array-gated on purpose: report.js and the export paths pass this function
+  // around as a generic (page, pageIdx) annotations getter, so a non-array
+  // second argument (the page index) must keep meaning "merge everything".
+  function getMergedAnnotationsForPage(page, onlyIds) {
     const canvases = getPageCanvases(page);
-    const anns = canvases.map(c => c.annotations || makeAnnotations());
+    const filter = Array.isArray(onlyIds) ? onlyIds : null;
+    const active = filter ? getActiveCanvas(page) : null;
+    const use = filter ? canvases.filter(c => c === active || filter.includes(c.id)) : canvases;
+    const anns = use.map(c => c.annotations || makeAnnotations());
     return mergeAnnotations(...anns);
   }
   function ensureActiveCanvas(page) {

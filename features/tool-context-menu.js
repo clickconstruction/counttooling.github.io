@@ -45,8 +45,20 @@
   const GRID_ACTIONS = [
     { label: 'Grid Settings…', run: () => App.openGridSettingsModal() },
   ];
+  // Move's and Measure's "settings" is the page's scale: once a scale is set,
+  // the Set Scale flow is otherwise buried behind the header S tool, so the
+  // resting tool — and the tool whose readout is wrong when the scale is —
+  // both give a direct path to review/edit it (features/scale.js registers
+  // openScaleModal; registry-mediated, read at call time).
+  const SCALE_EDIT_ACTIONS = [
+    { label: 'Set / edit scale…', run: () => { if (App.state.pages.length) App.openScaleModal(); else App.showToast('Open a plan first.', 2000); } },
+  ];
 
   const TOOL_CONTEXT = {
+    moveBtn: SCALE_EDIT_ACTIONS,
+    moveBtnSidebar: SCALE_EDIT_ACTIONS,
+    measureBtn: SCALE_EDIT_ACTIONS,
+    measureBtnSidebar: SCALE_EDIT_ACTIONS,
     counterBtn: COUNTER_ACTIONS,
     counterBtnSidebar: COUNTER_ACTIONS,
     headerActiveCounter: COUNTER_ACTIONS,
@@ -66,9 +78,7 @@
   // Tools with no settings surface: the gesture still responds (toast), so
   // the right-click convention never looks broken.
   const NO_SETTINGS_TOOLS = [
-    'moveBtn', 'moveBtnSidebar',
     'setScale', 'setScaleSidebar',
-    'measureBtn', 'measureBtnSidebar',
     'highlightBtn', 'highlightBtnSidebar',
     'scaleZoneBtn', 'scaleZoneBtnSidebar',
     'deleteZoneBtn', 'deleteZoneBtnSidebar',

@@ -226,7 +226,8 @@ base bid on one layer, alternate on another, same drawing.
 **Show-all-canvases peek**
 *Problem:* Comparing two options means flipping back and forth and holding one in memory.
 *Useful because:* A toggle shows every layer at once for comparison without changing what you're
-editing.
+editing — and right-clicking the button narrows the peek to the current layer plus just the one
+or two you pick, so a five-layer sheet compares two options cleanly.
 
 **Context menus (right-click / long-press)**
 *Problem:* Fixing one mark by hunting for it in a side panel breaks flow.
@@ -236,7 +237,9 @@ know exactly what you're touching.
 **Right-click tool settings**
 *Problem:* Settings buried in menus mean most users never find them.
 *Useful because:* Right-click any tool button for its settings — options are discoverable exactly
-where the tool lives.
+where the tool lives. The Move and Measure tools' entry is **Set / edit scale**, so the page's
+scale stays one right-click away after it's set instead of hiding behind the Set Scale tool —
+and a wrong Measure readout is one right-click from its fix.
 
 **Delete Area tool**
 *Problem:* Clearing a region of marks one by one (a redesigned area, a wrong count) is minutes of
@@ -323,7 +326,9 @@ sizes, the report appended, and highlights and notes baked in — one file, read
 *Problem:* The most-cited gap in tools like Bluebeam: takeoff data dead-ends in the PDF and must be
 retyped into the estimating system, an hour of transcription with error risk on every row.
 *Useful because:* One click puts the entire takeoff on the clipboard as tab-delimited counts —
-with a view link back to the source plan — ready to paste directly into pricing.
+with a view link back to the source plan — ready to paste directly into pricing. Before copying,
+a scale check flags any exported page whose lines were traced without a scale (pages without
+marks don't count), so a pixel length can't silently ride into a priced bid.
 
 **Copy Summary (email/text)**
 *Problem:* A quick "here's where the count stands" email means retyping numbers.

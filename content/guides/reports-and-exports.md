@@ -40,7 +40,7 @@ You can export specific pages, just the marked ones, or the whole set.
 
 ## Send it to where it gets priced
 
-- **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. It even appends a **view link** back to the source takeoff, so a bid can point at the plan it came from.
+- **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. It even appends a **view link** back to the source takeoff, so a bid can point at the plan it came from. Before copying, the app double-checks your scales: if any exported page has lines but no scale, a dialog lists those pages and offers to jump you straight to Set Scale — or you can export anyway, knowing those lengths are in pixels. Pages without marks are never flagged.
 - **Copy Summary (email/text)** — a plain-text summary for dropping into an email or message.
 - **Download current page** — the yellow printer button downloads the sheet you're on as a PDF; on multi-page or multi-layer projects it offers a scope menu (this canvas, all canvases on the page, all pages).
 - **Export / Import Canvas** — your marks alone (palette, groups, and all) as a small JSON file, without the PDF — the easy way to hand a takeoff to someone who already has the plan set. See [Canvas layers](/guides/canvas-layers/).

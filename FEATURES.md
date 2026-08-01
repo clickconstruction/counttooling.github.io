@@ -48,9 +48,9 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Legend overlay** — A draggable on-canvas summary keeps live counts and lengths in view while you work — and prints with the sheet.
 - **Hide marks (eye toggle)** — Peel the whole takeoff off the drawing to read the bare plan, then flip it back — purely visual, data untouched.
 - **Canvas layers (multiple canvases per page)** — Keep alternates, trades, or bid options as separate overlays on the same sheet and switch with the arrow keys.
-- **Show-all-canvases peek** — See every layer at once to compare, without changing what you're editing.
+- **Show-all-canvases peek** — See every layer at once to compare, without changing what you're editing — or right-click the peek button to show just the current layer plus one or two chosen others.
 - **Context menus (right-click / long-press)** — Edit or delete any mark in place instead of hunting the sidebar.
-- **Right-click tool settings** — Right-click any tool button for its settings menu, so options are discoverable where the tool lives.
+- **Right-click tool settings** — Right-click any tool button for its settings menu, so options are discoverable where the tool lives — including Set / edit scale on the Move and Measure tools, so a set scale is never buried.
 - **Delete Area tool** — Rubber-band a rectangle and clear every mark inside it, with a confirming count before anything is deleted.
 - **Undo/redo (50 steps)** — Rapid clicking is safe; mistakes are a keystroke away from gone.
 
@@ -70,7 +70,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Summary panel + count detail** — Click any total for a per-page breakdown with thumbnails showing exactly where the items are.
 - **Show Report** — A printable report scoped to this canvas, this page, or the whole project.
 - **Export PDFs** — A marked-up deliverable PDF with adjustable marker/line sizes, the report, and highlights/notes bundled in — ready to send.
-- **Copy to PipeTooling** — The whole takeoff as tab-delimited counts on the clipboard, with a view link back to the source plan, ready to paste into a bid.
+- **Copy to PipeTooling** — The whole takeoff as tab-delimited counts on the clipboard, with a view link back to the source plan, ready to paste into a bid. A pre-export check flags any page whose lines have no scale (pages without marks are ignored), so pixel lengths never sneak into a bid unnoticed.
 - **Copy Summary (email/text)** — A plain-text summary for dropping straight into an email.
 - **Download current page** — One sheet, marks included, as a quick PDF.
 - **Canvas JSON export/import** — Move a takeoff between projects or people as a small file, PDF not required.

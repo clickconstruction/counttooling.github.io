@@ -321,4 +321,49 @@ test.describe('Quick Keys', () => {
     // An unbound digit stays a plain silhouette.
     expect(board.seven).toBe('kb-key');
   });
+
+  test('search filters every slot dropdown; bound selections survive the filter', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    // Bind slot 1 to a counter that will NOT match the filter.
+    await page.evaluate(() => { window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' } }; });
+    await page.locator('#statusBarQuickKeys').click();
+    await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
+    await expect(page.locator('#quickKeysSearch')).toBeVisible();
+
+    const optionValues = (slot) => page.evaluate((s) =>
+      [...document.querySelector(`.quick-key-select[data-slot="${s}"]`).options].map(o => o.value), slot);
+
+    // Unfiltered: none + 2 counters + 1 line type everywhere.
+    expect(await optionValues('3')).toEqual(['', 'counter:c1', 'counter:c2', 'lineType:lt1']);
+
+    // Filter "waste": unbound slots keep only the matching line type…
+    await page.locator('#quickKeysSearch').fill('waste');
+    expect(await optionValues('3')).toEqual(['', 'lineType:lt1']);
+    // …but slot 1's bound (non-matching) counter stays listed and selected.
+    expect(await optionValues('1')).toEqual(['', 'counter:c1', 'lineType:lt1']);
+    expect(await page.evaluate(() => document.querySelector('.quick-key-select[data-slot="1"]').value)).toBe('counter:c1');
+
+    // Binding through the filtered list works, and typing kept focus (the
+    // input lives outside the re-rendered list).
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('quickKeysSearch');
+    await page.selectOption('.quick-key-select[data-slot="3"]', 'lineType:lt1');
+    expect(await page.evaluate(() => window.state.numberKeyBindings['3'])).toEqual({ kind: 'lineType', id: 'lt1' });
+
+    // Clearing the search restores the full lists; reopening resets the filter.
+    await page.locator('#quickKeysSearch').fill('');
+    expect(await optionValues('3')).toEqual(['', 'counter:c1', 'counter:c2', 'lineType:lt1']);
+    await page.locator('#quickKeysSearch').fill('drain');
+    await page.locator('#quickKeysDone').click();
+    await page.locator('#statusBarQuickKeys').click();
+    await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('quickKeysSearch').value)).toBe('');
+    expect(await optionValues('5')).toEqual(['', 'counter:c1', 'counter:c2', 'lineType:lt1']);
+
+    expect(errors).toEqual([]);
+  });
 });

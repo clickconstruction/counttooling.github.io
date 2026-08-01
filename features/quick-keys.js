@@ -151,16 +151,24 @@
     return out;
   }
 
-  function optionsHtml(selected) {
+  // filter (optional, lowercased): name-substring filter from #quickKeysSearch.
+  // A slot's currently-bound item always stays in its list even when it doesn't
+  // match, so an active filter can't blank out (or silently rebind) a selection.
+  function optionsHtml(selected, filter) {
     const state = App.state;
     const esc = App.escapeHtml;
+    const keep = (kind, item) => {
+      if (!filter) return true;
+      if (kind + ':' + item.id === selected) return true;
+      return (item.name || '').toLowerCase().includes(filter);
+    };
     const opt = (kind, item) => {
       const value = kind + ':' + item.id;
       const sel = value === selected ? ' selected' : '';
       return `<option value="${esc(value)}"${sel}>${esc(item.name || '(unnamed)')}</option>`;
     };
-    const counters = (state.counters || []).map((c) => opt('counter', c)).join('');
-    const lineTypes = (state.lineTypes || []).map((lt) => opt('lineType', lt)).join('');
+    const counters = (state.counters || []).filter((c) => keep('counter', c)).map((c) => opt('counter', c)).join('');
+    const lineTypes = (state.lineTypes || []).filter((lt) => keep('lineType', lt)).map((lt) => opt('lineType', lt)).join('');
     return `<option value=""${selected ? '' : ' selected'}>— none —</option>`
       + (counters ? `<optgroup label="Counters">${counters}</optgroup>` : '')
       + (lineTypes ? `<optgroup label="Line Types">${lineTypes}</optgroup>` : '');
@@ -174,6 +182,9 @@
     const empty = !(state.counters || []).length && !(state.lineTypes || []).length;
     const emptyEl = document.getElementById('quickKeysEmpty');
     if (emptyEl) emptyEl.style.display = empty ? 'block' : 'none';
+    const searchEl = document.getElementById('quickKeysSearch');
+    if (searchEl) searchEl.style.display = empty ? 'none' : '';
+    const filter = (searchEl?.value || '').trim().toLowerCase();
 
     listEl.innerHTML = SLOTS.map((slot) => {
       const r = resolveSlot(slot);
@@ -187,7 +198,7 @@
       return `<div class="quick-key-row" data-slot="${esc(slot)}">
           <span class="quick-key-cap">${esc(slot)}</span>
           ${swatch}
-          <select class="quick-key-select" data-slot="${esc(slot)}" aria-label="Quick Key ${esc(slot)}">${optionsHtml(selected)}</select>
+          <select class="quick-key-select" data-slot="${esc(slot)}" aria-label="Quick Key ${esc(slot)}">${optionsHtml(selected, filter)}</select>
           ${staleNote}
           <button type="button" class="quick-key-clear" data-slot="${esc(slot)}" aria-label="Clear Quick Key ${esc(slot)}"${r ? '' : ' disabled'}>×</button>
         </div>`;
@@ -220,6 +231,10 @@
   }
 
   function openQuickKeysModal() {
+    // Fresh filter every open — a stale search quietly hiding most of the
+    // palette is worse than retyping two letters.
+    const searchEl = document.getElementById('quickKeysSearch');
+    if (searchEl) searchEl.value = '';
     renderQuickKeysList();
     App.showModal('quickKeysModal');
   }
@@ -232,6 +247,10 @@
   // settingsMacros handler in app.js: close settings, open ours.
   const settingsOpener = document.getElementById('settingsQuickKeys');
   if (settingsOpener) settingsOpener.onclick = () => { App.hideModal('settingsModal'); openQuickKeysModal(); };
+  const searchInput = document.getElementById('quickKeysSearch');
+  // The input sits outside #quickKeysList, so the re-render never rebuilds it
+  // (typing keeps focus); each keystroke just refilters the ten dropdowns.
+  if (searchInput) searchInput.oninput = () => renderQuickKeysList();
   const closeBtn = document.getElementById('quickKeysModalClose');
   if (closeBtn) closeBtn.onclick = () => App.hideModal('quickKeysModal');
   const doneBtn = document.getElementById('quickKeysDone');

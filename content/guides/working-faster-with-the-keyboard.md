@@ -46,7 +46,9 @@ you're placing. **Quick Keys** puts your own counters and line types on the
 number row.
 
 1. Click **keys** [[keys]] in the status bar (next to macros).
-2. For each number `1`–`0`, pick a counter or line type from this project.
+2. For each number `1`–`0`, pick a counter or line type from this project. On a
+   big palette, type in the **search box** at the top — every dropdown filters
+   to matching names as you type (already-bound items always stay put).
 3. Done. Press `1` while marking up and you're placing that counter; press `2`
    and you're drawing that line type. Press the same key again to deselect.
 
@@ -61,9 +63,10 @@ bid after bid.
 ## Right-click a tool for its settings
 
 Every tool button answers a **right-click** with a small menu of its actions —
-Counter and Line offer their settings plus a quick "Add…", and Legend, Grid, and
-Multiply Zone open their settings directly. No hunting through menus. (Building
-palette items fast is its own trick — see
+Counter and Line offer their settings plus a quick "Add…", Legend, Grid, and
+Multiply Zone open their settings directly, and **Move** and **Measure** offer
+**Set / edit scale** — the fastest way back to a page's scale once it's set,
+right where you notice it's wrong. No hunting through menus. (Building palette items fast is its own trick — see
 [Building your palette in two clicks](/guides/quick-creators/).)
 
 ## 45° snap for straight runs

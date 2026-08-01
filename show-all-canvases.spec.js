@@ -37,21 +37,41 @@ async function bootTwoLayers(page, errors) {
   await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 300, { timeout: 10000 });
 }
 
-// Sum the alpha channel in a box around the line's midpoint on #annCanvas.
-async function midpointAlpha(page) {
-  return page.evaluate(() => {
+// Sum the alpha channel in a box around a pdf-space point on #annCanvas
+// (default: the canvas-A line's midpoint).
+async function midpointAlpha(page, at = { x: 100, y: 100 }) {
+  return page.evaluate((pt) => {
     const App = window.App;
     const s = App.state;
     const eff = App.effectiveDpr(s.pages[0], s.zoom);
     const c = document.getElementById('annCanvas');
-    const px = 100 * s.zoom * eff, py = 100 * s.zoom * eff;   // pdf (100,100) = line midpoint
+    const px = pt.x * s.zoom * eff, py = pt.y * s.zoom * eff;
     const r = Math.max(4, Math.round(6 * eff));
     const img = c.getContext('2d').getImageData(Math.round(px - r), Math.round(py - r), r * 2, r * 2).data;
     let sum = 0;
     for (let i = 3; i < img.length; i += 4) sum += img[i];
     return sum;
+  }, at);
+}
+
+// Add a third layer carrying its own quick line (midpoint pdf (70,130)),
+// away from canvas A's midpoint (100,100) so the two read independently.
+async function addThirdLayer(page) {
+  await page.evaluate(() => {
+    const App = window.App;
+    const s = App.state;
+    const pageObj = s.pages[0];
+    const c = { id: 'canvas-c', name: 'Third', annotations: window.makeAnnotations ? window.makeAnnotations() : App.makeAnnotations() };
+    c.annotations.quickLines.push({ x1: 20, y1: 180, x2: 120, y2: 80, color: '#4a9eff', id: 'ql-c', lineTypeId: 'lt-spec' });
+    pageObj.canvases.push(c);
+    App.renderAnnotations();
+    App.updateUI();
   });
 }
+const C_MID = { x: 70, y: 130 };
+// Canvas A's line is y=x and canvas C's is y=200-x — they cross at (100,100),
+// so subset tests probe A off the intersection.
+const A_PROBE = { x: 130, y: 130 };
 
 test.describe('Show-all-canvases peek (#showAllCanvasesBtn)', () => {
   test('button appears only with 2+ canvases (desktop); toggle merges layers on the overlay', async ({ page }) => {
@@ -105,6 +125,86 @@ test.describe('Show-all-canvases peek (#showAllCanvasesBtn)', () => {
     }));
     expect(after.flag).toBe(false);
     expect(after.display).toBe('none');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('right-click chooser: subset peek shows selected + active layers only', async ({ page }) => {
+    const errors = [];
+    await bootTwoLayers(page, errors);
+    await addThirdLayer(page);   // A (line @100,100), B (active, empty), C (line @70,130)
+
+    // Right-click opens the chooser without turning the peek on.
+    await page.locator('#showAllCanvasesBtn').click({ button: 'right' });
+    await expect(page.locator('#canvasPeekMenu')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.App.state.showAllCanvases)).toBe(false);
+    // Rows: All canvases + the three layers; the active layer row is pinned.
+    const rows = page.locator('#canvasPeekMenu .canvas-peek-item');
+    await expect(rows).toHaveCount(4);
+    await expect(rows.nth(0)).toHaveText(/All canvases/);
+    await expect(rows.nth(2)).toBeDisabled();   // "Second" = active layer, pinned on
+
+    // Uncheck layer A ("Main"): peek turns on scoped to {C} + active.
+    await rows.nth(1).click();
+    const sub = await page.evaluate(() => ({
+      flag: window.App.state.showAllCanvases,
+      sel: window.App.state.peekCanvasIdsByPage[0],
+      activeCanvas: window.App.state.activeCanvasIdByPage[0],
+      partial: document.getElementById('showAllCanvasesBtn').classList.contains('partial'),
+      title: document.getElementById('showAllCanvasesBtn').title,
+    }));
+    expect(sub.flag).toBe(true);
+    expect(sub.sel).toEqual(['canvas-c']);
+    expect(sub.activeCanvas).toBe('canvas-b');            // editing target unchanged
+    expect(sub.partial).toBe(true);
+    expect(sub.title).toContain('2 of 3');
+    expect(await midpointAlpha(page, A_PROBE)).toBe(0);            // A hidden
+    expect(await midpointAlpha(page, C_MID)).toBeGreaterThan(0);   // C shown
+
+    // "All canvases" restores the full merge (selection cleared).
+    await rows.nth(0).click();
+    expect(await page.evaluate(() => window.App.state.peekCanvasIdsByPage[0])).toBeUndefined();
+    expect(await midpointAlpha(page, A_PROBE)).toBeGreaterThan(0);
+    expect(await midpointAlpha(page, C_MID)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => document.getElementById('showAllCanvasesBtn').classList.contains('partial'))).toBe(false);
+
+    // Left-click (outside the menu) dismisses the chooser and toggles peek off.
+    await page.locator('#showAllCanvasesBtn').click();
+    await expect(page.locator('#canvasPeekMenu')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.App.state.showAllCanvases)).toBe(false);
+    expect(await midpointAlpha(page)).toBe(0);
+    expect(await midpointAlpha(page, C_MID)).toBe(0);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('subset selection prunes when its layer is deleted (empty = active only)', async ({ page }) => {
+    const errors = [];
+    await bootTwoLayers(page, errors);
+    await addThirdLayer(page);
+
+    // Scope the peek to {C} via the chooser (uncheck A).
+    await page.locator('#showAllCanvasesBtn').click({ button: 'right' });
+    await page.locator('#canvasPeekMenu .canvas-peek-item').nth(1).click();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#canvasPeekMenu')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.App.state.peekCanvasIdsByPage[0])).toEqual(['canvas-c']);
+
+    // Delete layer C -> selection prunes to [] = active layer only; peek stays on.
+    await page.evaluate(() => {
+      const App = window.App;
+      const s = App.state;
+      s.pages[0].canvases = s.pages[0].canvases.filter(c => c.id !== 'canvas-c');
+      App.renderAnnotations();
+      App.updateUI();
+    });
+    const after = await page.evaluate(() => ({
+      flag: window.App.state.showAllCanvases,
+      sel: window.App.state.peekCanvasIdsByPage[0],
+    }));
+    expect(after.flag).toBe(true);
+    expect(after.sel).toEqual([]);
+    expect(await midpointAlpha(page)).toBe(0);   // A still unchecked
 
     expect(errors).toEqual([]);
   });

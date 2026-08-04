@@ -39,6 +39,9 @@
   const MULTIPLY_ZONE_ACTIONS = [
     { label: 'Multiply Zone Settings…', run: () => App.openMultiplyZoneSettingsModal() },
   ];
+  const SCALE_ZONE_ACTIONS = [
+    { label: 'Scale Zone Settings…', run: () => App.openScaleZoneSettingsModal() },
+  ];
   const LEGEND_ACTIONS = [
     { label: 'Legend Settings…', run: () => App.openLegendSettingsModal() },
   ];
@@ -69,6 +72,8 @@
     headerActiveLineType: LINE_TYPE_ACTIONS,
     multiplyZoneBtn: MULTIPLY_ZONE_ACTIONS,
     multiplyZoneBtnSidebar: MULTIPLY_ZONE_ACTIONS,
+    scaleZoneBtn: SCALE_ZONE_ACTIONS,
+    scaleZoneBtnSidebar: SCALE_ZONE_ACTIONS,
     legendBtn: LEGEND_ACTIONS,
     legendBtnSidebar: LEGEND_ACTIONS,
     gridBtn: GRID_ACTIONS,
@@ -80,7 +85,6 @@
   const NO_SETTINGS_TOOLS = [
     'setScale', 'setScaleSidebar',
     'highlightBtn', 'highlightBtnSidebar',
-    'scaleZoneBtn', 'scaleZoneBtnSidebar',
     'deleteZoneBtn', 'deleteZoneBtnSidebar',
     'noteBtn', 'noteBtnSidebar',
     'roomBtn', 'roomBtnSidebar',

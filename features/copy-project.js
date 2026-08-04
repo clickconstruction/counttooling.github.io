@@ -149,6 +149,7 @@
       App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
       if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
       if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+      if (d.scaleZoneSettings) App.state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
       if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
       if (d.gridSettings) App.state.gridSettings = d.gridSettings;
     }

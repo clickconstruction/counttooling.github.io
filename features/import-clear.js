@@ -59,6 +59,7 @@
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
         if (data.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...data.multiplyZoneSettings };
+        if (data.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...data.scaleZoneSettings };
         if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;
         if (data.gridSettings) state.gridSettings = data.gridSettings;
         if (Array.isArray(data.customIconPaths)) App.saveUserCustomIcons(data.customIconPaths);

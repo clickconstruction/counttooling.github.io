@@ -104,7 +104,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **53 `features/*.js` registry files**, after app.js and before
+  - **55 `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -287,7 +287,9 @@ Rules to follow when adding/editing a feature file:
 `lengthLabelSize`, `snapToHorizontalVertical` (the 8-way 45° snap toggle — the
 key keeps its original H/V-era name so saved settings aren't orphaned),
 `showOnlyLinesOnCurrentPage`),
-`legendSettings`, `multiplyZoneSettings`, `gridSettings`, `showGridOverlay`,
+`legendSettings`, `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
+label: show/size/position, default top-left; per-project in save/load +
+export/import like `multiplyZoneSettings`), `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),
 `recentRoomHeights` (Room Sizer recent ceiling heights, decimal feet, max 5),
 `recentLineColors` (shared recent-color list, written by `pushRecentColor` —

@@ -371,6 +371,24 @@ function createCanvasDraw(deps) {
       ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.globalAlpha = 1;
     });
+    // Shared zone-label placement (multiply + scale zones): center or a corner
+    // inset inside the zone rect. Returns the text anchor and the backing
+    // rect's top-left for the given position keyword.
+    function zoneLabelLayout(pos, center, tl, br, tw, fontSize, pad, inset) {
+      if (pos === 'top-left') {
+        return { textX: tl.x + inset, textY: tl.y + inset, textAlign: 'left', textBaseline: 'top', rectX: tl.x + inset, rectY: tl.y + inset };
+      }
+      if (pos === 'top-right') {
+        return { textX: br.x - inset, textY: tl.y + inset, textAlign: 'right', textBaseline: 'top', rectX: br.x - inset - tw - pad * 2, rectY: tl.y + inset };
+      }
+      if (pos === 'bottom-left') {
+        return { textX: tl.x + inset, textY: br.y - inset, textAlign: 'left', textBaseline: 'bottom', rectX: tl.x + inset, rectY: br.y - inset - fontSize - pad };
+      }
+      if (pos === 'bottom-right') {
+        return { textX: br.x - inset, textY: br.y - inset, textAlign: 'right', textBaseline: 'bottom', rectX: br.x - inset - tw - pad * 2, rectY: br.y - inset - fontSize - pad };
+      }
+      return { textX: center.x, textY: center.y, textAlign: 'center', textBaseline: 'middle', rectX: center.x - tw / 2 - pad, rectY: center.y - fontSize / 2 - pad };
+    }
     (ann.multiplyZones || []).forEach(zone => {
       const minX = Math.min(zone.x1, zone.x2), maxX = Math.max(zone.x1, zone.x2);
       const minY = Math.min(zone.y1, zone.y2), maxY = Math.max(zone.y1, zone.y2);
@@ -389,23 +407,8 @@ function createCanvasDraw(deps) {
         const pad = 4;
         const inset = 6;
         const pos = state.multiplyZoneSettings?.labelPosition ?? 'center';
-        let textX, textY, rectX, rectY, textAlign, textBaseline;
-        if (pos === 'center') {
-          textX = center.x; textY = center.y; textAlign = 'center'; textBaseline = 'middle';
-          rectX = center.x - tw / 2 - pad; rectY = center.y - fontSize / 2 - pad;
-        } else if (pos === 'top-left') {
-          textX = tl.x + inset; textY = tl.y + inset; textAlign = 'left'; textBaseline = 'top';
-          rectX = textX; rectY = textY;
-        } else if (pos === 'top-right') {
-          textX = br.x - inset; textY = tl.y + inset; textAlign = 'right'; textBaseline = 'top';
-          rectX = textX - tw - pad * 2; rectY = textY;
-        } else if (pos === 'bottom-left') {
-          textX = tl.x + inset; textY = br.y - inset; textAlign = 'left'; textBaseline = 'bottom';
-          rectX = textX; rectY = textY - fontSize - pad;
-        } else {
-          textX = br.x - inset; textY = br.y - inset; textAlign = 'right'; textBaseline = 'bottom';
-          rectX = textX - tw - pad * 2; rectY = textY - fontSize - pad;
-        }
+        const { textX, textY, rectX, rectY, textAlign, textBaseline } =
+          zoneLabelLayout(pos, center, tl, br, tw, fontSize, pad, inset);
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
         ctx.fillRect(rectX, rectY, tw + pad * 2, fontSize + pad * 2);
         ctx.fillStyle = '#2d7a4a';
@@ -427,18 +430,24 @@ function createCanvasDraw(deps) {
       const zoneW = br.x - tl.x, zoneH = br.y - tl.y;
       const sc = zone.scale;
       const label = (sc && sc.label) ? sc.label : ((sc && sc.unit) ? ((sc.pixelsPerUnit ? (1 / sc.pixelsPerUnit).toFixed(2) : '?') + ' ' + sc.unit + '/pt') : 'Scale');
-      if (zoneW >= 30 && zoneH >= 20 && label) {
+      if (zoneW >= 30 && zoneH >= 20 && label && state.scaleZoneSettings?.showLabelOnZone !== false) {
         const center = tc({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
-        const fontSize = (state.multiplyZoneSettings?.labelSize ?? 14) * env.fontScale;
+        const fontSize = (state.scaleZoneSettings?.labelSize ?? 14) * env.fontScale;
         ctx.font = fontSize + 'px ' + env.fontFamily;
         const tw = ctx.measureText(label).width;
         const pad = 4;
+        const inset = 6;
+        // Default top-left (not center): the zone exists to sit over a detail
+        // drawing, so the resting label must not cover what's being counted.
+        const pos = state.scaleZoneSettings?.labelPosition ?? 'top-left';
+        const { textX, textY, rectX, rectY, textAlign, textBaseline } =
+          zoneLabelLayout(pos, center, tl, br, tw, fontSize, pad, inset);
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillRect(center.x - tw / 2 - pad, center.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillRect(rectX, rectY, tw + pad * 2, fontSize + pad * 2);
         ctx.fillStyle = '#8a6d1a';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, center.x, center.y);
+        ctx.textAlign = textAlign;
+        ctx.textBaseline = textBaseline;
+        ctx.fillText(label, textX, textY);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
       }

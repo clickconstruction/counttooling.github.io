@@ -42,11 +42,13 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
       quickLine: lineType, quickLineSidebar: lineType,
       polylineBtn: lineType, polylineBtnSidebar: lineType, headerActiveLineType: lineType,
       multiplyZoneBtn: ['Multiply Zone Settings…'], multiplyZoneBtnSidebar: ['Multiply Zone Settings…'],
+      scaleZoneBtn: ['Scale Zone Settings…'], scaleZoneBtnSidebar: ['Scale Zone Settings…'],
       legendBtn: ['Legend Settings…'], legendBtnSidebar: ['Legend Settings…'],
       gridBtn: ['Grid Settings…'], gridBtnSidebar: ['Grid Settings…'],
     });
     expect(map.noSettings).not.toContain('moveBtn');
     expect(map.noSettings).not.toContain('measureBtn');
+    expect(map.noSettings).not.toContain('scaleZoneBtn');
     expect(map.noSettings).toContain('highlightBtn');
     expect(map.noSettings).toContain('hideMarksBtn');
     expect(errors).toEqual([]);

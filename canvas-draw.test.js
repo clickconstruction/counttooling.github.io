@@ -239,6 +239,60 @@ test('core: paint order is quickLines -> polylines -> highlights -> zones -> roo
   assert.ok(translates.length > 0, 'counter icon transform ran');
 });
 
+// --- scale zone label settings (scaleZoneSettings) -------------------------
+
+test('scale zone label: default sits top-left inside the zone (not center)', () => {
+  const state = makeState(); // no scaleZoneSettings -> built-in defaults
+  const draw = createCanvasDraw(makeDeps(state));
+  const ann = emptyAnn();
+  ann.scaleZones = [{ x1: 0, y1: 0, x2: 99, y2: 99, scale: { label: 'z' } }];
+  const ctx = makeCtx();
+  draw.drawAnnotationsCore(ctx, ann, makeEnv({}));
+  const label = callsOf(ctx, 'fillText').find(c => c[1] === 'z');
+  assert.ok(label, 'label drawn');
+  assert.deepStrictEqual([label[2], label[3]], [6, 6], 'anchored at the top-left inset, not zone center');
+  assert.ok(setsOf(ctx, 'textAlign').includes('left'));
+  assert.ok(setsOf(ctx, 'textBaseline').includes('top'));
+});
+
+test('scale zone label: showLabelOnZone false hides it, zone chrome still drawn', () => {
+  const state = makeState({ scaleZoneSettings: { showLabelOnZone: false, labelSize: 14, labelPosition: 'top-left' } });
+  const draw = createCanvasDraw(makeDeps(state));
+  const ann = emptyAnn();
+  ann.scaleZones = [{ x1: 0, y1: 0, x2: 99, y2: 99, scale: { label: 'z' } }];
+  const ctx = makeCtx();
+  draw.drawAnnotationsCore(ctx, ann, makeEnv({}));
+  assert.ok(!callsOf(ctx, 'fillText').some(c => c[1] === 'z'), 'label suppressed');
+  assert.ok(setsOf(ctx, 'strokeStyle').includes('#c9a227'), 'zone outline still drawn');
+});
+
+test('scale zone label: labelSize and labelPosition are honored', () => {
+  const state = makeState({ scaleZoneSettings: { showLabelOnZone: true, labelSize: 20, labelPosition: 'bottom-right' } });
+  const draw = createCanvasDraw(makeDeps(state));
+  const ann = emptyAnn();
+  ann.scaleZones = [{ x1: 0, y1: 0, x2: 99, y2: 99, scale: { label: 'z' } }];
+  const ctx = makeCtx();
+  draw.drawAnnotationsCore(ctx, ann, makeEnv({}));
+  assert.ok(setsOf(ctx, 'font').includes('20px DM Sans'), 'labelSize flows into the font');
+  const label = callsOf(ctx, 'fillText').find(c => c[1] === 'z');
+  assert.deepStrictEqual([label[2], label[3]], [93, 93], 'anchored at the bottom-right inset');
+  assert.ok(setsOf(ctx, 'textAlign').includes('right'));
+  assert.ok(setsOf(ctx, 'textBaseline').includes('bottom'));
+});
+
+test('multiply zone label placement is unchanged by the shared layout helper', () => {
+  const state = makeState(); // multiply default: center
+  const draw = createCanvasDraw(makeDeps(state));
+  const ann = emptyAnn();
+  ann.multiplyZones = [{ x1: 0, y1: 0, x2: 99, y2: 99, multiplier: 3 }];
+  const ctx = makeCtx();
+  draw.drawAnnotationsCore(ctx, ann, makeEnv({}));
+  const label = callsOf(ctx, 'fillText').find(c => c[1] === '×3');
+  assert.ok(label, 'multiplier label drawn');
+  assert.deepStrictEqual([label[2], label[3]], [49.5, 49.5], 'still centered');
+  assert.ok(setsOf(ctx, 'textAlign').includes('center'));
+});
+
 // --- drawLegend / drawGrid (previously zero-coverage regions) --------------
 
 function makePage(w, h) {

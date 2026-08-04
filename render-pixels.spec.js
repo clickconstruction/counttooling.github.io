@@ -34,6 +34,10 @@ function seedFixtureFn() {
   s.counterSettings = { size: 26, opacity: 0.9, showRings: true, numberSize: 11, ringSize: 130, ringOpacity: 0.8, ringSolid: false, outlineSize: 2, showOnlyCountersOnCurrentPage: false };
   s.lineTypeSettings = { opacity: 0.85, lineSize: 3, dropXSize: 12, dropIconStyle: 'circle', parallelEndsSize: 12, lengthLabelSize: 13, snapToHorizontalVertical: false, orientLengthWithLine: true, showOnlyLineTypesOnCurrentPage: false };
   s.multiplyZoneSettings = { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 15, labelPosition: 'center' };
+  // Pinned to the pre-scaleZoneSettings visual (center, multiply's 15px) so the
+  // committed darwin+linux baselines stay valid; the new default (top-left) is
+  // covered by canvas-draw.test.js.
+  s.scaleZoneSettings = { showLabelOnZone: true, labelSize: 15, labelPosition: 'center' };
   s.legendSettings = { legendScale: 1.2, bgColor: '#ffffff', bgOpacity: 0.95, showBorder: true, textOpacity: 1, showRooms: true };
   s.gridSettings = { spacing: 10, offsetX: 0, offsetY: 0, opacity: 0.3, color: '#e8c547', lineWidth: 1, lineStyle: 'dashed', majorInterval: 4, snapToGrid: false };
   s.showGridOverlay = true;

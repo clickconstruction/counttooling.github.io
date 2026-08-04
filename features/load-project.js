@@ -438,6 +438,7 @@
               if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
               if (d.legendSettings) state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
               if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
+              if (d.scaleZoneSettings) state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
               if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
               if (d.gridSettings) state.gridSettings = d.gridSettings;
               reconcileOrphanedCountersAndLineTypes();
@@ -483,6 +484,7 @@
         if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
         if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
         if (canvasData.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...canvasData.multiplyZoneSettings };
+        if (canvasData.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...canvasData.scaleZoneSettings };
         if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
         if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
         reconcileOrphanedCountersAndLineTypes();

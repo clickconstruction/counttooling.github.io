@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(zones): scale-zone label settings (show / size / position, default top-left)
+
+Field report (Grace): a scale zone's label — the fallback `0.23 ft/pt` when the
+zone was calibrated by two points and has no preset `scale.label` — rendered
+dead-center over the very fixtures the zone exists to count, with no way to
+hide, shrink, or move it. Scale zones had **no** label controls: always shown,
+always centered, size borrowed from `multiplyZoneSettings.labelSize`.
+
+Now: `state.scaleZoneSettings` `{ showLabelOnZone, labelSize (8–24),
+labelPosition }` mirrors the multiply-zone label settings, with the default
+position **top-left** (not center) — the zone sits over a detail drawing, so
+the resting label must not cover what's being counted. The multiply-zone
+corner/center placement math was factored into a shared `zoneLabelLayout`
+helper in canvas-draw.js used by both zone kinds (multiply's default stays
+center; its pixels are unchanged). New `features/scale-zone-settings.js` +
+`#scaleZoneSettingsModal`; the Scale Zone tool button moved out of
+tool-context-menu's no-settings toast list and right-click now opens the modal.
+The setting rides project save/load, canvas JSON export/import, the IndexedDB
+takeoff backup, and the load/copy/intake appliers alongside
+`multiplyZoneSettings`. Close re-renders via `renderAnnotations()`
+(annotation-only — no PDF re-raster). Tests: four new canvas-draw node tests
+(default top-left anchor, hide, size+position, multiply-center unchanged);
+`scale-zone-settings.spec.js`; render-pixels seeds the old visual (center,
+15px) explicitly so the committed darwin+linux baselines stay valid.
+
+---
+
 ## feat(tools): Measure right-click → Set / edit scale
 
 Measuring is where a wrong scale gets noticed, so Measure now carries the

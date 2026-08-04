@@ -973,6 +973,35 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="scaleZoneSettingsModal">
+    <div class="modal-card">
+      <h2>Scale Zone Settings</h2>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span>Show scale label on zones</span>
+        <button type="button" class="toggle-switch" id="scaleZoneSettingsShowLabelBtn" aria-pressed="true" title="Show scale label on zones">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="scaleZoneSettingsShowLabel" checked hidden>
+      </div>
+      <div class="form-group">
+        <label>Label size: <span id="scaleZoneSettingsLabelSizeVal">14</span></label>
+        <input type="range" id="scaleZoneSettingsLabelSize" min="8" max="24" value="14" step="1">
+      </div>
+      <div class="form-group">
+        <label for="scaleZoneSettingsLabelPosition">Label position</label>
+        <select id="scaleZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+          <option value="top-left">Top-left</option>
+          <option value="top-right">Top-right</option>
+          <option value="bottom-left">Bottom-left</option>
+          <option value="bottom-right">Bottom-right</option>
+          <option value="center">Center</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button id="scaleZoneSettingsClose">Done</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="gridSettingsModal">
     <div class="modal-card">
       <h2>Grid overlay</h2>
@@ -2429,6 +2458,7 @@
   <script src="/features/zoom-rail.js"></script>
   <script src="/features/manage-icons.js"></script>
   <script src="/features/multiply-zone-settings.js"></script>
+  <script src="/features/scale-zone-settings.js"></script>
   <script src="/features/export-pdfs.js"></script>
   <script src="/features/legend-settings.js"></script>
   <script src="/features/page-settings.js"></script>

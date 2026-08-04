@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-07-31 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-08-04 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 6,495 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 2,916 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 6,497 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 2,919 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
-| [canvas-draw.js](canvas-draw.js) | 766 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,477 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [canvas-draw.js](canvas-draw.js) | 775 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
+| [app/index.html](app/index.html) | 2,507 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 1,406 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 693 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
-| [annotation-model.js](annotation-model.js) | 519 | Done — extracted canvas/annotation data model + node tests. |
+| [features/load-project.js](features/load-project.js) | 695 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
+| [annotation-model.js](annotation-model.js) | 521 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 152 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 460 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (54 files) | 12,144 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (55 files) | 12,228 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -117,6 +117,8 @@ modules. Candidates in priority order:
 | [manage-icons.spec.js](manage-icons.spec.js) | Playwright regression for pilot #4 — uploads `test-2pages.pdf`, asserts `window.App.openManageIconsModal` + the 5 publish-only deps (`getOrderedIcons`/`iconVbFor`/`getUserCustomIcons`/`saveUserCustomIcons`/`showToast`) are functions, then exercises rename (set the first built-in row's input, `#manageIconsSave`, assert `state.iconNames[firstPath]`), reorder (reopen, `button[data-action="bottom"]` on the first row, Save, assert `state.iconOrder` ends with the former-first path), and custom delete (seed via `App.saveUserCustomIcons`, reopen, `#manageIconsEditToggle`, check the custom row's `.icon-select-cb`, `#manageIconsDeleteSelected`, assert `getUserCustomIcons().length === 0` and the custom section hides); asserts no console / page errors; `npx playwright test manage-icons.spec.js` |
 | [features/multiply-zone-settings.js](features/multiply-zone-settings.js) | Fifth feature-file split (`window.App` registry pilot #5) and the **first needing no new published deps** — the Multiply Zone **settings** modal (`openMultiplyZoneSettingsModal` + its `multiplyZoneSettingsShowLabelBtn`/`multiplyZoneSettingsLabelSize`/`multiplyZoneSettingsClose` handlers). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openMultiplyZoneSettingsModal`, binds the modal's toggle/slider/Close at load. Every dep (`state`, `showModal`, `hideModal`, `markProjectDirty`, `renderPdf`, `updateUI`) was already on `App`. Scope is the settings modal only — the Multiply Zone **apply** flow (X-tool draw, `multiplyZoneModal`, `getMultiplyZoneForPoint`/`...ForLine`) stays in app.js. app.js's 2 call sites (right-click on the header / sidebar Multiply Zone button) call `App.openMultiplyZoneSettingsModal()` |
 | [multiply-zone-settings.spec.js](multiply-zone-settings.spec.js) | Playwright regression for pilot #5 — uploads `test-2pages.pdf`, asserts `window.App.openMultiplyZoneSettingsModal` is a function, opens via the registry, sets `#multiplyZoneSettingsDefaultMult` to 5 + `#multiplyZoneSettingsLabelSize` to 20 (dispatching `input`, asserting `#multiplyZoneSettingsLabelSizeVal` reads `20`), clicks `#multiplyZoneSettingsShowLabelBtn` to toggle the label off, sets position to `top-left`, clicks `#multiplyZoneSettingsClose`, and asserts `state.multiplyZoneSettings` deep-equals `{ showLabelOnZone: false, defaultMultiplier: 5, labelSize: 20, labelPosition: 'top-left' }` with no console / page errors; `npx playwright test multiply-zone-settings.spec.js` |
+| [features/scale-zone-settings.js](features/scale-zone-settings.js) | The Scale Zone **settings** modal — sibling of [features/multiply-zone-settings.js](features/multiply-zone-settings.js), born from a field report (the zone's fallback `0.23 ft/pt` label rendered dead-center over the fixtures being counted; scale zones previously had **no** label controls — always shown, centered, size borrowed from `multiplyZoneSettings`). Registers `App.openScaleZoneSettingsModal` (called from the Scale Zone toolbar/sidebar right-click via [features/tool-context-menu.js](features/tool-context-menu.js) — the button moved OUT of that file's no-settings toast list); binds the `#scaleZoneSettings*` toggle/slider/Close at load. Commits `state.scaleZoneSettings` `{ showLabelOnZone, labelSize (8–24), labelPosition }` — default position **top-left** — consumed by the scale-zone block in [canvas-draw.js](canvas-draw.js) (which also factors the shared `zoneLabelLayout` corner/center placement helper used by both zone kinds). Setting rides save/load + export/import + the IndexedDB backup alongside `multiplyZoneSettings`. Zero new published deps (close re-renders via `App.renderAnnotations` — annotation-only, no re-raster) |
+| [scale-zone-settings.spec.js](scale-zone-settings.spec.js) | Playwright regression for the Scale Zone settings modal — uploads `test-2pages.pdf`, asserts `App.openScaleZoneSettingsModal` is registered and `App.__toolContextMap()` lists `scaleZoneBtn: ['Scale Zone Settings…']` (and NOT in `noSettings`), asserts the state defaults `{ showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' }`, opens via the registry, sets size 10 (live `#scaleZoneSettingsLabelSizeVal` check), toggles the label off, sets position `bottom-right`, closes, and asserts the committed `state.scaleZoneSettings`; no console / page errors; `npx playwright test scale-zone-settings.spec.js` |
 | [features/export-pdfs.js](features/export-pdfs.js) | Sixth feature-file split (`window.App` registry pilot #6) and the **largest single move so far** (the ~250-line `specificPages*` cluster, 9 publish-only deps). The Export PDFs modal — the two module-locals `specificPagesSelections`/`specificPagesCanvasMode`, `openSpecificPagesModal`, `updateSpecificPagesCanvasModeVisibility`/`updateSpecificPagesDownloadState`/`updateSpecificPagesNavState`, `setAllSpecificPagesTo`/`setAllSpecificPagesToMarkedWithAllCanvases`, `downloadSpecificPages`, and all `#specificPages*` button/scroll/nav bindings. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openSpecificPagesModal`, and binds `#specificPages.onclick = openSpecificPagesModal` plus the rest at load. **Interleaved move**: the shared PDF-download helpers (`sanitizeForFilename`/`downloadPdfBuffer`/`downloadProjectPdf`) and the "Copy to PipeTooling" dropdown toggle sat in the middle of the old section and **stay** in app.js. 9 publish-only deps stay defined in app.js (`getPageCanvases`, `renderAnnotationsToContext`, `addReportPagesToPdf`, `addHighlightsToPdf`, `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`, `logUserEvent`) and are read via `App.*`. The Escape-key `hideModal('specificPagesModal')` branch is modal-string-only and stays |
 | [export-pdfs.spec.js](export-pdfs.spec.js) | Playwright regression for pilot #6 — uploads `test-2pages.pdf`, asserts `window.App.openSpecificPagesModal` + the 9 publish-only deps are functions, opens via the registry (asserts 2 `.specific-page-card`), exercises bulk select (`#specificPagesAllExclude` → `#specificPagesDownload` disabled; `#specificPagesAllMarked` → enabled), the marker-scale slider (set `#specificPagesMarkerScale` to 125 + dispatch `input`, assert `#specificPagesMarkerScaleVal` reads `125`), and `#specificPagesCancel` closing the modal; asserts no console / page errors. Behavior-neutral — deliberately does **not** click Download (real jsPDF render + save is covered by the manual smoke); `npx playwright test export-pdfs.spec.js` |
 | [features/legend-settings.js](features/legend-settings.js) | Seventh feature-file split (`window.App` registry pilot #7) and the **lowest-risk move so far** — the Summary Legend **settings** modal (`openLegendSettingsModal` + its `legendSettingsClose` and 8 live appearance handlers `legendBgOpacity`/`legendBgColor`/`legendShowBorder(Btn)`/`legendScale`/`legendShowResizeHighlight(Btn)`/`legendTextOpacity`, plus the `#summarySectionTitle` opener). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openLegendSettingsModal`, binds the close/handlers/opener at load. **Second zero-new-dep move** — every dep (`state`, `showModal`, `hideModal`, `renderPdf`) was already on `App`. Each handler mutates `state.legendSettings` then calls `App.renderPdf()` (live). Scope is the settings modal only — the on-canvas legend overlay (`drawLegend`, the `legendBtn`/`legendBtnSidebar` toggles), the Summary section **collapse** icon (`#summaryCollapseIcon`, a different element — its toggle stays), and every `state.legendSettings` save/load/import site stay in app.js. The moved opener keeps its `closest('#summaryCollapseIcon')` guard |
@@ -495,68 +497,68 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L82 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L126 - ICONS array lives in icons.js (see icon-data note above).
 - L174 - State
-- L331 - [sync] Sync recovery & client recycle
-- L412 - [sync] Global force reload
-- L493 - [sync] Save Status log & envelope
-- L496 - [sync] Field-error telemetry
-- L555 - [sync] Dirty tracking & local session reset
-- L561 - Undo/redo stacks
-- L690 - [sync] Checkout probe, hashing & PDF cache
-- L752 - Math & Format Helpers
-- L1158 - Coordinate Helpers
-- L1166 - PDF render bitmap cache
-- L1220 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1231 - PDF Rendering
-- L1914 - UI Render Functions
-- L2460 - Inline rename & polyline edit mode
-- L2574 - Modal primitives (showModal / hideModal)
-- L2595 - Toasts & line color picker
-- L2649 - Airboard cloud sync
-- L2691 - Supabase RPC & presence heartbeat
-- L2731 - User activity / event telemetry
-- L2774 - Supabase auth & dev auth
-- L2906 - [sync] Checkout subscription & permission refresh
-- L2916 - Modals & Handlers
-- L2984 - PDF intake (upload, test PDF, hashing)
-- L2992 - Toolbar tool buttons
-- L3105 - Tool sidebar buttons & legend overlay
-- L3195 - Add Line Type modal
-- L3265 - Line color & sidebar handlers
-- L3407 - Polyline modal & drawing
-- L3438 - Zoom bar & page navigation
-- L3464 - Export canvas JSON
-- L3480 - PDF download helpers
-- L3489 - View-link URL helpers & show-highlights/notes
-- L3561 - Custom icon upload handler
-- L3571 - Export & report dropdown menus
-- L3660 - Sidebar drawer toggles
-- L3671 - Mobile actions burger menu pointer & header logo
-- L3683 - User Activity pointer (format.js + features/user-activity.js)
-- L3695 - My Settings pointer (features/my-settings.js)
-- L3718 - Auth & settings entry buttons
-  - L3763 - Project Settings checkout & Save Status bell
-  - L3864 - [sync] Checkout expired recovery
-  - L3920 - [sync] Turn In
-  - L4022 - Share modal pointer & copy-project openers
-  - L4053 - Settings menu actions
-  - L4074 - Auth sign-in form
-  - L4098 - Save Project modal
-  - L4111 - Checkout expired recovery modal wiring
-  - L4216 - Last-session restore prompt
-  - L4223 - Canvas Repair modal wiring
-- L4376 - Canvas Event Handlers
-- L4766 - Event Binding
-- L4776 - Aim loupe (mobile press-hold precise placement)
-- L4915 - Zoom transform preview & commit
-- L4994 - Canvas mouse, wheel & touch handlers
-- L5655 - Global dropdown dismissal & keyboard hotkeys
-- L5916 - [sync] Manual save to cloud
-- L5926 - [sync] Auto-save
-- L5933 - [sync] Local backup (IndexedDB takeoff state)
-- L6066 - [sync] Checkout keep-alive
-- L6080 - App feature registry
-- L6318 - View-only mode
-- L6324 - Init / boot
+- L332 - [sync] Sync recovery & client recycle
+- L413 - [sync] Global force reload
+- L494 - [sync] Save Status log & envelope
+- L497 - [sync] Field-error telemetry
+- L556 - [sync] Dirty tracking & local session reset
+- L562 - Undo/redo stacks
+- L691 - [sync] Checkout probe, hashing & PDF cache
+- L753 - Math & Format Helpers
+- L1159 - Coordinate Helpers
+- L1167 - PDF render bitmap cache
+- L1221 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1232 - PDF Rendering
+- L1915 - UI Render Functions
+- L2461 - Inline rename & polyline edit mode
+- L2575 - Modal primitives (showModal / hideModal)
+- L2596 - Toasts & line color picker
+- L2650 - Airboard cloud sync
+- L2692 - Supabase RPC & presence heartbeat
+- L2732 - User activity / event telemetry
+- L2775 - Supabase auth & dev auth
+- L2907 - [sync] Checkout subscription & permission refresh
+- L2917 - Modals & Handlers
+- L2985 - PDF intake (upload, test PDF, hashing)
+- L2993 - Toolbar tool buttons
+- L3106 - Tool sidebar buttons & legend overlay
+- L3196 - Add Line Type modal
+- L3266 - Line color & sidebar handlers
+- L3408 - Polyline modal & drawing
+- L3439 - Zoom bar & page navigation
+- L3465 - Export canvas JSON
+- L3481 - PDF download helpers
+- L3490 - View-link URL helpers & show-highlights/notes
+- L3562 - Custom icon upload handler
+- L3572 - Export & report dropdown menus
+- L3661 - Sidebar drawer toggles
+- L3672 - Mobile actions burger menu pointer & header logo
+- L3684 - User Activity pointer (format.js + features/user-activity.js)
+- L3696 - My Settings pointer (features/my-settings.js)
+- L3719 - Auth & settings entry buttons
+  - L3764 - Project Settings checkout & Save Status bell
+  - L3865 - [sync] Checkout expired recovery
+  - L3921 - [sync] Turn In
+  - L4023 - Share modal pointer & copy-project openers
+  - L4054 - Settings menu actions
+  - L4075 - Auth sign-in form
+  - L4099 - Save Project modal
+  - L4112 - Checkout expired recovery modal wiring
+  - L4217 - Last-session restore prompt
+  - L4224 - Canvas Repair modal wiring
+- L4377 - Canvas Event Handlers
+- L4767 - Event Binding
+- L4777 - Aim loupe (mobile press-hold precise placement)
+- L4916 - Zoom transform preview & commit
+- L4995 - Canvas mouse, wheel & touch handlers
+- L5656 - Global dropdown dismissal & keyboard hotkeys
+- L5918 - [sync] Manual save to cloud
+- L5928 - [sync] Auto-save
+- L5935 - [sync] Local backup (IndexedDB takeoff state)
+- L6068 - [sync] Checkout keep-alive
+- L6082 - App feature registry
+- L6320 - View-only mode
+- L6326 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -953,6 +955,12 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Scale Zone tool** — two-click rectangle with a per-zone `scale`; lines fully
   inside use `getEffectiveScaleForLine`; requires page scale; no overlap; context
   menu Edit scale / Delete; toolbar icon is the Set Scale glyph rotated 180.
+  The on-zone scale label (the zone's `scale.label`, else the `N unit/pt`
+  fallback) is governed by `state.scaleZoneSettings` (show/hide, size 8–24,
+  position — default **top-left**, deliberately not center, so the resting label
+  never covers the detail being counted); settings modal via right-click on the
+  toolbar icon ([features/scale-zone-settings.js](features/scale-zone-settings.js)).
+  Rides save/load + export/import alongside `multiplyZoneSettings`.
 - **Delete Zone tool** — two-click rectangle; confirmation modal with counts;
   deletes counters/lines/polylines/highlights/notes/zones whose anchor falls in the
   rect; hidden for viewers.

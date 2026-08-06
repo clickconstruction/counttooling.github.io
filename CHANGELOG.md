@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(ui): popovers can no longer open off-screen (shared viewport clamp)
+
+Field report: right-clicking a line at the bottom of the screen opened the
+canvas context menu half below the viewport — Delete unreachable.
+`showContextMenu` placed the menu at the raw pointer coordinates, and most of
+the other fixed popovers used hand-rolled partial clamps or hardcoded height
+estimates (`menuHeight = 120`). One shared path now: the pure
+`clampMenuPosition(left, top, w, h, vw, vh, pad=8)` in geometry.js (unit
+tested, including the oversize pin-to-pad case) behind
+`placeFixedMenu(el, left, top)` in app.js (published as `App.placeFixedMenu`;
+callers show the menu parked at left:-9999px, then place the measured box).
+Routed through it: `#contextMenu` (the reported bug — a bottom/right-edge
+mark now pulls the menu up/left), the header `#exportDropdownMenu` +
+`#showReportMenu`, features/output.js's three menus (Copy-to-/Tooling and
+Copy Summary drop-ups + Download, now using measured heights/widths instead
+of estimates), and the canvas layers + peek menus (features/canvas-layers.js,
+replacing their inline clamps). tool-context-menu keeps its own
+flip-then-clamp (already safe). New menu-clamp.spec.js drives a REAL
+right-click on a line seeded at the canvas bottom of a short viewport and
+asserts the menu's rect sits fully inside the viewport.
+
 ## feat(tools): Measure right-click → Set / edit scale
 
 Measuring is where a wrong scale gets noticed, so Measure now carries the

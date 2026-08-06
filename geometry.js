@@ -122,6 +122,18 @@
     const bMinY = Math.min(by1, by2), bMaxY = Math.max(by1, by2);
     return aMinX <= bMaxX && aMaxX >= bMinX && aMinY <= bMaxY && aMaxY >= bMinY;
   }
+  // Clamp a fixed-position popover so a w×h menu whose top-left wants to sit at
+  // (left, top) stays fully inside the vw×vh viewport with `pad` px of margin.
+  // A menu larger than the viewport pins to the pad edge (top/left wins) so its
+  // first items stay reachable. Pure core behind App.placeFixedMenu — every
+  // popover (canvas context menu, export drop-downs/drop-ups, layer menus)
+  // routes its coordinates through here so nothing can open off-screen.
+  function clampMenuPosition(left, top, w, h, vw, vh, pad = 8) {
+    return {
+      left: Math.max(pad, Math.min(left, vw - w - pad)),
+      top: Math.max(pad, Math.min(top, vh - h - pad)),
+    };
+  }
 
   // Zone locators (operate on a passed-in annotation object)
   function getMultiplyZoneForPoint(ann, p) {
@@ -404,7 +416,7 @@
     module.exports = {
       ptDist, snapLineToAngle, polylineDistance, polygonArea, distToSegment,
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
-      rotatePoint90CW, pointInRect, rectsOverlap,
+      rotatePoint90CW, pointInRect, rectsOverlap, clampMenuPosition,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
       formatLineLengthRealSum, formatFeet, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,

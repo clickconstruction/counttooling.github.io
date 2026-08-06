@@ -2573,6 +2573,15 @@
   }
 
   // SECTION: Modal primitives (showModal / hideModal)
+  // Clamp-and-place a position:fixed popover: measure the (already-visible)
+  // menu and route the desired top-left through the pure clampMenuPosition
+  // (geometry.js) so it can never open off-screen. Callers show the menu
+  // first (parked at left:-9999px so there's no flicker), then place it.
+  function placeFixedMenu(el, left, top) {
+    const p = clampMenuPosition(left, top, el.offsetWidth, el.offsetHeight, window.innerWidth, window.innerHeight);
+    el.style.left = p.left + 'px';
+    el.style.top = p.top + 'px';
+  }
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) {
     if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
@@ -3587,13 +3596,12 @@
       if (exportDropdownMenu.classList.contains('visible')) {
         exportDropdownMenu.classList.remove('visible');
       } else {
-        exportDropdownMenu.style.left = '';
+        exportDropdownMenu.style.left = '-9999px';
         exportDropdownMenu.style.right = '';
         exportDropdownMenu.classList.add('visible');
         const btnRect = exportDropdownBtn.getBoundingClientRect();
         exportDropdownMenu.style.position = 'fixed';
-        exportDropdownMenu.style.left = (btnRect.right - 220) + 'px';
-        exportDropdownMenu.style.top = (btnRect.bottom + 4) + 'px';
+        placeFixedMenu(exportDropdownMenu, btnRect.right - 220, btnRect.bottom + 4);
       }
     };
   }
@@ -3622,14 +3630,13 @@
         showReportMenu.classList.remove('visible');
         if (showReportDropdown && showReportMenu.parentElement !== showReportDropdown) showReportDropdown.appendChild(showReportMenu);
       } else {
-        showReportMenu.style.left = '';
+        showReportMenu.style.left = '-9999px';
         showReportMenu.style.right = '';
         showReportMenu.classList.add('visible');
         const btnRect = printReportBtn.getBoundingClientRect();
         showReportMenu.style.position = 'fixed';
-        showReportMenu.style.left = btnRect.left + 'px';
-        showReportMenu.style.top = (btnRect.bottom + 4) + 'px';
         showReportMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        placeFixedMenu(showReportMenu, btnRect.left, btnRect.bottom + 4);
         const isMobile = window.matchMedia('(max-width: 768px)').matches;
         if (isMobile && showReportMenu.parentElement !== document.body) document.body.appendChild(showReportMenu);
       }
@@ -4428,9 +4435,13 @@
         nameRow.setAttribute('aria-hidden', 'true');
       }
     }
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
+    // Show off-screen first, then clamp-place: a mark near the viewport's
+    // bottom/right edge must not push the menu off-screen (field report:
+    // Delete unreachable when right-clicking a line at the bottom of a count).
+    menu.style.left = '-9999px';
+    menu.style.top = '0px';
     menu.classList.add('visible');
+    placeFixedMenu(menu, x, y);
   }
 
   // Commit one Quick Line point (start, then end). Shared by the desktop click path,
@@ -6097,6 +6108,7 @@
   App.markProjectDirty = markProjectDirty;
   App.showModal = showModal;
   App.hideModal = hideModal;
+  App.placeFixedMenu = placeFixedMenu;
   App.renderPdf = renderPdf;
   App.updateUI = updateUI;
   // showLineColorModal / pushRecentColor / setupCreateColorPicker are

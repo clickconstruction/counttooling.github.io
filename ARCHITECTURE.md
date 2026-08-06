@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-08-04 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-08-06 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,7 +28,7 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 6,497 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 6,509 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,919 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 775 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
@@ -66,9 +66,10 @@ modules. Candidates in priority order:
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals **CUSTOM_ICONS moved out** to [icons-custom.js](icons-custom.js) (generated; loads right after this file) |
 | [icons-custom.js](icons-custom.js) | **The GENERATED bundled custom-icon data** — the `CUSTOM_ICONS` array (79KB, `{value, viewBox, name}` literals sourced from `my-counters/*.svg`). `npm run build:icons` ([scripts/build-custom-icons.js](scripts/build-custom-icons.js)) overwrites the file wholesale — no more paste-into-icons.js step, and regenerations stop churning the 246KB icons.js. Classic `<script src>` loaded between [icons.js](icons.js) and [icon-render.js](icon-render.js) (which builds `CUSTOM_ICON_META` from `CUSTOM_ICONS` at parse time — the load-order constraint). Guarded CommonJS footer for the Node tests + the eslint derived-globals wiring |
-| [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
+| [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, `clampMenuPosition` (the popover viewport clamp behind `App.placeFixedMenu`), the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
 | [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ; plus the one pure helper `nextRecentColors(list, color, presets)` + its `RECENT_COLORS_MAX` cap (the recent-color list update shared by the create pickers and the edit color picker); classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in app.js); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js) |
 | [geometry.test.js](geometry.test.js) | Node `node:test` + `node:assert` unit tests for the [geometry.js](geometry.js) primitives; run with `npm run test:unit` (no deps). Naming split: `*.test.js` = Node unit tests, `*.spec.js` = Playwright (see `testMatch` in [playwright.config.js](playwright.config.js)) |
+| [menu-clamp.spec.js](menu-clamp.spec.js) | Playwright regression for popover viewport clamping (`App.placeFixedMenu` → the pure `clampMenuPosition`) — on a short viewport, a REAL right-click on a quick line seeded ~20 CSS px above the canvas bottom opens `#contextMenu` fully on-screen (pulled up above the pointer, `#ctxTargetNameRow` intact — the field-reported off-screen-Delete case), and the footer Copy-to-/Tooling drop-up opens with measured height inside the viewport. `npx playwright test menu-clamp.spec.js` |
 | [constants.test.js](constants.test.js) | Node `node:test` invariant tests for [constants.js](constants.js) (backoff arrays increasing & positive, timings/caps > 0, unique enum ids, valid hex colors, positive scale presets); run with `npm run test:unit` |
 | [report.js](report.js) | Loads after app.js. Print report, Summary, `getPipeToolingSummary(options)`, `getEmailTextSummary(options)` (both accept `{ pageIndices, getAnnotations }`); `escapeHtml`; consumes globals exposed by app.js via `window.*`. Its `window.*` attachment is guarded by `typeof window` and it has a guarded CommonJS export footer (`escapeHtml`, `pickScaleForLineType`) — both inert in the browser — so those pure helpers can be `require()`d by [report.test.js](report.test.js) |
 | [report.test.js](report.test.js) | Node `node:test` unit tests for [report.js](report.js)'s pure helpers — `escapeHtml` (null/undefined → `''`, entity escaping, `&`-first ordering, `String()` coercion) and `pickScaleForLineType` (preferred-unit selection via a `global.state` stub); run with `npm run test:unit` |
@@ -512,53 +513,53 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1915 - UI Render Functions
 - L2461 - Inline rename & polyline edit mode
 - L2575 - Modal primitives (showModal / hideModal)
-- L2596 - Toasts & line color picker
-- L2650 - Airboard cloud sync
-- L2692 - Supabase RPC & presence heartbeat
-- L2732 - User activity / event telemetry
-- L2775 - Supabase auth & dev auth
-- L2907 - [sync] Checkout subscription & permission refresh
-- L2917 - Modals & Handlers
-- L2985 - PDF intake (upload, test PDF, hashing)
-- L2993 - Toolbar tool buttons
-- L3106 - Tool sidebar buttons & legend overlay
-- L3196 - Add Line Type modal
-- L3266 - Line color & sidebar handlers
-- L3408 - Polyline modal & drawing
-- L3439 - Zoom bar & page navigation
-- L3465 - Export canvas JSON
-- L3481 - PDF download helpers
-- L3490 - View-link URL helpers & show-highlights/notes
-- L3562 - Custom icon upload handler
-- L3572 - Export & report dropdown menus
-- L3661 - Sidebar drawer toggles
-- L3672 - Mobile actions burger menu pointer & header logo
-- L3684 - User Activity pointer (format.js + features/user-activity.js)
-- L3696 - My Settings pointer (features/my-settings.js)
-- L3719 - Auth & settings entry buttons
-  - L3764 - Project Settings checkout & Save Status bell
-  - L3865 - [sync] Checkout expired recovery
-  - L3921 - [sync] Turn In
-  - L4023 - Share modal pointer & copy-project openers
-  - L4054 - Settings menu actions
-  - L4075 - Auth sign-in form
-  - L4099 - Save Project modal
-  - L4112 - Checkout expired recovery modal wiring
-  - L4217 - Last-session restore prompt
-  - L4224 - Canvas Repair modal wiring
-- L4377 - Canvas Event Handlers
-- L4767 - Event Binding
-- L4777 - Aim loupe (mobile press-hold precise placement)
-- L4916 - Zoom transform preview & commit
-- L4995 - Canvas mouse, wheel & touch handlers
-- L5656 - Global dropdown dismissal & keyboard hotkeys
-- L5918 - [sync] Manual save to cloud
-- L5928 - [sync] Auto-save
-- L5935 - [sync] Local backup (IndexedDB takeoff state)
-- L6068 - [sync] Checkout keep-alive
-- L6082 - App feature registry
-- L6320 - View-only mode
-- L6326 - Init / boot
+- L2605 - Toasts & line color picker
+- L2659 - Airboard cloud sync
+- L2701 - Supabase RPC & presence heartbeat
+- L2741 - User activity / event telemetry
+- L2784 - Supabase auth & dev auth
+- L2916 - [sync] Checkout subscription & permission refresh
+- L2926 - Modals & Handlers
+- L2994 - PDF intake (upload, test PDF, hashing)
+- L3002 - Toolbar tool buttons
+- L3115 - Tool sidebar buttons & legend overlay
+- L3205 - Add Line Type modal
+- L3275 - Line color & sidebar handlers
+- L3417 - Polyline modal & drawing
+- L3448 - Zoom bar & page navigation
+- L3474 - Export canvas JSON
+- L3490 - PDF download helpers
+- L3499 - View-link URL helpers & show-highlights/notes
+- L3571 - Custom icon upload handler
+- L3581 - Export & report dropdown menus
+- L3668 - Sidebar drawer toggles
+- L3679 - Mobile actions burger menu pointer & header logo
+- L3691 - User Activity pointer (format.js + features/user-activity.js)
+- L3703 - My Settings pointer (features/my-settings.js)
+- L3726 - Auth & settings entry buttons
+  - L3771 - Project Settings checkout & Save Status bell
+  - L3872 - [sync] Checkout expired recovery
+  - L3928 - [sync] Turn In
+  - L4030 - Share modal pointer & copy-project openers
+  - L4061 - Settings menu actions
+  - L4082 - Auth sign-in form
+  - L4106 - Save Project modal
+  - L4119 - Checkout expired recovery modal wiring
+  - L4224 - Last-session restore prompt
+  - L4231 - Canvas Repair modal wiring
+- L4384 - Canvas Event Handlers
+- L4778 - Event Binding
+- L4788 - Aim loupe (mobile press-hold precise placement)
+- L4927 - Zoom transform preview & commit
+- L5006 - Canvas mouse, wheel & touch handlers
+- L5667 - Global dropdown dismissal & keyboard hotkeys
+- L5929 - [sync] Manual save to cloud
+- L5939 - [sync] Auto-save
+- L5946 - [sync] Local backup (IndexedDB takeoff state)
+- L6079 - [sync] Checkout keep-alive
+- L6093 - App feature registry
+- L6332 - View-only mode
+- L6338 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -1165,6 +1166,14 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Canvas context menu** — `#contextMenu` on right-click / long-press;
   `handleContextMenu` -> `hitTest` -> `state.ctxTarget`; `#ctxTargetNameRow` shows
   the counter/line-type name below Delete; not available in view mode.
+  **Viewport-clamped** via `placeFixedMenu(el, left, top)` (app.js, published as
+  `App.placeFixedMenu`; pure core `clampMenuPosition` in geometry.js) — a mark
+  near the bottom/right edge pulls the menu up/left instead of opening
+  off-screen. The same helper places every fixed popover: the header
+  export/report drop-downs, the footer Copy-to-/Tooling / Copy Summary
+  drop-ups and Download menu (measured heights, not the old 120px estimate),
+  and the canvas layers/peek menus. Regression:
+  [menu-clamp.spec.js](menu-clamp.spec.js).
 - **Hotkeys** — M/S/C/L/J/P/D/H/X/N/R; Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows:
   Left/Right page nav (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z /
   Ctrl+Shift+Z; Ctrl+R refresh; ignored while focus is in an input/textarea.

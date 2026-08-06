@@ -110,6 +110,23 @@ test('rectsOverlap', () => {
   assert.strictEqual(g.rectsOverlap(0, 0, 10, 10, 10, 10, 20, 20), true); // touching corner
 });
 
+test('clampMenuPosition keeps a fixed popover inside the viewport', () => {
+  // Fits at the desired point -> unchanged.
+  assert.deepStrictEqual(g.clampMenuPosition(100, 100, 200, 150, 1280, 800), { left: 100, top: 100 });
+  // Overflows the bottom (the reported case: context menu on a mark near the
+  // bottom edge) -> pulled up to vh - h - pad.
+  assert.deepStrictEqual(g.clampMenuPosition(100, 700, 200, 150, 1280, 800), { left: 100, top: 642 });
+  // Overflows the right -> pulled left.
+  assert.deepStrictEqual(g.clampMenuPosition(1200, 100, 200, 150, 1280, 800), { left: 1072, top: 100 });
+  // Negative desired point -> clamped to the pad.
+  assert.deepStrictEqual(g.clampMenuPosition(-50, -50, 200, 150, 1280, 800), { left: 8, top: 8 });
+  // Larger than the viewport -> pins to the pad edge (top-left wins) so the
+  // first items stay reachable.
+  assert.deepStrictEqual(g.clampMenuPosition(100, 100, 2000, 1000, 1280, 800), { left: 8, top: 8 });
+  // Custom pad honored.
+  assert.deepStrictEqual(g.clampMenuPosition(0, 0, 100, 100, 500, 500, 20), { left: 20, top: 20 });
+});
+
 test('getMultiplyZoneForPoint', () => {
   const ann = { multiplyZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, multiplier: 4 }] };
   assert.strictEqual(g.getMultiplyZoneForPoint(ann, { x: 5, y: 5 }), 4);

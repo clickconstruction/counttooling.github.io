@@ -188,15 +188,15 @@
         if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
       } else {
         prefetchExportViewLink();
-        forPipeToolingMenu.style.left = '';
+        forPipeToolingMenu.style.left = '-9999px';
         forPipeToolingMenu.style.right = '';
         forPipeToolingMenu.classList.add('visible');
         const btnRect = forPipeToolingBtn.getBoundingClientRect();
         forPipeToolingMenu.style.position = 'fixed';
-        forPipeToolingMenu.style.left = btnRect.left + 'px';
-        const menuHeight = 120;
-        forPipeToolingMenu.style.top = Math.max(8, btnRect.top - menuHeight - 4) + 'px';
         forPipeToolingMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        // Drop-up anchored to the button, measured (not estimated) height,
+        // viewport-clamped via the shared helper.
+        App.placeFixedMenu(forPipeToolingMenu, btnRect.left, btnRect.top - forPipeToolingMenu.offsetHeight - 4);
         const isMobile = window.matchMedia('(max-width: 768px)').matches;
         if (isMobile && forPipeToolingMenu.parentElement !== document.body) document.body.appendChild(forPipeToolingMenu);
       }
@@ -226,19 +226,20 @@
         copySummaryTextMenu.classList.remove('visible');
         if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
       } else {
-        copySummaryTextMenu.style.left = '';
+        copySummaryTextMenu.style.left = '-9999px';
         copySummaryTextMenu.style.right = '';
         copySummaryTextMenu.classList.add('visible');
         const btnRect = copySummaryTextBtn.getBoundingClientRect();
         copySummaryTextMenu.style.position = 'fixed';
-        copySummaryTextMenu.style.left = btnRect.left + 'px';
-        const menuHeight = 120;
+        copySummaryTextMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        // Below the button when it fits (measured, not estimated), else above;
+        // either way viewport-clamped via the shared helper.
+        const menuHeight = copySummaryTextMenu.offsetHeight;
         const spaceBelow = window.innerHeight - (btnRect.bottom + 4);
         const top = spaceBelow < menuHeight
-          ? Math.max(8, btnRect.top - menuHeight - 4)
+          ? btnRect.top - menuHeight - 4
           : (btnRect.bottom + 4);
-        copySummaryTextMenu.style.top = top + 'px';
-        copySummaryTextMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        App.placeFixedMenu(copySummaryTextMenu, btnRect.left, top);
         const isMobile = window.matchMedia('(max-width: 768px)').matches;
         if (isMobile && copySummaryTextMenu.parentElement !== document.body) document.body.appendChild(copySummaryTextMenu);
       }
@@ -419,13 +420,13 @@
         if (downloadCurrentPageMenu.classList.contains('visible')) {
           downloadCurrentPageMenu.classList.remove('visible');
         } else {
-          downloadCurrentPageMenu.style.left = '';
+          downloadCurrentPageMenu.style.left = '-9999px';
           downloadCurrentPageMenu.style.right = '';
           downloadCurrentPageMenu.classList.add('visible');
           const btnRect = downloadCurrentPageBtn.getBoundingClientRect();
           downloadCurrentPageMenu.style.position = 'fixed';
-          downloadCurrentPageMenu.style.left = (btnRect.right - 300) + 'px';
-          downloadCurrentPageMenu.style.top = (btnRect.bottom + 4) + 'px';
+          // Right-aligned to the button (measured width), viewport-clamped.
+          App.placeFixedMenu(downloadCurrentPageMenu, btnRect.right - downloadCurrentPageMenu.offsetWidth, btnRect.bottom + 4);
         }
       }
     };

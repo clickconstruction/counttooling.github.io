@@ -240,12 +240,12 @@
     peekMenuPageIdx = state.currentPage;
     renderCanvasPeekMenu();
     if (!menu.childNodes.length) return;
-    // Above the button, like the layers menu (footer anchor).
+    // Above the button, like the layers menu (footer anchor); viewport-clamped
+    // via the shared helper.
     menu.style.left = '-9999px';
     menu.classList.add('visible');
     const btnRect = btn.getBoundingClientRect();
-    menu.style.left = Math.max(4, Math.min(btnRect.left, window.innerWidth - menu.offsetWidth - 4)) + 'px';
-    menu.style.top = Math.max(8, btnRect.top - menu.offsetHeight - 4) + 'px';
+    App.placeFixedMenu(menu, btnRect.left, btnRect.top - menu.offsetHeight - 4);
     document.addEventListener('pointerdown', onPeekDocPointerDown, true);
     document.addEventListener('keydown', onPeekDocKeyDown, true);
     window.addEventListener('resize', hideCanvasPeekMenu);
@@ -347,8 +347,7 @@
       canvasMenu.style.left = '-9999px';
       canvasMenu.classList.add('visible');
       const btnRect = canvasLayersBtn.getBoundingClientRect();
-      canvasMenu.style.left = btnRect.left + 'px';
-      canvasMenu.style.top = Math.max(8, btnRect.top - canvasMenu.offsetHeight - 4) + 'px';
+      App.placeFixedMenu(canvasMenu, btnRect.left, btnRect.top - canvasMenu.offsetHeight - 4);
     });
   }
   if (canvasMenuAdd && canvasMenu) {

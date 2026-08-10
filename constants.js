@@ -130,6 +130,13 @@ const PDF_CACHE_MAX_ENTRIES = 10;
 const PDF_CACHE_MAX_BYTES = 500 * 1024 * 1024;
 const TAKEOFF_BACKUP_MAX_ENTRIES = 5;
 const TAKEOFF_BACKUP_MAX_BYTES = 200 * 1024 * 1024;
+// The boot key-aside record: a promptable 'local' takeoff backup is moved to
+// this key before anything can make the backup writer's guard pass, so no
+// post-boot write can clobber it while the "Project from Last Session"
+// Keep/Discard prompt is unresolved. Same takeoff_backup store, just another
+// record key — no IDB schema/version change. Consumed on Keep/Discard (or by
+// the same-PDF re-upload re-apply in features/pdf-intake.js).
+const TAKEOFF_BACKUP_HELD_ID = 'local-held';
 const SAVE_LOGS_SNAPSHOT_MAX_ENTRIES = 10;
 const CUSTOM_ICONS_KEY = 'user';
 
@@ -168,6 +175,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TAKEOFF_BACKUP_STORE, TAKEOFF_BACKUP_META_STORE, CUSTOM_ICONS_STORE, SAVE_LOGS_SNAPSHOT_STORE,
     PDF_UPLOAD_RESUME_STORE, ZOOM_RUNGS_STORE, ZOOM_RUNGS_MAX_PER_DOC, ZOOM_RUNGS_MAX_BYTES,
     PDF_CACHE_MAX_ENTRIES, PDF_CACHE_MAX_BYTES, TAKEOFF_BACKUP_MAX_ENTRIES, TAKEOFF_BACKUP_MAX_BYTES,
+    TAKEOFF_BACKUP_HELD_ID,
     SAVE_LOGS_SNAPSHOT_MAX_ENTRIES, CUSTOM_ICONS_KEY,
     PDF_MAX_SIZE_BYTES, LOAD_TEST_PDF_URL, USER_ACTIVITY_TZ,
     PDF_UPLOAD_TIMEOUT_BASE_MS, PDF_UPLOAD_ASSUMED_BPS, PDF_UPLOAD_TIMEOUT_SLACK_MS,

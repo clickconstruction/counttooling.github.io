@@ -214,6 +214,11 @@
     pdfBufferSize: 0,
     pdfStoragePath: null,
     pdfHash: null,
+    // In-memory only: hash of a locally-uploaded (never-saved) PDF, stamped by
+    // features/pdf-intake.js. NOT state.pdfHash, which carries cloud-PDF
+    // semantics through the save/upload ladder. Rides signed-out IndexedDB
+    // backups so the same-PDF re-upload re-apply can hash-verify the match.
+    localPdfHash: null,
     lastSavedAt: null,
     pendingCanvasLoad: null,
     checkedOutBy: null,
@@ -453,6 +458,9 @@
     setCheckoutExpiredAttention: () => { checkoutExpiredNeedsAttention = true; suspendAutoSaveUntilCheckout = true; },
     suspendAutoSave: () => { suspendAutoSaveUntilCheckout = true; },
     isAuthError: (e) => isAuthError(e),
+    // T1-01 clobber guard: deferred App.* lookup (features/restore-last-session.js
+    // registers after app.js, per the registry load-order rule).
+    isRestorePromptPending: () => !!(window.App && window.App.isRestorePromptPending && window.App.isRestorePromptPending()),
     // Stage 6 (save paths): render-core / feature hooks the engine's save
     // blobs and export envelope need; lastSaveIncludedPdf stays app-side
     // (the load paths write it).
@@ -606,6 +614,7 @@
     state.pdfBufferSize = 0;
     state.pdfStoragePath = null;
     state.pdfHash = null;
+    state.localPdfHash = null;
     state.projectOwnerId = null;
     state.lastSavedAt = null;
     saveEngine.resetLocalBackupState();
@@ -6278,6 +6287,9 @@
   App.setTurnInProgress = (msg) => setTurnInProgress(msg);
   App.updateSettingsCheckoutSection = (...a2) => updateSettingsCheckoutSection(...a2);
   App.applyTakeoffBackupToState = applyTakeoffBackupToState;
+  // PDF-intake re-apply gate (features/pdf-intake.js, T1-01/J4): "do the
+  // current pages carry any annotations at all?"
+  App.projectHasAnyCanvasMarkup = projectHasAnyCanvasMarkup;
   App.logProjectOpenEvent = logProjectOpenEvent;
   // Annex-B hoisted from the SUPABASE_ENABLED block; resolved at call time.
   App.openCheckoutExpiredRecoveryModal = (opts) => openCheckoutExpiredRecoveryModal(opts);
@@ -6323,6 +6335,8 @@
   if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.__takeoffBackupGetForTest = takeoffBackupGet;
     window.__takeoffBackupDeleteForTest = takeoffBackupDelete;
+    window.__takeoffBackupPutForTest = takeoffBackupPut;
+    window.__writeTakeoffStateBackupForTest = writeTakeoffStateBackup;
     window.__customIconsGetFromIndexedDBForTest = customIconsGetFromIndexedDB;
     window.getUserCustomIcons = getUserCustomIcons;
     window.saveUserCustomIcons = saveUserCustomIcons;
@@ -6430,9 +6444,30 @@
       } catch (_) {}
     }
     if (loaded) customIconsCache = loaded;
-    // Restore takeoff backup (IndexedDB-primary, localStorage fallback for migration)
-    const localBackupForBoot = await takeoffBackupGet('local', state.supabaseSession?.user?.id || null);
-    let backupToApply = localBackupForBoot?.data || null;
+    // Restore takeoff backup (IndexedDB-primary, localStorage fallback for migration).
+    // T1-01: two records may exist — the live 'local' backup and the key-aside
+    // 'local-held' record (a prior session's still-unresolved Keep/Discard
+    // candidate, kept across reloads by design). The pure picker
+    // (save-utils.js) chooses the boot candidate.
+    const bootUserId = state.supabaseSession?.user?.id || null;
+    const localBackupForBoot = await takeoffBackupGet('local', bootUserId);
+    const heldBackupForBoot = await takeoffBackupGet(TAKEOFF_BACKUP_HELD_ID, bootUserId);
+    const { candidate: bootRestoreCandidate, from: bootRestoreFrom, promptable: bootRestorePromptable } =
+      pickBootRestoreCandidate(localBackupForBoot, heldBackupForBoot);
+    // KEY-ASIDE: state has no pages/counters/lineTypes until the pre-apply
+    // below, so the backup writer's guard short-circuits every write — move a
+    // promptable 'local' candidate to the held key NOW, before that dangerous
+    // window opens, so no later write can destroy it while the "Project from
+    // Last Session" prompt is unresolved.
+    if (bootRestorePromptable && bootRestoreFrom === 'local') {
+      // A stale (e.g. data-only) held record could out-timestamp the candidate
+      // and trip the put's stale-skip — clear it first so the move always lands.
+      if (heldBackupForBoot) await takeoffBackupDelete(TAKEOFF_BACKUP_HELD_ID);
+      await takeoffBackupPut(TAKEOFF_BACKUP_HELD_ID, bootRestoreCandidate.data, bootRestoreCandidate.pdfBlob,
+        bootRestoreCandidate.pdfHash, bootRestoreCandidate.lastModifiedAt, bootRestoreCandidate.projectName, bootRestoreCandidate.userId);
+      await takeoffBackupDelete('local');
+    }
+    let backupToApply = bootRestoreCandidate?.data || null;
     if (!backupToApply) {
       try {
         const stored = localStorage.getItem('takeoff-state');
@@ -6467,6 +6502,22 @@
         state.isAdmin = !!profile?.is_admin;
       }
     }
+    // T1-01: the local "Project from Last Session" offer is HOISTED out of the
+    // signed-in gate — the backup is on-device data and restores fully offline,
+    // so signed-out sessions get the same Keep/Discard prompt. The candidate
+    // (now under the held key) rides along as `heldBackup` so the Keep handler
+    // uses it directly instead of re-reading a record a later write could have
+    // poisoned. No `await` sits between the pre-apply above and this offer
+    // (the dev-auth block is localhost-only, and the key-aside protects that
+    // window anyway), so no interval tick can interleave — `pendingRestore`
+    // (the clobber-guard gate) is set before any backup write becomes possible.
+    let offeredRestore = false;
+    if (bootRestorePromptable) {
+      const projForRestore = { id: 'local', name: bootRestoreCandidate.projectName || 'Untitled', data: backupDataToProjFormat(bootRestoreCandidate.data || {}), updated_at: null, pdf_path: null, pdf_hash: bootRestoreCandidate.pdfHash, user_id: state.supabaseSession?.user?.id || null, checked_out_by: null, checked_out_at: null };
+      App.openLastSessionRestorePrompt({ proj: projForRestore, cachedBlob: bootRestoreCandidate.pdfBlob, heldBackup: bootRestoreCandidate });
+      logUserEvent('restore_prompt_shown', null, { source: 'local' });
+      offeredRestore = true;
+    }
     if (SUPABASE_ENABLED && supabase && state.supabaseSession?.user) {
       const uid = state.supabaseSession.user.id;
       supabase.channel('project-shares-changes').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_shares', filter: 'user_id=eq.' + uid }, function() {
@@ -6478,16 +6529,6 @@
         showGlobalReloadBanner();
       }).subscribe();
       try {
-        let offeredRestore = false;
-        // Reuse the 'local' record already read into localBackupForBoot above instead of
-        // a second identical full read of the same IndexedDB entry.
-        const localBackup = localBackupForBoot;
-        const hasLocalPdf = localBackup && localBackup.pdfBlob && localBackup.pdfBlob.size > 0;
-        if (hasLocalPdf && localBackup.data) {
-          const projForRestore = { id: 'local', name: localBackup.projectName || 'Untitled', data: backupDataToProjFormat(localBackup.data || {}), updated_at: null, pdf_path: null, pdf_hash: localBackup.pdfHash, user_id: uid, checked_out_by: null, checked_out_at: null };
-          App.openLastSessionRestorePrompt({ proj: projForRestore, cachedBlob: localBackup.pdfBlob });
-          offeredRestore = true;
-        }
         if (!offeredRestore) {
           // Cloud last-session: show the modal INSTANTLY from the lightweight
           // localStorage metadata (projectName etc.). The Supabase project fetch +
@@ -6497,8 +6538,9 @@
           const stored = localStorage.getItem('clickcount-last-project');
           if (stored) {
             const last = JSON.parse(stored);
-            if (last && last.userId === state.supabaseSession.user.id && last.projectId) {
+            if (last && last.userId === uid && last.projectId) {
               App.openLastSessionRestorePrompt({ cloudLast: last });
+              logUserEvent('restore_prompt_shown', last.projectId, { source: 'cloud' });
             }
           }
         }

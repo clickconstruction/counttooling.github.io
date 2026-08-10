@@ -133,6 +133,33 @@
     return Math.min(Math.max(base, sizeBudget), max);
   }
 
+  // Boot-time restore candidate picker over the two takeoff-backup records:
+  // the live `'local'` entry and the key-aside `'local-held'` entry (a prior
+  // session's still-unresolved Keep/Discard candidate). An entry QUALIFIES for
+  // the "Project from Last Session" prompt when it carries both data and a
+  // non-empty PDF blob (the same predicate the boot offer always used). Rules:
+  // prefer the held entry; when BOTH qualify, prefer the newer lastModifiedAt
+  // (a later working session outranks an ignored old prompt; held wins ties).
+  // When neither qualifies but one has data, return it with promptable:false
+  // so boot can still silently pre-apply the palette and the same-PDF
+  // re-upload hook can find it (held first, same rationale).
+  // Returns { candidate, from: 'held'|'local'|null, promptable }.
+  function pickBootRestoreCandidate(localEntry, heldEntry) {
+    const qualifies = (e) => !!(e && e.data && e.pdfBlob && e.pdfBlob.size > 0);
+    const localQ = qualifies(localEntry);
+    const heldQ = qualifies(heldEntry);
+    if (localQ && heldQ) {
+      return (localEntry.lastModifiedAt || 0) > (heldEntry.lastModifiedAt || 0)
+        ? { candidate: localEntry, from: 'local', promptable: true }
+        : { candidate: heldEntry, from: 'held', promptable: true };
+    }
+    if (heldQ) return { candidate: heldEntry, from: 'held', promptable: true };
+    if (localQ) return { candidate: localEntry, from: 'local', promptable: true };
+    if (heldEntry && heldEntry.data) return { candidate: heldEntry, from: 'held', promptable: false };
+    if (localEntry && localEntry.data) return { candidate: localEntry, from: 'local', promptable: false };
+    return { candidate: null, from: null, promptable: false };
+  }
+
   // The p-th percentile (0..1) of a numeric sample array using nearest-rank on a
   // sorted copy. Returns null for an empty/invalid array.
   function percentile(samples, p) {
@@ -148,6 +175,6 @@
       isTransientSaveError, getProjectCounts,
       serializeSaveError, formatSaveStatusErrDetail, backoffDelayMs,
       computeClockOffsetMs, percentile, pdfUploadTimeoutMs,
-      extractResponseDiagnostics, secondsToExpiry
+      extractResponseDiagnostics, secondsToExpiry, pickBootRestoreCandidate
     };
   }

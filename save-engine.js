@@ -54,6 +54,9 @@
  *   updateUI() / updateStatus() / updateSaveStatusIndicator()
  *   updateSettingsCheckoutSection()   -> settings-modal checkout row
  *   isAuthError(e)                    -> app-side auth-error classifier
+ *   isRestorePromptPending()          -> (optional) last-session restore prompt
+ *      unresolved? Deferred App.* lookup — backup writes hold while true
+ *      (the T1-01 clobber guard)
  *
  * Stage 2: the engine OWNS the Save Status log (saveStatusLog + push/prune/
  * window/debug helpers) and the dirty bookkeeping (dirtyGeneration /
@@ -170,6 +173,10 @@ function createSaveEngine(ctx) {
   let lastLocalBackupAt = null;
   let lastLocalBackupOk = null;
   let backupDebounceTimer = null;
+  // Debug counter for backup writes skipped while the last-session restore
+  // prompt is unresolved (the T1-01 clobber guard) — Save Status log only,
+  // NOT a user_activity event.
+  let backupClobberAvertedCount = 0;
 
   async function probeCheckoutLock(runId) {
     const state = ctx.getState();
@@ -261,6 +268,21 @@ function createSaveEngine(ctx) {
     // Viewer sessions have nothing recoverable (no edits are possible) - don't
     // write local backups keyed by someone else's project id.
     if (state.isViewer) return;
+    // Clobber guard (T1-01): while the "Project from Last Session" Keep/Discard
+    // prompt is unresolved, every backup write is held. The prompt is a modal
+    // that blocks all editing, so a skipped write can never lose new work —
+    // whereas letting the near-empty boot state write would overwrite (or, via
+    // the clickcount-last-project re-key below, poison) the very backup the
+    // prompt offers to restore. Deliberately NOT a pages-empty skip: pre-PDF
+    // palette-only sessions (no prompt pending) still back up normally.
+    if (ctx.isRestorePromptPending && ctx.isRestorePromptPending()) {
+      backupClobberAvertedCount++;
+      if (backupClobberAvertedCount === 1) {
+        try { pushSaveEvent('backup_clobber_averted', 'Skipped backup write while the restore prompt is unresolved', ''); } catch (_) {}
+      }
+      try { saveDebugLog('backup_clobber_averted', { count: backupClobberAvertedCount }); } catch (_) {}
+      return;
+    }
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
     // If an in-flight write exists, wait for it to finish then start a fresh write so
     // the latest state is captured (critical for doTurnIn / preparePdf commit paths).
@@ -348,7 +370,10 @@ function createSaveEngine(ctx) {
       pageBakeFrames: state.pages.map(p => ctx.computePageBakeFrame(p))
     };
     const lastMod = (state.currentProjectId && ctx.getLastModifiedAt()) ? ctx.getLastModifiedAt() : Date.now();
-    const pdfHash = state.pdfHash || null;
+    // localPdfHash: the in-memory hash of a locally-uploaded (never-saved) PDF,
+    // stamped by features/pdf-intake.js. Signed-out backups carry it so the
+    // same-PDF re-upload re-apply can hash-verify the match (T1-01 / J4).
+    const pdfHash = state.pdfHash || state.localPdfHash || null;
     const projectName = state.currentProjectName || null;
     const userId = state.supabaseSession?.user?.id || null;
     lastLocalBackupOk = false;

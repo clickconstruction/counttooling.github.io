@@ -461,4 +461,208 @@ test.describe('window.App registry pilot - Scale modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // T1-07: zone preset/custom applies inherit the page scale's stamped sheet correction
+  // (product decision 2026-08-09); two-point zone calibration stays raw ground truth.
+  // Helpers: set a corrected page scale via the first preset (order-resilient with T1-04 —
+  // a corrected apply arms the two-point verify, and Esc keeps the applied scale), then
+  // enter zone mode via the same state seam app.js's two-corner finish uses (app.js:4694).
+  const setPageScaleFirstPreset = async (page) => {
+    await page.evaluate(() => window.App.openScaleModal());
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+    await page.locator('#scalePresetsList button').first().click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    if (await page.evaluate(() => window.state.scaleCheckMode === true)) {
+      // Wait out the coaching toast (Esc dismisses a visible toast before reaching the tool).
+      await page.waitForFunction(() => !document.getElementById('airboardToastModal')?.classList.contains('visible'), { timeout: 5000 });
+      await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+      await page.waitForFunction(() => window.state.scaleCheckMode === false, { timeout: 5000 });
+    }
+  };
+  const openZoneCreateDialog = async (page) => {
+    await page.evaluate(() => {
+      window.state.scaleModalApplyTarget = 'zone';
+      window.state.pendingScaleZone = { x1: 100, y1: 100, x2: 300, y2: 260 };
+      window.state.pendingScaleZoneEdit = null;
+      window.App.openScaleModal();
+    });
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+  };
+  const openZoneEditDialog = async (page, zoneIndex) => {
+    await page.evaluate((zi) => {
+      window.state.scaleModalApplyTarget = 'zone';
+      window.state.pendingScaleZone = null;
+      window.state.pendingScaleZoneEdit = { zoneIndex: zi };
+      window.App.openScaleModal();
+    }, zoneIndex);
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+  };
+  const readZones = (page) => page.evaluate(() => {
+    const p = window.state.pages[window.state.currentPage];
+    return window.App.getActiveAnnotations(p)?.scaleZones || [];
+  });
+  const quarterPreset = (page) => page.locator('#scalePresetsList button', { hasText: '1/4" = 1\'' }).first();
+  const expectedFactor = (page) => page.evaluate(() =>
+    window.App.sheetCorrectionFactor(1224, 792, window.App.STANDARD_SHEETS.find(s => s.id === 'ANSI_D')));
+
+  test('zone preset inherits the page sheet correction; label carries the sheet suffix', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await stubNonStandardSheet(page);
+    await setPageScaleFirstPreset(page);
+    const pageScale = await page.evaluate(() => window.state.pages[window.state.currentPage].scale);
+    const factor = await expectedFactor(page);
+    expect(pageScale.correctionFactor).toBeCloseTo(factor, 9);
+
+    // Zone dialog: the inherited-correction disclosure shows; the sheet picker never does.
+    await openZoneCreateDialog(page);
+    const dialog = await page.evaluate(() => ({
+      info: document.getElementById('scaleInfo').textContent,
+      warnShown: getComputedStyle(document.getElementById('scaleSheetWarning')).display !== 'none',
+    }));
+    expect(dialog.info).toContain('as if printed on ANSI D');
+    expect(dialog.warnShown).toBe(false);
+
+    // 1/4" preset stores 18 × the page's factor, stamped + suffixed.
+    await quarterPreset(page).click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    const zones = await readZones(page);
+    expect(zones.length).toBe(1);
+    const z = zones[0].scale;
+    expect(z.pixelsPerUnit).toBeCloseTo(18 * factor, 9);
+    expect(z.correctionFactor).toBeCloseTo(factor, 9);
+    expect(z.sheetSize).toBe('ANSI_D');
+    expect(z.label.endsWith(' · ANSI D')).toBe(true);
+    // Page scale untouched by the zone apply; zone mode reset.
+    const after = await page.evaluate(() => ({
+      pageScale: window.state.pages[window.state.currentPage].scale,
+      target: window.state.scaleModalApplyTarget,
+    }));
+    expect(after.pageScale).toEqual(pageScale);
+    expect(after.target).toBeNull();
+
+    expect(errors).toEqual([]);
+  });
+
+  test('zone custom apply inherits the correction; two-point zone calibration stays raw', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await stubNonStandardSheet(page);
+    await setPageScaleFirstPreset(page);
+    const factor = await expectedFactor(page);
+
+    // Custom 1/4" = 1 ft in zone mode -> 18 × factor, stamped.
+    await openZoneCreateDialog(page);
+    await page.locator('#scaleCustomFraction').fill('1/4');
+    await page.locator('#scaleCustomFeet').fill('1');
+    await page.evaluate(() => document.getElementById('scaleCustomApply').click());
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    let zones = await readZones(page);
+    expect(zones.length).toBe(1);
+    expect(zones[0].scale.pixelsPerUnit).toBeCloseTo(18 * factor, 9);
+    expect(zones[0].scale.correctionFactor).toBeCloseTo(factor, 9);
+    expect(zones[0].scale.label).toBe('1/4" = 1 ft · ANSI D');
+
+    // Two-point recalibration of that zone stays raw: dist / val, no correction stamp.
+    await page.evaluate(() => {
+      window.state.scaleModalApplyTarget = 'zone';
+      window.state.pendingScaleZone = null;
+      window.state.pendingScaleZoneEdit = { zoneIndex: 0 };
+      window.state.scalePointA = { x: 0, y: 0 };
+      window.state.scalePointB = { x: 151, y: 0 };
+      window.App.openScaleModal();
+    });
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    await page.evaluate(() => {
+      const u = document.getElementById('scaleUnit'); u.value = 'ft'; u.dispatchEvent(new Event('change'));
+      document.getElementById('scaleValue').value = '10';
+      document.getElementById('scaleSet').click();
+    });
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    zones = await readZones(page);
+    expect(zones.length).toBe(1);
+    expect(zones[0].scale.pixelsPerUnit).toBeCloseTo(151 / 10, 6);
+    expect(zones[0].scale.correctionFactor).toBeUndefined();
+
+    expect(errors).toEqual([]);
+  });
+
+  test('uncorrected page: zone preset applies the raw preset unchanged', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // No stub: the standard-size test PDF applies a plain page scale (no correction).
+    await setPageScaleFirstPreset(page);
+    await openZoneCreateDialog(page);
+    expect(await page.evaluate(() => document.getElementById('scaleInfo').textContent)).not.toContain('as if printed on');
+    await quarterPreset(page).click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    const zones = await readZones(page);
+    expect(zones.length).toBe(1);
+    expect(zones[0].scale.pixelsPerUnit).toBe(18);
+    expect(zones[0].scale.correctionFactor).toBeUndefined();
+    expect(zones[0].scale.label).toBe('1/4" = 1\'');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('edit-mode re-apply does not compound the factor', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await stubNonStandardSheet(page);
+    await setPageScaleFirstPreset(page);
+    const factor = await expectedFactor(page);
+
+    // Create the corrected zone (18 × factor), then edit it and click the SAME preset again.
+    await openZoneCreateDialog(page);
+    await quarterPreset(page).click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    const first = (await readZones(page))[0].scale;
+    expect(first.pixelsPerUnit).toBeCloseTo(18 * factor, 9);
+
+    await openZoneEditDialog(page, 0);
+    // Edit variant shows the current (suffixed) scale + the same disclosure.
+    const info = await page.evaluate(() => document.getElementById('scaleInfo').textContent);
+    expect(info).toContain('Current:');
+    expect(info).toContain('as if printed on ANSI D');
+    await quarterPreset(page).click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+    const zones = await readZones(page);
+    expect(zones.length).toBe(1);
+    const re = zones[0].scale;
+    expect(re.pixelsPerUnit).toBeCloseTo(18 * factor, 9);   // factor once, not squared
+    expect(re.pixelsPerUnit).toBeCloseTo(first.pixelsPerUnit, 9);
+    expect(re.correctionFactor).toBeCloseTo(factor, 9);
+
+    expect(errors).toEqual([]);
+  });
 });

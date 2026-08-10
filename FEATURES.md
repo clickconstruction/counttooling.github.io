@@ -83,7 +83,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Check-out / turn-in (one editor at a time)** — Two people can never save over each other; the lock frees itself after 30 idle minutes so a project is never stuck.
 - **View links (no sign-in)** — Send a GC or inspector an email-gated link to the live takeoff — no account, access-logged, revocable anytime.
 - **Viewer scale sharing** — A view-link recipient can set a page scale and it shares back to the project, so field questions get answered without a round trip.
-- **Artboard (cloud palette)** — Your counters, line types, modifiers, and Quick Key layout follow your account to any device — set up once, reuse every bid.
+- **Artboard (cloud palette)** — Your counters, line types, modifiers, and Quick Key layout follow your account to any device — set up once, reuse every bid; loading mid-bid re-links your placed marks by name, nothing stops counting.
 - **Palette Insights** — See which counters and line types you actually use across all your projects and add the standards to your Artboard in one click.
 - **Admin toolkit** — Create/manage users, transfer project ownership, force turn-in, audit per-user activity, and push a global reload — all inside the app.
 

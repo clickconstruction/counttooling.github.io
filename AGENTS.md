@@ -325,7 +325,11 @@ mode).
   auto-corrects). The IndexedDB takeoff backup carries the parallel `pageBakeFrames` array.
 - In-memory only (not persisted): `state.pdfBufferSize` (bytes; set whenever
   `state.pdfBuffer` is set, because pdf.js detaches the buffer making `byteLength`
-  0), `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
+  0), `state.localPdfHash` (sha256 of a locally-uploaded, never-saved PDF —
+  stamped by features/pdf-intake.js; NOT `state.pdfHash`, which carries
+  cloud-PDF semantics; rides signed-out IndexedDB backups so a same-PDF
+  re-upload can hash-verify the re-apply),
+  `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
   `state.showAllCanvases` (the desktop show-all-layers peek toggle),
   `state.peekCanvasIdsByPage` (the peek's optional per-page layer subset —
   pageIdx → canvas-id array chosen via right-click on `#showAllCanvasesBtn`;

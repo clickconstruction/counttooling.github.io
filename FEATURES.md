@@ -77,7 +77,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 
 ## Cloud & collaboration
 
-- **Auto-save every 5 seconds + local backups** — Work is continuously saved to the cloud and to on-device backups, so a crash, a dead battery, or a bad connection costs you nothing.
+- **Auto-save every 5 seconds + local backups** — Work is continuously saved to the cloud and to on-device backups, so a crash, a dead battery, or a bad connection costs you nothing. The "Project from Last Session" restore prompt works signed-out and fully offline — the backup lives on your device — and re-uploading the same PDF brings your marks back even when the backup lost its copy of the file.
 - **Save Status bell** — Always know whether you're synced, saving, or offline — with an exportable log when something needs diagnosing.
 - **Project sharing (viewer/editor roles)** — Colleagues see or edit the same takeoff without emailing files around.
 - **Check-out / turn-in (one editor at a time)** — Two people can never save over each other; the lock frees itself after 30 idle minutes so a project is never stuck.

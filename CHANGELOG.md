@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(save): signed-out restore prompt + backup-clobber guard (T1-01)
+
+Journey audit J12/J4 (adversarially reproduced): signed out, closing and
+reopening the app lost all work even though a complete on-device backup
+(marks + PDF blob) sat in IndexedDB — the "Project from Last Session" offer
+was gated inside the signed-in boot branch, and the unconditional 5s interval
+overwrote the unrestored `'local'` record ~3.5–5.3s after boot (the silent
+palette pre-apply makes the writer guard pass; the clobbering write's newer
+`lastModifiedAt` defeats the stale-skip). The same race poisoned the
+**signed-in** Keep (its re-read preferred the clobbered record by timestamp:
+Keep after 9s restored the PDF with 0 marks), and re-uploading the same PDF
+restored palette only (the boot-time `pageCanvases` writes target pages that
+don't exist pre-PDF).
+
+Mechanism — key the boot backup aside until Keep/Discard (NOT a pages-empty
+write skip, which would drop pre-PDF palette backups): boot moves a promptable
+`'local'` record to `TAKEOFF_BACKUP_HELD_ID` (`'local-held'`, same store)
+before the pre-apply opens the dangerous window; the pure
+`pickBootRestoreCandidate` (save-utils.js) picks between the two records; the
+offer is hoisted out of the signed-in gate and carries the held record as
+`heldBackup`, which the local Keep uses directly (no poisonable re-read); the
+engine holds every backup write while `App.isRestorePromptPending()` (the
+prompt is a modal — nothing new can be lost; `backup_clobber_averted` debug
+counter in the Save Status log); local Keep lands `isViewer=false` (was
+`true` — read-only + backups silenced, live-verified); the held record is
+consumed on Keep/Discard and persists across reloads while ignored. Local
+sessions restore fully offline (0.26s, zero network in the repro). J4's second
+half: `handleFreshUpload` stamps the in-memory `state.localPdfHash` (rides
+signed-out backups) and `maybeReapplyLocalBackupMarks` re-applies a
+hash-verified same-PDF re-upload's marks (held key first, then `'local'`;
+no hash → no apply). Telemetry: `restore_prompt_shown` / `restore_keep`
+(migration `20260810120000_user_activity_restore_events.sql`; signed-in only —
+`logUserEvent` early-returns without a session). Tests:
+restore-last-session.spec.js (boot offer, clobber guard, keep-after-9s
+regression, reload persistence, discard, post-Keep lifecycle),
+pdf-upload.spec.js (same-/different-PDF re-upload), save-utils.test.js picker
+table, constants.test.js key pin; save-engine-smoke.spec.js reads the held key.
+
 ## fix(ui): popovers can no longer open off-screen (shared viewport clamp)
 
 Field report: right-clicking a line at the bottom of the screen opened the

@@ -1,7 +1,7 @@
 ---
 title: How your work is saved (and how to tell)
 description: Auto-save every few seconds, local backups on your device, and the Save Status bell — what each state means and what to do on the rare yellow day.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 7.5
 icon: save-status
 category: Collaboration
@@ -39,4 +39,4 @@ Shared projects use [check-out](/guides/sharing-and-view-links/) — one editor 
 
 ## The restore prompt
 
-Open the app after closing mid-project and it offers to pick up where you left off — **Keep** restores your last session (from the cloud, or from the local backup when you're offline); **Discard** starts clean.
+Open the app after closing mid-project and it offers to pick up where you left off — **Keep** restores your last session (from the cloud, or from the local backup when you're offline); **Discard** starts clean. No account? The prompt still appears — the backup lives on your device. And if the prompt doesn't show but you still have the plan file, just upload the same PDF again: the app recognizes it and puts your marks back.

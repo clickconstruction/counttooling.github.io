@@ -311,7 +311,7 @@
       preparePdfBuffer = null;
       preparePdfKeptIndices = [];
       preparePdfUndoStack = [];
-      return { ok: true, name, pdfBuffer: App.state.pdfBuffer, appended: true };
+      return { ok: true, name, pdfBuffer: App.state.pdfBuffer, appended: true, appendedCount: kept.length };
     }
     const sizeCheck = App.assertPdfWithinLimit(trimmedBufSize, 'commitPreparePdfToState');
     if (sizeCheck && !sizeCheck.ok) {
@@ -355,6 +355,13 @@
     App.markProjectDirty();
     App.updateUI();
     requestAnimationFrame(() => { App.fitZoom(); App.renderPdf(); });
+    // J2 friction #8 parity: the Project-Settings append commit gets the same
+    // "Added N sheets" feedback as the Upload-PDF append path (T1-08).
+    if (r.appended) {
+      const added = r.appendedCount || 0;
+      App.showToast('Added ' + added + ' sheet' + (added === 1 ? '' : 's') + ' to ' +
+        (App.state.currentProjectName || 'Untitled'), 3500);
+    }
     await App.writeTakeoffStateBackup();
   };
   document.getElementById('preparePdfDownload').onclick = async () => {

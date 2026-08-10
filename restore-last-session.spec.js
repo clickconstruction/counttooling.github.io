@@ -106,4 +106,136 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // --- T1-01: signed-out boot offer + backup-clobber guard -----------------
+  // These drive the REAL boot path (seed the 'local' IndexedDB record, reload)
+  // with no cloud dependency: the backup is on-device data and the prompt +
+  // Keep must work signed-out and fully offline.
+
+  /** Seed a promptable 'local' takeoff backup (3 markers + a real PDF blob). */
+  async function seedLocalBackup(page) {
+    await page.evaluate(async () => {
+      const res = await fetch('/test-page.pdf');
+      const blob = await res.blob();
+      const data = {
+        counters: [{ id: 'c1', name: 'WC', icon: 'M0 0h10v10H0z', color: '#e8c547' }],
+        lineTypes: [],
+        pageCanvases: [[{ id: 'cv1', name: 'Main', annotations: { counterMarkers: { c1: [
+          { x: 10, y: 10, id: 'm1' }, { x: 20, y: 20, id: 'm2' }, { x: 30, y: 30, id: 'm3' },
+        ] } } }]],
+        pageScales: [null],
+        pageRotations: [0],
+      };
+      await window.__takeoffBackupPutForTest('local', data, blob, null, Date.now(), 'sample-plan', null);
+    });
+  }
+
+  // = TAKEOFF_BACKUP_HELD_ID (constants.js; pinned in constants.test.js).
+  // Passed into evaluate as an arg: the page-side const is not reachable from
+  // a serialized closure, and the Node-side lint has no browser globals.
+  const HELD_ID = 'local-held';
+
+  const countHeldMarkers = (heldId) => window.__takeoffBackupGetForTest(heldId, null).then((e) => {
+    if (!e || !e.data) return null;
+    let n = 0;
+    (e.data.pageCanvases || []).forEach((cs) => (cs || []).forEach((c) => {
+      Object.values((c.annotations && c.annotations.counterMarkers) || {}).forEach((a) => { n += (a || []).length; });
+    }));
+    return n;
+  });
+
+  test('signed-out boot offer, clobber guard, keep-after-9s, post-Keep lifecycle', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await seedLocalBackup(page);
+    await page.reload();
+
+    // 1. The prompt appears signed-out, with the project name.
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
+    // Key-aside: the candidate now lives under the held key.
+    expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
+
+    // 2. Clobber guard: force a write AND sit through a real 5s interval tick
+    //    (>6s) with the prompt pending — the held record must survive, and
+    //    'local' must not be repopulated with a marker-less record that
+    //    outranks it (the exact reproduced self-destruct).
+    await page.evaluate(() => window.__writeTakeoffStateBackupForTest());
+    await page.waitForTimeout(6500);
+    expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
+    const localAfterGuard = await page.evaluate(async (heldId) => {
+      const held = await window.__takeoffBackupGetForTest(heldId, null);
+      const local = await window.__takeoffBackupGetForTest('local', null);
+      const markerCount = (e) => {
+        let n = 0;
+        (e && e.data && e.data.pageCanvases || []).forEach((cs) => (cs || []).forEach((c) => {
+          Object.values((c.annotations && c.annotations.counterMarkers) || {}).forEach((a) => { n += (a || []).length; });
+        }));
+        return n;
+      };
+      return {
+        localOutranksHeldWithoutMarkers: !!(local && markerCount(local) === 0 && (local.lastModifiedAt || 0) > (held.lastModifiedAt || 0)),
+        clobberAverted: (window.App.getSaveStatusLog() || []).some((ev) => ev.kind === 'backup_clobber_averted'),
+      };
+    }, HELD_ID);
+    expect(localAfterGuard.localOutranksHeldWithoutMarkers).toBe(false);
+    expect(localAfterGuard.clobberAverted).toBe(true);
+
+    // 3. Keep after >9s total (the reproduced poisoning window): ALL markers
+    //    restore (was 0 before this PR), the session is editable, modal closed.
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => document.getElementById('lastSessionRestoreKeep').click());
+    await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
+    const afterKeep = await page.evaluate(() => ({
+      markers: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers.c1 || []).length,
+      isViewer: window.state.isViewer,
+      modalOpen: document.getElementById('lastSessionRestoreModal').classList.contains('visible'),
+    }));
+    expect(afterKeep.markers).toBe(3);
+    expect(afterKeep.isViewer).toBe(false);
+    expect(afterKeep.modalOpen).toBe(false);
+    // Held record consumed on Keep.
+    expect(await page.evaluate((heldId) => window.__takeoffBackupGetForTest(heldId, null), HELD_ID)).toBe(null);
+
+    // 4. Post-Keep lifecycle: backups resumed (pins the isViewer fix) — a
+    //    dirty mark repopulates a fresh 'local' backup with the markers.
+    await page.evaluate(() => window.App.markProjectDirty());
+    await page.waitForFunction(async () => {
+      const local = await window.__takeoffBackupGetForTest('local', null);
+      if (!local || !local.data) return false;
+      let n = 0;
+      (local.data.pageCanvases || []).forEach((cs) => (cs || []).forEach((c) => {
+        Object.values((c.annotations && c.annotations.counterMarkers) || {}).forEach((a) => { n += (a || []).length; });
+      }));
+      return n === 3;
+    }, null, { timeout: 15000 });
+  });
+
+  test('ignored prompt survives reloads; Discard consumes both records', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await seedLocalBackup(page);
+
+    // Ignore the prompt across TWO reloads: still offered, markers intact.
+    await page.reload();
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    await page.reload();
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
+    expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
+
+    // Discard deletes the held record AND 'local'; next boot shows no prompt.
+    await page.evaluate(() => document.getElementById('lastSessionRestoreDiscard').click());
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    await page.waitForFunction(async (heldId) => {
+      const held = await window.__takeoffBackupGetForTest(heldId, null);
+      const local = await window.__takeoffBackupGetForTest('local', null);
+      return held === null && local === null;
+    }, HELD_ID);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1500);
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+  });
 });

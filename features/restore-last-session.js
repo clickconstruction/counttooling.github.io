@@ -13,10 +13,14 @@
  *
  * app.js keeps the BOOT detection (which backup/localStorage record to offer)
  * and hands the candidate over via `App.openLastSessionRestorePrompt(pending)`
- * — pending is `{ proj, cachedBlob }` (local backup) or `{ cloudLast }` (the
- * lightweight clickcount-last-project metadata). `resetLocalSessionState`
- * clears the private flag via the defensive `App.onLastSessionRestoreReset`
- * callback (the Groups pattern for feature-private state).
+ * — pending is `{ proj, cachedBlob, heldBackup }` (local backup; heldBackup is
+ * the already-read key-aside record, used directly by Keep so a poisoned
+ * re-read can never happen) or `{ cloudLast }` (the lightweight
+ * clickcount-last-project metadata). `resetLocalSessionState` clears the
+ * private flag via the defensive `App.onLastSessionRestoreReset` callback (the
+ * Groups pattern for feature-private state). `App.isRestorePromptPending` is
+ * the getter-accessor the save engine's clobber guard polls: while the prompt
+ * is unresolved, every takeoff-backup write is held (T1-01).
  *
  * Loaded as a classic <script src="/features/restore-last-session.js"> AFTER
  * app.js; boot (init) runs after all classic scripts, so the registration is
@@ -40,6 +44,10 @@
 
   function openLastSessionRestorePrompt(pending) {
     if (!pending) return;
+    // NOTE for Tier-3 B1 (Esc ladder): if lastSessionRestoreModal ever joins
+    // the Esc ladder, Esc MUST route to the Discard-or-reopen semantics, not a
+    // bare hide — with the T1-01 clobber guard, a hidden-but-pending prompt
+    // would suspend takeoff backups for the whole session.
     pendingRestore = pending;
     const msgEl = document.getElementById('lastSessionRestoreMessage');
     if (msgEl) {
@@ -52,14 +60,29 @@
     App.showModal('lastSessionRestoreModal');
   }
 
-  async function doRestoreLastProject(proj, cachedBlob) {
+  // Total counter markers across the restored pages (restore_keep telemetry).
+  function countRestoredMarkers() {
+    let n = 0;
+    (App.state.pages || []).forEach((p) => (p.canvases || []).forEach((c) => {
+      Object.values((c && c.annotations && c.annotations.counterMarkers) || {}).forEach((arr) => { n += (arr ? arr.length : 0); });
+    }));
+    return n;
+  }
+
+  async function doRestoreLastProject(proj, cachedBlob, heldBackup) {
     const state = App.state;
     // A1: Same hygiene as the Load Project row-click - clear any stale
     // pendingCanvasLoad before we start rebuilding session state.
     state.pendingCanvasLoad = null;
     const d = proj.data;
     const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
-    const idbBackup = await App.takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
+    // T1-01: the local Keep hands the key-aside record over directly — never
+    // re-read the store here, because the local Keep clears pendingRestore
+    // before awaiting (dropping the engine-side write hold) and a re-read
+    // could then observe a poisoned record. The cloud path keeps the re-read +
+    // timestamp preference; its Keep holds pendingRestore until `finally`, so
+    // the engine guard covers the whole fetch window.
+    const idbBackup = heldBackup || await App.takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
     const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
     let pdf;
     const idbPdfBlob = useIdbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0 ? idbBackup.pdfBlob : null;
@@ -133,6 +156,17 @@
     state.loadedViaViewLink = false;
     state.isViewer = !hasValidCheckout;
     state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
+    if (proj.id === 'local') {
+      // Local sessions have no checkout: the derivation above computes
+      // hasValidCheckout = false (checked_out_by is always null), which left
+      // the restored session read-only AND silenced future backups (the
+      // viewer guard in save-engine.js). Live-verified 2026-08-10: before
+      // this line, Keep landed isViewer === true and no 'local' backup ever
+      // repopulated. A restored local session is the user's own device data —
+      // always editable, never checkout-gated.
+      state.isViewer = false;
+      state.canCheckOut = false;
+    }
     App.clearUndoStacks();
     App.setAutoSaveDirty(false);
     App.setLastModifiedAt(0);
@@ -183,7 +217,9 @@
         if (!projForRestore) throw (fetchErr || new Error('Project unavailable'));
         const pdfHashForCache = projForRestore.pdf_hash || last.pdfHash;
         const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;
+        const restoreStartedAt = Date.now();
         await doRestoreLastProject(projForRestore, cachedBlob);
+        try { App.logUserEvent('restore_keep', last.projectId, { source: 'cloud', markers: countRestoredMarkers(), ms: Date.now() - restoreStartedAt }); } catch (_) { /* noop */ }
         App.updateUI();
       } catch (err) {
         App.showToast('Failed to restore project: ' + (err?.message || 'Unknown error'), 5000);
@@ -198,7 +234,13 @@
     pendingRestore = null;
     App.hideModal('lastSessionRestoreModal');
     try {
-      await doRestoreLastProject(p.proj, p.cachedBlob);
+      const restoreStartedAt = Date.now();
+      // p.heldBackup: the boot key-aside record, used directly (no store
+      // re-read — see doRestoreLastProject). Consumed on success: the restored
+      // state repopulates 'local' on the next dirty/interval write.
+      await doRestoreLastProject(p.proj, p.cachedBlob, p.heldBackup);
+      if (p.heldBackup) { try { await takeoffBackupDelete(TAKEOFF_BACKUP_HELD_ID); } catch (_) { /* noop */ } }
+      try { App.logUserEvent('restore_keep', null, { source: 'local', markers: countRestoredMarkers(), ms: Date.now() - restoreStartedAt }); } catch (_) { /* noop */ }
       App.updateUI();
     } catch (err) {
       App.showToast('Failed to restore project: ' + (err?.message || 'Unknown error'), 5000);
@@ -215,9 +257,15 @@
       await pdfCacheDelete(projectId);
       await takeoffBackupDelete(projectId);
     }
+    // T1-01: the key-aside record is consumed on Discard too — otherwise the
+    // next boot would re-offer a session the user just declined.
+    try { await takeoffBackupDelete(TAKEOFF_BACKUP_HELD_ID); } catch (_) { /* noop */ }
     App.updateUI();
   };
 
   App.openLastSessionRestorePrompt = openLastSessionRestorePrompt;
   App.onLastSessionRestoreReset = () => { pendingRestore = null; };
+  // Polled by the save engine's clobber guard (via the app.js ctx wiring):
+  // takeoff-backup writes hold while the Keep/Discard prompt is unresolved.
+  App.isRestorePromptPending = () => !!pendingRestore;
 })();

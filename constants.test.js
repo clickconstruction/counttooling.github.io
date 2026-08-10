@@ -197,3 +197,12 @@ test('HOTKEYS: table shape — the handler/docs single source stays executable',
   }
   assert.strictEqual(new Set(keys).size, keys.length, 'runnable keys unique');
 });
+
+test('takeoff-backup IDB record keys are pinned (restore prompt key-aside)', () => {
+  // The held key is a RECORD key in the existing takeoff_backup store (not a
+  // store name): the boot key-aside moves a promptable 'local' backup here so
+  // no later write can clobber it while the restore prompt is unresolved.
+  assert.strictEqual(c.TAKEOFF_BACKUP_HELD_ID, 'local-held');
+  // Must never collide with the live local record key.
+  assert.notStrictEqual(c.TAKEOFF_BACKUP_HELD_ID, 'local');
+});

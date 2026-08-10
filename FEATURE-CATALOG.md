@@ -352,7 +352,10 @@ content hash on the other side.
 *Problem:* Estimating tools with manual save (or fragile cloud sync) lose afternoons of counting to
 a crash, a dead battery, or a dropped connection.
 *Useful because:* Work saves continuously to the cloud *and* to on-device backups, with a hardened
-sync engine (retries, backoff, connection recovery) built from real field failure cases.
+sync engine (retries, backoff, connection recovery) built from real field failure cases. The
+last-session restore prompt now works signed-out and fully offline (the boot candidate is keyed
+aside so no post-boot write can clobber it), and a hash-verified same-PDF re-upload re-applies
+the backed-up marks.
 
 **Save Status indicator + exportable diagnostic log**
 *Problem:* "Did that save?" is an anxiety question in every cloud tool, and support tickets start

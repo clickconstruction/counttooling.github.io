@@ -169,4 +169,56 @@ test.describe('Output cluster (features/output.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('scale check gates Copy Summary too (T1-05)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // An unscaled page with a summarized line — the exact case that used to
+    // copy a silent px-summed "ft" total straight to the clipboard.
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.lineTypes = [{ id: 'lt1', name: 'Copper', color: '#4a9eff' }];
+      s.pages[1].label = 'P-2 Underground';
+      const c1 = App.ensureActiveCanvas(s.pages[1]);
+      c1.annotations.quickLines = [{ x1: 100, y1: 100, x2: 220, y2: 100, color: '#4a9eff', id: 'q1', lineTypeId: 'lt1', group: null }];
+      App.updateUI();
+    });
+    await page.evaluate(() => navigator.clipboard.writeText('SENTINEL'));
+
+    // Copy Summary opens the scale-check modal and writes NOTHING.
+    await page.evaluate(() => {
+      document.querySelector('.copy-summary-option[data-mode="visible"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
+    const listed = await page.evaluate(() => [...document.querySelectorAll('#toolingScaleCheckList li')].map(li => li.textContent));
+    expect(listed).toEqual(['P-2 Underground']);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('SENTINEL');
+
+    // Cancel drops the pending copy — still nothing written.
+    await page.locator('#toolingScaleCheckCancel').click();
+    await expect(page.locator('#toolingScaleCheckModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('SENTINEL');
+
+    // Export anyway: the email summary copies with the honest px row.
+    await page.evaluate(() => {
+      document.querySelector('.copy-summary-option[data-mode="visible"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
+    await page.locator('#toolingScaleCheckExport').click();
+    await page.waitForSelector('#pipeToolingCopiedModal.visible', { timeout: 5000 });
+    const emailText = await page.evaluate(() => navigator.clipboard.readText());
+    expect(emailText).toContain('px of Copper');
+    expect(emailText).toContain('no scale set');
+
+    expect(errors).toEqual([]);
+  });
 });

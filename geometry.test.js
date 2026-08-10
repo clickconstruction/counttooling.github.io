@@ -234,6 +234,13 @@ test('formatFeet: already-in-feet value -> decimal feet, with px/0 fallback', ()
   assert.strictEqual(g.formatFeet(0, null), '0');
 });
 
+test('formatFeetPx: never sums px under a ft label', () => {
+  assert.strictEqual(g.formatFeetPx(12.5, 0), '12.50 ft');
+  assert.strictEqual(g.formatFeetPx(0, 200.4), '200 px');
+  assert.strictEqual(g.formatFeetPx(12.5, 200), '12.50 ft + 200 px');
+  assert.strictEqual(g.formatFeetPx(0, 0), '0');
+});
+
 test('formatArea: ppu^2 division + unit-squared suffix', () => {
   assert.strictEqual(g.formatArea(400, { pixelsPerUnit: 2, unit: 'ft' }), '100.0 ft\u00b2');
   assert.strictEqual(g.formatArea(900, { pixelsPerUnit: 3, unit: 'm' }), '100.0 m\u00b2');

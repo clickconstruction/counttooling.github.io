@@ -59,4 +59,49 @@ test.describe('Length tallies are always decimal feet and agree across surfaces'
 
     expect(errors).toEqual([]);
   });
+
+  test('mixed scaled/unscaled pages split into ft and px rows — never one summed number', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // p1 scaled at 24 px/ft with a 240-pt line (10 ft); p2 UNSCALED with a
+    // 367.2-pt line (raw px). The old rollups summed 10 + 367.2 = "377.20 ft".
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.lineTypes.push({ id: 'lt_cw', name: 'Cold Water', color: '#4a9eff', curveStyle: 'straight' });
+      s.pages[0].scale = { pixelsPerUnit: 24, unit: 'ft', label: 'p1' };
+      const c0 = App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.quickLines = [{ id: 'ql1', x1: 0, y1: 0, x2: 240, y2: 0, lineTypeId: 'lt_cw', color: '#4a9eff' }];
+      const c1 = App.ensureActiveCanvas(s.pages[1]);
+      c1.annotations.quickLines = [{ id: 'ql2', x1: 0, y1: 0, x2: 367.2, y2: 0, lineTypeId: 'lt_cw', color: '#4a9eff' }];
+      App.invalidateFooterTotals();
+      App.updateUI();
+    });
+
+    const all = await page.evaluate(() => ({
+      badge: (document.querySelector('#lineTypesList .badge') || {}).textContent || '',
+      footer: (document.getElementById('statusTotals') || {}).textContent || '',
+      pipe: window.getPipeToolingSummary(),
+      email: window.getEmailTextSummary(),
+    }));
+
+    // Copy to /Tooling: one ft row (page 1) + one px row (page 2).
+    expect(all.pipe).toContain('ft of Cold Water\t10.00\t1');
+    expect(all.pipe).toContain('px of Cold Water\t367\t2');
+    expect(all.pipe).not.toContain('377');
+    // Email summary: both bullets, px flagged as no-scale.
+    expect(all.email).toContain('10.00 ft of Cold Water: 1 run (page 1)');
+    expect(all.email).toContain('367 px of Cold Water: 1 run (page 2 — no scale set)');
+    // Sidebar Line Types badge + footer totals hold the split too.
+    expect(all.badge).toContain('10.00 ft + 367 px');
+    expect(all.footer).toContain('10.00 ft + 367 px');
+
+    expect(errors).toEqual([]);
+  });
 });

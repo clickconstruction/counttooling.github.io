@@ -310,7 +310,9 @@ function legendState(overrides) {
 function legendDeps(state) {
   return Object.assign(makeDeps(state), {
     getPageScale: () => ({ pixelsPerUnit: 10, unit: 'ft' }),
-    getLineLengthFeetForTotals: () => 12,
+    // T1-05: drawLegend consumes the ft/px split; a line flagged `unscaled`
+    // routes into the px bucket, everything else is 12 ft.
+    getLineLengthSplitForTotals: (line) => (line && line.unscaled ? { feet: 0, px: 200 } : { feet: 12, px: 0 }),
     getEffectiveScaleForLine: () => ({ pixelsPerUnit: 10, unit: 'ft' }),
     iconRenderVb: () => 640,
     iconRenderCenter: () => ({ x: 320, y: 320 }),
@@ -360,6 +362,29 @@ test('drawLegend: rows render with multiply-zone counts, feet totals, and room v
   // Auto-size wrote the legend box back in PDF units, clamped inside the page.
   assert.ok(ann.legend.w >= 60 && ann.legend.w <= 612 - ann.legend.x - 10);
   assert.ok(ann.legend.h >= 40 && ann.legend.h <= 792 - ann.legend.y - 10);
+});
+
+test('drawLegend: mixed scaled/unscaled line rows read "N ft + M px", all-scaled rows unchanged', () => {
+  // Mixed fixture: one 12-ft line + one 200-px (unscaled) line of the same
+  // type — the row must keep the buckets separate, never "32.00 ft".
+  const state = legendState();
+  const draw = createCanvasDraw(legendDeps(state));
+  const ctx = makeCtx();
+  const ann = legendAnn();
+  ann.quickLines.push({ x1: 0, y1: 0, x2: 200, y2: 0, lineTypeId: 'lt1', unscaled: true });
+  draw.drawLegend(ctx, makePage(612, 792), 0, ann, 1, tc1);
+  const texts = callsOf(ctx, 'fillText').map(c => c[1]);
+  const row = texts.find(t => String(t).startsWith('Waste'));
+  assert.ok(row && row.includes('ft + ') && row.includes(' px'), 'mixed row splits ft and px; got ' + JSON.stringify(texts));
+  assert.strictEqual(row, 'Waste 12.00 ft + 200 px');
+  // measureText saw the same string (row width accounting).
+  assert.ok(callsOf(ctx, 'measureText').some(c => c[1] === 'Waste 12.00 ft + 200 px'));
+
+  // All-scaled fixture: output is byte-identical to the pre-split renderer.
+  const ctx2 = makeCtx();
+  draw.drawLegend(ctx2, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  const texts2 = callsOf(ctx2, 'fillText').map(c => c[1]);
+  assert.ok(texts2.includes('Waste 12.00 ft'), 'all-scaled row unchanged; got ' + JSON.stringify(texts2));
 });
 
 test('drawLegend: no rows -> "No items" placeholder', () => {

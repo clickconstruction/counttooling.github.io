@@ -6435,8 +6435,14 @@
           console.warn('[View link] auth init failed:', authErr);
         }
       } catch (e) {
-        console.error('[View link]', e);
-        showToast('Failed to load: ' + (e.message || 'Unknown error'), 5000);
+        // Handled failure with a real UI: features/view-only.js owns the
+        // full-screen dead/unreachable-link message (T1-12). warn, not error —
+        // the Playwright specs assert zero console errors on this path. The
+        // toast survives only as the can't-happen fallback (feature file
+        // failed to load), per the defensive-callback convention.
+        console.warn('[View link]', e);
+        if (App.showViewLinkFailure) App.showViewLinkFailure(e);
+        else showToast('Failed to load: ' + (e.message || 'Unknown error'), 5000);
       }
       updateUI();
       return;

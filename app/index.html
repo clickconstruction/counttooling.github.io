@@ -2376,6 +2376,13 @@
       </div>
     </div>
   </div>
+  <!-- Dead/unreachable view-link failure screen (features/view-only.js
+       showViewLinkFailure). Deliberately NOT a .modal-overlay: not dismissable,
+       opaque, nothing behind it worth revealing. -->
+  <div id="viewLinkDeadScreen" class="view-link-dead-screen">
+    <p id="viewLinkDeadMessage"></p>
+    <button type="button" id="viewLinkDeadRetry" class="btn-yellow">Retry</button>
+  </div>
   <div class="modal-overlay" id="addCanvasModal">
     <div class="modal-card">
       <h2>Add Canvas</h2>

@@ -112,8 +112,9 @@ test.describe('View-only mode (view-link boot)', () => {
       init: typeof window.App?.initViewOnlyMode,
       cancel: typeof window.App?.cancelViewLinkEmailPrompt,
       notice: typeof window.App?.maybeShowViewerScaleNotice,
+      failure: typeof window.App?.showViewLinkFailure,
     }));
-    expect(wired).toEqual({ init: 'function', cancel: 'function', notice: 'function' });
+    expect(wired).toEqual({ init: 'function', cancel: 'function', notice: 'function', failure: 'function' });
     expect(realErrors(errors)).toEqual([]);
   });
 
@@ -235,12 +236,95 @@ test.describe('View-only mode (view-link boot)', () => {
         pages: s.pages.length,
         markers: (s.pages[0].canvases[0].annotations.counterMarkers.c1 || []).length,
         promptVisible: document.getElementById('viewLinkEmailModal')?.classList.contains('visible'),
+        deadScreenVisible: document.getElementById('viewLinkDeadScreen')?.classList.contains('visible'),
       };
     });
     expect(after.projectId).toBe('proj-view-spec');
     expect(after.pages).toBe(2);
     expect(after.markers).toBe(1);
     expect(after.promptVisible).toBe(false);
+    // Cache-served revisits must never show the failure screen.
+    expect(after.deadScreenVisible).toBe(false);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('dead link: full-screen inactive message, no Retry, editor never exposed', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await routeViewProject(page, () => ({ status: 404, body: { message: 'View link not found' } }));
+
+    await page.goto('/app/?t=' + TOKEN);
+    await submitEmail(page, 'crew@clickplumbing.com');
+
+    await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
+      'This plan link isn’t active anymore. Ask the person who sent it for a new one.');
+    await expect(page.locator('#viewLinkDeadRetry')).toBeHidden();
+
+    const after = await page.evaluate((token) => ({
+      hasPdf: document.body.classList.contains('has-pdf'),
+      isViewer: window.App.state.isViewer,
+      pages: window.App.state.pages.length,
+      allowedEmail: localStorage.getItem('view:allowed:' + token),
+    }), TOKEN);
+    expect(after.hasPdf).toBe(false);
+    expect(after.isViewer).toBe(false);
+    expect(after.pages).toBe(0);
+    // Only persisted on a successful fetch — a dead link never remembers the email.
+    expect(after.allowedEmail).toBeNull();
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('network failure with no cache: Retry shown, reload recovers', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    // Edge Function unreachable (OPTIONS included) — untagged network failure.
+    await page.route('**/functions/v1/get-view-project', (route) => route.abort('failed'));
+
+    await page.goto('/app/?t=' + TOKEN);
+    await submitEmail(page, 'crew@clickplumbing.com');
+
+    await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
+      'Couldn’t load this plan. Check your connection and try again.');
+    await expect(page.locator('#viewLinkDeadRetry')).toBeVisible();
+
+    // The server comes back; Retry reloads the page — the boot IS the retry
+    // loop. The email was never persisted (fetch failed), so the gate re-asks.
+    await page.unroute('**/functions/v1/get-view-project');
+    await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
+    await page.locator('#viewLinkDeadRetry').click();
+    await submitEmail(page, 'crew@clickplumbing.com');
+    await expectViewerLoaded(page);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('revoked link with a cached snapshot shows the dead screen, not the cached plan', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+
+    // First visit online: populates the IndexedDB view cache (blob + data snapshot).
+    await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
+    await page.goto('/app/?t=' + TOKEN);
+    await submitEmail(page, 'crew@clickplumbing.com');
+    await expectViewerLoaded(page);
+
+    // Revisit after revocation: the server answers 404 (dead-tagged) — the
+    // cached snapshot must NOT be served ("It will stop working immediately").
+    await page.unroute('**/functions/v1/get-view-project');
+    await routeViewProject(page, () => ({ status: 404, body: { message: 'View link not found' } }));
+    await page.goto('/app/?t=' + TOKEN);
+
+    await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
+      'This plan link isn’t active anymore. Ask the person who sent it for a new one.');
+    await expect(page.locator('#viewLinkDeadRetry')).toBeHidden();
+    const after = await page.evaluate(() => ({
+      hasPdf: document.body.classList.contains('has-pdf'),
+      pages: window.App.state.pages.length,
+    }));
+    expect(after.hasPdf).toBe(false);
+    expect(after.pages).toBe(0);
     expect(realErrors(errors)).toEqual([]);
   });
 });

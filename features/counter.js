@@ -61,7 +61,7 @@
     }
     empty.style.display = 'none';
     filtered.forEach(c => {
-      const count = state.pages.reduce((n, p) => n + ((p.annotations?.counterMarkers?.[c.id] || []).length), 0);
+      const count = state.pages.reduce((n, p) => n + ((App.getMergedAnnotationsForPage(p)?.counterMarkers?.[c.id] || []).length), 0);
       const div = document.createElement('div');
       div.className = 'sidebar-item';
       div.innerHTML = '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span>';

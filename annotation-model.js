@@ -295,6 +295,100 @@ function createAnnotationModel(ctx) {
     }
   }
 
+  // --- Palette relink (Load-from-Cloud, T1-09) ------------------------------
+  // Marks are keyed by palette id, so a wholesale palette replace (Load from
+  // Cloud) orphans every placed mark whose trade name survives under a new id.
+  // planPaletteRelink maps CURRENT palette ids to INCOMING ids by trimmed
+  // case-insensitive name (the exact nameKey convention Palette Insights uses
+  // for its "On Artboard" badge) and counts the placed marks each way;
+  // applyPaletteRelink rewrites the annotations through those maps. Name
+  // matching lives ONLY here — reconcileOrphanedCountersAndLineTypes stays
+  // byte-identical for its six other intake paths and remains the backstop
+  // that turns any still-unmatched mark into a visible "Unknown" row.
+  function paletteNameKey(s) { return String(s || '').trim().toLowerCase(); }
+  function planPaletteRelink(incomingCounters, incomingLineTypes) {
+    const state = ctx.getState();
+    // First incoming match wins on duplicate names (deterministic); identity
+    // mappings (oldId === newId) are dropped from the maps but still count as
+    // matched — those marks keep counting without a rewrite.
+    const buildMap = (current, incoming) => {
+      const incomingByName = new Map();
+      (incoming || []).forEach(it => {
+        const key = paletteNameKey(it.name);
+        if (key && !incomingByName.has(key)) incomingByName.set(key, it.id);
+      });
+      const map = {};
+      const matched = new Set();
+      (current || []).forEach(it => {
+        const key = paletteNameKey(it.name);
+        if (!key || !incomingByName.has(key)) return;
+        matched.add(it.id);
+        const newId = incomingByName.get(key);
+        if (newId !== it.id) map[it.id] = newId;
+      });
+      return { map, matched };
+    };
+    const c = buildMap(state.counters, incomingCounters);
+    const lt = buildMap(state.lineTypes, incomingLineTypes);
+    const currentCounterIds = new Set((state.counters || []).map(x => x.id));
+    const currentLineTypeIds = new Set((state.lineTypes || []).map(x => x.id));
+    let relinkedMarks = 0;
+    let orphanedMarks = 0;
+    // Marks already orphaned before the load (id not in the current palette)
+    // count toward neither bucket — reconcile's Unknown backfill covers them.
+    const tallyCounter = (id, n) => {
+      if (!n) return;
+      if (c.matched.has(id)) relinkedMarks += n;
+      else if (currentCounterIds.has(id)) orphanedMarks += n;
+    };
+    const tallyLine = (id) => {
+      if (!id) return;
+      if (lt.matched.has(id)) relinkedMarks++;
+      else if (currentLineTypeIds.has(id)) orphanedMarks++;
+    };
+    (state.pages || []).forEach(p => {
+      getPageCanvases(p).forEach(cv => {
+        const ann = cv.annotations || makeAnnotations();
+        Object.entries(ann.counterMarkers || {}).forEach(([id, arr]) => tallyCounter(id, (arr || []).length));
+        (ann.quickLines || []).forEach(q => tallyLine(q.lineTypeId));
+        (ann.polylines || []).forEach(poly => tallyLine(poly.lineTypeId));
+      });
+    });
+    return { counterIdMap: c.map, lineTypeIdMap: lt.map, relinkedMarks, orphanedMarks };
+  }
+  // Rewrites annotations in place through the plan's id maps, across every
+  // page/canvas. counterMarkers is rebuilt in ONE pass so key renames can
+  // never chain (oldA→x while x→y must not double-move oldA's markers);
+  // colliding targets MERGE (two same-named old counters relink to one
+  // incoming counter — markers concatenate, none are lost). No UI calls —
+  // the caller renders.
+  function applyPaletteRelink(plan) {
+    const counterIdMap = plan?.counterIdMap || {};
+    const lineTypeIdMap = plan?.lineTypeIdMap || {};
+    const hasCounterMap = Object.keys(counterIdMap).length > 0;
+    const hasLineMap = Object.keys(lineTypeIdMap).length > 0;
+    if (!hasCounterMap && !hasLineMap) return;
+    (ctx.getState().pages || []).forEach(p => {
+      getPageCanvases(p).forEach(cv => {
+        const ann = cv.annotations;
+        if (!ann) return;
+        if (hasCounterMap && ann.counterMarkers) {
+          const next = {};
+          Object.entries(ann.counterMarkers).forEach(([id, arr]) => {
+            const target = counterIdMap[id] || id;
+            if (next[target]) next[target].push(...(arr || []));
+            else next[target] = arr || [];
+          });
+          ann.counterMarkers = next;
+        }
+        if (hasLineMap) {
+          (ann.quickLines || []).forEach(q => { if (q.lineTypeId && lineTypeIdMap[q.lineTypeId]) q.lineTypeId = lineTypeIdMap[q.lineTypeId]; });
+          (ann.polylines || []).forEach(poly => { if (poly.lineTypeId && lineTypeIdMap[poly.lineTypeId]) poly.lineTypeId = lineTypeIdMap[poly.lineTypeId]; });
+        }
+      });
+    });
+  }
+
   // --- Rect-select operations (Multiply Zone preview + Delete Area) ---------
   // Hit semantics: lines count only when BOTH endpoints are inside the rect;
   // zones/highlights/room boxes hit on their center point; notes on their
@@ -501,6 +595,8 @@ function createAnnotationModel(ctx) {
     applyPageAnnotationsFromData,
     hydrateStateFromProjectData,
     reconcileOrphanedCountersAndLineTypes,
+    planPaletteRelink,
+    applyPaletteRelink,
     countItemsInRect,
     collectItemsToDeleteInRect,
     deleteCollectedItems,

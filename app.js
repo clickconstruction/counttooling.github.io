@@ -2320,14 +2320,21 @@
     // on large projects). Same load-order guard as the App.* checks above:
     // report.js loads after app.js, so this can run before it registers.
     const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
+    // Room Sizer boxes count as report data too: the report renders a "Room
+    // Volumes" table and the email summary a "--- Rooms ---" block, so a
+    // rooms-only takeoff still has something to show/export/copy. Only Copy
+    // to /Tooling stays counts/lines-only — getPipeToolingSummary never emits
+    // rooms, so on a rooms-only project it would copy an empty string.
+    const hasRooms = typeof window.getReportHasRooms === 'function' && window.getReportHasRooms();
+    const hasReportData = hasCountsOrLines || hasRooms;
     const ptBtn = document.getElementById('forPipeToolingDropdown');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
     const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
-    if (copySummaryBtn) copySummaryBtn.style.display = hasCountsOrLines ? '' : 'none';
+    if (copySummaryBtn) copySummaryBtn.style.display = hasReportData ? '' : 'none';
     const showReportDropdown = document.getElementById('showReportDropdown');
-    if (showReportDropdown) showReportDropdown.style.display = hasCountsOrLines ? '' : 'none';
+    if (showReportDropdown) showReportDropdown.style.display = hasReportData ? '' : 'none';
     const specificPagesBtn = document.getElementById('specificPages');
-    if (specificPagesBtn) specificPagesBtn.style.display = hasCountsOrLines ? '' : 'none';
+    if (specificPagesBtn) specificPagesBtn.style.display = hasReportData ? '' : 'none';
     const allCanvasesOnPageOpt = document.querySelector('.show-report-option[data-mode="all-canvases-on-page"]');
     if (allCanvasesOnPageOpt) {
       const page = state.pages[state.currentPage];

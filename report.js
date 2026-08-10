@@ -351,6 +351,22 @@
     return false;
   }
 
+  // Rooms counterpart to getPipeToolingHasData: would the report's "Room
+  // Volumes" table / the email summary's "--- Rooms ---" block be non-empty?
+  // Any roomBoxes entry produces a row (boxes with an unknown roomId aggregate
+  // into an "Unassigned" bucket), so one box existing is the whole test — but
+  // only once features/room-sizer.js has registered the totals builder that
+  // getRoomTotals resolves at call time; without it the renderers emit nothing.
+  function getReportHasRooms() {
+    if (!window.state || !state.pages || !state.pages.length) return false;
+    if (!(window.App && typeof window.App.getRoomVolumeTotals === 'function')) return false;
+    for (let i = 0; i < state.pages.length; i++) {
+      const ann = defaultGetAnnotations(state.pages[i], i);
+      if ((ann.roomBoxes || []).length) return true;
+    }
+    return false;
+  }
+
   function getEmailTextSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
     const opts = options || {};
@@ -450,6 +466,7 @@
     window.printReport = printReport;
     window.getPipeToolingSummary = getPipeToolingSummary;
     window.getPipeToolingHasData = getPipeToolingHasData;
+    window.getReportHasRooms = getReportHasRooms;
     window.getEmailTextSummary = getEmailTextSummary;
   }
 

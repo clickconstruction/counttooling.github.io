@@ -181,6 +181,56 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
   });
 });
 
+test('rooms-only project exposes Show Report / Export PDFs / Copy Summary, and the report has the Room Volumes table (regression: the export buttons gated on counts/lines only)', async ({ page }) => {
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+  // No annotations at all: every export button hidden.
+  await page.evaluate(() => window.App.updateUI());
+  await expect(page.locator('#showReportDropdown')).toBeHidden();
+  await expect(page.locator('#specificPages')).toBeHidden();
+  await expect(page.locator('#copySummaryTextDropdown')).toBeHidden();
+  await expect(page.locator('#forPipeToolingDropdown')).toBeHidden();
+
+  // Seed ONLY a room + box — no counter marks, quick lines, or polylines.
+  await page.evaluate(() => {
+    const s = window.state;
+    s.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };   // 120x90 pt -> 12ft x 9ft
+    const roomId = window.App.uid();
+    s.rooms = [{ id: roomId, name: 'Mech Room', color: '#8e6fd8' }];
+    const ann = window.App.ensureActiveCanvas(s.pages[0]).annotations;
+    ann.roomBoxes = [{ id: window.App.uid(), x1: 0, y1: 0, x2: 120, y2: 90, heightFt: 8, roomId }];
+    window.App.updateUI();
+  });
+
+  // Report-capable buttons appear; Copy to /Tooling stays hidden because
+  // getPipeToolingSummary emits only counts/lines (it would copy '').
+  await expect(page.locator('#showReportDropdown')).toBeVisible();
+  await expect(page.locator('#specificPages')).toBeVisible();
+  await expect(page.locator('#copySummaryTextDropdown')).toBeVisible();
+  await expect(page.locator('#forPipeToolingDropdown')).toBeHidden();
+
+  // The report itself carries the Room Volumes table with the room's numbers,
+  // and the email summary carries the Rooms block.
+  const outputs = await page.evaluate(() => ({
+    report: window.buildReportHtml(),
+    email: window.getEmailTextSummary(),
+    tooling: window.getPipeToolingSummary(),
+  }));
+  expect(outputs.report).toContain('Room Volumes');
+  expect(outputs.report).toContain('Mech Room');
+  expect(outputs.report).toContain('864.0');            // 12 x 9 x 8 ft³
+  expect(outputs.email).toContain('--- Rooms ---');
+  expect(outputs.tooling).toBe('');                     // confirms the /Tooling carve-out
+
+  expect(errors).toEqual([]);
+});
+
 test('context-menu Delete removes a room box (regression: the ctxDelete switch lacked a roomBox branch)', async ({ page }) => {
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

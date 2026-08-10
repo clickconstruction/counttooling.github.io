@@ -17,7 +17,7 @@ When you open the **Set Scale** [[set-scale]] presets tab, the app compares the 
 
 If it *doesn't* match, a yellow warning appears with a sheet picker, defaulted to the app's best guess of what the sheet was originally.
 
-![The Set Scale presets tab on a rescaled sheet: the yellow non-standard-sheet warning with its sheet picker, under the blue verify-your-scale advisory.](/guides/img/sheet-warning.png) Apply a preset with the picker set, and the scale is corrected by the rescale ratio automatically — the scale label carries the sheet name (e.g. `· ARCH D`) so you can see the correction was applied.
+![The Set Scale presets tab on a rescaled sheet: the yellow non-standard-sheet warning with its sheet picker, under the blue verify-your-scale advisory.](/guides/img/sheet-warning.png) Apply a preset with the picker set, and the scale is corrected by the rescale ratio automatically — the scale label carries the sheet name (e.g. `· ARCH D`) so you can see the correction was applied. That suffix stays on the sidebar scale readout (`1/8" = 1' · ARCH D`): it means "corrected as if this page were printed on an ARCH D sheet". Treat it as a standing reminder — whenever you see a sheet-name suffix, verify a known dimension on that page before trusting its numbers.
 
 **The correction is still a guess**, so a corrected apply now walks you straight into the verify check: the dialog closes and the app asks you to click both ends of a printed dimension to confirm the scale. **Esc keeps the applied scale** — if the guess was right (a genuinely compressed print of that sheet), you lose nothing. Why it matters: on one sample plan, a wrong ANSI-D guess made a printed 65'-0" wall read 173'-1" — every length 2.67× long, silently. The check catches that in one pass.
 
@@ -32,6 +32,8 @@ Any time a preset or custom scale is set, a blue advisory in the scale dialog of
 3. The app shows what the current scale **reads** for that distance, next to the expected value, with the **% error** — green when it's under 1%.
 
 From there, **Keep current scale** if it checks out, or **Use measured** to recalibrate from your two points (the same math as two-point calibration, which is always ground truth).
+
+After **Use measured** — or any two-point calibration — the scale readout shows the measured line itself (`1 ft = 9.0 px`) instead of a preset name. That's by design: the scale came from the drawing, not from a chart, so there's no fraction to display — and the dashed reference line stays pinned on the plan where you measured, as the receipt.
 
 ![The verify check: a known 25-foot line measured against the current scale — Expected vs. what the scale reads, with the % error in green when it's right.](/guides/img/scale-check.png)
 

@@ -32,6 +32,7 @@ Sometimes you just need to show a takeoff to someone who isn't a CountTooling us
 ![Opening a view link: the recipient enters their work email to view the plans — no account, no install.](/guides/img/view-link-gate.png)
 
 - Each link has an **access log** (who opened it, when), and you can **revoke** any link at any time from the same panel.
+- If the link has been **revoked or replaced**, the recipient sees a plain full-screen note asking them to request a new link from the sender — revocation holds even if they'd viewed the plan on that device before. A **connection problem** shows a Retry button instead, so a spotty signal never looks like a dead link.
 
 ## What the recipient sees
 

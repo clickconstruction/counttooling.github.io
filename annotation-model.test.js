@@ -334,6 +334,121 @@ test('undo snapshot carries rooms; applySnapshot restores them and clears roomBo
   assert.strictEqual(state.roomBoxStart, null);
 });
 
+// --- palette relink (Load-from-Cloud, T1-09) ---------------------------------
+
+test('planPaletteRelink maps old ids to incoming ids by trimmed case-insensitive name', () => {
+  const state = {
+    counters: [
+      { id: 'old-wc', name: ' Water Closet ' },
+      { id: 'old-same', name: 'Floor Drain' },
+      { id: 'old-miss', name: 'Floor Sink' },
+    ],
+    lineTypes: [{ id: 'old-cu', name: 'COPPER' }],
+    pages: [],
+  };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const plan = m.planPaletteRelink(
+    [
+      { id: 'new-wc', name: 'water closet' },
+      { id: 'new-wc-dup', name: 'Water Closet' },   // duplicate name: first wins
+      { id: 'old-same', name: 'floor drain' },      // identity mapping: dropped
+    ],
+    [{ id: 'new-cu', name: ' copper ' }]);
+  assert.deepStrictEqual(plan.counterIdMap, { 'old-wc': 'new-wc' });
+  assert.strictEqual(plan.counterIdMap['old-same'], undefined);      // identity dropped
+  assert.strictEqual(plan.counterIdMap['old-miss'], undefined);      // no name match
+  assert.deepStrictEqual(plan.lineTypeIdMap, { 'old-cu': 'new-cu' });
+});
+
+test('planPaletteRelink counts relinked vs orphaned marks across pages and canvases', () => {
+  const state = {
+    counters: [{ id: 'old-wc', name: 'Water Closet' }, { id: 'old-miss', name: 'Floor Sink' }],
+    lineTypes: [{ id: 'old-cu', name: 'Copper' }, { id: 'old-pvc', name: 'PVC' }],
+    pages: [
+      { canvases: [
+        { id: 'c1', annotations: { counterMarkers: { 'old-wc': [{}, {}], 'old-miss': [{}], ghost: [{}] }, quickLines: [{ lineTypeId: 'old-cu' }], polylines: [] } },
+        { id: 'c2', annotations: { counterMarkers: {}, quickLines: [], polylines: [{ lineTypeId: 'old-pvc' }] } },
+      ] },
+      { canvases: [{ id: 'c3', annotations: { counterMarkers: { 'old-wc': [{}] }, quickLines: [{ lineTypeId: 'phantom' }], polylines: [] } }] },
+    ],
+  };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const plan = m.planPaletteRelink(
+    [{ id: 'new-wc', name: 'water closet' }],
+    [{ id: 'new-cu', name: 'copper' }]);
+  // Relinked: 2+1 WC markers + 1 copper quickLine = 4.
+  assert.strictEqual(plan.relinkedMarks, 4);
+  // Orphaned: 1 Floor Sink marker + 1 PVC polyline = 2. Pre-existing orphans
+  // ('ghost' marker, 'phantom' quickLine) count toward NEITHER bucket.
+  assert.strictEqual(plan.orphanedMarks, 2);
+});
+
+test('applyPaletteRelink renames counterMarkers keys and merges on collision', () => {
+  const mA = { id: 'a' }, mB = { id: 'b' }, mC = { id: 'c' };
+  const state = {
+    counters: [{ id: 'old-1', name: 'Water Closet' }, { id: 'old-2', name: 'water closet ' }],
+    lineTypes: [],
+    pages: [{ canvases: [{ id: 'c1', annotations: { counterMarkers: { 'old-1': [mA], 'old-2': [mB], keep: [mC] }, quickLines: [], polylines: [] } }] }],
+  };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const plan = m.planPaletteRelink([{ id: 'new-wc', name: 'Water Closet' }], []);
+  // Both old counters name-match the ONE incoming counter.
+  assert.deepStrictEqual(plan.counterIdMap, { 'old-1': 'new-wc', 'old-2': 'new-wc' });
+  m.applyPaletteRelink(plan);
+  const ann = state.pages[0].canvases[0].annotations;
+  assert.strictEqual(ann.counterMarkers['old-1'], undefined);
+  assert.strictEqual(ann.counterMarkers['old-2'], undefined);
+  // Merged, no markers lost; unmapped keys untouched.
+  assert.deepStrictEqual(ann.counterMarkers['new-wc'], [mA, mB]);
+  assert.deepStrictEqual(ann.counterMarkers.keep, [mC]);
+});
+
+test('applyPaletteRelink rewrites quickLine and polyline lineTypeId', () => {
+  const state = {
+    counters: [],
+    lineTypes: [{ id: 'old-cu', name: 'Copper' }],
+    pages: [
+      { canvases: [{ id: 'c1', annotations: { counterMarkers: {}, quickLines: [{ lineTypeId: 'old-cu' }, { lineTypeId: 'other' }], polylines: [{ lineTypeId: 'old-cu' }] } }] },
+      { canvases: [{ id: 'c2', annotations: { counterMarkers: {}, quickLines: [], polylines: [{ lineTypeId: 'old-cu' }] } }] },
+    ],
+  };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const plan = m.planPaletteRelink([], [{ id: 'new-cu', name: 'copper' }]);
+  m.applyPaletteRelink(plan);
+  assert.strictEqual(state.pages[0].canvases[0].annotations.quickLines[0].lineTypeId, 'new-cu');
+  assert.strictEqual(state.pages[0].canvases[0].annotations.quickLines[1].lineTypeId, 'other');  // unmapped untouched
+  assert.strictEqual(state.pages[0].canvases[0].annotations.polylines[0].lineTypeId, 'new-cu');
+  assert.strictEqual(state.pages[1].canvases[0].annotations.polylines[0].lineTypeId, 'new-cu');
+});
+
+test('relink then reconcile leaves no orphaned ids: unmatched marks get Unknown rows', () => {
+  const state = {
+    counters: [{ id: 'old-wc', name: 'Water Closet' }, { id: 'old-miss', name: 'Floor Sink' }],
+    lineTypes: [{ id: 'old-pvc', name: 'PVC' }],
+    pages: [{ canvases: [{ id: 'c1', annotations: { counterMarkers: { 'old-wc': [{}], 'old-miss': [{}] }, quickLines: [{ lineTypeId: 'old-pvc' }], polylines: [] } }] }],
+  };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const incomingCounters = [{ id: 'new-wc', name: 'water closet' }];
+  const incomingLineTypes = [{ id: 'new-cu', name: 'Copper' }];
+  const plan = m.planPaletteRelink(incomingCounters, incomingLineTypes);
+  // The Load-from-Cloud sequence: replace the palette, relink, reconcile.
+  state.counters = incomingCounters;
+  state.lineTypes = incomingLineTypes;
+  m.applyPaletteRelink(plan);
+  m.reconcileOrphanedCountersAndLineTypes();
+  const ann = state.pages[0].canvases[0].annotations;
+  // Every referenced id now exists in the palette — no tally can read 0.
+  const counterIds = new Set(state.counters.map(c => c.id));
+  Object.keys(ann.counterMarkers).forEach(id => assert.ok(counterIds.has(id), id));
+  const lineTypeIds = new Set(state.lineTypes.map(lt => lt.id));
+  ann.quickLines.forEach(q => assert.ok(lineTypeIds.has(q.lineTypeId)));
+  // The unmatched marks surface as visible Unknown rows.
+  assert.strictEqual(state.counters.find(c => c.id === 'old-miss')?.name, 'Unknown');
+  assert.strictEqual(state.lineTypes.find(lt => lt.id === 'old-pvc')?.name, 'Unknown');
+  // The matched marker moved under the incoming id.
+  assert.strictEqual(ann.counterMarkers['new-wc'].length, 1);
+});
+
 // --- rect-select operations (moved from app.js) ------------------------------
 
 function rectFixture() {

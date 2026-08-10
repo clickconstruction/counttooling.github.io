@@ -13,6 +13,15 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(counter): Choose-tab count badges summed a dead pre-canvas-layers field (T1-11)
+
+The Counter modal's Choose-tab per-counter badges always read 0: the reduce in
+`populateCounterChooseList` (features/counter.js) still read `p.annotations`,
+which the canvas-layers migration deletes on every load path. Now sums via
+`App.getMergedAnnotationsForPage(p)` — all pages, all canvases (a raw placed-marks
+count, like the sidebar; zone multiplication stays Summary-only). Regression:
+counter.spec.js badge test seeds marks across two canvases and two pages.
+
 ## fix(save): signed-out restore prompt + backup-clobber guard (T1-01)
 
 Journey audit J12/J4 (adversarially reproduced): signed out, closing and

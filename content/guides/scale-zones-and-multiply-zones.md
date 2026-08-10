@@ -1,7 +1,7 @@
 ---
 title: Scale zones and multiply zones
 description: Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 5
 icon: scale-zone
 category: Working with plans
@@ -38,6 +38,7 @@ Here's both zones live on a sheet — note the legend: the four lavatories insid
 ## Good to know
 
 - Scale zones can't overlap — each region gets one scale.
+- If the page's scale was corrected for a compressed or rescaled sheet, zone presets are corrected the same way automatically — the zone's label shows the same "· ANSI D"-style suffix, and the dialog says so. Calibrating a zone by clicking two points is never corrected (it's already ground truth).
 - A multiply zone changes the **totals**, not the marks on the sheet, so the plan stays readable.
 - Both are visual boundaries you can edit or delete later from their right-click menu.
 

@@ -33,8 +33,11 @@
   // Sheet-size correction (compressed / re-boxed PDF fix). The architectural presets and the
   // custom dialog assume 72 pt = 1 real inch of paper; a rescaled page breaks that. When the
   // current page isn't a standard sheet size we warn and offer to correct the preset's
-  // pixelsPerUnit by (actual long edge / chosen sheet long edge). PAGE SCALE ONLY — never zones
-  // (which inherit the page scale) and never two-point calibration (already ground truth).
+  // pixelsPerUnit by (actual long edge / chosen sheet long edge). The warning banner/picker is
+  // primed on the page-scale presets tab only; zone preset/custom applies inherit the page's
+  // STAMPED factor via withZoneSheetCorrection (product decision 2026-08-09 — the sheet
+  // decision was already made at page-scale time, so the zone never re-asks). Two-point
+  // calibration — page or zone — is never corrected (already ground truth).
   let sheetAnalysis = null;          // last analysis for the current page (page-scale presets)
   let activeSheetCorrection = null;  // { sheetId, factor } in effect, or null (no correction)
 
@@ -84,9 +87,28 @@
     if (scaleObj.label && sheet) scaleObj.label += ' · ' + sheet.id.replace('_', ' ');
     return scaleObj;
   }
+  // Zones inherit the page's sheet correction (product decision 2026-08-09): a zone
+  // preset/custom entry assumes true print size exactly like a page preset does, and the
+  // page already knows this sheet was compressed. Reads the stamped factor off page.scale
+  // (activeSheetCorrection is cleared in zone mode). Two-point zone calibration never comes
+  // through here — it is already ground truth.
+  function withZoneSheetCorrection(scaleObj) {
+    const state = App.state;
+    if (state.scaleModalApplyTarget !== 'zone') return scaleObj;
+    const ps = state.pages[state.currentPage]?.scale;
+    if (!ps || !ps.correctionFactor) return scaleObj;
+    scaleObj.pixelsPerUnit *= ps.correctionFactor;
+    scaleObj.correctionFactor = ps.correctionFactor;
+    if (ps.sheetSize) {
+      scaleObj.sheetSize = ps.sheetSize;
+      if (scaleObj.label) scaleObj.label += ' · ' + ps.sheetSize.replace('_', ' ');
+    }
+    return scaleObj;
+  }
 
-  // Telemetry for PAGE-scale applies (zone-target applies are not logged here — Tier-1 #7
-  // folds in the zone flavor). logUserEvent no-ops when Supabase is disabled or signed out.
+  // Telemetry for PAGE-scale applies (zone-target applies log their own scale_set flavor —
+  // target:'zone' — inside applyScaleObjectToZoneOrPage). logUserEvent no-ops when Supabase
+  // is disabled or signed out.
   function logScaleSet(scaleObj, method, verifyHandoff) {
     App.logUserEvent('scale_set', App.state.currentProjectId || null, {
       method,
@@ -173,6 +195,14 @@
         } else {
           scaleInfo.textContent = 'Lines fully inside this zone will use the scale you choose below.';
         }
+        // Disclosure for the inherited sheet correction (T1-07) — the dialog note IS the
+        // disclosure; no zone-mode toast (a toast at the measure→zone hand-off would feed
+        // the click-swallowing overlay problem).
+        const ps = state.pages[state.currentPage]?.scale;
+        if (ps?.correctionFactor) {
+          const sheetName = ps.sheetSize ? ps.sheetSize.replace('_', ' ') : 'the corrected sheet';
+          scaleInfo.textContent += ' Presets here are corrected as if printed on ' + sheetName + ', matching the page scale.';
+        }
       } else {
         scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
       }
@@ -237,7 +267,10 @@
     App.renderAnnotations();
     return true;
   }
-  function applyScaleObjectToZoneOrPage(scaleObj) {
+  // `method` is the zone-flavor scale_set telemetry tag ('preset' | 'custom'; two-point
+  // defaults). Page-flavor events (no `target` key) are logged by logScaleSet at the page
+  // apply sites; zone events carry target:'zone' and are fired here, after the commit.
+  function applyScaleObjectToZoneOrPage(scaleObj, method) {
     const state = App.state;
     if (state.scaleModalApplyTarget !== 'zone') return false;
     App.pushUndoSnapshot();
@@ -259,6 +292,15 @@
         canvas.annotations.scaleZones.push({ x1: pending.x1, y1: pending.y1, x2: pending.x2, y2: pending.y2, scale: { ...scaleObj }, id: App.uid() });
       }
     }
+    App.logUserEvent('scale_set', state.currentProjectId || null, {
+      target: 'zone',
+      method: method || 'two-point',
+      pixelsPerUnit: scaleObj.pixelsPerUnit,
+      unit: scaleObj.unit,
+      correctionFactor: scaleObj.correctionFactor != null ? scaleObj.correctionFactor : null,
+      pageIndex: state.currentPage,
+      edit: !!edit,
+    });
     App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
@@ -284,7 +326,7 @@
         btn.textContent = p.label;
         btn.onclick = () => {
           const scaleObj = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
-          if (applyScaleObjectToZoneOrPage(scaleObj)) return;   // zone target: no sheet correction
+          if (applyScaleObjectToZoneOrPage(withZoneSheetCorrection(scaleObj), 'preset')) return;   // zone: inherits the page's sheet correction
           const corrected = activeSheetCorrection;   // null for standard sheets / "don't correct"
           App.pushUndoSnapshot();
           const page = state.pages[state.currentPage];
@@ -356,7 +398,7 @@
     const fractionDisplay = String(fractionStr).trim();
     const label = fractionDisplay + '" = ' + feet + ' ft';
     const scaleObj = { pixelsPerUnit, unit: 'ft', label };
-    if (applyScaleObjectToZoneOrPage(scaleObj)) return;   // zone target: no sheet correction
+    if (applyScaleObjectToZoneOrPage(withZoneSheetCorrection(scaleObj), 'custom')) return;   // zone: inherits the page's sheet correction
     const corrected = activeSheetCorrection;   // null for standard sheets / "don't correct"
     App.pushUndoSnapshot();
     const page = state.pages[state.currentPage];

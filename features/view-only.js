@@ -204,10 +204,16 @@
           const err = { domainRestricted: true, message: data.message || 'Access restricted to ' + domainMsg };
           throw err;
         }
-        if (data.error === 'email_required') {
-          throw new Error(data.message || 'Email required');
-        }
-        throw new Error(data.message || 'Failed to load');
+        // 4xx = the server itself rejected the link (not found / revoked /
+        // gone / forbidden) — tag it "dead" so the failure screen shows the
+        // inactive copy and the cache fallback below is skipped. 5xx stays
+        // untagged (transient server trouble — retryable, cache still serves),
+        // and a network failure never reaches here (fetch rejects untagged).
+        const dead = res.status >= 400 && res.status < 500;
+        const err = new Error(data.message
+          || (data.error === 'email_required' ? 'Email required' : 'Failed to load'));
+        if (dead) err.viewLinkDead = true;
+        throw err;
       }
       return data;
     }
@@ -234,7 +240,7 @@
           if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
           email = await showViewEmailModal(true);
           if (!email) return;
-        } else if (cachedProjectData) {
+        } else if (cachedProjectData && !(e && e.viewLinkDead)) {
           projectData = cachedProjectData;   // offline / transient -- use the cached snapshot
           break;
         } else {
@@ -303,9 +309,37 @@
     updateUI();
   }
 
+  // Full-screen failure surface for a dead/revoked/unreachable view link
+  // (T1-12). Owns #viewLinkDeadScreen (app/index.html) — deliberately NOT a
+  // .modal-overlay: not dismissable, nothing behind it worth revealing. app.js's
+  // boot catch delegates here defensively (toast fallback if this file failed
+  // to load). "Dead" = server-confirmed 4xx (the viewLinkDead tag stamped in
+  // fetchViewProject); anything else (network failure, 5xx, PDF fetch failure)
+  // is retryable — the whole boot IS the retry loop, so Retry just reloads.
+  function showViewLinkFailure(err) {
+    const dead = !!(err && err.viewLinkDead);
+    const msg = document.getElementById('viewLinkDeadMessage');
+    if (msg) {
+      msg.textContent = dead
+        ? 'This plan link isn’t active anymore. Ask the person who sent it for a new one.'
+        : 'Couldn’t load this plan. Check your connection and try again.';
+    }
+    const retry = document.getElementById('viewLinkDeadRetry');
+    if (retry) {
+      retry.style.display = dead ? 'none' : '';
+      retry.onclick = () => window.location.reload();
+    }
+    const screen = document.getElementById('viewLinkDeadScreen');
+    if (screen) screen.classList.add('visible');
+    // Signed-in sessions only (logUserEvent no-ops otherwise) — the anonymous
+    // GC emits nothing; server-side dead-token logging is a follow-up.
+    App.logUserEvent && App.logUserEvent('view_link_dead', null, { reason: dead ? 'inactive' : 'network' });
+  }
+
   App.shareViewerScale = shareViewerScale;
   App.noteViewerTempScale = noteViewerTempScale;
   App.applyViewerTempScales = applyViewerTempScales;   // viewer-scale.spec.js test seam
   App.maybeShowViewerScaleNotice = maybeShowViewerScaleNotice;
+  App.showViewLinkFailure = showViewLinkFailure;
   App.initViewOnlyMode = initViewOnlyMode;
 })();

@@ -474,6 +474,16 @@
     .header .replaced-by-status-bar { display: none !important; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
+    /* Dead/unreachable view-link failure screen (features/view-only.js).
+       z-index 400 sits above .modal-overlay/toasts (200) and every menu (300)
+       so nothing can paint over it; opaque var(--bg) fully hides the empty
+       editor underneath. */
+    .view-link-dead-screen { display: none; position: fixed; inset: 0; z-index: 400;
+      background: var(--bg); align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px; padding: 24px; text-align: center; }
+    .view-link-dead-screen.visible { display: flex; }
+    .view-link-dead-screen p { color: var(--text); font-size: 1.05rem; max-width: 34em;
+      margin: 0; }
     .save-status-bell-btn {
       flex-shrink: 0; align-self: center; width: 40px; height: 40px; padding: 0; border-radius: 8px;
       border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer;

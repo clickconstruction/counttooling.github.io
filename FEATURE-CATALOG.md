@@ -386,7 +386,9 @@ in, and the lock self-releases after 30 idle minutes so a walk-away never strand
 *Problem:* Showing a takeoff to a GC, owner, or inspector usually means either buying them a seat
 or flattening everything into static PDFs.
 *Useful because:* Send a URL; they enter a work email and see the live takeoff — no account, every
-access logged, and you can revoke the link anytime.
+access logged, and you can revoke the link anytime. A dead or revoked link shows the recipient an
+honest full-screen note to ask the sender for a new one (never a broken-looking editor), and
+revoking truly stops repeat visits even when the recipient has an offline cached copy.
 
 **Viewer scale sharing**
 *Problem:* A viewer who spots a missing scale has no way to fix it, so the question round-trips

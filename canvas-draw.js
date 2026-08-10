@@ -553,7 +553,6 @@ function createCanvasDraw(deps) {
     const leg = ann.legend;
     const legendScale = state.legendSettings?.legendScale ?? 1;
     const effectiveScale = scale * legendScale;
-    const pageScale = deps.getPageScale(pageIdx >= 0 ? pageIdx : 0);
     const counterRows = [];
     (state.counters || []).forEach(c => {
       const markers = ann.counterMarkers?.[c.id] || [];
@@ -563,15 +562,20 @@ function createCanvasDraw(deps) {
     });
     const lineRows = [];
     (state.lineTypes || []).forEach(lt => {
-      let lenReal = 0;
+      // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
+      // buckets and are never summed under one label (formatFeetPx output is
+      // byte-identical to the old formatFeet path when one bucket is zero).
+      let lenFt = 0, lenPx = 0;
       const pi = pageIdx >= 0 ? pageIdx : 0;
       (ann.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-        lenReal += deps.getLineLengthFeetForTotals(q, pi, false, ann);
+        const s = deps.getLineLengthSplitForTotals(q, pi, false, ann);
+        lenFt += s.feet; lenPx += s.px;
       });
       (ann.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-        lenReal += deps.getLineLengthFeetForTotals(poly, pi, true, ann);
+        const s = deps.getLineLengthSplitForTotals(poly, pi, true, ann);
+        lenFt += s.feet; lenPx += s.px;
       });
-      if (lenReal > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatFeet(lenReal, pageScale) });
+      if (lenFt > 0 || lenPx > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatFeetPx(lenFt, lenPx) });
     });
     // Room Sizer rows: per-room volume for this page's boxes (always cubic feet).
     // Toggleable in Legend Settings; on by default — only projects that use the

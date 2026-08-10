@@ -26,33 +26,29 @@
   function invalidateFooterTotals() { footerTotalsDirty = true; }
   function computeFooterTotals() {
     const state = App.state;
-    if (!state.pages || !state.pages.length) return { count: 0, lengthReal: 0, scale: null };
-    let count = 0, lengthReal = 0;
-    const markedIdx = [];
+    if (!state.pages || !state.pages.length) return { count: 0, lengthFt: 0, lengthPx: 0 };
+    let count = 0, lengthFt = 0, lengthPx = 0;
     state.pages.forEach((page, i) => {
       const ann = (typeof App.getMergedAnnotationsForPage === 'function')
         ? App.getMergedAnnotationsForPage(page)
         : (page.annotations || App.makeAnnotations());
-      let pageHas = false;
       (state.counters || []).forEach(c => {
         const ms = ann.counterMarkers?.[c.id] || [];
         ms.forEach(m => {
           count += (typeof App.getMultiplyZoneForPoint === 'function') ? App.getMultiplyZoneForPoint(ann, m) : 1;
-          pageHas = true;
         });
       });
-      (ann.quickLines || []).forEach(q => {
-        lengthReal += (typeof App.getLineLengthFeetForTotals === 'function') ? App.getLineLengthFeetForTotals(q, i, false, ann) : 0;
-        pageHas = true;
-      });
-      (ann.polylines || []).forEach(poly => {
-        lengthReal += (typeof App.getLineLengthFeetForTotals === 'function') ? App.getLineLengthFeetForTotals(poly, i, true, ann) : 0;
-        pageHas = true;
-      });
-      if (pageHas) markedIdx.push(i);
+      // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
+      // buckets and are never summed under one label.
+      const addSplit = (line, isPoly) => {
+        if (typeof App.getLineLengthSplitForTotals !== 'function') return;
+        const s = App.getLineLengthSplitForTotals(line, i, isPoly, ann);
+        lengthFt += s.feet; lengthPx += s.px;
+      };
+      (ann.quickLines || []).forEach(q => addSplit(q, false));
+      (ann.polylines || []).forEach(poly => addSplit(poly, true));
     });
-    const scaleIdx = markedIdx.length ? markedIdx : state.pages.map((_, i) => i);
-    return { count, lengthReal, scale: App.pickScaleForLineType(scaleIdx) };
+    return { count, lengthFt, lengthPx };
   }
   function getFooterTotalsCached() {
     const state = App.state;
@@ -185,10 +181,11 @@
       } else {
         const t = getFooterTotalsCached();
         const countStr = (t.count || 0).toLocaleString();
-        // t.lengthReal is already in feet (accumulated via getLineLengthFeetForTotals).
-        const lenStr = App.formatFeet(t.lengthReal || 0, t.scale);
+        // Split buckets: feet (scaled lines) and raw px (unscaled) are never summed.
+        const lenStr = App.formatFeetPx(t.lengthFt || 0, t.lengthPx || 0);
         totalsEl.textContent = '[' + countStr + ' | ' + lenStr + ']';
-        totalsEl.title = countStr + ' counters | ' + lenStr + ' of lines';
+        totalsEl.title = countStr + ' counters | ' + lenStr + ' of lines'
+          + ((t.lengthPx || 0) > 0 ? ' — px lengths are on sheets with no scale' : '');
         totalsEl.style.display = '';
       }
     }

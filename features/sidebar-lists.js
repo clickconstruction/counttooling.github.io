@@ -98,20 +98,24 @@
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         if (qLines.length === 0 && polys.length === 0) return;
       }
-      let runs = 0, len = 0;
-      const pageIndices = [];
+      // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
+      // buckets and are never summed under one label.
+      let runs = 0, lenFt = 0, lenPx = 0;
       state.pages.forEach((p, pi) => {
         const ann = App.getActiveAnnotations(p, pi);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-        if (qLines.length || polys.length) pageIndices.push(pi);
-        qLines.forEach(q => { runs++; len += App.getLineLengthFeetForTotals(q, pi, false, ann); });
-        polys.forEach(poly => { runs++; len += App.getLineLengthFeetForTotals(poly, pi, true, ann); });
+        const addSplit = (item, isPoly) => {
+          runs++;
+          const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
+          lenFt += s.feet; lenPx += s.px;
+        };
+        qLines.forEach(q => addSplit(q, false));
+        polys.forEach(poly => addSplit(poly, true));
       });
-      const scale = App.pickScaleForLineType(pageIndices);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + App.formatFeet(len, scale) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + App.formatFeetPx(lenFt, lenPx) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;
         const handle = div.querySelector('.line-type-drag-handle');

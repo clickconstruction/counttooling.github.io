@@ -22,6 +22,11 @@
  * form stay in app.js. Four publishes were added for this split:
  * `fetchUserAirboard`/`saveUserAirboard` and the constants
  * `PLUMBING_DEFAULTS`/`LINE_DEFAULTS` (used by Clear-artboard's reset).
+ * The Load row additionally leans on `App.planPaletteRelink` /
+ * `App.applyPaletteRelink` (name-match relink of placed marks, T1-09),
+ * `App.reconcileOrphanedCountersAndLineTypes` (Unknown-row backstop),
+ * `App.pushUndoSnapshot`, `App.markProjectDirty`, and `App.logUserEvent`
+ * (the `artboard_load` activity event).
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -64,14 +69,41 @@
   };
   document.getElementById('mySettingsLoadAirboard').onclick = async () => {
     const state = App.state;
-    if (state.counters.length || state.lineTypes.length) {
-      if (!confirm('Replace your current artboard with the saved version from the cloud?')) return;
-    }
+    // Fetch BEFORE the confirm so the warning can state real numbers (a cancel
+    // costs one read RPC — acceptable, it's read-only).
     const data = await App.fetchUserAirboard();
     if (!data) {
       App.showToast('No saved artboard found');
       return;
     }
+    // Placed marks are keyed by palette id — plan a name-match relink so a
+    // mid-bid load can never silently zero the tallies (T1-09).
+    const plan = App.planPaletteRelink(data.counters || [], data.lineTypes || []);
+    if (state.counters.length || state.lineTypes.length) {
+      const placed = plan.relinkedMarks + plan.orphanedMarks;
+      let msg;
+      if (placed > 0) {
+        // Trade-terms copy. The undo promise is deliberately limited to
+        // counters/lines/counts — undo-stack snapshots omit Quick Key
+        // bindings and modifier prefs, so don't over-promise.
+        msg = 'Load your saved Artboard from the cloud? Your ' + placed +
+          ' placed ' + (placed === 1 ? 'mark stays' : 'marks stay') + ' on the sheet — ' +
+          plan.relinkedMarks + (plan.relinkedMarks === 1 ? ' matches' : ' match') +
+          ' by name and ' + (plan.relinkedMarks === 1 ? 'keeps' : 'keep') +
+          ' counting under the loaded counters and lines.';
+        if (plan.orphanedMarks > 0) {
+          msg += ' ' + plan.orphanedMarks + ' mark' + (plan.orphanedMarks === 1 ? ' doesn\'t' : 's don\'t') +
+            ' match anything in the saved Artboard — they\'ll keep counting under an "Unknown" row.';
+        }
+        msg += ' Undo brings your current counters, lines, and counts back.';
+      } else {
+        msg = 'Replace your current artboard with the saved version from the cloud?';
+      }
+      if (!confirm(msg)) return;
+    }
+    // No-ops when no pages are open — with no pages there are no marks to
+    // orphan, and the palette-only replace was the confirmed intent.
+    App.pushUndoSnapshot();
     state.counters = data.counters;
     state.lineTypes = data.lineTypes;
     state.iconNames = data.iconNames;
@@ -81,9 +113,22 @@
     if (data.lineModifiers && typeof data.lineModifiers === 'object') App.saveLineModifiers(data.lineModifiers);
     // Explicit load = the user just confirmed "replace" — bindings included.
     App.seedQuickKeysFromArtboard && App.seedQuickKeysFromArtboard(data.numberKeyBindings, { replace: true });
+    App.applyPaletteRelink(plan);
+    // Backstop: any mark still orphaned (no name match) becomes a visible
+    // "Unknown" row — Load-from-Cloud is the 7th intake path on the helper.
+    App.reconcileOrphanedCountersAndLineTypes();
+    // The relink mutated annotations and the loaded palette is per-project
+    // persisted state — dirty it so the next autosave persists both.
+    if (App.state.pages.length) App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
     App.showToast('Artboard loaded from cloud');
+    App.logUserEvent('artboard_load', state.currentProjectId || null, {
+      relinkedMarks: plan.relinkedMarks,
+      orphanedMarks: plan.orphanedMarks,
+      counters: (data.counters || []).length,
+      lineTypes: (data.lineTypes || []).length,
+    });
   };
   document.getElementById('mySettingsExportAirboard').onclick = () => {
     const state = App.state;

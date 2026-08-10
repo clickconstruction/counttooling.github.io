@@ -398,7 +398,9 @@ through email.
 *Problem:* Rebuilding the same counters, line types, and modifier preferences for every new bid is
 pure setup tax.
 *Useful because:* Save your palette once and it follows your account to any device — new bids
-start with your standards, including your Quick Key layout.
+start with your standards, including your Quick Key layout. Loading mid-bid is safe too: placed
+marks re-link to the loaded counters and lines by name (unmatched ones keep counting under a
+visible "Unknown" row), and undo brings the old palette and counts back.
 
 **Palette Insights**
 *Problem:* Your real standards live implicitly across old projects, and nobody remembers exactly

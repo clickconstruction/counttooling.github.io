@@ -154,6 +154,8 @@
   function applyPageAnnotationsFromData(page, p, scaleFallback) { return annotationModel.applyPageAnnotationsFromData(page, p, scaleFallback); }
   function hydrateStateFromProjectData(d) { return annotationModel.hydrateStateFromProjectData(d); }
   function reconcileOrphanedCountersAndLineTypes() { return annotationModel.reconcileOrphanedCountersAndLineTypes(); }
+  function planPaletteRelink(incomingCounters, incomingLineTypes) { return annotationModel.planPaletteRelink(incomingCounters, incomingLineTypes); }
+  function applyPaletteRelink(plan) { return annotationModel.applyPaletteRelink(plan); }
 
   function getIconName(path) {
     if (state.iconNames && state.iconNames[path]) return state.iconNames[path];
@@ -6140,6 +6142,8 @@
   App.makeAnnotations = makeAnnotations;
   App.applyRotationDeltaToAnnotations = applyRotationDeltaToAnnotations;
   App.reconcileOrphanedCountersAndLineTypes = reconcileOrphanedCountersAndLineTypes;
+  App.planPaletteRelink = planPaletteRelink;
+  App.applyPaletteRelink = applyPaletteRelink;
   App.pushUndoSnapshot = pushUndoSnapshot;
   App.pushUndoSnapshotCurrentPage = pushUndoSnapshotCurrentPage;
   App.markProjectDirty = markProjectDirty;

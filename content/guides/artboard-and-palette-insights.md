@@ -14,7 +14,7 @@ The setup at the start of a bid — counters, line types, colors, icons, key bin
 In **User Settings**:
 
 - **Save Artboard** stores your current palette to your account: counters, line types, the Quick Count / Quick Line **modifier** preferences, your [Quick Keys](/guides/working-faster-with-the-keyboard/) number-row layout, and your uploaded [custom icons](/guides/custom-icons/).
-- **Load from Cloud** replaces your current palette with the saved one — the "start a new bid with my standards" button.
+- **Load from Cloud** replaces your current palette with the saved one — the "start a new bid with my standards" button, and it's safe mid-bid: marks you've already placed **re-link by name** to the loaded counters and line types, so their tallies keep counting; marks whose name isn't in the saved Artboard keep counting under a visible **"Unknown"** row instead of silently reading zero; and **undo** brings your previous counters, lines, and counts back.
 - Signing in on any device **restores your artboard automatically**, so a new machine starts familiar.
 - **Export** downloads the artboard as a JSON backup file; **Clear** resets to defaults when you want a truly blank slate.
 

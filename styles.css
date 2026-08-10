@@ -1034,6 +1034,14 @@
     .line-type-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
     .line-type-tab-panel { margin-top: 0; }
     .choose-line-type-list { max-height: 200px; overflow-y: auto; }
+    /* On short viewports (laptop 900px) the full Set Scale card outgrows the
+       screen and flex-centering pushes the title + tab row above the top edge,
+       unreachable and unclickable. Clamp the card to the viewport and scroll
+       the active tab panel instead; title, tabs, and checkbox stay pinned. */
+    #scaleModal .modal-card { display: flex; flex-direction: column; max-height: min(85vh, calc(100vh - 64px)); overflow: hidden; }
+    #scaleModal .modal-card > :not(.counter-tab-panel) { flex: 0 0 auto; }
+    #scaleModal .counter-tab-panel { overflow-y: auto; min-height: 0; }
+    #scaleModal .scale-presets-list { max-height: none; }
     .scale-presets-list { max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .scale-presets-list button { width: 100%; padding: 10px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.95rem; cursor: pointer; }
     .scale-presets-list button:hover { background: var(--surface3); }

@@ -8,7 +8,10 @@
  * full state (counters, markers, PDF blob) to IndexedDB under the 'local'
  * key → a fresh signed-out page load restores the PALETTE from that backup
  * (counters; pages/PDF intentionally stay in the backup for the recovery
- * flows), and the backup entry itself survives the reload intact.
+ * flows), and the backup entry itself survives the reload intact — since
+ * T1-01, under the TAKEOFF_BACKUP_HELD_ID key-aside record (boot moves a
+ * promptable 'local' backup there so no later write can clobber it while
+ * the "Project from Last Session" prompt is unresolved).
  *
  * If an engine stage moves the dirty-tracking, backup writer, or boot
  * restore and this spec still passes, the wrappers + contracts held.
@@ -77,18 +80,28 @@ test.describe('Save engine smoke (signed-out local backup round-trip)', () => {
     }, null, { timeout: 20000, polling: 500 });
 
     // The backup entry survives the reload with the marker + PDF blob intact.
+    // T1-01: a qualifying (data + blob) 'local' record is keyed aside to
+    // TAKEOFF_BACKUP_HELD_ID at boot so no later write can clobber it while
+    // the restore prompt is unresolved — read it there, and pin that the
+    // prompt is actually being offered for it.
     const postReload = await page.evaluate(async () => {
-      const entry = await window.App.takeoffBackupGet('local', undefined);
+      const entry = await window.App.takeoffBackupGet(TAKEOFF_BACKUP_HELD_ID, undefined);
       const d = entry && (entry.data || entry);
       if (!d) return { intact: false };
       const pc = (d.pageCanvases && (d.pageCanvases[0] || d.pageCanvases['0'])) || [];
       const canvases = Array.isArray(pc) ? pc : (pc.canvases || []);
       const markers = canvases[0]?.annotations?.counterMarkers?.smoke1 || [];
-      return { intact: true, markerCount: markers.length, hasPdf: !!entry.pdfBlob };
+      return {
+        intact: true,
+        markerCount: markers.length,
+        hasPdf: !!entry.pdfBlob,
+        promptOffered: document.getElementById('lastSessionRestoreModal').classList.contains('visible'),
+      };
     });
     expect(postReload.intact).toBe(true);
     expect(postReload.markerCount).toBe(1);
     expect(postReload.hasPdf).toBe(true);
+    expect(postReload.promptOffered).toBe(true);
 
     expect(errors).toEqual([]);
   });

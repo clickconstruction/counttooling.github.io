@@ -174,3 +174,50 @@ test('secondsToExpiry: epoch-seconds expiry relative to nowMs; missing -> null',
   assert.strictEqual(s.secondsToExpiry(undefined, nowMs), null);
   assert.strictEqual(s.secondsToExpiry('nope', nowMs), null);
 });
+
+test('pickBootRestoreCandidate: qualification, held preference, and data-only fallback', () => {
+  const blob = { size: 100 };
+  const qualifying = (t, name) => ({ data: { counters: [] }, pdfBlob: blob, lastModifiedAt: t, projectName: name });
+  const dataOnly = (t) => ({ data: { counters: [] }, pdfBlob: null, lastModifiedAt: t });
+
+  // both null -> nothing
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(null, null),
+    { candidate: null, from: null, promptable: false });
+
+  // only local, qualifying -> promptable from 'local'
+  const localQ = qualifying(100, 'a');
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(localQ, null),
+    { candidate: localQ, from: 'local', promptable: true });
+
+  // only local, data-only -> silent pre-apply candidate, not promptable
+  const localD = dataOnly(100);
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(localD, null),
+    { candidate: localD, from: 'local', promptable: false });
+
+  // only held, qualifying -> promptable from 'held'
+  const heldQ = qualifying(50, 'b');
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(null, heldQ),
+    { candidate: heldQ, from: 'held', promptable: true });
+
+  // both qualifying -> newer lastModifiedAt wins (either direction)
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(qualifying(200, 'newer'), heldQ).from, 'local');
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(qualifying(10, 'older'), heldQ).from, 'held');
+  // tie -> held wins (a prior session's still-unresolved candidate)
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(qualifying(50, 'tie'), heldQ).from, 'held');
+
+  // held data-only + local qualifying -> the promptable local wins
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(localQ, dataOnly(999)),
+    { candidate: localQ, from: 'local', promptable: true });
+
+  // neither qualifies, held has data -> held data-only fallback preferred
+  const heldD = dataOnly(10);
+  assert.deepStrictEqual(s.pickBootRestoreCandidate(localD, heldD),
+    { candidate: heldD, from: 'held', promptable: false });
+
+  // empty-blob entry does not qualify (the size>0 predicate)
+  const emptyBlob = { data: {}, pdfBlob: { size: 0 }, lastModifiedAt: 5 };
+  assert.strictEqual(s.pickBootRestoreCandidate(emptyBlob, null).promptable, false);
+  // blob without data does not qualify AND is not a data fallback
+  assert.deepStrictEqual(s.pickBootRestoreCandidate({ pdfBlob: blob, lastModifiedAt: 5 }, null),
+    { candidate: null, from: null, promptable: false });
+});

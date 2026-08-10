@@ -84,8 +84,11 @@ test.describe('Save engine smoke (signed-out local backup round-trip)', () => {
     // TAKEOFF_BACKUP_HELD_ID at boot so no later write can clobber it while
     // the restore prompt is unresolved — read it there, and pin that the
     // prompt is actually being offered for it.
-    const postReload = await page.evaluate(async () => {
-      const entry = await window.App.takeoffBackupGet(TAKEOFF_BACKUP_HELD_ID, undefined);
+    // 'local-held' = TAKEOFF_BACKUP_HELD_ID (constants.js; pinned in
+    // constants.test.js) — passed as an evaluate arg, the page const is not
+    // reachable from a serialized closure.
+    const postReload = await page.evaluate(async (heldId) => {
+      const entry = await window.App.takeoffBackupGet(heldId, undefined);
       const d = entry && (entry.data || entry);
       if (!d) return { intact: false };
       const pc = (d.pageCanvases && (d.pageCanvases[0] || d.pageCanvases['0'])) || [];
@@ -97,7 +100,7 @@ test.describe('Save engine smoke (signed-out local backup round-trip)', () => {
         hasPdf: !!entry.pdfBlob,
         promptOffered: document.getElementById('lastSessionRestoreModal').classList.contains('visible'),
       };
-    });
+    }, 'local-held');
     expect(postReload.intact).toBe(true);
     expect(postReload.markerCount).toBe(1);
     expect(postReload.hasPdf).toBe(true);

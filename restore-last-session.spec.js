@@ -130,7 +130,12 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     });
   }
 
-  const countHeldMarkers = () => window.__takeoffBackupGetForTest(TAKEOFF_BACKUP_HELD_ID, null).then((e) => {
+  // = TAKEOFF_BACKUP_HELD_ID (constants.js; pinned in constants.test.js).
+  // Passed into evaluate as an arg: the page-side const is not reachable from
+  // a serialized closure, and the Node-side lint has no browser globals.
+  const HELD_ID = 'local-held';
+
+  const countHeldMarkers = (heldId) => window.__takeoffBackupGetForTest(heldId, null).then((e) => {
     if (!e || !e.data) return null;
     let n = 0;
     (e.data.pageCanvases || []).forEach((cs) => (cs || []).forEach((c) => {
@@ -150,7 +155,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
     await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
     // Key-aside: the candidate now lives under the held key.
-    expect(await page.evaluate(countHeldMarkers)).toBe(3);
+    expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
 
     // 2. Clobber guard: force a write AND sit through a real 5s interval tick
     //    (>6s) with the prompt pending — the held record must survive, and
@@ -158,9 +163,9 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     //    outranks it (the exact reproduced self-destruct).
     await page.evaluate(() => window.__writeTakeoffStateBackupForTest());
     await page.waitForTimeout(6500);
-    expect(await page.evaluate(countHeldMarkers)).toBe(3);
-    const localAfterGuard = await page.evaluate(async () => {
-      const held = await window.__takeoffBackupGetForTest(TAKEOFF_BACKUP_HELD_ID, null);
+    expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
+    const localAfterGuard = await page.evaluate(async (heldId) => {
+      const held = await window.__takeoffBackupGetForTest(heldId, null);
       const local = await window.__takeoffBackupGetForTest('local', null);
       const markerCount = (e) => {
         let n = 0;
@@ -173,7 +178,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
         localOutranksHeldWithoutMarkers: !!(local && markerCount(local) === 0 && (local.lastModifiedAt || 0) > (held.lastModifiedAt || 0)),
         clobberAverted: (window.App.getSaveStatusLog() || []).some((ev) => ev.kind === 'backup_clobber_averted'),
       };
-    });
+    }, HELD_ID);
     expect(localAfterGuard.localOutranksHeldWithoutMarkers).toBe(false);
     expect(localAfterGuard.clobberAverted).toBe(true);
 
@@ -191,7 +196,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(afterKeep.isViewer).toBe(false);
     expect(afterKeep.modalOpen).toBe(false);
     // Held record consumed on Keep.
-    expect(await page.evaluate(() => window.__takeoffBackupGetForTest(TAKEOFF_BACKUP_HELD_ID, null))).toBe(null);
+    expect(await page.evaluate((heldId) => window.__takeoffBackupGetForTest(heldId, null), HELD_ID)).toBe(null);
 
     // 4. Post-Keep lifecycle: backups resumed (pins the isViewer fix) — a
     //    dirty mark repopulates a fresh 'local' backup with the markers.
@@ -218,16 +223,16 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await page.reload();
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
     await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
-    expect(await page.evaluate(countHeldMarkers)).toBe(3);
+    expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
 
     // Discard deletes the held record AND 'local'; next boot shows no prompt.
     await page.evaluate(() => document.getElementById('lastSessionRestoreDiscard').click());
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
-    await page.waitForFunction(async () => {
-      const held = await window.__takeoffBackupGetForTest(TAKEOFF_BACKUP_HELD_ID, null);
+    await page.waitForFunction(async (heldId) => {
+      const held = await window.__takeoffBackupGetForTest(heldId, null);
       const local = await window.__takeoffBackupGetForTest('local', null);
       return held === null && local === null;
-    });
+    }, HELD_ID);
     await page.reload();
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1500);

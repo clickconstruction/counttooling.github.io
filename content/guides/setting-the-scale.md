@@ -1,7 +1,7 @@
 ---
 title: Setting the scale on a plan
 description: Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.
-updated: 2026-06-09
+updated: 2026-08-10
 order: 2
 icon: set-scale
 category: Getting started
@@ -29,6 +29,8 @@ If the sheet is drawn at a standard ratio, skip the two-point step and pick a pr
 
 - **Architectural** — `1/4" = 1'`, `1/8" = 1'`, and the rest of the common set.
 - **Engineering** — `1" = 20'`, `1" = 40'`, and so on.
+
+On a non-standard (rescaled) sheet, applying a preset or custom scale flows straight into the two-point verify check — click both ends of a printed dimension to confirm it, or press Esc to keep the applied scale. See [Is your scale lying to you?](/guides/verifying-your-scale/)
 
 ## Enter a custom scale
 

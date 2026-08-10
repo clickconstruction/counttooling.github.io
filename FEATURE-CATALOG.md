@@ -80,13 +80,14 @@ or type a ratio — so lengths are real feet everywhere.
 *Problem:* PDFs that were re-plotted at half size are the classic silent killer: a `1/4"=1'` preset
 reads a 10-foot wall as 5 feet and nobody notices until the bid is wrong.
 *Useful because:* The app detects a non-standard sheet size, warns you, and corrects the preset by
-the rescale ratio — an error class most competitors don't even acknowledge.
+the rescale ratio — an error class most competitors don't even acknowledge. Since the correction is
+still a guess, a corrected apply walks you straight into the verify check (Esc keeps the scale).
 
 **Verify-your-scale check mode**
 *Problem:* A preset scale is an assumption, and estimators rarely test it before trusting a whole
 bid to it.
 *Useful because:* Two clicks on a known dimension show the % error in green or yellow — you prove
-the scale before it can poison the numbers.
+the scale before it can poison the numbers. Sheet-corrected applies enter this check automatically.
 
 **Synthetic scale bar on the sheet**
 *Problem:* Even after calibration there's no ongoing visual sanity check that the scale still

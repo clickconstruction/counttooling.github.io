@@ -26,7 +26,7 @@ When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set bef
 
 ## Add pages later (addenda)
 
-When an addendum or revised sheet arrives mid-bid, click **Upload PDF** [[upload]] again while your project is open and choose to **add its pages** to the current set. The new sheets join the project in place — nothing you've already counted moves or changes.
+When an addendum or revised sheet arrives mid-bid, click **Upload PDF** [[upload]] again while your project is open — the new sheets are added to the current set. The project keeps its name, a toast confirms "Added N sheets" to it by name, and nothing you've already counted moves or changes. Signed-in users can instead use **Project Settings > Add additional PDF pages** to trim the addendum first (the "Add pages" dialog, titled with your project's name) before it joins the set.
 
 ## Find your way around a big set
 

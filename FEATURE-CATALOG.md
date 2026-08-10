@@ -46,7 +46,8 @@ warm-up, exports — stays focused and fast.
 **Append pages to an existing takeoff**
 *Problem:* Addenda and revised sheets arrive mid-bid, and most tools force a new project or a
 painful re-import that orphans your existing counts.
-*Useful because:* The late sheet joins the project in place; nothing you've counted moves.
+*Useful because:* The late sheet joins the project in place; nothing you've counted moves. The
+project keeps its name, and a toast confirms "Added N sheets".
 
 **Page rotation (R)**
 *Problem:* Scanned and re-plotted sheets come in sideways, and marking up a rotated drawing

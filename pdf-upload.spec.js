@@ -132,3 +132,58 @@ test.describe('robust PDF upload', () => {
     // record within ~1s of upload, which is indistinguishable from a delete.)
   });
 });
+
+// --- T1-08 / J2: append-upload never renames the open project ---
+// Uploading a second PDF while pages are loaded (or a cloud project is open)
+// appends the sheets WITHOUT clobbering state.currentProjectName, and toasts
+// "Added N sheets to <project>". Fresh uploads into an empty session still
+// take the first file's name. The pending-canvas-load decline-path rename
+// (features/pdf-intake.js matchPendingCanvasLoad) needs cloud fixtures and is
+// guarded by code review, not staged here.
+test.describe('append never renames the open project', () => {
+  /** Upload test-2pages.pdf into an empty session and wait for its 2 pages. */
+  async function freshUploadTwoPages(page) {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
+  }
+
+  test('fresh upload still names the project from the first file (control)', async ({ page }) => {
+    await freshUploadTwoPages(page);
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('test-2pages');
+  });
+
+  test('second upload keeps the project name and toasts "Added 1 sheet"', async ({ page }) => {
+    await freshUploadTwoPages(page);
+    await page.evaluate(() => { window.state.currentProjectName = 'Riverside Clinic Plumbing'; });
+
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('Riverside Clinic Plumbing');
+    // Assert promptly — the toast auto-hides at 3500 ms (the text node persists,
+    // but the visible-state check below would not). Content only, not styling,
+    // so T2-15's non-blocking-corner rework won't break this.
+    await expect(page.locator('#airboardToastText')).toHaveText('Added 1 sheet to Riverside Clinic Plumbing');
+  });
+
+  test('upload into an open cloud project (stubbed id) never renames it', async ({ page }) => {
+    await freshUploadTwoPages(page);
+    await page.evaluate(() => {
+      window.state.currentProjectId = 'spec-proj-1';
+      window.state.currentProjectName = 'Riverside Clinic Plumbing';
+    });
+
+    // No Project-Settings flag, so this routes through handleFreshUpload —
+    // the verified worse-than-stated case (autosave would push the wrong name).
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+    const after = await page.evaluate(() => ({
+      id: window.state.currentProjectId,
+      name: window.state.currentProjectName,
+    }));
+    expect(after.id).toBe('spec-proj-1');
+    expect(after.name).toBe('Riverside Clinic Plumbing');
+  });
+});

@@ -352,13 +352,14 @@
     return lines.join('\n');
   }
 
-  // Cheap existence probe: would getPipeToolingSummary() be non-empty? Same
-  // annotation source and same "counts or lines" rule (a marker under a defined
-  // counter id, or a quick line / polyline whose lineTypeId matches a defined
-  // line type), but short-circuits at the first hit instead of building the
-  // whole summary. updateUI() calls this on every state change to toggle the
-  // export/summary buttons — the full walk was a measurable per-call cost on
-  // large multi-page projects.
+  // Cheap existence probe: would the report/summary be non-empty? Same
+  // annotation source and same rules as the builders (a marker under a defined
+  // counter id, a quick line / polyline whose lineTypeId matches a defined
+  // line type, or any room box — getRoomVolumeTotals buckets unassigned boxes
+  // under "Unassigned", so mere existence counts), but short-circuits at the
+  // first hit instead of building the whole summary. updateUI() calls this on
+  // every state change to toggle the export/summary buttons — the full walk
+  // was a measurable per-call cost on large multi-page projects.
   function getPipeToolingHasData() {
     if (!window.state || !state.pages || !state.pages.length) return false;
     const getAnn = defaultGetAnnotations;
@@ -375,6 +376,7 @@
       for (const poly of ann.polylines || []) {
         if (lineTypeIds.has(poly.lineTypeId)) return true;
       }
+      if ((ann.roomBoxes || []).length) return true;
     }
     return false;
   }

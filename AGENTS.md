@@ -125,7 +125,7 @@
   `getMultiplyZoneForLine`,
   `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`.
   It exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`,
-  `getPipeToolingHasData` (cheap counts-or-lines existence check used by
+  `getPipeToolingHasData` (cheap counts/lines/room-boxes existence check used by
   `updateUI`), `getEmailTextSummary`; both summary functions accept optional
   `{ pageIndices, getAnnotations }`. The `window.*` attachment is wrapped in
   `if (typeof window !== 'undefined')` and there is a guarded CommonJS export

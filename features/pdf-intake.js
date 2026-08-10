@@ -396,7 +396,10 @@
     App.state.localPdfHash = uploadHash;
     if (App.state.pendingCanvasLoad && firstBuf) {
       await matchPendingCanvasLoad(filesToProcess, uploadHash);
-    } else {
+    } else if (startPageIdx === 0 && !App.state.currentProjectId) {
+      // Fresh upload into an empty session: name the project after the first file.
+      // Appending to loaded pages (startPageIdx > 0) or an open cloud project must
+      // NEVER clobber the name — see the guard comment below and J2/T1-08.
       App.state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
     }
     App.state.currentPage = startPageIdx;
@@ -405,6 +408,13 @@
       App.fitZoom();
     });
     e.target.value = '';
+    // J2 friction #8: appends were silent. The size-cap rollbacks above return
+    // before this point, so a rolled-back merge never toasts.
+    if (startPageIdx > 0) {
+      const added = App.state.pages.length - startPageIdx;
+      App.showToast('Added ' + added + ' sheet' + (added === 1 ? '' : 's') + ' to ' +
+        (App.state.currentProjectName || 'Untitled'), 3500);
+    }
 
     // T1-01 / J4 second half: signed-out same-PDF re-upload re-applies the
     // marks from the on-device backup (pages + currentPage are set by now, so

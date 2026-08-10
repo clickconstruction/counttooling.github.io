@@ -39,22 +39,20 @@
         });
       });
       (App.state.lineTypes || []).forEach(lt => {
-        (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => {
-          const gid = q.group || null;
+        // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
+        // buckets and are never summed under one label.
+        const addSplit = (item, isPoly) => {
+          const gid = item.group || null;
           if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
-          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
-          lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += App.getLineLengthFeetForTotals(q, pi, false, ann);
-          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
-        });
-        (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => {
-          const gid = poly.group || null;
-          if (!lineTypeByGroup[gid]) lineTypeByGroup[gid] = {};
-          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, len: 0, pageIndices: [] };
-          lineTypeByGroup[gid][lt.id].runs++;
-          lineTypeByGroup[gid][lt.id].len += App.getLineLengthFeetForTotals(poly, pi, true, ann);
-          if (!lineTypeByGroup[gid][lt.id].pageIndices.includes(pi)) lineTypeByGroup[gid][lt.id].pageIndices.push(pi);
-        });
+          if (!lineTypeByGroup[gid][lt.id]) lineTypeByGroup[gid][lt.id] = { name: lt.name, runs: 0, lenFt: 0, lenPx: 0, pageIndices: [] };
+          const r = lineTypeByGroup[gid][lt.id];
+          r.runs++;
+          const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
+          r.lenFt += s.feet; r.lenPx += s.px;
+          if (!r.pageIndices.includes(pi)) r.pageIndices.push(pi);
+        };
+        (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => addSplit(q, false));
+        (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id).forEach(poly => addSplit(poly, true));
       });
     });
     const allGroupIds = [...new Set([...Object.keys(counterByGroup), ...Object.keys(lineTypeByGroup)])];
@@ -82,12 +80,11 @@
       (App.state.lineTypes || []).forEach(lt => {
         const r = lineTypes[lt.id];
         if (r && r.runs > 0) {
-          const scale = App.pickScaleForLineType(r.pageIndices);
           const div = document.createElement('div');
           div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + App.formatFeet(r.len, scale) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + App.formatFeetPx(r.lenFt, r.lenPx) + '</span>';
           div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }
@@ -122,23 +119,25 @@
         }
       });
       App.state.lineTypes.forEach(lt => {
-        let runs = 0, len = 0;
-        const pageIndices = [];
+        let runs = 0, lenFt = 0, lenPx = 0;
         App.state.pages.forEach((p, pi) => {
           const ann = App.getActiveAnnotations(p);
           const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
           const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-          if (qLines.length || polys.length) pageIndices.push(pi);
-          qLines.forEach(q => { runs++; len += App.getLineLengthFeetForTotals(q, pi, false, ann); });
-          polys.forEach(poly => { runs++; len += App.getLineLengthFeetForTotals(poly, pi, true, ann); });
+          const addSplit = (item, isPoly) => {
+            runs++;
+            const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
+            lenFt += s.feet; lenPx += s.px;
+          };
+          qLines.forEach(q => addSplit(q, false));
+          polys.forEach(poly => addSplit(poly, true));
         });
         if (runs > 0) {
-          const scale = App.pickScaleForLineType(pageIndices);
           const div = document.createElement('div');
           div.className = 'sidebar-item summary-item-clickable summary-line-item';
           div.dataset.type = 'lineType';
           div.dataset.id = lt.id;
-          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + App.formatFeet(len, scale) + '</span>';
+          div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + App.formatFeetPx(lenFt, lenPx) + '</span>';
           div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
         }

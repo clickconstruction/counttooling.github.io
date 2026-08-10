@@ -1,6 +1,6 @@
 /**
  * ClickCount Print Report
- * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getLineLengthFeetForTotals (tally lengths in feet), getLineRealWorldLength, getMultiplyZoneForPoint, getMultiplyZoneForLine
+ * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getLineLengthFeetForTotals (per-line tally lengths in feet), getLineLengthSplitForTotals (ft/px split rollups — px never summed under a ft label), getLineRealWorldLength, getMultiplyZoneForPoint, getMultiplyZoneForLine
  */
 (function() {
   function escapeHtml(s) {
@@ -41,13 +41,28 @@
   function collectSummaries(pageIndices, getAnn) {
     const counterSummaryByGroup = {};
     const lineTypeSummaryByGroup = {};
+    // T1-05 ft/px split: each line routes its run/length/page into the feet
+    // bucket (usable effective scale) or the px bucket (raw PDF-pts) — the
+    // buckets are NEVER summed together. `pages` stays as the union for the
+    // zero-length edge (both buckets zero), which keeps today's single
+    // pickScaleForLineType row.
     const addLine = (item, lt, i, isPoly, ann) => {
       const gid = item.group || null;
       if (!lineTypeSummaryByGroup[gid]) lineTypeSummaryByGroup[gid] = {};
-      if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runs: 0, lengthReal: 0, pages: [] };
+      if (!lineTypeSummaryByGroup[gid][lt.id]) lineTypeSummaryByGroup[gid][lt.id] = { name: lt.name, color: lt.color, runsFt: 0, runsPx: 0, lengthFt: 0, lengthPx: 0, pagesFt: [], pagesPx: [], pages: [] };
       const r = lineTypeSummaryByGroup[gid][lt.id];
-      r.runs++;
-      r.lengthReal += typeof getLineLengthFeetForTotals === 'function' ? getLineLengthFeetForTotals(item, i, isPoly, ann) : (getLineLengthPdfPts(item, i, isPoly) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, item, isPoly) : 1));
+      const split = typeof getLineLengthSplitForTotals === 'function'
+        ? getLineLengthSplitForTotals(item, i, isPoly, ann)
+        : { feet: 0, px: getLineLengthPdfPts(item, i, isPoly) * (typeof getMultiplyZoneForLine === 'function' ? getMultiplyZoneForLine(ann, item, isPoly) : 1) };
+      if (split.px > 0) {
+        r.runsPx++;
+        r.lengthPx += split.px;
+        if (!r.pagesPx.includes(i + 1)) r.pagesPx.push(i + 1);
+      } else {
+        r.runsFt++;
+        r.lengthFt += split.feet;
+        if (!r.pagesFt.includes(i + 1)) r.pagesFt.push(i + 1);
+      }
       if (!r.pages.includes(i + 1)) r.pages.push(i + 1);
     };
     pageIndices.forEach((i) => {
@@ -85,6 +100,15 @@
       if (isUntaggedGroupId(b)) return -1;
       return (getGroupName(a) || 'Untagged').localeCompare(getGroupName(b) || 'Untagged');
     });
+  }
+
+  // T1-05: the report headline / group-totals length phrase. Feet and px stay
+  // in separate buckets — "34.00 ft total length (+ 367 px on unscaled pages)"
+  // | "367 px total length" | "34.00 ft total length" | "0 total length".
+  function lengthTotalsLabel(feet, px) {
+    if (feet > 0 && px > 0) return feet.toFixed(2) + ' ft total length (+ ' + Math.round(px) + ' px on unscaled pages)';
+    if (px > 0) return Math.round(px) + ' px total length';
+    return (feet > 0 ? feet.toFixed(2) + ' ft' : '0') + ' total length';
   }
 
   // Room Sizer totals (features/room-sizer.js registers this on window.App
@@ -129,28 +153,23 @@
 
     let totalCounters = 0;
     let totalLineRuns = 0;
-    let totalLengthReal = 0;
-    const allPagesWithLines = [];
+    let totalLengthFt = 0;
+    let totalLengthPx = 0;
     orderedGroupIds.forEach(gid => {
       const counters = counterSummaryByGroup[gid] || {};
       const lines = lineTypeSummaryByGroup[gid] || {};
       Object.values(counters).forEach(r => { totalCounters += r.total; });
       Object.values(lines).forEach(r => {
-        totalLineRuns += r.runs;
-        totalLengthReal += r.lengthReal;
-        r.pages.forEach(p => { if (!allPagesWithLines.includes(p)) allPagesWithLines.push(p); });
+        totalLineRuns += r.runsFt + r.runsPx;
+        totalLengthFt += r.lengthFt;
+        totalLengthPx += r.lengthPx;
       });
     });
-    const scale = pickScaleForLineType(allPagesWithLines.length ? allPagesWithLines : pageIndices.map(i => i + 1));
-    const totalLengthStr = scale
-      ? totalLengthReal.toFixed(2) + ' ft'
-      : (totalLengthReal > 0 ? Math.round(totalLengthReal) + ' px' : '0');
-
     if (totalCounters > 0 || totalLineRuns > 0) {
       const parts = [];
       if (totalCounters > 0) parts.push(totalCounters + ' counter' + (totalCounters !== 1 ? 's' : ''));
       if (totalLineRuns > 0) parts.push(totalLineRuns + ' line run' + (totalLineRuns !== 1 ? 's' : ''));
-      if (totalLineRuns > 0) parts.push(totalLengthStr + ' total length');
+      if (totalLineRuns > 0) parts.push(lengthTotalsLabel(totalLengthFt, totalLengthPx));
       html += '<p class="report-totals">' + escapeHtml(parts.join(' · ')) + '</p>';
     }
 
@@ -223,6 +242,7 @@
     html += '<h2 class="page-header">Summary</h2>';
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0;
+    let anyPxSummaryRow = false;
     if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
         const groupName = getGroupName(gid);
@@ -232,15 +252,13 @@
         if (!hasItems) return;
         html += '<h3 class="section-header">' + escapeHtml(groupName) + '</h3>';
         const groupTotalCounters = Object.values(counters).reduce((s, r) => s + r.total, 0);
-        const groupTotalRuns = Object.values(lines).reduce((s, r) => s + r.runs, 0);
-        const groupTotalReal = Object.values(lines).reduce((s, r) => s + r.lengthReal, 0);
-        const groupPages = [...new Set([...Object.values(counters).flatMap(r => r.pages), ...Object.values(lines).flatMap(r => r.pages)])];
-        const groupScale = pickScaleForLineType(groupPages);
-        const groupLengthStr = groupScale ? groupTotalReal.toFixed(2) + ' ft' : (groupTotalReal > 0 ? Math.round(groupTotalReal) + ' px' : '0');
+        const groupTotalRuns = Object.values(lines).reduce((s, r) => s + r.runsFt + r.runsPx, 0);
+        const groupTotalFt = Object.values(lines).reduce((s, r) => s + r.lengthFt, 0);
+        const groupTotalPx = Object.values(lines).reduce((s, r) => s + r.lengthPx, 0);
         const groupParts = [];
         if (groupTotalCounters > 0) groupParts.push(groupTotalCounters + ' counter' + (groupTotalCounters !== 1 ? 's' : ''));
         if (groupTotalRuns > 0) groupParts.push(groupTotalRuns + ' line run' + (groupTotalRuns !== 1 ? 's' : ''));
-        if (groupTotalRuns > 0) groupParts.push(groupLengthStr + ' total length');
+        if (groupTotalRuns > 0) groupParts.push(lengthTotalsLabel(groupTotalFt, groupTotalPx));
         if (groupParts.length > 0) html += '<p class="report-group-totals">' + escapeHtml(groupParts.join(' · ')) + '</p>';
         html += '<table class="report-table"><tr><th>Item</th><th>Total</th><th>Pages</th></tr>';
         (state.counters || []).forEach(c => {
@@ -253,17 +271,24 @@
         (state.lineTypes || []).forEach(lt => {
           const r = lines[lt.id];
           if (r) {
-            const scale = pickScaleForLineType(r.pages);
-            const unit = scale ? 'ft' : 'px';
-            const num = scale
-              ? r.lengthReal.toFixed(2)
-              : String(Math.round(r.lengthReal));
             const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
-            html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+            const row = (unit, num, pagesList) => '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + pagesList.join(', ') + '</td></tr>';
+            // T1-05 split rows: up to one ft row + one px row per line type —
+            // px lengths are never summed under a ft label.
+            if (r.lengthFt > 0) html += row('ft', r.lengthFt.toFixed(2), r.pagesFt);
+            if (r.lengthPx > 0) { html += row('px', String(Math.round(r.lengthPx)), r.pagesPx); anyPxSummaryRow = true; }
+            if (r.lengthFt === 0 && r.lengthPx === 0) {
+              // Zero-length edge: keep today's single pickScaleForLineType row.
+              const scale = pickScaleForLineType(r.pages);
+              html += row(scale ? 'ft' : 'px', scale ? '0.00' : '0', r.pages);
+            }
           }
         });
         html += '</table>';
       });
+      if (anyPxSummaryRow) {
+        html += '<p class="report-group-totals">* px rows are runs on pages without a scale — set the scale to include them in feet.</p>';
+      }
     }
     if (roomTotals.length > 0) {
       html += '<h3 class="section-header">Room Volumes</h3>';
@@ -311,13 +336,16 @@
       (state.lineTypes || []).forEach(lt => {
         const r = lineTypes[lt.id];
         if (r) {
-          const scale = pickScaleForLineType(r.pages);
-          const unit = scale ? 'ft' : 'px';
-          const num = scale
-            ? r.lengthReal.toFixed(2)
-            : String(Math.round(r.lengthReal));
-          const fixture = prefix + unit + ' of ' + r.name;
-          lines.push([fixture, num, r.pages.join(', ')].join('\t'));
+          // T1-05 split rows: up to one `ft of` row + one `px of` row per line
+          // type (importers already handle `px of` — fully unscaled types
+          // emitted it before). px is never summed under the ft label.
+          if (r.lengthFt > 0) lines.push([prefix + 'ft of ' + r.name, r.lengthFt.toFixed(2), r.pagesFt.join(', ')].join('\t'));
+          if (r.lengthPx > 0) lines.push([prefix + 'px of ' + r.name, String(Math.round(r.lengthPx)), r.pagesPx.join(', ')].join('\t'));
+          if (r.lengthFt === 0 && r.lengthPx === 0) {
+            // Zero-length edge: keep today's single pickScaleForLineType row.
+            const scale = pickScaleForLineType(r.pages);
+            lines.push([prefix + (scale ? 'ft' : 'px') + ' of ' + r.name, scale ? '0.00' : '0', r.pages.join(', ')].join('\t'));
+          }
         }
       });
     });
@@ -382,13 +410,19 @@
         (state.lineTypes || []).forEach(lt => {
           const r = lineTypes[lt.id];
           if (r) {
-            const scale = pickScaleForLineType(r.pages);
-            const unit = scale ? 'ft' : 'px';
-            const num = scale
-              ? r.lengthReal.toFixed(2)
-              : String(Math.round(r.lengthReal));
-            const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
-            lines.push('• ' + num + ' ' + unit + ' of ' + (r.name || 'Line') + ': ' + r.runs + ' run' + (r.runs > 1 ? 's' : '') + ' (' + pagesStr + ')');
+            // T1-05 split bullets: one ft bullet + one px bullet per line type
+            // — px lengths are never summed under a ft label.
+            const bullet = (num, unit, runs, pagesArr, suffix) => {
+              const pagesStr = pagesArr.length === 1 ? 'page ' + pagesArr[0] : 'pages ' + pagesArr.join(', ');
+              return '• ' + num + ' ' + unit + ' of ' + (r.name || 'Line') + ': ' + runs + ' run' + (runs > 1 ? 's' : '') + ' (' + pagesStr + suffix + ')';
+            };
+            if (r.lengthFt > 0) lines.push(bullet(r.lengthFt.toFixed(2), 'ft', r.runsFt, r.pagesFt, ''));
+            if (r.lengthPx > 0) lines.push(bullet(String(Math.round(r.lengthPx)), 'px', r.runsPx, r.pagesPx, ' — no scale set'));
+            if (r.lengthFt === 0 && r.lengthPx === 0) {
+              // Zero-length edge: keep today's single pickScaleForLineType bullet.
+              const scale = pickScaleForLineType(r.pages);
+              lines.push(bullet(scale ? '0.00' : '0', scale ? 'ft' : 'px', r.runsFt + r.runsPx, r.pages, ''));
+            }
           }
         });
         lines.push('');
@@ -455,6 +489,6 @@
 
   // Node test harness only: inert in the browser (where `module` is undefined).
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId };
+    module.exports = { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries };
   }
 })();

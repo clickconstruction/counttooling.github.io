@@ -50,7 +50,7 @@
     }).catch(() => { /* best-effort; doCopyPipeTooling retries inline */ });
   }
 
-  async function doCopyPipeTooling(getAnnFn, pageIndices) {
+  async function doCopyPipeTooling(getAnnFn, pageIndices, mode) {
     const state = App.state;
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
@@ -87,6 +87,7 @@
     }
     try {
       await navigator.clipboard.writeText(text);
+      App.logUserEvent('copy_summary', state.currentProjectId || null, { surface: 'pipe-tooling', mode: mode || 'visible' });
       if (noLinkToast) {
         App.showToast(noLinkToast);
       } else {
@@ -98,15 +99,16 @@
     }
   }
 
-  // --- Pre-export scale check (#toolingScaleCheckModal) ---------------------
-  // Copying to /Tooling with unscaled lines silently exports pixel lengths.
-  // Before the copy, walk exactly the pages/annotations the chosen mode will
-  // export and flag pages where a summarized line (known lineTypeId — the
+  // --- Pre-copy scale check (#toolingScaleCheckModal), both copy surfaces ---
+  // Copying with unscaled lines exports pixel lengths (as separate `px of`
+  // rows since T1-05). Before the copy — Copy to /Tooling AND Copy Summary —
+  // walk exactly the pages/annotations the chosen mode will export and flag
+  // pages where a summarized line (known lineTypeId — the
   // getPipeToolingHasData rule) has no effective scale (page scale or its
   // scale zone's). Pages without line marks never flag. On a hit, a confirm
   // modal offers Set scale (jump + open the Set Scale modal), Export anyway,
   // or Cancel. Counters need no scale, so counter-only pages pass untouched.
-  let pendingToolingExport = null;   // { getAnnFn, pageIndices, firstIdx } awaiting the modal's verdict
+  let pendingToolingExport = null;   // { getAnnFn, pageIndices, firstIdx, doCopy, mode } awaiting the modal's verdict
 
   function collectUnscaledLinePages(getAnnFn, pageIndices) {
     const state = App.state;
@@ -129,10 +131,16 @@
     return flagged;
   }
 
-  async function runToolingExport(getAnnFn, pageIndices) {
+  // T1-05: the one pre-copy scale gate, generalized to carry the copy function
+  // so BOTH copy surfaces (Copy to /Tooling and Copy Summary) run the same
+  // check. On a hit it stashes { …, doCopy } and opens the modal; on a clean
+  // walk it copies straight away (zero added steps on the happy path).
+  async function runGatedCopy(getAnnFn, pageIndices, doCopy, surface, mode) {
     const flagged = collectUnscaledLinePages(getAnnFn, pageIndices);
     if (flagged.length) {
-      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0] };
+      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, mode };
+      App.logUserEvent('unscaled_ft_block', App.state.currentProjectId || null,
+        { surface, flaggedPages: flagged.length });
       const listEl = document.getElementById('toolingScaleCheckList');
       if (listEl) {
         listEl.innerHTML = '';
@@ -145,7 +153,7 @@
       App.showModal('toolingScaleCheckModal');
       return;
     }
-    await doCopyPipeTooling(getAnnFn, pageIndices);
+    await doCopy(getAnnFn, pageIndices, mode);
   }
 
   const toolingScaleCheckCancel = document.getElementById('toolingScaleCheckCancel');
@@ -157,8 +165,8 @@
       const pending = pendingToolingExport;
       App.hideModal('toolingScaleCheckModal');
       // The click itself is the user gesture, so the clipboard write inside
-      // doCopyPipeTooling stays permitted (same constraint as the dropdown).
-      if (pending) await doCopyPipeTooling(pending.getAnnFn, pending.pageIndices);
+      // the stashed doCopy stays permitted (same constraint as the dropdown).
+      if (pending) await pending.doCopy(pending.getAnnFn, pending.pageIndices, pending.mode);
     };
   }
   if (toolingScaleCheckGoSet) {
@@ -210,9 +218,9 @@
         forPipeToolingMenu.classList.remove('visible');
         if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
       }
-      if (mode === 'this-canvas') await runToolingExport(null, [App.state.currentPage]);
-      else if (mode === 'visible') await runToolingExport(null);
-      else if (mode === 'all') await runToolingExport(window.getMergedAnnotationsForPage);
+      if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doCopyPipeTooling, 'pipe-tooling', mode);
+      else if (mode === 'visible') await runGatedCopy(null, null, doCopyPipeTooling, 'pipe-tooling', mode);
+      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyPipeTooling, 'pipe-tooling', mode);
     };
   });
 
@@ -245,7 +253,7 @@
       }
     };
   }
-  async function doCopyEmailSummary(getAnnFn, pageIndices) {
+  async function doCopyEmailSummary(getAnnFn, pageIndices, mode) {
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
@@ -256,6 +264,7 @@
     }
     try {
       await navigator.clipboard.writeText(text);
+      App.logUserEvent('copy_summary', App.state.currentProjectId || null, { surface: 'email-summary', mode: mode || 'visible' });
       App.showModal('pipeToolingCopiedModal');
       setTimeout(() => App.hideModal('pipeToolingCopiedModal'), 1500);
     } catch (err) {
@@ -270,9 +279,11 @@
         copySummaryTextMenu.classList.remove('visible');
         if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
       }
-      if (mode === 'this-canvas') await doCopyEmailSummary(null, [App.state.currentPage]);
-      else if (mode === 'visible') await doCopyEmailSummary(null);
-      else if (mode === 'all') await doCopyEmailSummary(window.getMergedAnnotationsForPage);
+      // T1-05: Copy Summary runs the same pre-copy scale gate as Copy to
+      // /Tooling (previously a direct, ungated call).
+      if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doCopyEmailSummary, 'email-summary', mode);
+      else if (mode === 'visible') await runGatedCopy(null, null, doCopyEmailSummary, 'email-summary', mode);
+      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyEmailSummary, 'email-summary', mode);
     };
   });
 

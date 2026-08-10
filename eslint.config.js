@@ -97,6 +97,7 @@ const projectGlobals = {
   getLineLengthPdfPts: 'readonly',
   getLineLengthForTotals: 'readonly',
   getLineLengthFeetForTotals: 'readonly',
+  getLineLengthSplitForTotals: 'readonly',
   getLineRealWorldLength: 'readonly',
   getMultiplyZoneForLine: 'readonly',
   getMultiplyZoneForPoint: 'readonly',

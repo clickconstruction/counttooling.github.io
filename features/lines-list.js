@@ -66,15 +66,16 @@
       if (linesQ && filteredItems.length === 0) return;
       const lt = tid === '_none' ? null : state.lineTypes.find(l => l.id === tid);
       const typeName = lt ? (lt.name || 'Line') : 'Unassigned';
-      const pageIndices = [...new Set(filteredItems.map(it => it.pageIdx))];
-      let totalLen = 0;
+      // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
+      // buckets and are never summed under one label.
+      let totalFt = 0, totalPx = 0;
       filteredItems.forEach(it => {
         const p = state.pages[it.pageIdx];
         const annIt = p ? App.getActiveAnnotations(p, it.pageIdx) : App.makeAnnotations();
-        totalLen += it.type === 'poly' ? App.getLineLengthFeetForTotals(it.poly, it.pageIdx, true, annIt) : App.getLineLengthFeetForTotals(it.q, it.pageIdx, false, annIt);
+        const s = it.type === 'poly' ? App.getLineLengthSplitForTotals(it.poly, it.pageIdx, true, annIt) : App.getLineLengthSplitForTotals(it.q, it.pageIdx, false, annIt);
+        totalFt += s.feet; totalPx += s.px;
       });
-      const scale = App.pickScaleForLineType(pageIndices);
-      const summary = filteredItems.length + ' lines · ' + App.formatFeet(totalLen, scale);
+      const summary = filteredItems.length + ' lines · ' + App.formatFeetPx(totalFt, totalPx);
       const expanded = !!state.linesTypeExpanded[tid];
       const groupWrapper = document.createElement('div');
       groupWrapper.className = 'lines-type-group' + (expanded ? '' : ' collapsed');

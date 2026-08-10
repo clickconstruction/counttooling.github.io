@@ -102,6 +102,57 @@ test('lineLengthFeetForTotals: converts the total to feet via the line\'s effect
   assert.strictEqual(lm.lineLengthFeetForTotals(line, false, {}, null, null), 20);
 });
 
+test('lineLengthSplitForTotals: scaled page fills the feet bucket (unit-converted), px stays 0', () => {
+  const closeTo = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ~= ${b}`);
+  // 240 pdf-pts at 2 px/in = 120 in = 10 ft.
+  const line = { x1: 0, y1: 0, x2: 240, y2: 0 };
+  const split = lm.lineLengthSplitForTotals(line, false, {}, { pixelsPerUnit: 2, unit: 'in' }, null);
+  closeTo(split.feet, 10);
+  assert.strictEqual(split.px, 0);
+  // foot scale: no conversion needed.
+  const ftSplit = lm.lineLengthSplitForTotals(line, false, {}, { pixelsPerUnit: 24, unit: 'ft' }, null);
+  assert.strictEqual(ftSplit.feet, 10);
+  assert.strictEqual(ftSplit.px, 0);
+});
+
+test('lineLengthSplitForTotals: unscaled page fills the px bucket with raw PDF-pts', () => {
+  const line = { x1: 0, y1: 0, x2: 367.2, y2: 0 };
+  const split = lm.lineLengthSplitForTotals(line, false, {}, null, null);
+  assert.strictEqual(split.feet, 0);
+  assert.strictEqual(split.px, 367.2);
+});
+
+test('lineLengthSplitForTotals: scale-zone override on an unscaled page lands in feet', () => {
+  const zoneScale = { pixelsPerUnit: 12, unit: 'ft' };
+  const ann = { scaleZones: [{ x1: 0, y1: 0, x2: 500, y2: 500, scale: zoneScale }] };
+  const line = { x1: 10, y1: 10, x2: 130, y2: 10 };   // 120 pts / 12 = 10 ft
+  const split = lm.lineLengthSplitForTotals(line, false, ann, null, null);
+  assert.strictEqual(split.feet, 10);
+  assert.strictEqual(split.px, 0);
+});
+
+test('lineLengthSplitForTotals: multiply-zone factor applies inside the bucket', () => {
+  const line = { x1: 10, y1: 10, x2: 30, y2: 10 };   // 20 pts
+  const ann = { multiplyZones: [{ x1: 0, y1: 0, x2: 100, y2: 100, multiplier: 3 }] };
+  // Scaled: 20 / 2 = 10 ft * 3 = 30 in the feet bucket.
+  const scaled = lm.lineLengthSplitForTotals(line, false, ann, { pixelsPerUnit: 2, unit: 'ft' }, null);
+  assert.strictEqual(scaled.feet, 30);
+  assert.strictEqual(scaled.px, 0);
+  // Unscaled: 20 raw pts * 3 = 60 in the px bucket.
+  const unscaled = lm.lineLengthSplitForTotals(line, false, ann, null, null);
+  assert.strictEqual(unscaled.feet, 0);
+  assert.strictEqual(unscaled.px, 60);
+});
+
+test('lineLengthSplitForTotals: pixelsPerUnit without unit lands in feet (the divergence from lineLengthFeetForTotals)', () => {
+  // The scaled-ness test is `eff && eff.pixelsPerUnit` — the same test the
+  // export gate uses — NOT `eff && eff.unit` (lineLengthFeetForTotals's test).
+  const line = { x1: 0, y1: 0, x2: 20, y2: 0 };
+  const split = lm.lineLengthSplitForTotals(line, false, {}, { pixelsPerUnit: 2 }, null);
+  assert.strictEqual(split.feet, 10);   // unit defaults to 'ft' in the conversion
+  assert.strictEqual(split.px, 0);
+});
+
 test('scaleForLineType: prefers ft over other units regardless of page order', () => {
   const pages = [
     { scale: { unit: 'm', pixelsPerUnit: 1 } },

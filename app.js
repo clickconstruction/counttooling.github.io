@@ -799,6 +799,12 @@
   function getLineLengthFeetForTotals(line, pageIdx, isPoly, ann) {
     return lineLengthFeetForTotals(line, isPoly, ann, getPageScale(pageIdx), lineTypeForLine(line));
   }
+  // Split total { feet, px } — the T1-05 rollup primitive: feet for lines with a
+  // usable effective scale, raw PDF-pts for the rest. Exactly one bucket is
+  // non-zero per line; rollup surfaces must never add the buckets together.
+  function getLineLengthSplitForTotals(line, pageIdx, isPoly, ann) {
+    return lineLengthSplitForTotals(line, isPoly, ann, getPageScale(pageIdx), lineTypeForLine(line));
+  }
   // A single line's real-world length in feet (no multiply-zone factor) — for the
   // per-line length badges in the Lines list. Converts via the line's effective unit.
   function getLineRealWorldLengthFeet(line, pageIdx, isPoly, ann) {
@@ -811,6 +817,7 @@
   window.getLineRealWorldLength = getLineRealWorldLength;
   window.getLineLengthForTotals = getLineLengthForTotals;
   window.getLineLengthFeetForTotals = getLineLengthFeetForTotals;
+  window.getLineLengthSplitForTotals = getLineLengthSplitForTotals;
 
   // countItemsInRect / collectItemsToDeleteInRect / the Delete Area splice
   // core moved to annotation-model.js (node-tested there); performDeleteZone
@@ -1239,6 +1246,25 @@
   function schedulePdfExactRefine(forZoom) { return pdfTileCache.schedulePdfExactRefine(forZoom); }
 
   // SECTION: PDF Rendering
+  // T1-05: the Set-Scale gate only ran at tool-arm; an armed line tool page-
+  // flipped onto an unscaled sheet kept placing px-measured lines. Re-check on
+  // every page change (renderPdf is the sink for all ~10 nav entry points).
+  let scaleGatePage = -1;
+  function recheckScaleGateOnPageSwitch() {
+    if (state.currentPage === scaleGatePage) return;
+    scaleGatePage = state.currentPage;
+    const gated = { [TOOL.LINE]: 'Quick Line', [TOOL.POLYLINE]: 'Polyline',
+      [TOOL.MEASURE]: 'Measure', [TOOL.SCALE_ZONE]: 'Scale Zone', [TOOL.ROOM]: 'Room Sizer' };
+    const toolName = gated[state.tool];
+    if (!toolName || !state.pages.length || getPageScale(state.currentPage)) return;
+    // Same reset as the Move button (the #moveBtn onclick): drop to Move + clear starts.
+    state.tool = TOOL.NONE;
+    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null;
+    if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
+    showSetScaleFirstToast(toolName);
+    logUserEvent('unscaled_ft_block', state.currentProjectId || null, { surface: 'page-switch' });
+    updateUI();
+  }
   function renderPdf(opts) {
     const exactOnly = !!(opts && opts.exactOnly);   // idle exact-refine: skip the rung fallback
     pdfTileCache.cancelPdfExactRefine();
@@ -1257,6 +1283,7 @@
       else pdfTileCache.clearCropTileTimer();
     }
     const page = state.pages[state.currentPage];
+    recheckScaleGateOnPageSwitch();   // T1-05: armed line tools drop to Move on unscaled sheets
     if (page && page.pdfPage) maybeRestorePersistedRungs(page);   // lazy cross-session warm-up (Set-guarded)
     if (!page || !page.pdfPage) {
       pdfCanvas.width = 0;
@@ -1546,6 +1573,7 @@
     iconRenderCenter: (iconPath) => iconRenderCenter(iconPath),
     getPageScale: (pi) => getPageScale(pi),
     getLineLengthFeetForTotals: (line, pageIdx, isPoly, ann) => getLineLengthFeetForTotals(line, pageIdx, isPoly, ann),
+    getLineLengthSplitForTotals: (line, pageIdx, isPoly, ann) => getLineLengthSplitForTotals(line, pageIdx, isPoly, ann),
   });
 
   function renderAnnotations() {
@@ -6320,7 +6348,9 @@
   // Summary count-detail deps (features/summary-detail.js).
   App.getMultiplyZoneForPoint = getMultiplyZoneForPoint;
   App.getLineLengthFeetForTotals = getLineLengthFeetForTotals;
+  App.getLineLengthSplitForTotals = getLineLengthSplitForTotals;
   App.formatFeet = formatFeet;
+  App.formatFeetPx = formatFeetPx;
   // Room Sizer deps (features/room-sizer.js).
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;

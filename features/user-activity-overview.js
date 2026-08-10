@@ -25,7 +25,8 @@
   const EVENT_LABELS = {
     session_start: 'Signed in', project_open: 'Opened project', project_save: 'Saved project',
     export_pdf: 'Exported PDF', export_canvas: 'Exported canvas',
-    counter_marker_added: 'Placed counter', line_added: 'Drew line'
+    counter_marker_added: 'Placed counter', line_added: 'Drew line',
+    copy_summary: 'Copied summary', unscaled_ft_block: 'Blocked unscaled export'
   };
   const BREAKDOWN_ROWS = [
     ['Counters placed', 'counters_added'], ['Lines drawn', 'lines_added'],
@@ -118,6 +119,8 @@
       case 'export_pdf': return n > 1 ? ('Exported PDF ×' + n) : 'Exported PDF';
       case 'export_canvas': return n > 1 ? ('Exported canvas ×' + n) : 'Exported canvas';
       case 'session_start': return n > 1 ? ('Signed in ×' + n) : 'Signed in';
+      case 'copy_summary': return n > 1 ? ('Copied summary ×' + n) : 'Copied summary';
+      case 'unscaled_ft_block': return n > 1 ? ('Blocked unscaled export ×' + n) : 'Blocked unscaled export';
       default: return (EVENT_LABELS[type] || type) + (n > 1 ? (' ×' + n) : '');
     }
   }

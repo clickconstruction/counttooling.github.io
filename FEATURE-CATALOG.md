@@ -328,13 +328,15 @@ sizes, the report appended, and highlights and notes baked in — one file, read
 retyped into the estimating system, an hour of transcription with error risk on every row.
 *Useful because:* One click puts the entire takeoff on the clipboard as tab-delimited counts —
 with a view link back to the source plan — ready to paste directly into pricing. Before copying,
-a scale check flags any exported page whose lines were traced without a scale (pages without
-marks don't count), so a pixel length can't silently ride into a priced bid.
+a scale check (shared with Copy Summary) flags any exported page whose lines were traced without
+a scale (pages without marks don't count), and unscaled runs export as separate `px of` rows —
+a pixel length can't silently ride into a priced feet total.
 
 **Copy Summary (email/text)**
 *Problem:* A quick "here's where the count stands" email means retyping numbers.
 *Useful because:* A plain-text summary lands on the clipboard formatted for pasting into an email
-or a text.
+or a text. It runs the same pre-copy scale check, and unscaled runs appear as their own `px`
+bullets flagged "no scale set" — never summed into the feet numbers.
 
 **Download current page**
 *Problem:* Sharing one sheet's markup shouldn't require exporting the whole project.

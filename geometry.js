@@ -184,6 +184,15 @@
     if (!scale) return val > 0 ? Math.round(val) + ' px' : '0';
     return val.toFixed(2) + ' ft';
   }
+  // "12.50 ft" | "200 px" | "12.50 ft + 200 px" | "0" — never sums px under ft.
+  // Byte-identical to formatFeet whenever exactly one bucket is non-zero, so the
+  // split rollups (T1-05) render unchanged on all-scaled / all-unscaled pages.
+  function formatFeetPx(feet, px) {
+    const ftStr = feet > 0 ? feet.toFixed(2) + ' ft' : '';
+    const pxStr = px > 0 ? Math.round(px) + ' px' : '';
+    if (ftStr && pxStr) return ftStr + ' + ' + pxStr;
+    return ftStr || pxStr || '0';
+  }
   function parseRealWorldLength(str, unit) {
     const s = String(str || '').trim();
     if (!s) return null;
@@ -426,7 +435,7 @@
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
       rotatePoint90CW, pointInRect, rectsOverlap, clampMenuPosition,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
-      formatLineLengthRealSum, formatFeet, parseRealWorldLength, parseFraction,
+      formatLineLengthRealSum, formatFeet, formatFeetPx, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
       clampEffectiveDpr, convertUnitValue, roomBoxDimsFeet, bakeFramesMatch,

@@ -91,6 +91,17 @@
     return (eff && eff.unit) ? convertUnitValue(len, eff.unit, 'ft') : len;
   }
 
+  // Split total: { feet, px }. feet = multiply-zone-adjusted length converted to
+  // feet for lines with a usable effective scale (same test the export gate uses:
+  // eff && eff.pixelsPerUnit); px = raw PDF-pts for the rest. Exactly one bucket
+  // is non-zero per line — rollups must NEVER add the buckets together.
+  function lineLengthSplitForTotals(line, isPoly, ann, pageScale, lineType) {
+    const eff = effectiveScaleForLine(ann, line, isPoly, pageScale);
+    const len = lineLengthForTotals(line, isPoly, ann, pageScale, lineType);
+    if (eff && eff.pixelsPerUnit) return { feet: convertUnitValue(len, eff.unit || 'ft', 'ft'), px: 0 };
+    return { feet: 0, px: len };
+  }
+
   // Pick a representative scale across the given page indices: first a preferred
   // unit in priority order, else any scaled page, else page 0's scale.
   function scaleForLineType(pageIndices, pages) {
@@ -119,6 +130,7 @@
       lineRealWorldLength,
       lineLengthForTotals,
       lineLengthFeetForTotals,
+      lineLengthSplitForTotals,
       scaleForLineType,
     };
   }

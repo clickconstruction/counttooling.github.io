@@ -18,7 +18,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Sheet-size correction for compressed PDFs** — Detects when a PDF was rescaled from its original sheet size and corrects preset scales, so a half-size print doesn't silently cut every length in half. A corrected apply flows straight into the verify check (two clicks on a printed dimension; Esc keeps the applied scale).
 - **Verify-your-scale check mode** — Measure a known dimension and see the % error before you trust a whole bid to an assumed scale.
 - **Synthetic scale bar** — A dashed reference bar drawn on the sheet lets you eyeball a preset scale against a known dimension at any time.
-- **Scale zones** — A detail or isometric drawn at a different scale on the same sheet measures correctly without re-scaling the page.
+- **Scale zones** — A detail or isometric drawn at a different scale on the same sheet measures correctly without re-scaling the page. On a compressed/rescaled sheet, zone presets carry the same sheet-size correction as the page, so detail and plan agree.
 - **Multiply zones** — Count one typical floor, wrap it in a ×10 zone, and the totals reflect all ten — no duplicate clicking.
 
 ## Counting

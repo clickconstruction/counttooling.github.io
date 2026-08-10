@@ -82,6 +82,7 @@ reads a 10-foot wall as 5 feet and nobody notices until the bid is wrong.
 *Useful because:* The app detects a non-standard sheet size, warns you, and corrects the preset by
 the rescale ratio — an error class most competitors don't even acknowledge. Since the correction is
 still a guess, a corrected apply walks you straight into the verify check (Esc keeps the scale).
+Scale-zone presets inherit the same correction from the page scale, so details stay consistent.
 
 **Verify-your-scale check mode**
 *Problem:* A preset scale is an assumption, and estimators rarely test it before trusting a whole
@@ -99,7 +100,9 @@ matches the drawing.
 *Problem:* Sheets mix a main plan with blown-up details and isometrics at other scales; measuring
 into a detail with the page scale gives garbage, and re-scaling the page breaks everything else.
 *Useful because:* Wrap the detail in a zone with its own scale, and every line inside it measures
-correctly alongside the main plan — the Measure tool honors it too.
+correctly alongside the main plan — the Measure tool honors it too. On a compressed/rescaled
+sheet, zone presets inherit the page's sheet-size correction automatically, so detail and plan
+agree instead of silently disagreeing by the rescale ratio.
 
 **Multiply zones — count once, multiply totals**
 *Problem:* Typical floors and identical units force estimators to count the same layout ten times,

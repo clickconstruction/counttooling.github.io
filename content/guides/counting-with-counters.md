@@ -1,7 +1,7 @@
 ---
 title: Counting fixtures with counters
 description: Place point counts on a plan with custom icons and colors, keep a live tally, and organize them into groups — the heart of any takeoff.
-updated: 2026-06-09
+updated: 2026-08-10
 order: 3
 icon: counter
 category: Counting
@@ -33,7 +33,7 @@ On a dense plan it's easy to lose track. A few things help:
 ## Fixing mistakes
 
 - Misclick? **Undo** (Ctrl+Z) steps back through your last moves.
-- Placed the wrong type? Switch to the **Move** [[move]] tool to select and delete a mark, or right-click it for options.
+- Placed the wrong type? **Right-click** the mark (long-press on touch) and choose **Delete** — the menu names what you hit, so you never delete blind.
 - Need to rename or recolor a whole type after the fact? Open its details from the sidebar and every placed mark updates at once.
 
 When the counts are done, [measure the runs](/guides/measuring-runs-lines-and-polylines/) and then [pull a report](/guides/reports-and-exports/).

@@ -431,3 +431,19 @@ test('drawGrid: line counts from spacing; major-interval lines double width with
   assert.deepStrictEqual(setsOf(ctx, 'globalAlpha'), [0.5]);
   assert.ok(setsOf(ctx, 'strokeStyle').includes('rgb(232,197,71)'));
 });
+
+// Canvas 2D cannot resolve CSS custom properties: assigning
+// `ctx.strokeStyle = 'var(--red)'` is an invalid color, so the context
+// silently KEEPS its previous style — the T2-14 Delete Area rubber band drew
+// in whatever leftover color the frame had last set. Guard every canvas-drawing
+// source against the pattern recurring (the fix uses the literal hex mirror of
+// the styles.css token).
+test("no canvas style is assigned a CSS var() — canvas can't resolve them", () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const sources = ['app.js', 'canvas-draw.js', 'report.js', ...fs.readdirSync(path.join(__dirname, 'features')).filter(f => f.endsWith('.js')).map(f => 'features/' + f)];
+  for (const file of sources) {
+    const src = fs.readFileSync(path.join(__dirname, file), 'utf8');
+    assert.ok(!/(?:strokeStyle|fillStyle|shadowColor)\s*=\s*['"`]var\(/.test(src), file + " assigns a canvas style from 'var(' — use the literal hex of the CSS token instead");
+  }
+});

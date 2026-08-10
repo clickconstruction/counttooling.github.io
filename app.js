@@ -1829,7 +1829,10 @@
       const minX = Math.min(state.deleteZoneStart.x, state.mousePos.x), maxX = Math.max(state.deleteZoneStart.x, state.mousePos.x);
       const minY = Math.min(state.deleteZoneStart.y, state.mousePos.y), maxY = Math.max(state.deleteZoneStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
-      ctx.strokeStyle = 'var(--red)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      // Literal hex, not 'var(--red)': canvas 2D can't resolve CSS variables,
+      // so an invalid strokeStyle silently keeps the previous color. Mirror of
+      // styles.css :root --red.
+      ctx.strokeStyle = '#e85447'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }

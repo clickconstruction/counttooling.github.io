@@ -29,8 +29,8 @@
   "headline": "Reports, exports, and sending a takeoff onward",
   "description": "Turn your marked-up plan into numbers and deliverables — the on-canvas legend, Show Report, Export PDF, Copy to PipeTooling, and email summaries.",
   "image": "https://counttooling.com/og-image.png",
-  "datePublished": "2026-07-31",
-  "dateModified": "2026-07-31",
+  "datePublished": "2026-08-10",
+  "dateModified": "2026-08-10",
   "author": {
     "@type": "Organization",
     "name": "CountTooling",
@@ -89,7 +89,7 @@
     <article class="article">
     <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/basics/">The Basics</a><span id="pathBannerStep"> — step 8 of 8</span></div>
       <h1>Reports, exports, and sending a takeoff onward</h1>
-      <p class="article-meta">Last updated Jul 31, 2026</p>
+      <p class="article-meta">Last updated Aug 10, 2026</p>
       <div class="prose">
 <p>A takeoff is only useful once it&#39;s numbers someone can price or check. CountTooling gives you several ways to get there, from a quick on-screen tally to a full marked-up PDF.</p>
 <h2>See the totals as you work</h2>
@@ -119,7 +119,11 @@
 <h2>Send it to where it gets priced</h2>
 <ul>
 <li><strong>Copy to PipeTooling</strong> — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. It even appends a <strong>view link</strong> back to the source takeoff, so a bid can point at the plan it came from. Before copying, the app double-checks your scales: if any exported page has lines but no scale, a dialog lists those pages and offers to jump you straight to Set Scale — or you can export anyway, knowing those lengths are in pixels. Pages without marks are never flagged.</li>
-<li><strong>Copy Summary (email/text)</strong> — a plain-text summary for dropping into an email or message.</li>
+<li><strong>Copy Summary (email/text)</strong> — a plain-text summary for dropping into an email or message. It runs the same scale check before copying.</li>
+</ul>
+<h3>Pages without a scale</h3>
+<p>Totals never mix pixel lengths into feet. A line drawn on a page with no scale is measured in raw pixels, and every total — the footer, the sidebar, the legend, the report, and both copy buttons — keeps it in its own <code>px</code> bucket (<code>12.50 ft + 200 px</code>, never one summed number). In the exports, unscaled runs appear as separate <code>px of</code> rows/bullets so nothing pixel-measured can masquerade as feet in a bid. Set the page&#39;s scale to move those runs into the feet total.</p>
+<ul>
 <li><strong>Download current page</strong> — the yellow printer button downloads the sheet you&#39;re on as a PDF; on multi-page or multi-layer projects it offers a scope menu (this canvas, all canvases on the page, all pages).</li>
 <li><strong>Export / Import Canvas</strong> — your marks alone (palette, groups, and all) as a small JSON file, without the PDF — the easy way to hand a takeoff to someone who already has the plan set. See <a href="/guides/canvas-layers/">Canvas layers</a>.</li>
 </ul>

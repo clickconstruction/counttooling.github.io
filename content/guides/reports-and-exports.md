@@ -1,7 +1,7 @@
 ---
 title: Reports, exports, and sending a takeoff onward
 description: Turn your marked-up plan into numbers and deliverables — the on-canvas legend, Show Report, Export PDF, Copy to PipeTooling, and email summaries.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 6
 icon: legend
 category: Output
@@ -41,7 +41,11 @@ You can export specific pages, just the marked ones, or the whole set.
 ## Send it to where it gets priced
 
 - **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. It even appends a **view link** back to the source takeoff, so a bid can point at the plan it came from. Before copying, the app double-checks your scales: if any exported page has lines but no scale, a dialog lists those pages and offers to jump you straight to Set Scale — or you can export anyway, knowing those lengths are in pixels. Pages without marks are never flagged.
-- **Copy Summary (email/text)** — a plain-text summary for dropping into an email or message.
+- **Copy Summary (email/text)** — a plain-text summary for dropping into an email or message. It runs the same scale check before copying.
+
+### Pages without a scale
+
+Totals never mix pixel lengths into feet. A line drawn on a page with no scale is measured in raw pixels, and every total — the footer, the sidebar, the legend, the report, and both copy buttons — keeps it in its own `px` bucket (`12.50 ft + 200 px`, never one summed number). In the exports, unscaled runs appear as separate `px of` rows/bullets so nothing pixel-measured can masquerade as feet in a bid. Set the page's scale to move those runs into the feet total.
 - **Download current page** — the yellow printer button downloads the sheet you're on as a PDF; on multi-page or multi-layer projects it offers a scope menu (this canvas, all canvases on the page, all pages).
 - **Export / Import Canvas** — your marks alone (palette, groups, and all) as a small JSON file, without the PDF — the easy way to hand a takeoff to someone who already has the plan set. See [Canvas layers](/guides/canvas-layers/).
 

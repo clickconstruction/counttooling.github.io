@@ -118,8 +118,10 @@
 - [report.js](report.js) loads after app.js and consumes these globals (keep
   them on `window`): `state`, `makeAnnotations`, `ptDist`, `polylineDistance`,
   `formatDist`, `renderIconHtml`, `quickLineLength`, `getLineLengthPdfPts`,
-  `getLineLengthForTotals`, `getLineLengthFeetForTotals` (per-line-type tally length
-  converted to feet, for the always-feet summaries/exports), `getLineRealWorldLength`,
+  `getLineLengthForTotals`, `getLineLengthFeetForTotals` (per-line tally length
+  converted to feet, for the per-line surfaces), `getLineLengthSplitForTotals`
+  (the T1-05 `{ feet, px }` split — rollups keep the buckets separate and never
+  sum px under a ft label), `getLineRealWorldLength`,
   `getMultiplyZoneForLine`,
   `getMultiplyZoneForPoint`, `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`.
   It exposes `buildReportHtml`, `printReport`, `getPipeToolingSummary`,

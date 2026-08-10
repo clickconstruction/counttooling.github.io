@@ -85,6 +85,31 @@
     return scaleObj;
   }
 
+  // Telemetry for PAGE-scale applies (zone-target applies are not logged here — Tier-1 #7
+  // folds in the zone flavor). logUserEvent no-ops when Supabase is disabled or signed out.
+  function logScaleSet(scaleObj, method, verifyHandoff) {
+    App.logUserEvent('scale_set', App.state.currentProjectId || null, {
+      method,
+      correctionFactor: scaleObj.correctionFactor != null ? scaleObj.correctionFactor : null,
+      pixelsPerUnit: scaleObj.pixelsPerUnit,
+      unit: scaleObj.unit,
+      verifyHandoff,
+      pageIndex: App.state.currentPage,
+    });
+  }
+  // A corrected preset/custom apply flows straight into the two-point verify instead of the
+  // plain toast: the applied scale is a guess ("as if printed on <sheet>"), so walk the user
+  // into checking it against a printed dimension. ESCAPABLE by design — Esc at any stage and
+  // the check panel's "Keep current scale" leave the applied (corrected) scale intact; the
+  // check flow never overwrites until "Use measured". `corrected` is the activeSheetCorrection
+  // captured at the apply site.
+  function handOffToVerify(corrected) {
+    const sheet = App.STANDARD_SHEETS.find(s => s.id === corrected.sheetId);
+    startScaleCheck();   // hides the modal, sets scaleCheckMode, arms TOOL.SCALE/POINT_A, updates UI
+    App.showToast('Scale set as if printed on ' + (sheet ? sheet.label : 'the chosen sheet') +
+      ' — click both ends of a printed dimension to check it (Esc keeps this scale)');
+  }
+
   function updateScalePlaceholder() {
     const unit = document.getElementById('scaleUnit')?.value || 'ft';
     const inp = document.getElementById('scaleValue');
@@ -189,8 +214,9 @@
   }
   // The shared two-point apply (extracted from #scaleSet): recalibrate page.scale (or a zone) so
   // the picked line equals `val` in `unit`, stamping a refLine. Reused by #scaleSet and by the
-  // verify panel's "Use measured". Returns false (with a toast) when the line is too short.
-  function applyTwoPointScale(unit, val) {
+  // verify panel's "Use measured" (which passes method 'use-measured' for telemetry). Returns
+  // false (with a toast) when the line is too short.
+  function applyTwoPointScale(unit, val, method) {
     const state = App.state;
     const dist = App.ptDist(state.scalePointA, state.scalePointB);
     if (dist < 1) { App.showToast('Scale line too short — pick two points further apart'); return false; }
@@ -201,6 +227,7 @@
     if (page) page.scale = scaleObj;
     App.markProjectDirty();
     App.shareViewerScale && App.shareViewerScale(state.currentPage);
+    logScaleSet(scaleObj, method || 'two-point', false);
     state.tool = App.TOOL.NONE;
     state.scaleMode = App.SCALE_MODES.NONE;
     state.scalePointA = null;
@@ -258,11 +285,15 @@
         btn.onclick = () => {
           const scaleObj = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
           if (applyScaleObjectToZoneOrPage(scaleObj)) return;   // zone target: no sheet correction
+          const corrected = activeSheetCorrection;   // null for standard sheets / "don't correct"
           App.pushUndoSnapshot();
           const page = state.pages[state.currentPage];
-          if (page) page.scale = withSheetCorrection({ pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label });
+          const applied = withSheetCorrection({ pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label });
+          if (page) page.scale = applied;
           App.markProjectDirty();
           App.shareViewerScale && App.shareViewerScale(state.currentPage);
+          logScaleSet(applied, 'preset', !!corrected);
+          if (corrected) { handOffToVerify(corrected); return; }   // T1-04: corrected apply → verify
           App.hideModal('scaleModal');
           App.updateUI();
           App.renderAnnotations();
@@ -326,11 +357,15 @@
     const label = fractionDisplay + '" = ' + feet + ' ft';
     const scaleObj = { pixelsPerUnit, unit: 'ft', label };
     if (applyScaleObjectToZoneOrPage(scaleObj)) return;   // zone target: no sheet correction
+    const corrected = activeSheetCorrection;   // null for standard sheets / "don't correct"
     App.pushUndoSnapshot();
     const page = state.pages[state.currentPage];
-    if (page) page.scale = withSheetCorrection({ pixelsPerUnit, unit: 'ft', label });
+    const applied = withSheetCorrection({ pixelsPerUnit, unit: 'ft', label });
+    if (page) page.scale = applied;
     App.markProjectDirty();
     App.shareViewerScale && App.shareViewerScale(state.currentPage);
+    logScaleSet(applied, 'custom', !!corrected);
+    if (corrected) { handOffToVerify(corrected); return; }   // T1-04: corrected apply → verify
     App.hideModal('scaleModal');
     App.updateUI();
     App.renderAnnotations();
@@ -373,6 +408,11 @@
     const dist = App.ptDist(state.scalePointA, state.scalePointB);
     if (dist < 1) { App.showToast('Line too short — pick two points further apart'); return; }
     const { reading, deltaPct } = App.scaleCheckDelta(dist, scale, known, unit);
+    App.logUserEvent('scale_verify', state.currentProjectId || null, {
+      deltaPct,
+      correctionFactor: scale.correctionFactor != null ? scale.correctionFactor : null,
+      pageIndex: state.currentPage,
+    });
     const fmt = (v) => unit === 'ft' ? App.formatFeetInchesFromVal(v, 'ft') : (Math.round(v * 100) / 100 + ' ' + unit);
     document.getElementById('scaleCheckExpected').textContent = fmt(known);
     document.getElementById('scaleCheckMeasured').textContent = fmt(reading);
@@ -395,7 +435,7 @@
     const unit = document.getElementById('scaleCheckUnit').value;
     const known = App.parseRealWorldLength(document.getElementById('scaleCheckValue').value, unit);
     if (!known || known <= 0) { App.showToast('Enter a valid length'); return; }
-    if (applyTwoPointScale(unit, known)) resetScaleCheckMode();   // recalibrate to the measured line
+    if (applyTwoPointScale(unit, known, 'use-measured')) resetScaleCheckMode();   // recalibrate to the measured line
   };
   document.getElementById('scaleCheckCancel').onclick = () => {
     const state = App.state;

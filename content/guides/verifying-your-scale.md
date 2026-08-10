@@ -1,7 +1,7 @@
 ---
 title: Is your scale lying to you?
 description: Compressed PDFs silently break preset scales. How CountTooling detects rescaled sheets, corrects presets, and lets you verify a scale before you trust a bid to it.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 2.5
 icon: set-scale
 category: Getting started
@@ -18,6 +18,10 @@ When you open the **Set Scale** [[set-scale]] presets tab, the app compares the 
 If it *doesn't* match, a yellow warning appears with a sheet picker, defaulted to the app's best guess of what the sheet was originally.
 
 ![The Set Scale presets tab on a rescaled sheet: the yellow non-standard-sheet warning with its sheet picker, under the blue verify-your-scale advisory.](/guides/img/sheet-warning.png) Apply a preset with the picker set, and the scale is corrected by the rescale ratio automatically — the scale label carries the sheet name (e.g. `· ARCH D`) so you can see the correction was applied.
+
+**The correction is still a guess**, so a corrected apply now walks you straight into the verify check: the dialog closes and the app asks you to click both ends of a printed dimension to confirm the scale. **Esc keeps the applied scale** — if the guess was right (a genuinely compressed print of that sheet), you lose nothing. Why it matters: on one sample plan, a wrong ANSI-D guess made a printed 65'-0" wall read 173'-1" — every length 2.67× long, silently. The check catches that in one pass.
+
+If the page truly isn't a standard sheet (a cropped detail, a scanned sketch), pick **"Non-standard — don't correct"** at the bottom of the sheet picker: the preset applies uncorrected with no check, exactly as on a standard sheet.
 
 ## 2. Verify by measuring (thirty seconds, worth it)
 

@@ -7,7 +7,9 @@
   // PDF, pending-canvas-load hash match, the load-annotations prompt, the
   // first-upload Prepare PDF handoff), loadTestPdf, and
   // titleFromPdfFilename. This file owns the two intake flags; app.js
-  // reaches them via the accessors registered at the bottom.
+  // reaches them via the accessors registered at the bottom. Also owns the
+  // upload-hash stash (state.localPdfHash, in-memory only) and the T1-01/J4
+  // signed-out same-PDF re-upload re-apply (maybeReapplyLocalBackupMarks).
 
   let pendingImportCanvasAfterPdf = false;
   let pendingAddAdditionalPages = false;
@@ -106,10 +108,8 @@
   // hash-match the upload against the project's recorded pdf_hash, confirm on
   // mismatch, and hydrate the project's palette/annotations onto the fresh
   // pages. On decline the session becomes a plain local upload.
-  async function matchPendingCanvasLoad(filesToProcess, firstBuf) {
+  async function matchPendingCanvasLoad(filesToProcess, uploadHash) {
     const d = App.state.pendingCanvasLoad.data;
-    const hashBuf = App.state.pdfBuffer || firstBuf;
-    const uploadHash = await App.sha256Hex(hashBuf);
     const hashMatches = !App.state.pendingCanvasLoad.pdf_hash || App.state.pendingCanvasLoad.pdf_hash === uploadHash;
     if (!hashMatches && !confirm('This PDF doesn\'t match the project. Annotations may not align. Load anyway?')) {
       App.state.pendingCanvasLoad = null;
@@ -245,8 +245,7 @@
   // Post-upload prompt for a signed-in user with no project open: offer any
   // cloud projects whose pdf_hash matches the upload; with no match on a
   // first upload, hand off to Prepare PDF.
-  async function promptLoadAnnotations(hashBufForMatch, startPageIdx) {
-    const uploadHash = await App.sha256Hex(hashBufForMatch);
+  async function promptLoadAnnotations(uploadHash, startPageIdx) {
     const user = App.state.supabaseSession.user;
     const { data: matches } = await App.getSupabase().from('projects').select('id, name, updated_at').eq('user_id', user.id).eq('pdf_hash', uploadHash).order('updated_at', { ascending: false });
     if (matches && matches.length > 0) {
@@ -273,6 +272,50 @@
       App.state.currentPage = 0;
       App.updateUI();
       App.renderPdf();
+    }
+  }
+
+  // T1-01 / J4 second half: a signed-out session whose backup lost its PDF
+  // blob (e.g. a detached pdfBuffer) gets no boot prompt — but the backup's
+  // marks are still on the device. When the SAME PDF is re-uploaded
+  // (hash-verified; marks never land on an unverified PDF), re-apply them.
+  // Checked keys: the boot key-aside record first, then 'local'.
+  async function maybeReapplyLocalBackupMarks(uploadHash) {
+    if (!uploadHash) return;
+    if (App.state.supabaseSession?.user) return;               // signed-in keeps the cloud hash-match flow
+    if (App.state.pendingCanvasLoad || App.state.currentProjectId) return;
+    if (App.projectHasAnyCanvasMarkup()) return;               // never clobber marks already on the pages
+    for (const key of [TAKEOFF_BACKUP_HELD_ID, 'local']) {
+      let candidate = null;
+      try { candidate = await App.takeoffBackupGet(key, null); } catch (_) { candidate = null; }
+      if (!candidate || !candidate.data) continue;
+      const hasMarks = Array.isArray(candidate.data.pageCanvases) && candidate.data.pageCanvases.some((canvases) =>
+        (canvases || []).some((c) => {
+          const ann = (c && c.annotations) || {};
+          return Object.values(ann.counterMarkers || {}).some((arr) => arr && arr.length)
+            || (ann.quickLines || []).length || (ann.polylines || []).length
+            || (ann.highlights || []).length || (ann.notes || []).length
+            || (ann.multiplyZones || []).length || (ann.scaleZones || []).length
+            || (ann.roomBoxes || []).length;
+        }));
+      if (!hasMarks) continue;
+      // Hash-verified same PDF only: use the stamped pdfHash, or hash the
+      // stored blob when the stamp is missing. No hash -> no apply.
+      let candidateHash = candidate.pdfHash || null;
+      if (!candidateHash && candidate.pdfBlob && candidate.pdfBlob.size > 0) {
+        try { candidateHash = await App.sha256Hex(await candidate.pdfBlob.arrayBuffer()); } catch (_) { candidateHash = null; }
+      }
+      if (!candidateHash || candidateHash !== uploadHash) continue;
+      App.applyTakeoffBackupToState(candidate.data);
+      App.clearUndoStacks();
+      App.markProjectDirty();
+      // Consumed: the restored state repopulates 'local' on the next
+      // dirty/interval write.
+      try { await takeoffBackupDelete(key); } catch (_) { /* noop */ }
+      App.updateUI();
+      App.renderPdf();
+      App.showToast('Restored your marks from the last session.', 5000);
+      return;
     }
   }
 
@@ -341,8 +384,18 @@
       }
       if (!App.state.pendingCanvasLoad) App.markProjectDirty();
     }
+    // Compute the upload hash ONCE for every downstream consumer (the
+    // pending-canvas match, the cloud load-annotations prompt, and the
+    // signed-out backup re-apply below), and stash it as the in-memory-only
+    // state.localPdfHash — NOT state.pdfHash, which carries cloud-PDF
+    // semantics through the save/upload ladder. Signed-out IndexedDB backups
+    // pick it up (save-engine.js), which is what makes a later same-PDF
+    // re-upload hash-verifiable.
+    const hashBufForMatch = App.state.pdfBuffer || firstBuf;
+    const uploadHash = hashBufForMatch ? await App.sha256Hex(hashBufForMatch) : null;
+    App.state.localPdfHash = uploadHash;
     if (App.state.pendingCanvasLoad && firstBuf) {
-      await matchPendingCanvasLoad(filesToProcess, firstBuf);
+      await matchPendingCanvasLoad(filesToProcess, uploadHash);
     } else {
       App.state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
     }
@@ -353,13 +406,16 @@
     });
     e.target.value = '';
 
-    const hashBufForMatch = App.state.pdfBuffer || firstBuf;
+    // T1-01 / J4 second half: signed-out same-PDF re-upload re-applies the
+    // marks from the on-device backup (pages + currentPage are set by now, so
+    // the pageCanvases writes land).
+    await maybeReapplyLocalBackupMarks(uploadHash);
     // Only prompt to load existing annotations / auto-open Prepare PDF when the
     // user is NOT already inside a loaded project. Otherwise the user is just
     // attaching/adding a PDF to their active project and these prompts would
     // either offer to switch projects (destructive) or clobber the project name.
-    if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId && App.SUPABASE_ENABLED && App.getSupabase() && App.state.supabaseSession?.user && hashBufForMatch) {
-      await promptLoadAnnotations(hashBufForMatch, startPageIdx);
+    if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId && App.SUPABASE_ENABLED && App.getSupabase() && App.state.supabaseSession?.user && uploadHash) {
+      await promptLoadAnnotations(uploadHash, startPageIdx);
     }
     if (importBothFollowUp && App.state.pages.length > 0) {
       App.showModal('importCanvasAfterPdfModal');

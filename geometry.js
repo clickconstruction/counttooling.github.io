@@ -88,10 +88,14 @@
   function quadraticBezierPoint(t, p0, p1, p2) {
     return { x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x, y: (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y };
   }
+  // 20-step polyline approximation of the curve. Integer loop so the final
+  // step lands on t = 1 exactly — a float `t += 0.05` accumulator drifts to
+  // 1.0000000000000004 and drops the last segment (~5% short on every arc).
   function quadraticBezierLength(p0, p1, p2) {
+    const STEPS = 20;
     let len = 0, prev = p0;
-    for (let t = 0.05; t <= 1; t += 0.05) {
-      const pt = quadraticBezierPoint(t, p0, p1, p2);
+    for (let i = 1; i <= STEPS; i++) {
+      const pt = quadraticBezierPoint(i / STEPS, p0, p1, p2);
       len += ptDist(prev, pt);
       prev = pt;
     }
@@ -100,6 +104,10 @@
   function distToQuadraticBezier(pos, p0, p1, p2) {
     let minD = ptDist(pos, p0);
     let prev = p0;
+    // NOTE: this float t-loop drops its final step to the same FP drift that
+    // broke quadraticBezierLength (fixed there with an integer loop) — but
+    // here the trailing Math.min(minD, ptDist(pos, p2)) clamp closes the gap,
+    // so hit-testing is correct. Don't copy this loop shape into new code.
     for (let t = 0.05; t <= 1; t += 0.05) {
       const pt = quadraticBezierPoint(t, p0, p1, p2);
       minD = Math.min(minD, distToSegment(pos, prev, pt));

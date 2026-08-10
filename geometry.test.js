@@ -82,15 +82,31 @@ test('quadratic bezier helpers', () => {
   const p0 = { x: 0, y: 0 }, p1 = { x: 5, y: 0 }, p2 = { x: 10, y: 0 };
   // collinear midpoint control -> the curve is the straight line, midpoint at t=0.5 is (5,0)
   assert.deepStrictEqual(g.quadraticBezierPoint(0.5, p0, p1, p2), { x: 5, y: 0 });
-  // length is a 20-step polyline approximation (~10; slightly undershoots due to the
-  // float t-loop dropping the final step). Lock it as "approximately the chord length".
-  close(g.quadraticBezierLength(p0, p1, p2), 10, 0.6);
+  // length is a 20-step polyline approximation; the collinear control point makes
+  // the curve the straight line itself, so the polyline sums to exactly the chord.
+  close(g.quadraticBezierLength(p0, p1, p2), 10, 1e-9);
   // control point is offset perpendicular to the chord
   const ctrl = g.getQuadraticBezierControlPoint(p0, p2, 1);
   assert.strictEqual(ctrl.x, 5);
   close(Math.abs(ctrl.y), 10 * 0.15, 1e-9);
   // distance from a point on the curve is ~0
   assert.ok(g.distToQuadraticBezier({ x: 5, y: 0 }, p0, p1, p2) < 1e-6);
+});
+
+test('quadraticBezierLength: includes the final step — arc >= chord', () => {
+  // The app's real geometry: the Line tool's fixed 15% bow over a 100-unit chord.
+  const p0 = { x: 0, y: 0 }, p2 = { x: 100, y: 0 };
+  const ctrl = g.getQuadraticBezierControlPoint(p0, p2, 1);
+  const len = g.quadraticBezierLength(p0, ctrl, p2);
+  const chord = g.ptDist(p0, p2);
+  // Triangle inequality: a bowed polyline that terminates on the true endpoint
+  // is strictly longer than its chord. The pre-fix float t-loop dropped the
+  // final segment and returned 96.28 here — shorter than the chord.
+  assert.ok(len > chord, `arc (${len}) must exceed its chord (${chord})`);
+  // Independently computed true arc length for a 15% bow on a 100-unit chord.
+  close(len, 101.48, 0.05);
+  // Symmetry: the buggy version truncated only one end, so it was asymmetric.
+  close(g.quadraticBezierLength(p2, ctrl, p0), len, 1e-9);
 });
 
 test('rotatePoint90CW', () => {

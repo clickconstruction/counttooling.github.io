@@ -24,7 +24,7 @@ test('lineSegmentLength: arc line type routes to the bezier path (differs from c
   const arc = lm.lineSegmentLength(seg, { curveStyle: 'arc' });
   assert.strictEqual(chord, 10);
   assert.ok(Number.isFinite(arc));
-  assert.notStrictEqual(arc, chord, 'arc curveStyle should take the bezier branch, not the straight chord');
+  assert.ok(arc > chord, 'an arc is longer than its chord');
 });
 
 test('lineGeomPdfPts: polyline sums its segments; single delegates to the chord', () => {

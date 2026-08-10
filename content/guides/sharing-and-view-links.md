@@ -1,7 +1,7 @@
 ---
 title: Sharing takeoffs and view links
 description: Work together without stepping on each other — share projects with viewers or editors, check out to edit, and send email-gated view-only links that need no sign-in.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 7
 icon: share
 category: Collaboration
@@ -11,7 +11,7 @@ When a project lives in the cloud, more than one person can work with it — saf
 
 ## Viewers and editors
 
-Open the Share dialog from the **Share** [[share]] button in the header (or Project Settings → Share), add people by email, and pick a role:
+Sharing starts after you **sign in** — signed out, none of the share controls exist yet. Once you're in with a cloud project open, the Share dialog lives in two places: the **share icon** at the top of the sidebar, and **Project Settings → Share** (on a phone, Share sits in the menu drawer). Add people by email and pick a role:
 
 - **Viewer** — can open and browse the takeoff but not change it.
 - **Editor** — can make changes, one editor at a time (see check-out below).
@@ -26,7 +26,7 @@ To avoid two people saving over each other, editing uses **check-out**: an edito
 
 Sometimes you just need to show a takeoff to someone who isn't a CountTooling user — a GC, an owner, an inspector. A **view link** does that:
 
-- Create the link from the Share dialog's view-links section and copy the URL. (The header Share [[share]] button copies the project's link directly.)
+- Create the link from the Share dialog's view-links section and copy the URL.
 - The recipient opens it and enters their email — gated to your allowed domain — and views the plans, **no account required**:
 
 ![Opening a view link: the recipient enters their work email to view the plans — no account, no install.](/guides/img/view-link-gate.png)
@@ -41,7 +41,7 @@ The viewer gets the live takeoff — the real marks, tallies, and legend, not a 
 ![A view-link session: the live takeoff with its tallies and legend. The eye button hides the marks to read the bare drawing.](/guides/img/view-link-viewer.png)
 
 - The **Hide marks** [[hide-marks]] eye peels the takeoff off the drawing and back — handy on a phone, and their choice is remembered per link.
-- The **Measure** [[measure]] tool works in view mode, so they can check a dimension themselves in two clicks.
+- The **Measure** [[measure]] tool works in view mode, so they can check a dimension themselves in two clicks. On a sheet with no scale set yet it reads in raw `px` — set the scale (press `S`) and it reads feet.
 - They can even run **Set Scale** [[set-scale]] on an uncalibrated sheet — the scale **shares back to the project** for everyone, with a notice to the owner. A field question answers itself instead of round-tripping through email.
 
 ## Your work is saved as you go

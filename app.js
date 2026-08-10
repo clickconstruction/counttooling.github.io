@@ -2353,20 +2353,20 @@
     if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
     const bundleNotesBtn = document.getElementById('bundleNotes');
     if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
-    // Cheap existence probe (report.js) — semantically identical to
-    // getPipeToolingSummary().length > 0 but short-circuits at the first count
-    // or line instead of building the whole summary (a real cost per updateUI
-    // on large projects). Same load-order guard as the App.* checks above:
+    // Cheap existence probe (report.js) — would the report/summary be
+    // non-empty? Short-circuits at the first count, line, or room box instead
+    // of building the whole summary (a real cost per updateUI on large
+    // projects). Same load-order guard as the App.* checks above:
     // report.js loads after app.js, so this can run before it registers.
-    const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
+    const hasReportData = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
     const ptBtn = document.getElementById('forPipeToolingDropdown');
-    if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
+    if (ptBtn) ptBtn.style.display = hasReportData ? '' : 'none';
     const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
-    if (copySummaryBtn) copySummaryBtn.style.display = hasCountsOrLines ? '' : 'none';
+    if (copySummaryBtn) copySummaryBtn.style.display = hasReportData ? '' : 'none';
     const showReportDropdown = document.getElementById('showReportDropdown');
-    if (showReportDropdown) showReportDropdown.style.display = hasCountsOrLines ? '' : 'none';
+    if (showReportDropdown) showReportDropdown.style.display = hasReportData ? '' : 'none';
     const specificPagesBtn = document.getElementById('specificPages');
-    if (specificPagesBtn) specificPagesBtn.style.display = hasCountsOrLines ? '' : 'none';
+    if (specificPagesBtn) specificPagesBtn.style.display = hasReportData ? '' : 'none';
     const allCanvasesOnPageOpt = document.querySelector('.show-report-option[data-mode="all-canvases-on-page"]');
     if (allCanvasesOnPageOpt) {
       const page = state.pages[state.currentPage];

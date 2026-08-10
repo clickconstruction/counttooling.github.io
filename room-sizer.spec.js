@@ -8,8 +8,9 @@
  * the create path (pending rect + height + new room -> a roomBoxes entry, a
  * palette room, recent-height persistence, tool stays TOOL.ROOM), the totals
  * math against a known scale, the sidebar section appearing once a box
- * exists, the edit path (height/room rewrite), the room-delete cascade, and
- * the export/import roundtrip carrying rooms + roomBoxes.
+ * exists, the edit path (height/room rewrite), the room-delete cascade, the
+ * export/import roundtrip carrying rooms + roomBoxes, and the rooms-only
+ * export unlock (getPipeToolingHasData counts roomBoxes, T1-10).
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -179,6 +180,49 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
 
     expect(errors).toEqual([]);
   });
+});
+
+test('rooms-only project unlocks the export/summary buttons (regression: getPipeToolingHasData ignored roomBoxes)', async ({ page }) => {
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+  // Empty project: probe false, all four output buttons hidden.
+  expect(await page.evaluate(() => window.getPipeToolingHasData())).toBe(false);
+  await page.evaluate(() => window.App.updateUI());
+  for (const id of ['showReportDropdown', 'specificPages', 'forPipeToolingDropdown', 'copySummaryTextDropdown']) {
+    await expect(page.locator('#' + id)).toBeHidden();
+  }
+
+  // One committed room box, no counters/lines anywhere.
+  await page.evaluate(() => {
+    const s = window.state;
+    s.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
+    const roomId = window.App.uid();
+    s.rooms = [{ id: roomId, name: 'Rooms Only 101', color: '#47c88e' }];
+    const ann = window.App.ensureActiveCanvas(s.pages[0]).annotations;
+    ann.roomBoxes = [{ id: window.App.uid(), x1: 0, y1: 0, x2: 120, y2: 90, heightFt: 8, roomId }];
+    window.App.updateUI();
+  });
+
+  // Probe now true and Show Report / Export PDFs / Copy to PipeTooling /
+  // Copy Summary all surface — the report renders Room Volumes for this data.
+  expect(await page.evaluate(() => window.getPipeToolingHasData())).toBe(true);
+  for (const id of ['showReportDropdown', 'specificPages', 'forPipeToolingDropdown', 'copySummaryTextDropdown']) {
+    await expect(page.locator('#' + id)).toBeVisible();
+  }
+  await expect(page.locator('#specificPages')).toHaveText('Export PDFs');
+
+  // The unlocked report actually contains the rooms-only table.
+  const report = await page.evaluate(() => window.buildReportHtml());
+  expect(report).toContain('Room Volumes');
+  expect(report).toContain('Rooms Only 101');
+
+  expect(errors).toEqual([]);
 });
 
 test('context-menu Delete removes a room box (regression: the ctxDelete switch lacked a roomBox branch)', async ({ page }) => {

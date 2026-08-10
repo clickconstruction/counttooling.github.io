@@ -109,4 +109,32 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('append-mode commit toasts "Added N sheets to <project>" (T1-08 / J2 friction #8)', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // Open a 2-page project, then stage the append route the way
+    // handleAppendPages does: new pages + buffer into the modal in append mode.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(async () => {
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const pdf = await window.App.getPdfDocument(buf.slice(0)).promise;
+      const newPages = [];
+      for (let i = 0; i < pdf.numPages; i++) {
+        newPages.push({ pdfPage: await pdf.getPage(i + 1), label: 'test-page.pdf', rotation: 0 });
+      }
+      window.App.openPreparePdfModal(newPages, buf, window.state.currentProjectName || 'Untitled', { mode: 'append' });
+    });
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#preparePdfTitle')).toContainText('Add pages — test-2pages');
+
+    await page.locator('#preparePdfDone').click();
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/, { timeout: 10000 });
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+    // Name kept (append mode locks it) + the parity feedback toast.
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('test-2pages');
+    await expect(page.locator('#airboardToastText')).toHaveText('Added 1 sheet to test-2pages');
+  });
 });

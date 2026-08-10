@@ -1,7 +1,7 @@
 ---
 title: Working faster with the keyboard
 description: Tool hotkeys, the visual Keyboard Map, Quick Keys for your counters and line types, and 45° snap — how experienced estimators keep both hands moving.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 6.5
 icon: keys
 category: Working faster
@@ -36,7 +36,7 @@ The ones worth learning first:
 | `X` | Multiply Zone |
 | `R` | Rotate page |
 | `←` `→` | Previous / next page (`Shift` jumps between marked pages) |
-| `Ctrl`+`Z` / `Ctrl`+`Shift`+`Z` | Undo / redo — the history keeps your last 50 steps |
+| `Ctrl`+`Z` / `Ctrl`+`Shift`+`Z` | Undo / redo (`Cmd` on a Mac) — the history keeps your last 50 steps |
 | `Esc` | Cancel / close |
 
 ## Quick Keys: your counters and line types on the number row

@@ -1,7 +1,7 @@
 ---
 title: Highlights, notes, and reading the bare drawing
 description: Flag regions with highlights, pin questions as notes, style the on-canvas legend, and peel the whole takeoff off the drawing with one tap.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 5.8
 icon: note
 category: Working with plans
@@ -19,7 +19,7 @@ The **Highlight** [[highlight]] tool (`H`) draws a translucent rectangle over a 
 
 The **Note** [[note]] tool (`N`) pins text to a spot: click, type, done. Notes render in red on the sheet and are made to be worked with:
 
-- **Move** them by dragging; **resize** the width and the text size with their handles.
+- **Move** them by dragging. Two handles resize: the one at the note's **right edge** sets the width, the one at the **left edge** sets the text size — watch the cursor flip between ↔ and ↕ to know which one you're on.
 - **Edit** by double-clicking (or the right-click menu).
 - Long text wraps automatically.
 

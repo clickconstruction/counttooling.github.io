@@ -1,7 +1,7 @@
 ---
 title: Fixing mistakes and editing marks
 description: Undo 50 steps, clear a whole region with Delete Area, edit any mark from its right-click menu, and rename or recolor an entire type at once.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 4.5
 icon: delete-area
 category: Working with plans
@@ -21,7 +21,7 @@ Right-click (or long-press on touch) any mark — counter, line, polyline, highl
 
 - **Lines and polylines** — open **Line Properties** to rename, recolor, add or adjust [drops](/guides/measuring-runs-lines-and-polylines/), or edit a polyline's vertices point by point.
 - **Notes** — edit the text.
-- **Zones and room boxes** — edit their values (multiplier, scale, height/room) or delete them.
+- **Zones and room boxes** — edit their values (multiplier, scale, height/room) or delete them. Room boxes have two delete paths, tuned to their size: the **✕** on a box's row in the sidebar Rooms list removes that one box instantly — `Ctrl`+`Z` brings it back — while deleting a whole **room** from its edit dialog asks first, because it takes every box the room owns with it.
 
 In **Move** [[move]] mode you can also click a line to select it (it draws thicker with a glow) and drag notes and the legend wherever they belong.
 

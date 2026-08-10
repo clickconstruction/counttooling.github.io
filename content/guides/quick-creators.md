@@ -1,7 +1,7 @@
 ---
 title: Building your palette in two clicks
 description: The Quick Count and Quick Line creators build correctly-named counters and line types from Size, Type, and Material pickers — no typing, consistent names.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 3.9
 icon: line
 category: Counting
@@ -11,7 +11,7 @@ Typing `2" PVC Waste` forty times per bid is data entry, not estimating. The **Q
 
 ## Quick Count — counters from modifiers
 
-Open the Counter [[counter]] modal and switch to the **Quick Count** tab (or press `Shift`+`Q` while the Counter tool is active):
+Open the Counter [[counter]] modal and switch to the **Quick** tab — that's the Quick Count creator (`Shift`+`Q` jumps to it while the modal is open):
 
 1. Pick a **Size** (2", 3", 4"…), a **Type** (the fixture or fitting), and a **Material**.
 2. Watch the name preview assemble itself.
@@ -29,7 +29,7 @@ The Line [[line]] modal has the same idea on its **Quick** tab: pick a ① **Siz
 
 ## Make the modifiers yours
 
-The Size / Type / Material option lists are editable — add the sizes and materials your work actually uses, remove the ones it doesn't, right from the pickers. Your modifier preferences are part of your profile: save your [Artboard](/guides/artboard-and-palette-insights/) and they follow your account to any device.
+The Size / Type / Material option lists are editable — add the sizes and materials your work actually uses, remove the ones it doesn't, right from the pickers. Know what the **−** button does before you tap it: it removes the selected option from your **saved list** immediately — no confirmation, and the change carries into future bids (the last remaining option can't be removed). Trimmed one you still need? Add it back with **+**. Your modifier preferences are part of your profile: save your [Artboard](/guides/artboard-and-palette-insights/) and they follow your account to any device.
 
 ## Why this beats typing
 

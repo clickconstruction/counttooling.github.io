@@ -1,7 +1,7 @@
 ---
 title: Canvas layers — alternates and options on one sheet
 description: Every page can hold multiple annotation layers — keep the base bid and alternates side by side, switch with the arrow keys, and compare with one tap.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 5.7
 icon: layers
 category: Working with plans
@@ -24,7 +24,7 @@ Everything you place lands on the **active** layer only, and the sidebar tallies
 
 ## Compare layers at a glance
 
-The **show-all** peek (the eye-on-layers button next to the layer selector, shown when a page has two or more layers) temporarily draws *every* layer at once so you can compare options in place. It's purely visual — editing still targets the active layer, and nothing is saved differently.
+The **show-all** peek (the eye-on-layers button next to the layer selector, shown when a page has two or more layers) temporarily draws *every* layer at once so you can compare options in place. It's purely visual — editing still targets the active layer, and nothing is saved differently. The sidebar totals stay on your **active layer** during the peek; the on-sheet legend is where you read the merged picture.
 
 On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary — it isn't saved with the project, and it clears when a page is back to a single layer.
 

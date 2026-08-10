@@ -1,7 +1,7 @@
 ---
 title: Admin handbook
 description: Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 11
 icon: share
 category: For admins
@@ -13,7 +13,7 @@ CountTooling accounts are admin-provisioned — there's no self-signup — so ad
 
 - **Add User** — create an account with email + password and hand the credentials over; new users can sign in immediately.
 - **Manage User** — the full user table: role, owned-project count, last sign-in, and last active. Per-row actions:
-  - **Set password** (🔑) — reset any user's password.
+  - **Set password** (🔑) — reset any user's password. This is also the locked-out path: there's no self-serve "forgot password", so a user who's locked out gets a new password from you.
   - **Transfer projects** (⇄) — move *all* of a user's projects to someone else; stored PDFs and inherited view links move with them.
   - **View activity** (♥) — the per-user activity overview.
   - **Delete** — with a choice: delete the user's projects too, or **reassign them to another user first**. You can't delete yourself.

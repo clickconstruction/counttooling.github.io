@@ -30,7 +30,7 @@ Open **Show Report** for the full breakdown in a new tab. You can scope it to:
 
 ![The Export PDFs dialog: ① set marker and line sizes, ② choose whether to include the report and bundle highlights/notes, then ③ download.](/guides/img/export-pdfs.png)
 
-**Export PDF** produces a deliverable with your markup baked in. You control:
+The sidebar's **Export PDFs** button opens the dialog above and produces a deliverable with your markup baked in. You control:
 
 - marker and line **size** (so marks read at print scale),
 - whether to **include the takeoff report**, and
@@ -38,9 +38,11 @@ Open **Show Report** for the full breakdown in a new tab. You can scope it to:
 
 You can export specific pages, just the marked ones, or the whole set.
 
+Two similar names, two different files: the sidebar **Export PDFs** button makes the marked-up deliverable, while **Export PDF** in the header cloud menu downloads the project's *original* PDF — the clean plan, no marks. When you're sending the takeoff onward, you want **Export PDFs**.
+
 ## Send it to where it gets priced
 
-- **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. It even appends a **view link** back to the source takeoff, so a bid can point at the plan it came from. Before copying, the app double-checks your scales: if any exported page has lines but no scale, a dialog lists those pages and offers to jump you straight to Set Scale — or you can export anyway, knowing those lengths are in pixels. Pages without marks are never flagged.
+- **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. When you're **signed in and the project is saved to the cloud**, it also appends a **view link** back to the source takeoff, so a bid can point at the plan it came from. Otherwise the counts still copy and a note explains what's missing — sign in, or save the project, to get the link (a view-only session can never create one). Before copying, the app double-checks your scales: if any exported page has lines but no scale, a dialog lists those pages and offers to jump you straight to Set Scale — or you can export anyway, knowing those lengths are in pixels. Pages without marks are never flagged.
 - **Copy Summary (email/text)** — a plain-text summary for dropping into an email or message. It runs the same scale check before copying.
 
 ### Pages without a scale

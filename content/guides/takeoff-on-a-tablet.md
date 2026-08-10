@@ -1,7 +1,7 @@
 ---
 title: Takeoffs on a tablet in the field
 description: Touch gestures, the aim loupe for fingertip precision, and full offline support — how CountTooling works on a tablet at the job site, not just at a desk.
-updated: 2026-07-31
+updated: 2026-08-10
 order: 8.5
 icon: move
 category: On the job site
@@ -15,7 +15,7 @@ Field questions get answered where the work is — a basement, a mechanical room
 
 - **One finger pans, pinch zooms** — plan navigation feels like a map app, and it stays smooth on big, dense sheets.
 - **Long-press** any mark for its context menu — the same edit and delete options as right-click on desktop.
-- **The aim loupe**: press and hold with a placing tool active and a magnifier appears above your finger with a crosshair, so you can set a counter or line endpoint *precisely* even though your fingertip covers the spot. Slide to aim, release to place.
+- **The aim loupe**: press and hold with a placing tool active and a magnifier appears above your finger with a crosshair, so you can set a counter or line endpoint *precisely* even though your fingertip covers the spot. Slide to aim, release to place. The crosshair rides just above your fingertip on purpose — that offset is what keeps your finger from hiding the exact point you're placing on, so aim with the crosshair, not the finger.
 - The **zoom rail** — tap the zoom % in the footer for a big vertical slider with labeled ticks, much friendlier than pinching to an exact level:
 
 ![The zoom rail on a tablet: a large log-scale slider with labeled ticks and a draggable readout thumb, on the right edge where a thumb can reach it.](/guides/img/zoom-rail.png)

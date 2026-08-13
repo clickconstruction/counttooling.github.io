@@ -22,6 +22,26 @@
  * annotation-model.test.js require() this under node --test and
  * eslint.config.js derive the app.js lint globals.
  */
+// Collapse same-id palette entries (counters or line types) into one. Marks
+// are stored under counterMarkers[id] / line.lineTypeId, so N palette entries
+// sharing one id all claim the same placed marks and every total counts them
+// N times (the Wendi FD bug, 2026-08-13: Palette Insights' name-keyed merge
+// re-appended each RENAME of a counter with its original id). Keeps the FIRST
+// occurrence's position and the LAST occurrence's fields (newest rename wins).
+// Pure; safe on any array — entries without an id pass through untouched.
+function dedupePaletteById(list) {
+  if (!Array.isArray(list)) return [];
+  const byId = new Map();
+  const out = [];
+  list.forEach(item => {
+    const id = item && item.id;
+    if (id == null) { out.push(item); return; }
+    if (byId.has(id)) Object.assign(byId.get(id), item);
+    else { const copy = { ...item }; byId.set(id, copy); out.push(copy); }
+  });
+  return out;
+}
+
 function createAnnotationModel(ctx) {
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], legend: null }; }
 
@@ -255,6 +275,12 @@ function createAnnotationModel(ctx) {
 
   function reconcileOrphanedCountersAndLineTypes() {
     if (!ctx.getState().pages || !ctx.getState().pages.length) return;
+    // Self-heal duplicate-id palettes first (see dedupePaletteById): this
+    // reconcile runs at every palette intake (cloud load, import, copy,
+    // artboard apply, pdf-intake, canvas repair), so corrupted payloads are
+    // collapsed on open and written back clean by the next save.
+    ctx.getState().counters = dedupePaletteById(ctx.getState().counters);
+    ctx.getState().lineTypes = dedupePaletteById(ctx.getState().lineTypes);
     ctx.getState().pages.forEach(migratePageToCanvases);
     const counterIds = new Set((ctx.getState().counters || []).map(c => c.id));
     const lineTypeIds = new Set((ctx.getState().lineTypes || []).map(lt => lt.id));
@@ -615,5 +641,5 @@ function createAnnotationModel(ctx) {
 
 // Dual-environment export (inert in the browser) for node --test + eslint.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createAnnotationModel };
+  module.exports = { createAnnotationModel, dedupePaletteById };
 }

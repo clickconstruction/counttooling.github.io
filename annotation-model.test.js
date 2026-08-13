@@ -627,3 +627,53 @@ test('pushUndoSnapshotPage restores page scale/rotation and palettes like the fu
   assert.strictEqual(state.pages[0].rotation, 0);
   assert.strictEqual(state.counters.length, 1);
 });
+
+// --- dedupePaletteById: the Wendi FD same-id palette collapse ---
+
+const { dedupePaletteById } = require('./annotation-model.js');
+
+test('dedupePaletteById collapses same-id entries: first position, last fields', () => {
+  const out = dedupePaletteById([
+    { id: 'uiyk7ih0', name: 'FD', color: '#2c3e50' },
+    { id: 'kjc1m6t0', name: 'FD-1', color: '#b65d90' },
+    { id: 'uiyk7ih0', name: '3IN FD', color: '#7c3aed' },
+    { id: 'uiyk7ih0', name: '3IN FD-1', color: '#2c3e50' },
+  ]);
+  assert.deepStrictEqual(out.map(c => c.id), ['uiyk7ih0', 'kjc1m6t0']);
+  assert.strictEqual(out[0].name, '3IN FD-1');   // newest rename wins
+  assert.strictEqual(out[0].color, '#2c3e50');
+  assert.strictEqual(out[1].name, 'FD-1');       // untouched entry intact
+});
+
+test('dedupePaletteById passes through id-less entries and tolerates junk', () => {
+  const noId = { name: 'stray' };
+  assert.deepStrictEqual(dedupePaletteById([noId]), [noId]);
+  assert.deepStrictEqual(dedupePaletteById(null), []);
+  assert.deepStrictEqual(dedupePaletteById(undefined), []);
+  assert.deepStrictEqual(dedupePaletteById([]), []);
+});
+
+test('reconcileOrphanedCountersAndLineTypes self-heals duplicate-id palettes on intake', () => {
+  const state = {
+    counters: [
+      { id: 'dup', name: 'FD', color: '#111' },
+      { id: 'dup', name: '3IN FD', color: '#222' },
+      { id: 'solo', name: 'WC', color: '#333' },
+    ],
+    lineTypes: [
+      { id: 'lt', name: '2in Waste', color: '#444' },
+      { id: 'lt', name: '2IN PVC Waste', color: '#555' },
+    ],
+    rooms: [],
+    pages: [{ canvases: [{ id: 'c1', name: 'Main', annotations: { counterMarkers: { dup: [{ x: 1, y: 1, id: 'm1' }] }, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], legend: null } }] }],
+  };
+  const { ctx } = (function makeSimpleCtx(s) {
+    return { ctx: { getState: () => s, uid: () => 'u', showToast: () => {}, ensureGroupColors: (g) => g, saveUserCustomIcons: () => {}, getLineRealWorldLengthFeet: () => 0 } };
+  })(state);
+  const model = createAnnotationModel(ctx);
+  model.reconcileOrphanedCountersAndLineTypes();
+  assert.deepStrictEqual(state.counters.map(c => c.name), ['3IN FD', 'WC']);
+  assert.deepStrictEqual(state.lineTypes.map(lt => lt.name), ['2IN PVC Waste']);
+  // The placed marker keyed by the collapsed id survives untouched.
+  assert.strictEqual(state.pages[0].canvases[0].annotations.counterMarkers.dup.length, 1);
+});

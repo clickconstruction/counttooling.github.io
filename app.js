@@ -2722,8 +2722,11 @@
     if (error) return null;
     if (!data) return null;
     return {
-      counters: data.counters || [],
-      lineTypes: data.line_types || [],
+      // Dedupe on read: a corrupted artboard row (same id under several
+      // renamed entries — the Wendi FD bug) is collapsed before it can seed
+      // any project; the next saveUserAirboard writes it back clean.
+      counters: dedupePaletteById(data.counters || []),
+      lineTypes: dedupePaletteById(data.line_types || []),
       iconNames: (data.icon_names && typeof data.icon_names === 'object') ? data.icon_names : {},
       iconOrder: Array.isArray(data.icon_order) ? data.icon_order : null,
       plumbingModifiers: (data.plumbing_modifiers && typeof data.plumbing_modifiers === 'object') ? data.plumbing_modifiers : null,
@@ -2739,8 +2742,8 @@
     if (!supabase || !user) return false;
     const payload = {
       user_id: user.id,
-      counters: state.counters || [],
-      line_types: state.lineTypes || [],
+      counters: dedupePaletteById(state.counters || []),
+      line_types: dedupePaletteById(state.lineTypes || []),
       icon_names: state.iconNames || {},
       icon_order: state.iconOrder || null,
       plumbing_modifiers: getPlumbingModifiers(),
@@ -6432,6 +6435,9 @@
   // Per-project Groups gate (spec seam; updateUI + showContextMenu consume it
   // internally).
   App.groupsUiVisible = groupsUiVisible;
+  // Same-id palette collapse (features/palette-insights.js id-aware merge +
+  // spec seam; annotation-model.js pure helper).
+  App.dedupePaletteById = dedupePaletteById;
   // Sidebar usage-filter scope (features/sidebar-lists.js reads, the settings
   // modals in features/counter-settings.js + line-type-settings.js write).
   App.getCounterListFilterScope = getCounterListFilterScope;

@@ -48,7 +48,13 @@
     const viewport = page.pdfPage.getViewport({ scale, rotation: rot });
     canvas.width = viewport.width;
     canvas.height = viewport.height;
+    // Contain-fit inside the FIXED-height preview wrap: both max constraints
+    // with auto dims letterbox the page, so rotating between portrait and
+    // landscape never changes the wrap's height — the Prev/Next and
+    // Delete/Rotate/Undo rows below stay put (Wendi, 2026-08-13).
     canvas.style.maxWidth = '100%';
+    canvas.style.maxHeight = '100%';
+    canvas.style.width = 'auto';
     canvas.style.height = 'auto';
     const wIn = (vp.width / 72).toFixed(1);
     const hIn = (vp.height / 72).toFixed(1);

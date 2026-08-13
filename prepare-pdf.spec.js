@@ -70,6 +70,56 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     expect(errors).toEqual([]);
   });
 
+  test('rotating never moves the controls: fixed-height preview keeps Rotate in place', async ({ page }) => {
+    // Field report (Wendi, 2026-08-13): the preview wrap's height tracked the
+    // rendered canvas, so each portrait<->landscape rotate shoved the
+    // Prev/Next and Delete/Rotate/Undo rows up and down under the pointer.
+    // The wrap is now fixed-height (min(400px, 55vh)) with a contain-fit
+    // canvas — the Rotate button must not move a pixel across rotations.
+    const isBenignRenderRace = (t) => /multiple render\(\) operations/i.test(t || '');
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error' && !isBenignRenderRace(msg.text())) errors.push(msg.text()); });
+    page.on('pageerror', (err) => { if (!isBenignRenderRace(err.message)) errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() =>
+      window.App.openPreparePdfModal(window.state.pages, window.state.pdfBuffer, 'Stability'),
+    );
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 5000 });
+    await page.waitForTimeout(300);
+
+    // Park the mouse off the buttons before each measure: the row's
+    // deliberate :hover transform (translateY(-1px)) would otherwise read as
+    // a phantom 1px "shift" on whichever button the click left the pointer on.
+    const rotateBox = async () => {
+      await page.mouse.move(5, 5);
+      await page.waitForTimeout(250);   // let the 0.2s hover transition settle back
+      return await page.locator('#preparePdfRotate').boundingBox();
+    };
+    const wrapHeight = async () => page.evaluate(() =>
+      Math.round(document.getElementById('preparePdfPreviewWrap').getBoundingClientRect().height));
+
+    const y0 = (await rotateBox()).y;
+    const h0 = await wrapHeight();
+    for (let i = 1; i <= 4; i++) {   // full cycle: 90/180/270/360
+      await page.locator('#preparePdfRotate').click();
+      await page.waitForTimeout(300);
+      expect((await rotateBox()).y).toBe(y0);
+      expect(await wrapHeight()).toBe(h0);
+    }
+    // The canvas stays contained inside the fixed wrap at every rotation.
+    const contained = await page.evaluate(() => {
+      const c = document.getElementById('preparePdfCanvas').getBoundingClientRect();
+      const w = document.getElementById('preparePdfPreviewWrap').getBoundingClientRect();
+      return c.height <= w.height + 1 && c.width <= w.width + 1;
+    });
+    expect(contained).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
   test('Download Trimmed PDF: builds the trimmed buffer and downloads with a sanitized name', async ({ page }) => {
     // Regression: sanitizeForFilename/downloadPdfBuffer are registered by
     // features/output.js, which loads AFTER features/prepare-pdf.js — the

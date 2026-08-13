@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(prepare-pdf): rotating a page no longer moves the controls
+
+Field report (Wendi, 2026-08-13): in the Prepare PDF modal, the preview
+wrap's height tracked the rendered canvas (min 200 / max 400), so each
+portrait↔landscape rotate resized it and shoved the Prev/Next and
+Delete/Rotate/Undo rows up and down under the pointer. The wrap is now a
+FIXED height (`min(400px, 55vh)`) and the preview canvas contain-fits inside
+it (max-width/max-height 100%, auto dims — letterboxed, never scrolled), so
+every control stays put across the full rotation cycle. Regression: the
+"rotating never moves the controls" test in
+[prepare-pdf.spec.js](prepare-pdf.spec.js) (hover-transform-aware — the row's
+deliberate `:hover translateY(-1px)` lift is parked off before measuring).
+
 ## chore(cloud): scheduled test-account purge — pg_cron + cleanup-test-accounts
 
 The 2026-08-13 storage audit found 610 spec-run leftover projects (~590 MB of

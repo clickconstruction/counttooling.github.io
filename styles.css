@@ -293,6 +293,12 @@
     .sidebar-search-filter-btn:hover { color: var(--text2); }
     .sidebar-search-filter-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
     .sidebar-search-filter-btn svg { width: 16px; height: 16px; }
+    .sidebar-filter-hint { padding: 6px 10px; font-size: 0.72rem; color: var(--text3); font-style: italic; }
+    .sidebar-filter-hint .sidebar-filter-hint-clear { color: var(--accent); cursor: pointer; text-decoration: underline; font-style: normal; }
+    .filter-scope-segment { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+    .filter-scope-segment button { padding: 6px 10px; border: none; background: transparent; color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.78rem; white-space: nowrap; }
+    .filter-scope-segment button:hover { color: var(--text); }
+    .filter-scope-segment button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
     .lines-type-group { margin-bottom: 4px; }
     .lines-type-header { display: flex; align-items: center; gap: 6px; padding: 6px 0; cursor: pointer; font-size: 0.7rem; color: var(--text3); user-select: none; }
     .lines-type-header:hover { color: var(--text2); }

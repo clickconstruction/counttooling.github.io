@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-08-10 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-08-13 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 6,594 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 6,637 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,944 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 779 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,514 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,424 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 2,516 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,430 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 695 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 617 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 152 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 496 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (55 files) | 12,525 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (55 files) | 12,539 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -126,9 +126,9 @@ modules. Candidates in priority order:
 | [legend-settings.spec.js](legend-settings.spec.js) | Playwright regression for pilot #7 — uploads `test-2pages.pdf`, asserts `window.App.openLegendSettingsModal` is a function, opens via the registry, sets `#legendScale` to 150 (dispatching `input`, asserting `#legendScaleVal` reads `150` and `state.legendSettings.legendScale === 1.5`), clicks `#legendShowBorderBtn` and asserts `state.legendSettings.showBorder` flipped, clicks `#legendSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test legend-settings.spec.js` |
 | [features/page-settings.js](features/page-settings.js) | Eighth feature-file split (`window.App` registry pilot #8) — the Page **settings** modal (`openPageSettingsModal` + its `pageSettingsTruncate`/`pageSettingsHideUnmarked` toggles + `pageSettingsClose`, plus the `#pagesSectionTitle` opener). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openPageSettingsModal`, binds the toggles/close/opener at load. One new publish-only dep — `renderPagesList` (stays defined in app.js, read via `App.*`); `state`/`showModal`/`hideModal`/`updateUI` were already on `App`. Each toggle mutates `state` (`pagesTitlesTruncated` / `hideUnmarkedPagesFromSidebar`), persists to `localStorage`, then calls `App.renderPagesList()` + `App.updateUI()`. Scope is the settings modal only — the Pages section **collapse** icon (`#pagesCollapseIcon`, a different element — its toggle stays), the scattered collapse-icon `textContent` writes, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#pagesCollapseIcon')` guard |
 | [page-settings.spec.js](page-settings.spec.js) | Playwright regression for pilot #8 — uploads `test-2pages.pdf`, asserts `window.App.openPageSettingsModal` + the publish-only `renderPagesList` are functions, opens via the registry, clicks `#pageSettingsTruncateBtn` and asserts `state.pagesTitlesTruncated` flipped + `localStorage.pagesTitlesTruncated` matches, clicks `#pageSettingsHideUnmarkedBtn` and asserts `state.hideUnmarkedPagesFromSidebar` flipped, clicks `#pageSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test page-settings.spec.js` |
-| [features/counter-settings.js](features/counter-settings.js) | Tenth feature-file split (`window.App` registry pilot #10) and the **first two-region consolidation** — the Counter **settings** modal, whose opener/close/reorder lived in the "Line type, counter & page settings modal handlers" grab-bag while its value handlers lived in a separate `// SECTION: Counter settings handlers` block; both are merged here. `openCounterSettingsModal` + `counterSettingsClose` + `counterSettingsReorder` + the value handlers (`counterSize`/`counterOpacity`/`counterOutline`/`counterShowRings(Btn)`/`counterNumberSize`/`counterRingSize`/`counterRingOpacity`/`counterRingSolid(Btn)`/`counterShowOnlyOnPage(Btn)`), plus the `#countersSectionTitle` opener. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openCounterSettingsModal`, binds everything at load. Two new publish-only deps — `renderAnnotations`, `renderCountersList` (stay defined in app.js, read via `App.*`); `state`/`showModal`/`hideModal`/`updateUI`/`showToast` were already on `App`. Scope is the settings modal only — the Counters section **collapse** icon (`#countersCollapseIcon`), the sidebar **inline** `#counterShowOnlyOnPageInlineBtn`, the shared `#sidebarReorderFinish`, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#countersCollapseIcon')` guard; the 2 right-click `countersSectionTitle.click()` callers keep working via DOM dispatch. **Removing the emptied `// SECTION: Counter settings handlers` marker drops the TOC count 50 → 49** |
+| [features/counter-settings.js](features/counter-settings.js) | Tenth feature-file split (`window.App` registry pilot #10) and the **first two-region consolidation** — the Counter **settings** modal, whose opener/close/reorder lived in the "Line type, counter & page settings modal handlers" grab-bag while its value handlers lived in a separate `// SECTION: Counter settings handlers` block; both are merged here. `openCounterSettingsModal` + `counterSettingsClose` + `counterSettingsReorder` + the value handlers (`counterSize`/`counterOpacity`/`counterOutline`/`counterShowRings(Btn)`/`counterNumberSize`/`counterRingSize`/`counterRingOpacity`/`counterRingSolid(Btn)`, and the `#counterShowOnlySegment` usage-filter segment — Off / This page / This project, via `App.getCounterListFilterScope`/`App.setCounterListFilterScope`/`App.syncFilterScopeSegment`, replacing the old `counterShowOnlyOnPage(Btn)` toggle), plus the `#countersSectionTitle` opener. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openCounterSettingsModal`, binds everything at load. Two new publish-only deps — `renderAnnotations`, `renderCountersList` (stay defined in app.js, read via `App.*`); `state`/`showModal`/`hideModal`/`updateUI`/`showToast` were already on `App`. Scope is the settings modal only — the Counters section **collapse** icon (`#countersCollapseIcon`), the sidebar **inline** `#counterShowOnlyOnPageInlineBtn`, the shared `#sidebarReorderFinish`, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#countersCollapseIcon')` guard; the 2 right-click `countersSectionTitle.click()` callers keep working via DOM dispatch. **Removing the emptied `// SECTION: Counter settings handlers` marker drops the TOC count 50 → 49** |
 | [counter-settings.spec.js](counter-settings.spec.js) | Playwright regression for pilot #10 — uploads `test-2pages.pdf`, asserts `window.App.openCounterSettingsModal` + the 2 publish-only deps (`renderAnnotations`/`renderCountersList`) are functions, opens via the registry, sets `#counterSize` to 40 (dispatching `input`, asserting `#counterSizeVal` reads `40` and `state.counterSettings.size === 40`), clicks `#counterShowRingsBtn` and asserts `state.counterSettings.showRings` flipped + `#counterRingSection` display follows, clicks `#counterSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test counter-settings.spec.js` |
-| [features/line-type-settings.js](features/line-type-settings.js) | Eleventh feature-file split (`window.App` registry pilot #11) — the Line Type **settings** modal, the **final settings-modal unit** drained from the old grab-bag (page #8, counter #10, line-type here). `openLineTypeSettingsModal` (incl. the drop-icon grid build from `DROP_ICON_STYLES`) + the value handlers (`lineTypeSize`/`lineTypeOpacity`/`lineTypeDropXSize`/`lineTypeOrientLength(Btn)`/`lineTypeParallelEnds`/`lineTypeLengthLabel`/`lineTypeSnapToHV(Btn)`/`lineTypeShowOnlyOnPage(Btn)`) + `lineTypeSettingsClose` + `lineTypeSettingsReorder`, plus the `#lineTypesSectionTitle` opener. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openLineTypeSettingsModal`, binds everything at load. Two new publish-only deps — `renderLineTypesList`, `DROP_ICON_STYLES` (stay in app.js, read via `App.*`); `renderAnnotations` (from the counter pilot) + `state`/`showModal`/`hideModal`/`updateUI`/`showToast` were already on `App`. Scope is the settings modal only — the header snap button (`#lineTypeSnapToHVHeaderBtn`), the sidebar inline show-only buttons, the shared `#sidebarReorderFinish`, the J-hotkey snap toggle, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#lineTypesCollapseIcon')` guard; the 5 right-click `lineTypesSectionTitle.click()` callers (Quick Line / Polyline) keep working via DOM dispatch. **Renamed** the now-stale `// SECTION: Line type, counter & page settings modal handlers` marker → `// SECTION: Choose/Create Line Type, line color & sidebar handlers` (TOC stays 49) |
+| [features/line-type-settings.js](features/line-type-settings.js) | Eleventh feature-file split (`window.App` registry pilot #11) — the Line Type **settings** modal, the **final settings-modal unit** drained from the old grab-bag (page #8, counter #10, line-type here). `openLineTypeSettingsModal` (incl. the drop-icon grid build from `DROP_ICON_STYLES`) + the value handlers (`lineTypeSize`/`lineTypeOpacity`/`lineTypeDropXSize`/`lineTypeOrientLength(Btn)`/`lineTypeParallelEnds`/`lineTypeLengthLabel`/`lineTypeSnapToHV(Btn)`, and the `#lineTypeShowOnlySegment` usage-filter segment — via `App.getLineTypeListFilterScope`/`App.setLineTypeListFilterScope`/`App.syncFilterScopeSegment`, replacing the old `lineTypeShowOnlyOnPage(Btn)` toggle) + `lineTypeSettingsClose` + `lineTypeSettingsReorder`, plus the `#lineTypesSectionTitle` opener. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openLineTypeSettingsModal`, binds everything at load. Two new publish-only deps — `renderLineTypesList`, `DROP_ICON_STYLES` (stay in app.js, read via `App.*`); `renderAnnotations` (from the counter pilot) + `state`/`showModal`/`hideModal`/`updateUI`/`showToast` were already on `App`. Scope is the settings modal only — the header snap button (`#lineTypeSnapToHVHeaderBtn`), the sidebar inline show-only buttons, the shared `#sidebarReorderFinish`, the J-hotkey snap toggle, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#lineTypesCollapseIcon')` guard; the 5 right-click `lineTypesSectionTitle.click()` callers (Quick Line / Polyline) keep working via DOM dispatch. **Renamed** the now-stale `// SECTION: Line type, counter & page settings modal handlers` marker → `// SECTION: Choose/Create Line Type, line color & sidebar handlers` (TOC stays 49) |
 | [line-type-settings.spec.js](line-type-settings.spec.js) | Playwright regression for pilot #11 — uploads `test-2pages.pdf`, asserts `window.App.openLineTypeSettingsModal` + `renderLineTypesList` are functions and `Array.isArray(App.DROP_ICON_STYLES)`, opens via the registry, sets `#lineTypeSize` to 8 (dispatching `input`, asserting `#lineTypeSizeVal` reads `8` and `state.lineTypeSettings.lineSize === 8`), clicks `#lineTypeOrientLengthBtn` and asserts `state.lineTypeSettings.orientLengthWithLine` flipped, asserts `#lineTypeDropIconGrid .icon-cell` count === `DROP_ICON_STYLES.length` and clicking a non-selected cell updates `state.lineTypeSettings.dropIconStyle`, clicks `#lineTypeSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test line-type-settings.spec.js` |
 | [features/choose-create-line-type.js](features/choose-create-line-type.js) | Twelfth feature-file split (`window.App` registry pilot #12) — the **Choose/Create Line Type** modal (`#chooseLineTypeModal`), the tabbed picker opened by the Quick Line button / `L` hotkey. `showLineTypeTab` (Choose/Create/Quick panels) + `populateChooseLineTypeList` (searchable existing-type list) + `showChooseLineTypeModal`, plus the `.line-type-tab` clicks, `#lineTypeModalSearchInput`, `#chooseLineTypeCancel`, `#createLineTypeCancel`, and `#createLineTypeCreate` handlers. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showChooseLineTypeModal` + `App.showLineTypeTab`, binds everything at load. **First split to share *constants* via the registry** — two new publish-only deps `TOOL`/`COLORS` (it also consumes `App.populateQuickLineModal`, which since pilot #16 is registered by [features/quick-line.js](features/quick-line.js), not app.js); `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI` were already on `App`. Scope is this modal only — the **line color modal** (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`), the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay in app.js. The three call sites — `#quickLine.onclick`, `#plumLineBtn.onclick`, and the Shift+L hotkey — reach it via `App.showChooseLineTypeModal()` / `App.showLineTypeTab('quick')`. **Renamed** the section marker `// SECTION: Choose/Create Line Type, line color & sidebar handlers` → `// SECTION: Line color & sidebar handlers` (TOC stays 49) |
 | [choose-create-line-type.spec.js](choose-create-line-type.spec.js) | Playwright regression for pilot #12 — uploads `test-2pages.pdf`, asserts `window.App.showChooseLineTypeModal` + `showLineTypeTab` are functions, opens via the registry, switches to the Create tab and creates a line type (asserts `state.lineTypes` grew by 1, `state.activeLineTypeId` points at the new type, and the modal closed), reopens and exercises the Choose-list search + select (asserts the modal closes and `state.activeLineTypeId` matches the picked type); asserts no console / page errors; `npx playwright test choose-create-line-type.spec.js` |
@@ -189,7 +189,7 @@ modules. Candidates in priority order:
 | [features/lines-list.js](features/lines-list.js) | The **sidebar Lines section renderer** (`renderLinesList`) — the FIRST split out of the UI Render Functions region, the region the decomposition table above names as the next candidate. Owns: grouping every quick line / polyline by line type, the per-type headers (run count + T1-05 ft/px-split totals via `getLineLengthSplitForTotals`/`formatFeetPx` — px never summed under a ft label; per-line rows keep `getLineRealWorldLengthFeet`/`formatFeet`), the expand/collapse state (`state.linesTypeExpanded`, localStorage-persisted), the lines search filter, per-row length (or closed-polyline **area** via `formatArea`/`polygonArea`) + drop markers, row selection (click selects + jumps to the line's page via `fitZoom`; click again deselects), the color-swatch picker, and the Line Properties openers (edit pen + `onDoubleTapOrDblClick`). Registers `App.renderLinesList`. **updateUI calls it defensively** (`App.renderLinesList && App.renderLinesList()`) since boot-time updateUI precedes feature-file load — an empty Lines section for that instant is harmless (no project yet; burger-menu pattern); the search / show-only handlers call it plainly (user-action time). Five new publish-only deps: `formatArea` + `polygonArea` (geometry.js globals routed through the registry — the pilot-#13 `ptDist` pattern), `pickScaleForLineType`, `getLineRealWorldLengthFeet`, `onDoubleTapOrDblClick`. Zero moved state beyond the function itself. Regression: [lines-list.spec.js](lines-list.spec.js) |
 | [lines-list.spec.js](lines-list.spec.js) | Playwright regression for the Lines-list split — registry contract (entry point + the five publish-only deps), then the moved behavior end-to-end on a seeded 2-page takeoff (two named quick lines + a polyline, one type): per-type grouping with `3 lines · 25.00 ft` totals, expand/collapse persisting to `linesTypeExpanded` localStorage, the search input filtering by line name through the real handler, row click selecting + jumping to the line's page, and a second click deselecting. Renders through the real `updateUI()` path, so the defensive hot-path seam is exercised, not just the direct call. Note: the Lines *section* starts minimized (`state.linesListCollapsed`), so the spec expands it before clicking rows. `npx playwright test lines-list.spec.js` |
 | [features/pages-list.js](features/pages-list.js) | The **sidebar Pages section renderer** (`renderPagesList` + the private `formatPageTitleStartEnd` start/end truncation) — extracted per the lines-list recipe (defensive updateUI seam, publish-only deps, zero moved state). Rows carry the scale/annotation page-number badge, the canvas-count badge, click-to-navigate, and (editors) the rename/delete affordances via `App.startRename`. New publish-only deps: `App.pageHasAnyAnnotations`, `App.startRename`, `App.exitEditMode`. Registers `App.renderPagesList` (consumed by app.js's `updateUI` defensively and by features/page-settings.js). Regression: [pages-list.spec.js](pages-list.spec.js) |
-| [features/sidebar-lists.js](features/sidebar-lists.js) | The **sidebar Counters / Line Types / Groups renderers** (`renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `countItemsInGroup`, private `quickKeyBadgeHtml`) — extracted per the lines-list recipe. Counter/line-type rows keep drag-to-reorder, search filtering, show-only-on-page filtering, cross-page badge totals (ft/px split for line types — `getLineLengthSplitForTotals`/`formatFeetPx`, px never summed under a ft label), swatch/edit openers, and the Quick Key keycap badges; activation still funnels through `App.setActiveCounterType` / `App.setActiveLineType` (the ONE selection path shared with Quick Keys). Registrations re-homed from app.js's registry tail; consumed by quick-keys.js, counter-settings.js, line-type-settings.js, item-details.js and `updateUI` (defensive). Regression: [sidebar-lists.spec.js](sidebar-lists.spec.js) |
+| [features/sidebar-lists.js](features/sidebar-lists.js) | The **sidebar Counters / Line Types / Groups renderers** (`renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `countItemsInGroup`, private `quickKeyBadgeHtml`) — extracted per the lines-list recipe. Counter/line-type rows keep drag-to-reorder, search filtering, the three-scope usage filter (off / page / project — merged-canvas usage checks via `App.getMergedAnnotationsForPage`, active-type exemption, and the "N hidden by filter — show all" hint row `appendFilterHintRow`; scope read via `App.getCounterListFilterScope` / `App.getLineTypeListFilterScope`), cross-page badge totals — tallied across **merged** canvases like the footer and the Choose tab (T1-11) — (ft/px split for line types — `getLineLengthSplitForTotals`/`formatFeetPx`, px never summed under a ft label), swatch/edit openers, and the Quick Key keycap badges; activation still funnels through `App.setActiveCounterType` / `App.setActiveLineType` (the ONE selection path shared with Quick Keys). Registrations re-homed from app.js's registry tail; consumed by quick-keys.js, counter-settings.js, line-type-settings.js, item-details.js and `updateUI` (defensive). Regression: [sidebar-lists.spec.js](sidebar-lists.spec.js) + [sidebar-usage-filter.spec.js](sidebar-usage-filter.spec.js) |
 | [features/status-bar.js](features/status-bar.js) | The **status-bar / footer-totals cluster**, extracted 2026-07-30 from app.js's Math & Format Helpers region (where it was always misfiled — it is DOM chrome over state + save-engine getters): the footer totals cache (`computeFooterTotals`/`getFooterTotalsCached`/`invalidateFooterTotals`), the status-bar renderer (`updateStatus` — sync dot/square, mode line, tool hints, count/length totals in the T1-05 ft/px split via `formatFeetPx`, with a title note when px lengths are present), the Save Status summary-block data (`getCloudSaveSummary`, consumed by [features/save-status.js](features/save-status.js)), and the hot-path save-status bell (`updateSaveStatusIndicator`; the on-demand modal stays in save-status.js). app.js keeps same-named thin wrappers for its ~30 call sites and the save-engine ctx entries. New publish-only deps: `formatSaveTime`/`formatSaveTimeParts`/`formatAgo`/`getLastSaveIncludedPdf` plus the engine getter passthroughs (`isSaveInProgress`, `isSavePdfInProgress`, `getSaveProgressMessage`, `wasLastCloudSaveAttemptFailed`, `getLastLocalBackupAt`) |
 | [features/canvas-switcher.js](features/canvas-switcher.js) | The **footer canvas switcher renderer** (`renderCanvasSwitcher`: current-name label, `(n/N)` index, the pills, the layers-dropdown rows, show-all peek-button visibility), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps (everything it reads was already on the registry). Registers `App.renderCanvasSwitcher`; the edit pen keeps opening [features/canvas-layers.js](features/canvas-layers.js)'s details modal via `App.openCanvasDetailsModal`. The peek-button visibility path it renders is exercised by [show-all-canvases.spec.js](show-all-canvases.spec.js) |
 | [features/summary-list.js](features/summary-list.js) | The **sidebar Summary section renderer** (`renderSummary`: per-group or flat counter / line-type rollups with multiply-zone-adjusted counts and T1-05 ft/px-split lengths — px never summed under a ft label), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps. Registers `App.renderSummary`; rows open the count-detail modal in [features/summary-detail.js](features/summary-detail.js) via `App.openSummaryCountDetailModal` ([summary-detail.spec.js](summary-detail.spec.js) covers that modal and renders through the real `updateUI()` path) |
@@ -528,41 +528,41 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L3157 - Tool sidebar buttons & legend overlay
 - L3247 - Add Line Type modal
 - L3317 - Line color & sidebar handlers
-- L3459 - Polyline modal & drawing
-- L3490 - Zoom bar & page navigation
-- L3516 - Export canvas JSON
-- L3532 - PDF download helpers
-- L3541 - View-link URL helpers & show-highlights/notes
-- L3613 - Custom icon upload handler
-- L3623 - Export & report dropdown menus
-- L3710 - Sidebar drawer toggles
-- L3721 - Mobile actions burger menu pointer & header logo
-- L3733 - User Activity pointer (format.js + features/user-activity.js)
-- L3745 - My Settings pointer (features/my-settings.js)
-- L3768 - Auth & settings entry buttons
-  - L3813 - Project Settings checkout & Save Status bell
-  - L3914 - [sync] Checkout expired recovery
-  - L3970 - [sync] Turn In
-  - L4072 - Share modal pointer & copy-project openers
-  - L4103 - Settings menu actions
-  - L4124 - Auth sign-in form
-  - L4148 - Save Project modal
-  - L4161 - Checkout expired recovery modal wiring
-  - L4266 - Last-session restore prompt
-  - L4273 - Canvas Repair modal wiring
-- L4426 - Canvas Event Handlers
-- L4820 - Event Binding
-- L4830 - Aim loupe (mobile press-hold precise placement)
-- L4969 - Zoom transform preview & commit
-- L5048 - Canvas mouse, wheel & touch handlers
-- L5709 - Global dropdown dismissal & keyboard hotkeys
-- L5971 - [sync] Manual save to cloud
-- L5981 - [sync] Auto-save
-- L5988 - [sync] Local backup (IndexedDB takeoff state)
-- L6121 - [sync] Checkout keep-alive
-- L6135 - App feature registry
-- L6383 - View-only mode
-- L6389 - Init / boot
+- L3495 - Polyline modal & drawing
+- L3526 - Zoom bar & page navigation
+- L3552 - Export canvas JSON
+- L3568 - PDF download helpers
+- L3577 - View-link URL helpers & show-highlights/notes
+- L3649 - Custom icon upload handler
+- L3659 - Export & report dropdown menus
+- L3746 - Sidebar drawer toggles
+- L3757 - Mobile actions burger menu pointer & header logo
+- L3769 - User Activity pointer (format.js + features/user-activity.js)
+- L3781 - My Settings pointer (features/my-settings.js)
+- L3804 - Auth & settings entry buttons
+  - L3849 - Project Settings checkout & Save Status bell
+  - L3950 - [sync] Checkout expired recovery
+  - L4006 - [sync] Turn In
+  - L4108 - Share modal pointer & copy-project openers
+  - L4139 - Settings menu actions
+  - L4160 - Auth sign-in form
+  - L4184 - Save Project modal
+  - L4197 - Checkout expired recovery modal wiring
+  - L4302 - Last-session restore prompt
+  - L4309 - Canvas Repair modal wiring
+- L4462 - Canvas Event Handlers
+- L4856 - Event Binding
+- L4866 - Aim loupe (mobile press-hold precise placement)
+- L5005 - Zoom transform preview & commit
+- L5084 - Canvas mouse, wheel & touch handlers
+- L5745 - Global dropdown dismissal & keyboard hotkeys
+- L6007 - [sync] Manual save to cloud
+- L6017 - [sync] Auto-save
+- L6024 - [sync] Local backup (IndexedDB takeoff state)
+- L6157 - [sync] Checkout keep-alive
+- L6171 - App feature registry
+- L6426 - View-only mode
+- L6432 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -1003,11 +1003,24 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 ### Counters / line types / sidebar
 
 - **Counter Settings** — click "Counters" heading: icon size, opacity, number
-  size, outline, show ring (size, opacity, solid toggle); "Show only counters on
-  current page" filter. Ring section only visible when rings on.
+  size, outline, show ring (size, opacity, solid toggle); "Show only counters
+  used" scope segment (Off / This page / This project — the sidebar usage
+  filter). Ring section only visible when rings on.
 - **Line Type Settings** — click "Line Types" heading: opacity, line size, drop X
   size + icon style, orient length with line direction, parallel ends, length
-  label size, snap to 45° angles, "show only line types/lines on current page".
+  label size, snap to 45° angles, "show only line types used" scope segment
+  (Off / This page / This project), "show only lines on current page".
+- **Sidebar usage filter (off / page / project)** — the inline button next to
+  the Counters / Line Types search boxes cycles Off → This page → This project
+  (project scope swaps in a stacked-sheets glyph; titles narrate the state);
+  filtered lists append "N hidden by filter — **show all**". Usage checks and
+  the sidebar badges count **merged** canvases (every layer of a page — the
+  T1-11 rule), and the active counter/line type is exempt so a just-created
+  type stays visible before its first mark. Scope lives in
+  `counterSettings.sidebarFilterScope` / `lineTypeSettings.sidebarFilterScope`
+  (`'off' | 'page' | 'project'`; the legacy `showOnly*OnCurrentPage` booleans
+  stay in sync — `true` only for `'page'`). Regression:
+  [sidebar-usage-filter.spec.js](sidebar-usage-filter.spec.js)
 - **Counter button dynamic icon** — `counterBtn` / `counterBtnSidebar` show the
   active counter's icon + color when Counter tool is active.
 - **Counter/Line Type details modal** — edit pen opens

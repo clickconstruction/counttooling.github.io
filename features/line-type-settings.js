@@ -59,12 +59,7 @@
     const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
     snapCb.checked = !!state.lineTypeSettings.snapToHorizontalVertical;
     snapBtn.setAttribute('aria-pressed', snapCb.checked);
-    const lineTypeShowOnlyOnPageCb = document.getElementById('lineTypeShowOnlyOnPage');
-    const lineTypeShowOnlyOnPageBtn = document.getElementById('lineTypeShowOnlyOnPageBtn');
-    if (lineTypeShowOnlyOnPageCb && lineTypeShowOnlyOnPageBtn) {
-      lineTypeShowOnlyOnPageCb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
-      lineTypeShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
-    }
+    App.syncFilterScopeSegment('lineTypeShowOnlySegment', App.getLineTypeListFilterScope());
     document.getElementById('lineTypeSettingsReorder').style.display = state.lineTypes.length < 2 ? 'none' : '';
     App.showModal('lineTypeSettingsModal');
   }
@@ -129,18 +124,14 @@
     App.renderAnnotations();
     App.updateUI();
   };
-  document.getElementById('lineTypeShowOnlyOnPageBtn').onclick = () => {
-    const cb = document.getElementById('lineTypeShowOnlyOnPage');
-    cb.checked = !cb.checked;
-    document.getElementById('lineTypeShowOnlyOnPageBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('lineTypeShowOnlyOnPage').onchange = () => {
-    const state = App.state;
-    state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = document.getElementById('lineTypeShowOnlyOnPage').checked;
-    App.renderLineTypesList();
-    App.updateUI();
-  };
+  document.querySelectorAll('#lineTypeShowOnlySegment button').forEach(btn => {
+    btn.onclick = () => {
+      App.setLineTypeListFilterScope(btn.dataset.scope);
+      App.syncFilterScopeSegment('lineTypeShowOnlySegment', btn.dataset.scope);
+      App.renderLineTypesList();
+      App.updateUI();
+    };
+  });
 
   document.getElementById('lineTypeSettingsReorder').onclick = () => {
     const state = App.state;

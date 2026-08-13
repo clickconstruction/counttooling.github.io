@@ -46,12 +46,7 @@
     const counterRingSolidBtn = document.getElementById('counterRingSolidBtn');
     counterRingSolidCb.checked = !!state.counterSettings.ringSolid;
     counterRingSolidBtn.setAttribute('aria-pressed', !!state.counterSettings.ringSolid);
-    const counterShowOnlyOnPageCb = document.getElementById('counterShowOnlyOnPage');
-    const counterShowOnlyOnPageBtn = document.getElementById('counterShowOnlyOnPageBtn');
-    if (counterShowOnlyOnPageCb && counterShowOnlyOnPageBtn) {
-      counterShowOnlyOnPageCb.checked = !!state.counterSettings.showOnlyCountersOnCurrentPage;
-      counterShowOnlyOnPageBtn.setAttribute('aria-pressed', state.counterSettings.showOnlyCountersOnCurrentPage);
-    }
+    App.syncFilterScopeSegment('counterShowOnlySegment', App.getCounterListFilterScope());
     document.getElementById('counterSettingsReorder').style.display = state.counters.length < 2 ? 'none' : '';
     App.showModal('counterSettingsModal');
   }
@@ -137,18 +132,14 @@
     state.counterSettings.ringSolid = document.getElementById('counterRingSolid').checked;
     App.renderAnnotations();
   };
-  document.getElementById('counterShowOnlyOnPageBtn').onclick = () => {
-    const cb = document.getElementById('counterShowOnlyOnPage');
-    cb.checked = !cb.checked;
-    document.getElementById('counterShowOnlyOnPageBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('counterShowOnlyOnPage').onchange = () => {
-    const state = App.state;
-    state.counterSettings.showOnlyCountersOnCurrentPage = document.getElementById('counterShowOnlyOnPage').checked;
-    App.renderCountersList();
-    App.updateUI();
-  };
+  document.querySelectorAll('#counterShowOnlySegment button').forEach(btn => {
+    btn.onclick = () => {
+      App.setCounterListFilterScope(btn.dataset.scope);
+      App.syncFilterScopeSegment('counterShowOnlySegment', btn.dataset.scope);
+      App.renderCountersList();
+      App.updateUI();
+    };
+  });
 
   App.openCounterSettingsModal = openCounterSettingsModal;
 })();

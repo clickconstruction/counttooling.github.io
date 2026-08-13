@@ -2097,8 +2097,8 @@
     const counterShowOnlyInline = document.getElementById('counterShowOnlyOnPageInlineBtn');
     const lineTypeShowOnlyInline = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
     const linesShowOnlyBtn = document.getElementById('linesShowOnlyOnPageBtn');
-    if (counterShowOnlyInline) counterShowOnlyInline.setAttribute('aria-pressed', !!state.counterSettings?.showOnlyCountersOnCurrentPage);
-    if (lineTypeShowOnlyInline) lineTypeShowOnlyInline.setAttribute('aria-pressed', !!state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage);
+    syncSidebarFilterButton(counterShowOnlyInline, getCounterListFilterScope(), 'counters');
+    syncSidebarFilterButton(lineTypeShowOnlyInline, getLineTypeListFilterScope(), 'line types');
     if (linesShowOnlyBtn) linesShowOnlyBtn.setAttribute('aria-pressed', !!state.lineTypeSettings?.showOnlyLinesOnCurrentPage);
     const highlightBtnSidebar = document.getElementById('highlightBtnSidebar');
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
@@ -3378,14 +3378,53 @@
       App.renderLinesList();
     };
   }
+  // Sidebar usage-filter scope ('off' | 'page' | 'project'). The scope field
+  // supersedes the legacy page-only booleans; the booleans are kept in sync
+  // (true only for 'page') so the settings objects keep their historical shape.
+  function getCounterListFilterScope() {
+    const cs = state.counterSettings || {};
+    return cs.sidebarFilterScope || (cs.showOnlyCountersOnCurrentPage ? 'page' : 'off');
+  }
+  function setCounterListFilterScope(scope) {
+    state.counterSettings.sidebarFilterScope = scope;
+    state.counterSettings.showOnlyCountersOnCurrentPage = scope === 'page';
+  }
+  function getLineTypeListFilterScope() {
+    const lts = state.lineTypeSettings || {};
+    return lts.sidebarFilterScope || (lts.showOnlyLineTypesOnCurrentPage ? 'page' : 'off');
+  }
+  function setLineTypeListFilterScope(scope) {
+    state.lineTypeSettings.sidebarFilterScope = scope;
+    state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = scope === 'page';
+  }
+  const FILTER_SCOPE_CYCLE = { off: 'page', page: 'project', project: 'off' };
+  // Reflect a scope onto a settings-modal segmented control (aria-pressed per
+  // data-scope button). Shared with the settings feature files via App.*.
+  function syncFilterScopeSegment(segmentId, scope) {
+    const seg = document.getElementById(segmentId);
+    if (!seg) return;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scope === scope)));
+  }
+  // The project-scope glyph (stacked sheets) swapped into the inline filter
+  // buttons; 'off'/'page' restore the arrows-inward glyph the markup ships.
+  const FILTER_GLYPH_PROJECT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M3 1.5h8a1 1 0 0 1 1 1V4h-1V2.5H3v9H2v-9a1 1 0 0 1 1-1zm2 3h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zm0 1v8h8v-8H5z"/></svg>';
+  let filterGlyphPageSvg = null; // captured from the markup on first swap
+  function syncSidebarFilterButton(btn, scope, kind) {
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', String(scope !== 'off'));
+    btn.title = scope === 'project' ? ('Showing only ' + kind + ' used in this project (click to show all)')
+      : scope === 'page' ? ('Showing only ' + kind + ' used on this page (click for this project)')
+      : ('Show only ' + kind + ' used on this page (click again for this project)');
+    if ((btn.dataset.scope || 'off') === scope) return;
+    if (filterGlyphPageSvg === null) filterGlyphPageSvg = btn.innerHTML;
+    btn.innerHTML = scope === 'project' ? FILTER_GLYPH_PROJECT_SVG : filterGlyphPageSvg;
+    btn.dataset.scope = scope;
+  }
   const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
   if (counterShowOnlyOnPageInlineBtn) {
     counterShowOnlyOnPageInlineBtn.onclick = () => {
-      state.counterSettings.showOnlyCountersOnCurrentPage = !state.counterSettings.showOnlyCountersOnCurrentPage;
-      const cb = document.getElementById('counterShowOnlyOnPage');
-      const modalBtn = document.getElementById('counterShowOnlyOnPageBtn');
-      if (cb) cb.checked = !!state.counterSettings.showOnlyCountersOnCurrentPage;
-      if (modalBtn) modalBtn.setAttribute('aria-pressed', state.counterSettings.showOnlyCountersOnCurrentPage);
+      setCounterListFilterScope(FILTER_SCOPE_CYCLE[getCounterListFilterScope()]);
+      syncFilterScopeSegment('counterShowOnlySegment', getCounterListFilterScope());
       App.renderCountersList();
       updateUI();
     };
@@ -3393,11 +3432,8 @@
   const lineTypeShowOnlyOnPageInlineBtn = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
   if (lineTypeShowOnlyOnPageInlineBtn) {
     lineTypeShowOnlyOnPageInlineBtn.onclick = () => {
-      state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = !state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
-      const cb = document.getElementById('lineTypeShowOnlyOnPage');
-      const modalBtn = document.getElementById('lineTypeShowOnlyOnPageBtn');
-      if (cb) cb.checked = !!state.lineTypeSettings.showOnlyLineTypesOnCurrentPage;
-      if (modalBtn) modalBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLineTypesOnCurrentPage);
+      setLineTypeListFilterScope(FILTER_SCOPE_CYCLE[getLineTypeListFilterScope()]);
+      syncFilterScopeSegment('lineTypeShowOnlySegment', getLineTypeListFilterScope());
       App.renderLineTypesList();
       App.renderLinesList();
       updateUI();
@@ -6362,6 +6398,13 @@
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;
   App.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
+  // Sidebar usage-filter scope (features/sidebar-lists.js reads, the settings
+  // modals in features/counter-settings.js + line-type-settings.js write).
+  App.getCounterListFilterScope = getCounterListFilterScope;
+  App.setCounterListFilterScope = setCounterListFilterScope;
+  App.getLineTypeListFilterScope = getLineTypeListFilterScope;
+  App.setLineTypeListFilterScope = setLineTypeListFilterScope;
+  App.syncFilterScopeSegment = syncFilterScopeSegment;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
   App.getPdfDocument = getPdfDocument;
   // Viewer scale sharing + view-only boot live in features/view-only.js

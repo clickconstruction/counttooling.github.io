@@ -1,7 +1,7 @@
 ---
 title: Keeping a dense takeoff organized
 description: Groups with subtotals, page filters, search, and mark-appearance settings — how a sheet with hundreds of marks stays readable and auditable.
-updated: 2026-07-31
+updated: 2026-08-13
 order: 3.7
 icon: legend
 category: Counting
@@ -21,7 +21,7 @@ Turn on **Show group colors** and marks render in their group's color instead of
 
 ## Show only what you're working on
 
-- **Show only on current page** — both Counter Settings and Line Type Settings have a filter that hides other sheets' items from the sidebar lists, so the tallies you see belong to the sheet you're counting. There's a matching inline toggle right in the sidebar.
+- **Show only what's used** — both Counter Settings and Line Type Settings have a three-way filter (Off / This page / This project) that hides unplaced items from the sidebar lists: scope it to the sheet you're counting, or to anything used somewhere in the bid. The inline button next to each sidebar search box cycles the same three states, and a "hidden by filter" note with a **show all** link appears below the list so nothing ever looks lost.
 - **Search** — the Counters, Line Types, and Lines sections each have a search box; on a project with forty counter types, typing beats scrolling.
 - **Collapse sections** — click a section's collapse icon to fold it away; Groups and Lines start minimized to keep the sidebar tight.
 

@@ -288,7 +288,11 @@ Rules to follow when adding/editing a feature file:
 `counterSettings`, `lineTypeSettings` (includes `parallelEndsSize`,
 `lengthLabelSize`, `snapToHorizontalVertical` (the 8-way 45° snap toggle — the
 key keeps its original H/V-era name so saved settings aren't orphaned),
-`showOnlyLinesOnCurrentPage`),
+`showOnlyLinesOnCurrentPage`; both settings objects carry `sidebarFilterScope`
+— the `'off' | 'page' | 'project'` sidebar usage filter, superseding the legacy
+`showOnlyCountersOnCurrentPage` / `showOnlyLineTypesOnCurrentPage` booleans,
+which are kept in sync (`true` only for `'page'`) so the settings shape is
+unchanged),
 `legendSettings`, `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
 label: show/size/position, default top-left; per-project in save/load +
 export/import like `multiplyZoneSettings`), `gridSettings`, `showGridOverlay`,

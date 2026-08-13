@@ -13,6 +13,24 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(sidebar): three-scope usage filter — off / this page / this project
+
+The sidebar "show only on current page" toggles grew a third scope. The inline
+filter button next to the Counters / Line Types search boxes now cycles
+Off → This page → This project (project scope swaps in a stacked-sheets glyph;
+the title narrates each state), and the settings-modal toggles became
+three-way segments (`#counterShowOnlySegment` / `#lineTypeShowOnlySegment`).
+Scope lives in `counterSettings.sidebarFilterScope` /
+`lineTypeSettings.sidebarFilterScope` (`'off' | 'page' | 'project'`); the
+legacy `showOnly*OnCurrentPage` booleans are kept in sync (`true` only for
+`'page'`) so the settings shape is unchanged. Usage checks and the sidebar
+badges now count MERGED canvases (all layers — the T1-11 rule; previously
+active-canvas-only, so a counter used only on a background layer looked unused
+in the sidebar), the active counter/line type is exempt (a just-created type
+stays visible before its first mark), and filtered lists append
+"N hidden by filter — show all". Regression:
+[sidebar-usage-filter.spec.js](sidebar-usage-filter.spec.js).
+
 ## fix(counter): Choose-tab count badges summed a dead pre-canvas-layers field (T1-11)
 
 The Counter modal's Choose-tab per-counter badges always read 0: the reduce in

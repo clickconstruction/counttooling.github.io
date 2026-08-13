@@ -27,6 +27,23 @@
     return slot ? '<span class="quick-key-slot-badge" title="Quick Key ' + slot + ' — press to select">' + slot + '</span>' : '';
   }
 
+  // Append the usage-filter footer row ("N hidden by filter — show all") to a
+  // sidebar list. The show-all link drops the scope to 'off' via the passed
+  // setter, syncs the matching settings-modal segment, and re-renders.
+  function appendFilterHintRow(el, hiddenCount, setScope, segmentId, rerender) {
+    if (hiddenCount <= 0) return;
+    const hint = document.createElement('div');
+    hint.className = 'sidebar-filter-hint';
+    hint.innerHTML = hiddenCount + ' hidden by filter — <span class="sidebar-filter-hint-clear">show all</span>';
+    hint.querySelector('.sidebar-filter-hint-clear').onclick = () => {
+      setScope('off');
+      App.syncFilterScopeSegment(segmentId, 'off');
+      rerender();
+      App.updateUI();
+    };
+    el.appendChild(hint);
+  }
+
   function renderCountersList() {
     const state = App.state;
     const el = document.getElementById('countersList');
@@ -35,16 +52,22 @@
     const showEdit = !state.isViewer;
     const q = (state.counterSearch || '').trim().toLowerCase();
     const filtered = q ? state.counters.filter(c => (c.name || 'Counter').toLowerCase().includes(q)) : state.counters;
+    const scope = App.getCounterListFilterScope();
+    let hiddenCount = 0;
+    // Usage checks and badges count MERGED canvases (every layer of a page),
+    // matching the footer totals and the Choose-tab badges (T1-11) — a counter
+    // used only on a non-active layer is still "used".
+    const usedOnPage = (c, pi) => ((App.getMergedAnnotationsForPage(state.pages[pi])?.counterMarkers?.[c.id] || []).length > 0);
     filtered.forEach(c => {
-      if (state.counterSettings?.showOnlyCountersOnCurrentPage && state.pages.length > 0) {
-        const page = state.pages[state.currentPage];
-        const ann = App.getActiveAnnotations(page, state.currentPage);
-        const markers = (ann?.counterMarkers?.[c.id] || []);
-        if (markers.length === 0) return;
+      // The active counter is exempt: a just-created type must stay visible
+      // (and selectable) before its first mark is placed.
+      if (scope !== 'off' && state.pages.length > 0 && c.id !== state.activeCounterType) {
+        const used = scope === 'page' ? usedOnPage(c, state.currentPage) : state.pages.some((_, pi) => usedOnPage(c, pi));
+        if (!used) { hiddenCount++; return; }
       }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p, pi) => n + ((App.getActiveAnnotations(p, pi)?.counterMarkers?.[c.id] || []).length), 0);
+      const count = state.pages.reduce((n, p) => n + ((App.getMergedAnnotationsForPage(p)?.counterMarkers?.[c.id] || []).length), 0);
       div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
@@ -80,6 +103,7 @@
       }
       el.appendChild(div);
     });
+    appendFilterHintRow(el, hiddenCount, App.setCounterListFilterScope, 'counterShowOnlySegment', renderCountersList);
   }
 
   function renderLineTypesList() {
@@ -90,19 +114,26 @@
     const showEdit = !state.isViewer;
     const q = (state.lineTypeSearch || '').trim().toLowerCase();
     const filtered = q ? state.lineTypes.filter(lt => (lt.name || 'Line').toLowerCase().includes(q)) : state.lineTypes;
+    const scope = App.getLineTypeListFilterScope();
+    let hiddenCount = 0;
+    // Merged-canvas usage check — see renderCountersList.
+    const usedOnPage = (lt, pi) => {
+      const ann = App.getMergedAnnotationsForPage(state.pages[pi]);
+      return (ann?.quickLines || []).some(ql => ql.lineTypeId === lt.id)
+        || (ann?.polylines || []).some(poly => poly.lineTypeId === lt.id);
+    };
     filtered.forEach(lt => {
-      if (state.lineTypeSettings?.showOnlyLineTypesOnCurrentPage && state.pages.length > 0) {
-        const page = state.pages[state.currentPage];
-        const ann = App.getActiveAnnotations(page, state.currentPage);
-        const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
-        const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
-        if (qLines.length === 0 && polys.length === 0) return;
+      // Active line type exempt — see the counter loop.
+      if (scope !== 'off' && state.pages.length > 0 && lt.id !== state.activeLineTypeId) {
+        const used = scope === 'page' ? usedOnPage(lt, state.currentPage) : state.pages.some((_, pi) => usedOnPage(lt, pi));
+        if (!used) { hiddenCount++; return; }
       }
       // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
-      // buckets and are never summed under one label.
+      // buckets and are never summed under one label. Runs/footage tally the
+      // MERGED canvases, matching the footer totals (see usedOnPage above).
       let runs = 0, lenFt = 0, lenPx = 0;
       state.pages.forEach((p, pi) => {
-        const ann = App.getActiveAnnotations(p, pi);
+        const ann = App.getMergedAnnotationsForPage(p);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
         const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
         const addSplit = (item, isPoly) => {
@@ -150,6 +181,7 @@
       }
       el.appendChild(div);
     });
+    appendFilterHintRow(el, hiddenCount, App.setLineTypeListFilterScope, 'lineTypeShowOnlySegment', renderLineTypesList);
   }
 
   function renderGroupsList() {

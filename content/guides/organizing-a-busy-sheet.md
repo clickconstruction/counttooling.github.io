@@ -15,6 +15,8 @@ A serious sheet ends up with hundreds of marks. These are the tools that keep it
 
 Assign related marks to a **group** — all the fixtures in one restroom, everything on one riser — and the Groups section shows a subtotal per group. Assign from a mark's right-click menu ("Assign to Group") or when editing it; create and recolor groups from the sidebar's **+ Add** in the Groups section.
 
+Don't see a Groups section? It's per-project and stays out of the way until used: turn on **Use groups in this project** in Project Settings and the section (and the Assign-to-Group menus) appear. Any project that already has groups shows it automatically.
+
 ![Assigning a mark to a group: pick from the project's groups (or None), each shown in its color.](/guides/img/group-assign.png)
 
 Turn on **Show group colors** and marks render in their group's color instead of their type's — the fastest way to *see* the grouping on the plan. Toggle it back off to return to type colors.

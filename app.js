@@ -178,7 +178,7 @@
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
-    counters: [], lineTypes: [], activeLineTypeId: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
+    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
@@ -623,6 +623,7 @@
     lastSaveIncludedPdf = false;
     state.pendingCanvasLoad = null;
     state.groups = [];
+    state.groupsEnabled = false;
     state.rooms = [];
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
@@ -2167,6 +2168,21 @@
       else if (id === 'lineTypeSnapToHVHeaderBtn') { /* keep tool-based display from snap block */ }
       else el.style.display = '';
     });
+    // Per-project Groups gate: hide the whole Groups section unless the
+    // project opted in OR already contains groups (existing organized
+    // takeoffs keep their section with no migration). Runs after the
+    // viewer loop above so viewer mode still wins.
+    const groupsSectionEl = document.getElementById('groupsSection');
+    if (groupsSectionEl && !state.isViewer) groupsSectionEl.style.display = groupsUiVisible() ? '' : 'none';
+    const useGroupsBtn = document.getElementById('settingsUseGroupsBtn');
+    if (useGroupsBtn) {
+      const hasGroups = (state.groups || []).length > 0;
+      useGroupsBtn.setAttribute('aria-pressed', String(groupsUiVisible()));
+      useGroupsBtn.disabled = hasGroups;
+      useGroupsBtn.title = hasGroups
+        ? 'This project has groups, so the Groups section stays on'
+        : 'Show the Groups section and Assign-to-Group menus in this project';
+    }
     updateHideMarksButton();
     const activeLineEl = document.getElementById('headerActiveLineType');
     const activeCounterEl = document.getElementById('headerActiveCounter');
@@ -3277,6 +3293,21 @@
   // The #addGroup opener + the #groupModalCancel/#groupModalDelete/#groupModalDone
   // handlers moved to features/groups.js (window.App registry). The #showGroupColors
   // sidebar toggle below stays here.
+  // Per-project Groups gate: the UI (sidebar section + Assign-to-Group
+  // menus) shows when the project opted in OR already contains groups.
+  // "No groups anywhere" is the default off state — nothing to migrate.
+  function groupsUiVisible() {
+    return !!state.groupsEnabled || (state.groups || []).length > 0;
+  }
+  const settingsUseGroupsBtn = document.getElementById('settingsUseGroupsBtn');
+  if (settingsUseGroupsBtn) {
+    settingsUseGroupsBtn.onclick = () => {
+      if ((state.groups || []).length > 0) return; // locked on while groups exist
+      state.groupsEnabled = !state.groupsEnabled;
+      markProjectDirty();
+      updateUI();
+    };
+  }
   const showGroupColorsCheckbox = document.getElementById('showGroupColorsCheckbox');
   const showGroupColorsBtn = document.getElementById('showGroupColorsBtn');
   if (showGroupColorsCheckbox && showGroupColorsBtn) {
@@ -3556,7 +3587,7 @@
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], rooms: state.rooms || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, rooms: state.rooms || [], legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -4477,7 +4508,7 @@
       const line = state.ctxTarget?.type === 'quickLine' ? ann?.quickLines?.[state.ctxTarget.index] : ann?.polylines?.[state.ctxTarget.index];
       showLengthBtn.textContent = line?.showLength ? 'Hide Length' : 'Show Length';
     }
-    const canAssignGroup = !state.isViewer && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
+    const canAssignGroup = !state.isViewer && groupsUiVisible() && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
     const ctxEditMzBtn = document.getElementById('ctxEditMultiplyZone');
     ctxEditMzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'multiplyZone' ? 'block' : 'none';
@@ -6398,6 +6429,9 @@
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;
   App.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
+  // Per-project Groups gate (spec seam; updateUI + showContextMenu consume it
+  // internally).
+  App.groupsUiVisible = groupsUiVisible;
   // Sidebar usage-filter scope (features/sidebar-lists.js reads, the settings
   // modals in features/counter-settings.js + line-type-settings.js write).
   App.getCounterListFilterScope = getCounterListFilterScope;

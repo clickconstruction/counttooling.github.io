@@ -433,6 +433,7 @@
               state.counters = Array.isArray(d.counters) ? d.counters : [];
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
               state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+              state.groupsEnabled = !!d.groupsEnabled;
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
               if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);

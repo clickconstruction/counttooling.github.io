@@ -38,26 +38,45 @@
   function isOnArtboard(it) { return onArtboard[it.kind === 'counter' ? 'counter' : 'lineType'].has(nameKey(it.name)); }
 
   // Narrow, additive merge of the given usage rows into user_airboard's
-  // counters/line_types columns. Name-deduped against the fetched artboard;
-  // defs (id/icon/color/curveStyle) come from the RPC's most-recent-project
-  // values, so Quick Keys lineage keeps a real id.
+  // counters/line_types columns. Deduped against the fetched artboard by name
+  // AND by id: defs (id/icon/color/curveStyle) come from the RPC's
+  // most-recent-project values, so Quick Keys lineage keeps a real id — which
+  // means a RENAMED item arrives with a new name but an id the artboard may
+  // already hold. That id is the placed-marks key (counterMarkers[id]), so
+  // appending would make every rename generation claim the same marks (the
+  // Wendi FD bug: one placed drain counted as 4 counters). Same id -> treat
+  // the add as the rename it is and update that entry in place.
   async function mergeIntoArtboard(items) {
     const supabase = App.getSupabase();
     const user = App.state.supabaseSession?.user;
     if (!supabase || !user || !items.length) return false;
     const ab = (await App.fetchUserAirboard()) || {};
-    const counters = Array.isArray(ab.counters) ? ab.counters.slice() : [];
-    const lineTypes = Array.isArray(ab.lineTypes) ? ab.lineTypes.slice() : [];
+    const counters = App.dedupePaletteById(Array.isArray(ab.counters) ? ab.counters.slice() : []);
+    const lineTypes = App.dedupePaletteById(Array.isArray(ab.lineTypes) ? ab.lineTypes.slice() : []);
     const cNames = new Set(counters.map((c) => nameKey(c.name)));
     const ltNames = new Set(lineTypes.map((lt) => nameKey(lt.name)));
+    const cById = new Map(counters.map((c) => [c.id, c]));
+    const ltById = new Map(lineTypes.map((lt) => [lt.id, lt]));
     items.forEach((it) => {
       if (it.kind === 'counter') {
         if (cNames.has(nameKey(it.name))) return;
-        counters.push({ id: it.item_id || ('pi-' + nameKey(it.name)), name: it.name, icon: it.icon || '', color: it.color || '#e8c547' });
+        const existing = it.item_id != null ? cById.get(it.item_id) : null;
+        if (existing) Object.assign(existing, { name: it.name, icon: it.icon || existing.icon || '', color: it.color || existing.color || '#e8c547' });
+        else {
+          const added = { id: it.item_id || ('pi-' + nameKey(it.name)), name: it.name, icon: it.icon || '', color: it.color || '#e8c547' };
+          counters.push(added);
+          cById.set(added.id, added);
+        }
         cNames.add(nameKey(it.name));
       } else {
         if (ltNames.has(nameKey(it.name))) return;
-        lineTypes.push({ id: it.item_id || ('pi-' + nameKey(it.name)), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight' });
+        const existing = it.item_id != null ? ltById.get(it.item_id) : null;
+        if (existing) Object.assign(existing, { name: it.name, color: it.color || existing.color || '#4a9eff', curveStyle: it.curve_style || existing.curveStyle || 'straight' });
+        else {
+          const added = { id: it.item_id || ('pi-' + nameKey(it.name)), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight' };
+          lineTypes.push(added);
+          ltById.set(added.id, added);
+        }
         ltNames.add(nameKey(it.name));
       }
     });
@@ -81,17 +100,26 @@
     if (state.isViewer) return 0;
     const cNames = new Set((state.counters || []).map((c) => nameKey(c.name)));
     const ltNames = new Set((state.lineTypes || []).map((lt) => nameKey(lt.name)));
+    const cById = new Map((state.counters || []).map((c) => [c.id, c]));
+    const ltById = new Map((state.lineTypes || []).map((lt) => [lt.id, lt]));
     let added = 0;
     let snapshotTaken = false;
     items.forEach((it) => {
       const isCounter = it.kind === 'counter';
       if (isCounter ? cNames.has(nameKey(it.name)) : ltNames.has(nameKey(it.name))) return;
       if (!snapshotTaken) { App.pushUndoSnapshot(); snapshotTaken = true; }
+      // Same id already in the project = a rename generation of an existing
+      // item; update it in place so its placed marks aren't double-claimed
+      // (see mergeIntoArtboard).
       if (isCounter) {
-        state.counters.push({ id: it.item_id || App.uid(), name: it.name, icon: it.icon || '', color: it.color || '#e8c547' });
+        const existing = it.item_id != null ? cById.get(it.item_id) : null;
+        if (existing) Object.assign(existing, { name: it.name, icon: it.icon || existing.icon || '', color: it.color || existing.color || '#e8c547' });
+        else state.counters.push({ id: it.item_id || App.uid(), name: it.name, icon: it.icon || '', color: it.color || '#e8c547' });
         cNames.add(nameKey(it.name));
       } else {
-        state.lineTypes.push({ id: it.item_id || App.uid(), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight' });
+        const existing = it.item_id != null ? ltById.get(it.item_id) : null;
+        if (existing) Object.assign(existing, { name: it.name, color: it.color || existing.color || '#4a9eff', curveStyle: it.curve_style || existing.curveStyle || 'straight' });
+        else state.lineTypes.push({ id: it.item_id || App.uid(), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight' });
         ltNames.add(nameKey(it.name));
       }
       added++;

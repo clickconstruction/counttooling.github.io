@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(palette): same-id palette duplicates — one placed mark counted once per rename (the Wendi FD bug)
+
+Field report 2026-08-13: one floor drain showed as 4 different counters, and
+totals/exports counted it 4×. Root cause: Palette Insights' artboard merge
+dedupes by NAME but appends with the project's real id — so each RENAME of a
+counter ("FD" → "3IN FD" → "3IN FD1" → "3IN FD-1", same id all along)
+re-added an artboard entry with that id. `counterMarkers` is keyed by id, so
+every rename generation claimed the same placed marks; the corrupted artboard
+then seeded every new project (14 duplicated ids on the affected artboard).
+
+Three-part fix: (1) both Palette Insights add paths are id-aware — an
+incoming row whose `item_id` already exists is treated as the rename it is
+and updated in place, never appended; (2) a pure `dedupePaletteById`
+sanitizer (annotation-model.js — first position, last fields) runs at the top
+of `reconcileOrphanedCountersAndLineTypes` (every palette intake) and inside
+`fetchUserAirboard`/`saveUserAirboard`, so existing corrupted projects and
+artboard rows self-heal on open / next save; (3) one-time data repair of the
+affected artboard + project rows. Regression: the rename-collision test in
+[palette-insights.spec.js](palette-insights.spec.js) + the dedupe/reconcile
+units in [annotation-model.test.js](annotation-model.test.js).
+
 ## feat(sidebar): three-scope usage filter — off / this page / this project
 
 The sidebar "show only on current page" toggles grew a third scope. The inline

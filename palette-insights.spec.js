@@ -131,6 +131,46 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
     expect(page.__errors).toEqual([]);
   });
 
+  test('renamed item (same id, new name) updates in place — never a duplicate claiming the same marks', async ({ page }) => {
+    // The Wendi FD bug: her artboard held "FD" with id c-fd; the RPC offered
+    // the RENAMED "Floor Drain" with the SAME id; the old name-only dedupe
+    // appended a second entry, so counterMarkers['c-fd'] was claimed by both
+    // (one placed drain counted twice per rename generation).
+    await page.evaluate((rows) => {
+      const App = window.App;
+      window.__upserts = [];
+      App.state.supabaseSession = { user: { id: 'u1' } };
+      App.getSupabase = () => ({
+        rpc: async () => ({ data: rows, error: null }),
+        from: (table) => ({
+          upsert: async (payload) => { window.__upserts.push({ table, payload }); return { error: null }; },
+        }),
+      });
+      // Artboard AND the open project both hold the pre-rename "FD" under the
+      // same id the RPC row carries.
+      App.fetchUserAirboard = async () => ({
+        counters: [{ id: 'c-fd', name: 'FD', icon: 'M0 0', color: '#111111' }],
+        lineTypes: [],
+      });
+      App.state.counters = [{ id: 'c-fd', name: 'FD', icon: 'M0 0', color: '#111111' }];
+      return App.openPaletteInsightsModal();
+    }, RPC_ROWS);
+    await page.waitForSelector('#paletteInsightsCounters .pi-row');
+
+    const fdRow = page.locator('#paletteInsightsCounters .pi-row', { hasText: 'Floor Drain' });
+    await fdRow.locator('.pi-add-btn').click();
+    await expect(fdRow.locator('.pi-on-badge')).toHaveText(/Added/);
+
+    // Artboard upsert: ONE c-fd entry, renamed — not appended.
+    const upsert = await page.evaluate(() => window.__upserts[0]);
+    expect(upsert.payload.counters.map((c) => ({ id: c.id, name: c.name }))).toEqual([{ id: 'c-fd', name: 'Floor Drain' }]);
+    // Open project: same — the existing palette entry was renamed in place.
+    expect(await page.evaluate(() => window.state.counters.map((c) => ({ id: c.id, name: c.name }))))
+      .toEqual([{ id: 'c-fd', name: 'Floor Drain' }]);
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
   test('threshold choice persists across reopen', async ({ page }) => {
     await openWithStubs(page);
     await page.locator('#paletteInsightsMinSeg button', { hasText: '5+' }).click();

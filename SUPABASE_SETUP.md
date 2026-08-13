@@ -145,6 +145,25 @@ supabase functions deploy set-view-scale
 
 (Or run `./deploy-admin-functions.sh`, which deploys the admin functions with `--no-verify-jwt`.)
 
+### Scheduled test-account cleanup (`cleanup-test-accounts`)
+
+A standing guard so spec-run leftovers never accumulate (the 2026-08-13 cleanup
+removed 610 test projects / 904 orphaned PDFs that had built up): a daily
+pg_cron job (`cleanup-test-accounts-daily`, 08:30 UTC — see the
+`20260813233000_cleanup_test_accounts_cron` migration) invokes the
+`cleanup-test-accounts` Edge Function via pg_net. The function purges projects
+owned by the two test accounts (`test@` / `dev-agent@clickplumbing.com`) older
+than 7 days — **PDFs first, rows second**, so files can never orphan — and
+sweeps unreferenced test-folder storage files older than the cutoff. It
+supports `{ dryRun: true }` for a counts-only report.
+
+Auth: the request token lives in **Vault** (`cleanup_test_accounts_token`);
+the deployed function carries the same token (the committed source reads the
+`CLEANUP_TOKEN` function secret instead — set it, or redeploy with the token
+inlined, when rotating). Unauthorized invocation is harmless by construction:
+the two account ids and the 7-day cutoff are hard-coded. Monitor runs via
+`cron.job_run_details` and the function's logs.
+
 **401 on admin functions / CORS on invite-to-project:** The gateway verifies JWT by default and can reject valid tokens (and block CORS preflight). `config.toml` sets `verify_jwt = false` for admin functions, `invite-to-project`, and `get-view-project`. Deploy with:
 
 ```bash

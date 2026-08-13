@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(cloud): scheduled test-account purge — pg_cron + cleanup-test-accounts
+
+The 2026-08-13 storage audit found 610 spec-run leftover projects (~590 MB of
+PDFs) under the `test@` / `dev-agent@` accounts; after the one-time cleanup, a
+standing guard keeps it from building up again. A daily pg_cron job
+(`cleanup-test-accounts-daily`, migration
+`20260813233000_cleanup_test_accounts_cron`) invokes the new
+`cleanup-test-accounts` Edge Function via pg_net, purging test-account
+projects older than 7 days — PDFs first, rows second, so files can never
+orphan — plus an unreferenced-file sweep of the two test storage folders. The
+request token lives in Vault (`cleanup_test_accounts_token`), not the repo;
+unauthorized invocation is harmless by construction (hard-coded accounts +
+age cutoff). Full notes: SUPABASE_SETUP.md "Scheduled test-account cleanup".
+
 ## fix(palette): same-id palette duplicates — one placed mark counted once per rename (the Wendi FD bug)
 
 Field report 2026-08-13: one floor drain showed as 4 different counters, and

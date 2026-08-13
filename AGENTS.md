@@ -203,6 +203,8 @@
   storage bucket, several RPCs, and Edge Functions (`admin-create-user`,
   `admin-delete-user` (optional `reassignToUserId`), `admin-reassign-projects`,
   `admin-set-password`, `admin-delete-project`, `admin-list-users`,
+  `cleanup-test-accounts` (the pg_cron-invoked daily purge of week-old
+  test-account projects + storage — see SUPABASE_SETUP.md),
   `invite-to-project`, `get-view-project`, `set-view-scale` (viewer sets a
   page scale for everyone; token + email-domain gated); `admin-reassign-projects` +
   `admin-delete-user` share the `_shared/reassignProjects.ts` ownership-move

@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(groups): per-project Groups gate — the section earns its sidebar slot
+
+Most users never touch Groups, but every project carried the sidebar section.
+Now the Groups UI (sidebar `#groupsSection` + the context-menu Assign-to-Group
+entry) shows only when `state.groupsEnabled` is true OR the project already
+contains groups. New projects start clean; existing organized projects
+auto-show with no migration. Project Settings gains a "Use groups in this
+project" toggle (`#settingsUseGroupsBtn`) — locked on while groups exist —
+and creating the first group latches the flag true so deleting the last group
+cannot hide the section mid-session. `groupsEnabled` rides all three
+save-engine payloads, the canvas-JSON export, and is restored by
+`hydrateStateFromProjectData`, `applyTakeoffBackupToState`, AND the
+copy/load/import intake sites (the five-site duplication the
+annotation-model.js comment warns about). Regression:
+[groups-per-project.spec.js](groups-per-project.spec.js).
+
 ## feat(sidebar): three-scope usage filter — off / this page / this project
 
 The sidebar "show only on current page" toggles grew a third scope. The inline

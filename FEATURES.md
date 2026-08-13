@@ -25,7 +25,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 
 - **Counters (custom name, color, icon)** — One click per fixture with a symbol that reads on a busy sheet, tallied live as you go.
 - **Custom SVG icon upload + bundled trade icon library** — Your counters can look like the actual fixture (P-trap, floor drain, 45-elbow), so the marked-up plan stays legible to anyone.
-- **Groups** — Subtotal related items (one restroom group, one riser) so a dense sheet stays organized and auditable.
+- **Groups** — Subtotal related items (one restroom group, one riser) so a dense sheet stays organized and auditable. Per-project and out of the way: the Groups section only appears when a project uses groups (or opts in via Project Settings), so the sidebar stays clean for everyone else.
 - **Counter settings (size, opacity, rings, numbers, outline)** — Marks stay legible at any zoom level and print scale.
 - **Quick Count / Quick Plumbing / Quick Line creators** — Build a properly-named palette item ("2\" PVC Waste") from Size/Type/Material pickers in two clicks instead of typing.
 - **Show only counters / line types used (this page or this project)** — Filter the sidebar palettes to what's actually placed — on the sheet you're counting or anywhere in the bid — with an "N hidden by filter" note so nothing looks lost.

@@ -150,6 +150,9 @@
       const newGroup = { id: App.uid(), name, color };
       if (!state.groups) state.groups = [];
       state.groups.push(newGroup);
+      // Latch the per-project Groups gate on: without this, deleting the last
+      // group would hide the whole Groups section mid-session.
+      state.groupsEnabled = true;
       state.activeGroupId = newGroup.id;
       App.markProjectDirty();
     }

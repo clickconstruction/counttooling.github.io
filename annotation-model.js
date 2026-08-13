@@ -155,6 +155,7 @@ function createAnnotationModel(ctx) {
     if (Array.isArray(backup.counters)) ctx.getState().counters = backup.counters;
     if (Array.isArray(backup.lineTypes)) ctx.getState().lineTypes = backup.lineTypes;
     if (Array.isArray(backup.groups)) ctx.getState().groups = ctx.ensureGroupColors(backup.groups);
+    if (backup.groupsEnabled != null) ctx.getState().groupsEnabled = !!backup.groupsEnabled;
     if (Array.isArray(backup.rooms)) ctx.getState().rooms = backup.rooms;
     if (backup.iconNames && typeof backup.iconNames === 'object') ctx.getState().iconNames = backup.iconNames;
     if (Array.isArray(backup.iconOrder)) ctx.getState().iconOrder = backup.iconOrder;
@@ -195,6 +196,7 @@ function createAnnotationModel(ctx) {
     state.counters = Array.isArray(d.counters) ? d.counters : [];
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
     state.groups = ctx.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+    state.groupsEnabled = !!d.groupsEnabled;
     state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;

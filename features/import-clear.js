@@ -51,6 +51,7 @@
         state.counters = Array.isArray(data.counters) ? data.counters : [];
         state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
         state.groups = App.ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
+        state.groupsEnabled = !!data.groupsEnabled;
         state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
         // Same replace-or-keep rule as cloud load (quick-keys.js).
         if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(data.numberKeyBindings);

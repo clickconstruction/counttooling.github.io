@@ -62,7 +62,7 @@
     const labelPosEl = document.getElementById('scaleZoneSettingsLabelPosition');
     state.scaleZoneSettings.showLabelOnZone = showLabelEl ? showLabelEl.checked : true;
     const size = parseInt(labelSizeEl?.value || '14', 10);
-    state.scaleZoneSettings.labelSize = isNaN(size) ? 14 : Math.max(8, Math.min(24, size));
+    state.scaleZoneSettings.labelSize = isNaN(size) ? 14 : Math.max(1, Math.min(24, size));
     state.scaleZoneSettings.labelPosition = VALID_POS.includes(labelPosEl?.value) ? labelPosEl.value : 'top-left';
     App.markProjectDirty();
     App.hideModal('scaleZoneSettingsModal');

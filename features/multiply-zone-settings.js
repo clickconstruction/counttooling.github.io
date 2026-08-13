@@ -64,7 +64,7 @@
     const mult = parseInt(defaultMultEl?.value || '2', 10);
     state.multiplyZoneSettings.defaultMultiplier = isNaN(mult) || mult < 1 ? 2 : mult;
     const size = parseInt(labelSizeEl?.value || '14', 10);
-    state.multiplyZoneSettings.labelSize = isNaN(size) ? 14 : Math.max(8, Math.min(24, size));
+    state.multiplyZoneSettings.labelSize = isNaN(size) ? 14 : Math.max(1, Math.min(24, size));
     const validPos = ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
     state.multiplyZoneSettings.labelPosition = validPos.includes(labelPosEl?.value) ? labelPosEl.value : 'center';
     App.markProjectDirty();

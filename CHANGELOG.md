@@ -13,6 +13,18 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(undo): remaining-count toast + one undo per press
+
+Every successful undo (Ctrl+Z or the bottom-bar button — both funnel through
+the one app.js `undo()` wrapper) toasts how many undos remain ("2 undos
+left" / "1 undo left" / "0 undos left"; no denominator, 1s duration — decided
+2026-08-15), so the 50-step ceiling is never a surprise. `undo-stack.js`'s
+undo()/redo() now return true when a snapshot was applied and expose
+`undoDepth()`/`redoDepth()` (unit-tested in annotation-model.test.js).
+Holding Ctrl+Z no longer machine-guns through the stack: OS auto-repeat
+keydowns (`e.repeat`) are ignored — exactly one undo/redo per physical press.
+Regression: [undo-toast.spec.js](undo-toast.spec.js) (2 tests).
+
 ## feat(chain): draggable palette, closable without leaving the tool, header pair chip
 
 Approved from mockup (2026-08-15). The Chain palette is now DRAGGABLE by its

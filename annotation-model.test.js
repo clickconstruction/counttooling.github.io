@@ -677,3 +677,19 @@ test('reconcileOrphanedCountersAndLineTypes self-heals duplicate-id palettes on 
   // The placed marker keyed by the collapsed id survives untouched.
   assert.strictEqual(state.pages[0].canvases[0].annotations.counterMarkers.dup.length, 1);
 });
+
+test('undo/redo report success + depths (the undo-count toast contract)', () => {
+  const state = { isViewer: false, pages: [{ canvases: [], scale: null, rotation: 0 }], counters: [{ id: 'a' }], lineTypes: [], groups: [] };
+  const u = createUndoStack(undoCtx(state).ctx);
+  assert.strictEqual(u.undo(), false);          // empty stack: no-op reports false
+  assert.strictEqual(u.undoDepth(), 0);
+  u.pushUndoSnapshot();
+  u.pushUndoSnapshot();
+  assert.strictEqual(u.undoDepth(), 2);
+  assert.strictEqual(u.undo(), true);           // applied: reports true
+  assert.strictEqual(u.undoDepth(), 1);
+  assert.strictEqual(u.redoDepth(), 1);
+  assert.strictEqual(u.redo(), true);
+  assert.strictEqual(u.undoDepth(), 2);
+  assert.strictEqual(u.redo(), false);
+});

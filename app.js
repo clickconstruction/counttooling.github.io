@@ -606,7 +606,16 @@
     notePerfSample('undoSnapshotMs', performance.now() - t0);
     return r;
   }
-  function undo() { return undoStackModel.undo(); }
+  // The one undo choke point (Ctrl+Z + the bottom-bar button): a successful
+  // undo toasts how many are left so the 50-step ceiling is never a surprise.
+  function undo() {
+    const applied = undoStackModel.undo();
+    if (applied) {
+      const left = undoStackModel.undoDepth();
+      showToast(left + (left === 1 ? ' undo left' : ' undos left'), 1000);
+    }
+    return applied;
+  }
   function redo() { return undoStackModel.redo(); }
   function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
 
@@ -5958,8 +5967,11 @@
     const k = e.key.toLowerCase();
     if (e.ctrlKey || e.metaKey) {
       if (k === 'z') {
-        if (e.shiftKey) { redo(); e.preventDefault(); }
-        else { undo(); e.preventDefault(); }
+        // One undo/redo per PRESS: OS key auto-repeat is ignored, so holding
+        // Ctrl+Z cannot machine-gun through the stack — release and press
+        // again for the next step.
+        if (!e.repeat) { if (e.shiftKey) redo(); else undo(); }
+        e.preventDefault();
         return;
       }
     }

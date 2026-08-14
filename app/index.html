@@ -1650,13 +1650,15 @@
       <!-- Child counts: rows built by features/child-counts.js on modal open -->
       <div class="form-group" id="childCountsGroup">
         <label>Child counts</label>
-        <p class="child-counts-hint">Counted automatically in the Summary and exports. Words only — never on the sheet.</p>
         <div id="childCountsList"></div>
         <div class="child-count-add">
           <input type="number" id="childCountQty" min="1" step="1" value="1" aria-label="Quantity">
           <input type="text" id="childCountName" placeholder="name…" aria-label="Child count name">
+        </div>
+        <div class="child-count-add">
           <select id="childCountPer" aria-label="Rule"></select>
           <span id="childCountFtNWrap" style="display:none;"><input type="number" id="childCountFtN" min="1" step="1" value="10" aria-label="Feet interval"> ft</span>
+          <span class="child-count-add-spacer"></span>
           <button type="button" id="childCountAdd">+ Add</button>
         </div>
       </div>

@@ -774,7 +774,7 @@
        ink is centred yet renders high against the text (drop 2px). Values found by
        matching each icon's rendered ink-centre to the text. */
     #statusBarQuickKeys.has-icon svg { top: -1px; }
-    #statusBarMacros.has-icon svg { top: 2px; }
+    #statusBarMacros.has-icon svg { top: 0.5px; }
     .quick-keys-card { max-width: 480px; }
     .quick-keys-hint { color: var(--text2); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }
     .quick-keys-empty { color: var(--yellow); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }

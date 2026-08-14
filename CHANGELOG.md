@@ -13,6 +13,17 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(hotkeys): hold Cmd ~1.5s to peek every hotkey badge
+
+New [features/hotkey-peek.js](features/hotkey-peek.js): holding Meta (Cmd;
+Alt as the Windows/Linux alias) for 1.5s without another key reveals a small
+gold `<kbd>` badge on every visible control that has a hotkey — an in-the-
+moment complement to the Keyboard Map. Badges stamp lazily from
+`App.HOTKEYS`, so new hotkeys can never be missing their badge. Release or
+focus loss hides them (Cmd+Tab never sends the keyup — blur/visibilitychange
+clean up); a second key during the hold cancels the peek (it's a combo).
+Regression: [hotkey-peek.spec.js](hotkey-peek.spec.js).
+
 ## feat(header): the ⋯ More tools tuck is now unconditional on desktop
 
 Follow-up feedback (2026-08-15) on the priority-reordered toolbar: even when

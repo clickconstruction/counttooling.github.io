@@ -63,6 +63,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Aim loupe (mobile)** — Press-and-hold magnifier for precise mark placement with a finger.
 - **Hotkeys for every tool** — M/S/C/L/P/D/H/N/V/X/R and friends keep one hand on the keyboard and one on the mouse.
 - **Keyboard Map** — A visual keyboard where every mapped key lights up — see the whole shortcut surface at a glance instead of reading a list.
+- **Hold Cmd to peek hotkeys** — Hold Cmd (or Alt) for a beat and every tool button shows its hotkey badge in place — learn the shortcuts without leaving the sheet.
 - **Quick Keys (number row)** — Bind your own counters and line types to 1–0, so switching what you're placing is a keystroke, not a sidebar trip; bindings ride your saved Artboard between bids.
 
 ## Output & reporting

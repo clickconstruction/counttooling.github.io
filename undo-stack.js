@@ -114,24 +114,29 @@ function createUndoStack(ctx) {
     if (ctx.getState().activeLineTypeId && !ctx.getState().lineTypes.some(lt => lt.id === ctx.getState().activeLineTypeId)) ctx.getState().activeLineTypeId = null;
   }
 
+  // Both return true when a snapshot was actually applied (false on an empty
+  // stack / viewer no-op) so callers can react — app.js toasts the remaining
+  // undo count off this.
   function undo() {
-    if (undoStack.length === 0 || ctx.getState().isViewer) return;
+    if (undoStack.length === 0 || ctx.getState().isViewer) return false;
     const prev = undoStack.pop();
     redoStack.push(prev.scope === 'page' ? getPageSnapshot(prev.pageIdx) : getUndoableSnapshot());
     applySnapshot(prev);
     ctx.markProjectDirty();
     ctx.renderPdf();
     ctx.updateUI();
+    return true;
   }
 
   function redo() {
-    if (redoStack.length === 0 || ctx.getState().isViewer) return;
+    if (redoStack.length === 0 || ctx.getState().isViewer) return false;
     const next = redoStack.pop();
     undoStack.push(next.scope === 'page' ? getPageSnapshot(next.pageIdx) : getUndoableSnapshot());
     applySnapshot(next);
     ctx.markProjectDirty();
     ctx.renderPdf();
     ctx.updateUI();
+    return true;
   }
 
   function clearUndoStacks() {
@@ -141,8 +146,11 @@ function createUndoStack(ctx) {
 
   function canUndo() { return undoStack.length > 0; }
   function canRedo() { return redoStack.length > 0; }
+  function undoDepth() { return undoStack.length; }
+  function redoDepth() { return redoStack.length; }
   return { getUndoableSnapshot, pushUndoSnapshot,
-    pushUndoSnapshotPage, applySnapshot, undo, redo, clearUndoStacks, canUndo, canRedo };
+    pushUndoSnapshotPage, applySnapshot, undo, redo, clearUndoStacks, canUndo, canRedo,
+    undoDepth, redoDepth };
 }
 
 // Node test harness only: in a classic browser <script> `module` is undefined,

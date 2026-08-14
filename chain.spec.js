@@ -230,6 +230,40 @@ test.describe('Chain tool', () => {
     expect(await page.evaluate(() => window.state.tool)).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
   });
 
+  test('glyph click selects the row AND opens its settings modal; edits reflect live', async ({ page }) => {
+    await setupChainProject(page);
+    await page.evaluate(() => {
+      window.state.counters.push({ id: 'c-chain-2', name: 'Floor Drain', icon: 'M96 96h448v448H96z', color: '#e85447' });
+      window.App.updateUI();
+    });
+    await page.locator('#chainBtn').click();
+    await page.locator('#chainCounterList .chain-row[data-id="c-chain-1"]').click();
+
+    // Clicking the UNSELECTED row's glyph selects it for chaining AND opens
+    // the details modal (decided: one click does both); tool stays CHAIN.
+    await page.locator('#chainCounterList .chain-row[data-id="c-chain-2"] .chain-glyph').click();
+    await expect(page.locator('#counterLineTypeDetailsModal')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => ({
+      selected: window.state.activeCounterType,
+      tool: window.state.tool === window.App.TOOL.CHAIN,
+      modalName: document.getElementById('counterLineTypeDetailsName').value,
+    }))).toEqual({ selected: 'c-chain-2', tool: true, modalName: 'Floor Drain' });
+
+    // A rename in the modal reflects in the palette row after close. (The
+    // Close button sits below the 720px viewport fold inside the tall
+    // counter modal — click it via the DOM, like child-counts.spec.js.)
+    await page.locator('#counterLineTypeDetailsName').fill('FD-2');
+    await page.locator('#counterLineTypeDetailsName').blur();
+    await page.evaluate(() => document.getElementById('counterLineTypeDetailsClose').click());
+    await expect(page.locator('#chainCounterList .chain-row[data-id="c-chain-2"] .chain-row-name')).toHaveText('FD-2');
+
+    // The line swatch does the same for line types.
+    await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"] .chain-glyph').click();
+    await expect(page.locator('#counterLineTypeDetailsModal')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.state.activeLineTypeId)).toBe('lt-chain-1');
+    await page.evaluate(() => document.getElementById('counterLineTypeDetailsClose').click());
+  });
+
   test('scale gate: unscaled page toasts and does not activate', async ({ page }) => {
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');

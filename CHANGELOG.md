@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(chain): row glyphs open the item's settings
+
+The leading glyph in a Chain palette row (counter icon / line swatch) now
+SELECTS the row for chaining AND opens the item's details modal (decided
+2026-08-15: one click does both) — the same `openCounterLineTypeDetailsModal`
+the sidebar edit pens use, so rename/recolor/icon/child counts are reachable
+without leaving Chain. Hover shows a gold ring + "Edit …" tooltip; edits
+reflect live in the rows, footer, and header chip (updateUI → onChainToolSync);
+tool stays CHAIN throughout. Deleting the selected item falls back to the
+existing clear-active-id path. chain.spec.js grew the glyph test.
+
+## feat(undo): remaining-count toast + one undo per press
+
+Every successful undo (Ctrl+Z or the bottom-bar button — both funnel through
+the one app.js `undo()` wrapper) toasts how many undos remain ("2 undos
+left" / "1 undo left" / "0 undos left"; no denominator, 1s duration — decided
+2026-08-15), so the 50-step ceiling is never a surprise. `undo-stack.js`'s
+undo()/redo() now return true when a snapshot was applied and expose
+`undoDepth()`/`redoDepth()` (unit-tested in annotation-model.test.js).
+Holding Ctrl+Z no longer machine-guns through the stack: OS auto-repeat
+keydowns (`e.repeat`) are ignored — exactly one undo/redo per physical press.
+Regression: [undo-toast.spec.js](undo-toast.spec.js) (2 tests).
+
 ## feat(chain): draggable palette, closable without leaving the tool, header pair chip
 
 Approved from mockup (2026-08-15). The Chain palette is now DRAGGABLE by its

@@ -21,7 +21,7 @@ looked cut off — and the tail held Counter / Quick Line / Polyline, the
 highest-frequency tools. Two changes ([features/header-more.js](features/header-more.js)):
 (1) the toolbar is **priority-reordered** — Set Scale, Move, Counter, Quick
 Line, Polyline, Snap-45, Measure, Highlight first, the low-frequency group
-last; (2) when the header would overflow (>768px), that group (Multiply
+last; (2) when the header would overflow (>768px), that group (Highlight — moved in on request 2026-08-14 — Multiply
 Zone, Scale Zone, Room Sizer, Delete Area, Note, Legend, Grid) tucks behind
 `#headerMoreBtn`'s dropdown — rows show icon + NAME + hotkey, click through
 to the real buttons, and forward right-clicks so tool settings still open.

@@ -99,43 +99,107 @@ test.describe('Chain tool', () => {
     expect(errors).toEqual([]);
   });
 
-  test('Esc ladder: first ends the run (tool stays), second exits to Move; Enter also ends the run', async ({ page }) => {
+  test('Esc/Enter ladders: end run -> close palette (tool stays, chip shows) -> exit to Move', async ({ page }) => {
     await setupChainProject(page);
     await page.locator('#chainBtn').click();
     await page.locator('#chainCounterList .chain-row[data-id="c-chain-1"]').click();
     await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').click();
     await chainClicks(page, [{ x: 100, y: 100 }, { x: 200, y: 100 }]);
 
-    // Enter ends the run exactly like the first Esc (tool stays active).
+    // Enter #1 ends the run (tool stays, palette stays).
     await page.keyboard.press('Enter');
-    const afterEnter = await page.evaluate(() => ({ chainStart: window.state.chainStart, tool: window.state.tool }));
+    const afterEnter = await page.evaluate(() => ({ chainStart: window.state.chainStart, tool: window.state.tool, panelOpen: window.App.isChainPanelOpen() }));
     expect(afterEnter.chainStart).toBe(null);
     expect(afterEnter.tool).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
+    expect(afterEnter.panelOpen).toBe(true);
 
-    // Re-anchor for the Esc ladder assertions.
-    await chainClicks(page, [{ x: 150, y: 150 }]);
-    await page.keyboard.press('Escape');
-    const afterEsc1 = await page.evaluate(() => ({ chainStart: window.state.chainStart, tool: window.state.tool }));
-    expect(afterEsc1.chainStart).toBe(null);
-    expect(afterEsc1.tool).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
-
-    // A fresh click after Esc starts a NEW chain: counter, no connecting line.
-    // (Counts: 2 chained + 1 post-Enter re-anchor + this one = 4 markers, 1 line.)
-    await chainClicks(page, [{ x: 300, y: 300 }]);
-    const fresh = await page.evaluate(() => {
+    // Enter #2 (no run) closes the palette: tool stays CHAIN, chip appears,
+    // placement STILL WORKS while closed.
+    await page.keyboard.press('Enter');
+    const closed = await page.evaluate(() => ({
+      tool: window.state.tool,
+      panelHidden: document.getElementById('chainPanel').style.display === 'none',
+      chipVisible: document.getElementById('headerChainPair').style.display !== 'none',
+      chipTitle: document.getElementById('headerChainPair').title,
+    }));
+    expect(closed.tool).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
+    expect(closed.panelHidden).toBe(true);
+    expect(closed.chipVisible).toBe(true);
+    expect(closed.chipTitle).toContain('Sprinkler Head');
+    await chainClicks(page, [{ x: 150, y: 150 }, { x: 250, y: 150 }]);
+    const placedClosed = await page.evaluate(() => {
       const ann = window.state.pages[0].canvases[0].annotations;
       return { markers: ann.counterMarkers['c-chain-1'].length, lines: ann.quickLines.length };
     });
-    expect(fresh).toEqual({ markers: 4, lines: 1 });
+    expect(placedClosed).toEqual({ markers: 4, lines: 2 });
 
+    // Esc ladder from here: #1 ends the run, #2 exits to Move (palette is
+    // already closed), and the chip leaves with the tool.
     await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => window.state.tool)).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
     await page.keyboard.press('Escape');
-    const afterEsc3 = await page.evaluate(() => ({
+    const out = await page.evaluate(() => ({
       tool: window.state.tool,
-      panelHidden: document.getElementById('chainPanel').style.display === 'none',
+      chipVisible: document.getElementById('headerChainPair').style.display !== 'none',
     }));
-    expect(afterEsc3.tool).toBe(0);
-    expect(afterEsc3.panelHidden).toBe(true);
+    expect(out.tool).toBe(0);
+    expect(out.chipVisible).toBe(false);
+
+    // Esc with the palette OPEN and no run closes the palette first.
+    await page.locator('#chainBtn').click();
+    expect(await page.evaluate(() => window.App.isChainPanelOpen())).toBe(true);
+    await page.keyboard.press('Escape');
+    const mid = await page.evaluate(() => ({ tool: window.state.tool, open: window.App.isChainPanelOpen() }));
+    expect(mid.tool).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
+    expect(mid.open).toBe(false);
+  });
+
+  test('closable palette: × closes, chip reopens, T reopens, drag position persists', async ({ page }) => {
+    await setupChainProject(page);
+    await page.locator('#chainBtn').click();
+    await page.locator('#chainCounterList .chain-row[data-id="c-chain-1"]').click();
+    await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').click();
+
+    // × closes without leaving the tool; chip shows the pair.
+    await page.locator('#chainPanelClose').click();
+    expect(await page.evaluate(() => ({
+      tool: window.state.tool === window.App.TOOL.CHAIN,
+      hidden: document.getElementById('chainPanel').style.display === 'none',
+      chip: document.getElementById('headerChainPair').style.display !== 'none',
+    }))).toEqual({ tool: true, hidden: true, chip: true });
+
+    // Chip click reopens the palette; chip hides again.
+    await page.locator('#headerChainPair').click();
+    expect(await page.evaluate(() => ({
+      open: window.App.isChainPanelOpen(),
+      chip: document.getElementById('headerChainPair').style.display !== 'none',
+    }))).toEqual({ open: true, chip: false });
+
+    // T while in Chain reopens a closed palette (and never clears an anchor).
+    await page.locator('#chainPanelClose').click();
+    await chainClicks(page, [{ x: 100, y: 100 }]);
+    await page.keyboard.press('t');
+    const reopened = await page.evaluate(() => ({ open: window.App.isChainPanelOpen(), anchor: !!window.state.chainStart }));
+    expect(reopened).toEqual({ open: true, anchor: true });
+
+    // Drag by the title bar: the panel moves and the position persists in
+    // localStorage, surviving a close/reopen.
+    const head = page.locator('#chainPanelHead');
+    const box = await head.boundingBox();
+    await page.mouse.move(box.x + 60, box.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 360, box.y + 210, { steps: 5 });
+    await page.mouse.up();
+    const dragged = await page.evaluate(() => {
+      const r = document.getElementById('chainPanel').getBoundingClientRect();
+      return { left: Math.round(r.left), top: Math.round(r.top), stored: JSON.parse(localStorage.getItem('chainPanelPos')) };
+    });
+    expect(dragged.left).toBeGreaterThan(200);
+    expect(dragged.stored.x).toBe(dragged.left);
+    await page.locator('#chainPanelClose').click();
+    await page.locator('#headerChainPair').click();
+    const reopenedPos = await page.evaluate(() => Math.round(document.getElementById('chainPanel').getBoundingClientRect().left));
+    expect(reopenedPos).toBe(dragged.left);
   });
 
   test('placement gated on picking both; search filters rows; T hotkey activates', async ({ page }) => {

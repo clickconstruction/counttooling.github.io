@@ -315,7 +315,8 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`),
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
-mode).
+mode), `chainPanelPos` (the dragged Chain palette position, per device;
+ignored when it no longer fits the viewport).
 
 - `numberKeyBindings` (Quick Keys) is per-project in save/load/export/import, AND
   rides the cloud Artboard (`user_airboard.number_key_bindings`) so a standard

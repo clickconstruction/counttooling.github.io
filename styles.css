@@ -1274,8 +1274,18 @@ body.hotkey-peek .hk-badge { display: block; }
 
 /* ---- Chain tool palette (features/chain.js) ---- */
 .chain-panel { position: fixed; left: 12px; top: calc(52px + var(--safe-top) + 12px); width: 300px; max-height: calc(100dvh - 52px - var(--safe-top) - 70px - var(--safe-bottom) - 24px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.45); overflow: hidden; }
-.chain-panel-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; flex-shrink: 0; }
+.chain-panel-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; flex-shrink: 0; cursor: grab; user-select: none; touch-action: none; }
+.chain-panel-head:active { cursor: grabbing; }
 .chain-panel-head svg { color: var(--accent); flex-shrink: 0; }
+.chain-panel-grip { color: var(--text3); font-size: 0.9rem; letter-spacing: 1px; flex-shrink: 0; }
+.chain-panel-close { margin-left: auto; background: none; border: none; color: var(--text3); font-size: 1.05rem; font-weight: 600; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+.chain-panel-close:hover { color: var(--text); }
+.header-chain-pair { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 17px; cursor: pointer; flex-shrink: 0; }
+.header-chain-pair:hover { border-color: var(--accent); }
+.header-chain-pair .chain-pair-icon { display: inline-flex; width: 16px; height: 16px; }
+.header-chain-pair .chain-pair-icon svg { width: 16px; height: 16px; }
+.header-chain-pair .chain-pair-plus { color: var(--text3); font-size: 0.72rem; }
+.header-chain-pair .chain-pair-swatch { width: 16px; height: 4px; border-radius: 2px; }
 .chain-panel-cols { display: flex; min-height: 0; }
 .chain-panel-col { flex: 1 1 50%; min-width: 0; padding: 10px; display: flex; flex-direction: column; min-height: 0; }
 .chain-panel-col + .chain-panel-col { border-left: 1px solid var(--border); }

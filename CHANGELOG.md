@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(chain): draggable palette, closable without leaving the tool, header pair chip
+
+Approved from mockup (2026-08-15). The Chain palette is now DRAGGABLE by its
+title bar (pointer-based, viewport-clamped; position persists per device in
+localStorage `chainPanelPos`, falling back to the CSS dock when the stored
+spot no longer fits) and CLOSABLE without leaving the tool: the title bar ×,
+or the ladders — Enter ends the run, then closes the palette; Esc ends the
+run, then closes the palette, then exits to Move. While Chain is active with
+the palette closed, the `#headerChainPair` chip (counter icon + line swatch,
+rendered straight from the ACTIVE selections — no separate memory to drift)
+sits right of the Chain button; clicking it reopens the palette, as does
+T / the Chain button (which no longer reset the run when already in Chain).
+Leaving the tool removes the chip and resets the collapse so every fresh
+activation opens the picker. No auto-close on pair-pick (decided — mid-run
+pair switching is a real workflow). chain.spec.js grew the ladder + drag +
+chip coverage.
+
 ## fix(ux): click-through harvest — boot guard, chain + New, verify polish
 
 Four items from the 2026-08-15 production click-through:

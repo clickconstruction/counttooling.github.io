@@ -32,6 +32,56 @@
   let counterQuery = '';
   let lineTypeQuery = '';
   let wired = false;
+  // Palette lifecycle (2026-08-15): the panel is CLOSABLE without leaving the
+  // tool — panelCollapsed hides it while TOOL.CHAIN stays active, and the
+  // #headerChainPair chip (current pair, straight from the active selections)
+  // takes over as indicator + reopen handle. Auto-reset on tool exit so every
+  // fresh activation opens the picker (decided behavior). The panel is also
+  // DRAGGABLE by its title bar; the position persists per device in
+  // localStorage (chainPanelPos) and falls back to the CSS dock when the
+  // stored spot no longer fits the viewport.
+  let panelCollapsed = false;
+  const PANEL_POS_KEY = 'chainPanelPos';
+
+  function loadPanelPos() {
+    try { return JSON.parse(localStorage.getItem(PANEL_POS_KEY)) || null; } catch { return null; }
+  }
+
+  function applyPanelPos(panel) {
+    const pos = loadPanelPos();
+    if (!pos) return;
+    const w = panel.offsetWidth || 300;
+    if (pos.x < 0 || pos.y < 0 || pos.x + w > window.innerWidth || pos.y + 60 > window.innerHeight) return;
+    panel.style.left = pos.x + 'px';
+    panel.style.top = pos.y + 'px';
+  }
+
+  function wireDrag(panel) {
+    const head = document.getElementById('chainPanelHead');
+    if (!head) return;
+    head.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#chainPanelClose')) return;
+      const rect = panel.getBoundingClientRect();
+      const offX = e.clientX - rect.left;
+      const offY = e.clientY - rect.top;
+      head.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const x = Math.max(0, Math.min(ev.clientX - offX, window.innerWidth - rect.width));
+        const y = Math.max(0, Math.min(ev.clientY - offY, window.innerHeight - 60));
+        panel.style.left = x + 'px';
+        panel.style.top = y + 'px';
+      };
+      const up = () => {
+        head.removeEventListener('pointermove', move);
+        head.removeEventListener('pointerup', up);
+        const r = panel.getBoundingClientRect();
+        try { localStorage.setItem(PANEL_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch { /* storage full/blocked — position just won't persist */ }
+      };
+      head.addEventListener('pointermove', move);
+      head.addEventListener('pointerup', up);
+      e.preventDefault();
+    });
+  }
 
   // --- placement core -------------------------------------------------------
 
@@ -137,25 +187,69 @@
     }
   }
 
+  // The header pair chip: visible ONLY while TOOL.CHAIN is active with the
+  // palette closed. It renders the CURRENT selections (no separate memory to
+  // drift) and clicking it reopens the palette.
+  function renderPairChip(active) {
+    const state = App.state;
+    const chip = document.getElementById('headerChainPair');
+    if (!chip) return;
+    const counter = state.counters.find((c) => c.id === state.activeCounterType);
+    const lt = state.lineTypes.find((l) => l.id === state.activeLineTypeId);
+    const show = active && panelCollapsed;
+    chip.style.display = show ? '' : 'none';
+    if (!show) return;
+    const iconHtml = counter
+      ? '<span class="chain-pair-icon"><svg viewBox="' + App.iconVbFor(counter.icon) + '"><path fill="' + esc(counter.color || '#e8c547') + '" d="' + counter.icon + '"/></svg></span>'
+      : '<span class="chain-pair-icon">?</span>';
+    const swatchHtml = '<span class="chain-pair-swatch" style="background:' + esc(lt?.color || '#4a9eff') + '"></span>';
+    chip.innerHTML = iconHtml + '<span class="chain-pair-plus">+</span>' + swatchHtml;
+    chip.title = 'Chaining ' + (counter?.name || '—') + ' + ' + (lt?.name || '—') + ' — click to change';
+  }
+
   // Core->feature sync: updateUI calls this every pass. Shows/hides the panel
-  // by tool and re-renders rows (list DOM only — the search inputs live
-  // outside the lists, so typing focus is never stolen).
+  // by tool + collapse state, re-renders rows (list DOM only — the search
+  // inputs live outside the lists, so typing focus is never stolen), and
+  // keeps the header pair chip tracking the closed state.
   function onChainToolSync() {
     const state = App.state;
     const panel = document.getElementById('chainPanel');
     if (!panel) return;
     wire();
     const active = state.tool === App.TOOL.CHAIN && !state.isViewer && state.pages.length > 0;
-    panel.style.display = active ? '' : 'none';
-    if (!active) return;
+    if (!active) panelCollapsed = false;   // fresh activation always opens the picker
+    panel.style.display = active && !panelCollapsed ? '' : 'none';
+    renderPairChip(active);
+    if (!active || panelCollapsed) return;
+    applyPanelPos(panel);
     renderCounterList();
     renderLineTypeList();
     renderFoot();
   }
 
+  function closeChainPanel() {
+    panelCollapsed = true;
+    onChainToolSync();
+  }
+
+  function openChainPanel() {
+    panelCollapsed = false;
+    onChainToolSync();
+  }
+
+  function isChainPanelOpen() {
+    const state = App.state;
+    return state.tool === App.TOOL.CHAIN && !panelCollapsed;
+  }
+
   function wire() {
     if (wired) return;
     wired = true;
+    const panel = document.getElementById('chainPanel');
+    if (panel) wireDrag(panel);
+    document.getElementById('chainPanelClose').addEventListener('click', closeChainPanel);
+    const chip = document.getElementById('headerChainPair');
+    if (chip) chip.addEventListener('click', openChainPanel);
     document.getElementById('chainCounterSearch').addEventListener('input', (e) => {
       counterQuery = e.target.value;
       renderCounterList();
@@ -185,4 +279,7 @@
 
   App.commitChainPoint = commitChainPoint;
   App.onChainToolSync = onChainToolSync;
+  App.openChainPanel = openChainPanel;
+  App.closeChainPanel = closeChainPanel;
+  App.isChainPanelOpen = isChainPanelOpen;
 })();

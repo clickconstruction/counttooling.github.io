@@ -34,6 +34,7 @@ const HOTKEYS = [
   { key: 'l', btnId: 'quickLine', section: 'Tools', action: 'Quick Line mode', kbd: null, icon: { btn: 'quickLine' } },
   { key: 'j', runner: 'toggleSnap', viewerAllowed: true, section: 'Tools', action: 'Toggle snap to 45° angles', kbd: null, icon: { btn: 'lineTypeSnapToHVHeaderBtn' } },
   { key: 'p', btnId: 'polylineBtn', section: 'Tools', action: 'Polyline mode', kbd: null, icon: { btn: 'polylineBtn' } },
+  { key: 't', btnId: 'chainBtn', section: 'Tools', action: 'Chain mode (counter + connecting line)', kbd: null, icon: { btn: 'chainBtn' } },
   { key: 'd', btnId: 'measureBtn', viewerAllowed: true, section: 'Tools', action: 'Measure Distance', kbd: null, icon: { btn: 'measureBtn' } },
   { key: 'r', runner: 'rotatePage', viewerAllowed: true, section: 'Tools', action: 'Rotate page', kbd: null, icon: { glyph: '↻' } },
   { key: 'h', btnId: 'highlightBtn', section: 'Tools', action: 'Highlight mode', kbd: null, icon: { btn: 'highlightBtn' } },

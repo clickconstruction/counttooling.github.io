@@ -13,6 +13,26 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tools): Chain tool — one click per fixture, connecting runs ride along
+
+Approved from mockup (2026-08-14). New header tool (`TOOL.CHAIN`, hotkey T,
+button after Polyline): every canvas click drops a counter marker; from the
+second click on, a quick line back to the previous counter rides along in the
+SAME undo step — a run of 10 fixtures falls from ~28 clicks to 10. Zero
+data-model changes: placements are ORDINARY counter markers + quick lines, so
+save/load, reports, exports, zones, and groups work untouched. While active, a
+floating two-column palette panel (`#chainPanel`, [features/chain.js](features/chain.js))
+offers searchable Counter / Line-type columns; selection writes
+`state.activeCounterType` / `state.activeLineTypeId` directly (NOT via the
+`setActive*` setters, whose side effect is switching the tool). The anchor is
+`state.chainStart` `{x, y, page}` — the page stamp invalidates it across page
+switches. Esc ladder: first ends the run (tool stays), second exits to Move.
+Scale-gated like Quick Line (button + page-switch gate). The rubber-band
+preview honors the 45° snap; grid snap applies to un-anchored placements.
+app.js integration: `TOOL.CHAIN` click branch → `App.commitChainPoint`,
+`App.onChainToolSync` from `updateUI`, eight publish-only registry deps.
+Regression: [chain.spec.js](chain.spec.js) (4 tests).
+
 ## feat(header): priority-reordered toolbar + "⋯ More tools" overflow
 
 Field feedback (2026-08-14, approved from mockup): on desktop widths the

@@ -14,7 +14,7 @@
  * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
  * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = '35ad1e4297ed';
+const CACHE_VERSION = '3187f967d382';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -106,6 +106,7 @@ const PRECACHE_URLS = [
   '/features/sidebar-lists.js',
   '/features/quick-keys.js',
   '/features/keyboard-map.js',
+  '/features/chain.js',
   '/report.js',
   // vendored runtime libraries (incl. the lazily-fetched pdf.js worker — required for offline render)
   '/vendor/pdf.min-3.11.174.js',

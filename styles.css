@@ -1243,6 +1243,29 @@
     .zoom-rail-thumb:active { cursor: grabbing; }
     input[type="file"] { display: none; }
 
+/* ---- Chain tool palette (features/chain.js) ---- */
+.chain-panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 300px; max-height: calc(100dvh - 52px - var(--safe-top) - 70px - var(--safe-bottom) - 24px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,0.45); overflow: hidden; }
+.chain-panel-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; flex-shrink: 0; }
+.chain-panel-head svg { color: var(--accent); flex-shrink: 0; }
+.chain-panel-cols { display: flex; min-height: 0; }
+.chain-panel-col { flex: 1 1 50%; min-width: 0; padding: 10px; display: flex; flex-direction: column; min-height: 0; }
+.chain-panel-col + .chain-panel-col { border-left: 1px solid var(--border); }
+.chain-col-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text2); font-weight: 700; margin: 0 0 8px 2px; }
+.chain-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; margin-bottom: 8px; color: var(--text); font-family: inherit; font-size: 0.78rem; flex-shrink: 0; }
+.chain-search::placeholder { color: var(--text3); }
+.chain-list { overflow-y: auto; min-height: 0; max-height: 240px; }
+.chain-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); font-size: 0.82rem; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.chain-row:hover { background: var(--surface2); }
+.chain-row .chain-row-name { overflow: hidden; text-overflow: ellipsis; }
+.chain-row.selected { background: rgba(232,197,71,0.16); box-shadow: inset 0 0 0 1px var(--accent); }
+.chain-row.selected .chain-row-name { color: var(--accent); font-weight: 600; }
+.chain-row .icon-svg { display: inline-flex; flex-shrink: 0; }
+.chain-line-swatch { width: 18px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+.chain-list-empty { color: var(--text3); font-size: 0.78rem; padding: 4px 8px; }
+.chain-panel-foot { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
+.chain-panel-foot b { color: var(--accent); font-weight: 600; }
+@media (max-width: 768px) { .chain-panel { display: none !important; } }
+
 /* ---- Room Sizer (features/room-sizer.js) ---- */
 .room-recent-heights {
   display: flex;

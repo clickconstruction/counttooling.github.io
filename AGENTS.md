@@ -406,7 +406,8 @@ derives from that table). Add/change a hotkey THERE, never in the table markup.
 
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
-(Polyline), D (Measure), H (Highlight), X (Multiply Zone), V (Room Sizer), N
+(Polyline), T (Chain — counter + connecting line per click), D (Measure),
+H (Highlight), X (Multiply Zone), V (Room Sizer), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z
 undo/redo; Ctrl+R refresh. Ignored when focus is in an input/textarea/contenteditable.

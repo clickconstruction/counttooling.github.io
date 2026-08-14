@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(sidebar): filter cycle clicks narrate their state via a three-line toast
+
+Field feedback (2026-08-13): the inline usage-filter button next to the
+Counters / Line Types search boxes cycles three states, but its meaning was
+only discoverable via the title attribute. Each cycle click now fires a
+three-line toast — "Filter:" / the state just landed on ("counters used on
+this page" / "… used anywhere in this project" / "off — showing all
+counters") / a dimmed next-click hint ("(click again: …)") — via
+`showFilterScopeToast` (app.js), reusing `showToast`'s timer + modal.
+`#airboardToastText` was already `pre-line`; the hint line is a
+`.toast-hint-line` span (styles.css). Settings-modal segments stay silent
+(they're self-labeling). Regression: the toast-narration test in
+[sidebar-usage-filter.spec.js](sidebar-usage-filter.spec.js).
+
 ## fix(prepare-pdf): rotating a page no longer moves the controls
 
 Field report (Wendi, 2026-08-13): in the Prepare PDF modal, the preview

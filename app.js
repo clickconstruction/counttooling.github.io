@@ -3454,11 +3454,34 @@
     btn.innerHTML = scope === 'project' ? FILTER_GLYPH_PROJECT_SVG : filterGlyphPageSvg;
     btn.dataset.scope = scope;
   }
+  // Narrate each cycle click of the inline filter buttons with a three-line
+  // toast: "Filter:" / the state just landed on / a dimmed next-click hint.
+  // The button's meaning is otherwise only discoverable via its title attr
+  // (field feedback 2026-08-13). #airboardToastText is pre-line, so the \n
+  // layout needs no markup; only the hint line is a styled span.
+  const FILTER_TOAST_LINES = {
+    page: { mid: (kind) => kind + ' used on this page', hint: '(click again: this project)' },
+    project: { mid: (kind) => kind + ' used anywhere in this project', hint: '(click again: show all)' },
+    off: { mid: (kind) => 'off — showing all ' + kind, hint: '(click again: this page)' },
+  };
+  function showFilterScopeToast(kind, scope) {
+    const t = FILTER_TOAST_LINES[scope];
+    if (!t) return;
+    showToast('', 3200);
+    const el = document.getElementById('airboardToastText');
+    if (!el) return;
+    el.textContent = 'Filter:\n' + t.mid(kind) + '\n';
+    const hint = document.createElement('span');
+    hint.className = 'toast-hint-line';
+    hint.textContent = t.hint;
+    el.appendChild(hint);
+  }
   const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
   if (counterShowOnlyOnPageInlineBtn) {
     counterShowOnlyOnPageInlineBtn.onclick = () => {
       setCounterListFilterScope(FILTER_SCOPE_CYCLE[getCounterListFilterScope()]);
       syncFilterScopeSegment('counterShowOnlySegment', getCounterListFilterScope());
+      showFilterScopeToast('counters', getCounterListFilterScope());
       App.renderCountersList();
       updateUI();
     };
@@ -3468,6 +3491,7 @@
     lineTypeShowOnlyOnPageInlineBtn.onclick = () => {
       setLineTypeListFilterScope(FILTER_SCOPE_CYCLE[getLineTypeListFilterScope()]);
       syncFilterScopeSegment('lineTypeShowOnlySegment', getLineTypeListFilterScope());
+      showFilterScopeToast('line types', getLineTypeListFilterScope());
       App.renderLineTypesList();
       App.renderLinesList();
       updateUI();

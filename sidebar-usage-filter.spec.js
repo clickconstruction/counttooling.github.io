@@ -114,6 +114,35 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('cycle clicks narrate the landed state via the three-line toast', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await loadTwoPagePdf(page);
+
+    const toast = page.locator('#airboardToastText');
+    const btn = page.locator('#counterShowOnlyOnPageInlineBtn');
+
+    await btn.click();
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    await expect(toast).toContainText('Filter:');
+    await expect(toast).toContainText('counters used on this page');
+    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this project)');
+
+    await btn.click();
+    await expect(toast).toContainText('counters used anywhere in this project');
+    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: show all)');
+
+    await btn.click();
+    await expect(toast).toContainText('off — showing all counters');
+    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this page)');
+
+    // The line-type button narrates its own kind.
+    await page.locator('#lineTypeShowOnlyOnPageInlineBtn').click();
+    await expect(toast).toContainText('line types used on this page');
+
+    expect(errors).toEqual([]);
+  });
+
   test('line types: scope cycle, merged usage + totals, hint row, modal segment', async ({ page }) => {
     const errors = [];
     collectErrors(page, errors);

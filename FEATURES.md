@@ -33,6 +33,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 ## Measuring
 
 - **Quick lines & polylines** — Trace straight runs and bending runs alike and get the real-world length off the page scale instantly.
+- **Chain tool (T)** — One click per fixture: each click drops a counter and draws the connecting run back to the last one automatically — a 10-head sprinkler branch is 10 clicks, not 28.
 - **Arc line types** — Curved runs measure along the sweep, not the chord, so long-radius work isn't undercounted.
 - **Line drops** — Add vertical rise/fall at either end of a run so risers and stacks are in the footage, not forgotten.
 - **Measure tool (D)** — A two-click distance check without adding anything to the takeoff.

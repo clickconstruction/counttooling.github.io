@@ -177,7 +177,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, chainStart: null, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -1267,12 +1267,13 @@
     if (state.currentPage === scaleGatePage) return;
     scaleGatePage = state.currentPage;
     const gated = { [TOOL.LINE]: 'Quick Line', [TOOL.POLYLINE]: 'Polyline',
-      [TOOL.MEASURE]: 'Measure', [TOOL.SCALE_ZONE]: 'Scale Zone', [TOOL.ROOM]: 'Room Sizer' };
+      [TOOL.MEASURE]: 'Measure', [TOOL.SCALE_ZONE]: 'Scale Zone', [TOOL.ROOM]: 'Room Sizer',
+      [TOOL.CHAIN]: 'Chain' };
     const toolName = gated[state.tool];
     if (!toolName || !state.pages.length || getPageScale(state.currentPage)) return;
     // Same reset as the Move button (the #moveBtn onclick): drop to Move + clear starts.
     state.tool = TOOL.NONE;
-    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null;
+    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null; state.chainStart = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     showSetScaleFirstToast(toolName);
     logUserEvent('unscaled_ft_block', state.currentProjectId || null, { surface: 'page-switch' });
@@ -1790,6 +1791,18 @@
       else ctx.lineTo(b.x, b.y);
       ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
+    if (state.tool === TOOL.CHAIN && state.chainStart && state.chainStart.page === state.currentPage && state.mousePos) {
+      // Chain rubber band: anchor (last placed counter) -> cursor, in the
+      // selected line type's color, honoring the 45° snap toggle.
+      const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
+      const aPdf = state.chainStart;
+      let bPdf = state.mousePos;
+      if (lts.snapToHorizontalVertical) bPdf = snapLineToAngle(aPdf.x, aPdf.y, bPdf.x, bPdf.y);
+      const a = toCanvas(aPdf), b = toCanvas(bPdf);
+      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
     if (state.highlightStart && state.mousePos) {
       const minX = Math.min(state.highlightStart.x, state.mousePos.x), maxX = Math.max(state.highlightStart.x, state.mousePos.x);
       const minY = Math.min(state.highlightStart.y, state.mousePos.y), maxY = Math.max(state.highlightStart.y, state.mousePos.y);
@@ -2067,6 +2080,11 @@
     if (deleteZoneBtn) deleteZoneBtn.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
     const roomBtnEl = document.getElementById('roomBtn');
     if (roomBtnEl) roomBtnEl.classList.toggle('active', state.tool === TOOL.ROOM);
+    const chainBtnEl = document.getElementById('chainBtn');
+    if (chainBtnEl) chainBtnEl.classList.toggle('active', state.tool === TOOL.CHAIN);
+    // Defensive core->feature callback: features/chain.js re-syncs its palette
+    // panel (show/hide + row selection) whenever the tool or palettes change.
+    App.onChainToolSync && App.onChainToolSync();
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
     const counterBtn = document.getElementById('counterBtn');
@@ -2161,6 +2179,7 @@
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
       state.roomBoxStart = null;
+      state.chainStart = null;
       state.drawingPolyline = null;
       state.editingPolyline = null;
     }
@@ -2173,7 +2192,7 @@
     // page's scale status on them and may set a temporary, local-only scale
     // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the
     // Measure tool reads real units. See noteViewerTempScale.
-    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -3102,6 +3121,7 @@
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
     state.roomBoxStart = null;
+    state.chainStart = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
     updateUI();
@@ -3117,6 +3137,22 @@
       renderAnnotations();
     }
     App.showChooseLineTypeModal();
+  };
+  document.getElementById('chainBtn').onclick = () => {
+    if (!getPageScale(state.currentPage)) {
+      showSetScaleFirstToast('Chain');
+      return;
+    }
+    state.quickLineStart = null;
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
+    state.deleteZoneStart = null;
+    state.roomBoxStart = null;
+    state.chainStart = null;
+    state.tool = TOOL.CHAIN;
+    collapsePagesSectionForPlacing();
+    updateUI();
   };
   // Tool right-click (contextmenu) handlers live in
   // features/tool-context-menu.js (one declarative map for all tools).
@@ -3228,6 +3264,7 @@
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
       state.roomBoxStart = null;
+      state.chainStart = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
       const ann = getActiveAnnotations(page);
@@ -4742,6 +4779,12 @@
       }
       renderAnnotations();
       requestAnimationFrame(() => notePerfSample('placeMs', performance.now() - placeT0));
+    } else if (state.tool === TOOL.CHAIN) {
+      // Chain: every click drops a counter; from the second click on, a quick
+      // line back to the previous counter rides along. Logic in features/chain.js.
+      App.commitChainPoint && App.commitChainPoint(pdf);
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.HIGHLIGHT) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -4967,6 +5010,7 @@
       case TOOL.DELETE_ZONE:
       case TOOL.ROOM:
       case TOOL.NOTE:
+      case TOOL.CHAIN:
         return true;
       case TOOL.POLYLINE:
         return !!state.drawingPolyline;
@@ -5296,7 +5340,7 @@
         note.y = pdf.y - state.draggingNoteOffset.y;
         renderAnnotations();
       }
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart)) {
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart)) {
       renderAnnotations();
     }
     const t = hitTest(pdf);
@@ -5857,6 +5901,7 @@
     moveReset: () => {
       state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null;
       state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null;
+      state.chainStart = null;
       state.pendingNote = null; state.editingNote = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
       updateUI();
@@ -6006,6 +6051,11 @@
       else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       else if (state.tool === TOOL.LINE) {
         if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
+        else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.CHAIN) {
+        // First Esc ends the current run (tool stays active — next click starts
+        // a fresh chain); second Esc exits to Move, like the other tools.
+        if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.SCALE) {
         // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
@@ -6359,6 +6409,15 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  // Chain tool deps (features/chain.js) — publish-only; all defined in app.js.
+  App.isPointInPageBounds = isPointInPageBounds;
+  App.showOutOfBoundsToast = showOutOfBoundsToast;
+  App.snapLineToAngle = snapLineToAngle;
+  App.clampPointToPageBounds = clampPointToPageBounds;
+  App.snapToGrid = snapToGrid;
+  App.logCounterMarkerAddedEvent = logCounterMarkerAddedEvent;
+  App.logLineAddedEvent = logLineAddedEvent;
+  App.collapsePagesSectionForPlacing = collapsePagesSectionForPlacing;
   // Hotkey coverage seam: hotkeys.spec.js asserts every non-bespoke HOTKEYS
   // entry resolves to a runner here or a real element — the executable half of
   // the hotkeys-as-data contract (build:macros gates the documentation half).

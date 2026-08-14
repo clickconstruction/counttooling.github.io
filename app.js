@@ -3143,15 +3143,20 @@
       showSetScaleFirstToast('Chain');
       return;
     }
-    state.quickLineStart = null;
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null;
-    state.chainStart = null;
-    state.tool = TOOL.CHAIN;
-    collapsePagesSectionForPlacing();
+    if (state.tool !== TOOL.CHAIN) {
+      state.quickLineStart = null;
+      state.highlightStart = null;
+      state.multiplyZoneStart = null;
+      state.scaleZoneStart = null;
+      state.deleteZoneStart = null;
+      state.roomBoxStart = null;
+      state.chainStart = null;
+      state.tool = TOOL.CHAIN;
+      collapsePagesSectionForPlacing();
+    }
+    // Every activation opens the picker; T/click while already in Chain
+    // reopens a closed palette WITHOUT clearing the run in progress.
+    App.openChainPanel && App.openChainPanel();
     updateUI();
   };
   // Tool right-click (contextmenu) handlers live in
@@ -6053,9 +6058,10 @@
         if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.CHAIN) {
-        // First Esc ends the current run (tool stays active — next click starts
-        // a fresh chain); second Esc exits to Move, like the other tools.
+        // Esc ladder: end the run -> close the palette (tool stays active,
+        // the header pair chip takes over) -> exit to Move.
         if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
+        else if (App.isChainPanelOpen && App.isChainPanelOpen()) { App.closeChainPanel(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.SCALE) {
         // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
@@ -6132,8 +6138,12 @@
     if (e.key === 'Enter' && state.drawingPolyline && state.drawingPolyline.points.length >= 2) finishPolyline(false);
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
     // Chain: Enter ends the current run like the first Escape (tool stays
-    // active — the next click starts a fresh chain).
-    if (e.key === 'Enter' && state.tool === TOOL.CHAIN && state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
+    // active — the next click starts a fresh chain); with no run in progress
+    // it closes the palette instead (the header pair chip takes over).
+    if (e.key === 'Enter' && state.tool === TOOL.CHAIN) {
+      if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
+      else if (App.isChainPanelOpen && App.isChainPanelOpen()) { App.closeChainPanel(); updateUI(); }
+    }
   });
 
   // SECTION: [sync] Manual save to cloud

@@ -289,7 +289,10 @@
     .plum-name-row .swatch:hover { border-color: var(--accent); }
     .plum-header-add-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; font-family: inherit; background: var(--accent); color: var(--bg); }
     .plum-header-add-btn:hover { background: var(--accent2); }
-    .sidebar-search-filter-btn { padding: 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .sidebar-search-filter-btn { position: relative; padding: 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    /* Sheet mode gets a corner dot so all three filter states read at a glance
+       (off = plain, sheet = dot, project = stacked-sheets glyph). */
+    .sidebar-search-filter-btn[data-scope="page"]::after { content: ''; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
     .sidebar-search-filter-btn:hover { color: var(--text2); }
     .sidebar-search-filter-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
     .sidebar-search-filter-btn svg { width: 16px; height: 16px; }

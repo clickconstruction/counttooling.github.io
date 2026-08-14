@@ -5,7 +5,8 @@
  * buttons (glyph swap + titles), the merged-canvas usage predicate and badges
  * (a mark on a non-active layer still counts — the T1-11 rule), the
  * active-type exemption (a just-created type stays visible before its first
- * mark), the "N hidden by filter — show all" hint row, the settings-modal
+ * mark), the scope-aware "N not used on this sheet / in this project —
+ * show all" hint row, per-device localStorage persistence, the settings-modal
  * segmented controls (#counterShowOnlySegment / #lineTypeShowOnlySegment),
  * and the legacy boolean fallback (showOnly*OnCurrentPage -> 'page').
  */
@@ -62,7 +63,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await btn.click();
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText('Water Closet');
-    await expect(hint).toHaveText('2 hidden by filter — show all');
+    await expect(hint).toHaveText('2 not used on this sheet — show all');
     await expect(btn).toHaveAttribute('aria-pressed', 'true');
     await expect(btn).toHaveAttribute('data-scope', 'page');
 
@@ -75,7 +76,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     // Click 2 -> project scope: c1 + c2 used anywhere; glyph swaps.
     await btn.click();
     await expect(rows).toHaveCount(2);
-    await expect(hint).toHaveText('1 hidden by filter — show all');
+    await expect(hint).toHaveText('1 not used in this project — show all');
     await expect(btn).toHaveAttribute('data-scope', 'project');
     expect(await btn.innerHTML()).toContain('viewBox="0 0 16 16"');
 
@@ -125,7 +126,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await btn.click();
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     await expect(toast).toContainText('Filter:');
-    await expect(toast).toContainText('counters used on this page');
+    await expect(toast).toContainText('counters used on this sheet');
     await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this project)');
 
     await btn.click();
@@ -134,11 +135,35 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
 
     await btn.click();
     await expect(toast).toContainText('off — showing all counters');
-    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this page)');
+    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this sheet)');
 
     // The line-type button narrates its own kind.
     await page.locator('#lineTypeShowOnlyOnPageInlineBtn').click();
-    await expect(toast).toContainText('line types used on this page');
+    await expect(toast).toContainText('line types used on this sheet');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('filter scope persists per device across reloads (recovered bb19fa design)', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    await page.evaluate(() => window.App.setCounterListFilterScope('project'));
+    expect(await page.evaluate(() => localStorage.getItem('counterSidebarFilterScope'))).toBe('project');
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    expect(await page.evaluate(() => window.App.getCounterListFilterScope())).toBe('project');
+    // Boot updateUI reflects the restored scope on the inline button.
+    await expect(page.locator('#counterShowOnlyOnPageInlineBtn')).toHaveAttribute('data-scope', 'project');
+
+    // An explicit reset to off sticks across reloads too.
+    await page.evaluate(() => window.App.setCounterListFilterScope('off'));
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    expect(await page.evaluate(() => window.App.getCounterListFilterScope())).toBe('off');
 
     expect(errors).toEqual([]);
   });
@@ -175,7 +200,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     // Page scope hides lt2; project scope keeps hiding it; off restores.
     await btn.click();
     await expect(rows).toHaveCount(1);
-    await expect(hint).toHaveText('1 hidden by filter — show all');
+    await expect(hint).toHaveText('1 not used on this sheet — show all');
     await btn.click();
     await expect(btn).toHaveAttribute('data-scope', 'project');
     await expect(rows).toHaveCount(1);

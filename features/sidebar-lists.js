@@ -27,14 +27,18 @@
     return slot ? '<span class="quick-key-slot-badge" title="Quick Key ' + slot + ' — press to select">' + slot + '</span>' : '';
   }
 
-  // Append the usage-filter footer row ("N hidden by filter — show all") to a
-  // sidebar list. The show-all link drops the scope to 'off' via the passed
-  // setter, syncs the matching settings-modal segment, and re-renders.
-  function appendFilterHintRow(el, hiddenCount, setScope, segmentId, rerender) {
+  // Append the usage-filter footer row to a sidebar list. The copy states the
+  // REASON rows are hidden, scoped to the active filter ("N not used on this
+  // sheet / in this project — show all"; idea recovered from the unlanded
+  // claude/app-review-docs-bb19fa attempt). The show-all link drops the scope
+  // to 'off' via the passed setter, syncs the matching settings-modal segment,
+  // and re-renders.
+  function appendFilterHintRow(el, hiddenCount, scope, setScope, segmentId, rerender) {
     if (hiddenCount <= 0) return;
     const hint = document.createElement('div');
     hint.className = 'sidebar-filter-hint';
-    hint.innerHTML = hiddenCount + ' hidden by filter — <span class="sidebar-filter-hint-clear">show all</span>';
+    const where = scope === 'page' ? 'on this sheet' : 'in this project';
+    hint.innerHTML = hiddenCount + ' not used ' + where + ' — <span class="sidebar-filter-hint-clear">show all</span>';
     hint.querySelector('.sidebar-filter-hint-clear').onclick = () => {
       setScope('off');
       App.syncFilterScopeSegment(segmentId, 'off');
@@ -103,7 +107,7 @@
       }
       el.appendChild(div);
     });
-    appendFilterHintRow(el, hiddenCount, App.setCounterListFilterScope, 'counterShowOnlySegment', renderCountersList);
+    appendFilterHintRow(el, hiddenCount, scope, App.setCounterListFilterScope, 'counterShowOnlySegment', renderCountersList);
   }
 
   function renderLineTypesList() {
@@ -181,7 +185,7 @@
       }
       el.appendChild(div);
     });
-    appendFilterHintRow(el, hiddenCount, App.setLineTypeListFilterScope, 'lineTypeShowOnlySegment', renderLineTypesList);
+    appendFilterHintRow(el, hiddenCount, scope, App.setLineTypeListFilterScope, 'lineTypeShowOnlySegment', renderLineTypesList);
   }
 
   function renderGroupsList() {

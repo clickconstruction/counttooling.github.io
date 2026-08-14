@@ -253,6 +253,16 @@
     userActivityViewMode: 'events'
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
+  // Sidebar usage-filter scope persists per device (idea recovered from the
+  // unlanded claude/app-review-docs-bb19fa attempt): a big-palette user who
+  // sets "this project" keeps it across sessions. The setters write these
+  // keys; 'off' is stored too so an explicit reset also sticks.
+  try {
+    const cScope = localStorage.getItem('counterSidebarFilterScope');
+    if (cScope === 'page' || cScope === 'project') setCounterListFilterScope(cScope);
+    const ltScope = localStorage.getItem('lineTypeSidebarFilterScope');
+    if (ltScope === 'page' || ltScope === 'project') setLineTypeListFilterScope(ltScope);
+  } catch (_) {}
   try {
     const rrh = JSON.parse(localStorage.getItem('recentRoomHeights') || '[]');
     if (Array.isArray(rrh)) state.recentRoomHeights = rrh.filter(h => typeof h === 'number' && h > 0).slice(0, 5);
@@ -3422,6 +3432,7 @@
   function setCounterListFilterScope(scope) {
     state.counterSettings.sidebarFilterScope = scope;
     state.counterSettings.showOnlyCountersOnCurrentPage = scope === 'page';
+    try { localStorage.setItem('counterSidebarFilterScope', scope); } catch (_) {}
   }
   function getLineTypeListFilterScope() {
     const lts = state.lineTypeSettings || {};
@@ -3430,6 +3441,7 @@
   function setLineTypeListFilterScope(scope) {
     state.lineTypeSettings.sidebarFilterScope = scope;
     state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = scope === 'page';
+    try { localStorage.setItem('lineTypeSidebarFilterScope', scope); } catch (_) {}
   }
   const FILTER_SCOPE_CYCLE = { off: 'page', page: 'project', project: 'off' };
   // Reflect a scope onto a settings-modal segmented control (aria-pressed per
@@ -3447,8 +3459,8 @@
     if (!btn) return;
     btn.setAttribute('aria-pressed', String(scope !== 'off'));
     btn.title = scope === 'project' ? ('Showing only ' + kind + ' used in this project (click to show all)')
-      : scope === 'page' ? ('Showing only ' + kind + ' used on this page (click for this project)')
-      : ('Show only ' + kind + ' used on this page (click again for this project)');
+      : scope === 'page' ? ('Showing only ' + kind + ' used on this sheet (click for this project)')
+      : ('Show only ' + kind + ' used on this sheet (click again for this project)');
     if ((btn.dataset.scope || 'off') === scope) return;
     if (filterGlyphPageSvg === null) filterGlyphPageSvg = btn.innerHTML;
     btn.innerHTML = scope === 'project' ? FILTER_GLYPH_PROJECT_SVG : filterGlyphPageSvg;
@@ -3460,9 +3472,9 @@
   // (field feedback 2026-08-13). #airboardToastText is pre-line, so the \n
   // layout needs no markup; only the hint line is a styled span.
   const FILTER_TOAST_LINES = {
-    page: { mid: (kind) => kind + ' used on this page', hint: '(click again: this project)' },
+    page: { mid: (kind) => kind + ' used on this sheet', hint: '(click again: this project)' },
     project: { mid: (kind) => kind + ' used anywhere in this project', hint: '(click again: show all)' },
-    off: { mid: (kind) => 'off — showing all ' + kind, hint: '(click again: this page)' },
+    off: { mid: (kind) => 'off — showing all ' + kind, hint: '(click again: this sheet)' },
   };
   function showFilterScopeToast(kind, scope) {
     const t = FILTER_TOAST_LINES[scope];
@@ -4110,7 +4122,7 @@
       try {
         indexedDB.deleteDatabase('clickcount-pdf-cache');
       } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
       for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);

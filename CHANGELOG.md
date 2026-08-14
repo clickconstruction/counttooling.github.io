@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(sidebar): usage-filter polish harvested from the unlanded bb19fa attempt
+
+A loose-branch audit (2026-08-13) found claude/app-review-docs-bb19fa — a
+complete parallel implementation of the usage filter that lost the race to
+land — with four design calls worth recovering: (1) the chosen scope now
+**persists per device** (`counterSidebarFilterScope` /
+`lineTypeSidebarFilterScope` in localStorage; written by the setters — the
+one mutation path — read at boot, wiped on sign-out), so a big-palette user
+who sets "this project" keeps it across sessions; (2) hint rows state the
+REASON ("N not used on this sheet / in this project — show all") instead of
+the mechanism; (3) estimator language — "sheet," not "page" — in toasts,
+titles, and the settings segments; (4) sheet mode gets a **corner dot** on
+the inline button so all three states are visually distinct (off = plain,
+sheet = dot, project = stacked-sheets glyph). The zone-scale test scenarios
+from the two abandoned worktrees were verified already covered by T1-05's
+[line-metrics.test.js](line-metrics.test.js). Regression:
+[sidebar-usage-filter.spec.js](sidebar-usage-filter.spec.js) (updated copy +
+a new reload-persistence test).
+
 ## feat(sidebar): filter cycle clicks narrate their state via a three-line toast
 
 Field feedback (2026-08-13): the inline usage-filter button next to the

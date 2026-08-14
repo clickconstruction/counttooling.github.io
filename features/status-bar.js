@@ -23,6 +23,10 @@
 
   let footerTotalsCache = null;
   let footerTotalsDirty = true;
+  // One-line-only tool hints: cache key (composed text @ bar width) + verdict,
+  // so the wrap measurement's forced layout read runs only when either changes.
+  let footerHintKey = null;
+  let footerHintFits = true;
   function invalidateFooterTotals() { footerTotalsDirty = true; }
   function computeFooterTotals() {
     const state = App.state;
@@ -168,7 +172,29 @@
         else if (state.tool === TOOL.NOTE) toolHint = 'Click to add note';
         else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
         else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
-        if (toolHint) mode += ' | ' + toolHint;
+        // The hint only rides when the bar stays on ONE line (field feedback
+        // 2026-08-14): on narrow layouts the status bar flex-wraps, and a long
+        // project name + "Tap start point" shoved the right-side actions onto
+        // a second row. Measure with the hint in and drop it if the bar
+        // wrapped. updateStatus runs per mousemove, so the layout read is
+        // cached by (composed text, bar width) — coords/totals live in their
+        // own spans and never invalidate the key.
+        if (toolHint && modeEl) {
+          const fullMode = mode + ' | ' + toolHint;
+          const barEl = modeEl.parentElement;
+          const actionsEl = document.getElementById('statusBarActions');
+          if (barEl && actionsEl) {
+            const key = fullMode + '@' + barEl.clientWidth;
+            if (key !== footerHintKey) {
+              footerHintKey = key;
+              modeEl.textContent = fullMode;
+              footerHintFits = actionsEl.offsetTop <= modeEl.offsetTop;
+            }
+            if (footerHintFits) mode = fullMode;
+          } else {
+            mode = fullMode;
+          }
+        }
       }
     }
     if (state.hoverLegendResize) mode += ' | Drag to resize';

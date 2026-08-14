@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(footer): tool hints only ride a one-line status bar
+
+Field feedback (2026-08-14): on desktop widths the status bar flex-wraps, and
+a long project name + "Tap start point" shoved the keys/macros/Sign In
+actions onto a second row. The tool hint is now measured in and dropped
+whenever it would wrap the bar — hints only show when the bar stays on one
+line. `updateStatus` runs per mousemove, so the wrap measurement's forced
+layout read is cached by (composed text, bar width); coords/totals live in
+separate spans and never invalidate the key. (Mobile ≤768px is unaffected —
+that regime is nowrap + ellipsis.) Regression:
+[footer-hint.spec.js](footer-hint.spec.js) (borderline case: wraps with the
+hint, fits without — dropping it is what keeps one line).
+
 ## fix(sidebar): filter toasts drop the next-click hint line
 
 Product call (2026-08-14): the "(click again: …)" third line came off every

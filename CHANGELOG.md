@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(takeoff): Child counts — derived quantities that ride a parent
+
+Approved from mockup (2026-08-15). Palette items may carry
+`childCounts: [{ name, qty, per, ftInterval }]` — words-only quantities
+counted automatically with every placement of the parent: `per count`
+(counters), `per run`, and `per N ft` (`ceil(rawFeet/N) × zone × qty` PER RUN
+— each run rounds up its own supports; zoned feet divided back to raw first).
+Never marks on the sheet — derived at tally time by
+[features/child-counts.js](features/child-counts.js)'s `getChildCountTotals`
+(the room-sizer registration recipe; report.js consumes via guarded App
+lookup). Surfaces: Summary sidebar (separate indented rows per parent per
+group), report Summary tables, email bullets, and Copy to PipeTooling —
+indented rows where the same child name across parents merges into ONE row
+under its first parent. Per-ft children on unscaled runs are excluded and
+flagged (T1-05), never guessed. Editor: the "Child counts" section in the
+Counter/Line Type details modal. The rule rides save/load, export/import,
+and the Artboard for free (palettes serialize wholesale). Regression:
+[child-counts.spec.js](child-counts.spec.js) (4 tests).
+
 ## feat(hotkeys): hold Cmd ~1.5s to peek every hotkey badge
 
 New [features/hotkey-peek.js](features/hotkey-peek.js): holding Meta (Cmd;

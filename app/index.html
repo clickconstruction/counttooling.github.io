@@ -1647,6 +1647,19 @@
         <label>On pages</label>
         <div id="counterLineTypeDetailsPages" class="counter-line-type-pages-list"></div>
       </div>
+      <!-- Child counts: rows built by features/child-counts.js on modal open -->
+      <div class="form-group" id="childCountsGroup">
+        <label>Child counts</label>
+        <p class="child-counts-hint">Counted automatically in the Summary and exports. Words only — never on the sheet.</p>
+        <div id="childCountsList"></div>
+        <div class="child-count-add">
+          <input type="number" id="childCountQty" min="1" step="1" value="1" aria-label="Quantity">
+          <input type="text" id="childCountName" placeholder="name…" aria-label="Child count name">
+          <select id="childCountPer" aria-label="Rule"></select>
+          <span id="childCountFtNWrap" style="display:none;"><input type="number" id="childCountFtN" min="1" step="1" value="10" aria-label="Feet interval"> ft</span>
+          <button type="button" id="childCountAdd">+ Add</button>
+        </div>
+      </div>
       <div class="actions">
         <button id="counterLineTypeDetailsDelete" class="danger">Delete</button>
         <button id="counterLineTypeDetailsClose">Close</button>
@@ -2555,6 +2568,7 @@
   <script src="/features/keyboard-map.js"></script>
   <script src="/features/chain.js"></script>
   <script src="/features/hotkey-peek.js"></script>
+  <script src="/features/child-counts.js"></script>
   <script src="/report.js"></script>
 </body>
 </html>

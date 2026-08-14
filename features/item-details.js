@@ -97,6 +97,9 @@
         };
       });
     }
+    // Child counts editor (features/child-counts.js) — defensive cross-feature
+    // call at open time, per the registry boundary rule.
+    App.renderChildCountsSection && App.renderChildCountsSection(kind, item);
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();

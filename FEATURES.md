@@ -29,6 +29,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Counter settings (size, opacity, rings, numbers, outline)** — Marks stay legible at any zoom level and print scale.
 - **Quick Count / Quick Plumbing / Quick Line creators** — Build a properly-named palette item ("2\" PVC Waste") from Size/Type/Material pickers in two clicks instead of typing.
 - **Show only counters / line types used (this page or this project)** — Filter the sidebar palettes to what's actually placed — on the sheet you're counting or anywhere in the bid — with an "N hidden by filter" note so nothing looks lost.
+- **Child counts** — Attach "2 × connector per run" to a conduit type or "2 × ground screw per count" to a box, and the fittings tally themselves into the summary and every export — including per-N-ft rules for straps and supports.
 
 ## Measuring
 

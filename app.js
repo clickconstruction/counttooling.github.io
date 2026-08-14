@@ -6421,6 +6421,8 @@
   App.logCounterMarkerAddedEvent = logCounterMarkerAddedEvent;
   App.logLineAddedEvent = logLineAddedEvent;
   App.collapsePagesSectionForPlacing = collapsePagesSectionForPlacing;
+  // Child counts dep (features/child-counts.js) — publish-only.
+  App.getMultiplyZoneForLine = getMultiplyZoneForLine;
   // Hotkey coverage seam: hotkeys.spec.js asserts every non-bespoke HOTKEYS
   // entry resolves to a runner here or a real element — the executable half of
   // the hotkeys-as-data contract (build:macros gates the documentation half).

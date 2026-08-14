@@ -149,7 +149,7 @@
     else {
       html = rows.map((c) =>
         '<div class="chain-row' + (state.activeCounterType === c.id ? ' selected' : '') + '" data-id="' + esc(c.id) + '">' +
-        '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="18" height="18"><path fill="' + esc(c.color || '#e8c547') + '" d="' + c.icon + '"/></svg></span>' +
+        '<span class="icon-svg chain-glyph" title="' + esc('Edit ' + (c.name || 'Counter') + '…') + '"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="18" height="18"><path fill="' + esc(c.color || '#e8c547') + '" d="' + c.icon + '"/></svg></span>' +
         '<span class="chain-row-name">' + esc(c.name || 'Counter') + '</span>' +
         '</div>').join('');
     }
@@ -167,7 +167,7 @@
     else {
       html = rows.map((lt) =>
         '<div class="chain-row' + (state.activeLineTypeId === lt.id ? ' selected' : '') + '" data-id="' + esc(lt.id) + '">' +
-        '<span class="chain-line-swatch" style="background:' + esc(lt.color || '#4a9eff') + '"></span>' +
+        '<span class="chain-line-swatch chain-glyph" style="background:' + esc(lt.color || '#4a9eff') + '" title="' + esc('Edit ' + (lt.name || 'Line') + '…') + '"></span>' +
         '<span class="chain-row-name">' + esc(lt.name || 'Line') + '</span>' +
         '</div>').join('');
     }
@@ -261,11 +261,20 @@
     // Row clicks (delegated — rows re-render on every sync). Selecting a new
     // counter/line type mid-run keeps the anchor: the next segment simply uses
     // the new selection.
+    // Row clicks select; the leading GLYPH selects AND opens the item's
+    // settings modal (decided 2026-08-15: one click does both) — the same
+    // details modal as the sidebar edit pens, so rename/recolor/child counts
+    // are reachable without leaving Chain. Its edits call updateUI, which
+    // re-syncs the rows, footer, and chip live; tool stays CHAIN throughout.
     document.getElementById('chainCounterList').addEventListener('click', (e) => {
       if (e.target.closest('.chain-new-row')) { document.getElementById('addCounter').click(); return; }
       const row = e.target.closest('.chain-row');
       if (!row) return;
       App.state.activeCounterType = row.dataset.id;
+      if (e.target.closest('.chain-glyph')) {
+        const item = App.state.counters.find((c) => c.id === row.dataset.id);
+        if (item) App.openCounterLineTypeDetailsModal('counter', item);
+      }
       App.updateUI();
     });
     document.getElementById('chainLineTypeList').addEventListener('click', (e) => {
@@ -273,6 +282,10 @@
       const row = e.target.closest('.chain-row');
       if (!row) return;
       App.state.activeLineTypeId = row.dataset.id;
+      if (e.target.closest('.chain-glyph')) {
+        const item = App.state.lineTypes.find((lt) => lt.id === row.dataset.id);
+        if (item) App.openCounterLineTypeDetailsModal('lineType', item);
+      }
       App.updateUI();
     });
   }

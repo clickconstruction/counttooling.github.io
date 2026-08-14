@@ -13,6 +13,17 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(chain): row glyphs open the item's settings
+
+The leading glyph in a Chain palette row (counter icon / line swatch) now
+SELECTS the row for chaining AND opens the item's details modal (decided
+2026-08-15: one click does both) — the same `openCounterLineTypeDetailsModal`
+the sidebar edit pens use, so rename/recolor/icon/child counts are reachable
+without leaving Chain. Hover shows a gold ring + "Edit …" tooltip; edits
+reflect live in the rows, footer, and header chip (updateUI → onChainToolSync);
+tool stays CHAIN throughout. Deleting the selected item falls back to the
+existing clear-active-id path. chain.spec.js grew the glyph test.
+
 ## feat(undo): remaining-count toast + one undo per press
 
 Every successful undo (Ctrl+Z or the bottom-bar button — both funnel through

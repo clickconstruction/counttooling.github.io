@@ -1300,6 +1300,8 @@ body.hotkey-peek .hk-badge { display: block; }
 .chain-row.selected .chain-row-name { color: var(--accent); font-weight: 600; }
 .chain-row .icon-svg { display: inline-flex; flex-shrink: 0; }
 .chain-line-swatch { width: 18px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+.chain-row .chain-glyph { cursor: pointer; border-radius: 4px; padding: 2px; margin: -2px; }
+.chain-row .chain-glyph:hover { box-shadow: 0 0 0 1.5px var(--accent); }
 .chain-list-empty { color: var(--text3); font-size: 0.78rem; padding: 4px 8px; }
 .chain-new-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--accent); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
 .chain-new-row:hover { background: var(--surface2); }

@@ -1,13 +1,13 @@
 // @ts-check
 /**
- * Tests: the header "⋯ More tools" overflow (features/header-more.js).
- * On desktop widths where the priority-reordered tools row would overflow
- * into the invisible-scrollbar scroll, the low-frequency tool group
- * (Polyline, Highlight, Multiply Zone, Scale Zone, Room Sizer, Delete Area,
- * Note, Legend, Grid) tucks behind #headerMoreBtn. The dropdown rows show icon + NAME + hotkey,
- * click through to the real buttons, and the ⋯ takes the shared gold
- * .active whenever the active tool lives in the menu. Wide headers show
- * every tool and no ⋯.
+ * Tests: the header "⋯ More tools" group (features/header-more.js).
+ * At EVERY desktop width the low-frequency tool group (Polyline, Highlight,
+ * Multiply Zone, Scale Zone, Room Sizer, Delete Area, Note, Legend, Grid)
+ * lives behind #headerMoreBtn unconditionally — no overflow measure
+ * (2026-08-15 clutter feedback; previously the tuck was overflow-gated).
+ * The dropdown rows show icon + NAME + hotkey, click through to the real
+ * buttons, and the ⋯ takes the shared gold .active whenever the active tool
+ * lives in the menu. Mobile (≤768px) is untouched.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -18,15 +18,17 @@ async function loadPdf(page) {
 }
 
 test.describe('Header ⋯ More tools overflow', () => {
-  test('wide header: all tools inline, no ⋯; priority order puts counting tools first', async ({ page }) => {
+  test('wide header: group still tucked behind ⋯ (unconditional); priority order holds', async ({ page }) => {
     await page.setViewportSize({ width: 1700, height: 800 });
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
 
-    await expect(page.locator('#headerMoreBtn')).toBeHidden();
-    await expect(page.locator('#multiplyZoneBtn')).toBeVisible();
-    await expect(page.locator('#gridBtn')).toBeVisible();
+    // Even with room to spare, the low-frequency group stays in the menu.
+    await expect(page.locator('#headerMoreBtn')).toBeVisible();
+    await expect(page.locator('#multiplyZoneBtn')).toBeHidden();
+    await expect(page.locator('#gridBtn')).toBeHidden();
+    await expect(page.locator('#counterBtn')).toBeVisible();
     // Priority reorder: Counter/Quick Line now precede Measure (Polyline
     // moved into the overflow group 2026-08-14).
     const order = await page.evaluate(() =>
@@ -35,7 +37,7 @@ test.describe('Header ⋯ More tools overflow', () => {
     expect(order.indexOf('quickLine')).toBeLessThan(order.indexOf('measureBtn'));
   });
 
-  test('narrow desktop: group tucks behind ⋯; menu rows click through; active state tracks', async ({ page }) => {
+  test('menu rows click through; active state tracks; stays engaged when widening', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
@@ -80,10 +82,10 @@ test.describe('Header ⋯ More tools overflow', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('#headerMoreMenu')).toBeHidden();
 
-    // Widening restores the inline group and hides ⋯.
+    // Widening does NOT restore the inline group — the tuck is unconditional.
     await page.setViewportSize({ width: 1700, height: 800 });
-    await expect(page.locator('#headerMoreBtn')).toBeHidden();
-    await expect(page.locator('#multiplyZoneBtn')).toBeVisible();
+    await expect(page.locator('#headerMoreBtn')).toBeVisible();
+    await expect(page.locator('#multiplyZoneBtn')).toBeHidden();
 
     expect(errors).toEqual([]);
   });

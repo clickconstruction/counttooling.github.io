@@ -13,6 +13,17 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(header): the ⋯ More tools tuck is now unconditional on desktop
+
+Follow-up feedback (2026-08-15) on the priority-reordered toolbar: even when
+the window has room for the full row, the low-frequency tool group reads as
+clutter. The ⋯ menu (features/header-more.js) now engages UNCONDITIONALLY at
+desktop widths — the overflow measure is gone; `updateHeaderMore` simply sets
+`body.header-more`, shows the ⋯ (unless every row is viewer-hidden), and runs
+the compact-mode measure against the reduced row. Mobile (≤768px) untouched.
+[header-more.spec.js](header-more.spec.js) + [header-overflow.spec.js](header-overflow.spec.js)
+adapted (wide-width assertions now expect the tuck).
+
 ## feat(tools): Chain tool — one click per fixture, connecting runs ride along
 
 Approved from mockup (2026-08-14). New header tool (`TOOL.CHAIN`, hotkey T,

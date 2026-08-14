@@ -3,12 +3,12 @@
  * Tests: desktop header overflow → layered modes.
  *
  * On desktop (>768px) the overflow pipeline is owned by features/header-more.js
- * and runs in ONE deterministic pass per resize: measure the header clean, tuck
- * the low-frequency tool group behind the ⋯ menu first (body.header-more), then
- * re-measure for the deeper fallback — body.header-collapsed, where the right
- * PDF actions consolidate into the #headerBurger drawer (same drawer as
- * mobile). Mid-narrow widths get ⋯ alone; very narrow desktop gets both. At a
- * wide viewport the header is normal — no ⋯, no burger, right icons visible.
+ * and runs in ONE deterministic pass per resize: body.header-more engages
+ * UNCONDITIONALLY (2026-08-15 clutter feedback — the low-frequency tool group
+ * always lives behind ⋯), then the compact-mode measure runs against the
+ * reduced row — body.header-collapsed, where the right PDF actions
+ * consolidate into the #headerBurger drawer (same drawer as mobile). Normal
+ * desktop widths get ⋯ alone; very narrow desktop gets both.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -82,8 +82,9 @@ test.describe('Desktop header overflow → compact mode', () => {
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
-    await expect(page.locator('body')).not.toHaveClass(/header-more/);
-    // Mid-narrow: ⋯ alone absorbs the overflow; compact stays off.
+    // header-more is unconditional on desktop — on even at wide widths.
+    await expect(page.locator('body')).toHaveClass(/header-more/);
+    // Mid-narrow: ⋯ alone; compact stays off.
     await page.setViewportSize({ width: 900, height: 820 });
     await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
@@ -99,10 +100,10 @@ test.describe('Desktop header overflow → compact mode', () => {
     });
     await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('body')).toHaveClass(/header-collapsed/);
-    // Widening restores fully (path-independent: same verdicts as arriving fresh).
+    // Widening restores compact (path-independent); header-more stays on.
     await page.evaluate(() => { document.getElementById('testHeaderWideContent').remove(); });
     await page.setViewportSize({ width: 1400, height: 900 });
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
-    await expect(page.locator('body')).not.toHaveClass(/header-more/);
+    await expect(page.locator('body')).toHaveClass(/header-more/);
   });
 });

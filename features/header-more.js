@@ -1,25 +1,25 @@
 /*
- * features/header-more.js - the header "⋯ More tools" overflow (desktop).
+ * features/header-more.js - the header "⋯ More tools" group (desktop).
  *
  * Field feedback 2026-08-14: on desktop widths the tools row overflowed into
- * an invisible-scrollbar scroll (`.header-tools-scroll`), so the tail tools
- * looked cut off. Now, when the row would overflow at desktop widths, the
+ * an invisible-scrollbar scroll, so the tail tools looked cut off — the group
+ * first tucked behind ⋯ only when the row would overflow. Follow-up feedback
+ * 2026-08-15: even with room to spare, the full row reads as clutter — so the
  * fixed low-frequency tool group (Polyline, Highlight, Multiply Zone,
  * Scale Zone, Room Sizer, Delete Area, Note, Legend, Grid — the tail of
- * the priority-reordered row)
- * tucks behind #headerMoreBtn's dropdown: each menu row shows the tool's
- * icon, full NAME, and hotkey (the icon-only toolbar teaches nothing; the
- * menu doubles as hotkey education). Rows click through to the REAL buttons
- * (all tool logic, active classes, and gating preserved) and forward
- * right-clicks so the tool-context-menu settings still open. Rows whose
- * source button is inline-hidden (viewer mode) are skipped; if every row is
- * hidden the ⋯ button hides too. The ⋯ button takes .active (the shared
- * gold treatment) whenever the active tool lives in the menu.
+ * the priority-reordered row) now lives behind #headerMoreBtn's dropdown
+ * UNCONDITIONALLY at desktop widths (no overflow measure): each menu row
+ * shows the tool's icon, full NAME, and hotkey (the icon-only toolbar
+ * teaches nothing; the menu doubles as hotkey education). Rows click through
+ * to the REAL buttons (all tool logic, active classes, and gating preserved)
+ * and forward right-clicks so the tool-context-menu settings still open.
+ * Rows whose source button is inline-hidden (viewer mode) are skipped; if
+ * every row is hidden the ⋯ button hides too. The ⋯ button takes .active
+ * (the shared gold treatment) whenever the active tool lives in the menu.
  *
  * Sequencing with body.header-collapsed (features/burger-menu.js): this mode
- * engages FIRST — measured in the expanded state (class removed) so the
- * decision never oscillates, then App.scheduleHeaderCollapseCheck() re-runs
- * the compact-mode measure against the reduced row, keeping compact as the
+ * engages FIRST (unconditional), then App.updateHeaderCollapsed() runs the
+ * compact-mode measure against the reduced row, keeping compact as the
  * deeper fallback for very narrow desktop windows. Mobile (≤768px) is
  * untouched — the media-query consolidation owns that regime.
  *
@@ -112,12 +112,13 @@
     menuOpen = true;
   }
 
-  // Desktop-only overflow check, measured in the EXPANDED state (class off)
-  // so the verdict can't oscillate — the same recipe as updateHeaderCollapsed.
+  // Desktop: the group ALWAYS lives behind the ⋯ — no overflow measure (the
+  // 2026-08-15 clutter feedback made the mode unconditional above 768px).
+  // Still ONE deterministic pipeline: engage header-more, then run the
+  // compact-mode measure synchronously against the reduced row.
   function updateHeaderMore() {
-    const header = document.querySelector('.header');
     const b = moreBtn();
-    if (!header || !b) return;
+    if (!b) return;
     if (window.matchMedia('(max-width: 768px)').matches) {
       document.body.classList.remove('header-more');
       b.style.display = 'none';
@@ -125,24 +126,8 @@
       if (App.updateHeaderCollapsed) App.updateHeaderCollapsed();
       return;
     }
-    // ONE deterministic pipeline (this function owns every resize): measure
-    // the tools row with BOTH overflow modes stripped, decide header-more,
-    // then run the compact-mode measure synchronously against the result —
-    // two independent measurers previously raced, and which mode won
-    // depended on the width the window arrived FROM.
-    document.body.classList.remove('header-more');
-    document.body.classList.remove('header-collapsed');
-    b.style.display = 'none';
-    // Same measurement updateHeaderCollapsed uses: the HEADER is the fixed-
-    // width element that overflows (.header-tools-scroll is content-sized
-    // outside compact mode and never reports overflow).
-    const overflowing = header.scrollWidth > header.clientWidth + 1;
-    if (overflowing) {
-      document.body.classList.add('header-more');
-      b.style.display = OVERFLOW_TOOLS.every((t) => sourceHidden(t.id)) ? 'none' : '';
-    } else {
-      closeMenu();
-    }
+    document.body.classList.add('header-more');
+    b.style.display = OVERFLOW_TOOLS.every((t) => sourceHidden(t.id)) ? 'none' : '';
     syncMoreState();
     if (App.updateHeaderCollapsed) App.updateHeaderCollapsed();
   }

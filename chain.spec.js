@@ -99,25 +99,34 @@ test.describe('Chain tool', () => {
     expect(errors).toEqual([]);
   });
 
-  test('Esc ladder: first ends the run (tool stays), second exits to Move', async ({ page }) => {
+  test('Esc ladder: first ends the run (tool stays), second exits to Move; Enter also ends the run', async ({ page }) => {
     await setupChainProject(page);
     await page.locator('#chainBtn').click();
     await page.locator('#chainCounterList .chain-row[data-id="c-chain-1"]').click();
     await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').click();
     await chainClicks(page, [{ x: 100, y: 100 }, { x: 200, y: 100 }]);
 
+    // Enter ends the run exactly like the first Esc (tool stays active).
+    await page.keyboard.press('Enter');
+    const afterEnter = await page.evaluate(() => ({ chainStart: window.state.chainStart, tool: window.state.tool }));
+    expect(afterEnter.chainStart).toBe(null);
+    expect(afterEnter.tool).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
+
+    // Re-anchor for the Esc ladder assertions.
+    await chainClicks(page, [{ x: 150, y: 150 }]);
     await page.keyboard.press('Escape');
     const afterEsc1 = await page.evaluate(() => ({ chainStart: window.state.chainStart, tool: window.state.tool }));
     expect(afterEsc1.chainStart).toBe(null);
     expect(afterEsc1.tool).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
 
     // A fresh click after Esc starts a NEW chain: counter, no connecting line.
+    // (Counts: 2 chained + 1 post-Enter re-anchor + this one = 4 markers, 1 line.)
     await chainClicks(page, [{ x: 300, y: 300 }]);
     const fresh = await page.evaluate(() => {
       const ann = window.state.pages[0].canvases[0].annotations;
       return { markers: ann.counterMarkers['c-chain-1'].length, lines: ann.quickLines.length };
     });
-    expect(fresh).toEqual({ markers: 3, lines: 1 });
+    expect(fresh).toEqual({ markers: 4, lines: 1 });
 
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');

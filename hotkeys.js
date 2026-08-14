@@ -47,7 +47,7 @@ const HOTKEYS = [
   { bespoke: true, section: 'Tools', action: 'Refresh', kbd: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd>', icon: null },
   { bespoke: true, section: 'Tools', action: 'Toggle sidebar (desktop)', kbd: '<kbd>Space</kbd>', icon: null },
   { bespoke: true, section: 'Tools', action: 'Close modal / Cancel', kbd: '<kbd>Esc</kbd>', icon: null },
-  { bespoke: true, section: 'Tools', action: 'Finish polyline / Exit edit mode', kbd: '<kbd>Enter</kbd>', icon: null },
+  { bespoke: true, section: 'Tools', action: 'Finish polyline / End chain run / Exit edit mode', kbd: '<kbd>Enter</kbd>', icon: null },
 ];
 
 

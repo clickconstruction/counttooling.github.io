@@ -119,6 +119,20 @@
       : [];
   }
 
+  // Child counts (features/child-counts.js registers this on window.App after
+  // this file loads; resolved at call time, optional). Shape:
+  // byGroup[gid][kind][parentId] -> [{ name, qty, per, ftInterval, total,
+  // excludedPxRuns }].
+  function getChildTotals(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getChildCountTotals === 'function')
+      ? window.App.getChildCountTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : { byGroup: {} };
+  }
+
+  function childRuleLabel(r) {
+    return r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per);
+  }
+
   function buildReportHtml(options = {}) {
     if (!window.state || !state.pages || !state.pages.length) return '';
 
@@ -150,6 +164,7 @@
 
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
+    const childTotals = getChildTotals(pageIndices, getAnn);
 
     let totalCounters = 0;
     let totalLineRuns = 0;
@@ -261,11 +276,18 @@
         if (groupTotalRuns > 0) groupParts.push(lengthTotalsLabel(groupTotalFt, groupTotalPx));
         if (groupParts.length > 0) html += '<p class="report-group-totals">' + escapeHtml(groupParts.join(' · ')) + '</p>';
         html += '<table class="report-table"><tr><th>Item</th><th>Total</th><th>Pages</th></tr>';
+        // Child counts: indented, words-only rows under their parent — separate
+        // per parent (the name merge happens only in the PipeTooling export).
+        const childRow = (r, parentPages) =>
+          '<tr><td style="padding-left:36px;color:#535353;">↳ ' + escapeHtml(r.name) + ' <span style="color:#999;">(' + escapeHtml(childRuleLabel(r)) + ')' + (r.excludedPxRuns ? ' *' : '') + '</span></td><td>' + r.total + '</td><td>' + parentPages.join(', ') + '</td></tr>';
+        const groupChildren = childTotals.byGroup?.[gid] || {};
+        let anyChildPxExcluded = false;
         (state.counters || []).forEach(c => {
           const r = counters[c.id];
           if (r) {
             const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
             html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.name) + '</span></td><td>' + r.total + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+            (groupChildren.counter?.[c.id] || []).forEach(cr => { html += childRow(cr, r.pages); if (cr.excludedPxRuns) anyChildPxExcluded = true; });
           }
         });
         (state.lineTypes || []).forEach(lt => {
@@ -282,9 +304,13 @@
               const scale = pickScaleForLineType(r.pages);
               html += row(scale ? 'ft' : 'px', scale ? '0.00' : '0', r.pages);
             }
+            (groupChildren.lineType?.[lt.id] || []).forEach(cr => { html += childRow(cr, r.pages); if (cr.excludedPxRuns) anyChildPxExcluded = true; });
           }
         });
         html += '</table>';
+        if (anyChildPxExcluded) {
+          html += '<p class="report-group-totals">* per-ft child counts exclude runs on pages without a scale.</p>';
+        }
       });
       if (anyPxSummaryRow) {
         html += '<p class="report-group-totals">* px rows are runs on pages without a scale — set the scale to include them in feet.</p>';
@@ -320,6 +346,7 @@
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
+    const childTotals = getChildTotals(pageIndices, getAnn);
     const lines = [];
     // Same Untagged-last, alphabetical order as the HTML report and the email
     // summary (previously unsorted object-key order — the one surface that
@@ -329,9 +356,33 @@
       const prefix = getGroupName(gid) ? '[' + getGroupName(gid) + '] ' : '';
       const counters = counterSummaryByGroup[gid] || {};
       const lineTypes = lineTypeSummaryByGroup[gid] || {};
+      // Child counts export rule: rows are INDENTED (two spaces) under the
+      // parent, and the same child name across parents merges into ONE row
+      // within the group — emitted under the first parent that uses the name.
+      const groupChildren = childTotals.byGroup?.[gid] || {};
+      const merged = new Map();   // name -> { total, ownerKey, pages:Set }
+      const collectChildren = (kind, id, parentPages) => {
+        (groupChildren[kind]?.[id] || []).forEach(cr => {
+          let m = merged.get(cr.name);
+          if (!m) { m = { total: 0, ownerKey: kind + ':' + id, pages: new Set() }; merged.set(cr.name, m); }
+          m.total += cr.total;
+          parentPages.forEach(p => m.pages.add(p));
+        });
+      };
+      (state.counters || []).forEach(c => { const r = counters[c.id]; if (r) collectChildren('counter', c.id, r.pages); });
+      (state.lineTypes || []).forEach(lt => { const r = lineTypes[lt.id]; if (r) collectChildren('lineType', lt.id, r.pages); });
+      const emitChildrenOf = (kind, id) => {
+        merged.forEach((m, name) => {
+          if (m.ownerKey !== kind + ':' + id) return;
+          lines.push(['  ' + prefix + name, m.total, [...m.pages].sort((a, b) => a - b).join(', ')].join('\t'));
+        });
+      };
       (state.counters || []).forEach(c => {
         const r = counters[c.id];
-        if (r) lines.push([prefix + r.name, r.total, r.pages.join(', ')].join('\t'));
+        if (r) {
+          lines.push([prefix + r.name, r.total, r.pages.join(', ')].join('\t'));
+          emitChildrenOf('counter', c.id);
+        }
       });
       (state.lineTypes || []).forEach(lt => {
         const r = lineTypes[lt.id];
@@ -346,6 +397,7 @@
             const scale = pickScaleForLineType(r.pages);
             lines.push([prefix + (scale ? 'ft' : 'px') + ' of ' + r.name, scale ? '0.00' : '0', r.pages.join(', ')].join('\t'));
           }
+          emitChildrenOf('lineType', lt.id);
         }
       });
     });
@@ -389,6 +441,7 @@
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
+    const childTotals = getChildTotals(pageIndices, getAnn);
     const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
     const lines = [];
     if (orderedGroupIds.length > 0) {
@@ -402,11 +455,20 @@
         const hasItems = Object.keys(counters).length > 0 || Object.keys(lineTypes).length > 0;
         if (!hasItems) return;
         lines.push('--- ' + groupName + ' ---');
+        // Child counts: indented bullets under each parent (separate per
+        // parent, like the Summary — the merge is PipeTooling-only).
+        const groupChildren = childTotals.byGroup?.[gid] || {};
+        const childBullets = (kind, id) => {
+          (groupChildren[kind]?.[id] || []).forEach(cr => {
+            lines.push('   ↳ ' + cr.name + ': ' + cr.total + ' (' + childRuleLabel(cr) + (cr.excludedPxRuns ? ' — some runs have no scale' : '') + ')');
+          });
+        };
         (state.counters || []).forEach(c => {
           const r = counters[c.id];
           if (r) {
             const pagesStr = r.pages.length === 1 ? 'page ' + r.pages[0] : 'pages ' + r.pages.join(', ');
             lines.push('• ' + (r.name || 'Counter') + ': ' + r.total + ' (' + pagesStr + ')');
+            childBullets('counter', c.id);
           }
         });
         (state.lineTypes || []).forEach(lt => {
@@ -425,6 +487,7 @@
               const scale = pickScaleForLineType(r.pages);
               lines.push(bullet(scale ? '0.00' : '0', scale ? 'ft' : 'px', r.runsFt + r.runsPx, r.pages, ''));
             }
+            childBullets('lineType', lt.id);
           }
         });
         lines.push('');

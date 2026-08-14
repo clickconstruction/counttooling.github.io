@@ -12,10 +12,30 @@
    * Boundary rule: read shared deps from App.* at call time, never at load.
    */
 
+  // Child counts (features/child-counts.js): appends the indented, words-only
+  // child rows under a parent's summary row. Separate rows per parent per
+  // group by design (the merge happens only in the exports). Defensive: a
+  // missing registration renders nothing.
+  function appendChildRows(el, kind, id, gid, childTotals) {
+    const rows = childTotals?.byGroup?.[gid]?.[kind]?.[id];
+    if (!rows) return;
+    const esc = App.escapeHtml;
+    rows.forEach((r) => {
+      const div = document.createElement('div');
+      div.className = 'summary-child-item';
+      div.innerHTML = '<span class="name">' + esc(r.name) + '</span>'
+        + '<span class="child-rule">' + esc(r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per)) + (r.excludedPxRuns ? ' *' : '') + '</span>'
+        + '<span class="child-total">' + r.total + '</span>';
+      if (r.excludedPxRuns) div.title = r.excludedPxRuns + ' run(s) without a scale are excluded from this per-ft count';
+      el.appendChild(div);
+    });
+  }
+
   function renderSummary() {
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
     const esc = App.escapeHtml;
+    const childTotals = App.getChildCountTotals ? App.getChildCountTotals() : null;
     const groups = App.state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
@@ -75,6 +95,7 @@
           div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
+          appendChildRows(el, 'counter', c.id, gid, childTotals);
         }
       });
       (App.state.lineTypes || []).forEach(lt => {
@@ -87,6 +108,7 @@
           div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="summary-line-meta">' + r.runs + ' lines · ' + App.formatFeetPx(r.lenFt, r.lenPx) + '</span>';
           div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
+          appendChildRows(el, 'lineType', lt.id, gid, childTotals);
         }
       });
     };
@@ -116,6 +138,7 @@
           div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
+          appendChildRows(el, 'counter', c.id, 'null', childTotals);
         }
       });
       App.state.lineTypes.forEach(lt => {
@@ -140,6 +163,7 @@
           div.innerHTML = '<span class="name">' + esc(lt.name) + '</span><span class="summary-line-meta">' + runs + ' lines · ' + App.formatFeetPx(lenFt, lenPx) + '</span>';
           div.onclick = () => App.openSummaryCountDetailModal('lineType', lt.id);
           el.appendChild(div);
+          appendChildRows(el, 'lineType', lt.id, 'null', childTotals);
         }
       });
     }

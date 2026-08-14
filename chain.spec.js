@@ -156,6 +156,14 @@ test.describe('Chain tool', () => {
     expect(await page.locator('#chainCounterList .chain-row').count()).toBe(1);
     await page.locator('#chainCounterSearch').fill('zzz');
     await expect(page.locator('#chainCounterList .chain-list-empty')).toHaveText('No match.');
+
+    // Both columns end with a "+ New" action row that drives the real sidebar
+    // create button — the panel is self-serve on a fresh project.
+    await expect(page.locator('#chainCounterList .chain-new-row')).toHaveText('+ New counter');
+    await page.locator('#chainLineTypeList .chain-new-row').click();
+    await expect(page.locator('#lineTypeModal')).toHaveClass(/visible/);
+    // Tool stays CHAIN under the modal, so creating returns straight to the panel.
+    expect(await page.evaluate(() => window.state.tool)).toBe(await page.evaluate(() => window.App.TOOL.CHAIN));
   });
 
   test('scale gate: unscaled page toasts and does not activate', async ({ page }) => {

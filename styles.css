@@ -1291,6 +1291,9 @@ body.hotkey-peek .hk-badge { display: block; }
 .chain-row .icon-svg { display: inline-flex; flex-shrink: 0; }
 .chain-line-swatch { width: 18px; height: 4px; border-radius: 2px; flex-shrink: 0; }
 .chain-list-empty { color: var(--text3); font-size: 0.78rem; padding: 4px 8px; }
+.chain-new-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--accent); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.chain-new-row:hover { background: var(--surface2); }
+.scale-check-sheet-hint { margin-top: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 0.8rem; }
 .chain-panel-foot { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
 .chain-panel-foot b { color: var(--accent); font-weight: 600; }
 @media (max-width: 768px) { .chain-panel { display: none !important; } }

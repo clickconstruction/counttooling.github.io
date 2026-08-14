@@ -62,8 +62,10 @@
   [ARCHITECTURE.md](ARCHITECTURE.md) "Files" table** — keep it there, don't
   re-duplicate it here. Load-order summary:
   - [app/index.html](app/index.html) — the app shell: HTML structure + every
-    modal (~2.3k lines; no inline JS logic). Its `<script>`/`<link>` refs are
-    root-absolute. Loads, in order:
+    modal (~2.3k lines; no inline JS logic except two deliberate snippets: the
+    head supabase-enabled body-class stamp, and the body-tail boot sanity
+    guard that surfaces the reload banner when app.js itself failed to load).
+    Its `<script>`/`<link>` refs are root-absolute. Loads, in order:
   - **Pure modules**, before app.js — no `state`/DOM dependency; each ends in
     a guarded CommonJS footer (inert in the browser) so its sibling
     `*.test.js` can `require()` it under `node --test`. Where a helper needs

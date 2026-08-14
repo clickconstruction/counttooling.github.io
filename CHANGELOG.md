@@ -13,6 +13,28 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(ux): click-through harvest — boot guard, chain + New, verify polish
+
+Four items from the 2026-08-15 production click-through:
+1. **Boot sanity guard** — an inline body-tail snippet in app/index.html (a
+   deliberate exception to the no-inline rule, like the supabase-enabled
+   stamp): if `window.App.state` is missing 1.5s after window load, app.js
+   never ran (the field case: a transient CDN 503 on a FIRST visit, before
+   the SW exists to backstop) — surface #globalReloadBanner with its own
+   Reload wiring instead of a silently dead shell. [boot-guard.spec.js](boot-guard.spec.js).
+2. **Chain panel "+ New" rows** — both columns end with a `+ New` action row
+   driving the real sidebar create buttons; a fresh project no longer
+   dead-ends at "create one in the sidebar" (tool stays CHAIN through the
+   create, so the panel re-syncs with the new item selected).
+3. **Verify hand-off toast duration** — the mode-teaching toast ("Scale set as
+   if printed on … — click both ends…") now shows 8s; at the default it was
+   gone before it registered.
+4. **Sheet-size reverse lookup on a failed check** — when a corrected preset
+   misreads ≥5%, `sheetMatchingCorrection` (geometry.js, node-tested) finds
+   the sheet whose correction factor matches the measurement
+   (cfNeeded = cfCur × reading/known) and #scaleCheckSheetHint names it —
+   resolving the ARCH B/D aspect-twin ambiguity for the rest of the set.
+
 ## feat(takeoff): Child counts — derived quantities that ride a parent
 
 Approved from mockup (2026-08-15). Palette items may carry

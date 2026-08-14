@@ -79,24 +79,31 @@
     return !query || String(name || '').toLowerCase().includes(query.toLowerCase());
   }
 
+  // Every list ends with a "+ New" action row that drives the REAL sidebar
+  // create button (field review 2026-08-15: a fresh project dead-ended here —
+  // "create one in the sidebar" sent the user away from the tool they just
+  // picked). Creating keeps TOOL.CHAIN active, so the panel re-syncs with the
+  // new item already selected.
+  function newRowHtml(kind) {
+    return '<div class="chain-new-row" data-new="' + kind + '">+ New ' + (kind === 'counter' ? 'counter' : 'line type') + '</div>';
+  }
+
   function renderCounterList() {
     const state = App.state;
     const list = document.getElementById('chainCounterList');
     if (!list) return;
     const rows = state.counters.filter((c) => matches(c.name, counterQuery));
-    if (!state.counters.length) {
-      list.innerHTML = '<div class="chain-list-empty">No counters yet — create one in the sidebar.</div>';
-      return;
+    let html;
+    if (!state.counters.length) html = '<div class="chain-list-empty">No counters yet.</div>';
+    else if (!rows.length) html = '<div class="chain-list-empty">No match.</div>';
+    else {
+      html = rows.map((c) =>
+        '<div class="chain-row' + (state.activeCounterType === c.id ? ' selected' : '') + '" data-id="' + esc(c.id) + '">' +
+        '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="18" height="18"><path fill="' + esc(c.color || '#e8c547') + '" d="' + c.icon + '"/></svg></span>' +
+        '<span class="chain-row-name">' + esc(c.name || 'Counter') + '</span>' +
+        '</div>').join('');
     }
-    if (!rows.length) {
-      list.innerHTML = '<div class="chain-list-empty">No match.</div>';
-      return;
-    }
-    list.innerHTML = rows.map((c) =>
-      '<div class="chain-row' + (state.activeCounterType === c.id ? ' selected' : '') + '" data-id="' + esc(c.id) + '">' +
-      '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="18" height="18"><path fill="' + esc(c.color || '#e8c547') + '" d="' + c.icon + '"/></svg></span>' +
-      '<span class="chain-row-name">' + esc(c.name || 'Counter') + '</span>' +
-      '</div>').join('');
+    list.innerHTML = html + newRowHtml('counter');
   }
 
   function renderLineTypeList() {
@@ -104,19 +111,17 @@
     const list = document.getElementById('chainLineTypeList');
     if (!list) return;
     const rows = state.lineTypes.filter((lt) => matches(lt.name, lineTypeQuery));
-    if (!state.lineTypes.length) {
-      list.innerHTML = '<div class="chain-list-empty">No line types yet — create one in the sidebar.</div>';
-      return;
+    let html;
+    if (!state.lineTypes.length) html = '<div class="chain-list-empty">No line types yet.</div>';
+    else if (!rows.length) html = '<div class="chain-list-empty">No match.</div>';
+    else {
+      html = rows.map((lt) =>
+        '<div class="chain-row' + (state.activeLineTypeId === lt.id ? ' selected' : '') + '" data-id="' + esc(lt.id) + '">' +
+        '<span class="chain-line-swatch" style="background:' + esc(lt.color || '#4a9eff') + '"></span>' +
+        '<span class="chain-row-name">' + esc(lt.name || 'Line') + '</span>' +
+        '</div>').join('');
     }
-    if (!rows.length) {
-      list.innerHTML = '<div class="chain-list-empty">No match.</div>';
-      return;
-    }
-    list.innerHTML = rows.map((lt) =>
-      '<div class="chain-row' + (state.activeLineTypeId === lt.id ? ' selected' : '') + '" data-id="' + esc(lt.id) + '">' +
-      '<span class="chain-line-swatch" style="background:' + esc(lt.color || '#4a9eff') + '"></span>' +
-      '<span class="chain-row-name">' + esc(lt.name || 'Line') + '</span>' +
-      '</div>').join('');
+    list.innerHTML = html + newRowHtml('lineType');
   }
 
   function renderFoot() {
@@ -163,12 +168,14 @@
     // counter/line type mid-run keeps the anchor: the next segment simply uses
     // the new selection.
     document.getElementById('chainCounterList').addEventListener('click', (e) => {
+      if (e.target.closest('.chain-new-row')) { document.getElementById('addCounter').click(); return; }
       const row = e.target.closest('.chain-row');
       if (!row) return;
       App.state.activeCounterType = row.dataset.id;
       App.updateUI();
     });
     document.getElementById('chainLineTypeList').addEventListener('click', (e) => {
+      if (e.target.closest('.chain-new-row')) { document.getElementById('addLineType').click(); return; }
       const row = e.target.closest('.chain-row');
       if (!row) return;
       App.state.activeLineTypeId = row.dataset.id;

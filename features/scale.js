@@ -128,8 +128,10 @@
   function handOffToVerify(corrected) {
     const sheet = App.STANDARD_SHEETS.find(s => s.id === corrected.sheetId);
     startScaleCheck();   // hides the modal, sets scaleCheckMode, arms TOOL.SCALE/POINT_A, updates UI
+    // Long duration: this is the one toast that teaches a MODE (field review
+    // 2026-08-15 — at the default duration it was gone before it registered).
     App.showToast('Scale set as if printed on ' + (sheet ? sheet.label : 'the chosen sheet') +
-      ' — click both ends of a printed dimension to check it (Esc keeps this scale)');
+      ' — click both ends of a printed dimension to check it (Esc keeps this scale)', 8000);
   }
 
   function updateScalePlaceholder() {
@@ -467,6 +469,24 @@
     } else {
       deltaEl.classList.add('off');
       deltaEl.textContent = 'Off by about ' + absPct.toFixed(1) + '% (reads ' + (deltaPct > 0 ? 'long' : 'short') + '). Use measured to fix it.';
+    }
+    // Sheet-size reverse lookup: when a CORRECTED preset misreads badly, the
+    // measurement is ground truth for which sheet the page was really printed
+    // on (resolves analyzeSheet's aspect-twin ambiguity, e.g. a half-size
+    // ARCH D print corrects like ARCH B). Text hint only — "Use measured"
+    // remains the fix for THIS page; the hint helps with the rest of the set.
+    const hintEl = document.getElementById('scaleCheckSheetHint');
+    if (hintEl) {
+      hintEl.style.display = 'none';
+      if (absPct >= 5 && scale.correctionFactor != null) {
+        const a = App.getPageSheetAnalysis(state.currentPage);
+        const cfNeeded = scale.correctionFactor * (reading / known);
+        const match = a ? App.sheetMatchingCorrection(a.widthPt, a.heightPt, cfNeeded) : null;
+        if (match && match.id !== scale.sheetSize) {
+          hintEl.textContent = 'This page measures like a print of ' + match.label + ' — pick that sheet when applying presets to the rest of this set.';
+          hintEl.style.display = '';
+        }
+      }
     }
     document.getElementById('scaleCheckResult').style.display = '';
     document.getElementById('scaleCheckUseMeasured').style.display = '';

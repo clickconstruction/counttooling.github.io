@@ -536,6 +536,7 @@
             <div class="scale-check-tile"><div class="scale-check-tile-label">Current scale reads</div><div class="scale-check-tile-value" id="scaleCheckMeasured">—</div></div>
           </div>
           <div class="scale-check-delta" id="scaleCheckDelta">—</div>
+          <div class="scale-check-sheet-hint" id="scaleCheckSheetHint" style="display:none;"></div>
         </div>
         <div class="actions">
           <button id="scaleCheckCancel">Cancel</button>
@@ -2572,5 +2573,28 @@
   <script src="/features/hotkey-peek.js"></script>
   <script src="/features/child-counts.js"></script>
   <script src="/report.js"></script>
+  <script>
+    // Boot sanity guard (intentional inline exception, like the supabase-enabled
+    // body-class snippet in <head>): if app.js failed to load or execute — e.g.
+    // a transient CDN 503 on a FIRST visit, before the service worker exists to
+    // backstop the shell — the static markup renders but nothing works, with no
+    // error shown. app.js populates window.App.state during its IIFE, so its
+    // absence after window load means the boot died: surface the reload banner
+    // (wiring it here too, since the normal app.js wiring is also dead).
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (window.App && window.App.state) return;
+        var banner = document.getElementById('globalReloadBanner');
+        if (!banner) return;
+        var text = document.getElementById('globalReloadBannerText');
+        if (text) text.textContent = "Something didn't load. Reload to try again.";
+        var reload = document.getElementById('globalReloadBannerReload');
+        if (reload) reload.onclick = function () { location.reload(); };
+        var dismiss = document.getElementById('globalReloadBannerDismiss');
+        if (dismiss) dismiss.onclick = function () { banner.style.display = 'none'; };
+        banner.style.display = '';
+      }, 1500);
+    });
+  </script>
 </body>
 </html>

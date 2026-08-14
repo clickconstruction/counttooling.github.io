@@ -24,10 +24,23 @@ test.describe('Desktop header overflow → compact mode', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
 
-    await page.setViewportSize({ width: 780, height: 820 }); // desktop (>768px), narrow enough that even the ⋯-reduced row overflows
+    await page.setViewportSize({ width: 780, height: 820 }); // desktop (>768px), narrow
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
+
+    // Since the ⋯ overflow (features/header-more.js) tucks the 8-tool group,
+    // the reduced signed-out row FITS at every desktop width — compact mode
+    // is the fallback for states whose extra header content (checkout
+    // banner, signed-in actions) widens the row. Simulate that content so
+    // the burger machinery is exercised end-to-end.
+    await page.evaluate(() => {
+      const spacer = document.createElement('span');
+      spacer.id = 'testHeaderWideContent';
+      spacer.style.cssText = 'display:inline-block;width:640px;flex-shrink:0;';
+      document.querySelector('.header-tools-tight').appendChild(spacer);
+      window.App.scheduleHeaderMoreCheck();
+    });
 
     // Both layers engage: ⋯ tucks the tool group AND the compact mode
     // consolidates the right actions into the burger.
@@ -74,11 +87,20 @@ test.describe('Desktop header overflow → compact mode', () => {
     await page.setViewportSize({ width: 900, height: 820 });
     await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
-    // Very narrow desktop: both layers.
+    // Very narrow desktop with widened header content (checkout-banner-class
+    // states): both layers.
     await page.setViewportSize({ width: 780, height: 820 });
+    await page.evaluate(() => {
+      const spacer = document.createElement('span');
+      spacer.id = 'testHeaderWideContent';
+      spacer.style.cssText = 'display:inline-block;width:640px;flex-shrink:0;';
+      document.querySelector('.header-tools-tight').appendChild(spacer);
+      window.App.scheduleHeaderMoreCheck();
+    });
     await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('body')).toHaveClass(/header-collapsed/);
     // Widening restores fully (path-independent: same verdicts as arriving fresh).
+    await page.evaluate(() => { document.getElementById('testHeaderWideContent').remove(); });
     await page.setViewportSize({ width: 1400, height: 900 });
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
     await expect(page.locator('body')).not.toHaveClass(/header-more/);

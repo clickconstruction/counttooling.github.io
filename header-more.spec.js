@@ -3,8 +3,8 @@
  * Tests: the header "⋯ More tools" overflow (features/header-more.js).
  * On desktop widths where the priority-reordered tools row would overflow
  * into the invisible-scrollbar scroll, the low-frequency tool group
- * (Multiply Zone, Scale Zone, Room Sizer, Delete Area, Note, Legend, Grid)
- * tucks behind #headerMoreBtn. The dropdown rows show icon + NAME + hotkey,
+ * (Polyline, Highlight, Multiply Zone, Scale Zone, Room Sizer, Delete Area,
+ * Note, Legend, Grid) tucks behind #headerMoreBtn. The dropdown rows show icon + NAME + hotkey,
  * click through to the real buttons, and the ⋯ takes the shared gold
  * .active whenever the active tool lives in the menu. Wide headers show
  * every tool and no ⋯.
@@ -27,11 +27,12 @@ test.describe('Header ⋯ More tools overflow', () => {
     await expect(page.locator('#headerMoreBtn')).toBeHidden();
     await expect(page.locator('#multiplyZoneBtn')).toBeVisible();
     await expect(page.locator('#gridBtn')).toBeVisible();
-    // Priority reorder: Counter/Quick Line/Polyline now precede Measure.
+    // Priority reorder: Counter/Quick Line now precede Measure (Polyline
+    // moved into the overflow group 2026-08-14).
     const order = await page.evaluate(() =>
       [...document.querySelectorAll('.header-tools-tight > button')].map((b) => b.id));
     expect(order.indexOf('counterBtn')).toBeLessThan(order.indexOf('measureBtn'));
-    expect(order.indexOf('polylineBtn')).toBeLessThan(order.indexOf('measureBtn'));
+    expect(order.indexOf('quickLine')).toBeLessThan(order.indexOf('measureBtn'));
   });
 
   test('narrow desktop: group tucks behind ⋯; menu rows click through; active state tracks', async ({ page }) => {
@@ -46,14 +47,18 @@ test.describe('Header ⋯ More tools overflow', () => {
 
     // More mode engaged: ⋯ visible, the group hidden, everyday tools inline.
     await expect(page.locator('#headerMoreBtn')).toBeVisible();
+    await expect(page.locator('#polylineBtn')).toBeHidden();
+    await expect(page.locator('#highlightBtn')).toBeHidden();
     await expect(page.locator('#multiplyZoneBtn')).toBeHidden();
     await expect(page.locator('#counterBtn')).toBeVisible();
     await expect(page.locator('#quickLine')).toBeVisible();
 
-    // Menu: 7 named rows with hotkey badges where defined.
+    // Menu: 9 named rows with hotkey badges where defined.
     await page.locator('#headerMoreBtn').click();
     const rows = page.locator('#headerMoreMenu .hm-row');
-    await expect(rows).toHaveCount(7);
+    await expect(rows).toHaveCount(9);
+    await expect(rows.first()).toContainText('Polyline');
+    await expect(rows.first().locator('.hm-key')).toHaveText('P');
     await expect(page.locator('#headerMoreMenu')).toContainText('Multiply Zone');
     await expect(page.locator('#headerMoreMenu')).toContainText('Room Sizer');
     await expect(rows.filter({ hasText: 'Note' }).locator('.hm-key')).toHaveText('N');

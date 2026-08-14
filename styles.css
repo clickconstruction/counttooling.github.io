@@ -188,7 +188,7 @@
        #headerMoreBtn dropdown instead of scrolling out of sight. Engages BEFORE
        body.header-collapsed — with the group tucked away the row usually fits,
        so the compact mode stays the deeper fallback. */
-    body.header-more #multiplyZoneBtn, body.header-more #scaleZoneBtn, body.header-more #roomBtn,
+    body.header-more #polylineBtn, body.header-more #highlightBtn, body.header-more #multiplyZoneBtn, body.header-more #scaleZoneBtn, body.header-more #roomBtn,
     body.header-more #deleteZoneBtn, body.header-more #noteBtn, body.header-more #legendBtn,
     body.header-more #gridBtn, body.header-more .header-tools-tight .divider { display: none !important; }
     .header-more-menu { position: fixed; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 210px; }

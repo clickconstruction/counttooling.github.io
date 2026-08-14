@@ -4,8 +4,9 @@
  * Field feedback 2026-08-14: on desktop widths the tools row overflowed into
  * an invisible-scrollbar scroll (`.header-tools-scroll`), so the tail tools
  * looked cut off. Now, when the row would overflow at desktop widths, the
- * fixed low-frequency tool group (Multiply Zone, Scale Zone, Room Sizer,
- * Delete Area, Note, Legend, Grid — the tail of the priority-reordered row)
+ * fixed low-frequency tool group (Polyline, Highlight, Multiply Zone,
+ * Scale Zone, Room Sizer, Delete Area, Note, Legend, Grid — the tail of
+ * the priority-reordered row)
  * tucks behind #headerMoreBtn's dropdown: each menu row shows the tool's
  * icon, full NAME, and hotkey (the icon-only toolbar teaches nothing; the
  * menu doubles as hotkey education). Rows click through to the REAL buttons
@@ -36,6 +37,8 @@
   // .active means "overlay on" — shown on their rows, excluded from the
   // indicator (the legend defaults on; the ⋯ would otherwise always glow).
   const OVERFLOW_TOOLS = [
+    { id: 'polylineBtn', name: 'Polyline', key: 'P', tool: true },
+    { id: 'highlightBtn', name: 'Highlight', key: 'H', tool: true },
     { id: 'multiplyZoneBtn', name: 'Multiply Zone', key: 'X', tool: true },
     { id: 'scaleZoneBtn', name: 'Scale Zone', key: '', tool: true },
     { id: 'roomBtn', name: 'Room Sizer', key: 'V', tool: true },

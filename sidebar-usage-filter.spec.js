@@ -125,29 +125,28 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
 
     await btn.click();
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
-    await expect(toast).toContainText('Filter:');
-    await expect(toast).toContainText('counters used on this sheet');
+    await expect(toast).toHaveText('Filter: counters used on this sheet');
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     await btn.click();
-    await expect(toast).toContainText('counters used anywhere in this project');
+    await expect(toast).toHaveText('Filter: counters used anywhere in this project');
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     await btn.click();
-    await expect(toast).toContainText('off — showing all counters');
+    await expect(toast).toHaveText('Filter: counters off — showing all');
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     // The line-type button narrates its own kind.
     await page.locator('#lineTypeShowOnlyOnPageInlineBtn').click();
-    await expect(toast).toContainText('line types used on this sheet');
+    await expect(toast).toHaveText('Filter: line types used on this sheet');
 
     // The two-state Lines toggle narrates too (both directions).
     await page.evaluate(() => { document.getElementById('linesSectionTitle').click(); });
     await page.locator('#linesShowOnlyOnPageBtn').click();
-    await expect(toast).toContainText('lines on this sheet only');
+    await expect(toast).toHaveText('Filter: lines on this sheet only');
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
     await page.locator('#linesShowOnlyOnPageBtn').click();
-    await expect(toast).toContainText('off — showing lines from every sheet');
+    await expect(toast).toHaveText('Filter: lines off — showing every sheet');
 
     expect(errors).toEqual([]);
   });

@@ -3472,19 +3472,19 @@
   // (field feedback 2026-08-13). #airboardToastText is pre-line, so the \n
   // layout needs no markup; only the hint line is a styled span.
   const FILTER_TOAST_LINES = {
-    page: { mid: (kind) => kind + ' used on this sheet' },
-    project: { mid: (kind) => kind + ' used anywhere in this project' },
-    off: { mid: (kind) => 'off — showing all ' + kind },
+    page: 'used on this sheet',
+    project: 'used anywhere in this project',
+    off: 'off — showing all',
   };
-  // The shared two-line filter toast core: "Filter:" / the landed state.
-  function showFilterToast(mid) {
+  // The shared two-line filter toast core: "Filter: <kind>" / the landed state.
+  function showFilterToast(kind, stateLine) {
     showToast('', 3200);
     const el = document.getElementById('airboardToastText');
-    if (el) el.textContent = 'Filter:\n' + mid;
+    if (el) el.textContent = 'Filter: ' + kind + '\n' + stateLine;
   }
   function showFilterScopeToast(kind, scope) {
     const t = FILTER_TOAST_LINES[scope];
-    if (t) showFilterToast(t.mid(kind));
+    if (t) showFilterToast(kind, t);
   }
   const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
   if (counterShowOnlyOnPageInlineBtn) {
@@ -3514,8 +3514,8 @@
       linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
       // Narrate the two-state Lines toggle like the scope cycles do — this
       // button's meaning was otherwise only in its title attr.
-      if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines on this sheet only');
-      else showFilterToast('off — showing lines from every sheet');
+      if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines', 'on this sheet only');
+      else showFilterToast('lines', 'off — showing every sheet');
       App.renderLinesList();
       updateUI();
     };

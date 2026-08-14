@@ -415,6 +415,24 @@
     };
   }
 
+  // Verify-scale reverse lookup: which standard sheet's correction factor for this page
+  // matches `cfNeeded` (the factor that would make the applied preset agree with the user's
+  // measured dimension — cfNeeded = currentCorrectionFactor × reading / known)? Resolves the
+  // aspect-twin ambiguity analyzeSheet can't (ARCH B vs ARCH D are both 3:2 — a half-size
+  // print of D corrects like B, and the measurement is the ground truth that says which).
+  // Returns the closest sheet within `tolerance` (default 3%), or null.
+  function sheetMatchingCorrection(widthPt, heightPt, cfNeeded, tolerance) {
+    if (!(cfNeeded > 0)) return null;
+    const tol = tolerance != null ? tolerance : 0.03;
+    let best = null;
+    for (const s of STANDARD_SHEETS) {
+      const f = sheetCorrectionFactor(widthPt, heightPt, s);
+      const err = Math.abs(f - cfNeeded) / cfNeeded;
+      if (err <= tol && (!best || err < best.err)) best = { sheet: s, err };
+    }
+    return best ? best.sheet : null;
+  }
+
   // Verify-scale check: how does a scale read a line the user knows the true length of?
   // Given the picked line's PDF-point distance and the current page `scale`, compute what that
   // scale says the line measures (converted to the unit the user typed the known length in) and
@@ -439,6 +457,6 @@
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
       clampEffectiveDpr, convertUnitValue, roomBoxDimsFeet, bakeFramesMatch,
-      STANDARD_SHEETS, sheetCorrectionFactor, analyzeSheet, scaleCheckDelta
+      STANDARD_SHEETS, sheetCorrectionFactor, analyzeSheet, scaleCheckDelta, sheetMatchingCorrection
     };
   }

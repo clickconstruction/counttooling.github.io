@@ -6528,6 +6528,7 @@
   App.getPageSheetAnalysis = getPageSheetAnalysis;
   App.STANDARD_SHEETS = STANDARD_SHEETS;
   App.sheetCorrectionFactor = sheetCorrectionFactor;
+  App.sheetMatchingCorrection = sheetMatchingCorrection;
   App.scaleCheckDelta = scaleCheckDelta;
   App.convertUnitValue = convertUnitValue;
   App.formatFeetInchesFromVal = formatFeetInchesFromVal;

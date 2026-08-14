@@ -463,3 +463,25 @@ test('roomBoxDimsFeet: no scale (or no box) returns null, never a wrong number',
   assert.strictEqual(g.roomBoxDimsFeet({ x1: 0, y1: 0, x2: 10, y2: 10, heightFt: 8 }, { unit: 'ft' }), null);
   assert.strictEqual(g.roomBoxDimsFeet(null, { pixelsPerUnit: 10, unit: 'ft' }), null);
 });
+
+test('sheetMatchingCorrection: the aspect-twin case — a half-size ARCH D print, preset applied as ARCH B', () => {
+  // Page: ARCH D at 0.5x, which IS ARCH B's dimensions — analyzeSheet calls it
+  // standard ARCH B and presets apply uncorrected (cfCur 1). At 1/4"=1' the
+  // true scale is 9 pt/ft, so a known 10 ft wall (90 pt) reads 90/18 = 5 ft.
+  // cfNeeded = cfCur * reading/known = 1 * 5/10 = 0.5 -> ARCH D's factor for
+  // this page, resolving the ambiguity the aspect ratio alone cannot.
+  const w = 36 * 72 * 0.5, h = 24 * 72 * 0.5;
+  const match = g.sheetMatchingCorrection(w, h, 1 * (5 / 10));
+  assert.strictEqual(match.id, 'ARCH_D');
+});
+
+test('sheetMatchingCorrection: within-tolerance match and no-match', () => {
+  const w = 36 * 72 * 0.6, h = 24 * 72 * 0.6;   // 0.6x ARCH D
+  const archD = g.sheetMatchingCorrection(w, h, 0.6);           // exact
+  assert.strictEqual(archD.id, 'ARCH_D');
+  const near = g.sheetMatchingCorrection(w, h, 0.6 * 1.02);     // 2% off, tol 3%
+  assert.strictEqual(near.id, 'ARCH_D');
+  const none = g.sheetMatchingCorrection(w, h, 0.6 * 1.2);      // 20% off nothing
+  assert.strictEqual(none, null);
+  assert.strictEqual(g.sheetMatchingCorrection(w, h, 0), null); // degenerate
+});

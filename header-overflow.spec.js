@@ -1,12 +1,14 @@
 // @ts-check
 /**
- * Tests: desktop header overflow → compact mode.
+ * Tests: desktop header overflow → layered modes.
  *
- * On desktop (>768px), when the header row is wider than the viewport, JS adds
- * body.header-collapsed (measured in the expanded state so it can't oscillate):
- * the left tools scroll horizontally and the right-side PDF actions collapse into
- * the same #headerBurger drawer used on mobile, so none of them get cut off. At a
- * wide viewport the header is normal — no burger, right icons visible.
+ * On desktop (>768px) the overflow pipeline is owned by features/header-more.js
+ * and runs in ONE deterministic pass per resize: measure the header clean, tuck
+ * the low-frequency tool group behind the ⋯ menu first (body.header-more), then
+ * re-measure for the deeper fallback — body.header-collapsed, where the right
+ * PDF actions consolidate into the #headerBurger drawer (same drawer as
+ * mobile). Mid-narrow widths get ⋯ alone; very narrow desktop gets both. At a
+ * wide viewport the header is normal — no ⋯, no burger, right icons visible.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -22,12 +24,14 @@ test.describe('Desktop header overflow → compact mode', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
 
-    await page.setViewportSize({ width: 820, height: 820 }); // desktop (>768px) but narrow
+    await page.setViewportSize({ width: 780, height: 820 }); // desktop (>768px), narrow enough that even the ⋯-reduced row overflows
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
 
-    // Header collapses; burger shows; right PDF icons are hidden into it.
+    // Both layers engage: ⋯ tucks the tool group AND the compact mode
+    // consolidates the right actions into the burger.
+    await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('body')).toHaveClass(/header-collapsed/);
     await expect(page.locator('#headerBurger')).toBeVisible();
     for (const id of ['#hideMarksBtn', '#exportDropdown', '#downloadCurrentPageDropdown']) {
@@ -36,7 +40,7 @@ test.describe('Desktop header overflow → compact mode', () => {
     // The burger sits within the viewport (reachable, not cut off off the right edge).
     const box = await page.locator('#headerBurger').boundingBox();
     expect(box).not.toBeNull();
-    expect(box.x + box.width).toBeLessThanOrEqual(820);
+    expect(box.x + box.width).toBeLessThanOrEqual(780);
 
     // Opening it shows the drawer with the consolidated actions.
     await page.locator('#headerBurger').click();
@@ -59,15 +63,24 @@ test.describe('Desktop header overflow → compact mode', () => {
     await expect(page.locator('#exportDropdown')).toBeVisible();
   });
 
-  test('resizing wide → narrow collapses, narrow → wide restores', async ({ page }) => {
+  test('resizing steps through the layers deterministically and restores', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
-    await page.setViewportSize({ width: 820, height: 820 });
+    await expect(page.locator('body')).not.toHaveClass(/header-more/);
+    // Mid-narrow: ⋯ alone absorbs the overflow; compact stays off.
+    await page.setViewportSize({ width: 900, height: 820 });
+    await expect(page.locator('body')).toHaveClass(/header-more/);
+    await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
+    // Very narrow desktop: both layers.
+    await page.setViewportSize({ width: 780, height: 820 });
+    await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('body')).toHaveClass(/header-collapsed/);
+    // Widening restores fully (path-independent: same verdicts as arriving fresh).
     await page.setViewportSize({ width: 1400, height: 900 });
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
+    await expect(page.locator('body')).not.toHaveClass(/header-more/);
   });
 });

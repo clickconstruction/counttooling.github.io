@@ -183,6 +183,22 @@
     .right-menu-icon { width: 22px; height: 22px; flex-shrink: 0; }
     .right-menu-label { flex: 1; min-width: 0; white-space: pre-line; }
     .right-menu-section { padding: 10px 16px 4px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); }
+    /* Header ⋯ overflow (desktop, features/header-more.js): when the tools row
+       would need to scroll, the low-frequency tool group tucks behind the
+       #headerMoreBtn dropdown instead of scrolling out of sight. Engages BEFORE
+       body.header-collapsed — with the group tucked away the row usually fits,
+       so the compact mode stays the deeper fallback. */
+    body.header-more #multiplyZoneBtn, body.header-more #scaleZoneBtn, body.header-more #roomBtn,
+    body.header-more #deleteZoneBtn, body.header-more #noteBtn, body.header-more #legendBtn,
+    body.header-more #gridBtn, body.header-more .header-tools-tight .divider { display: none !important; }
+    .header-more-menu { position: fixed; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 210px; }
+    .header-more-menu .hm-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--text); }
+    .header-more-menu .hm-row:hover { background: var(--surface2); }
+    .header-more-menu .hm-row.active { color: var(--accent); }
+    .header-more-menu .hm-icon { width: 20px; height: 20px; display: inline-flex; color: var(--text2); flex-shrink: 0; }
+    .header-more-menu .hm-icon svg { width: 20px; height: 20px; }
+    .header-more-menu .hm-name { flex: 1; white-space: nowrap; }
+    .header-more-menu .hm-key { background: var(--surface3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; color: var(--text2); font-family: 'DM Mono', monospace; }
     /* Desktop overflow → compact header. JS adds body.header-collapsed when the
        header row is too wide for the viewport (desktop only; mobile uses the media
        query below). The left tools scroll horizontally and the right PDF actions

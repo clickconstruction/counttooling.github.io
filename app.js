@@ -1969,6 +1969,10 @@
   function updateUI() {
     const t0 = performance.now();
     updateUIInner();
+    // Defensive core->feature callback: the header "⋯ More tools" overflow
+    // (features/header-more.js) re-syncs its button/menu active state after
+    // every UI reconcile.
+    App.onHeaderMoreSync && App.onHeaderMoreSync();
     notePerfSample('updateUIMs', performance.now() - t0);
   }
   // N3: rapid mark placement must never rebuild the sidebar per click — the

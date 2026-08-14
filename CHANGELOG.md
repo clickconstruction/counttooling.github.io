@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(header): priority-reordered toolbar + "⋯ More tools" overflow
+
+Field feedback (2026-08-14, approved from mockup): on desktop widths the
+tools row overflowed into an invisible-scrollbar scroll, so tail tools
+looked cut off — and the tail held Counter / Quick Line / Polyline, the
+highest-frequency tools. Two changes ([features/header-more.js](features/header-more.js)):
+(1) the toolbar is **priority-reordered** — Set Scale, Move, Counter, Quick
+Line, Polyline, Snap-45, Measure, Highlight first, the low-frequency group
+last; (2) when the header would overflow (>768px), that group (Multiply
+Zone, Scale Zone, Room Sizer, Delete Area, Note, Legend, Grid) tucks behind
+`#headerMoreBtn`'s dropdown — rows show icon + NAME + hotkey, click through
+to the real buttons, and forward right-clicks so tool settings still open.
+The ⋯ takes the gold `.active` when the current tool lives in the menu
+(Legend/Grid are overlay toggles: row-state only). The feature **owns the
+one-pass resize pipeline** — measure clean → decide `header-more` → run the
+compact-mode measure against the reduced row — because the two independent
+measurers otherwise raced (the winning mode depended on the width the
+window arrived from); `body.header-collapsed` stays the deeper fallback.
+Regression: [header-more.spec.js](header-more.spec.js) + the adapted
+[header-overflow.spec.js](header-overflow.spec.js).
+
 ## fix(footer): tool hints only ride a one-line status bar
 
 Field feedback (2026-08-14): on desktop widths the status bar flex-wraps, and

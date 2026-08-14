@@ -158,7 +158,14 @@
     else closeBurgerMenu();
   }
   let headerCollapseRaf = 0;
+  // Since features/header-more.js (2026-08-14), the ⋯ overflow owns the resize
+  // pipeline: measure clean -> decide header-more -> THEN this compact-mode
+  // measure runs against the reduced row (two independent measurers raced and
+  // the winning mode depended on the resize path). The schedule delegates to
+  // the orchestrator when present; updateHeaderCollapsed stays the compact
+  // decision and is exported for the orchestrator to call synchronously.
   function scheduleHeaderCollapseCheck() {
+    if (App.scheduleHeaderMoreCheck) { App.scheduleHeaderMoreCheck(); return; }
     if (headerCollapseRaf) return;
     headerCollapseRaf = requestAnimationFrame(() => { headerCollapseRaf = 0; updateHeaderCollapsed(); });
   }
@@ -166,5 +173,6 @@
   scheduleHeaderCollapseCheck();
 
   App.updateBurgerMenu = updateBurgerMenu;
+  App.updateHeaderCollapsed = updateHeaderCollapsed;
   App.scheduleHeaderCollapseCheck = scheduleHeaderCollapseCheck;
 })();

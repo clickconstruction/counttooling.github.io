@@ -28,6 +28,20 @@ async function menuLabels(page) {
     [...document.querySelectorAll('#toolContextMenu button')].map((b) => b.textContent));
 }
 
+// The ⋯ More tools tuck is UNCONDITIONAL on desktop (2026-08-15), so the
+// low-frequency tool buttons are never inline — the real user path to their
+// settings is right-clicking the ⋯ menu row, which forwards the contextmenu
+// to the source button. Visible buttons still take the direct right-click.
+async function rightClickTool(page, btnId, moreRowText) {
+  const btn = page.locator('#' + btnId);
+  if (await btn.isVisible()) {
+    await btn.click({ button: 'right' });
+    return;
+  }
+  await page.locator('#headerMoreBtn').click();
+  await page.locator('#headerMoreMenu .hm-row', { hasText: moreRowText }).click({ button: 'right' });
+}
+
 test.describe('Tool context menu (features/tool-context-menu.js)', () => {
   test('map coverage: wired ids, action labels, and the toast list', async ({ page }) => {
     const errors = [];
@@ -101,12 +115,12 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
   test('single-action menus route to their settings modals', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
-    for (const [btn, modal] of [
-      ['quickLine', 'lineTypeSettingsModal'],
-      ['multiplyZoneBtn', 'multiplyZoneSettingsModal'],
-      ['legendBtn', 'legendSettingsModal'],
+    for (const [btn, rowText, modal] of [
+      ['quickLine', null, 'lineTypeSettingsModal'],
+      ['multiplyZoneBtn', 'Multiply Zone', 'multiplyZoneSettingsModal'],
+      ['legendBtn', 'Legend', 'legendSettingsModal'],
     ]) {
-      await page.locator('#' + btn).click({ button: 'right' });
+      await rightClickTool(page, btn, rowText);
       await expect(page.locator('#toolContextMenu')).toBeVisible();
       await page.locator('#toolContextMenu button').first().click();
       await expect(page.locator('#' + modal)).toHaveClass(/visible/, { timeout: 5000 });
@@ -120,7 +134,7 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
     await bootWithPdf(page, errors);
     await page.evaluate(() => { window.App.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' }; });
     const overlayBefore = await page.evaluate(() => !!window.App.state.showGridOverlay);
-    await page.locator('#gridBtn').click({ button: 'right' });
+    await rightClickTool(page, 'gridBtn', 'Grid');
     await page.locator('#toolContextMenu button', { hasText: 'Grid Settings' }).click();
     await expect(page.locator('#gridSettingsModal')).toHaveClass(/visible/);
     expect(await page.evaluate(() => !!window.App.state.showGridOverlay)).toBe(overlayBefore);
@@ -151,7 +165,7 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
   test('tools with no settings toast instead of opening a menu', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
-    await page.locator('#highlightBtn').click({ button: 'right' });
+    await rightClickTool(page, 'highlightBtn', 'Highlight');
     await expect(page.locator('#toolContextMenu')).toBeHidden();
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     expect(await page.locator('#airboardToastText').textContent()).toContain('No settings');

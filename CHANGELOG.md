@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(sidebar): right-aligned chevrons, funnel filter icon, Lines-toggle toast
+
+Three sidebar refinements (field feedback 2026-08-14): (1) every section's
+collapse chevron sits flush right — flexed titles push in-title icons to the
+row end, and the Counters / Line Types / Groups chevrons moved after their
+"+ Add" buttons so the chevron column aligns across all seven sections (the
+Groups chevron, whose section toggles via the title, forwards its click);
+(2) the Counters / Line Types usage-filter buttons swap the arrows-inward
+glyph for a **funnel** icon (sheet-mode corner dot and project-mode
+stacked-sheets glyph unchanged); (3) the two-state Lines "show only on this
+sheet" toggle now narrates via the shared three-line toast
+(`showFilterToast`, extracted as the core under `showFilterScopeToast`).
+Regression: the chevron + Lines-toast tests in
+[sidebar-usage-filter.spec.js](sidebar-usage-filter.spec.js).
+
 ## feat(sidebar): usage-filter polish harvested from the unlanded bb19fa attempt
 
 A loose-branch audit (2026-08-13) found claude/app-review-docs-bb19fa — a

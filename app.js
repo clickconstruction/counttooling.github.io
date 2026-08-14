@@ -3476,17 +3476,20 @@
     project: { mid: (kind) => kind + ' used anywhere in this project', hint: '(click again: show all)' },
     off: { mid: (kind) => 'off — showing all ' + kind, hint: '(click again: this sheet)' },
   };
-  function showFilterScopeToast(kind, scope) {
-    const t = FILTER_TOAST_LINES[scope];
-    if (!t) return;
+  // The shared three-line filter toast core: "Filter:" / state / dimmed hint.
+  function showFilterToast(mid, hintText) {
     showToast('', 3200);
     const el = document.getElementById('airboardToastText');
     if (!el) return;
-    el.textContent = 'Filter:\n' + t.mid(kind) + '\n';
+    el.textContent = 'Filter:\n' + mid + '\n';
     const hint = document.createElement('span');
     hint.className = 'toast-hint-line';
-    hint.textContent = t.hint;
+    hint.textContent = hintText;
     el.appendChild(hint);
+  }
+  function showFilterScopeToast(kind, scope) {
+    const t = FILTER_TOAST_LINES[scope];
+    if (t) showFilterToast(t.mid(kind), t.hint);
   }
   const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
   if (counterShowOnlyOnPageInlineBtn) {
@@ -3514,6 +3517,10 @@
     linesShowOnlyOnPageBtn.onclick = () => {
       state.lineTypeSettings.showOnlyLinesOnCurrentPage = !state.lineTypeSettings.showOnlyLinesOnCurrentPage;
       linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
+      // Narrate the two-state Lines toggle like the scope cycles do — this
+      // button's meaning was otherwise only in its title attr.
+      if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines on this sheet only', '(click again: all sheets)');
+      else showFilterToast('off — showing lines from every sheet', '(click again: this sheet)');
       App.renderLinesList();
       updateUI();
     };
@@ -3540,6 +3547,9 @@
     document.getElementById('groupsSection').classList.toggle('collapsed', state.groupsListCollapsed);
     document.getElementById('groupsCollapseIcon').textContent = state.groupsListCollapsed ? '▶' : '▼';
   };
+  // The Groups chevron moved out of the h3 (flush right, after "+ Add"), so it
+  // forwards to the title toggle it used to ride along with.
+  document.getElementById('groupsCollapseIcon').onclick = () => document.getElementById('groupsSectionTitle').click();
   // The #summarySectionTitle opener (Summary Legend settings) moved to
   // features/legend-settings.js; the #summaryCollapseIcon toggle above stays.
   // The #countersSectionTitle opener + the counterSettings* value handlers +

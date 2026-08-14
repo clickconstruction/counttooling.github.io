@@ -141,6 +141,42 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await page.locator('#lineTypeShowOnlyOnPageInlineBtn').click();
     await expect(toast).toContainText('line types used on this sheet');
 
+    // The two-state Lines toggle narrates too (both directions).
+    await page.evaluate(() => { document.getElementById('linesSectionTitle').click(); });
+    await page.locator('#linesShowOnlyOnPageBtn').click();
+    await expect(toast).toContainText('lines on this sheet only');
+    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: all sheets)');
+    await page.locator('#linesShowOnlyOnPageBtn').click();
+    await expect(toast).toContainText('off — showing lines from every sheet');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('collapse chevrons sit at the row end and still toggle their sections', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await loadTwoPagePdf(page);
+
+    // Counters chevron moved out of the h3 (after "+ Add"): its own handler
+    // still collapses the section.
+    const countersIcon = page.locator('#countersCollapseIcon');
+    expect(await page.evaluate(() =>
+      document.getElementById('countersCollapseIcon').parentElement.classList.contains('sidebar-section-header-row'))).toBe(true);
+    await countersIcon.click();
+    await expect(page.locator('#countersSection')).toHaveClass(/collapsed/);
+    await countersIcon.click();
+    await expect(page.locator('#countersSection')).not.toHaveClass(/collapsed/);
+
+    // Groups chevron (title-driven section) forwards to the title toggle.
+    await page.evaluate(() => {
+      window.state.groups = window.App.ensureGroupColors([{ id: 'g1', name: 'Restroom A' }]);
+      window.App.updateUI();
+    });
+    await page.locator('#groupsCollapseIcon').click();
+    await expect(page.locator('#groupsSection')).not.toHaveClass(/collapsed/);
+    await page.locator('#groupsCollapseIcon').click();
+    await expect(page.locator('#groupsSection')).toHaveClass(/collapsed/);
+
     expect(errors).toEqual([]);
   });
 

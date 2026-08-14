@@ -1249,7 +1249,6 @@
 body.hotkey-peek .hk-badge { display: block; }
 
 /* ---- Child counts (features/child-counts.js) ---- */
-.child-counts-hint { font-size: 0.72rem; color: var(--text3); margin: 0 0 8px; }
 .child-count-row { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; margin-bottom: 6px; font-size: 0.85rem; }
 .child-count-qty { color: var(--accent); font-weight: 600; white-space: nowrap; }
 .child-count-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1257,10 +1256,13 @@ body.hotkey-peek .hk-badge { display: block; }
 .child-count-remove { background: none; border: none; color: var(--text3); font-size: 1rem; font-weight: 600; cursor: pointer; padding: 0 2px; line-height: 1; }
 .child-count-remove:hover { color: var(--red); }
 .child-count-empty { color: var(--text3); font-size: 0.78rem; padding: 2px 0 4px; }
-.child-count-add { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.child-count-add { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.child-count-add-spacer { flex: 1; }
 .child-count-add input, .child-count-add select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; color: var(--text); font-family: inherit; font-size: 0.8rem; }
 .child-count-add #childCountQty { width: 52px; }
-.child-count-add #childCountName { flex: 1; min-width: 90px; }
+.child-count-add #childCountName { flex: 1; min-width: 80px; }
+/* Compact rule select so "per N ft" + the ft interval + Add share one line. */
+.child-count-add #childCountPer { width: auto; max-width: 110px; flex: 0 0 auto; }
 .child-count-add #childCountFtN { width: 52px; }
 .child-count-add #childCountFtNWrap { display: inline-flex; align-items: center; gap: 4px; color: var(--text2); font-size: 0.8rem; }
 .child-count-add #childCountAdd { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 6px 12px; font-weight: 600; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }

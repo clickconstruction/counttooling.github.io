@@ -3466,30 +3466,25 @@
     btn.innerHTML = scope === 'project' ? FILTER_GLYPH_PROJECT_SVG : filterGlyphPageSvg;
     btn.dataset.scope = scope;
   }
-  // Narrate each cycle click of the inline filter buttons with a three-line
-  // toast: "Filter:" / the state just landed on / a dimmed next-click hint.
+  // Narrate each cycle click of the inline filter buttons with a two-line
+  // toast: "Filter:" / the state just landed on.
   // The button's meaning is otherwise only discoverable via its title attr
   // (field feedback 2026-08-13). #airboardToastText is pre-line, so the \n
   // layout needs no markup; only the hint line is a styled span.
   const FILTER_TOAST_LINES = {
-    page: { mid: (kind) => kind + ' used on this sheet', hint: '(click again: this project)' },
-    project: { mid: (kind) => kind + ' used anywhere in this project', hint: '(click again: show all)' },
-    off: { mid: (kind) => 'off — showing all ' + kind, hint: '(click again: this sheet)' },
+    page: { mid: (kind) => kind + ' used on this sheet' },
+    project: { mid: (kind) => kind + ' used anywhere in this project' },
+    off: { mid: (kind) => 'off — showing all ' + kind },
   };
-  // The shared three-line filter toast core: "Filter:" / state / dimmed hint.
-  function showFilterToast(mid, hintText) {
+  // The shared two-line filter toast core: "Filter:" / the landed state.
+  function showFilterToast(mid) {
     showToast('', 3200);
     const el = document.getElementById('airboardToastText');
-    if (!el) return;
-    el.textContent = 'Filter:\n' + mid + '\n';
-    const hint = document.createElement('span');
-    hint.className = 'toast-hint-line';
-    hint.textContent = hintText;
-    el.appendChild(hint);
+    if (el) el.textContent = 'Filter:\n' + mid;
   }
   function showFilterScopeToast(kind, scope) {
     const t = FILTER_TOAST_LINES[scope];
-    if (t) showFilterToast(t.mid(kind), t.hint);
+    if (t) showFilterToast(t.mid(kind));
   }
   const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
   if (counterShowOnlyOnPageInlineBtn) {
@@ -3519,8 +3514,8 @@
       linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
       // Narrate the two-state Lines toggle like the scope cycles do — this
       // button's meaning was otherwise only in its title attr.
-      if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines on this sheet only', '(click again: all sheets)');
-      else showFilterToast('off — showing lines from every sheet', '(click again: this sheet)');
+      if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines on this sheet only');
+      else showFilterToast('off — showing lines from every sheet');
       App.renderLinesList();
       updateUI();
     };

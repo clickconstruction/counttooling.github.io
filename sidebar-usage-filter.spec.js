@@ -115,7 +115,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('cycle clicks narrate the landed state via the three-line toast', async ({ page }) => {
+  test('cycle clicks narrate the landed state via the two-line toast', async ({ page }) => {
     const errors = [];
     collectErrors(page, errors);
     await loadTwoPagePdf(page);
@@ -127,15 +127,15 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     await expect(toast).toContainText('Filter:');
     await expect(toast).toContainText('counters used on this sheet');
-    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this project)');
+    await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     await btn.click();
     await expect(toast).toContainText('counters used anywhere in this project');
-    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: show all)');
+    await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     await btn.click();
     await expect(toast).toContainText('off — showing all counters');
-    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: this sheet)');
+    await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     // The line-type button narrates its own kind.
     await page.locator('#lineTypeShowOnlyOnPageInlineBtn').click();
@@ -145,7 +145,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await page.evaluate(() => { document.getElementById('linesSectionTitle').click(); });
     await page.locator('#linesShowOnlyOnPageBtn').click();
     await expect(toast).toContainText('lines on this sheet only');
-    await expect(toast.locator('.toast-hint-line')).toHaveText('(click again: all sheets)');
+    await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
     await page.locator('#linesShowOnlyOnPageBtn').click();
     await expect(toast).toContainText('off — showing lines from every sheet');
 

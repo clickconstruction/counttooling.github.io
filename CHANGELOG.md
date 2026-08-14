@@ -13,6 +13,13 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(sidebar): filter toasts drop the next-click hint line
+
+Product call (2026-08-14): the "(click again: …)" third line came off every
+filter toast — they now read "Filter:" / the landed state, nothing else. The
+next state remains discoverable via the button tooltips and the cycle
+itself. `showFilterToast` is two-line; the `.toast-hint-line` style is gone.
+
 ## feat(sidebar): right-aligned chevrons, funnel filter icon, Lines-toggle toast
 
 Three sidebar refinements (field feedback 2026-08-14): (1) every section's

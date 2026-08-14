@@ -818,7 +818,6 @@
     .save-project-progress li.done::before { content: "✓ "; }
     .modal-card.modal-card-toast { width: fit-content; max-width: none; }
     #airboardToastText { line-height: 1.5; }
-    #airboardToastText .toast-hint-line { color: var(--text3); }
     .modal-card-large { max-width: 700px; width: 95%; }
     .modal-card-summary-detail { width: fit-content; max-width: min(95vw, 420px); }
     .summary-count-detail-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }

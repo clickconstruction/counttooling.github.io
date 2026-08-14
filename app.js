@@ -6131,6 +6131,9 @@
     }
     if (e.key === 'Enter' && state.drawingPolyline && state.drawingPolyline.points.length >= 2) finishPolyline(false);
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
+    // Chain: Enter ends the current run like the first Escape (tool stays
+    // active — the next click starts a fresh chain).
+    if (e.key === 'Enter' && state.tool === TOOL.CHAIN && state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
   });
 
   // SECTION: [sync] Manual save to cloud

@@ -126,7 +126,7 @@
     const counter = state.counters.find((c) => c.id === state.activeCounterType);
     const lt = state.lineTypes.find((l) => l.id === state.activeLineTypeId);
     if (counter && lt) {
-      foot.innerHTML = 'Chaining: <b>' + esc(counter.name || 'Counter') + '</b> + <b>' + esc(lt.name || 'Line') + '</b> · Esc ends the run';
+      foot.innerHTML = 'Chaining: <b>' + esc(counter.name || 'Counter') + '</b> + <b>' + esc(lt.name || 'Line') + '</b> · Enter/Esc ends the run';
     } else {
       foot.textContent = 'Pick a counter and a line type to start placing.';
     }

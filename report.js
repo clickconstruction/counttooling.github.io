@@ -404,14 +404,15 @@
     return lines.join('\n');
   }
 
-  // Cheap existence probe: would the report/summary be non-empty? Same
-  // annotation source and same rules as the builders (a marker under a defined
-  // counter id, a quick line / polyline whose lineTypeId matches a defined
-  // line type, or any room box — getRoomVolumeTotals buckets unassigned boxes
-  // under "Unassigned", so mere existence counts), but short-circuits at the
-  // first hit instead of building the whole summary. updateUI() calls this on
-  // every state change to toggle the export/summary buttons — the full walk
-  // was a measurable per-call cost on large multi-page projects.
+  // Cheap existence probe: would getPipeToolingSummary() be non-empty? Same
+  // annotation source and same "counts or lines" rule (a marker under a defined
+  // counter id, or a quick line / polyline whose lineTypeId matches a defined
+  // line type), but short-circuits at the first hit instead of building the
+  // whole summary. updateUI() calls this on every state change to toggle the
+  // export/summary buttons — the full walk was a measurable per-call cost on
+  // large multi-page projects. Deliberately EXCLUDES room boxes: the /Tooling
+  // summary never emits rooms, so a rooms-only hit here would surface a button
+  // that copies an empty string. Rooms have their own probe below.
   function getPipeToolingHasData() {
     if (!window.state || !state.pages || !state.pages.length) return false;
     const getAnn = defaultGetAnnotations;
@@ -428,6 +429,21 @@
       for (const poly of ann.polylines || []) {
         if (lineTypeIds.has(poly.lineTypeId)) return true;
       }
+    }
+    return false;
+  }
+
+  // Rooms counterpart to getPipeToolingHasData: would the report's "Room
+  // Volumes" table / the email summary's "--- Rooms ---" block be non-empty?
+  // Any roomBoxes entry produces a row (boxes with an unknown roomId aggregate
+  // into an "Unassigned" bucket), so one box existing is the whole test — but
+  // only once features/room-sizer.js has registered the totals builder that
+  // getRoomTotals resolves at call time; without it the renderers emit nothing.
+  function getReportHasRooms() {
+    if (!window.state || !state.pages || !state.pages.length) return false;
+    if (!(window.App && typeof window.App.getRoomVolumeTotals === 'function')) return false;
+    for (let i = 0; i < state.pages.length; i++) {
+      const ann = defaultGetAnnotations(state.pages[i], i);
       if ((ann.roomBoxes || []).length) return true;
     }
     return false;
@@ -549,6 +565,7 @@
     window.printReport = printReport;
     window.getPipeToolingSummary = getPipeToolingSummary;
     window.getPipeToolingHasData = getPipeToolingHasData;
+    window.getReportHasRooms = getReportHasRooms;
     window.getEmailTextSummary = getEmailTextSummary;
   }
 

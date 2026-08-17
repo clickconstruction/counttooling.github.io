@@ -2414,14 +2414,21 @@
     if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
     const bundleNotesBtn = document.getElementById('bundleNotes');
     if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
-    // Cheap existence probe (report.js) — would the report/summary be
-    // non-empty? Short-circuits at the first count, line, or room box instead
+    // Cheap existence probes (report.js) — would the report/summary be
+    // non-empty? Short-circuit at the first count, line, or room box instead
     // of building the whole summary (a real cost per updateUI on large
     // projects). Same load-order guard as the App.* checks above:
     // report.js loads after app.js, so this can run before it registers.
-    const hasReportData = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
+    const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
+    // Room Sizer boxes count as report data too: the report renders a "Room
+    // Volumes" table and the email summary a "--- Rooms ---" block, so a
+    // rooms-only takeoff still has something to show/export/copy. Only Copy
+    // to /Tooling stays counts/lines-only — getPipeToolingSummary never emits
+    // rooms, so on a rooms-only project it would copy an empty string.
+    const hasRooms = typeof window.getReportHasRooms === 'function' && window.getReportHasRooms();
+    const hasReportData = hasCountsOrLines || hasRooms;
     const ptBtn = document.getElementById('forPipeToolingDropdown');
-    if (ptBtn) ptBtn.style.display = hasReportData ? '' : 'none';
+    if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
     const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
     if (copySummaryBtn) copySummaryBtn.style.display = hasReportData ? '' : 'none';
     const showReportDropdown = document.getElementById('showReportDropdown');

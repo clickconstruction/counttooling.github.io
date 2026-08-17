@@ -76,7 +76,7 @@ Divergences from the documented route:
 - "Add a counter first using Create Counter." — Choose-tab empty state
 - "PLUM" — sidebar quick-add button label (title: "Quick add counter"); plumbing-specific label on a generic surface
 - "+ Add" — Counters section add button
-- "Name / Upload / Save Project to Cloud" — sidebar save button label (#saveProjectBtnSidebar)
+- "Name / Upload / Save Project to Cloud" — sidebar save button label (#saveProjectBtnSidebar) *(drift 2026-08-17, B18: now "Save Project to Cloud")*
 - "Load Annotations" / "You have saved annotations for this PDF. Load them?" — 'annotations' meaning the whole takeoff
 - "Keep and Open" / "Discard" — last-session restore buttons
 - "e.g. 1/2\" Copper Pipe" — Quick Count name placeholder (a pipe example in a counter creator)

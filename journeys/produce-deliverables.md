@@ -18,7 +18,7 @@ Personas: P · Status: ● walked 2026-08-02, re-walked 2026-08-09 (headless Chr
 - **sidebar** — #exportBtnSidebar "Export" and #importBtnSidebar "Import" (delegate to the header buttons)
 - **burger** — mobile burger (#headerBurger) builds a "Download" section (one row per visible .download-page-option) and an "Export" section (one row per visible .export-dropdown-option) in #rightMenuList
 - **modal** — Project Settings modal #settingsDownloadPdf "Download PDF" button → App.downloadProjectPdf() (visible only when pages exist, not viewer, and pdfBuffer/pdfStoragePath present)
-- **modal** — Advanced settings modal (#settingsAdvancedModal): #advancedExport "Export Canvas", #advancedExportPdf "Export PDF", #advancedImport (import) — each closes settings then delegates
+- **modal** — Advanced settings modal (#settingsAdvancedModal): #advancedExport "Export Canvas", #advancedExportPdf "Export PDF", #advancedImport (import) — each closes settings then delegates *(drift 2026-08-17, B18: #advancedExportPdf deleted — it duplicated the main modal's "Download PDF" under a second name; #advancedExport lost its yellow-primary styling)*
 - **modal** — #importCanvasAfterPdfModal "Choose canvas file…" prompt after a PDF loads (canvas-JSON handoff receive path); related #canvasOnlyNeedsPdfBanner "Choose PDF" for canvas-only projects
 
 ## Current route (walked 2026-08-02)

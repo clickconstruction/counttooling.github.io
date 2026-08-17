@@ -60,6 +60,15 @@ refinements (the per-article recipe in [GUIDES-PLAN.md](GUIDES-PLAN.md) starts w
 > tail: one plan per one-topic branch, strictly sequential, `npm run check`
 > before every merge, this table's status column flipped as each lands.
 > Phase 5 (guide edits from Tier 4 + VALUE-NARRATIVES.md) can run anytime.
+> **2026-08-17 — Project Settings composition audit** (off-journey surface
+> audit of `settingsModal` + `settingsAdvancedModal`; the journeys all pass
+> *through* the hub but never judged its composition). Net-new findings:
+> Tier-2 #29 (Manage Icons buried under Advanced) + batch B18 (duplicate
+> Advanced "Export PDF", Export Canvas as Advanced's yellow primary,
+> three-verb save label, "macros" link naming). One candidate finding was
+> retracted on verification: the locked groups toggle already ships
+> `disabled` + explanatory tooltip (app.js `updateUI`, styles.css :disabled
+> rule). B18's shipped items landed 2026-08-17.
 
 ---
 
@@ -232,6 +241,7 @@ J4 count-fixtures are the daily core**; J3/J6/J7/J11/J13/J15/J16 are telemetry-b
 | 26 | ☐ | Trimming a 200-sheet set is strictly one-sheet-at-a-time — ~185 clicks to reach a 15-sheet P-set; fatigue defeats the feature (J2) | features/prepare-pdf.js (only Prev/Next/Delete/Undo/Rotate exist) | Thumbnail-grid trim with tap-to-keep/drop, single-sheet preview for zoom — must REPLACE the sheet walk as default, not sit beside it (largest build in this set) | L | new `prepare_trim` event |
 | 27 | ☐ | Double-click sheet rename is dead — row onclick → fitZoom → renderPagesList innerHTML rebuild destroys the node before the second click; the working badge-click path is advertised only by a hover tooltip (J2) | sidebar renderPagesList rebuild race | Skip the rebuild when the clicked row is already active / defer past the dblclick window — repairs the affordance with zero new UI | S | none |
 | 28 | ☐ | Polyline dialog tax — every polyline requires the New Polyline round-trip and finishing drops to Move; with zero line types, "—" + Start Drawing commits `lineTypeId:null` and the footage seems to vanish into Lines → Unassigned (J5) | New Polyline dialog path; null-commit repro | When a line type is active, P starts drawing immediately (auto-name, same color; dialog reachable for the rest); block Start Drawing on "—" reusing the picker's empty-state copy | M | none |
+| 29 | ☐ | **Manage Icons is buried under Advanced** — custom icons are a flagship, guided feature (J4; CUSTOM_ICONS.md, custom-icons guide) whose only settings route sits behind a word that tells trade users "don't touch"; findability fail by construction (2026-08-17 composition audit) | app/index.html `settingsAdvancedModal` (#advancedManageIcons); count-fixtures.md:28 walked the burial | Re-home the opener on the counter/palette surface (e.g. the Create-tab / manage-icons row) — needs a placement call; Advanced keeps repair/cache tools only | S | none |
 
 ### Tier 3 — polish & papercuts (batched by surface so they ship as few PRs)
 
@@ -254,6 +264,7 @@ J4 count-fixtures are the daily core**; J3/J6/J7/J11/J13/J15/J16 are telemetry-b
 | B15 | Prepare-PDF batch | Open Prepare for signed-out fresh uploads, retitled "Trim your set" — trimming is purely local (pdf-intake.js:361 gate, J2); confirm before Escape/Cancel discards the upload ONLY when deletes/renames were made (J2); Undo jumps the preview to the restored sheet (J2) |
 | B16 | Cold start | Accept drag-and-drop of a PDF (today it triggers browser-default navigation and replaces the app) + a quiet "Drop a plan here — or Upload PDF" hint in the empty black canvas (J1 ×2) |
 | B17 | Dead-UI removal | Delete the PLUM quick-add rows with their bindings and viewerHideIds entries together, or boot throws (styles.css:266, quick-modals.js:14, app.js:2119, J1 J4); hide the modal-level "Search counters…" box on the Create/Quick tabs it doesn't filter (index.html:569-71, J4) |
+| B18 | Project Settings & Advanced composition (2026-08-17 audit) | **Shipped 2026-08-17:** delete Advanced "Export PDF" — it called the identical `App.downloadProjectPdf()` as the main modal's "Download PDF" under a different name (app.js:4174 vs :4182); demote Export Canvas from Advanced's yellow primary — the loudest button was the marks-only-JSON wrong-file-to-GC trap B4 documents; retire the three-verb "Name / Upload / Save Project to Cloud" label (the save modal never uploads — it names and saves) for stateful "Save Project to Cloud"/"Save Changes" across settings/sidebar/header/modal-h2/turn-in toast; rename the settings "macros" link to "keyboard shortcuts" so the link matches the modal it opens. **Queued:** status-bar "keys"/"macros" dialect rename travels with B4's naming pass (drags working-faster-with-the-keyboard.md + its `[[macros]]` ICON_BTN chip along); whether the settings keyboard links hide on coarse pointers needs a product call — they're the ONLY route on phones, but tablets with paired keyboards genuinely use Quick Keys (B9 adjacency); the red Clear Page link's placement in the help-links row resolves with Tier-2 #13. **Verified-keep:** the locked groups toggle (disabled + tooltip already shipped); Advanced's remaining residents (Canvas Repair, Empty cache, Global force reload, dev Load test PDF) are correctly gated and genuinely advanced |
 
 ### Tier 4 — teach: the guide-edit list
 

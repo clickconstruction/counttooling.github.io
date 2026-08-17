@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(settings): Project Settings composition quick wins (B18)
+
+From the 2026-08-17 Project Settings composition audit (JOURNEY-MAP.md B18):
+deleted the Advanced modal's "Export PDF" button — it invoked the identical
+`App.downloadProjectPdf()` as the main modal's "Download PDF", one action under
+two names in two menus; demoted "Export Canvas" from Advanced's yellow primary
+(the loudest button in the modal was the marks-only-JSON backup — the
+wrong-file-to-GC trap B4 documents); retired the triple-verb
+"Name / Upload / Save Project to Cloud" label for "Save Project to Cloud"
+(the save modal names and saves — it has no upload) across the settings menu,
+sidebar/header buttons, the modal's own h2, and the turn-in toast ("Save
+Changes" once cloud-saved is unchanged); renamed the settings-menu "macros"
+link to "keyboard shortcuts" so the link matches the modal it opens (the
+status-bar "macros"/"keys" dialect rename is queued with B4 — it drags the
+keyboard guide's `[[macros]]` chip along).
+
 ## feat(chain): row glyphs open the item's settings
 
 The leading glyph in a Chain palette row (counter icon / line swatch) now

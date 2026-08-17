@@ -2358,8 +2358,6 @@
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
     const settingsDownloadPdf = document.getElementById('settingsDownloadPdf');
     if (settingsDownloadPdf) settingsDownloadPdf.style.display = (state.pages.length && !state.isViewer && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
-    const advancedExportPdf = document.getElementById('advancedExportPdf');
-    if (advancedExportPdf) advancedExportPdf.style.display = (state.pages.length && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
     const advancedExportBtn = document.getElementById('advancedExport');
     if (advancedExportBtn) advancedExportBtn.style.display = (state.pages.length && projectHasAnyCanvasMarkup() && !state.isViewer) ? '' : 'none';
     const advancedLoadTestPdf = document.getElementById('advancedLoadTestPdf');
@@ -2379,7 +2377,7 @@
       settingsSaveProject.style.display = state.isViewer ? 'none' : '';
       settingsSaveProject.textContent = (state.currentProjectId && state.pdfStoragePath)
         ? 'Save Changes'
-        : 'Name / Upload / Save Project to Cloud';
+        : 'Save Project to Cloud';
     }
     const settingsAdvancedBtn = document.getElementById('settingsAdvancedBtn');
     if (settingsAdvancedBtn) settingsAdvancedBtn.style.display = '';
@@ -4179,7 +4177,6 @@
     document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.loadTestPdf(); };
     document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openManageIconsModal(); };
     document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-    document.getElementById('advancedExportPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.downloadProjectPdf(); };
     document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
     document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openCanvasRepairModal(); };
     document.getElementById('advancedEmptyCacheReload').onclick = async () => {

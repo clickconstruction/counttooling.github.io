@@ -40,7 +40,7 @@
       if (opts.hideSettings) App.hideModal('settingsModal');
       App.showToast(result.releasedByServer ? 'Edit session had already expired — turned in.' : 'Project turned in.');
       if (App.state.pdfBuffer && !App.state.pdfStoragePath) {
-        App.showToast('PDF saved locally—use Name / Upload / Save Project to add it to the project.', 3000);
+        App.showToast('PDF saved locally—use Save Project to Cloud to add it to the project.', 3000);
       }
       App.updateUI();
     } else {

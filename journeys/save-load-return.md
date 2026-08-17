@@ -132,7 +132,7 @@ self-destruct timer; unlocking it IS the journey.
 
 ## Terminology on screen (recorded, not judged)
 
-- "Name / Upload / Save Project to Cloud" - triple-verb button label; becomes "Save Changes" once the project has a cloud PDF
+- "Name / Upload / Save Project to Cloud" - triple-verb button label; becomes "Save Changes" once the project has a cloud PDF *(drift 2026-08-17, B18: triple-verb label retired — now "Save Project to Cloud" everywhere, still "Save Changes" once cloud-saved)*
 - "Keep and Open" / "Discard" on the "Project from Last Session" modal (guide calls it just 'Keep')
 - "Canvas" vs "PDF" as the two sync tracks in the Save Status summary blocks and status bar (dot = Canvas, square = PDF)
 - "Canvas only" - used both as a Load-modal row badge (which is secretly a download button, title 'Download canvas (.json)') and in "Canvas only. Upload a PDF first to include it in saves."

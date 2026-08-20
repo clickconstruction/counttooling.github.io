@@ -1,7 +1,7 @@
 ---
 title: Highlights, notes, and reading the bare drawing
 description: Flag regions with highlights, pin questions as notes, style the on-canvas legend, and peel the whole takeoff off the drawing with one tap.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 5.8
 icon: note
 category: Working with plans
@@ -31,7 +31,7 @@ The **legend** [[legend]] overlay is the on-sheet scoreboard: counts and lengths
 
 ## Hide marks — the bare drawing
 
-The eye button [[hide-marks]] in the header peels the entire overlay off — counters, lines, highlights, notes, legend — so the drawing underneath reads clean. Tap again to bring everything back. It's purely visual: no data changes, exports are unaffected, and it persists as you flip pages. [View-link](/guides/sharing-and-view-links/) recipients get the same toggle, and their choice is remembered per link.
+The eye button [[hide-marks]] in the header peels the entire overlay off — counters, lines, highlights, notes, legend — so the drawing underneath reads clean. Tap again to bring everything back. It's purely visual: no data changes, exports are unaffected, and it persists as you flip pages. Hidden marks can't be moved or edited until you show them again — a drag across a spot where a note sits just pans the sheet, so you can't nudge something you can't see. [View-link](/guides/sharing-and-view-links/) recipients get the same toggle, and their choice is remembered per link.
 
 ## The grid
 

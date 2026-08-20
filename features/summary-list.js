@@ -8,12 +8,27 @@
    * features/summary-detail.js via App.openSummaryCountDetailModal),
    * extracted from app.js's UI Render Functions region per the lines-list
    * recipe. updateUI reaches it defensively via App.renderSummary. Zero new
-   * app.js publish-only deps — everything it reads was already on the
-   * registry; the multiply-zone count label comes from a sibling feature
-   * file's registration (App.describePlacedWithRepeats,
-   * features/sidebar-lists.js), read deferred like every other dep.
+   * publish-only deps — everything it reads was already on the registry.
    * Boundary rule: read shared deps from App.* at call time, never at load.
+   *
+   * Multiply-zone labelling (JOURNEY-MAP Tier-2 #24): this list has always
+   * multiplied (a marker in a ×3 zone counts 3) while the Counters list summed
+   * raw placed markers, so one sidebar showed two different numbers for one
+   * counter — "7" up top, "[13]" down here — with nothing labelled either way.
+   * The Counters badge now runs the same arithmetic; the bracket notation is
+   * gone and rows say which number is which through the shared wording helpers
+   * App.multiplyCountLabels / App.appendMultiplyNoteRow (defined in
+   * features/sidebar-lists.js, read defensively at call time so a missing
+   * registration degrades to the plain number).
    */
+
+  // The shared multiply wording, resolved at call time. Falls back to the bare
+  // adjusted number if features/sidebar-lists.js has not registered yet.
+  function countLabels(placed, total) {
+    return App.multiplyCountLabels
+      ? App.multiplyCountLabels(placed, total)
+      : { repeats: total !== placed, text: String(total), title: placed + ' placed' };
+  }
 
   // Child counts (features/child-counts.js): appends the indented, words-only
   // child rows under a parent's summary row. Separate rows per parent per
@@ -34,19 +49,6 @@
     });
   }
 
-  // JOURNEY Tier-2 #24: counter badge HTML shared with the COUNTERS list.
-  // When Multiply Zones inflate a count, label it in the SAME trade words the
-  // COUNTERS badge uses ("N placed · M with repeats", via
-  // App.describePlacedWithRepeats from features/sidebar-lists.js); otherwise
-  // keep the classic bracketed Summary total. Deferred App.* read + fallback:
-  // a missing registration degrades to the plain bracketed number.
-  function summaryCountBadgeHtml(placed, total) {
-    const rep = App.describePlacedWithRepeats && App.describePlacedWithRepeats(placed, total);
-    return rep
-      ? '<span class="badge" title="' + rep.title + '">' + rep.label + '</span>'
-      : '<span class="badge">[' + total + ']</span>';
-  }
-
   function renderSummary() {
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
@@ -63,15 +65,20 @@
     });
     const counterByGroup = {};
     const lineTypeByGroup = {};
+    // Section tallies behind the multiply footnote (Tier-2 #24) — the Summary
+    // is never usage-filtered, so these are always the whole project.
+    let notePlaced = 0, noteTotal = 0, lengthsRepeat = false;
     App.state.pages.forEach((p, pi) => {
       const ann = App.getActiveAnnotations(p, pi);
       (App.state.counters || []).forEach(c => {
         (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
           if (!counterByGroup[gid]) counterByGroup[gid] = {};
-          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, placed: 0, pageIndices: [] };
-          counterByGroup[gid][c.id].total += App.getMultiplyZoneForPoint(ann, m);
+          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, placed: 0, total: 0, pageIndices: [] };
+          const factor = App.getMultiplyZoneForPoint(ann, m);
           counterByGroup[gid][c.id].placed++;
+          counterByGroup[gid][c.id].total += factor;
+          notePlaced++; noteTotal += factor;
           if (!counterByGroup[gid][c.id].pageIndices.includes(pi)) counterByGroup[gid][c.id].pageIndices.push(pi);
         });
       });
@@ -86,6 +93,7 @@
           r.runs++;
           const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
           r.lenFt += s.feet; r.lenPx += s.px;
+          if (App.getMultiplyZoneForLine && App.getMultiplyZoneForLine(ann, item, isPoly) !== 1) lengthsRepeat = true;
           if (!r.pageIndices.includes(pi)) r.pageIndices.push(pi);
         };
         (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id).forEach(q => addSplit(q, false));
@@ -109,7 +117,10 @@
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span>' + summaryCountBadgeHtml(r.placed, r.total);
+          // Plain number, same arithmetic as the Counters badge — the old
+          // "[13]" bracket notation was the unlabelled half of Tier-2 #24.
+          const labels = countLabels(r.placed || 0, r.total);
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge" title="' + labels.title + '">' + labels.text + '</span>';
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
           appendChildRows(el, 'counter', c.id, gid, childTotals);
@@ -144,19 +155,17 @@
     } else {
       App.state.counters.forEach(c => {
         let placed = 0, count = 0;
-        App.state.pages.forEach((p) => {
+        App.state.pages.forEach(p => {
           const ann = App.getActiveAnnotations(p);
-          (ann?.counterMarkers?.[c.id] || []).forEach(m => {
-            placed++;
-            count += App.getMultiplyZoneForPoint(ann, m);
-          });
+          (ann?.counterMarkers?.[c.id] || []).forEach(m => { placed++; count += App.getMultiplyZoneForPoint(ann, m); });
         });
         if (count > 0) {
           const div = document.createElement('div');
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(c.name) + '</span>' + summaryCountBadgeHtml(placed, count);
+          const labels = countLabels(placed, count);
+          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge" title="' + labels.title + '">' + labels.text + '</span>';
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
           appendChildRows(el, 'counter', c.id, 'null', childTotals);
@@ -172,6 +181,7 @@
             runs++;
             const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
             lenFt += s.feet; lenPx += s.px;
+            if (App.getMultiplyZoneForLine && App.getMultiplyZoneForLine(ann, item, isPoly) !== 1) lengthsRepeat = true;
           };
           qLines.forEach(q => addSplit(q, false));
           polys.forEach(poly => addSplit(poly, true));
@@ -188,6 +198,8 @@
         }
       });
     }
+    // The same footnote the Counters list carries, from the same helper.
+    if (App.appendMultiplyNoteRow) App.appendMultiplyNoteRow(el, { placed: notePlaced, total: noteTotal, lengthsRepeat });
   }
 
   App.renderSummary = renderSummary;

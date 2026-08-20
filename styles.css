@@ -1557,3 +1557,10 @@ body.hotkey-peek .hk-badge { display: block; }
 .tool-context-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--text); font-size: 0.9rem; border-radius: 5px; cursor: pointer; }
 .tool-context-menu button:hover, .tool-context-menu button:focus { background: var(--surface3); outline: none; }
 .macros-context-tip { margin-top: 10px; font-size: 0.8rem; color: var(--text3); }
+
+/* ---- Copy-again resume chip (B3 #4): floats ABOVE the page/zoom bar so an
+   abandoned chip can never block page navigation; dismissable via the x. ---- */
+.copy-again-chip { display:none; position:fixed; bottom:64px; left:50%; transform:translateX(-50%); z-index:400; padding:10px 14px 10px 18px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,0.18); cursor:pointer; align-items:center; gap:10px; }
+.copy-again-chip-dismiss { opacity:0.55; font-size:1.1em; line-height:1; padding:2px 4px; }
+.copy-again-chip-dismiss:hover { opacity:1; }
+

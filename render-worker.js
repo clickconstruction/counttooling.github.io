@@ -11,9 +11,14 @@
 //   <- { type:'loaded', gen, ok, error? }
 //   -> { type:'render', reqId, gen, pageNumber, scale, rotation,
 //        offsetX, offsetY, width, height }
-//   <- { type:'result', reqId, bitmap }                  bitmap transferred out
-//   <- { type:'result', reqId, cancelled:true }          after a cancel
-//   <- { type:'result', reqId, error }                   raster failure
+//   <- { type:'result', reqId, gen, bitmap }             bitmap transferred out
+//   <- { type:'result', reqId, gen, cancelled:true }     after a cancel OR a
+//                                                        superseded generation
+//   <- { type:'result', reqId, gen, error }              raster failure on the
+//                                                        CURRENT generation
+// Every result is stamped with the request's doc generation so the service
+// can drop a stale document's pixels instead of blitting them (and so a stale
+// error can never trip the session fallback).
 //   -> { type:'cancel', reqId }
 //   -> { type:'dispose' }
 //
@@ -141,8 +146,14 @@ self.onmessage = async (e) => {
     return;
   }
   if (m.type === 'render') {
-    if (!doc || m.gen !== docGen) {
-      self.postMessage({ type: 'result', reqId: m.reqId, error: 'stale-generation' });
+    if (m.gen !== docGen) {
+      // Superseded request: the app moved to another document. Cancelled, not
+      // an error — a stale error reaching the service would trip failWorker.
+      self.postMessage({ type: 'result', reqId: m.reqId, gen: m.gen, cancelled: true });
+      return;
+    }
+    if (!doc) {
+      self.postMessage({ type: 'result', reqId: m.reqId, gen: m.gen, error: 'no-document' });
       return;
     }
     try {
@@ -157,11 +168,11 @@ self.onmessage = async (e) => {
       await task.promise;
       tasks.delete(m.reqId);
       const bitmap = canvas.transferToImageBitmap();
-      self.postMessage({ type: 'result', reqId: m.reqId, bitmap }, [bitmap]);
+      self.postMessage({ type: 'result', reqId: m.reqId, gen: m.gen, bitmap }, [bitmap]);
     } catch (err) {
       tasks.delete(m.reqId);
-      const cancelled = !!(err && err.name === 'RenderingCancelledException');
-      self.postMessage({ type: 'result', reqId: m.reqId, cancelled, error: cancelled ? undefined : String((err && err.message) || err) });
+      const cancelled = m.gen !== docGen || !!(err && err.name === 'RenderingCancelledException');
+      self.postMessage({ type: 'result', reqId: m.reqId, gen: m.gen, cancelled, error: cancelled ? undefined : String((err && err.message) || err) });
     }
   }
 };

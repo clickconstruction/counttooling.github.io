@@ -7,8 +7,7 @@
    * the features/lines-list.js recipe (defensive updateUI seam, publish-only
    * deps, zero moved state). The renderCountersList / renderLineTypesList /
    * renderGroupsList / countItemsInGroup registrations move here from app.js's
-   * registry tail (plus describePlacedWithRepeats, the multiply-zone count
-   * label shared with features/summary-list.js — JOURNEY Tier-2 #24); features/quick-keys.js, counter-settings.js,
+   * registry tail; features/quick-keys.js, counter-settings.js,
    * line-type-settings.js and item-details.js keep consuming them via App.* at
    * call time. quickKeyBadgeHtml (the Quick Key keycap badge on bound rows)
    * moves along as a private helper — it already read
@@ -17,7 +16,46 @@
    * functions the Quick Keys number row calls.
    * Boundary rule: read shared deps from App.* at call time, never captured at
    * load. See ARCHITECTURE.md "Feature files / window.App registry".
+   *
+   * Multiply-zone arithmetic (JOURNEY-MAP Tier-2 #24): the Counters badge used
+   * to be a RAW sum of placed markers while the Summary rollup, the footer
+   * totals and the report all multiplied by the marker's multiply zone — two
+   * different numbers for the same counter, side by side in one sidebar, with
+   * nothing labelled either way (a ×3 typical floor read "7" here and "[13]"
+   * two sections down). Every count surface now runs the ONE multiply-adjusted
+   * arithmetic and says which number is which in trade words. The wording +
+   * the note row live here and are published as App.multiplyCountLabels /
+   * App.appendMultiplyNoteRow so features/summary-list.js renders the exact
+   * same sentence from the same helper.
    */
+
+  // The ONE multiply-zone wording for a count badge. `placed` is what the user
+  // clicked; `total` is that count with multiply-zone repeats applied (what
+  // the Summary, the footer totals and the report have always shown).
+  function multiplyCountLabels(placed, total) {
+    const repeats = total !== placed;
+    return {
+      repeats,
+      text: String(total),
+      title: repeats ? placed + ' placed on the plan — Multiply Zones repeat them, so totals bill ' + total + '.' : placed + ' placed',
+    };
+  }
+
+  // The always-visible footnote under a count list — no hover, no docs: it
+  // names both numbers and the fact that the tally spans every sheet (which is
+  // what the usage filter's "this sheet" scope otherwise makes ambiguous).
+  // Renders nothing when no multiply zone touched the rows on screen.
+  function appendMultiplyNoteRow(el, o) {
+    const placed = o?.placed || 0, total = o?.total || 0;
+    const parts = [];
+    if (total !== placed) parts.push(placed + ' placed, ' + total + ' with repeats');
+    if (o?.lengthsRepeat) parts.push('lengths include repeats');
+    if (!parts.length) return;
+    const div = document.createElement('div');
+    div.className = 'sidebar-filter-hint sidebar-repeats-note';
+    div.textContent = 'Multiply zones counted — ' + parts.join('; ') + ' (all sheets).';
+    el.appendChild(div);
+  }
 
   // Quick Key keycap badge for a bound sidebar row ('' when unbound). Deferred
   // App.* read — features/quick-keys.js registers the lookup independently of
@@ -49,20 +87,6 @@
     el.appendChild(hint);
   }
 
-  // JOURNEY Tier-2 #24: trade-language label for a count that Multiply Zones
-  // inflate — the markers physically on the plan ("placed") vs the number the
-  // totals bill ("with repeats"). ONE wording shared by the COUNTERS badge and
-  // the Summary rows (features/summary-list.js reads it via App.* at call
-  // time) so the two sidebar numbers can never again disagree unlabeled.
-  // Returns null when zones change nothing — callers keep their plain badge.
-  function describePlacedWithRepeats(placed, total) {
-    if (total === placed) return null;
-    return {
-      label: placed + ' placed · ' + total + ' with repeats',
-      title: placed + ' marker' + (placed === 1 ? '' : 's') + ' placed on the plan — Multiply Zones repeat them, so totals bill ' + total + '.',
-    };
-  }
-
   function renderCountersList() {
     const state = App.state;
     const el = document.getElementById('countersList');
@@ -73,11 +97,28 @@
     const filtered = q ? state.counters.filter(c => (c.name || 'Counter').toLowerCase().includes(q)) : state.counters;
     const scope = App.getCounterListFilterScope();
     let hiddenCount = 0;
+    // Section tallies for the multiply note: ALL counters that pass the search
+    // filter, including rows the usage filter hides, so the sentence always
+    // matches the Summary footnote under any scope ('off' | 'page' | 'project').
+    let shownPlaced = 0, shownTotal = 0;
     // Usage checks and badges count MERGED canvases (every layer of a page),
     // matching the footer totals and the Choose-tab badges (T1-11) — a counter
     // used only on a non-active layer is still "used".
     const usedOnPage = (c, pi) => ((App.getMergedAnnotationsForPage(state.pages[pi])?.counterMarkers?.[c.id] || []).length > 0);
     filtered.forEach(c => {
+      // Multiply-adjusted badge — the SAME arithmetic as the Summary rollup,
+      // the footer totals and the report: each marker counts its multiply-zone
+      // factor, not 1. `placed` keeps the raw click count so the badge can say
+      // which number is which ("7 placed · 13 with repeats").
+      let placed = 0, count = 0;
+      state.pages.forEach(p => {
+        const ann = App.getMergedAnnotationsForPage(p);
+        (ann?.counterMarkers?.[c.id] || []).forEach(m => { placed++; count += App.getMultiplyZoneForPoint(ann, m); });
+      });
+      // Tally BEFORE the usage-filter early-exit so the note row's numbers
+      // always match the Summary footnote — two identically-worded footnotes
+      // disagreeing in one sidebar would re-create the #24 defect one level up.
+      shownPlaced += placed; shownTotal += count;
       // The active counter is exempt: a just-created type must stay visible
       // (and selectable) before its first mark is placed.
       if (scope !== 'off' && state.pages.length > 0 && c.id !== state.activeCounterType) {
@@ -86,25 +127,8 @@
       }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      // Badge arithmetic = the footer/Summary/count-detail/report arithmetic:
-      // multiply-zone adjusted, tallied over MERGED canvases (T1-11 — a mark
-      // on a non-active layer still counts, and a zone on any layer applies).
-      // When zones inflate the total, the badge says so in trade words
-      // instead of showing a bare raw sum that silently disagrees with
-      // Summary (JOURNEY Tier-2 #24).
-      let placed = 0, total = 0;
-      state.pages.forEach(p => {
-        const ann = App.getMergedAnnotationsForPage(p);
-        (ann?.counterMarkers?.[c.id] || []).forEach(m => {
-          placed++;
-          total += App.getMultiplyZoneForPoint(ann, m);
-        });
-      });
-      const rep = describePlacedWithRepeats(placed, total);
-      const badgeHtml = rep
-        ? '<span class="badge" title="' + rep.title + '">' + rep.label + '</span>'
-        : '<span class="badge">' + total + '</span>';
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + badgeHtml + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      const labels = multiplyCountLabels(placed, count);
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge" title="' + labels.title + '">' + labels.text + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');
@@ -139,6 +163,7 @@
       }
       el.appendChild(div);
     });
+    appendMultiplyNoteRow(el, { placed: shownPlaced, total: shownTotal });
     appendFilterHintRow(el, hiddenCount, scope, App.setCounterListFilterScope, 'counterShowOnlySegment', renderCountersList);
   }
 
@@ -152,6 +177,10 @@
     const filtered = q ? state.lineTypes.filter(lt => (lt.name || 'Line').toLowerCase().includes(q)) : state.lineTypes;
     const scope = App.getLineTypeListFilterScope();
     let hiddenCount = 0;
+    // Runs are RAW (one drawn run is one run — the program-wide convention,
+    // report.js included) while the footage IS multiply-adjusted, so a list
+    // with a zone in play gets the same footnote the Counters list gets.
+    let shownLengthsRepeat = false;
     // Merged-canvas usage check — see renderCountersList.
     const usedOnPage = (lt, pi) => {
       const ann = App.getMergedAnnotationsForPage(state.pages[pi]);
@@ -167,7 +196,7 @@
       // T1-05 ft/px split: feet and raw-px lengths accumulate in separate
       // buckets and are never summed under one label. Runs/footage tally the
       // MERGED canvases, matching the footer totals (see usedOnPage above).
-      let runs = 0, lenFt = 0, lenPx = 0;
+      let runs = 0, lenFt = 0, lenPx = 0, rowLengthsRepeat = false;
       state.pages.forEach((p, pi) => {
         const ann = App.getMergedAnnotationsForPage(p);
         const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
@@ -176,13 +205,17 @@
           runs++;
           const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
           lenFt += s.feet; lenPx += s.px;
+          if (App.getMultiplyZoneForLine && App.getMultiplyZoneForLine(ann, item, isPoly) !== 1) rowLengthsRepeat = true;
         };
         qLines.forEach(q => addSplit(q, false));
         polys.forEach(poly => addSplit(poly, true));
       });
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + App.formatFeetPx(lenFt, lenPx) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      if (rowLengthsRepeat) shownLengthsRepeat = true;
+      const lineTitle = runs + ' run' + (runs === 1 ? '' : 's') + ' drawn · length'
+        + (rowLengthsRepeat ? ' with multiply-zone repeats' : '') + ', all sheets';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge" title="' + lineTitle + '">' + runs + ' · ' + App.formatFeetPx(lenFt, lenPx) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;
         const handle = div.querySelector('.line-type-drag-handle');
@@ -217,6 +250,7 @@
       }
       el.appendChild(div);
     });
+    appendMultiplyNoteRow(el, { lengthsRepeat: shownLengthsRepeat });
     appendFilterHintRow(el, hiddenCount, scope, App.setLineTypeListFilterScope, 'lineTypeShowOnlySegment', renderLineTypesList);
   }
 
@@ -261,7 +295,10 @@
     return n;
   }
 
-  App.describePlacedWithRepeats = describePlacedWithRepeats;
+  // Shared with features/summary-list.js so the two count surfaces can never
+  // drift apart in arithmetic or wording again (Tier-2 #24).
+  App.multiplyCountLabels = multiplyCountLabels;
+  App.appendMultiplyNoteRow = appendMultiplyNoteRow;
   App.renderCountersList = renderCountersList;
   App.renderLineTypesList = renderLineTypesList;
   App.renderGroupsList = renderGroupsList;

@@ -7,6 +7,11 @@
  * published deps it consumes), the counter path (rows per page with
  * multiply-zone-adjusted counts + a thumbnail image), the line-type path
  * (runs + feet), the unknown-id no-op, and no console errors.
+ *
+ * Also pins the three-surface agreement (JOURNEY-MAP Tier-2 #24): the
+ * COUNTERS badge, the SUMMARY row and this modal's per-page count all report
+ * the same multiply-adjusted number, and the two sidebar badges say which
+ * number is which ("2 placed · 3 with repeats").
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -46,14 +51,17 @@ test.describe('Summary count detail (features/summary-detail.js)', () => {
       window.App.updateUI();
     });
 
-    // JOURNEY Tier-2 #24: before opening the modal, the sidebar surfaces must
-    // already agree on the multiply-adjusted number the modal breaks down —
-    // 2 markers placed, one doubled by the x2 zone = 3 — and label it in
-    // trade words on the COUNTERS badge and the Summary row alike.
-    await expect(page.locator('#countersList .sidebar-item', { hasText: 'WC' }).locator('.badge'))
-      .toHaveText('2 placed · 3 with repeats');
-    await expect(page.locator('#summaryList .sidebar-item[data-id="c1"] .badge'))
-      .toHaveText('2 placed · 3 with repeats');
+    // The two sidebar surfaces agree BEFORE the modal is opened, and both say
+    // which number is which (Tier-2 #24: the badge used to read a raw "2"
+    // while the Summary read "[3]").
+    const counterBadge = page.locator('#countersList .sidebar-item', { hasText: 'WC' }).locator('.badge');
+    const summaryBadge = page.locator('#summaryList .sidebar-item', { hasText: 'WC' }).locator('.badge');
+    await expect(counterBadge).toHaveText('3');
+    await expect(summaryBadge).toHaveText('3');
+    await expect(counterBadge).toHaveAttribute('title', '2 placed on the plan — Multiply Zones repeat them, so totals bill 3.');
+    await expect(summaryBadge).toHaveAttribute('title', '2 placed on the plan — Multiply Zones repeat them, so totals bill 3.');
+    await expect(page.locator('#countersList .sidebar-repeats-note')).toContainText('2 placed, 3 with repeats');
+    await expect(page.locator('#summaryList .sidebar-repeats-note')).toContainText('2 placed, 3 with repeats');
 
     // Counter path: 1 marker inside the x2 zone + 1 outside = 3 effective.
     await page.evaluate(() => window.App.openSummaryCountDetailModal('counter', 'c1'));

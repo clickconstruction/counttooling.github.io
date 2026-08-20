@@ -7,6 +7,13 @@
  * aggregate across pages, row click runs the ONE selection path
  * (App.setActiveCounterType — same as Quick Keys), and group rows count their
  * members via countItemsInGroup.
+ *
+ * Second test: the multiply-zone agreement pin (JOURNEY-MAP Tier-2 #24) — the
+ * COUNTERS badge and the SUMMARY row must show the SAME multiply-adjusted
+ * number for the same counter, and both must say which number is which in
+ * trade words ("7 placed · 13 with repeats"). Covers all three usage-filter
+ * scopes (off / page / project), since a filtered list still tallies every
+ * sheet.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -78,13 +85,7 @@ test.describe('Sidebar lists (features/sidebar-lists.js)', () => {
     expect(errors).toEqual([]);
   });
 
-  // JOURNEY Tier-2 #24: the COUNTERS badge used to show a RAW marker sum while
-  // Summary (and the footer, count-detail modal, and report) showed the
-  // multiply-zone-adjusted total — two disagreeing numbers in one sidebar,
-  // neither labeled. Pins: one multiply-adjusted arithmetic everywhere, and
-  // trade-word labels ("N placed · M with repeats") on both surfaces whenever
-  // Multiply Zones inflate a count — across all three usage-filter scopes.
-  test('multiply zones: COUNTERS badge, Summary rows, and footer agree, labeled across filter scopes', async ({ page }) => {
+  test('multiply zones: COUNTERS badge and SUMMARY row agree, labelled in trade words', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => {
       if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text());
@@ -96,68 +97,99 @@ test.describe('Sidebar lists (features/sidebar-lists.js)', () => {
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
-    // The journey-map repro: 7 markers for c1 on page 0 — 3 inside a x3
-    // Multiply Zone, 4 outside — so 7 placed but totals bill 4 + 3x3 = 13.
-    // c2 has one un-zoned marker on page 1 (plain badges must stay plain).
+    // Seed the exact shape of the finding: a typical-floor ×3 zone and a ×2
+    // zone on sheet 1, plus a counter used only on sheet 2 (so the page-scope
+    // filter has something to hide).
+    //   Water Closet: 7 placed, 3 of them in the ×3 zone -> 13 with repeats
+    //   Lavatory:     9 placed, 2 of them in the ×2 zone -> 11 with repeats
+    //   Water Heater: 5 placed on sheet 2, no zone       ->  5 either way
     await page.evaluate(() => {
       const s = window.state;
+      s.pages.forEach((p) => { p.scale = { pixelsPerUnit: 12, unit: 'ft' }; });
       s.counters = [
         { id: 'c1', name: 'Water Closet', icon: 'M0 0h10v10H0z', color: '#e8c547' },
         { id: 'c2', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#4a9eff' },
+        { id: 'c3', name: 'Water Heater', icon: 'M0 0h10v10H0z', color: '#c94f7c' },
       ];
+      s.lineTypes = [];
+      const mk = (x, y, id) => ({ x, y, id });
       const c0 = window.App.ensureActiveCanvas(s.pages[0]);
-      c0.annotations.multiplyZones = [{ x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 3, id: 'z1' }];
-      c0.annotations.counterMarkers = { c1: [
-        { x: 10, y: 10, id: 'i1' }, { x: 20, y: 20, id: 'i2' }, { x: 30, y: 30, id: 'i3' },
-        { x: 100, y: 100, id: 'o1' }, { x: 110, y: 110, id: 'o2' },
-        { x: 120, y: 120, id: 'o3' }, { x: 130, y: 130, id: 'o4' },
-      ] };
+      c0.annotations.multiplyZones = [
+        { id: 'z3', x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 3 },
+        { id: 'z2', x1: 200, y1: 200, x2: 260, y2: 260, multiplier: 2 },
+      ];
+      c0.annotations.counterMarkers = {
+        c1: [mk(10, 10, 'a1'), mk(20, 20, 'a2'), mk(30, 30, 'a3'),
+          mk(100, 100, 'a4'), mk(120, 100, 'a5'), mk(140, 100, 'a6'), mk(160, 100, 'a7')],
+        c2: [mk(210, 210, 'b1'), mk(230, 230, 'b2'),
+          mk(100, 300, 'b3'), mk(120, 300, 'b4'), mk(140, 300, 'b5'), mk(160, 300, 'b6'),
+          mk(180, 300, 'b7'), mk(100, 320, 'b8'), mk(120, 320, 'b9')],
+      };
       const c1 = window.App.ensureActiveCanvas(s.pages[1]);
-      c1.annotations.counterMarkers = { c2: [{ x: 40, y: 40, id: 'm-p2' }] };
+      c1.annotations.counterMarkers = {
+        c3: [mk(10, 10, 'h1'), mk(30, 10, 'h2'), mk(50, 10, 'h3'), mk(70, 10, 'h4'), mk(90, 10, 'h5')],
+      };
       window.App.updateUI();
     });
 
-    const wcBadge = page.locator('#countersList .sidebar-item', { hasText: 'Water Closet' }).locator('.badge');
-    const lavBadge = page.locator('#countersList .sidebar-item', { hasText: 'Lavatory' }).locator('.badge');
-    const wcSummary = page.locator('#summaryList .sidebar-item[data-id="c1"] .badge');
-    const lavSummary = page.locator('#summaryList .sidebar-item[data-id="c2"] .badge');
+    const counterBadge = (name) => page.locator('#countersList .sidebar-item', { hasText: name }).locator('.badge');
+    const summaryBadge = (name) => page.locator('#summaryList .sidebar-item', { hasText: name }).locator('.badge');
 
-    // One arithmetic, labeled the same way on both surfaces.
-    await expect(wcBadge).toHaveText('7 placed · 13 with repeats');
-    await expect(wcSummary).toHaveText('7 placed · 13 with repeats');
-    await expect(wcBadge).toHaveAttribute('title', /7 markers placed[\s\S]*13/);
-    await expect(wcSummary).toHaveAttribute('title', /7 markers placed[\s\S]*13/);
-    // Un-zoned counter: plain number, both places, no label noise.
-    await expect(lavBadge).toHaveText('1');
-    await expect(lavSummary).toHaveText('[1]');
-    // Footer runs the same multiply-adjusted arithmetic: 13 + 1.
-    expect(await page.evaluate(() => window.App.getFooterTotalsCached().count)).toBe(14);
+    // ONE arithmetic: both surfaces show the multiply-adjusted number.
+    await expect(counterBadge('Water Closet')).toHaveText('13');
+    await expect(summaryBadge('Water Closet')).toHaveText('13');
+    await expect(counterBadge('Lavatory')).toHaveText('11');
+    await expect(summaryBadge('Lavatory')).toHaveText('11');
+    await expect(counterBadge('Water Heater')).toHaveText('5');
+    await expect(summaryBadge('Water Heater')).toHaveText('5');
 
-    // The usage-filter scopes change row VISIBILITY only — never the
-    // arithmetic or the label. (currentPage is 0; c2 lives on page 1.)
-    for (const scope of ['page', 'project', 'off']) {
-      await page.evaluate((sc) => { window.App.setCounterListFilterScope(sc); window.App.updateUI(); }, scope);
-      await expect(wcBadge).toHaveText('7 placed · 13 with repeats');
-      if (scope === 'page') {
-        await expect(page.locator('#countersList .sidebar-item')).toHaveCount(1);
-      } else {
-        await expect(lavBadge).toHaveText('1');
-      }
-      await expect(wcSummary).toHaveText('7 placed · 13 with repeats');
-    }
+    // ...and both say which number is which, in trade words.
+    await expect(counterBadge('Water Closet')).toHaveAttribute('title', '7 placed on the plan — Multiply Zones repeat them, so totals bill 13.');
+    await expect(summaryBadge('Water Closet')).toHaveAttribute('title', '7 placed on the plan — Multiply Zones repeat them, so totals bill 13.');
+    // An unmultiplied row says so too — no bare number anywhere.
+    await expect(counterBadge('Water Heater')).toHaveAttribute('title', '5 placed');
 
-    // Grouped Summary path: tag one in-zone marker; every group row keeps the
-    // adjusted arithmetic with its own per-group trade-word label.
+    // The always-visible note (no hover needed) names both numbers and the
+    // scope of the tally: 7+9+5 = 21 placed, 13+11+5 = 29 with repeats.
+    const counterNote = page.locator('#countersList .sidebar-repeats-note');
+    const summaryNote = page.locator('#summaryList .sidebar-repeats-note');
+    await expect(counterNote).toContainText('21 placed');
+    await expect(counterNote).toContainText('29 with repeats');
+    await expect(counterNote).toContainText('all sheets');
+    await expect(summaryNote).toContainText('21 placed');
+    await expect(summaryNote).toContainText('29 with repeats');
+
+    // Usage-filter scopes: 'page' hides the sheet-2-only counter, so the note
+    // always matches the Summary footnote (21 placed / 29 with repeats) while
+    // every visible badge keeps its all-sheets arithmetic. The Summary is not
+    // filtered and keeps the project numbers.
+    await page.evaluate(() => { window.App.setCounterListFilterScope('page'); window.App.updateUI(); });
+    await expect(page.locator('#countersList .sidebar-item')).toHaveCount(2);
+    await expect(counterBadge('Water Closet')).toHaveText('13');
+    await expect(counterNote).toContainText('21 placed');
+    await expect(counterNote).toContainText('29 with repeats');
+    await expect(summaryNote).toContainText('21 placed');
+    // The usage hint still renders alongside the repeats note.
+    await expect(page.locator('#countersList .sidebar-filter-hint-clear')).toHaveCount(1);
+
+    await page.evaluate(() => { window.App.setCounterListFilterScope('project'); window.App.updateUI(); });
+    await expect(page.locator('#countersList .sidebar-item')).toHaveCount(3);
+    await expect(counterBadge('Water Heater')).toHaveText('5');
+    await expect(counterNote).toContainText('21 placed');
+
+    await page.evaluate(() => { window.App.setCounterListFilterScope('off'); window.App.updateUI(); });
+    await expect(page.locator('#countersList .sidebar-item')).toHaveCount(3);
+    await expect(counterNote).toContainText('21 placed');
+
+    // No multiply zones -> no note, and the badge is the plain placed count.
     await page.evaluate(() => {
-      const s = window.state;
-      s.groups = [{ id: 'g1', name: 'Restroom A', color: '#c94f7c' }];
-      const c0 = window.App.ensureActiveCanvas(s.pages[0]);
-      c0.annotations.counterMarkers.c1[0].group = 'g1';   // one x3 marker
+      window.App.getPageCanvases(window.state.pages[0]).forEach((c) => { c.annotations.multiplyZones = []; });
       window.App.updateUI();
     });
-    // Restroom A: 1 placed x3 = 3. Untagged: 6 placed -> 2x3 + 4 = 10.
-    await expect(page.locator('#summaryList .sidebar-item[data-id="c1"] .badge')).toHaveText(
-      ['1 placed · 3 with repeats', '6 placed · 10 with repeats']);
+    await expect(counterBadge('Water Closet')).toHaveText('7');
+    await expect(summaryBadge('Water Closet')).toHaveText('7');
+    await expect(page.locator('#countersList .sidebar-repeats-note')).toHaveCount(0);
+    await expect(page.locator('#summaryList .sidebar-repeats-note')).toHaveCount(0);
 
     expect(errors).toEqual([]);
   });

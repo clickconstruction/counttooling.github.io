@@ -120,3 +120,122 @@ test('worker fallback fires onFallback once with the reason (and still rasters m
     delete global.OffscreenCanvas;
   }
 });
+
+// --- document swaps (worker mode) -------------------------------------------
+// A fake Worker + a fake pdf.js transport make the document-generation seam
+// drivable: adopt a document, raster through the worker, then swap documents
+// with a raster still in flight. The production bug this pins: a second
+// document in one session (project load, appended pages, prepare-PDF rebuild)
+// re-adopts on the SAME worker, and nothing about that routine swap may read
+// as a worker failure — one spurious fallback costs the user main-thread
+// rasters for the rest of the session.
+function withFakeWorker(fn) {
+  const workers = [];
+  global.Worker = class {
+    constructor() { this.sent = []; this.terminated = false; workers.push(this); }
+    postMessage(msg) { this.sent.push(msg); }
+    terminate() { this.terminated = true; }
+  };
+  global.OffscreenCanvas = class {};
+  return Promise.resolve(fn(workers)).finally(() => {
+    delete global.Worker;
+    delete global.OffscreenCanvas;
+  });
+}
+function makeAdoptablePage(behavior) {
+  const pdfPage = makePdfPage(behavior);
+  pdfPage._transport = { getData: () => new Uint8Array(2048) };
+  return pdfPage;
+}
+const drawCtx = { canvas: { width: 100, height: 80 }, drawn: 0, drawImage() { drawCtx.drawn++; } };
+const settle = () => new Promise((r) => setTimeout(r, 10));
+const lastOfType = (worker, type) => worker.sent.filter((m) => m.type === type).pop();
+
+/** Adopt `pdfPage` into the worker and return the accepted 'load' message. */
+async function adopt(svc, workers, pdfPage) {
+  await svc.raster({ pdfPage, scale: 1, rotation: 0, canvasContext: drawCtx, kind: 'full' }).promise;
+  await settle();
+  const load = lastOfType(workers[0], 'load');
+  assert.ok(load, 'document shipped to the worker');
+  workers[0].onmessage({ data: { type: 'loaded', gen: load.gen, ok: true } });
+  return load;
+}
+
+test('a second document re-adopts on the SAME worker without a spurious fallback', async () => {
+  await withFakeWorker(async (workers) => {
+    const events = [];
+    const svc = createRenderService({ logEvent: (type) => events.push(type), onFallback: () => events.push('onFallback') });
+
+    const pageA = makeAdoptablePage({});
+    const load1 = await adopt(svc, workers, pageA);
+    assert.strictEqual(workers.length, 1);
+    assert.strictEqual(svc.workerState(), 'ready');
+
+    // An interactive raster is in flight in the worker...
+    const inFlight = svc.raster({ pdfPage: pageA, scale: 1, rotation: 0, canvasContext: drawCtx, kind: 'full' });
+    await settle();
+    const req = lastOfType(workers[0], 'render');
+    assert.strictEqual(req.gen, load1.gen);
+
+    // ...when the app swaps documents: the new transport re-adopts on the
+    // SAME worker (this raster runs main while adoption is in flight).
+    const pageB = makeAdoptablePage({});
+    await svc.raster({ pdfPage: pageB, scale: 1, rotation: 0, canvasContext: drawCtx, kind: 'full' }).promise;
+    await settle();
+    assert.strictEqual(workers.length, 1, 'slot reused, not respawned');
+    const load2 = lastOfType(workers[0], 'load');
+    assert.notStrictEqual(load2.gen, load1.gen, 'new document generation');
+
+    // The superseded raster comes back as an error from the old generation.
+    // That is a document swap, not a broken worker: it must cancel, and the
+    // session must stay on the worker.
+    workers[0].onmessage({ data: { type: 'result', reqId: req.reqId, gen: load1.gen, error: 'stale-generation' } });
+    await assert.rejects(inFlight.promise, (e) => e.name === 'RenderingCancelledException');
+    assert.strictEqual(svc.statsSnapshot().fallbacks, 0);
+    assert.ok(!events.includes('render_worker_fallback'), 'no fallback logged');
+
+    // Document B lands and the worker keeps serving the session.
+    workers[0].onmessage({ data: { type: 'loaded', gen: load2.gen, ok: true } });
+    assert.strictEqual(svc.workerState(), 'ready');
+    assert.strictEqual(svc.mode(), 'worker');
+  });
+});
+
+test('a bitmap from a superseded document is dropped, not blitted', async () => {
+  await withFakeWorker(async (workers) => {
+    const svc = createRenderService({});
+    const pageA = makeAdoptablePage({});
+    const load1 = await adopt(svc, workers, pageA);
+    const inFlight = svc.raster({ pdfPage: pageA, scale: 1, rotation: 0, canvasContext: drawCtx, kind: 'full' });
+    await settle();
+    const req = lastOfType(workers[0], 'render');
+
+    await svc.raster({ pdfPage: makeAdoptablePage({}), scale: 1, rotation: 0, canvasContext: drawCtx, kind: 'full' }).promise;
+    await settle();
+
+    let closed = false;
+    const drawnBefore = drawCtx.drawn;
+    workers[0].onmessage({ data: { type: 'result', reqId: req.reqId, gen: load1.gen, bitmap: { close() { closed = true; } } } });
+    await assert.rejects(inFlight.promise, (e) => e.name === 'RenderingCancelledException');
+    assert.strictEqual(drawCtx.drawn, drawnBefore, 'stale pixels never reach the canvas');
+    assert.ok(closed, 'stale bitmap released');
+  });
+});
+
+test('a raster error on the CURRENT document still trips the session fallback', async () => {
+  await withFakeWorker(async (workers) => {
+    const fallbacks = [];
+    const svc = createRenderService({ onFallback: (r) => fallbacks.push(r) });
+    const pageA = makeAdoptablePage({});
+    const load1 = await adopt(svc, workers, pageA);
+
+    const t = svc.raster({ pdfPage: pageA, scale: 1, rotation: 0, canvasContext: drawCtx, kind: 'full' });
+    await settle();
+    const req = lastOfType(workers[0], 'render');
+    workers[0].onmessage({ data: { type: 'result', reqId: req.reqId, gen: load1.gen, error: 'boom' } });
+    await t.promise;                                   // retried on the main thread
+    assert.strictEqual(svc.workerState(), 'failed');
+    assert.strictEqual(fallbacks.length, 1);
+    assert.match(fallbacks[0], /boom/);
+  });
+});

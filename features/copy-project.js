@@ -49,6 +49,9 @@
 
   // SECTION: Cloud project hydrate / copy / fork
   function hydrateProjectFromCloudRow(proj, opts) {
+    // Feature callback (features/output.js): hide a Copy-again chip stashed
+    // for a DIFFERENT project — its stamped projectId no longer matches.
+    setTimeout(() => { App.onProjectLoadedHideCopyAgain && App.onProjectLoadedHideCopyAgain(); }, 0);
     opts = opts || {};
     App.state.pendingCanvasLoad = null;
     App.state.currentProjectId = proj.id;

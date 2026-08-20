@@ -268,7 +268,7 @@ test.describe('Copy cluster fixes (B3)', () => {
       return el && (el.textContent || '').includes('Counts copied');
     }, { timeout: 5000 });
     const toast = await page.evaluate(() => document.getElementById('airboardToastText').textContent);
-    expect(toast).toContain('View-only sessions cannot create a share link');
+    expect(toast).toContain('You opened this from a view-only link, so no link was added');
     expect(toast).not.toContain('Sign in');
     expect(errors).toEqual([]);
   });

@@ -81,7 +81,7 @@
         // Checked FIRST: a view-link load sets currentProjectId and usually has
         // no signed-in session, so the branches below would misdiagnose it
         // ("Sign in…" won't help a view-only session).
-        noLinkToast = 'Counts copied. View-only sessions cannot create a share link.';
+        noLinkToast = 'Counts copied. You opened this from a view-only link, so no link was added.';
       } else if (!state.currentProjectId) {
         noLinkToast = 'Counts copied. Save the project to the cloud to include a view link.';
       } else if (!state.supabaseSession?.user) {
@@ -200,21 +200,36 @@
   const copyAgainChip = document.createElement('button');
   copyAgainChip.id = 'copyAgainChip';
   copyAgainChip.type = 'button';
-  copyAgainChip.style.cssText = 'display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:400;padding:10px 18px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;';
+  copyAgainChip.className = 'copy-again-chip';   // styles in styles.css — sits ABOVE the page-nav bar, not over it
   document.body.appendChild(copyAgainChip);
+  const copyAgainDismiss = document.createElement('span');
+  copyAgainDismiss.className = 'copy-again-chip-dismiss';
+  copyAgainDismiss.setAttribute('aria-label', 'Dismiss');
+  copyAgainDismiss.textContent = '\u00d7';
+  const copyAgainLabel = document.createElement('span');
   function showCopyAgainChip(pending) {
-    resumeCopyParams = { getAnnFn: pending.getAnnFn, pageIndices: pending.pageIndices, doCopy: pending.doCopy, surface: pending.surface, mode: pending.mode };
-    copyAgainChip.textContent = pending.surface === 'email-summary' ? 'Scale set? Copy Summary again' : 'Scale set? Copy to /Tooling again';
-    copyAgainChip.style.display = 'block';
+    resumeCopyParams = { getAnnFn: pending.getAnnFn, pageIndices: pending.pageIndices, doCopy: pending.doCopy, surface: pending.surface, mode: pending.mode,
+      // Stamp the project so a chip stashed in one project can never fire a
+      // copy after a different one loads (null==null is fine for local docs).
+      projectId: App.state.currentProjectId || null };
+    copyAgainLabel.textContent = pending.surface === 'email-summary' ? 'Scale set? Copy Summary again' : 'Scale set? Copy to /Tooling again';
+    copyAgainChip.replaceChildren(copyAgainLabel, copyAgainDismiss);
+    copyAgainChip.style.display = 'flex';
   }
+  App.onProjectLoadedHideCopyAgain = () => {
+    if (resumeCopyParams && resumeCopyParams.projectId !== (App.state.currentProjectId || null)) hideCopyAgainChip();
+  };
   function hideCopyAgainChip() {
     resumeCopyParams = null;
     copyAgainChip.style.display = 'none';
   }
   copyAgainChip.onclick = async (e) => {
     e.stopPropagation();
+    if (e.target === copyAgainDismiss) { hideCopyAgainChip(); return; }
     const params = resumeCopyParams;
     hideCopyAgainChip();
+    // Project guard: a stale chip from another project must never copy.
+    if (params && params.projectId !== (App.state.currentProjectId || null)) return;
     // This click IS the user gesture the clipboard write needs; the scale walk
     // re-runs from live state, so still-unscaled pages reopen the check modal.
     if (params) await runGatedCopy(params.getAnnFn, params.pageIndices, params.doCopy, params.surface, params.mode);

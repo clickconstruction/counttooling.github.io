@@ -143,6 +143,15 @@ function createRenderService(deps) {
         return;
       }
       if (m.cancelled) { p.reject(cancelError()); return; }
+      // A result for a superseded document is a cancel, never a failure: its
+      // pixels belong to the document the app just left, and letting a stale
+      // error reach failWorker below would drop the whole session to
+      // main-thread rasters over a routine document swap.
+      if (m.gen != null && m.gen !== gen) {
+        if (m.bitmap) { try { m.bitmap.close(); } catch (_) { /* backing store already released */ } }
+        p.reject(cancelError());
+        return;
+      }
       if (!m.bitmap) {
         const err = new Error('worker raster failed: ' + m.error);
         err.__retryMain = true;                        // best-effort: redo on main

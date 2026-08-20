@@ -7,7 +7,8 @@
    * the features/lines-list.js recipe (defensive updateUI seam, publish-only
    * deps, zero moved state). The renderCountersList / renderLineTypesList /
    * renderGroupsList / countItemsInGroup registrations move here from app.js's
-   * registry tail; features/quick-keys.js, counter-settings.js,
+   * registry tail (plus describePlacedWithRepeats, the multiply-zone count
+   * label shared with features/summary-list.js — JOURNEY Tier-2 #24); features/quick-keys.js, counter-settings.js,
    * line-type-settings.js and item-details.js keep consuming them via App.* at
    * call time. quickKeyBadgeHtml (the Quick Key keycap badge on bound rows)
    * moves along as a private helper — it already read
@@ -48,6 +49,20 @@
     el.appendChild(hint);
   }
 
+  // JOURNEY Tier-2 #24: trade-language label for a count that Multiply Zones
+  // inflate — the markers physically on the plan ("placed") vs the number the
+  // totals bill ("with repeats"). ONE wording shared by the COUNTERS badge and
+  // the Summary rows (features/summary-list.js reads it via App.* at call
+  // time) so the two sidebar numbers can never again disagree unlabeled.
+  // Returns null when zones change nothing — callers keep their plain badge.
+  function describePlacedWithRepeats(placed, total) {
+    if (total === placed) return null;
+    return {
+      label: placed + ' placed · ' + total + ' with repeats',
+      title: placed + ' marker' + (placed === 1 ? '' : 's') + ' placed on the plan — Multiply Zones repeat them, so totals bill ' + total + '.',
+    };
+  }
+
   function renderCountersList() {
     const state = App.state;
     const el = document.getElementById('countersList');
@@ -71,8 +86,25 @@
       }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p) => n + ((App.getMergedAnnotationsForPage(p)?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      // Badge arithmetic = the footer/Summary/count-detail/report arithmetic:
+      // multiply-zone adjusted, tallied over MERGED canvases (T1-11 — a mark
+      // on a non-active layer still counts, and a zone on any layer applies).
+      // When zones inflate the total, the badge says so in trade words
+      // instead of showing a bare raw sum that silently disagrees with
+      // Summary (JOURNEY Tier-2 #24).
+      let placed = 0, total = 0;
+      state.pages.forEach(p => {
+        const ann = App.getMergedAnnotationsForPage(p);
+        (ann?.counterMarkers?.[c.id] || []).forEach(m => {
+          placed++;
+          total += App.getMultiplyZoneForPoint(ann, m);
+        });
+      });
+      const rep = describePlacedWithRepeats(placed, total);
+      const badgeHtml = rep
+        ? '<span class="badge" title="' + rep.title + '">' + rep.label + '</span>'
+        : '<span class="badge">' + total + '</span>';
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + badgeHtml + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');
@@ -229,6 +261,7 @@
     return n;
   }
 
+  App.describePlacedWithRepeats = describePlacedWithRepeats;
   App.renderCountersList = renderCountersList;
   App.renderLineTypesList = renderLineTypesList;
   App.renderGroupsList = renderGroupsList;

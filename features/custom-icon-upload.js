@@ -57,7 +57,41 @@
     document.querySelectorAll(pairedGridSel + ' .icon-cell').forEach(x => x.classList.remove('selected'));
     gridEl.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
     cell.classList.add('selected');
+    revealUploadedCell(gridEl, cell);
     return cell;
+  }
+
+  // The upload appends to the tail of a 200px-max-height grid, so the new
+  // selected cell lands below the fold and the modal looks unchanged (a
+  // successful upload read as a no-op). Scroll ONLY the grid — manual
+  // scrollTop math, never scrollIntoView, which would also jolt the modal
+  // body / page scroll ancestors — then pulse the existing selection ring's
+  // accent color as brief confirmation. Hidden grids (the other two paired
+  // surfaces refreshed by the same upload) have zero-height rects and are
+  // left untouched.
+  function revealUploadedCell(gridEl, cell) {
+    const gr = gridEl.getBoundingClientRect();
+    if (!gr.height) return;
+    const cr = cell.getBoundingClientRect();
+    const top = cr.top - gr.top + gridEl.scrollTop;
+    const bottom = top + cr.height;
+    if (top < gridEl.scrollTop) {
+      gridEl.scrollTop = top;
+    } else if (bottom > gridEl.scrollTop + gridEl.clientHeight) {
+      gridEl.scrollTop = bottom - gridEl.clientHeight;
+    }
+    if (typeof cell.animate !== 'function') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // .selected paints border-color: var(--accent); reuse that resolved color
+    // so the flash is the selection ring itself, not a new surface.
+    const ring = getComputedStyle(cell).borderTopColor;
+    cell.animate(
+      [
+        { boxShadow: '0 0 0 0 ' + ring },
+        { boxShadow: '0 0 0 5px transparent' },
+      ],
+      { duration: 450, iterations: 2, easing: 'ease-out' },
+    );
   }
 
   document.getElementById('customIconUploadInput').onchange = (e) => {

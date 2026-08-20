@@ -36,6 +36,30 @@
     updateCounterQuickCountTypeIconBox();
   }
 
+  // T2-16: Quick Count counters used to inherit the FIRST library icon + the
+  // default color for every Type — "0.5in PEX Tee" marks rendered identical to
+  // "Water Closet" and the mixup only surfaced at pricing time. Default a
+  // per-Type icon instead, by whole-token matching the Type's words against
+  // the bundled icon library's search terms (so custom user types like
+  // "Floor Drain" match too). Conservative: only exact term tokens (plus a
+  // tiny fitting-vocabulary alias table) match; unknown types keep the
+  // current first-icon fallback and rely on create-time color rotation below.
+  const QC_TYPE_TERM_ALIASES = { elbow: 'bend', 90: 'bend', coupling: 'pipe' };
+  // Whether the user manually clicked an icon cell since the panel populated;
+  // type-driven auto-selection must never clobber an explicit pick.
+  let qcUserPickedIcon = false;
+  function quickCountDefaultIconForType(type) {
+    if (!type) return null;
+    const tokens = String(type).toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2);
+    if (!tokens.length) return null;
+    const wanted = tokens.map(t => QC_TYPE_TERM_ALIASES[t] || t);
+    let best = null, bestScore = 0;
+    for (const ic of App.getOrderedIcons()) {
+      const score = wanted.reduce((n, t) => n + (ic.terms.includes(t) ? 1 : 0), 0);
+      if (score > bestScore) { best = ic; bestScore = score; }
+    }
+    return best ? best.value : null;
+  }
   function getCounterQuickCountEffectiveIconPath() {
     const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
     if (sel?.dataset.path) return sel.dataset.path;
@@ -43,6 +67,8 @@
     const mods = App.getPlumbingModifiers();
     const path = mods.iconByType?.[type];
     if (path) return path;
+    const inferred = quickCountDefaultIconForType(type);
+    if (inferred) return inferred;
     return App.getEffectiveCustomIcons()[0]?.value || App.getOrderedIcons()[0]?.value;
   }
   function updateCounterQuickCountNamePreview() {
@@ -79,19 +105,29 @@
       box.title = 'Select an icon below, then click to set for ' + type;
     }
   }
+  function selectCounterQuickCountIconPath(path) {
+    const allCells = document.querySelectorAll('#counterQuickCountIconGrid .icon-cell[data-path], #counterQuickCountIconGridCustom .icon-cell[data-path]');
+    const cell = Array.from(allCells).find(c => c.dataset.path === path);
+    if (!cell) return false;
+    const inCustom = cell.closest('#counterQuickCountIconGridCustom');
+    showCounterQuickCountIconTab(inCustom ? 'custom' : 'icon');
+    document.querySelectorAll('#counterQuickCountIconGrid .icon-cell, #counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
+    cell.classList.add('selected');
+    return true;
+  }
   function applyCounterQuickCountIconForType() {
     const type = document.getElementById('counterQuickCountType')?.value;
     const mods = App.getPlumbingModifiers();
-    const path = mods.iconByType && mods.iconByType[type];
-    if (!path) return;
-    const allCells = document.querySelectorAll('#counterQuickCountIconGrid .icon-cell[data-path], #counterQuickCountIconGridCustom .icon-cell[data-path]');
-    const cell = Array.from(allCells).find(c => c.dataset.path === path);
-    if (cell) {
-      const inCustom = cell.closest('#counterQuickCountIconGridCustom');
-      showCounterQuickCountIconTab(inCustom ? 'custom' : 'icon');
-      document.querySelectorAll('#counterQuickCountIconGrid .icon-cell, #counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
-      cell.classList.add('selected');
+    const explicit = mods.iconByType && mods.iconByType[type];
+    if (explicit && selectCounterQuickCountIconPath(explicit)) {
+      updateCounterQuickCountNamePreview();
+      return;
     }
+    // No explicit per-Type icon: infer one from the Type's words, unless the
+    // user already hand-picked a cell this session.
+    if (qcUserPickedIcon) return;
+    const inferred = quickCountDefaultIconForType(type);
+    if (inferred && selectCounterQuickCountIconPath(inferred)) updateCounterQuickCountNamePreview();
   }
   function showCounterQuickCountIconTab(tab) {
     document.querySelectorAll('#counterQuickCountPanel .counter-icon-tab').forEach(t =>
@@ -100,6 +136,7 @@
     document.getElementById('counterQuickCountIconCustomPanel').style.display = tab === 'custom' ? '' : 'none';
   }
   function populateCounterQuickCountPanel() {
+    qcUserPickedIcon = false;
     const mods = App.getPlumbingModifiers();
     const esc = (s) => App.escapeHtml(s);
     const sizeSel = document.getElementById('counterQuickCountSize');
@@ -116,6 +153,7 @@
         document.querySelectorAll('#counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
         grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
         c.classList.add('selected');
+        qcUserPickedIcon = true;
         updateCounterQuickCountNamePreview();
       });
     }
@@ -129,6 +167,7 @@
           document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
           customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
           c.classList.add('selected');
+          qcUserPickedIcon = true;
           updateCounterQuickCountNamePreview();
         };
       });
@@ -227,11 +266,25 @@
     const computedName = [size, material, type].filter(Boolean).join(' ');
     const nameInput = document.getElementById('counterQuickCountName');
     const name = (nameInput?.value?.trim() || computedName) || 'Plumbing';
-    const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
-    const icon = sel ? sel.dataset.path : (App.getEffectiveCustomIcons()[0]?.value || App.getOrderedIcons()[0]?.value);
+    // Same selected-cell > per-Type > inferred > first-icon chain the preview
+    // shows, so what you saw is what you get.
+    const icon = getCounterQuickCountEffectiveIconPath();
     const mods = App.getPlumbingModifiers();
+    let color = mods.defaultColor || App.COLORS[2];
+    // Visual-twin guard: an existing counter already wears this exact
+    // icon+color, so its marks would be indistinguishable on the sheet —
+    // rotate to the next preset color not on a same-icon counter. Composes
+    // with (never duplicates) the Create tab's exact name/icon/color twin
+    // guard in features/counter.js: rotating here means a Quick Count create
+    // can no longer mint an exact twin either.
+    if (App.state.counters.some(c => c.icon === icon && (c.color || '').toLowerCase() === color.toLowerCase())) {
+      const usedColors = new Set(App.state.counters.filter(c => c.icon === icon).map(c => (c.color || '').toLowerCase()));
+      usedColors.add(color.toLowerCase());
+      const rotated = App.COLORS.find(c => !usedColors.has(c.toLowerCase()));
+      if (rotated) color = rotated;
+    }
     App.pushUndoSnapshot();
-    const newCounter = { id: App.uid(), name, icon, color: mods.defaultColor || App.COLORS[2] };
+    const newCounter = { id: App.uid(), name, icon, color };
     App.state.counters.push(newCounter);
     App.state.activeCounterType = newCounter.id;
     App.state.tool = App.TOOL.COUNTER;

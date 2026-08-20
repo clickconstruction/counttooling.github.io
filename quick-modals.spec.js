@@ -65,4 +65,85 @@ test.describe('window.App registry pilot - Quick modals', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // T2-16: Quick Count counters used to silently inherit the first library
+  // icon + the default color for EVERY Type — a "0.5in PEX Tee" mark rendered
+  // identical to a "Water Closet" mark and the error only surfaced at pricing
+  // time. The create path now defaults a per-Type icon (matched against the
+  // bundled icon library's search terms) and rotates the color when the
+  // icon+color pair would visually duplicate an existing counter.
+  const quickCreate = (page, type) => page.evaluate((t) => {
+    window.App.showCounterTab('quickcount');
+    const sel = document.getElementById('counterQuickCountType');
+    if (![...sel.options].some((o) => o.value === t)) {
+      const mods = window.App.getPlumbingModifiers();
+      mods.types.push(t);
+      window.App.savePlumbingModifiers(mods);
+      window.App.populateCounterQuickCountPanel();
+    }
+    sel.value = t;
+    sel.dispatchEvent(new Event('change'));
+    document.getElementById('counterQuickCountAdd').click();
+    const c = window.App.state.counters[window.App.state.counters.length - 1];
+    return { name: c.name, icon: c.icon, color: c.color };
+  }, type);
+
+  test('different Quick Count Types mint visually distinguishable counters', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    const tee = await quickCreate(page, 'Tee');
+    const valve = await quickCreate(page, 'Ball Valve');
+
+    expect(tee.name).toContain('Tee');
+    expect(valve.name).toContain('Ball Valve');
+    // The marks must be tellable apart on the sheet: different icon, or —
+    // when no per-Type icon exists — a rotated color.
+    const sameIcon = tee.icon === valve.icon;
+    const sameColor = tee.color.toLowerCase() === valve.color.toLowerCase();
+    expect(sameIcon && sameColor).toBe(false);
+    // "Tee" has a matching library glyph, so it should not fall back to the
+    // first library icon (Water Closet).
+    const teeIconName = await page.evaluate((p) => window.App.getIconName(p), tee.icon);
+    expect(teeIconName).not.toBe('Water Closet');
+  });
+
+  test('icon+color collision with an existing counter rotates the color', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // Same Type twice: same default icon, so the second create must rotate
+    // its color off the first to stay distinguishable.
+    const a = await quickCreate(page, 'Ball Valve');
+    const b = await quickCreate(page, 'Ball Valve');
+    expect(b.icon).toBe(a.icon);
+    expect(b.color.toLowerCase()).not.toBe(a.color.toLowerCase());
+    const palette = await page.evaluate(() => window.App.COLORS.map((c) => c.toLowerCase()));
+    expect(palette).toContain(b.color.toLowerCase());
+  });
+
+  test('custom user Types create fine and keyword-match the library when possible', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    const drain = await quickCreate(page, 'Floor Drain');
+    expect(drain.name).toContain('Floor Drain');
+    expect(typeof drain.icon).toBe('string');
+    expect(drain.icon.length).toBeGreaterThan(0);
+    // 'drain' is an icon-library search term (Circle Ring) — the default
+    // should pick it up rather than the first library icon.
+    const iconName = await page.evaluate((p) => window.App.getIconName(p), drain.icon);
+    expect(iconName).not.toBe('Water Closet');
+
+    // A fully unknown custom type still creates (library fallback icon).
+    const mystery = await quickCreate(page, 'Zzyzx Widget');
+    expect(mystery.name).toContain('Zzyzx Widget');
+    expect(mystery.icon.length).toBeGreaterThan(0);
+
+    // The modifier store survived the custom-type additions (persistence
+    // regression guard for plumbingModifiers).
+    const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('plumbingModifiers')));
+    expect(persisted.types).toContain('Floor Drain');
+    expect(persisted.types).toContain('Zzyzx Widget');
+  });
 });

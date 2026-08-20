@@ -177,7 +177,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, chainStart: null, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -1767,6 +1767,31 @@
     const lo = lts.opacity != null ? lts.opacity : 1;
     const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
     const sel = state.selectedLineId && state.currentPage === state.selectedLinePageIdx;
+    // Ghosts paint UNDER the real marks: they are reference scaffolding, and
+    // the takeoff has to stay readable on top of its own stencil. The ghost
+    // being positioned (placingGhost) rides the cursor and is drawn from the
+    // same list, so drop is just "move it into ann.ghosts".
+    const ghostEnv = {
+      tc: toCanvas,
+      page,
+      pageIdx: state.currentPage,
+      lineWidth: lw,
+      lineOpacity: lo,
+      dropSize: lts.dropXSize ?? 10,
+      dropStyle: lts.dropIconStyle ?? 'circle',
+      fontScale: z * currentEffDpr,
+      labelPad: 4,
+      dotRadius: 4,
+      counterSize: cs.size ?? 22,
+      counterOutline: cs.outlineSize != null ? cs.outlineSize : 0,
+      counterNumberSize: cs.numberSize || 10,
+      fontFamily: 'DM Sans',
+      ghostBounds: (g) => annotationModel.ghostBounds(g),
+      ghostActiveId: state.placingGhost ? state.placingGhost.id : state.activeGhostId,
+      ghostAlpha: GHOST_ALPHA,
+    };
+    if ((ann.ghosts || []).length) canvasDraw.drawGhosts(ctx, ann, ghostEnv);
+    if (state.placingGhost) canvasDraw.drawGhosts(ctx, { ghosts: [state.placingGhost] }, ghostEnv);
     canvasDraw.drawAnnotationsCore(ctx, ann, {
       tc: toCanvas,
       page,
@@ -1866,6 +1891,14 @@
       // so an invalid strokeStyle silently keeps the previous color. Mirror of
       // styles.css :root --red.
       ctx.strokeStyle = '#e85447'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+    }
+    if (state.tool === TOOL.GHOST && state.ghostRectStart && state.mousePos) {
+      const minX = Math.min(state.ghostRectStart.x, state.mousePos.x), maxX = Math.max(state.ghostRectStart.x, state.mousePos.x);
+      const minY = Math.min(state.ghostRectStart.y, state.mousePos.y), maxY = Math.max(state.ghostRectStart.y, state.mousePos.y);
+      const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
+      ctx.strokeStyle = '#e8c547'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
@@ -2085,6 +2118,8 @@
     if (multiplyZoneBtn) multiplyZoneBtn.classList.toggle('active', state.tool === TOOL.MULTIPLY_ZONE);
     const scaleZoneBtn = document.getElementById('scaleZoneBtn');
     if (scaleZoneBtn) scaleZoneBtn.classList.toggle('active', state.tool === TOOL.SCALE_ZONE);
+    const ghostBtn = document.getElementById('ghostBtn');
+    if (ghostBtn) ghostBtn.classList.toggle('active', state.tool === TOOL.GHOST);
     const deleteZoneBtn = document.getElementById('deleteZoneBtn');
     if (deleteZoneBtn) deleteZoneBtn.classList.toggle('active', state.tool === TOOL.DELETE_ZONE);
     const roomBtnEl = document.getElementById('roomBtn');
@@ -2201,7 +2236,7 @@
     // page's scale status on them and may set a temporary, local-only scale
     // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the
     // Measure tool reads real units. See noteViewerTempScale.
-    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'ghostBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -3134,6 +3169,8 @@
     state.deleteZoneStart = null;
     state.roomBoxStart = null;
     state.chainStart = null;
+    state.ghostRectStart = null;
+    state.placingGhost = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     state.activeCounterType = null;
     updateUI();
@@ -3217,6 +3254,20 @@
     state.roomBoxStart = null;
     state.tool = TOOL.SCALE_ZONE;
     updateUI();
+  };
+  document.getElementById('ghostBtn').onclick = () => {
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
+    state.deleteZoneStart = null;
+    state.roomBoxStart = null;
+    state.ghostRectStart = null;
+    // A ghost mid-placement survives nothing but a drop or Escape — re-arming
+    // the tool while carrying one would leave it orphaned on the cursor.
+    state.placingGhost = null;
+    state.tool = TOOL.GHOST;
+    updateUI();
+    renderAnnotations();
   };
   document.getElementById('deleteZoneBtn').onclick = () => {
     state.highlightStart = null;
@@ -4894,6 +4945,11 @@
       }
       renderAnnotations();
       updateUI();
+    } else if (state.tool === TOOL.GHOST) {
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      App.handleGhostCanvasClick && App.handleGhostCanvasClick(pdf);
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.DELETE_ZONE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -4987,6 +5043,10 @@
       finishPolyline(true);
       return;
     }
+    // Ghost tool: a right-click that lands on a ghost opens the batch menu
+    // instead of the per-mark one. Gated on the tool, so right-clicking a real
+    // mark that happens to sit under a ghost still works everywhere else.
+    if (App.tryOpenGhostMenuAt && App.tryOpenGhostMenuAt(pdf, e.clientX, e.clientY)) return;
     state.ctxTarget = hitTest(pdf);
     if (state.ctxTarget) showContextMenu(e.clientX, e.clientY);
   }
@@ -5234,6 +5294,21 @@
     if (e.button !== 0) return;
     const pt = canvasPointFromEvent(e);
     state.mousePos = canvasToPdf(pt.x, pt.y);
+    // Ghost drag. Gated on TOOL.GHOST: a ghost sits ON TOP of the plan where
+    // real marks live, so outside its own tool it must never intercept a click
+    // meant for the takeoff underneath.
+    if (state.tool === TOOL.GHOST && !state.placingGhost && !state.ghostRectStart) {
+      const gAnn = getActiveAnnotations(state.pages[state.currentPage]);
+      const gi = annotationModel.ghostIndexAtPoint(gAnn, state.mousePos);
+      if (gi >= 0) {
+        pushUndoSnapshot();
+        state.draggingGhostIdx = gi;
+        state.draggingGhostLast = { x: state.mousePos.x, y: state.mousePos.y };
+        state.activeGhostId = gAnn.ghosts[gi].id;
+        renderAnnotations();
+        return;
+      }
+    }
     const t = hitTest(state.mousePos);
     if (t && t.type === 'legendResize') {
       pushUndoSnapshot();
@@ -5326,6 +5401,17 @@
         leg.y = Math.max(0, Math.min(pageH - leg.h, pdf.y - state.legendDragOffset.y));
         renderAnnotations();
       }
+    } else if (state.draggingGhostIdx !== null && state.draggingGhostLast) {
+      const gAnn = getActiveAnnotations(state.pages[state.currentPage]);
+      const g = gAnn?.ghosts?.[state.draggingGhostIdx];
+      if (g) {
+        // Delta-based, not offset-based: the ghost stores absolute points, so
+        // it moves by the same delta the pointer did.
+        annotationModel.translateGhost(g, pdf.x - state.draggingGhostLast.x, pdf.y - state.draggingGhostLast.y);
+        state.draggingGhostLast = { x: pdf.x, y: pdf.y };
+        state.ghostDragMoved = true;
+        renderAnnotations();
+      }
     } else if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null && state.editingPolyline) {
       state.editingPolyline.points[state.draggingVertexIdx] = pdf;
       renderAnnotations();
@@ -5356,7 +5442,13 @@
         note.y = pdf.y - state.draggingNoteOffset.y;
         renderAnnotations();
       }
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart)) {
+    } else if (state.tool === TOOL.GHOST && state.placingGhost && state.placingGhostLast) {
+      // The freshly-captured copy rides the cursor until the next click drops
+      // it: capture and placement are one gesture (corner, corner, drop).
+      annotationModel.translateGhost(state.placingGhost, pdf.x - state.placingGhostLast.x, pdf.y - state.placingGhostLast.y);
+      state.placingGhostLast = { x: pdf.x, y: pdf.y };
+      renderAnnotations();
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost))) {
       renderAnnotations();
     }
     const t = hitTest(pdf);
@@ -5403,6 +5495,18 @@
     if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
     if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
     if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
+    if (state.draggingGhostIdx !== null) {
+      if (state.ghostDragMoved) markProjectDirty();
+      state.draggingGhostIdx = null;
+      state.draggingGhostLast = null;
+      state.ghostDragMoved = false;
+      // NOT cleared here: the click event fires AFTER mouseup, and without
+      // this flag it would fall into the TOOL.GHOST branch and arm a stray
+      // capture corner. The click handler consumes it (justFinishedDragNote
+      // pattern). Unconditional on purpose — a press that grabbed a ghost is
+      // ghost interaction even when the pointer never moved.
+      state.justFinishedDragGhost = true;
+    }
     state.isPanning = false;
     state.panStart = null;
     scheduleCropTile();   // pan settled — re-cover the new visible window (no-ops when base is sharp)
@@ -5469,7 +5573,7 @@
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
-    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; return; }
+    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe || state.justFinishedDragGhost) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; state.justFinishedDragGhost = false; return; }
     state.justFinishedResize = false;
     state.justFinishedDragNote = false;
     state.justFinishedLegendResize = false;
@@ -5993,6 +6097,19 @@
       }
     }
     if (e.key === 'Escape') {
+      // showToast() is itself a modal (#airboardToastModal) and the ladder
+      // below closes modals before it reaches any tool, so a toast on screen
+      // eats the Escape a live gesture was meant to get. The Ghost capture
+      // flow toasts after EVERY step, which would make that near-permanent —
+      // so while a Ghost gesture is IN FLIGHT, clear the toast up front and
+      // let the real ladder run. Deliberately narrow: only the toast (a
+      // genuine modal still wins), and only mid-gesture (an idle-in-Ghost
+      // Escape keeps the two-press rhythm every other tool has). Retire this
+      // with the queued non-blocking-toast work (JOURNEY-MAP Tier-2 #15).
+      if (state.tool === TOOL.GHOST && (state.placingGhost || state.ghostRectStart) && document.getElementById('airboardToastModal')?.classList.contains('visible')) {
+        hideModal('airboardToastModal');
+        if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
+      }
       if (state.gridOriginPickMode) {
         state.gridOriginPickMode = false;
         showModal('gridSettingsModal');
@@ -6107,6 +6224,11 @@
       } else if (state.tool === TOOL.DELETE_ZONE) {
         if (state.deleteZoneStart) { state.deleteZoneStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.GHOST) {
+        // Staged like Quick Line's: drop the ghost in hand -> drop the first
+        // corner -> exit to Move. One Escape never costs more than one click.
+        if (App.handleGhostEscape && App.handleGhostEscape()) { renderAnnotations(); updateUI(); }
+        else { state.tool = TOOL.NONE; state.activeGhostId = null; updateUI(); renderAnnotations(); }
       } else if (state.tool === TOOL.ROOM) {
         if (state.roomBoxStart) { state.roomBoxStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
@@ -6491,6 +6613,14 @@
   App.performDeleteZone = performDeleteZone;
   // Canvas layers dep (features/canvas-layers.js).
   App.deepCopyAnnotations = deepCopyAnnotations;
+  // Ghosts (features/ghost.js) — the model half stays pure in
+  // annotation-model.js; the tool's gesture + menu live in the feature file.
+  App.captureGhostFromRect = (...a) => annotationModel.captureGhostFromRect(...a);
+  App.ghostCounts = (...a) => annotationModel.ghostCounts(...a);
+  App.ghostBounds = (...a) => annotationModel.ghostBounds(...a);
+  App.translateGhost = (...a) => annotationModel.translateGhost(...a);
+  App.stampGhostIntoAnnotations = (...a) => annotationModel.stampGhostIntoAnnotations(...a);
+  App.ghostIndexAtPoint = (...a) => annotationModel.ghostIndexAtPoint(...a);
   // My Settings deps (features/my-settings.js).
   App.fetchUserAirboard = fetchUserAirboard;
   App.saveUserAirboard = saveUserAirboard;

@@ -189,7 +189,7 @@
        body.header-collapsed — with the group tucked away the row usually fits,
        so the compact mode stays the deeper fallback. */
     body.header-more #polylineBtn, body.header-more #highlightBtn, body.header-more #multiplyZoneBtn, body.header-more #scaleZoneBtn, body.header-more #roomBtn,
-    body.header-more #deleteZoneBtn, body.header-more #noteBtn, body.header-more #legendBtn,
+    body.header-more #ghostBtn, body.header-more #deleteZoneBtn, body.header-more #noteBtn, body.header-more #legendBtn,
     body.header-more #gridBtn, body.header-more .header-tools-tight .divider { display: none !important; }
     .header-more-menu { position: fixed; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 210px; }
     .header-more-menu .hm-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--text); }
@@ -1203,6 +1203,9 @@
     .canvas-menu-item-edit { width: 24px; height: 24px; min-width: 24px; min-height: 24px; padding: 0; cursor: pointer; background: none; border: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--yellow); border-radius: 4px; transition: opacity 0.15s ease; }
     .canvas-menu-item-edit:hover { opacity: 0.9; }
     .canvas-menu-item.active .canvas-menu-item-edit { color: #000; }
+    .canvas-menu-heading { padding: 6px 12px 8px; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted, #8a8a92); }
+    .canvas-menu-sep { height: 1px; background: var(--border); margin: 4px 6px; }
+    .ghost-menu-check { display: inline-block; width: 12px; flex-shrink: 0; color: var(--yellow); }
     .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: 1px solid var(--yellow); border-radius: 4px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; transition: background 0.15s ease; }
     .canvas-menu-add:hover { background: var(--surface2); }
     .download-page-dropdown { display: inline-flex; }

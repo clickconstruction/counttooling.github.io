@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(drops): fast drop entry — fixed modal, recent sizes, repeat row, Drop tool
+
+A drop (vertical rise/fall at a line end) used to cost ~6 actions through the
+Line Properties round trip, once per end — and a chained branch has one end
+per fixture. Shipped as three stacked steps (each stands alone):
+
+**Step 0 — fix what a faster path would multiply.** The drop fields parsed
+with `parseInt`, silently truncating a typed 10.5 to 10 while the field kept
+showing 10.5; they now parse decimals and ft-in shorthand ("8'6", feet only —
+in other units a plain "8" would misread as 8 ft) via `parseRealWorldLength`,
+and every commit echoes the stored value back into the field. Close (and
+Escape-close) snapshotted AFTER mutating, so the first Ctrl+Z was a no-op —
+every path now funnels through one `commitDrop` that snapshots first. And a
+plain open-then-Close marked the project dirty and burned an undo slot; now
+only a real change does.
+
+**Step 1 — recent sizes, surfaced twice + the repeat row.** New pure module
+recent-drops.js (`nextRecentDrops`, `formatDropLabel`, max 5) behind the
+device-local `state.recentDrops` store (localStorage `recentDrops`): one-click
+Recent chips in Line Properties above each ± row, and a context-menu
+**"Drop N ft here"** row (last-used size, applied to the clicked line's
+nearest end — the right-click point rides `ctxTarget.pdf`). Every set reports
+a `drop_set` event carrying `{value, unit, route}`, so which entry path
+estimators actually use is finally measurable.
+
+**Step 2 — the Drop tool** (`TOOL.DROP`, hotkey B, features/drop-mode.js).
+Header button arms it; every line end on the page renders a labeled target
+ring; one click per end writes the palette's size, the same size again clears
+(click-to-toggle), each click one undo step. Writes go through the pure node
+model in annotation-model.js (`collectDropNodes`/`applyDropToNode`):
+coincident line ends — every chain joint — collapse to ONE node whose drop
+lives on exactly one end, so shared points can never double-count vertical
+footage (and re-stamping a point repairs a legacy duplicate). The `#dropPanel`
+palette reuses the Chain-panel idiom (draggable via `dropPanelPos`, closable
+without leaving the tool, Esc ladder: close panel → exit tool) and lists the
+shared recents + a custom value/unit entry. Regressions:
+[drop-mode.spec.js](drop-mode.spec.js) (3 tests) + node tests for the recents
+core (constants.test.js) and node model (annotation-model.test.js).
+
 ## fix(settings): Project Settings composition quick wins (B18)
 
 From the 2026-08-17 Project Settings composition audit (JOURNEY-MAP.md B18):

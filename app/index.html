@@ -46,6 +46,7 @@
   <script src="/zoom-ladder.js"></script>
   <script src="/hotkeys.js"></script>
   <script src="/recent-colors.js"></script>
+  <script src="/recent-drops.js"></script>
   <script src="/idb.js"></script>
   <script src="/format.js"></script>
   <script src="/save-utils.js"></script>
@@ -96,6 +97,9 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M320 400C364.2 400 400 364.2 400 320C400 275.8 364.2 240 320 240C275.8 240 240 275.8 240 320C240 364.2 275.8 400 320 400zM476.8 352C462 425 397.4 480 320 480C242.6 480 178 425 163.2 352L64 352C46.3 352 32 337.7 32 320C32 302.3 46.3 288 64 288L163.2 288C178 215 242.6 160 320 160C397.4 160 462 215 476.8 288L576 288C593.7 288 608 302.3 608 320C608 337.7 593.7 352 576 352L476.8 352z"/></svg>
         </button>
         <span id="headerChainPair" class="header-chain-pair" style="display:none;" role="button" tabindex="0" aria-label="Chain pair — click to change"></span>
+        <button id="dropBtn" class="sidebar-triggers" title="Drop: add rise/fall at line ends (B)" aria-label="Drop">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="26" height="26"><path fill="currentColor" d="M342.6 470.6C330.1 483.1 309.8 483.1 297.3 470.6L169.3 342.6C156.8 330.1 156.8 309.8 169.3 297.3C181.8 284.8 202.1 284.8 214.6 297.3L288 370.7L288 96C288 78.3 302.3 64 320 64C337.7 64 352 78.3 352 96L352 370.7L425.4 297.3C437.9 284.8 458.2 284.8 470.7 297.3C483.2 309.8 483.2 330.1 470.7 342.6L342.7 470.6zM128 512L512 512C529.7 512 544 526.3 544 544C544 561.7 529.7 576 512 576L128 576C110.3 576 96 561.7 96 544C96 526.3 110.3 512 128 512z"/></svg>
+        </button>
         <button id="measureBtn" class="sidebar-triggers" title="Measure distance" aria-label="Measure">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg>
         </button>
@@ -1275,6 +1279,7 @@
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M352 96C352 78.3 337.7 64 320 64C302.3 64 288 78.3 288 96L288 224L160 224C142.3 224 128 238.3 128 256C128 273.7 142.3 288 160 288L288 288L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 288L480 288C497.7 288 512 273.7 512 256C512 238.3 497.7 224 480 224L352 224L352 96zM128 544C128 561.7 142.3 576 160 576L480 576C497.7 576 512 561.7 512 544C512 526.3 497.7 512 480 512L160 512C142.3 512 128 526.3 128 544z"/></svg></td><td><kbd>J</kbd></td><td>Toggle snap to 45° angles</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg></td><td><kbd>P</kbd></td><td>Polyline mode</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M320 400C364.2 400 400 364.2 400 320C400 275.8 364.2 240 320 240C275.8 240 240 275.8 240 320C240 364.2 275.8 400 320 400zM476.8 352C462 425 397.4 480 320 480C242.6 480 178 425 163.2 352L64 352C46.3 352 32 337.7 32 320C32 302.3 46.3 288 64 288L163.2 288C178 215 242.6 160 320 160C397.4 160 462 215 476.8 288L576 288C593.7 288 608 302.3 608 320C608 337.7 593.7 352 576 352L476.8 352z"/></svg></td><td><kbd>T</kbd></td><td>Chain mode (counter + connecting line)</td></tr>
+          <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M342.6 470.6C330.1 483.1 309.8 483.1 297.3 470.6L169.3 342.6C156.8 330.1 156.8 309.8 169.3 297.3C181.8 284.8 202.1 284.8 214.6 297.3L288 370.7L288 96C288 78.3 302.3 64 320 64C337.7 64 352 78.3 352 96L352 370.7L425.4 297.3C437.9 284.8 458.2 284.8 470.7 297.3C483.2 309.8 483.2 330.1 470.7 342.6L342.7 470.6zM128 512L512 512C529.7 512 544 526.3 544 544C544 561.7 529.7 576 512 576L128 576C110.3 576 96 561.7 96 544C96 526.3 110.3 512 128 512z"/></svg></td><td><kbd>B</kbd></td><td>Drop mode (add rise/fall at line ends)</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M192 80C192 53.5 213.5 32 240 32L400 32C426.5 32 448 53.5 448 80L448 104L344 104C330.7 104 320 114.7 320 128C320 141.3 330.7 152 344 152L448 152L448 200L376 200C362.7 200 352 210.7 352 224C352 237.3 362.7 248 376 248L448 248L448 296L344 296C330.7 296 320 306.7 320 320C320 333.3 330.7 344 344 344L448 344L448 392L376 392C362.7 392 352 402.7 352 416C352 429.3 362.7 440 376 440L448 440L448 488L344 488C330.7 488 320 498.7 320 512C320 525.3 330.7 536 344 536L448 536L448 560C448 586.5 426.5 608 400 608L240 608C213.5 608 192 586.5 192 560L192 80z"/></svg></td><td><kbd>D</kbd></td><td>Measure Distance</td></tr>
           <tr><td class="macros-icon-cell"><span class="macros-icon" style="font-size:1.1rem;">↻</span></td><td><kbd>R</kbd></td><td>Rotate page</td></tr>
           <tr><td class="macros-icon-cell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" class="macros-icon"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg></td><td><kbd>H</kbd></td><td>Highlight mode</td></tr>
@@ -1549,7 +1554,7 @@
       <div class="form-group">
         <label>Start drop</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="number" id="linePropertiesStartDrop" min="0" step="1" placeholder="0" style="flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+          <input type="text" id="linePropertiesStartDrop" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off" style="flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
           <select id="linePropertiesStartDropUnit" title="Start drop unit" style="width:auto;flex:0 0 auto;padding:8px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
             <option value="ft">ft</option>
             <option value="in">in</option>
@@ -1558,6 +1563,7 @@
             <option value="yd">yd</option>
           </select>
         </div>
+        <div id="linePropertiesStartDropRecent" class="drop-recent-row" style="display:none;"></div>
         <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
           <button type="button" id="linePropertiesStartDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
           <button type="button" id="linePropertiesStartDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
@@ -1569,7 +1575,7 @@
       <div class="form-group">
         <label>End drop</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="number" id="linePropertiesEndDrop" min="0" step="1" placeholder="0" style="flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+          <input type="text" id="linePropertiesEndDrop" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off" style="flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
           <select id="linePropertiesEndDropUnit" title="End drop unit" style="width:auto;flex:0 0 auto;padding:8px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
             <option value="ft">ft</option>
             <option value="in">in</option>
@@ -1578,6 +1584,7 @@
             <option value="yd">yd</option>
           </select>
         </div>
+        <div id="linePropertiesEndDropRecent" class="drop-recent-row" style="display:none;"></div>
         <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
           <button type="button" id="linePropertiesEndDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
           <button type="button" id="linePropertiesEndDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
@@ -2503,8 +2510,34 @@
     </div>
     <div class="chain-panel-foot" id="chainPanelFoot"></div>
   </div>
+  <!-- Drop tool palette: the size picker shown while TOOL.DROP is active.
+       Rows are BUILT by features/drop-mode.js from state.recentDrops (the
+       same list behind the Line Properties Recent chips); the custom row
+       teaches a new size to both surfaces via pushRecentDrop. -->
+  <div class="chain-panel drop-panel" id="dropPanel" style="display:none;">
+    <div class="chain-panel-head" id="dropPanelHead">
+      <span class="chain-panel-grip" aria-hidden="true">⠿</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M342.6 470.6C330.1 483.1 309.8 483.1 297.3 470.6L169.3 342.6C156.8 330.1 156.8 309.8 169.3 297.3C181.8 284.8 202.1 284.8 214.6 297.3L288 370.7L288 96C288 78.3 302.3 64 320 64C337.7 64 352 78.3 352 96L352 370.7L425.4 297.3C437.9 284.8 458.2 284.8 470.7 297.3C483.2 309.8 483.2 330.1 470.7 342.6L342.7 470.6zM128 512L512 512C529.7 512 544 526.3 544 544C544 561.7 529.7 576 512 576L128 576C110.3 576 96 561.7 96 544C96 526.3 110.3 512 128 512z"/></svg>
+      <span>Drop size</span>
+      <button type="button" id="dropPanelClose" class="chain-panel-close" title="Close (Drop stays active)" aria-label="Close panel">×</button>
+    </div>
+    <div class="drop-size-list" id="dropSizeList"></div>
+    <div class="drop-custom-row">
+      <input type="text" id="dropCustomValue" class="chain-search" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off" aria-label="Custom drop size">
+      <select id="dropCustomUnit" aria-label="Custom drop unit">
+        <option value="ft">ft</option>
+        <option value="in">in</option>
+        <option value="m">m</option>
+        <option value="cm">cm</option>
+        <option value="yd">yd</option>
+      </select>
+      <button type="button" id="dropCustomAdd" title="Add size">Add</button>
+    </div>
+    <div class="chain-panel-foot" id="dropPanelFoot"></div>
+  </div>
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
+    <button id="ctxRepeatDrop" class="ctx-repeat-drop" style="display:none;">Drop here</button>
     <button id="ctxLineProperties" style="display:none;">Line Properties<span class="context-menu-subtitle">[color, name, drops]</span></button>
     <button id="ctxShowLength" style="display:none;">Show Length</button>
     <button id="ctxAssignGroup" style="display:none;">Assign to group</button>
@@ -2572,6 +2605,7 @@
   <script src="/features/quick-keys.js"></script>
   <script src="/features/keyboard-map.js"></script>
   <script src="/features/chain.js"></script>
+  <script src="/features/drop-mode.js"></script>
   <script src="/features/hotkey-peek.js"></script>
   <script src="/features/child-counts.js"></script>
   <script src="/report.js"></script>

@@ -200,6 +200,7 @@
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
+    recentDrops: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
@@ -281,6 +282,13 @@
     const parsed = rc ? JSON.parse(rc) : null;
     if (Array.isArray(parsed) && parsed.every(x => typeof x === 'string')) {
       state.recentLineColors = parsed.slice(0, RECENT_COLORS_MAX);
+    }
+  } catch (_) {}
+  try {
+    // Recent drop sizes ({ value, unit }), per device like recentRoomHeights.
+    const rd = JSON.parse(localStorage.getItem('recentDrops') || '[]');
+    if (Array.isArray(rd)) {
+      state.recentDrops = rd.filter(d => d && typeof d.value === 'number' && d.value > 0 && typeof d.unit === 'string').slice(0, RECENT_DROPS_MAX);
     }
   } catch (_) {}
 
@@ -1812,6 +1820,11 @@
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
       ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
+    if (state.tool === TOOL.DROP) {
+      // Drop tool armed: every line end on the page becomes a labeled target
+      // ring (features/drop-mode.js draws them so the node math lives once).
+      App.drawDropNodesOverlay && App.drawDropNodesOverlay(ctx);
+    }
     if (state.highlightStart && state.mousePos) {
       const minX = Math.min(state.highlightStart.x, state.mousePos.x), maxX = Math.max(state.highlightStart.x, state.mousePos.x);
       const minY = Math.min(state.highlightStart.y, state.mousePos.y), maxY = Math.max(state.highlightStart.y, state.mousePos.y);
@@ -2094,6 +2107,10 @@
     // Defensive core->feature callback: features/chain.js re-syncs its palette
     // panel (show/hide + row selection) whenever the tool or palettes change.
     App.onChainToolSync && App.onChainToolSync();
+    const dropBtnEl = document.getElementById('dropBtn');
+    if (dropBtnEl) dropBtnEl.classList.toggle('active', state.tool === TOOL.DROP);
+    // Same pattern for the Drop tool's size palette (features/drop-mode.js).
+    App.onDropToolSync && App.onDropToolSync();
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
     const counterBtn = document.getElementById('counterBtn');
@@ -2201,7 +2218,7 @@
     // page's scale status on them and may set a temporary, local-only scale
     // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the
     // Measure tool reads real units. See noteViewerTempScale.
-    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'dropBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -2889,6 +2906,22 @@
     logUserEvent('line_added', state.currentProjectId, { kind: kind, lineTypeId: state.activeLineTypeId || null, pageIndex: state.currentPage });
   }
 
+  // Every surface that sets a line drop reports through here — the route field
+  // ('modal', 'modal-recent', 'context-repeat', 'drop-tool', …) is what tells
+  // us which entry path estimators actually use. value 0 = a cleared drop.
+  function logDropSetEvent(value, unit, route) {
+    logUserEvent('drop_set', state.currentProjectId, { value: value, unit: unit, route: route, pageIndex: state.currentPage });
+  }
+
+  // Commit a used drop size to the shared recent list (state.recentDrops,
+  // persisted per device). nextRecentDrops is the pure core (recent-drops.js);
+  // both consumers — the Line Properties chips and the Drop tool palette —
+  // read the same list, so the two surfaces always offer the same sizes.
+  function pushRecentDrop(value, unit) {
+    state.recentDrops = nextRecentDrops(state.recentDrops, value, unit);
+    try { localStorage.setItem('recentDrops', JSON.stringify(state.recentDrops)); } catch (_) {}
+  }
+
   // SECTION: Supabase auth & dev auth
   async function initSupabaseAuth() {
     if (!supabase) return;
@@ -3172,6 +3205,25 @@
     // reopens a closed palette WITHOUT clearing the run in progress.
     App.openChainPanel && App.openChainPanel();
     updateUI();
+  };
+  document.getElementById('dropBtn').onclick = () => {
+    // Drop tool: no page-scale gate — a drop is entered in its own unit and
+    // the length math only adds it where a scale exists.
+    if (state.tool !== TOOL.DROP) {
+      state.quickLineStart = null;
+      state.highlightStart = null;
+      state.multiplyZoneStart = null;
+      state.scaleZoneStart = null;
+      state.deleteZoneStart = null;
+      state.roomBoxStart = null;
+      state.chainStart = null;
+      state.tool = TOOL.DROP;
+      collapsePagesSectionForPlacing();
+    }
+    // Re-click while active reopens a closed palette (the Chain pattern).
+    App.openDropPanel && App.openDropPanel();
+    updateUI();
+    renderAnnotations();
   };
   // Tool right-click (contextmenu) handlers live in
   // features/tool-context-menu.js (one declarative map for all tools).
@@ -4475,6 +4527,40 @@
     document.getElementById('contextMenu').classList.remove('visible');
     App.openLinePropertiesModal(it);
   };
+  // Repeat-drop: apply the last-used drop size to the clicked line's nearest
+  // end. Goes through the node model (collectDropNodes/applyDropToNode), so an
+  // end shared with another run — every joint in a chain — carries the drop
+  // ONCE instead of once per line. No-op (no undo, no dirty) when that end
+  // already has this exact drop.
+  const ctxRepeatDropEl = document.getElementById('ctxRepeatDrop');
+  if (ctxRepeatDropEl) ctxRepeatDropEl.onclick = () => {
+    const t = state.ctxTarget;
+    const lastDrop = (state.recentDrops || [])[0];
+    document.getElementById('contextMenu').classList.remove('visible');
+    state.ctxTarget = null;
+    if (!t || !lastDrop || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
+    const page = state.pages[state.currentPage];
+    const ann = page ? getActiveAnnotations(page) : null;
+    const line = t.type === 'quickLine' ? ann?.quickLines?.[t.index] : ann?.polylines?.[t.index];
+    if (!line) return;
+    const isPoly = t.type === 'polyline';
+    const pts = isPoly ? (line.points || []) : null;
+    const start = isPoly ? pts[0] : { x: line.x1, y: line.y1 };
+    const end = isPoly ? pts[pts.length - 1] : { x: line.x2, y: line.y2 };
+    if (!start || !end) return;
+    const target = t.pdf && ptDist(t.pdf, start) <= ptDist(t.pdf, end) ? start : end;
+    const nodes = collectDropNodes(ann);
+    const node = nodes.find(n => ptDist(n, target) <= 1);
+    if (!node) return;
+    if (!applyDropToNode(ann, node, lastDrop.value, lastDrop.unit, true)) return;
+    pushUndoSnapshotCurrentPage();
+    applyDropToNode(ann, node, lastDrop.value, lastDrop.unit);
+    pushRecentDrop(lastDrop.value, lastDrop.unit);
+    logDropSetEvent(lastDrop.value, lastDrop.unit, 'context-repeat');
+    markProjectDirty();
+    renderAnnotations();
+    updateUI();
+  };
   document.getElementById('ctxShowLength').onclick = () => {
     const t = state.ctxTarget;
     if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
@@ -4603,6 +4689,16 @@
     editBtn.style.display = (state.ctxTarget?.type === 'note' || state.ctxTarget?.type === 'noteResize' || state.ctxTarget?.type === 'noteFontSize') ? 'block' : 'none';
     const canLineProps = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     linePropsBtn.style.display = canLineProps ? 'block' : 'none';
+    // Repeat-drop row: the last drop size this device used, applied to the
+    // clicked line's nearest end in one click — the menu is already open, so
+    // the whole modal round-trip disappears for every drop after the first.
+    const repeatDropBtn = document.getElementById('ctxRepeatDrop');
+    if (repeatDropBtn) {
+      const lastDrop = (state.recentDrops || [])[0];
+      const showRepeat = canLineProps && lastDrop;
+      repeatDropBtn.style.display = showRepeat ? 'block' : 'none';
+      if (showRepeat) repeatDropBtn.textContent = 'Drop ' + formatDropLabel(lastDrop.value, lastDrop.unit) + ' here';
+    }
     const canShowLength = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     showLengthBtn.style.display = canShowLength ? 'block' : 'none';
     if (canShowLength) {
@@ -4803,6 +4899,10 @@
       App.commitChainPoint && App.commitChainPoint(pdf);
       renderAnnotations();
       updateUI();
+    } else if (state.tool === TOOL.DROP) {
+      // Drop tool: a click on a line end sets the palette's drop size there
+      // (same size again clears — click-to-toggle). Logic in features/drop-mode.js.
+      App.commitDropClick && App.commitDropClick(pdf);
     } else if (state.tool === TOOL.HIGHLIGHT) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -4990,7 +5090,10 @@
       return;
     }
     state.ctxTarget = hitTest(pdf);
-    if (state.ctxTarget) showContextMenu(e.clientX, e.clientY);
+    // The right-click's PDF-space point rides along so point-aware rows (the
+    // repeat-drop row picks the line end nearest the click) know where on the
+    // mark the user aimed. Cleared with ctxTarget everywhere.
+    if (state.ctxTarget) { state.ctxTarget.pdf = pdf; showContextMenu(e.clientX, e.clientY); }
   }
 
   // SECTION: Event Binding
@@ -5029,6 +5132,7 @@
       case TOOL.ROOM:
       case TOOL.NOTE:
       case TOOL.CHAIN:
+      case TOOL.DROP:
         return true;
       case TOOL.POLYLINE:
         return !!state.drawingPolyline;
@@ -6079,6 +6183,10 @@
         if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
         else if (App.isChainPanelOpen && App.isChainPanelOpen()) { App.closeChainPanel(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
+      } else if (state.tool === TOOL.DROP) {
+        // Same ladder as Chain, minus the run: close the palette first, then exit.
+        if (App.isDropPanelOpen && App.isDropPanelOpen()) { App.closeDropPanel(); updateUI(); }
+        else { state.tool = TOOL.NONE; updateUI(); renderAnnotations(); }
       } else if (state.tool === TOOL.SCALE) {
         // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
         // stray crosshair lingers) and any zone-apply state.
@@ -6574,6 +6682,19 @@
   // Same-id palette collapse (features/palette-insights.js id-aware merge +
   // spec seam; annotation-model.js pure helper).
   App.dedupePaletteById = dedupePaletteById;
+  // Line-drop deps (features/item-details.js Recent chips + features/drop-mode.js
+  // Drop tool). collectDropNodes/applyDropToNode are the pure node model in
+  // annotation-model.js; the recent list is device-local (localStorage
+  // 'recentDrops'), one store behind both surfaces.
+  App.collectDropNodes = collectDropNodes;
+  App.applyDropToNode = applyDropToNode;
+  App.formatDropLabel = formatDropLabel;
+  App.getRecentDrops = () => state.recentDrops || [];
+  App.pushRecentDrop = pushRecentDrop;
+  App.logDropSetEvent = logDropSetEvent;
+  App.toCanvas = toCanvas;
+  App.showContextMenu = showContextMenu;               // spec seam (drop-mode.spec.js)
+  App.getUndoDepth = () => undoStackModel.undoDepth(); // spec seam (no-op close stays clean)
   // Sidebar usage-filter scope (features/sidebar-lists.js reads, the settings
   // modals in features/counter-settings.js + line-type-settings.js write).
   App.getCounterListFilterScope = getCounterListFilterScope;

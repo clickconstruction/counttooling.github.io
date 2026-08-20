@@ -38,6 +38,33 @@
   let pendingDeleteCounterLineType = null;
   let counterLineTypeDetailsItem = null;
   let pendingLineProperties = null;
+  // Set by openLinePropertiesModal, called by closeLinePropertiesModal: commits
+  // any value typed into the drop fields but not yet blurred (the Escape-close
+  // path), through the SAME commitDrop funnel as every other path — so close
+  // pushes its undo snapshot before mutating and marks dirty only on change.
+  let commitPendingDropFields = null;
+
+  // --- drop field I/O -------------------------------------------------------
+  //
+  // Drops used to be read with parseInt, which silently swallowed the fraction
+  // of any decimal a user typed (10.5 stored as 10) while the field went on
+  // showing 10.5 — a number on screen the takeoff was not counting. Both
+  // halves are fixed here: the value parses as a decimal in the selected unit
+  // (plus the ft-in shorthand "8'6" when that unit is feet, exactly as the
+  // Room Sizer's ceiling height accepts — for any other unit the shorthand
+  // would silently misread a plain "8" as 8 feet), and every commit path
+  // re-renders the field from the value that was actually stored.
+  function readDropField(el, unitEl) {
+    const raw = String(el.value || '').trim();
+    if (!raw) return 0;
+    const unit = unitEl ? unitEl.value : 'ft';
+    const parsed = unit === 'ft' ? App.parseRealWorldLength(raw, 'ft') : parseFloat(raw);
+    if (parsed == null || isNaN(parsed) || parsed <= 0) return 0;
+    return Math.round(parsed * 100) / 100;
+  }
+  function writeDropField(el, value) {
+    el.value = value > 0 ? String(parseFloat(value.toFixed(2))) : '';
+  }
 
   function openCounterLineTypeDetailsModal(kind, item) {
     const state = App.state;
@@ -234,8 +261,8 @@
     const editVerticesGroup = document.getElementById('linePropertiesEditVerticesGroup');
     const editVerticesBtn = document.getElementById('linePropertiesEditVertices');
     nameEl.value = line.name || (it.type === 'poly' ? 'Polyline' : 'Quick line');
-    startDropEl.value = String(line.startDrop ?? '');
-    endDropEl.value = String(line.endDrop ?? '');
+    writeDropField(startDropEl, line.startDrop || 0);
+    writeDropField(endDropEl, line.endDrop || 0);
     startDropUnitEl.value = line.startDropUnit || defaultDropUnit;
     endDropUnitEl.value = line.endDropUnit || defaultDropUnit;
     swatchEl.style.background = color;
@@ -257,81 +284,94 @@
         App.renderAnnotations();
       });
     };
-    const applyDrops = () => {
-      const sd = parseInt(startDropEl.value, 10);
-      const ed = parseInt(endDropEl.value, 10);
-      line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
-      line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
-      line.startDropUnit = startDropUnitEl.value;
-      line.endDropUnit = endDropUnitEl.value;
-    };
-    startDropEl.onblur = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
-    endDropEl.onblur = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); };
-    startDropUnitEl.onchange = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
-    endDropUnitEl.onchange = () => { App.pushUndoSnapshotCurrentPage(); applyDrops(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations(); };
-    const adjustDrop = (el, unitEl, prop, delta) => {
-      const v = parseInt(el.value, 10);
-      const cur = isNaN(v) || v < 0 ? 0 : v;
-      const next = Math.max(0, cur + delta);
-      App.pushUndoSnapshotCurrentPage();
-      line[prop] = next;
-      line[prop + 'Unit'] = unitEl.value;
-      el.value = next || '';
+    // Commit one drop field. Every path (typing, ±, a Recent chip, the unit
+    // select, Close) funnels through here, so the undo snapshot is always
+    // pushed BEFORE the mutation, the field is re-rendered from the value that
+    // was actually stored, and only a real change marks the project dirty.
+    const commitDrop = (el, unitEl, prop, value, route) => {
+      const unit = unitEl.value;
+      const v = value > 0 ? value : 0;
+      const changed = (line[prop] || 0) !== v || (v > 0 && line[prop + 'Unit'] !== unit);
+      if (changed) App.pushUndoSnapshotCurrentPage();
+      line[prop] = v;
+      if (v > 0) line[prop + 'Unit'] = unit;
+      writeDropField(el, v);
+      if (!changed) return false;
+      if (v > 0) App.pushRecentDrop(v, unit);
+      App.logDropSetEvent(v, unit, route || 'modal');
       App.markProjectDirty();
       App.updateUI();
       App.renderAnnotations();
+      renderDropChips();
+      return true;
+    };
+    const applyFromField = (el, unitEl, prop, route) => commitDrop(el, unitEl, prop, readDropField(el, unitEl), route);
+
+    startDropEl.onblur = () => applyFromField(startDropEl, startDropUnitEl, 'startDrop', 'modal');
+    endDropEl.onblur = () => applyFromField(endDropEl, endDropUnitEl, 'endDrop', 'modal');
+    startDropUnitEl.onchange = () => applyFromField(startDropEl, startDropUnitEl, 'startDrop', 'modal-unit');
+    endDropUnitEl.onchange = () => applyFromField(endDropEl, endDropUnitEl, 'endDrop', 'modal-unit');
+    const adjustDrop = (el, unitEl, prop, delta) => {
+      commitDrop(el, unitEl, prop, Math.max(0, readDropField(el, unitEl) + delta), 'modal-adjust');
     };
     document.getElementById('linePropertiesStartDropPlus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 1);
     document.getElementById('linePropertiesStartDropPlus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', 10);
     document.getElementById('linePropertiesStartDropMinus1').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -1);
     document.getElementById('linePropertiesStartDropMinus10').onclick = () => adjustDrop(startDropEl, startDropUnitEl, 'startDrop', -10);
-    document.getElementById('linePropertiesClearStartDrop').onclick = () => {
-      App.pushUndoSnapshotCurrentPage();
-      line.startDrop = 0;
-      startDropEl.value = '';
-      App.markProjectDirty();
-      App.updateUI();
-      App.renderAnnotations();
-    };
+    document.getElementById('linePropertiesClearStartDrop').onclick = () => commitDrop(startDropEl, startDropUnitEl, 'startDrop', 0, 'modal-clear');
     document.getElementById('linePropertiesEndDropPlus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 1);
     document.getElementById('linePropertiesEndDropPlus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', 10);
     document.getElementById('linePropertiesEndDropMinus1').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -1);
     document.getElementById('linePropertiesEndDropMinus10').onclick = () => adjustDrop(endDropEl, endDropUnitEl, 'endDrop', -10);
-    document.getElementById('linePropertiesClearEndDrop').onclick = () => {
-      App.pushUndoSnapshotCurrentPage();
-      line.endDrop = 0;
-      endDropEl.value = '';
-      App.markProjectDirty();
-      App.updateUI();
-      App.renderAnnotations();
+    document.getElementById('linePropertiesClearEndDrop').onclick = () => commitDrop(endDropEl, endDropUnitEl, 'endDrop', 0, 'modal-clear');
+
+    // Recent-drop chips: the last few sizes this device used, one click each.
+    // Same store the Drop tool's palette reads (state.recentDrops), so the two
+    // surfaces can never offer different vocabularies.
+    function renderDropChips() {
+      [['linePropertiesStartDropRecent', startDropEl, startDropUnitEl, 'startDrop'],
+        ['linePropertiesEndDropRecent', endDropEl, endDropUnitEl, 'endDrop']].forEach(([rowId, el, unitEl, prop]) => {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        const recents = App.getRecentDrops();
+        if (!recents.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+        row.style.display = '';
+        row.innerHTML = '<span class="drop-recent-label">Recent</span>' + recents.map(d =>
+          '<button type="button" class="drop-recent-chip" data-v="' + d.value + '" data-u="' + App.escapeHtml(d.unit) + '">' +
+          App.escapeHtml(App.formatDropLabel(d.value, d.unit)) + '</button>').join('');
+        row.querySelectorAll('.drop-recent-chip').forEach(btn => {
+          btn.onclick = () => {
+            unitEl.value = btn.dataset.u;
+            commitDrop(el, unitEl, prop, parseFloat(btn.dataset.v), 'modal-recent');
+          };
+        });
+      });
+    }
+    renderDropChips();
+    commitPendingDropFields = () => {
+      applyFromField(startDropEl, startDropUnitEl, 'startDrop', 'modal-close');
+      applyFromField(endDropEl, endDropUnitEl, 'endDrop', 'modal-close');
     };
     if (editVerticesBtn) {
       editVerticesBtn.onclick = () => {
         App.hideModal('linePropertiesModal');
         pendingLineProperties = null;
+        commitPendingDropFields = null;
         App.enterEditMode(it.poly.id, it.pageIdx);
       };
     }
     App.showModal('linePropertiesModal');
   }
 
+  // Close (button or Escape): commit any value typed but not yet blurred, then
+  // dismiss. The commit runs through commitDrop, so it snapshots BEFORE
+  // mutating (one Ctrl+Z after Close undoes the drop — it used to snapshot the
+  // already-mutated state, making the first undo a no-op) and a plain
+  // open-then-close no longer marks the project dirty or burns an undo slot.
   function closeLinePropertiesModal() {
     if (!pendingLineProperties) return;
-    const line = pendingLineProperties.type === 'poly' ? pendingLineProperties.poly : pendingLineProperties.q;
-    const startDropEl = document.getElementById('linePropertiesStartDrop');
-    const endDropEl = document.getElementById('linePropertiesEndDrop');
-    const startDropUnitEl = document.getElementById('linePropertiesStartDropUnit');
-    const endDropUnitEl = document.getElementById('linePropertiesEndDropUnit');
-    if (startDropEl && endDropEl) {
-      const sd = parseInt(startDropEl.value, 10);
-      const ed = parseInt(endDropEl.value, 10);
-      line.startDrop = (isNaN(sd) || sd < 0) ? 0 : sd;
-      line.endDrop = (isNaN(ed) || ed < 0) ? 0 : ed;
-      if (startDropUnitEl) line.startDropUnit = startDropUnitEl.value;
-      if (endDropUnitEl) line.endDropUnit = endDropUnitEl.value;
-    }
-    App.pushUndoSnapshotCurrentPage();
-    App.markProjectDirty();
+    if (commitPendingDropFields) commitPendingDropFields();
+    commitPendingDropFields = null;
     App.hideModal('linePropertiesModal');
     pendingLineProperties = null;
     App.updateUI();

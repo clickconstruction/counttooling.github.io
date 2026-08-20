@@ -316,7 +316,11 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `chainPanelPos` (the dragged Chain palette position, per device;
-ignored when it no longer fits the viewport).
+ignored when it no longer fits the viewport), `dropPanelPos` (same, for the
+Drop tool palette), `recentDrops` (the last 5 drop sizes as
+`{ value, unit }`, per device — the shared vocabulary behind the Line
+Properties Recent chips and the Drop tool palette; pure core
+`nextRecentDrops` in recent-drops.js).
 
 - `numberKeyBindings` (Quick Keys) is per-project in save/load/export/import, AND
   rides the cloud Artboard (`user_airboard.number_key_bindings`) so a standard
@@ -409,7 +413,8 @@ derives from that table). Add/change a hotkey THERE, never in the table markup.
 
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
-(Polyline), T (Chain — counter + connecting line per click), D (Measure),
+(Polyline), T (Chain — counter + connecting line per click), B (Drop — one
+click per line end adds the palette's rise/fall), D (Measure),
 H (Highlight), X (Multiply Zone), V (Room Sizer), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z

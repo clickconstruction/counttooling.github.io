@@ -20,6 +20,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./zoom-ladder.js')),
       Object.keys(require('./hotkeys.js')),
       Object.keys(require('./recent-colors.js')),
+      Object.keys(require('./recent-drops.js')),
       Object.keys(require('./save-utils.js')),
       Object.keys(require('./save-engine.js')),
       Object.keys(require('./annotation-model.js')),
@@ -150,7 +151,7 @@ module.exports = [
   js.configs.recommended,
   // Definition modules: classic scripts whose top-level declarations exist
   // solely to be consumed cross-file by the index.html IIFE / report.js.
-  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
+  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
   // idb.js / format.js: classic <script>s loaded after constants.js, so they
   // reference constants (store names / caps, USER_ACTIVITY_TZ) by bare name.
   // Constants-only globals — NOT their own exports (no-redeclare).

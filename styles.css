@@ -1308,7 +1308,30 @@ body.hotkey-peek .hk-badge { display: block; }
 .scale-check-sheet-hint { margin-top: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 0.8rem; }
 .chain-panel-foot { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
 .chain-panel-foot b { color: var(--accent); font-weight: 600; }
-@media (max-width: 768px) { .chain-panel { display: none !important; } }
+@media (max-width: 768px) { .chain-panel:not(.drop-panel) { display: none !important; } }
+
+/* ---- Drop tool (features/drop-mode.js) ----
+   The palette reuses the .chain-panel shell (position/drag/head/foot); the
+   pieces below are its own body. Chips in the Line Properties modal share the
+   Room Sizer recent-chip look but carry the accent (they are commit buttons,
+   not suggestions). The drop panel stays available on mobile — unlike Chain's
+   two-column picker it is a thin single column, and taps on rings are the
+   tool's whole mobile story — hence the :not(.drop-panel) carve-out above. */
+.drop-panel { width: 200px; }
+.drop-size-list { padding: 10px 12px 2px; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
+.drop-size-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.85rem; padding: 7px 10px; cursor: pointer; text-align: center; }
+.drop-size-btn:hover { border-color: var(--border2); }
+.drop-size-btn.selected { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+.drop-custom-row { display: flex; gap: 5px; padding: 8px 12px 10px; align-items: center; }
+.drop-custom-row .chain-search { margin-bottom: 0; flex: 1; min-width: 0; }
+.drop-custom-row select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.78rem; padding: 5px 4px; flex-shrink: 0; }
+.drop-custom-row button { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent); font-family: inherit; font-size: 0.78rem; font-weight: 600; padding: 5px 10px; cursor: pointer; flex-shrink: 0; }
+.drop-custom-row button:hover { border-color: var(--accent); }
+.drop-recent-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.drop-recent-label { color: var(--text3); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.drop-recent-chip { padding: 3px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.85rem; cursor: pointer; }
+.drop-recent-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.ctx-repeat-drop { color: var(--accent); font-weight: 600; }
 
 /* ---- Room Sizer (features/room-sizer.js) ---- */
 .room-recent-heights {

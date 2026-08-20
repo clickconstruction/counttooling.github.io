@@ -1,7 +1,7 @@
 ---
 title: Canvas layers — alternates and options on one sheet
 description: Every page can hold multiple annotation layers — keep the base bid and alternates side by side, switch with the arrow keys, and compare with one tap.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 5.7
 icon: layers
 category: Working with plans
@@ -20,11 +20,11 @@ A sheet often needs more than one takeoff: a base bid and an alternate, a first 
 - Rename a layer from its details (the edit pen in the canvas switcher) so "Canvas 2" becomes "Alternate — cast iron".
 - Deleting a layer asks first, names the layer, and tells you what it holds.
 
-Everything you place lands on the **active** layer only, and the sidebar tallies, footer totals, and reports follow the layers you scope them to — the export dialogs let you choose this canvas, all canvases on a page, or everything.
+Everything you place lands on the **active** layer only. The sidebar tallies and footer totals count **every layer** on a page — an alternate's marks are in those running numbers — so when you need figures scoped to one option, use the export dialogs, which let you choose this canvas, all canvases on a page, or everything.
 
 ## Compare layers at a glance
 
-The **show-all** peek (the eye-on-layers button next to the layer selector, shown when a page has two or more layers) temporarily draws *every* layer at once so you can compare options in place. It's purely visual — editing still targets the active layer, and nothing is saved differently. The sidebar totals stay on your **active layer** during the peek; the on-sheet legend is where you read the merged picture.
+The **show-all** peek (the eye-on-layers button next to the layer selector, shown when a page has two or more layers) temporarily draws *every* layer at once so you can compare options in place. It's purely visual — editing still targets the active layer, and nothing is saved differently. The on-sheet legend joins the peek, so its counts and lengths read the **merged** picture while the peek is on; the sidebar and footer don't change, because they already count every layer all the time.
 
 On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary — it isn't saved with the project, and it clears when a page is back to a single layer.
 

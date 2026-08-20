@@ -1,7 +1,7 @@
 ---
 title: Fixing mistakes and editing marks
 description: Undo 50 steps, clear a whole region with Delete Area, edit any mark from its right-click menu, and rename or recolor an entire type at once.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 4.5
 icon: delete-area
 category: Working with plans
@@ -19,6 +19,8 @@ Right-click (or long-press on touch) any mark — counter, line, polyline, highl
 
 ![Right-clicking a placed counter: the context menu names the mark (Water Closet) and offers Assign to group and Delete.](/guides/img/context-menu.png)
 
+One note for touch screens: long-press opens this menu in **Move** [[move]] mode. While a placement tool is armed — counter, line, zone, room — press-and-hold summons the aiming loupe for precise placement instead. So on a tablet the habit is: tap Move, then hold the mark.
+
 - **Lines and polylines** — open **Line Properties** to rename, recolor, add or adjust [drops](/guides/measuring-runs-lines-and-polylines/), or edit a polyline's vertices point by point.
 - **Notes** — edit the text.
 - **Zones and room boxes** — edit their values (multiplier, scale, height/room) or delete them. Room boxes have two delete paths, tuned to their size: the **✕** on a box's row in the sidebar Rooms list removes that one box instantly — `Ctrl`+`Z` brings it back — while deleting a whole **room** from its edit dialog asks first, because it takes every box the room owns with it.
@@ -27,7 +29,7 @@ In **Move** [[move]] mode you can also click a line to select it (it draws thick
 
 ## Clear a region: Delete Area
 
-When a whole area needs to go — a redesigned restroom, a miscounted wing — don't click marks one by one. Pick the **Delete Area** [[delete-area]] tool and drag a rectangle around the region. A confirmation dialog tells you exactly how many counters, lines, highlights, notes, and zones are inside **before** anything is deleted.
+When a whole area needs to go — a redesigned restroom, a miscounted wing — don't click marks one by one. Pick the **Delete Area** [[delete-area]] tool and drag a rectangle around the region. A confirmation dialog tells you exactly how many counters, lines, highlights, notes, zones, and room boxes are inside **before** anything is deleted.
 
 ![The Delete Area confirmation names exactly what the region holds — here 14 counters and one 25-foot line run — before anything is removed.](/guides/img/delete-area.png) Confirm once and the region is clear; `Ctrl`+`Z` brings it all back if you overshot.
 

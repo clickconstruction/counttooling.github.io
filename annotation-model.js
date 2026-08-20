@@ -42,6 +42,79 @@ function dedupePaletteById(list) {
   return out;
 }
 
+// --- Drop nodes (the Drop tool's model) -------------------------------------
+//
+// A drop is stored on a LINE END (line.startDrop / line.endDrop), but on the
+// plan it belongs to a POINT: chain runs, and any two runs traced end-to-end,
+// leave two line ends stacked on the same spot. The Drop tool clicks points,
+// so it needs the point view — and the collapse is load-bearing, not cosmetic:
+// writing a drop to both of a shared point's ends would add the vertical
+// footage to the takeoff TWICE, which is the failure that loses trust in the
+// number. So coincident ends become ONE node, and every write goes to exactly
+// one of its refs while the rest are zeroed.
+//
+// Returns [{ x, y, refs: [{ kind: 'quick'|'poly', index, end: 'start'|'end' }],
+//            value, unit }] in PDF-space. `value`/`unit` report the node's
+// current drop — the first ref carrying a positive one. Pure.
+function collectDropNodes(ann, tol) {
+  const t = typeof tol === 'number' && tol > 0 ? tol : 1;
+  const nodes = [];
+  const add = (x, y, ref, drop, unit) => {
+    if (typeof x !== 'number' || typeof y !== 'number') return;
+    let node = null;
+    for (let i = 0; i < nodes.length; i++) {
+      const dx = nodes[i].x - x, dy = nodes[i].y - y;
+      if (dx * dx + dy * dy <= t * t) { node = nodes[i]; break; }
+    }
+    if (!node) { node = { x, y, refs: [], value: 0, unit: null }; nodes.push(node); }
+    node.refs.push(ref);
+    if (!(node.value > 0) && drop > 0) { node.value = drop; node.unit = unit || null; }
+  };
+  (ann?.quickLines || []).forEach((q, index) => {
+    add(q.x1, q.y1, { kind: 'quick', index, end: 'start' }, q.startDrop || 0, q.startDropUnit);
+    add(q.x2, q.y2, { kind: 'quick', index, end: 'end' }, q.endDrop || 0, q.endDropUnit);
+  });
+  (ann?.polylines || []).forEach((poly, index) => {
+    const pts = poly.points || [];
+    if (pts.length < 2) return;
+    add(pts[0].x, pts[0].y, { kind: 'poly', index, end: 'start' }, poly.startDrop || 0, poly.startDropUnit);
+    const last = pts[pts.length - 1];
+    add(last.x, last.y, { kind: 'poly', index, end: 'end' }, poly.endDrop || 0, poly.endDropUnit);
+  });
+  return nodes;
+}
+
+// Resolve one ref back to its line object.
+function dropRefLine(ann, ref) {
+  if (!ann || !ref) return null;
+  return ref.kind === 'poly' ? (ann.polylines || [])[ref.index] : (ann.quickLines || [])[ref.index];
+}
+
+// Write `value` (in `unit`) to a node: the FIRST ref carries it, every other
+// ref at the same point is zeroed, so a shared point contributes its vertical
+// footage exactly once. `value` <= 0 clears the node. With `dryRun` true,
+// nothing is written — the return value answers "would this change anything?",
+// which callers check BEFORE pushing an undo snapshot (the stack has no
+// discard API, so a snapshot must only be pushed for a real change). Returns
+// true when something changed / would change.
+function applyDropToNode(ann, node, value, unit, dryRun) {
+  if (!ann || !node || !Array.isArray(node.refs) || !node.refs.length) return false;
+  const v = typeof value === 'number' && value > 0 ? value : 0;
+  const u = String(unit || 'ft');
+  let changed = false;
+  node.refs.forEach((ref, i) => {
+    const line = dropRefLine(ann, ref);
+    if (!line) return;
+    const valKey = ref.end === 'start' ? 'startDrop' : 'endDrop';
+    const unitKey = valKey + 'Unit';
+    const want = i === 0 ? v : 0;
+    if ((line[valKey] || 0) !== want) { if (!dryRun) line[valKey] = want; changed = true; }
+    if (want > 0 && line[unitKey] !== u) { if (!dryRun) line[unitKey] = u; changed = true; }
+  });
+  if (changed && !dryRun) { node.value = v; node.unit = v > 0 ? u : null; }
+  return changed;
+}
+
 function createAnnotationModel(ctx) {
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], legend: null }; }
 
@@ -768,5 +841,5 @@ function createAnnotationModel(ctx) {
 
 // Dual-environment export (inert in the browser) for node --test + eslint.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createAnnotationModel, dedupePaletteById };
+  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode };
 }

@@ -8,7 +8,8 @@ const c = Object.assign({},
   // sweeps below still cover the whole family:
   require('./zoom-ladder.js'),
   require('./hotkeys.js'),
-  require('./recent-colors.js'));
+  require('./recent-colors.js'),
+  require('./recent-drops.js'));
 
 const isStrictlyIncreasing = (arr) => arr.every((v, i) => i === 0 || v > arr[i - 1]);
 
@@ -130,6 +131,47 @@ test('nextRecentColors: falsy/invalid color returns the list unchanged (capped)'
   assert.deepStrictEqual(c.nextRecentColors(['#123456'], '', PRESETS), ['#123456']);
   assert.deepStrictEqual(c.nextRecentColors(['#123456'], null, PRESETS), ['#123456']);
   assert.deepStrictEqual(c.nextRecentColors(['#123456'], 42, PRESETS), ['#123456']);
+});
+
+// --- nextRecentDrops / formatDropLabel (recent-drops.js) --------------------
+
+test('nextRecentDrops: a used size is unshifted; same value+unit dedupes to the front', () => {
+  assert.deepStrictEqual(c.nextRecentDrops([], 3, 'ft'), [{ value: 3, unit: 'ft' }]);
+  assert.deepStrictEqual(
+    c.nextRecentDrops([{ value: 10, unit: 'ft' }, { value: 3, unit: 'ft' }], 3, 'ft'),
+    [{ value: 3, unit: 'ft' }, { value: 10, unit: 'ft' }]
+  );
+});
+
+test('nextRecentDrops: same value in a different unit is a different drop', () => {
+  const out = c.nextRecentDrops([{ value: 3, unit: 'ft' }], 3, 'in');
+  assert.deepStrictEqual(out, [{ value: 3, unit: 'in' }, { value: 3, unit: 'ft' }]);
+});
+
+test('nextRecentDrops: caps at RECENT_DROPS_MAX, dropping the oldest', () => {
+  const max = c.RECENT_DROPS_MAX;
+  const full = Array.from({ length: max }, (_, i) => ({ value: i + 1, unit: 'ft' }));
+  const out = c.nextRecentDrops(full, 99, 'ft');
+  assert.strictEqual(out.length, max);
+  assert.deepStrictEqual(out[0], { value: 99, unit: 'ft' });
+  assert.ok(!out.some(d => d.value === max), 'oldest entry was dropped');
+});
+
+test('nextRecentDrops: non-positive/invalid values and junk entries are ignored', () => {
+  assert.deepStrictEqual(c.nextRecentDrops([{ value: 3, unit: 'ft' }], 0, 'ft'), [{ value: 3, unit: 'ft' }]);
+  assert.deepStrictEqual(c.nextRecentDrops([{ value: 3, unit: 'ft' }], NaN, 'ft'), [{ value: 3, unit: 'ft' }]);
+  assert.deepStrictEqual(c.nextRecentDrops([null, { value: -2, unit: 'ft' }, { value: 3, unit: 'ft' }], 'x', 'ft'), [{ value: 3, unit: 'ft' }]);
+  const input = [{ value: 3, unit: 'ft' }];
+  c.nextRecentDrops(input, 5, 'ft');
+  assert.deepStrictEqual(input, [{ value: 3, unit: 'ft' }], 'input list was not mutated');
+});
+
+test('formatDropLabel: whole numbers stay whole, fractions keep up to 2 decimals', () => {
+  assert.strictEqual(c.formatDropLabel(3, 'ft'), '3 ft');
+  assert.strictEqual(c.formatDropLabel(2.5, 'ft'), '2.5 ft');
+  assert.strictEqual(c.formatDropLabel(8.505, 'in'), '8.51 in');
+  assert.strictEqual(c.formatDropLabel(0, 'ft'), '');
+  assert.strictEqual(c.formatDropLabel(NaN, 'ft'), '');
 });
 
 test('nextRecentColors: tolerates a non-array list and never mutates the input', () => {

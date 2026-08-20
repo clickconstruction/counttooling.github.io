@@ -788,3 +788,87 @@ test('ghostIndexAtPoint returns the topmost ghost under the point', () => {
   assert.strictEqual(m.ghostIndexAtPoint(ann, { x: 15, y: 15 }), 1, 'last drawn wins');
   assert.strictEqual(m.ghostIndexAtPoint(ann, { x: 800, y: 800 }), -1);
 });
+
+// --- collectDropNodes / applyDropToNode: the Drop tool's point model ---
+
+const { collectDropNodes, applyDropToNode } = require('./annotation-model.js');
+
+function chainAnn() {
+  // Two quick lines traced end-to-end (a chain joint at 100,100) plus a
+  // polyline whose far end sits alone.
+  return {
+    quickLines: [
+      { x1: 0, y1: 0, x2: 100, y2: 100, id: 'q1' },
+      { x1: 100, y1: 100, x2: 200, y2: 100, id: 'q2' },
+    ],
+    polylines: [
+      { points: [{ x: 200, y: 100 }, { x: 250, y: 150 }, { x: 300, y: 150 }], id: 'p1' },
+    ],
+  };
+}
+
+test('collectDropNodes collapses coincident line ends into one node', () => {
+  const nodes = collectDropNodes(chainAnn());
+  // Points: (0,0) q1-start · (100,100) q1-end+q2-start · (200,100) q2-end+p1-start · (300,150) p1-end.
+  assert.strictEqual(nodes.length, 4);
+  const joint = nodes.find(n => n.x === 100 && n.y === 100);
+  assert.strictEqual(joint.refs.length, 2);
+  const tail = nodes.find(n => n.x === 300 && n.y === 150);
+  assert.strictEqual(tail.refs.length, 1);
+  assert.deepStrictEqual(tail.refs[0], { kind: 'poly', index: 0, end: 'end' });
+});
+
+test('collectDropNodes reports the node\'s current drop from whichever ref carries it', () => {
+  const ann = chainAnn();
+  ann.quickLines[1].startDrop = 10;          // the joint's drop lives on q2's start
+  ann.quickLines[1].startDropUnit = 'ft';
+  const joint = collectDropNodes(ann).find(n => n.x === 100 && n.y === 100);
+  assert.strictEqual(joint.value, 10);
+  assert.strictEqual(joint.unit, 'ft');
+});
+
+test('applyDropToNode writes ONE ref and zeroes the rest — a shared point never double-counts', () => {
+  const ann = chainAnn();
+  const joint = collectDropNodes(ann).find(n => n.x === 100 && n.y === 100);
+  assert.strictEqual(applyDropToNode(ann, joint, 3, 'ft'), true);
+  const carried = (ann.quickLines[0].endDrop || 0) + (ann.quickLines[1].startDrop || 0);
+  assert.strictEqual(carried, 3, 'the joint contributes exactly 3 ft total');
+  // Re-apply the same value: nothing changes, so no undo snapshot is owed.
+  const again = collectDropNodes(ann).find(n => n.x === 100 && n.y === 100);
+  assert.strictEqual(applyDropToNode(ann, again, 3, 'ft'), false);
+});
+
+test('applyDropToNode repairs a pre-existing double-count when re-stamping the point', () => {
+  const ann = chainAnn();
+  ann.quickLines[0].endDrop = 10;            // legacy state: BOTH ends of the joint
+  ann.quickLines[1].startDrop = 10;          // carry a drop (20 ft counted at one point)
+  const joint = collectDropNodes(ann).find(n => n.x === 100 && n.y === 100);
+  assert.strictEqual(applyDropToNode(ann, joint, 10, 'ft'), true);
+  const carried = (ann.quickLines[0].endDrop || 0) + (ann.quickLines[1].startDrop || 0);
+  assert.strictEqual(carried, 10, 'one write repairs the duplicate');
+});
+
+test('applyDropToNode value 0 clears every ref; dryRun probes without writing', () => {
+  const ann = chainAnn();
+  const joint = collectDropNodes(ann).find(n => n.x === 100 && n.y === 100);
+  applyDropToNode(ann, joint, 3, 'ft');
+  // Dry run says a clear would change things, but writes nothing.
+  const before = JSON.stringify(ann);
+  assert.strictEqual(applyDropToNode(ann, joint, 0, 'ft', true), true);
+  assert.strictEqual(JSON.stringify(ann), before, 'dryRun left the annotations untouched');
+  assert.strictEqual(applyDropToNode(ann, joint, 0, 'ft'), true);
+  assert.strictEqual((ann.quickLines[0].endDrop || 0) + (ann.quickLines[1].startDrop || 0), 0);
+});
+
+test('collectDropNodes tolerance groups near-coincident ends and ignores degenerate polylines', () => {
+  const ann = {
+    quickLines: [
+      { x1: 0, y1: 0, x2: 100, y2: 100 },
+      { x1: 100.4, y1: 99.7, x2: 200, y2: 0 },   // within the default 1pt tolerance
+    ],
+    polylines: [{ points: [{ x: 5, y: 5 }] }],    // 1 point: no ends to offer
+  };
+  const nodes = collectDropNodes(ann);
+  assert.strictEqual(nodes.length, 3);
+  assert.strictEqual(nodes.find(n => n.x === 100 && n.y === 100).refs.length, 2);
+});

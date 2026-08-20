@@ -108,9 +108,10 @@ test.describe('Keyboard Map — desktop (inline in Macros)', () => {
     expect(lit).not.toContain('Shift');
 
     // An unmapped key stays a plain silhouette. (Was G until the Ghost tool
-    // claimed it — pick a letter no tool has taken.)
+    // claimed it, then B until the Drop tool did — pick a letter no tool has
+    // taken.)
     expect(await page.evaluate(() =>
-      document.querySelector('#macrosKeyboardBoard .kb-key[data-key="B"]')?.className)).toBe('kb-key');
+      document.querySelector('#macrosKeyboardBoard .kb-key[data-key="U"]')?.className)).toBe('kb-key');
 
     // CAPTION: hovering a lit key names its action, in the INLINE caption.
     const caption = page.locator('#macrosKeyboardCaption');

@@ -49,7 +49,16 @@
       const canvasBadge = canvasCount > 1 ? '<span class="badge badge-canvas-count" title="' + canvasCount + ' canvases">' + canvasCount + '</span>' : '';
       const pageNumBadgeClass = 'badge' + (hasScale ? ' badge-scale-set' : '') + (hasAnn ? ' badge-has-ann' : '') + (showEdit ? ' page-num-badge-editable' : '');
       div.innerHTML = '<span class="page-num-badge-wrap"><span class="' + pageNumBadgeClass + '" title="' + (showEdit ? 'Click to rename or delete' : '') + '">' + (i + 1) + '</span>' + canvasBadge + '</span><span class="name"' + (nameTitle ? ' title="' + esc(nameTitle) + '"' : '') + '>' + nameHtml + '</span>';
-      div.onclick = (e) => { if (!e.target.closest('.page-num-badge-wrap') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; App.fitZoom(); } };
+      div.onclick = (e) => {
+        if (e.target.closest('.page-num-badge-wrap') || e.target.closest('.page-delete-btn')) return;
+        // Already-active row: skip the fitZoom -> updateUI -> innerHTML
+        // rebuild, which destroyed this node mid-double-click and made
+        // double-click rename dead (JOURNEY-MAP Tier-2 #27). Re-fitting the
+        // current page stays available via the #zoomFit control.
+        if (state.currentPage === i) return;
+        state.currentPage = i;
+        App.fitZoom();
+      };
       if (showEdit) {
         const deletePage = () => {
           if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }

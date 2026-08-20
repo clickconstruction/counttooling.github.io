@@ -30,17 +30,21 @@ off — and where it doesn't.
 |------|------:|------------------|
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 | [app.js](app.js) | 6,941 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 854 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 2,607 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 =======
+=======
+>>>>>>> claude/f5b3-dossier-j9-j11
 | [app.js](app.js) | 6,943 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 854 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 2,608 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+<<<<<<< HEAD
 >>>>>>> claude/f5b3-dossier-j2
 =======
 | [app.js](app.js) | 6,817 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
@@ -49,6 +53,8 @@ off — and where it doesn't.
 | [canvas-draw.js](canvas-draw.js) | 779 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 2,602 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 >>>>>>> claude/f5b3-dossier-j4
+=======
+>>>>>>> claude/f5b3-dossier-j9-j11
 | [styles.css](styles.css) | 1,526 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 696 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 772 | Done — extracted canvas/annotation data model + node tests. |
@@ -56,10 +62,14 @@ off — and where it doesn't.
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 576 | Self-contained report builder with a frozen `window.*` contract. Leave. |
 <<<<<<< HEAD
+<<<<<<< HEAD
 | `features/*.js` (60 files) | 13,623 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 =======
 | `features/*.js` (59 files) | 13,923 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 >>>>>>> claude/f5b3-dossier-j4
+=======
+| `features/*.js` (60 files) | 13,623 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+>>>>>>> claude/f5b3-dossier-j9-j11
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -529,11 +539,15 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L722 - [sync] Checkout probe, hashing & PDF cache
 - L784 - Math & Format Helpers
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> claude/f5b3-dossier-j9-j11
 - L1197 - Coordinate Helpers
 - L1205 - PDF render bitmap cache
 - L1259 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1270 - PDF Rendering
 - L2023 - UI Render Functions
+<<<<<<< HEAD
 <<<<<<< HEAD
 - L2599 - Inline rename & polyline edit mode
 - L2713 - Modal primitives (showModal / hideModal)
@@ -585,6 +599,8 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6730 - View-only mode
 - L6736 - Init / boot
 =======
+=======
+>>>>>>> claude/f5b3-dossier-j9-j11
 - L2601 - Inline rename & polyline edit mode
 - L2715 - Modal primitives (showModal / hideModal)
 - L2745 - Toasts & line color picker
@@ -634,6 +650,7 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6451 - App feature registry
 - L6732 - View-only mode
 - L6738 - Init / boot
+<<<<<<< HEAD
 >>>>>>> claude/f5b3-dossier-j2
 =======
 - L1201 - Coordinate Helpers
@@ -691,6 +708,8 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6606 - View-only mode
 - L6612 - Init / boot
 >>>>>>> claude/f5b3-dossier-j4
+=======
+>>>>>>> claude/f5b3-dossier-j9-j11
 
 <!-- END SECTION TOC -->
 

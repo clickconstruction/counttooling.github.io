@@ -185,3 +185,92 @@ Adversarial re-drive of the 2026-08-09 re-walk's claims (including Friction #8 a
 **Not re-driven:** #7's live half (stubbed view route; code re-confirmed instead — view-only.js:281/288 set `currentProjectId` + `loadedViaViewLink`, so the anonymous viewer really does hit the sign-in branch first); mobile; cloud paths (walls stand as recorded).
 
 **Verdicts this pass:** 8/8 findings CONFIRMED (7 re-verified + #8 upgraded from "walked" to CONFIRMED-with-root-cause), none downgraded, none killed. Proposals: 9 [verified] / 1 [rejected] stand as annotated; the #8 proposal's simplicity budget improved (root cause is a one-line `right` leak, not a layout rework). Severities audited: #1 blocker stands (silent, plausible-looking, reproduced on four surfaces); #8 stays papercut despite both walkers pausing — it costs a beat of confidence, not a wrong number.
+
+## Addendum — 2026-08-20 walk (drift patrol)
+
+**Why:** the 2026-08-20 f5 batch shipped the Tier-3 B3 copy cluster (commit
+aa8bb1d): viewer-toast branch order, plain-words clipboard-failure copy,
+anchored drop-ups that close each other, and a "Copy again" resume chip after
+the Set-scale detour. (The T1-05 ft/px split + Copy Summary gate — this
+dossier's Friction #1 — had already merged 2026-08-10; re-verified here.)
+
+**Environment:** headless Chromium (Playwright) against a static server on
+port 4912, `/app/` + test-2pages.pdf via `#pdfInput`, desktop 1380×900 and
+mobile 375×812, signed out, all supabase requests route-aborted; clipboard
+granted per-origin (and a second, grant-less context for the failure path).
+**Base:** `claude/f5-journey-batch-integration` merged with origin/main's
+freshly-landed Ghost/Stamp tool — what merged main will look like. Seed:
+WC ×3 + one line type, lines on both pages, p1 scaled 1/8"=1', p2 unscaled.
+
+### Route deltas
+
+- **Step 6's divergence is gone — the copy now resumes.** Taking "Set scale"
+  from the check modal drops a pill-shaped **"Scale set? Copy to /Tooling
+  again"** chip at bottom-center (fixed, z-index 400 — ABOVE the scale
+  modal's overlay at z 200, so it is on screen throughout the detour). It
+  survives the preset apply and the modal close; one click re-runs the whole
+  gated copy inside that click's gesture: clipboard flipped from a sentinel
+  to the true `Water Closet⇥3⇥1 / ft of PVC waste 3"⇥74.80⇥1, 2`, the
+  signed-out toast fired, and the chip dismissed itself. Re-gating verified:
+  abandon the detour (Esc out of Set Scale, page still unscaled) and the chip
+  click REOPENS the scale check instead of copying stale px. Per-surface
+  wording verified ("…Copy Summary again" on the summary path).
+- **The drop-ups are real menus now:** 280px wide, pinned directly above
+  their button (menu bottom edge = button top, same left x=12), computed
+  `right` resolves to auto — the 1372px full-window band (old Friction #8) is
+  gone. The two copy menus close each other on open, both directions walked.
+  Mobile 375: body-appended, same 280px anchored-above geometry.
+- **Clipboard failure is plain trade language on both surfaces** (verified
+  with a genuinely grant-less context): `Nothing was copied — the browser
+  blocked the copy. Click Copy to /Tooling and try again.` (Copy Summary
+  variant names its own button); the raw API error now goes to console.error.
+- **Viewer toast tells the truth:** with `loadedViaViewLink` set (state-level
+  sim of a view session; live stub route not re-driven), the toast reads
+  `Counts copied. View-only sessions cannot create a share link.` — the
+  branch order now checks the view-link flag first.
+- **Export anyway now produces split rows** (T1-05, re-verified on this
+  base): `ft of PVC waste 3"⇥34.00⇥1` + `px of PVC waste 3"⇥367⇥2`, and the
+  email summary writes `• 367 px of PVC waste 3": 1 run (page 2 — no scale
+  set)` — the 2026-08-09 sharpening (a) is dead.
+
+### Old-finding status
+
+| # | was | 2026-08-20 status | evidence |
+|---|-----|-------------------|----------|
+| 1 | **blocker** — px summed into ft, Copy Summary ungated | **RESOLVED** (pre-batch, T1-05 merged 2026-08-10; Tier-2 #5 ☑) | re-verified on this base: Copy Summary hits the same scale-check modal; Export anyway emits split ft/px rows; summary px row carries "(page 2 — no scale set)" |
+| 2 | stumble — "All Visible Canvases" = active layer only | **PERSISTS** (parked as JOURNEY-MAP X6 — product decision) | no code change to the mode semantics in this batch (output.js mode wiring untouched apart from gating) |
+| 3 | stumble — no resume after the Set-scale detour | **RESOLVED** (aa8bb1d) | chip walked end-to-end incl. the re-gate-when-still-unscaled path; no stale copy possible (fresh `collectUnscaledLinePages` walk on every chip click) |
+| 4 | papercut — success feedback splits toast vs modal | **PERSISTS** (X17, awaiting the #15 toast rework) | this walk saw both again: /Tooling → toast, Copy Summary → 1.5s modal |
+| 5 | papercut — Copy Summary below the external-links row | **PERSISTS** (X7) | button tops re-measured: /Tooling 674 < links 728 < Copy Summary 748 |
+| 6 | papercut — raw clipboard API text in the failure alert | **RESOLVED** (aa8bb1d) | plain-words alert reproduced verbatim on both surfaces with denied permission |
+| 7 | papercut — misleading "Sign in…" toast for viewers | **RESOLVED** (aa8bb1d) | branch order verified in code AND by state-level sim; the once-dead accurate branch now fires. Live view-link stub not re-driven |
+| 8 | papercut — full-width band + menus don't close each other | **RESOLVED** (aa8bb1d) | both halves re-measured: anchored 280px geometry at 1380 and 375; mutual close in both directions |
+
+### New findings
+
+| # | severity | what happens | why it hurts |
+|---|----------|--------------|--------------|
+| N1 | papercut | The Copy-again chip never expires and has no dismissal: it survives page switches and unrelated work indefinitely (verified still up after leaving the detour and navigating); Esc doesn't clear it; the only exits are clicking it or starting another copy | A user who abandons the hand-off keeps a floating "Scale set? Copy to /Tooling again" pill over the canvas with no ✕ — days-old-toast energy; harmless (a click just re-runs the gate) but it reads as a stuck notification |
+| N2 | papercut | The chip (bottom 882px) overlaps the status bar (top 874px) and sits above every modal overlay (z 400 vs 200) — `elementFromPoint` at the bar's center returns the chip | The overlap covers the status text's center while the chip is up. (The above-the-overlay half is also what makes the chip discoverable mid-detour — fix the 8px overlap, keep the z-order) |
+
+### Copy-again discoverability (the walk's specific question)
+
+**Yes — discoverable with zero prior knowledge.** The chip appears
+unprompted at the exact moment the user takes the Set-scale detour, at
+bottom-center in a high-contrast pill, and — because it out-z-indexes the
+scale modal overlay — it is on screen the whole time the user is setting the
+scale, not just after. Its label states the task in trade words and names the
+surface it will re-run. It persists until acted on, so a user who wanders
+never loses the way back, and clicking it early (scale still missing) safely
+reopens the check instead of copying garbage. The cost of that persistence is
+New #1 above.
+
+### Verdict
+
+6 of 8 old findings resolved (1 pre-batch + 5 by aa8bb1d, counting #8's two
+halves as one); 2 persist, both parked with owners (X6 product decision, X17
+toast rework). 2 new papercuts, both about the new chip's lifetime/geometry —
+the mechanism itself is right. The journey's happy path is unchanged (2
+clicks + paste) and the detour path is now 4 clicks with no re-hunt: gate →
+Set scale → preset → chip. The demo moment gains a beat: the 401.20→74.80
+flip now ends on one tap of the chip.

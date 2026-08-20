@@ -74,41 +74,65 @@ const workerFontsAvailable = typeof self.fonts !== 'undefined';
 
 let doc = null;
 let docGen = 0;
+// Serializes every destroy→getDocument sequence on the shared workerPort.
+// pdf.js contract (vendored 3.11.174): PDFDocumentLoadingTask.destroy()
+// marks the port's cached PDFWorker `_pendingDestroy` and only clears the
+// port from the fromPort cache AFTER the async transport teardown completes
+// — and PDFWorker.fromPort THROWS ("PDFWorker.fromPort - the worker is
+// being destroyed") for any getDocument issued on that port in between. A
+// fire-and-forget destroy() followed by an immediate getDocument therefore
+// failed EVERY document swap (project switch, append upload, prepare-PDF
+// rebuild) with a 'doc-load' session fallback. destroy() must be awaited,
+// and load/dispose must never interleave, before the port is reused.
+let docOps = Promise.resolve();
 const tasks = new Map();   // reqId -> pdf.js RenderTask
+
+async function destroyDoc() {
+  const old = doc;
+  doc = null;
+  if (!old) return;
+  try { await old.destroy(); } catch (_) { /* already down */ }
+}
+
+async function loadDoc(m) {
+  await destroyDoc();
+  if (m.gen !== docGen) return;   // superseded while the old doc tore down
+  try {
+    // Same substitute-font config as App.getPdfDocument (app.js) — without it,
+    // PDFs whose fonts aren't embedded raster every glyph as the .notdef box.
+    // useWorkerFetch must be EXPLICIT here: with cMapUrl/standardFontDataUrl
+    // set but useWorkerFetch unset, pdf.js computes the default by touching
+    // `document.baseURI` — ReferenceError in worker scope, doc load fails,
+    // session falls back to main. True is also the right value: the nested
+    // pdf.js worker fetch()es both URLs itself.
+    const loaded = await pdfjsLib.getDocument({
+      data: m.buffer,
+      useWorkerFetch: true,
+      standardFontDataUrl: '/vendor/standard_fonts/',
+      cMapUrl: '/vendor/cmaps/',
+      cMapPacked: true,
+      canvasFactory: offscreenCanvasFactory,
+      filterFactory: noopFilterFactory,
+      ownerDocument: workerFontsAvailable ? { fonts: self.fonts } : undefined,
+      disableFontFace: !workerFontsAvailable,
+    }).promise;
+    if (m.gen !== docGen) { try { await loaded.destroy(); } catch (_) {} return; }   // superseded mid-load
+    doc = loaded;
+    self.postMessage({ type: 'loaded', gen: m.gen, ok: true });
+  } catch (err) {
+    if (m.gen === docGen) self.postMessage({ type: 'loaded', gen: m.gen, ok: false, error: String((err && err.message) || err) });
+  }
+}
 
 self.onmessage = async (e) => {
   const m = e.data || {};
   if (m.type === 'load') {
-    docGen = m.gen;
-    if (doc) { try { doc.destroy(); } catch (_) { /* already down */ } doc = null; }
-    try {
-      // Same substitute-font config as App.getPdfDocument (app.js) — without it,
-      // PDFs whose fonts aren't embedded raster every glyph as the .notdef box.
-      // useWorkerFetch must be EXPLICIT here: with cMapUrl/standardFontDataUrl
-      // set but useWorkerFetch unset, pdf.js computes the default by touching
-      // `document.baseURI` — ReferenceError in worker scope, doc load fails,
-      // session falls back to main. True is also the right value: the nested
-      // pdf.js worker fetch()es both URLs itself.
-      doc = await pdfjsLib.getDocument({
-        data: m.buffer,
-        useWorkerFetch: true,
-        standardFontDataUrl: '/vendor/standard_fonts/',
-        cMapUrl: '/vendor/cmaps/',
-        cMapPacked: true,
-        canvasFactory: offscreenCanvasFactory,
-        filterFactory: noopFilterFactory,
-        ownerDocument: workerFontsAvailable ? { fonts: self.fonts } : undefined,
-        disableFontFace: !workerFontsAvailable,
-      }).promise;
-      if (m.gen !== docGen) { try { doc.destroy(); } catch (_) {} doc = null; return; }   // superseded mid-load
-      self.postMessage({ type: 'loaded', gen: m.gen, ok: true });
-    } catch (err) {
-      if (m.gen === docGen) self.postMessage({ type: 'loaded', gen: m.gen, ok: false, error: String((err && err.message) || err) });
-    }
+    docGen = m.gen;           // stamped now so queued/stale loads self-discard
+    docOps = docOps.then(() => loadDoc(m)).catch(() => { /* loadDoc never rejects */ });
     return;
   }
   if (m.type === 'dispose') {
-    if (doc) { try { doc.destroy(); } catch (_) { /* already down */ } doc = null; }
+    docOps = docOps.then(destroyDoc).catch(() => { /* destroyDoc never rejects */ });
     return;
   }
   if (m.type === 'cancel') {

@@ -140,15 +140,16 @@ test.describe('robust PDF upload', () => {
 // take the first file's name. The pending-canvas-load decline-path rename
 // (features/pdf-intake.js matchPendingCanvasLoad) needs cloud fixtures and is
 // guarded by code review, not staged here.
+/** Upload test-2pages.pdf into an empty session and wait for its 2 pages. */
+async function freshUploadTwoPages(page) {
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
+}
+
 test.describe('append never renames the open project', () => {
-  /** Upload test-2pages.pdf into an empty session and wait for its 2 pages. */
-  async function freshUploadTwoPages(page) {
-    await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
-    await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
-  }
 
   test('fresh upload still names the project from the first file (control)', async ({ page }) => {
     await freshUploadTwoPages(page);
@@ -185,5 +186,51 @@ test.describe('append never renames the open project', () => {
     }));
     expect(after.id).toBe('spec-proj-1');
     expect(after.name).toBe('Riverside Clinic Plumbing');
+  });
+});
+
+// --- T3-B2: corrupt-PDF feedback on the fresh upload path ---
+// Before the fix this died as a silent unhandled InvalidPDFException; the
+// append path alerted. Now the fresh path toasts in trade language and
+// rolls back any pages the failed batch added.
+test.describe('corrupt-PDF feedback on the fresh upload path', () => {
+  test('corrupt PDF on the fresh path toasts and rolls back (no silent rejection)', async ({ page }) => {
+    const pageErrors = [];
+    const dialogs = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    page.on('dialog', async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('#pdfInput').setInputFiles({
+      name: 'garbage.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf'),
+    });
+    await expect(page.locator('#airboardToastText')).toContainText("Couldn't read that PDF", { timeout: 10000 });
+    const after = await page.evaluate(() => ({
+      pages: window.state.pages.length,
+      canvasKeys: Object.keys(window.state.activeCanvasIdByPage).length,
+    }));
+    expect(after.pages).toBe(0);
+    expect(after.canvasKeys).toBe(0);
+    expect(dialogs).toEqual([]);                                  // in-app toast, not alert
+    expect(pageErrors.filter((m) => /InvalidPDF/i.test(m))).toEqual([]);   // no unhandled rejection
+
+    // The session stays usable: a good PDF still uploads afterwards.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
+  });
+
+  test('corrupt PDF appended to loaded pages rolls the batch back, keeps existing pages', async ({ page }) => {
+    await freshUploadTwoPages(page);
+    await page.locator('#pdfInput').setInputFiles({
+      name: 'garbage.pdf', mimeType: 'application/pdf', buffer: Buffer.from('nope'),
+    });
+    await expect(page.locator('#airboardToastText')).toContainText("Couldn't read that PDF", { timeout: 10000 });
+    const after = await page.evaluate(() => ({
+      pages: window.state.pages.length,
+      name: window.state.currentProjectName,
+    }));
+    expect(after.pages).toBe(2);                                  // batch rolled back
+    expect(after.name).toBe('test-2pages');                       // untouched
   });
 });

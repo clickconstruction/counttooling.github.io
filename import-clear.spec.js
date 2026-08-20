@@ -82,4 +82,88 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // --- T3-B2: honest import feedback (narrowed catch + partial-import toast) ---
+  // The old catch wrapped the whole apply, so a garbage file alerted "Invalid
+  // import file", a valid-JSON-wrong-shape file silently WIPED the palette,
+  // and a valid export tripping a downstream bug was mislabeled invalid.
+
+  /** Boot with test-page.pdf loaded and a seeded counter palette. */
+  async function bootWithPalette(page, dialogs) {
+    page.on('dialog', async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.state.counters = [{ id: 'keep1', name: 'Existing', icon: 'M0 0h10v10H0z', color: '#e8c547' }];
+    });
+  }
+
+  test('garbage (non-JSON) file: toast, no alert, palette untouched', async ({ page }) => {
+    const dialogs = [];
+    await bootWithPalette(page, dialogs);
+    await page.locator('#importInput').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{{{not json') });
+    await expect(page.locator('#airboardToastText')).toHaveText("This file isn't a canvas export — use Export Canvas to make one.");
+    expect(dialogs).toEqual([]);
+    expect(await page.evaluate(() => window.state.counters[0]?.id)).toBe('keep1');
+  });
+
+  test('valid JSON that is not a canvas export: refused BEFORE wiping the palette', async ({ page }) => {
+    const dialogs = [];
+    await bootWithPalette(page, dialogs);
+    await page.locator('#importInput').setInputFiles({ name: 'wrong.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":"world"}') });
+    await expect(page.locator('#airboardToastText')).toHaveText("This file isn't a canvas export — use Export Canvas to make one.");
+    expect(dialogs).toEqual([]);
+    // Pre-fix this silently emptied state.counters.
+    expect(await page.evaluate(() => window.state.counters.length)).toBe(1);
+  });
+
+  test('valid export hitting a downstream bug: honest "Couldn\'t apply" toast, not "invalid"', async ({ page }) => {
+    const dialogs = [];
+    await bootWithPalette(page, dialogs);
+    await page.evaluate(() => {
+      window.App.reconcileOrphanedCountersAndLineTypes = () => { throw new Error('simulated downstream bug'); };
+    });
+    const payload = JSON.stringify({ counters: [{ id: 'c9', name: 'X', icon: 'M0 0h1v1H0z', color: '#fff' }], lineTypes: [], groups: [], pages: [] });
+    await page.locator('#importInput').setInputFiles({ name: 'good.json', mimeType: 'application/json', buffer: Buffer.from(payload) });
+    await expect(page.locator('#airboardToastText')).toHaveText("Couldn't apply this canvas file.");
+    expect(dialogs).toEqual([]);
+  });
+
+  test('partial import: 2-page export onto a 1-page PDF toasts "Applied marks to 1 of 2 pages"', async ({ page }) => {
+    const dialogs = [];
+    await bootWithPalette(page, dialogs);
+    const payload = JSON.stringify({
+      counters: [{ id: 'c9', name: 'X', icon: 'M0 0h1v1H0z', color: '#fff' }],
+      lineTypes: [], groups: [],
+      pages: [
+        { index: 0, label: 'p1', canvases: [{ id: 'cv1', name: 'Main', annotations: { counterMarkers: { c9: [{ x: 5, y: 5, id: 'm1' }] } } }] },
+        { index: 1, label: 'p2', canvases: [{ id: 'cv2', name: 'Main', annotations: { counterMarkers: { c9: [{ x: 6, y: 6, id: 'm2' }] } } }] },
+      ],
+    });
+    await page.locator('#importInput').setInputFiles({ name: 'two.json', mimeType: 'application/json', buffer: Buffer.from(payload) });
+    await expect(page.locator('#airboardToastText')).toHaveText('Applied marks to 1 of 2 pages — the export covers more pages than this PDF.');
+    expect(dialogs).toEqual([]);
+    // Page 0's marks did land.
+    expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers.c9 || []).length)).toBe(1);
+  });
+
+  test('full-coverage import stays quiet (no partial toast)', async ({ page }) => {
+    const dialogs = [];
+    await bootWithPalette(page, dialogs);
+    const payload = JSON.stringify({
+      counters: [{ id: 'c9', name: 'X', icon: 'M0 0h1v1H0z', color: '#fff' }],
+      lineTypes: [], groups: [],
+      pages: [{ index: 0, label: 'p1', canvases: [{ id: 'cv1', name: 'Main', annotations: { counterMarkers: { c9: [{ x: 5, y: 5, id: 'm1' }] } } }] }],
+    });
+    await page.locator('#importInput').setInputFiles({ name: 'one.json', mimeType: 'application/json', buffer: Buffer.from(payload) });
+    await page.waitForFunction(() => window.state.counters.some((c) => c.id === 'c9'));
+    const toast = await page.evaluate(() => ({
+      visible: document.getElementById('airboardToastModal').classList.contains('visible'),
+      text: document.getElementById('airboardToastText').textContent,
+    }));
+    expect(toast.text).not.toContain('Applied marks to');
+    expect(dialogs).toEqual([]);
+  });
 });

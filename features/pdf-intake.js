@@ -331,26 +331,42 @@
     if (startPageIdx > 0 && App.state.pdfBuffer) {
       buffersForMerge.push(App.state.pdfBuffer.slice ? App.state.pdfBuffer.slice(0) : App.state.pdfBuffer);
     }
-    for (const f of filesToProcess) {
-      if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-        alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
-        e.target.value = '';
-        return;
+    try {
+      for (const f of filesToProcess) {
+        if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
+          alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
+          e.target.value = '';
+          return;
+        }
+        const buf = await f.arrayBuffer();
+        const bufCopy = buf.slice(0);
+        if (!firstBuf) firstBuf = bufCopy;
+        buffersForMerge.push(bufCopy);
+        const pdf = await App.getPdfDocument(buf).promise;
+        const numPages = pdf.numPages;
+        for (let i = 0; i < numPages; i++) {
+          const pdfPage = await pdf.getPage(i + 1);
+          const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
+          const canvasId = App.uid();
+          const idx = App.state.pages.length;
+          App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
+          App.state.activeCanvasIdByPage[idx] = canvasId;
+        }
       }
-      const buf = await f.arrayBuffer();
-      const bufCopy = buf.slice(0);
-      if (!firstBuf) firstBuf = bufCopy;
-      buffersForMerge.push(bufCopy);
-      const pdf = await App.getPdfDocument(buf).promise;
-      const numPages = pdf.numPages;
-      for (let i = 0; i < numPages; i++) {
-        const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-        const canvasId = App.uid();
-        const idx = App.state.pages.length;
-        App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
-        App.state.activeCanvasIdByPage[idx] = canvasId;
-      }
+    } catch (err) {
+      // T3-B2: a corrupt/unreadable PDF on this path used to die as a SILENT
+      // unhandled rejection (the append path alerts). All-or-nothing like the
+      // append path: roll back any pages added by earlier files in the batch,
+      // log the raw error, and say what happened in trade terms.
+      console.error('[Upload PDF] failed to read uploaded PDF', err);
+      App.state.pages.length = startPageIdx;
+      Object.keys(App.state.activeCanvasIdByPage).forEach((k) => {
+        if (Number(k) >= startPageIdx) delete App.state.activeCanvasIdByPage[k];
+      });
+      App.updateUI();
+      App.showToast('Couldn\'t read that PDF — the file may be damaged or not a real PDF. Try re-printing or re-exporting the sheet, then upload it again.', 6000);
+      e.target.value = '';
+      return;
     }
     if (App.SUPABASE_ENABLED && buffersForMerge.length > 0) {
       const projectedBytes = buffersForMerge.reduce(

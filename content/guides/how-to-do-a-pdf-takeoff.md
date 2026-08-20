@@ -1,7 +1,7 @@
 ---
 title: How to do a takeoff from a PDF
 description: Step-by-step — upload a plan PDF, set the scale, count fixtures, measure runs, and export a report, all in your browser with CountTooling.
-updated: 2026-07-31
+updated: 2026-08-20
 order: 1
 icon: measure
 category: Getting started
@@ -64,7 +64,7 @@ When you're done:
 ![The Export PDFs dialog: ① set marker and line sizes, ② choose whether to include the report and bundle highlights/notes, then ③ download.](/guides/img/export-pdfs.png)
 
 - **Export PDF** with your markup, the takeoff report, and any highlights and notes baked in.
-- **Copy to PipeTooling** to drop the counts straight into a bid, or **copy a summary** for email — tab-delimited and ready to paste.
+- **Copy to /Tooling** to drop the counts straight into a bid — tab-delimited and ready to paste — or **Copy Summary (Email/Text)** for a plain-text rundown you can drop into an email.
 - Need someone to *see* the live takeoff instead? Send a [view link](/guides/sharing-and-view-links/) — no account required on their end.
 
 That's a complete takeoff — counted, measured, reported, and shared, without leaving the browser.

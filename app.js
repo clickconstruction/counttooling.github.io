@@ -1046,6 +1046,10 @@
   }
 
   function hitTest(pos, radius = 12) {
+    // Hide-marks mode: invisible marks must not catch the mouse. Mirrors the
+    // renderAnnotationsInner() paint gate — what isn't drawn isn't targetable
+    // (notes, legend, context menus alike); mousedown falls through to pan.
+    if (state.hideMarks) return null;
     const r = radius / state.zoom;
     const page = state.pages[state.currentPage];
     if (!page) return null;

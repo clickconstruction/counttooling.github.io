@@ -170,3 +170,73 @@ Click the eraser, tap two corners around the messiest part of the sheet, and the
 4. The walker's summary carried an 8th finding (counter dialog tab "Create" vs button "Create Counter") that never made the friction table — correctly so: `#addCounter` opens directly on the Create tab, and a tab-plus-submit-button pair is a standard pattern. Not a finding; the naive-attempt narrative already covers it as color.
 
 **Verdict tally:** 5 confirmed (1, 3, 4, 5, 7) · 1 downgraded-in-content (2 — drag mismatch stands at stumble, two sub-claims struck) · 2 killed (6; plus the untabled "Create tab" summary item). All 9 proposals audited: 8 verified as written or with corrections noted inline, 1 (the rework) narrowed because half of it is already built.
+
+## Addendum — 2026-08-20 walk (drift patrol)
+
+**Why:** the 2026-08-20 f5 batch changed this journey's surfaces — Clear Page
+un-deadened in the sidebar at every width (Tier-2 #13, commit 2af54e3), the
+confirm copy rewritten in trade words naming the layer (Tier-3 B14 J9 row,
+a6875ac), and hidden marks no longer catch the mouse (Tier-2 #25, 44479c5).
+
+**Environment:** headless Chromium (Playwright) against a static server on
+port 4912, `/app/` + test-2pages.pdf via `#pdfInput`, desktop 1380×900 and
+mobile 375×812, signed out, all supabase requests route-aborted. **Base:**
+`claude/f5-journey-batch-integration` merged with origin/main's freshly-landed
+Ghost/Stamp tool — i.e. what merged main will look like, not either parent
+alone. Marks seeded programmatically (3 counters, 1 line, 1 note; scale
+1/8"=1'); every assertion below driven with real mouse clicks/drags.
+
+### Route deltas
+
+- **Step 13 rewritten by the batch:** Clear Page is now a live sidebar button
+  (`#clearPageSidebar`, bottom sidebar section) at EVERY width, signed out
+  included — desktop 1380 (button rect x12 w195, real click opens the confirm)
+  and the 375 hamburger drawer both walked. The old route table ("only entry:
+  sign-in-gated Project Settings") is obsolete; the Settings row remains as a
+  second door. The header `#clearPage` stays deliberately retired behind
+  `.replaced-by-status-bar`. Viewer mode: the section self-collapses via a
+  `:has()` rule when updateUI inline-hides the button (verified).
+- **New confirm copy (B14):** single-layer page → `"Remove all marks from this
+  page? You can undo this."`; multi-layer page → `"Remove all marks from
+  "<name>"? Other layers on this page keep their marks. You can undo this."`
+  — verified for renamed ("Electrical") and default ("Layer 2") names; the
+  quoted-name trick avoids '"Layer 2" layer'. Scope honesty verified live:
+  confirm wiped only the active layer (sibling kept its marks), one Ctrl+Z
+  restored it.
+- **Hidden marks are now inert to the pointer** (hitTest early-returns on
+  `state.hideMarks`, app.js:1052): a drag across a hidden note PANS (pan delta
+  31,31; note moved 0.0pt — control drag while shown moved it 44.9pt);
+  right-click over a hidden marker targets nothing (`ctxTarget` null, no
+  menu); double-click where a note sits opens nothing. Un-hide: every position
+  intact.
+
+### Old-finding status
+
+| # | was | 2026-08-20 status | evidence |
+|---|-----|-------------------|----------|
+| 1 | blocker — Clear Page unreachable signed-out | **RESOLVED** (2af54e3) | real-click walk at 1380 and 375, signed out: sidebar button visible + confirm opens on both; clear + undo round-trip verified. New caveat → New #3 below |
+| 2 | stumble — rectangle tools ignore drag | **PERSISTS** (Tier-2 #14 drag half still queued) | Delete Area still two-click ("Click first corner" → "Click second corner" status text re-read this walk); band-color half was fixed pre-batch (ebb2a9c) |
+| 3 | stumble — "Clear current canvas (Main)?" | **RESOLVED** (a6875ac) | all three wordings read live (single-layer / "Layer 2" / "Electrical"); layer-scope + undo claims in the copy verified true |
+| 4 | stumble — guide's false Move-mode delete claim | **RESOLVED** (pre-batch, Phase-5 5bb49b7) | counting-with-counters.md:40 now teaches right-click → Delete + the touch path; no Move-select claim remains |
+| 5 | papercut — Esc doesn't close the mark context menu | **PERSISTS** (Tier-3 B1 queued) | code re-checked this walk: the app.js Esc ladder (≈:6001) still has no `#contextMenu` branch; tool-context-menu.js keeps its own capture-phase handler |
+| 7 | papercut — + Add line type doesn't arm the tool | **PERSISTS** (Tier-2 #20 queued) | `#lineTypeCreate` handler (app.js:3352) still never sets `state.tool` |
+
+(6 stayed killed; not re-walked.)
+
+### New findings
+
+| # | severity | what happens | why it hurts |
+|---|----------|--------------|--------------|
+| N1 | papercut | Hide-marks makes existing marks pointer-inert but does NOT disarm placement: with the Note tool armed and marks hidden, a canvas click opens Add Note and Done lands a note that paints nothing (overlay ink verified zero; no toast, no hint). Per the #25 commit this fall-through is deliberate and applies to every placement tool — counters clicked while hidden also land invisibly | The user annotates into the void; nothing says "you're placing marks you can't see", so a re-click doubles the invisible mark. Recovery is one eye-toggle away, but nothing points there |
+| N2 | papercut | Delete Area stays fully live while marks are hidden: two clicks on a blank-looking sheet produce "Delete in this area? — In this area: 2 counter(s)" and Confirm deletes marks the user cannot see (undo restores — verified) | The count-receipt guard holds (this is the journey's best pattern doing its job), but the user is asked to confirm a deletion of invisible content; a hurried "yes" deletes work they didn't know was in the rectangle |
+| N3 | papercut | The un-deadened Clear Page button sits at the very BOTTOM of the sidebar: desktop button top ≈1132px against an 848px-tall sidebar viewport (below the fold; found only by scrolling the whole sidebar), mobile drawer ≈2 viewport-heights down (y≈1748 in an 812px viewport) | Reachable ≠ findable: the naive J9 persona hunted the pages list and the gear first; a bottom-of-scroll button continues to reward only exhaustive scrollers. (Same long-thumb-scroll shape as J11's old mobile finding) |
+| N4 | note (not walked deeply) | Ghost/Stamp marks (merged into main the same day) sit outside this journey's delete machinery by design: Delete Area's rect collector never reads `ann.ghosts`, so "Delete in this area" leaves a ghost overlay standing inside the swept rectangle; and `ghostIndexAtPoint` has no `hideMarks` gate, so with the Ghost tool armed an invisible ghost still catches the drag | Recorded for the next J9 pass: the "hidden marks are inert" rule (#25) now has one exception surface, and the Delete-Area receipt's "everything in this area" reading quietly excludes ghosts |
+
+### Verdict
+
+2 of the journey's 3 open severity-bearing findings resolved by the batch
+(the blocker #1 and stumble #3), 1 resolved earlier by docs (#4); 3 persist
+(#2 drag-gesture, #5 Esc, #7 arm-on-create) — all already queued (Tier-2
+#14/#20, Tier-3 B1). 3 new papercuts + 1 ghost note recorded above; nothing
+new at stumble-or-worse. The demo moment (count-receipt + one-undo restore)
+re-verified intact on the new base.

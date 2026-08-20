@@ -24,7 +24,7 @@ Then select the counter and start clicking. The running total updates as you go,
 
 There's also a faster route for trade names: the Counter window's **Quick** tab (`Shift`+`Q`) assembles the name from **Size / Type / Material** pickers — see [Building your palette in two clicks](/guides/quick-creators/). One heads-up there: the pickers' **+** and **−** buttons edit your **saved** option lists on the spot — **−** drops the selected entry immediately, with no confirmation, and the change carries into future bids (the last entry can't be removed, and a trimmed one comes back with **+**).
 
-The icon library itself — renaming and reordering icons — lives in **Manage Icons** under Project Settings → Advanced; on a desktop screen the Settings gear asks you to sign in first. [Custom icons](/guides/custom-icons/) has the details.
+The icon library itself — renaming and reordering icons — lives in **Manage Icons** under Project Settings → Advanced — the Settings gear opens signed in or out. [Custom icons](/guides/custom-icons/) has the details.
 
 ## Keep it organized
 

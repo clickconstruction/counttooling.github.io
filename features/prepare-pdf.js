@@ -8,12 +8,39 @@
   // Shared deps are read from App.* at call time (never captured at load):
   // sanitizeForFilename / downloadPdfBuffer are registered by
   // features/output.js, which loads AFTER this file.
+  //
+  // JOURNEY-MAP Tier-2 #26: trimming a 200-sheet set was strictly
+  // one-sheet-at-a-time (~185 clicks to reach a 15-sheet P-set). The modal now
+  // opens on a THUMBNAIL GRID of every sheet — tap toggles keep/drop, with
+  // Keep all / Drop all / Invert bulk actions and shift-click range toggling.
+  // The single-sheet preview survives as the zoom view (per-cell magnifier or
+  // the "All sheets" button to come back); it walks ALL sheets (kept and
+  // dropped) and its Delete button became a Drop/Restore toggle. Undo is one
+  // step per USER ACTION (the stack holds kept-set snapshots, so a bulk drop
+  // undoes in one press), and Ctrl/Cmd+Z is captured while the modal is open
+  // so it cannot leak into the app's annotation undo behind the overlay.
+  //
+  // Thumbnails are rasterised by a modal-local lazy queue (IntersectionObserver
+  // + serial render pump) at ~140 CSS px wide, dpr-capped — NOT via
+  // pdf-tile-cache.js: that LRU is the main-canvas substrate, keyed and
+  // budgeted for full-size zoom-rung page bitmaps wired to app.js's render
+  // loop; pushing 200 thumb-size entries through it would evict the bitmaps
+  // it exists to keep and buys nothing for one-shot thumbs that die with the
+  // modal. The grid DOM (and so every thumb canvas) is torn down on close.
+  // The old open-time eager loop that built a trimmed PDF per page just to
+  // show byte sizes (200 pdf-lib document builds on open for a 200-sheet set)
+  // is gone; the size is computed lazily for the sheet shown in single view.
 
   let preparePdfPages = [];
   let preparePdfBuffer = null;
   let preparePdfPageBytes = {};
   let preparePdfKeptIndices = [];
+  // Undo stack of kept-set SNAPSHOTS: one entry per user action (single
+  // toggle, range toggle, or bulk keep/drop/invert), so undo is one press per
+  // action — not one per sheet.
   let preparePdfUndoStack = [];
+  // ORIGINAL page index shown by the single-sheet (zoom) view. The single
+  // view walks ALL sheets, kept and dropped.
   let preparePdfCurrentIdx = 0;
   let preparePdfDefaultName = 'Untitled';
   let preparePdfEditMode = 'project';
@@ -23,22 +50,344 @@
   // state.pdfBuffer + appends new state.pages entries instead of replacing.
   let preparePdfMode = 'project';
   let preparePdfProjectName = 'Untitled';
-  function renderPreparePdfPreview() {
-    const canvas = document.getElementById('preparePdfCanvas');
-    const labelEl = document.getElementById('preparePdfPageLabel');
-    const kept = preparePdfKeptIndices;
-    if (!kept.length || !preparePdfPages.length) {
-      canvas.width = 0;
-      canvas.height = 0;
-      labelEl.textContent = 'No pages';
+  let preparePdfView = 'grid'; // 'grid' (default) | 'single'
+  let preparePdfGen = 0; // bumped on open/close; stale async work checks it
+  let preparePdfRangeAnchor = null; // { idx, dropped } for shift-click ranges
+  const preparePdfPageBytesInFlight = new Set();
+  const PREPARE_PDF_UNDO_MAX = 200;
+
+  function preparePdfIsKept(idx) { return preparePdfKeptIndices.indexOf(idx) !== -1; }
+  function preparePdfPushUndo() {
+    preparePdfUndoStack.push(preparePdfKeptIndices.slice());
+    if (preparePdfUndoStack.length > PREPARE_PDF_UNDO_MAX) preparePdfUndoStack.shift();
+  }
+  function preparePdfSetKeptSet(indices) {
+    preparePdfKeptIndices = [...new Set(indices)].sort((a, b) => a - b);
+  }
+
+  // --- Grid view (default): scoped styles + DOM are owned by this feature ---
+  // Minimal scoped styles injected here (NOT styles.css — another lane owns
+  // that file); every selector is #preparePdfModal-scoped.
+  function injectPreparePdfGridStyles() {
+    if (document.getElementById('preparePdfGridStyles')) return;
+    const st = document.createElement('style');
+    st.id = 'preparePdfGridStyles';
+    st.textContent = [
+      '#preparePdfModal .ppg-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }',
+      '#preparePdfModal .ppg-toolbar button { padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; font-family: inherit; cursor: pointer; background: var(--surface2); border: 1px solid var(--border); color: var(--text); }',
+      '#preparePdfModal .ppg-toolbar button:hover:not(:disabled) { background: var(--surface3); border-color: var(--border2); }',
+      '#preparePdfModal .ppg-toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }',
+      '#preparePdfModal .ppg-count { margin-left: auto; font-size: 0.85rem; color: var(--text2); }',
+      '#preparePdfModal .ppg-hint { width: 100%; font-size: 0.75rem; color: var(--text3); }',
+      '#preparePdfModal #preparePdfGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; max-height: min(460px, 55vh); overflow-y: auto; padding: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; }',
+      '#preparePdfModal .ppg-cell { position: relative; border: 2px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 4px; user-select: none; }',
+      '#preparePdfModal .ppg-cell:hover { border-color: var(--accent); }',
+      '#preparePdfModal .ppg-thumbwrap { height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden; }',
+      '#preparePdfModal .ppg-thumbwrap canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; }',
+      '#preparePdfModal .ppg-caption { font-size: 0.72rem; color: var(--text2); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+      '#preparePdfModal .ppg-cell.ppg-dropped { border-color: var(--red); }',
+      '#preparePdfModal .ppg-cell.ppg-dropped .ppg-thumbwrap { opacity: 0.3; }',
+      '#preparePdfModal .ppg-cell.ppg-dropped::after { content: "Dropped"; position: absolute; top: 42px; left: 50%; transform: translateX(-50%); background: var(--red); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; pointer-events: none; }',
+      '#preparePdfModal .ppg-cellbtns { position: absolute; top: 4px; right: 4px; display: flex; gap: 4px; }',
+      '#preparePdfModal .ppg-cellbtns button { width: 24px; height: 24px; padding: 0; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 0.85rem; line-height: 1; cursor: pointer; }',
+      '#preparePdfModal .ppg-cellbtns button:hover { background: var(--surface3); color: var(--text); border-color: var(--border2); }',
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function preparePdfEls() {
+    const previewWrap = document.getElementById('preparePdfPreviewWrap');
+    return {
+      card: document.querySelector('#preparePdfModal .modal-card'),
+      previewGroup: previewWrap ? previewWrap.parentElement : null,
+      controls: document.querySelector('#preparePdfModal .prepare-pdf-controls'),
+      grid: document.getElementById('preparePdfGrid'),
+      gridWrap: document.getElementById('preparePdfGridWrap'),
+    };
+  }
+
+  function ensurePreparePdfGridDom() {
+    if (document.getElementById('preparePdfGridWrap')) return;
+    injectPreparePdfGridStyles();
+    const els = preparePdfEls();
+    const wrap = document.createElement('div');
+    wrap.className = 'form-group';
+    wrap.id = 'preparePdfGridWrap';
+    wrap.innerHTML =
+      '<div class="ppg-toolbar">' +
+      '<button type="button" id="preparePdfKeepAll">Keep all</button>' +
+      '<button type="button" id="preparePdfDropAll">Drop all</button>' +
+      '<button type="button" id="preparePdfInvert">Invert</button>' +
+      '<button type="button" id="preparePdfGridUndo" disabled>Undo</button>' +
+      '<span class="ppg-count" id="preparePdfKeptCount"></span>' +
+      '<span class="ppg-hint">Tap a sheet to keep or drop it &middot; Shift-click toggles a range &middot; &#128269; opens the sheet</span>' +
+      '</div>' +
+      '<div id="preparePdfGrid"></div>';
+    els.previewGroup.parentElement.insertBefore(wrap, els.previewGroup);
+    // "All sheets" back-to-grid button joins the single-view nav row.
+    const nav = els.controls.querySelector('.prepare-pdf-nav');
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.id = 'preparePdfBackToGrid';
+    back.textContent = '⊞ All sheets';
+    nav.insertBefore(back, nav.firstChild);
+    back.onclick = () => { saveCurrentPageName(); setPreparePdfView('grid'); };
+    document.getElementById('preparePdfKeepAll').onclick = () => {
+      if (preparePdfKeptIndices.length === preparePdfPages.length) return;
+      preparePdfPushUndo();
+      preparePdfSetKeptSet(preparePdfPages.map((_, i) => i));
+      refreshPreparePdfKeptUi();
+    };
+    document.getElementById('preparePdfDropAll').onclick = () => {
+      if (!preparePdfKeptIndices.length) return;
+      preparePdfPushUndo();
+      preparePdfKeptIndices = [];
+      refreshPreparePdfKeptUi();
+    };
+    document.getElementById('preparePdfInvert').onclick = () => {
+      preparePdfPushUndo();
+      preparePdfSetKeptSet(preparePdfPages.map((_, i) => i).filter((i) => !preparePdfIsKept(i)));
+      refreshPreparePdfKeptUi();
+    };
+    document.getElementById('preparePdfGridUndo').onclick = () => preparePdfUndo();
+    const gridEl = document.getElementById('preparePdfGrid');
+    gridEl.addEventListener('click', (e) => {
+      const rotateBtn = e.target.closest('.ppg-rotate');
+      const zoomBtn = e.target.closest('.ppg-zoom');
+      const cell = e.target.closest('.ppg-cell');
+      if (!cell) return;
+      const idx = Number(cell.dataset.idx);
+      if (rotateBtn) { preparePdfRotateSheet(idx); return; }
+      if (zoomBtn) { showPreparePdfSingleView(idx); return; }
+      preparePdfToggleSheet(idx, e.shiftKey);
+    });
+  }
+
+  function setPreparePdfView(view) {
+    preparePdfView = view;
+    const els = preparePdfEls();
+    const grid = view === 'grid';
+    if (els.gridWrap) els.gridWrap.style.display = grid ? '' : 'none';
+    if (els.previewGroup) els.previewGroup.style.display = grid ? 'none' : '';
+    if (els.controls) els.controls.style.display = grid ? 'none' : '';
+    // The grid earns a wider card; the single-sheet zoom keeps the classic one.
+    if (els.card) els.card.style.maxWidth = grid ? 'min(960px, 94vw)' : '520px';
+    if (!grid) renderPreparePdfPreview();
+    updatePreparePdfControls();
+  }
+
+  function showPreparePdfSingleView(idx) {
+    saveCurrentPageName();
+    preparePdfCurrentIdx = Math.max(0, Math.min(idx, preparePdfPages.length - 1));
+    setPreparePdfView('single');
+  }
+
+  // --- Thumbnail rasterisation: lazy IntersectionObserver + serial pump ---
+  let preparePdfThumbObserver = null;
+  const preparePdfThumbQueue = [];
+  let preparePdfThumbPumping = false;
+
+  function queuePreparePdfThumb(idx) {
+    if (preparePdfThumbQueue.indexOf(idx) === -1) preparePdfThumbQueue.push(idx);
+    pumpPreparePdfThumbs();
+  }
+  async function pumpPreparePdfThumbs() {
+    if (preparePdfThumbPumping) return;
+    preparePdfThumbPumping = true;
+    try {
+      // Drain whatever is queued. The gen is re-read per item (NOT captured
+      // for the loop): a close/reopen mid-pump bumps it and refills the queue,
+      // and a gen-captured loop would exit early and strand the new items.
+      while (preparePdfThumbQueue.length) {
+        const idx = preparePdfThumbQueue.shift();
+        await renderPreparePdfThumb(idx, preparePdfGen);
+      }
+    } finally {
+      preparePdfThumbPumping = false;
+    }
+  }
+  async function renderPreparePdfThumb(idx, gen) {
+    const cell = document.querySelector('#preparePdfGrid .ppg-cell[data-idx="' + idx + '"]');
+    const page = preparePdfPages[idx];
+    if (!cell || !page || !page.pdfPage) return;
+    const rot = page.rotation ?? 0;
+    if (Number(cell.dataset.renderedRot) === rot && cell.dataset.rendered === '1') return;
+    const canvas = cell.querySelector('canvas');
+    if (!canvas) return;
+    try {
+      const vp1 = page.pdfPage.getViewport({ scale: 1, rotation: rot });
+      // ~140 CSS px wide at dpr<=1.25: ~30k px / ~120KB RGBA per thumb, so a
+      // 200-sheet grid tops out around 25MB — all released with the grid DOM.
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      const scale = Math.min((140 * dpr) / vp1.width, (190 * dpr) / vp1.height);
+      const viewport = page.pdfPage.getViewport({ scale, rotation: rot });
+      canvas.width = Math.max(1, Math.round(viewport.width));
+      canvas.height = Math.max(1, Math.round(viewport.height));
+      await page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      if (gen !== preparePdfGen) return;
+      cell.dataset.rendered = '1';
+      cell.dataset.renderedRot = String(rot);
+    } catch (_) { /* raced a close or a rotate re-queue; benign */ }
+  }
+
+  function buildPreparePdfGrid() {
+    ensurePreparePdfGridDom();
+    const gridEl = document.getElementById('preparePdfGrid');
+    if (preparePdfThumbObserver) preparePdfThumbObserver.disconnect();
+    preparePdfThumbQueue.length = 0;
+    gridEl.innerHTML = '';
+    preparePdfThumbObserver = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        queuePreparePdfThumb(Number(en.target.dataset.idx));
+        preparePdfThumbObserver.unobserve(en.target);
+      }
+    }, { root: gridEl, rootMargin: '200px' });
+    const frag = document.createDocumentFragment();
+    preparePdfPages.forEach((page, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'ppg-cell' + (preparePdfIsKept(i) ? '' : ' ppg-dropped');
+      cell.dataset.idx = String(i);
+      cell.title = 'Tap to keep/drop';
+      const thumbwrap = document.createElement('div');
+      thumbwrap.className = 'ppg-thumbwrap';
+      thumbwrap.appendChild(document.createElement('canvas'));
+      cell.appendChild(thumbwrap);
+      const caption = document.createElement('div');
+      caption.className = 'ppg-caption';
+      caption.textContent = (i + 1) + ' · ' + (page.label || 'Page ' + (i + 1));
+      cell.appendChild(caption);
+      const btns = document.createElement('div');
+      btns.className = 'ppg-cellbtns';
+      const rotateBtn = document.createElement('button');
+      rotateBtn.type = 'button';
+      rotateBtn.className = 'ppg-rotate';
+      rotateBtn.title = 'Rotate 90°';
+      rotateBtn.textContent = '⟳';
+      const zoomBtn = document.createElement('button');
+      zoomBtn.type = 'button';
+      zoomBtn.className = 'ppg-zoom';
+      zoomBtn.title = 'Open sheet';
+      zoomBtn.textContent = '🔍';
+      btns.appendChild(rotateBtn);
+      btns.appendChild(zoomBtn);
+      cell.appendChild(btns);
+      frag.appendChild(cell);
+      preparePdfThumbObserver.observe(cell);
+    });
+    gridEl.appendChild(frag);
+  }
+
+  function teardownPreparePdfGrid() {
+    preparePdfGen++;
+    if (preparePdfThumbObserver) { preparePdfThumbObserver.disconnect(); preparePdfThumbObserver = null; }
+    preparePdfThumbQueue.length = 0;
+    const gridEl = document.getElementById('preparePdfGrid');
+    if (gridEl) gridEl.innerHTML = ''; // drops every thumb canvas -> memory released
+    preparePdfPageBytesInFlight.clear();
+  }
+
+  // --- Keep/drop mutations (each is ONE undo step) ---
+  function preparePdfToggleSheet(idx, shiftKey) {
+    if (idx < 0 || idx >= preparePdfPages.length) return;
+    if (shiftKey && preparePdfRangeAnchor && preparePdfRangeAnchor.idx !== idx) {
+      // Shift-click: paint the anchor click's resulting state across the range.
+      const lo = Math.min(preparePdfRangeAnchor.idx, idx);
+      const hi = Math.max(preparePdfRangeAnchor.idx, idx);
+      preparePdfPushUndo();
+      const next = new Set(preparePdfKeptIndices);
+      for (let i = lo; i <= hi; i++) {
+        if (preparePdfRangeAnchor.dropped) next.delete(i); else next.add(i);
+      }
+      preparePdfSetKeptSet([...next]);
+      refreshPreparePdfKeptUi();
       return;
     }
-    const origIdx = kept[preparePdfCurrentIdx];
-    const page = preparePdfPages[origIdx];
+    preparePdfPushUndo();
+    const next = new Set(preparePdfKeptIndices);
+    if (next.has(idx)) next.delete(idx); else next.add(idx);
+    preparePdfSetKeptSet([...next]);
+    preparePdfRangeAnchor = { idx, dropped: !preparePdfIsKept(idx) };
+    refreshPreparePdfKeptUi();
+  }
+
+  function preparePdfUndo() {
+    if (!preparePdfUndoStack.length) return;
+    saveCurrentPageName();
+    preparePdfKeptIndices = preparePdfUndoStack.pop();
+    refreshPreparePdfKeptUi();
+  }
+
+  function refreshPreparePdfKeptUi() {
+    const gridEl = document.getElementById('preparePdfGrid');
+    if (gridEl) {
+      gridEl.querySelectorAll('.ppg-cell').forEach((cell) => {
+        cell.classList.toggle('ppg-dropped', !preparePdfIsKept(Number(cell.dataset.idx)));
+      });
+    }
+    const countEl = document.getElementById('preparePdfKeptCount');
+    if (countEl) countEl.textContent = preparePdfKeptIndices.length + ' of ' + preparePdfPages.length + ' kept';
+    if (preparePdfView === 'single') renderPreparePdfPreview();
+    updatePreparePdfControls();
+  }
+
+  // --- Single-sheet (zoom) view: walks ALL sheets, kept and dropped ---
+  function updateSinglePageLabel() {
+    const labelEl = document.getElementById('preparePdfPageLabel');
+    if (!labelEl) return;
+    const total = preparePdfPages.length;
+    if (!total) { labelEl.textContent = 'No pages'; return; }
+    const idx = preparePdfCurrentIdx;
+    const page = preparePdfPages[idx];
+    let text = 'Page ' + (idx + 1) + ' of ' + total;
+    if (page && page.pdfPage) {
+      const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+      text += ' — ' + (vp.width / 72).toFixed(1) + ' × ' + (vp.height / 72).toFixed(1) + ' in';
+    }
+    const fmt = (b) => (b / (1024 * 1024)) < 0.01 ? (b / 1024).toFixed(2) + ' KB' : (b / (1024 * 1024)).toFixed(2) + ' MB';
+    if (preparePdfBuffer) {
+      const pageBytes = preparePdfPageBytes[idx];
+      if (pageBytes != null) text += ' — This page: ' + fmt(pageBytes);
+      text += ' — Total: ' + fmt(preparePdfBuffer.byteLength);
+    }
+    if (!preparePdfIsKept(idx)) text += ' — DROPPED';
+    labelEl.textContent = text;
+  }
+
+  // Lazily compute the shown sheet's standalone byte size (a per-page trimmed
+  // build). The old code did this EAGERLY for every page on open — 200 pdf-lib
+  // builds for a 200-sheet set before the user had done anything.
+  function ensurePreparePdfPageSize(idx) {
+    if (preparePdfPageBytes[idx] != null || preparePdfPageBytesInFlight.has(idx)) return;
+    if (typeof PDFLib === 'undefined' || !preparePdfBuffer) return;
+    preparePdfPageBytesInFlight.add(idx);
+    const gen = preparePdfGen;
+    (async () => {
+      try {
+        const buf = await App.buildTrimmedPdfBuffer(preparePdfBuffer, [idx]);
+        if (gen === preparePdfGen && buf) {
+          preparePdfPageBytes[idx] = buf.byteLength;
+          if (preparePdfView === 'single' && preparePdfCurrentIdx === idx) updateSinglePageLabel();
+        }
+      } catch (_) { /* size stays unknown; label omits it */ }
+      finally { preparePdfPageBytesInFlight.delete(idx); }
+    })();
+  }
+
+  function renderPreparePdfPreview() {
+    const canvas = document.getElementById('preparePdfCanvas');
+    if (!preparePdfPages.length) {
+      canvas.width = 0;
+      canvas.height = 0;
+      updateSinglePageLabel();
+      return;
+    }
+    const idx = preparePdfCurrentIdx;
+    const page = preparePdfPages[idx];
     if (!page || !page.pdfPage) {
       canvas.width = 0;
       canvas.height = 0;
-      labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length;
+      updateSinglePageLabel();
       return;
     }
     const maxH = 400;
@@ -50,54 +399,48 @@
     canvas.height = viewport.height;
     // Contain-fit inside the FIXED-height preview wrap: both max constraints
     // with auto dims letterbox the page, so rotating between portrait and
-    // landscape never changes the wrap's height — the Prev/Next and
-    // Delete/Rotate/Undo rows below stay put (Wendi, 2026-08-13).
+    // landscape never changes the wrap's height — the nav and
+    // Drop/Rotate/Undo rows below stay put (Wendi, 2026-08-13).
     canvas.style.maxWidth = '100%';
     canvas.style.maxHeight = '100%';
     canvas.style.width = 'auto';
     canvas.style.height = 'auto';
-    const wIn = (vp.width / 72).toFixed(1);
-    const hIn = (vp.height / 72).toFixed(1);
-    const fmt = (b) => (b / (1024 * 1024)) < 0.01 ? (b / 1024).toFixed(2) + ' KB' : (b / (1024 * 1024)).toFixed(2) + ' MB';
-    let sizeStr = '';
-    if (preparePdfBuffer) {
-      const totalBytes = preparePdfBuffer.byteLength;
-      const pageBytes = preparePdfPageBytes[origIdx];
-      if (pageBytes != null) {
-        sizeStr = ' — This page: ' + fmt(pageBytes) + ' — Total: ' + fmt(totalBytes);
-      } else {
-        sizeStr = ' — Total: ' + fmt(totalBytes);
-      }
-    }
-    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length + ' — ' + wIn + ' × ' + hIn + ' in' + sizeStr;
+    canvas.style.opacity = preparePdfIsKept(idx) ? '' : '0.35';
+    updateSinglePageLabel();
+    ensurePreparePdfPageSize(idx);
     page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport });
     const nameEl = document.getElementById('preparePdfName');
-    if (nameEl && preparePdfEditMode === 'page') nameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
+    if (nameEl && preparePdfEditMode === 'page') nameEl.value = page.label || ('Page ' + (idx + 1));
   }
   function saveCurrentPageName() {
-    const kept = preparePdfKeptIndices;
-    if (!kept.length || preparePdfCurrentIdx >= kept.length) return;
-    const origIdx = kept[preparePdfCurrentIdx];
-    const page = preparePdfPages[origIdx];
+    if (!preparePdfPages.length || preparePdfCurrentIdx >= preparePdfPages.length) return;
+    const page = preparePdfPages[preparePdfCurrentIdx];
     if (!page) return;
     const nameEl = document.getElementById('preparePdfName');
     if (nameEl && preparePdfEditMode === 'page') page.label = (nameEl.value || '').trim() || ('Page ' + (preparePdfCurrentIdx + 1));
   }
   function updatePreparePdfControls() {
-    const kept = preparePdfKeptIndices;
-    document.getElementById('preparePdfUndo').disabled = preparePdfUndoStack.length === 0;
-    document.getElementById('preparePdfDelete').disabled = kept.length <= 1;
-    document.getElementById('preparePdfRotate').disabled = kept.length === 0;
+    const total = preparePdfPages.length;
+    const keptCount = preparePdfKeptIndices.length;
+    const undoDisabled = preparePdfUndoStack.length === 0;
+    document.getElementById('preparePdfUndo').disabled = undoDisabled;
+    const gridUndoEl = document.getElementById('preparePdfGridUndo');
+    if (gridUndoEl) gridUndoEl.disabled = undoDisabled;
+    const dropEl = document.getElementById('preparePdfDelete');
+    dropEl.disabled = total === 0;
+    dropEl.textContent = preparePdfIsKept(preparePdfCurrentIdx) ? 'Drop' : 'Restore';
+    document.getElementById('preparePdfRotate').disabled = total === 0;
     document.getElementById('preparePdfPrev').disabled = preparePdfCurrentIdx <= 0;
-    document.getElementById('preparePdfNext').disabled = preparePdfCurrentIdx >= kept.length - 1;
-    document.getElementById('preparePdfDone').disabled = kept.length === 0;
+    document.getElementById('preparePdfNext').disabled = preparePdfCurrentIdx >= total - 1;
+    document.getElementById('preparePdfDone').disabled = keptCount === 0;
     const downloadEl = document.getElementById('preparePdfDownload');
-    if (downloadEl) downloadEl.disabled = kept.length === 0;
+    if (downloadEl) downloadEl.disabled = keptCount === 0;
     const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');
-    if (saveAndOpenEl) saveAndOpenEl.disabled = kept.length === 0;
+    if (saveAndOpenEl) saveAndOpenEl.disabled = keptCount === 0;
   }
   function openPreparePdfModal(pages, buffer, defaultName, opts) {
     opts = opts || {};
+    preparePdfGen++;
     preparePdfMode = opts.mode === 'append' ? 'append' : 'project';
     preparePdfPages = pages.map(p => ({ pdfPage: p.pdfPage, label: p.label, rotation: p.rotation ?? 0 }));
     preparePdfBuffer = buffer;
@@ -105,6 +448,7 @@
     preparePdfKeptIndices = pages.map((_, i) => i);
     preparePdfUndoStack = [];
     preparePdfCurrentIdx = 0;
+    preparePdfRangeAnchor = null;
     preparePdfDefaultName = defaultName || 'Untitled';
     preparePdfProjectName = preparePdfDefaultName;
     preparePdfEditMode = 'project';
@@ -118,37 +462,28 @@
     const nameRowEl = document.getElementById('preparePdfNameRow');
     if (preparePdfMode === 'append') {
       if (titleEl) titleEl.textContent = 'Add pages — ' + (App.state.currentProjectName || 'Untitled');
-      if (descEl) descEl.textContent = 'Remove unnecessary pages before adding them to the current project.';
+      if (descEl) descEl.textContent = 'Tap the pages you do not need before adding the rest to the current project.';
       if (nameRowEl) nameRowEl.style.display = 'none';
     } else {
       if (titleEl) titleEl.textContent = 'Prepare PDF for Cloud';
-      if (descEl) descEl.textContent = 'Name your project and remove unnecessary pages before saving.';
+      if (descEl) descEl.textContent = 'Name your project, then tap the pages you do not need before saving.';
       if (nameRowEl) nameRowEl.style.display = '';
     }
-    renderPreparePdfPreview();
-    updatePreparePdfControls();
+    buildPreparePdfGrid();
+    setPreparePdfView('grid'); // the grid IS the trim view; single-sheet is the zoom
+    refreshPreparePdfKeptUi();
     App.showModal('preparePdfModal');
-    (async function computePageSizes() {
-      if (typeof PDFLib === 'undefined' || !preparePdfBuffer) return;
-      const indices = [...preparePdfKeptIndices].sort((a, b) => a - b);
-      for (const i of indices) {
-        if (!preparePdfBuffer) return;
-        try {
-          const buf = await App.buildTrimmedPdfBuffer(preparePdfBuffer, [i]);
-          if (buf) preparePdfPageBytes[i] = buf.byteLength;
-        } catch (_) {}
-        if (document.getElementById('preparePdfModal')?.classList.contains('visible')) {
-          renderPreparePdfPreview();
-        }
-      }
-    })();
   }
   function closePreparePdfModal() {
+    teardownPreparePdfGrid();
     preparePdfPages = [];
     preparePdfBuffer = null;
     preparePdfPageBytes = {};
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
+    preparePdfRangeAnchor = null;
+    const els = preparePdfEls();
+    if (els.card) els.card.style.maxWidth = '520px';
     App.hideModal('preparePdfModal');
   }
   window.closePreparePdfModal = closePreparePdfModal;
@@ -168,9 +503,7 @@
     function switchToPage() {
       preparePdfProjectName = (nameInput.value || '').trim() || preparePdfDefaultName;
       preparePdfEditMode = 'page';
-      const kept = preparePdfKeptIndices;
-      const origIdx = kept.length && preparePdfCurrentIdx < kept.length ? kept[preparePdfCurrentIdx] : 0;
-      const page = preparePdfPages[origIdx];
+      const page = preparePdfPages[preparePdfCurrentIdx];
       nameInput.value = page?.label || ('Page ' + (preparePdfCurrentIdx + 1));
       nameInput.placeholder = 'Page 1';
       projectTab.classList.remove('active');
@@ -180,29 +513,21 @@
     pageTab.onclick = () => { if (preparePdfEditMode !== 'page') switchToPage(); };
     nameInput.onblur = () => {
       if (preparePdfEditMode === 'project') preparePdfProjectName = (nameInput.value || '').trim() || preparePdfDefaultName;
-      else saveCurrentPageName();
+      else { saveCurrentPageName(); refreshPreparePdfCaption(preparePdfCurrentIdx); }
     };
   })();
-  document.getElementById('preparePdfUndo').onclick = () => {
-    if (preparePdfUndoStack.length === 0) return;
-    saveCurrentPageName();
-    const { index } = preparePdfUndoStack.pop();
-    preparePdfKeptIndices.push(index);
-    preparePdfKeptIndices.sort((a, b) => a - b);
-    const idxInKept = preparePdfKeptIndices.indexOf(index);
-    if (idxInKept >= 0 && idxInKept <= preparePdfCurrentIdx) preparePdfCurrentIdx = Math.min(preparePdfCurrentIdx + 1, preparePdfKeptIndices.length - 1);
-    renderPreparePdfPreview();
-    updatePreparePdfControls();
-  };
+  function refreshPreparePdfCaption(idx) {
+    const cell = document.querySelector('#preparePdfGrid .ppg-cell[data-idx="' + idx + '"] .ppg-caption');
+    const page = preparePdfPages[idx];
+    if (cell && page) cell.textContent = (idx + 1) + ' · ' + (page.label || 'Page ' + (idx + 1));
+  }
+  document.getElementById('preparePdfUndo').onclick = () => preparePdfUndo();
+  // Single-view Drop/Restore: the old destructive "Delete" became a keep/drop
+  // toggle on the sheet being zoomed — same undo stack as the grid.
   document.getElementById('preparePdfDelete').onclick = () => {
-    const kept = preparePdfKeptIndices;
-    if (kept.length <= 1) return;
+    if (!preparePdfPages.length) return;
     saveCurrentPageName();
-    const removed = kept.splice(preparePdfCurrentIdx, 1)[0];
-    preparePdfUndoStack.push({ index: removed });
-    if (preparePdfCurrentIdx >= kept.length) preparePdfCurrentIdx = Math.max(0, kept.length - 1);
-    renderPreparePdfPreview();
-    updatePreparePdfControls();
+    preparePdfToggleSheet(preparePdfCurrentIdx, false);
   };
   document.getElementById('preparePdfPrev').onclick = () => {
     if (preparePdfCurrentIdx > 0) {
@@ -213,23 +538,42 @@
     }
   };
   document.getElementById('preparePdfNext').onclick = () => {
-    if (preparePdfCurrentIdx < preparePdfKeptIndices.length - 1) {
+    if (preparePdfCurrentIdx < preparePdfPages.length - 1) {
       saveCurrentPageName();
       preparePdfCurrentIdx++;
       renderPreparePdfPreview();
       updatePreparePdfControls();
     }
   };
-  function preparePdfRotatePage90() {
-    const kept = preparePdfKeptIndices;
-    if (!kept.length) return;
-    const origIdx = kept[preparePdfCurrentIdx];
-    const page = preparePdfPages[origIdx];
+  function preparePdfRotateSheet(idx) {
+    const page = preparePdfPages[idx];
     if (!page || !page.pdfPage) return;
     page.rotation = ((page.rotation ?? 0) + 90) % 360;
-    renderPreparePdfPreview();
+    const cell = document.querySelector('#preparePdfGrid .ppg-cell[data-idx="' + idx + '"]');
+    if (cell && cell.dataset.rendered === '1') queuePreparePdfThumb(idx);
+    if (preparePdfView === 'single' && preparePdfCurrentIdx === idx) renderPreparePdfPreview();
   }
-  document.getElementById('preparePdfRotate').onclick = preparePdfRotatePage90;
+  document.getElementById('preparePdfRotate').onclick = () => preparePdfRotateSheet(preparePdfCurrentIdx);
+  // Modal-scoped keys, CAPTURE phase so they beat app.js's document-level
+  // handler (which is not prepare-modal-aware): Ctrl/Cmd+Z must undo the trim
+  // action, not fire the app's annotation undo behind the overlay; arrows walk
+  // sheets in the single (zoom) view. Escape is left alone — app.js's handler
+  // closes the modal via window.closePreparePdfModal.
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('preparePdfModal');
+    if (!modal || !modal.classList.contains('visible')) return;
+    if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]')) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!e.repeat) preparePdfUndo();
+      return;
+    }
+    if (preparePdfView === 'single') {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); document.getElementById('preparePdfPrev').click(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); document.getElementById('preparePdfNext').click(); }
+    }
+  }, true);
   async function commitPreparePdfToState() {
     try {
     const nameInput = document.getElementById('preparePdfName');
@@ -313,6 +657,7 @@
         // remove(). The path is replaced with the new uploaded path on save.
         App.state.pdfHash = null;
       }
+      teardownPreparePdfGrid();
       preparePdfPages = [];
       preparePdfBuffer = null;
       preparePdfKeptIndices = [];
@@ -343,6 +688,7 @@
     App.state.pdfStoragePath = null;
     App.state.currentProjectName = (name || '').trim() || preparePdfDefaultName;
     App.state.currentPage = 0;
+    teardownPreparePdfGrid();
     preparePdfPages = [];
     preparePdfBuffer = null;
     preparePdfKeptIndices = [];

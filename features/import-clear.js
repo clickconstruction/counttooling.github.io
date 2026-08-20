@@ -85,7 +85,20 @@
     const canvas = page ? App.getActiveCanvas(page) : null;
     const name = canvas?.name || 'Main';
     const msg = document.getElementById('clearPageConfirmMessage');
-    if (msg) msg.textContent = 'Clear current canvas (' + name + ')?';
+    if (msg) {
+      // Only the ACTIVE layer is wiped (the confirm handler below replaces just
+      // that canvas's annotations), so on a multi-layer page the layer name +
+      // scope are load-bearing. Layer names are user-typed free text with
+      // "Layer N" defaults — quote the name instead of appending the word
+      // "layer" so a default name never reads '"Layer 2" layer'. On a
+      // single-layer page the only layer IS the page; skip the qualifier.
+      // "You can undo this." is honest: the handler pushes an undo snapshot
+      // before clearing.
+      const multi = page && App.getPageCanvases(page).length > 1;
+      msg.textContent = multi
+        ? 'Remove all marks from "' + name + '"? Other layers on this page keep their marks. You can undo this.'
+        : 'Remove all marks from this page? You can undo this.';
+    }
     App.showModal('clearPageConfirmModal');
   }
   document.getElementById('clearPage').onclick = () => showClearPageModal();

@@ -8,7 +8,10 @@
    * features/summary-detail.js via App.openSummaryCountDetailModal),
    * extracted from app.js's UI Render Functions region per the lines-list
    * recipe. updateUI reaches it defensively via App.renderSummary. Zero new
-   * publish-only deps — everything it reads was already on the registry.
+   * app.js publish-only deps — everything it reads was already on the
+   * registry; the multiply-zone count label comes from a sibling feature
+   * file's registration (App.describePlacedWithRepeats,
+   * features/sidebar-lists.js), read deferred like every other dep.
    * Boundary rule: read shared deps from App.* at call time, never at load.
    */
 
@@ -29,6 +32,19 @@
       if (r.excludedPxRuns) div.title = r.excludedPxRuns + ' run(s) without a scale are excluded from this per-ft count';
       el.appendChild(div);
     });
+  }
+
+  // JOURNEY Tier-2 #24: counter badge HTML shared with the COUNTERS list.
+  // When Multiply Zones inflate a count, label it in the SAME trade words the
+  // COUNTERS badge uses ("N placed · M with repeats", via
+  // App.describePlacedWithRepeats from features/sidebar-lists.js); otherwise
+  // keep the classic bracketed Summary total. Deferred App.* read + fallback:
+  // a missing registration degrades to the plain bracketed number.
+  function summaryCountBadgeHtml(placed, total) {
+    const rep = App.describePlacedWithRepeats && App.describePlacedWithRepeats(placed, total);
+    return rep
+      ? '<span class="badge" title="' + rep.title + '">' + rep.label + '</span>'
+      : '<span class="badge">[' + total + ']</span>';
   }
 
   function renderSummary() {
@@ -53,8 +69,9 @@
         (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
           if (!counterByGroup[gid]) counterByGroup[gid] = {};
-          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, pageIndices: [] };
+          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, placed: 0, pageIndices: [] };
           counterByGroup[gid][c.id].total += App.getMultiplyZoneForPoint(ann, m);
+          counterByGroup[gid][c.id].placed++;
           if (!counterByGroup[gid][c.id].pageIndices.includes(pi)) counterByGroup[gid][c.id].pageIndices.push(pi);
         });
       });
@@ -92,7 +109,7 @@
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
+          div.innerHTML = '<span class="name">' + esc(r.name) + '</span>' + summaryCountBadgeHtml(r.placed, r.total);
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
           appendChildRows(el, 'counter', c.id, gid, childTotals);
@@ -126,16 +143,20 @@
       });
     } else {
       App.state.counters.forEach(c => {
-        const count = App.state.pages.reduce((n, p, pi) => {
+        let placed = 0, count = 0;
+        App.state.pages.forEach((p) => {
           const ann = App.getActiveAnnotations(p);
-          return n + ((ann?.counterMarkers?.[c.id] || []).reduce((s, m) => s + App.getMultiplyZoneForPoint(ann, m), 0));
-        }, 0);
+          (ann?.counterMarkers?.[c.id] || []).forEach(m => {
+            placed++;
+            count += App.getMultiplyZoneForPoint(ann, m);
+          });
+        });
         if (count > 0) {
           const div = document.createElement('div');
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
-          div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
+          div.innerHTML = '<span class="name">' + esc(c.name) + '</span>' + summaryCountBadgeHtml(placed, count);
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
           appendChildRows(el, 'counter', c.id, 'null', childTotals);

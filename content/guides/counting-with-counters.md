@@ -1,7 +1,7 @@
 ---
 title: Counting fixtures with counters
 description: Place point counts on a plan with custom icons and colors, keep a live tally, and organize them into groups — the heart of any takeoff.
-updated: 2026-08-13
+updated: 2026-08-20
 order: 3
 icon: counter
 category: Counting
@@ -22,6 +22,10 @@ Before you count, set up the type you're counting:
 
 Then select the counter and start clicking. The running total updates as you go, and it adds up across every sheet and canvas in the project — not just the page you're on.
 
+There's also a faster route for trade names: the Counter window's **Quick** tab (`Shift`+`Q`) assembles the name from **Size / Type / Material** pickers — see [Building your palette in two clicks](/guides/quick-creators/). One heads-up there: the pickers' **+** and **−** buttons edit your **saved** option lists on the spot — **−** drops the selected entry immediately, with no confirmation, and the change carries into future bids (the last entry can't be removed, and a trimmed one comes back with **+**).
+
+The icon library itself — renaming and reordering icons — lives in **Manage Icons** under Project Settings → Advanced; on a desktop screen the Settings gear asks you to sign in first. [Custom icons](/guides/custom-icons/) has the details.
+
 ## Keep it organized
 
 On a dense plan it's easy to lose track. A few things help:
@@ -33,7 +37,7 @@ On a dense plan it's easy to lose track. A few things help:
 ## Fixing mistakes
 
 - Misclick? **Undo** (Ctrl+Z) steps back through your last moves.
-- Placed the wrong type? **Right-click** the mark (long-press on touch) and choose **Delete** — the menu names what you hit, so you never delete blind.
+- Placed the wrong type? **Right-click** the mark and choose **Delete** — the menu names what you hit, so you never delete blind. On touch, tap **Move** first, then long-press the mark: while the Counter tool is still armed, press-and-hold aims the loupe for placement instead of opening the menu.
 - Need to rename or recolor a whole type after the fact? Open its details from the sidebar and every placed mark updates at once.
 
 When the counts are done, [measure the runs](/guides/measuring-runs-lines-and-polylines/) and then [pull a report](/guides/reports-and-exports/).

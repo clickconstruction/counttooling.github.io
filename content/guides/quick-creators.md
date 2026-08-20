@@ -1,7 +1,7 @@
 ---
 title: Building your palette in two clicks
 description: The Quick Count and Quick Line creators build correctly-named counters and line types from Size, Type, and Material pickers — no typing, consistent names.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 3.9
 icon: line
 category: Counting
@@ -33,7 +33,7 @@ The Size / Type / Material option lists are editable — add the sizes and mater
 
 ## Why this beats typing
 
-- **Consistency** — `2" PVC Waste` is always spelled exactly that way, so tallies, reports, and [Copy to PipeTooling](/guides/reports-and-exports/) group cleanly instead of splitting across three spellings of the same thing.
+- **Consistency** — `2" PVC Waste` is always spelled exactly that way, so tallies, reports, and [Copy to /Tooling](/guides/reports-and-exports/) group cleanly instead of splitting across three spellings of the same thing.
 - **Speed** — a new bid's palette takes a minute, not fifteen.
 - **The number row** — pair this with [Quick Keys](/guides/working-faster-with-the-keyboard/) and your freshly built palette is one keystroke away per item.
 

@@ -1,7 +1,7 @@
 ---
 title: Working faster with the keyboard
 description: Tool hotkeys, the visual Keyboard Map, Quick Keys for your counters and line types, and 45° snap — how experienced estimators keep both hands moving.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 6.5
 icon: keys
 category: Working faster
@@ -29,14 +29,20 @@ The ones worth learning first:
 | `C` | Counter mode |
 | `L` | Quick Line |
 | `P` | Polyline |
+| `T` | Chain (counter + connecting line) |
 | `D` | Measure |
 | `H` | Highlight |
 | `N` | Note |
 | `V` | Room Sizer |
 | `X` | Multiply Zone |
 | `R` | Rotate page |
+| `J` | Toggle 45° snap while drawing lines |
 | `←` `→` | Previous / next page (`Shift` jumps between marked pages) |
+| `↑` `↓` | Switch canvas, when the page has more than one |
 | `Ctrl`+`Z` / `Ctrl`+`Shift`+`Z` | Undo / redo (`Cmd` on a Mac) — the history keeps your last 50 steps |
+| `Enter` | Finish a polyline / end a chain run / exit edit mode |
+| `Space` | Show / hide the sidebar (desktop) |
+| `Shift`+`Q` | Jump to the Quick tab when a Counter or Line Type dialog is open |
 | `Esc` | Cancel / close |
 
 ## Quick Keys: your counters and line types on the number row

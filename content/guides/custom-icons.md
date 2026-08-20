@@ -1,7 +1,7 @@
 ---
 title: Custom icons — make the plan read like your trade
 description: Pick from the built-in trade icon library or upload your own SVG symbols, manage and reorder them, and carry your icon library between devices.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 3.5
 icon: counter
 category: Counting
@@ -26,7 +26,7 @@ The icon grid's **+ Upload** cell accepts your own SVG files:
 
 ## Manage the library
 
-**Manage Icons** (Settings gear → **Advanced** → Manage Icons) lists every icon. One heads-up: the Settings gear asks you to **sign in** first — that's the only door to Manage Icons, even though the icons themselves work fine signed out.
+**Manage Icons** (Settings gear → **Advanced** → Manage Icons) lists every icon. One heads-up: on a desktop screen the Settings gear asks you to **sign in** before it opens, so Manage Icons sits behind sign-in there — even though the icons themselves work fine signed out. On a phone or tablet, the gear in the sidebar's logo row opens Project Settings without asking.
 
 ![The Manage Icons dialog: rename any icon so it matches your vocabulary, and reorder the picker so your daily icons sit on top.](/guides/img/manage-icons.png)
 

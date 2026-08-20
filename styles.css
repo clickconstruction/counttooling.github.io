@@ -234,7 +234,7 @@
       .polyline-finish-bar button { min-height: 44px; }
       .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
       .modal-overlay.visible .modal-card.modal-card-fullscreen { max-height: 90vh; height: 90vh; overflow: hidden; }
-      #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar, #settingsSidebarBtn { display: none !important; }
+      #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar { display: none !important; }
       .page-zoom-row { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
       .page-zoom-row::-webkit-scrollbar { display: none; }
       .page-zoom-row > * { flex-shrink: 0; }

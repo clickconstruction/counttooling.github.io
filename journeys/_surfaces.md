@@ -55,7 +55,6 @@
 - uploadPdfSidebar
 - setScaleSidebar
 - authBtnSidebar
-- settingsSidebarBtn
 - saveProjectBtnSidebar
 - loadProjectBtnSidebar
 - manageUsersBtnSidebar

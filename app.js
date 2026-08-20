@@ -2302,8 +2302,6 @@
       if (settingsManageProjectsBtn) settingsManageProjectsBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const globalReloadBtn = document.getElementById('advancedGlobalForceReload');
       if (globalReloadBtn) globalReloadBtn.style.display = (loggedIn && state.isAdmin) ? '' : 'none';
-      const settingsSidebarBtn = document.getElementById('settingsSidebarBtn');
-      if (settingsSidebarBtn) settingsSidebarBtn.style.display = loggedIn ? '' : 'none';
       const statusBarAuth = document.getElementById('statusBarAuth');
       if (statusBarAuth) { statusBarAuth.textContent = loggedIn ? (state.supabaseSession?.user?.email || 'Sign Out') : 'Sign In'; statusBarAuth.style.display = ''; }
     } else {
@@ -4011,26 +4009,26 @@
       updateUI();
     };
     document.getElementById('authBtnSidebar').onclick = () => document.getElementById('authBtn').click();
-    document.getElementById('settingsSidebarBtn').onclick = () => {
+    // Project Settings has two doors -- the desktop header gear and the mobile
+    // sidebar-logo gear -- so they open through one function and can't drift
+    // apart on auth or title. No sign-in gate here:
+    // the modal is mostly local work (add PDF pages, Close Project, quick keys,
+    // Advanced -> Manage Icons / Export / Import / Canvas Repair), and the
+    // cloud rows inside prompt for sign-in themselves.
+    function openProjectSettings() {
       const titleEl = document.getElementById('settingsTitle');
       if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
       document.body.classList.remove('sidebar-open');
       updateSettingsCheckoutSection();
       showModal('settingsModal');
-    };
+    }
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); App.openMySettings(); };
     document.getElementById('sidebarLogoShare').onclick = () => { document.body.classList.remove('sidebar-open'); hideModal('settingsModal'); App.openShareProjectModal(); };
     const headerShareBtnEl = document.getElementById('headerShareBtn');
     if (headerShareBtnEl) headerShareBtnEl.onclick = () => copyOrCreateViewLinkToClipboard(headerShareBtnEl);
     const hideMarksBtnEl = document.getElementById('hideMarksBtn');
     if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
-    document.getElementById('sidebarLogoGear').onclick = () => {
-      const titleEl = document.getElementById('settingsTitle');
-      if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
-      document.body.classList.remove('sidebar-open');
-      updateSettingsCheckoutSection();
-      showModal('settingsModal');
-    };
+    document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
     document.getElementById('statusBarAuth').onclick = () => App.openMySettings();
     // SECTION: Project Settings checkout & Save Status bell
     function updateSettingsCheckoutSection() {
@@ -4081,16 +4079,7 @@
       }
     }
     document.getElementById('copyViewLinkBtn').onclick = () => copyOrCreateViewLinkToClipboard(document.getElementById('copyViewLinkBtn'));
-    document.getElementById('settingsGearBtn').onclick = () => {
-      if (state.supabaseSession?.user) {
-        const titleEl = document.getElementById('settingsTitle');
-        if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
-        updateSettingsCheckoutSection();
-        showModal('settingsModal');
-      } else {
-        document.getElementById('authBtn').click();
-      }
-    };
+    document.getElementById('settingsGearBtn').onclick = openProjectSettings;
     document.getElementById('authCancel').onclick = () => hideModal('authModal');
     const authDevBypassWrap = document.getElementById('authDevBypassWrap');
     const authDevBypass = document.getElementById('authDevBypass');
@@ -4197,7 +4186,16 @@
     // (saveEngine.doTurnIn, published as App.doTurnIn); every call site was
     // internal to the moved cluster, so no wrappers were needed here.
 
-    document.getElementById('settingsSaveProject').onclick = () => { hideModal('settingsModal'); document.getElementById('saveProjectBtn').click(); };
+    // Signed out, this row carries the sign-in prompt the settings gear used
+    // to carry -- the save flow itself has no session recovery and would just
+    // dead-end in a "Please sign in to save" error inside the Save modal.
+    // (The Load row below needs no gate: openLoadProjectModal re-runs
+    // getSession itself, recovering a stored session or showing authModal.)
+    document.getElementById('settingsSaveProject').onclick = () => {
+      hideModal('settingsModal');
+      if (SUPABASE_ENABLED && !state.supabaseSession?.user) { document.getElementById('authBtn').click(); return; }
+      document.getElementById('saveProjectBtn').click();
+    };
     document.getElementById('settingsAddAdditionalPages').onclick = async () => {
       // #7b: Route through Prepare PDF in append mode. We need the current
       // project's PDF buffer in memory so the commit step can merge the new

@@ -22,7 +22,7 @@ test.describe('Load Project delete own projects', () => {
     // Wait for app to load
     await page.waitForLoadState('networkidle');
 
-    // Open Project Settings - use sidebarLogoGear (always opens settings; settingsGearBtn opens auth when not logged in)
+    // Open Project Settings - sidebarLogoGear is the mobile-layout door; both gears open the same modal
     await page.evaluate(() => {
       document.getElementById('sidebarLogoGear')?.click();
     });

@@ -26,7 +26,7 @@ The icon grid's **+ Upload** cell accepts your own SVG files:
 
 ## Manage the library
 
-**Manage Icons** (Settings gear → **Advanced** → Manage Icons) lists every icon. One heads-up: the Settings gear asks you to **sign in** first — that's the only door to Manage Icons, even though the icons themselves work fine signed out.
+**Manage Icons** (Settings gear → **Advanced** → Manage Icons) lists every icon. No account needed — the Settings gear opens whether or not you're signed in, on desktop and on a phone or tablet alike.
 
 ![The Manage Icons dialog: rename any icon so it matches your vocabulary, and reorder the picker so your daily icons sit on top.](/guides/img/manage-icons.png)
 

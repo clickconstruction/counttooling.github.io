@@ -43,7 +43,7 @@ function dedupePaletteById(list) {
 }
 
 function createAnnotationModel(ctx) {
-  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], legend: null }; }
+  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
   // pageIdxHint (optional): the page's index when the caller already knows it —
@@ -79,6 +79,7 @@ function createAnnotationModel(ctx) {
       (ann.multiplyZones || []).forEach(z => { (out.multiplyZones = out.multiplyZones || []).push(z); });
       (ann.scaleZones || []).forEach(z => { (out.scaleZones = out.scaleZones || []).push(z); });
       (ann.roomBoxes || []).forEach(b => { (out.roomBoxes = out.roomBoxes || []).push(b); });
+      (ann.ghosts || []).forEach(g => { (out.ghosts = out.ghosts || []).push(g); });
     });
     return out;
   }
@@ -248,6 +249,7 @@ function createAnnotationModel(ctx) {
           multiplyZones: Array.isArray(c.annotations.multiplyZones) ? c.annotations.multiplyZones : [],
           scaleZones: Array.isArray(c.annotations.scaleZones) ? c.annotations.scaleZones : [],
           roomBoxes: Array.isArray(c.annotations.roomBoxes) ? c.annotations.roomBoxes : [],
+          ghosts: Array.isArray(c.annotations.ghosts) ? c.annotations.ghosts : [],
           legend: c.annotations.legend && typeof c.annotations.legend === 'object' ? c.annotations.legend : null
         } : makeAnnotations()
       }));
@@ -263,6 +265,7 @@ function createAnnotationModel(ctx) {
         multiplyZones: Array.isArray(a.multiplyZones) ? a.multiplyZones : [],
         scaleZones: Array.isArray(a.scaleZones) ? a.scaleZones : [],
         roomBoxes: Array.isArray(a.roomBoxes) ? a.roomBoxes : [],
+        ghosts: Array.isArray(a.ghosts) ? a.ghosts : [],
         legend: a.legend && typeof a.legend === 'object' ? a.legend : null
       };
       page.canvases = [{ id: ctx.uid(), name: 'Main', annotations: ann }];
@@ -580,6 +583,11 @@ function createAnnotationModel(ctx) {
       const p = r({ x: n.x, y: n.y });
       n.x = p.x; n.y = p.y;
     });
+    // A ghost's src is annotation-shaped (counterMarkers / quickLines /
+    // polylines in absolute PDF-space), so it rotates through this same
+    // walker — that shape choice is why ghosts need no rotation code of
+    // their own. Nested ghosts can't exist, so the recursion is one deep.
+    (ann.ghosts || []).forEach(g => { if (g && g.src) rotateAnn(g.src); });
     if (ann.legend && typeof ann.legend === 'object') {
       const p = r({ x: ann.legend.x, y: ann.legend.y });
       ann.legend.x = p.x; ann.legend.y = p.y;
@@ -599,6 +607,119 @@ function createAnnotationModel(ctx) {
       rotateAnnotations(page, vp.width, vp.height);
       rot = (rot + 90) % 360;
     }
+  }
+  // --- Ghosts (reference copies) --------------------------------------------
+  // A ghost is a translucent COPY of a batch of marks, kept as scaffolding for
+  // repeating a "typical" layout: it is drawn on the plan, dragged around, and
+  // never tallied. It is a DISTINCT annotation kind, not real marks carrying an
+  // isGhost flag — that way no totals surface (footer, sidebar, Summary, legend,
+  // report, Copy to /Tooling, Copy Summary, the PDF legend) can accidentally
+  // count one. Nothing reads ann.ghosts except the ghost code and the renderer.
+  //
+  // Shape: { id, label, showCounters, showLines, src }, where src is
+  // annotation-shaped ({ counterMarkers, quickLines, polylines }) and holds
+  // ABSOLUTE PDF-space coordinates — no offset vector. Moving a ghost rewrites
+  // its points; that keeps page rotation (rotateAnnotations) and bounds honest
+  // without a second coordinate convention to reason about.
+  function captureGhostFromRect(ann, pageIdx, x1, y1, x2, y2, label) {
+    // Same hit semantics as Delete Area / Multiply Zone: counters on their
+    // point, lines only when BOTH endpoints are inside the box.
+    const collected = collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2);
+    if (!collected.counterCount && !collected.lineRunCount) return null;
+    const src = { counterMarkers: {}, quickLines: [], polylines: [] };
+    (collected.counters || []).forEach(({ counterId, marker }) => {
+      if (!src.counterMarkers[counterId]) src.counterMarkers[counterId] = [];
+      src.counterMarkers[counterId].push({ ...marker, id: ctx.uid() });
+    });
+    (collected.quickLines || []).forEach(({ line }) => {
+      src.quickLines.push({ ...JSON.parse(JSON.stringify(line)), id: ctx.uid() });
+    });
+    (collected.polylines || []).forEach(({ poly }) => {
+      src.polylines.push({ ...JSON.parse(JSON.stringify(poly)), id: ctx.uid() });
+    });
+    return {
+      id: ctx.uid(),
+      label: label || 'Typical',
+      showCounters: true,
+      showLines: true,
+      src
+    };
+  }
+  // What a ghost would contribute if stamped — also the menu's row counts.
+  function ghostCounts(g) {
+    let counters = 0;
+    Object.values(g?.src?.counterMarkers || {}).forEach(arr => { counters += (arr || []).length; });
+    const lines = (g?.src?.quickLines || []).length + (g?.src?.polylines || []).length;
+    return { counters, lines };
+  }
+  // Bounding box over the VISIBLE parts only, so hiding the counters shrinks
+  // the drag outline to what is actually on screen. Null when nothing shows.
+  function ghostBounds(g) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const add = (p) => {
+      if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    };
+    if (g?.showCounters !== false) {
+      Object.values(g?.src?.counterMarkers || {}).forEach(arr => (arr || []).forEach(add));
+    }
+    if (g?.showLines !== false) {
+      (g?.src?.quickLines || []).forEach(q => { add({ x: q.x1, y: q.y1 }); add({ x: q.x2, y: q.y2 }); });
+      (g?.src?.polylines || []).forEach(p => (p.points || []).forEach(add));
+    }
+    if (minX === Infinity) return null;
+    return { x1: minX, y1: minY, x2: maxX, y2: maxY };
+  }
+  // Move the whole batch. Rewrites every point — see the shape note above.
+  function translateGhost(g, dx, dy) {
+    if (!g?.src || (!dx && !dy)) return g;
+    Object.values(g.src.counterMarkers || {}).forEach(arr => (arr || []).forEach(m => { m.x += dx; m.y += dy; }));
+    (g.src.quickLines || []).forEach(q => { q.x1 += dx; q.y1 += dy; q.x2 += dx; q.y2 += dy; });
+    (g.src.polylines || []).forEach(p => (p.points || []).forEach(pt => { pt.x += dx; pt.y += dy; }));
+    return g;
+  }
+  // The only door from ghost to real, counted marks. Honors the per-ghost
+  // show/hide toggles: what you cannot see is what you do not get. Every
+  // committed mark gets a FRESH id so it is a new mark, not a second reference
+  // to the captured one. Caller owns the undo snapshot + dirty + re-render.
+  function stampGhostIntoAnnotations(ann, g) {
+    if (!ann || !g?.src) return { counters: 0, lines: 0 };
+    let counters = 0, lines = 0;
+    if (g.showCounters !== false) {
+      Object.entries(g.src.counterMarkers || {}).forEach(([counterId, arr]) => {
+        (arr || []).forEach(m => {
+          if (!ann.counterMarkers) ann.counterMarkers = {};
+          if (!ann.counterMarkers[counterId]) ann.counterMarkers[counterId] = [];
+          ann.counterMarkers[counterId].push({ ...JSON.parse(JSON.stringify(m)), id: ctx.uid() });
+          counters++;
+        });
+      });
+    }
+    if (g.showLines !== false) {
+      (g.src.quickLines || []).forEach(q => {
+        (ann.quickLines = ann.quickLines || []).push({ ...JSON.parse(JSON.stringify(q)), id: ctx.uid() });
+        lines++;
+      });
+      (g.src.polylines || []).forEach(p => {
+        (ann.polylines = ann.polylines || []).push({ ...JSON.parse(JSON.stringify(p)), id: ctx.uid() });
+        lines++;
+      });
+    }
+    return { counters, lines };
+  }
+  // Topmost-first: ghosts render in array order, so the last one drawn is the
+  // one a click should grab.
+  function ghostIndexAtPoint(ann, pos) {
+    const ghosts = ann?.ghosts || [];
+    for (let i = ghosts.length - 1; i >= 0; i--) {
+      const b = ghostBounds(ghosts[i]);
+      if (!b) continue;
+      if (pos.x >= b.x1 && pos.x <= b.x2 && pos.y >= b.y1 && pos.y <= b.y2) return i;
+    }
+    return -1;
   }
   function deepCopyAnnotations(ann) {
     if (!ann) return makeAnnotations();
@@ -627,6 +748,12 @@ function createAnnotationModel(ctx) {
     applyPaletteRelink,
     countItemsInRect,
     collectItemsToDeleteInRect,
+    captureGhostFromRect,
+    ghostCounts,
+    ghostBounds,
+    translateGhost,
+    stampGhostIntoAnnotations,
+    ghostIndexAtPoint,
     deleteCollectedItems,
     rotateAnnotations,
     applyRotationDeltaToAnnotations,

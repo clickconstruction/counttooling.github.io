@@ -14,7 +14,7 @@
  * installs a fresh SW, precaches the new asset set, and purges the old cache on activate —
  * no manual bump to forget. The app's admin "global force reload" clears caches as a backstop.
  */
-const CACHE_VERSION = 'a78900978edd';
+const CACHE_VERSION = '63247697eddf';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -94,6 +94,7 @@ const PRECACHE_URLS = [
   '/features/burger-menu.js',
   '/features/header-more.js',
   '/features/canvas-layers.js',
+  '/features/ghost.js',
   '/features/canvas-switcher.js',
   '/features/summary-list.js',
   '/features/my-settings.js',

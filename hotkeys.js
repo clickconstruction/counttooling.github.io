@@ -41,6 +41,7 @@ const HOTKEYS = [
   { key: 'x', btnId: 'multiplyZoneBtn', section: 'Tools', action: 'Multiply Zone mode', kbd: null, icon: { btn: 'multiplyZoneBtn' } },
   { bespoke: true, section: 'Tools', action: 'Scale Zone (rotated Scale icon in header/sidebar)', kbd: '—', icon: { btn: 'scaleZoneBtn' } },
   { key: 'v', btnId: 'roomBtn', section: 'Tools', action: 'Room Sizer mode', kbd: null, icon: { btn: 'roomBtn' } },
+  { key: 'g', btnId: 'ghostBtn', section: 'Tools', action: 'Ghost: copy a typical as a reference overlay', kbd: null, icon: { btn: 'ghostBtn' } },
   { key: 'n', btnId: 'noteBtn', section: 'Tools', action: 'Note mode', kbd: null, icon: { btn: 'noteBtn' } },
   { bespoke: true, section: 'Tools', action: 'Undo', kbd: '<kbd>Ctrl</kbd>+<kbd>Z</kbd>', icon: { btn: 'undoBtn' } },
   { bespoke: true, section: 'Tools', action: 'Redo', kbd: '<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>', icon: { btn: 'redoBtn' } },

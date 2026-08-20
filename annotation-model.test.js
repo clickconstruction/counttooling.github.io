@@ -34,7 +34,7 @@ test('makeAnnotations returns the canonical empty shape', () => {
   const m = createAnnotationModel(makeCtx({}).ctx);
   const a = m.makeAnnotations();
   assert.deepStrictEqual(Object.keys(a).sort(),
-    ['counterMarkers', 'highlights', 'legend', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'roomBoxes', 'scaleZones']);
+    ['counterMarkers', 'ghosts', 'highlights', 'legend', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'roomBoxes', 'scaleZones']);
   assert.deepStrictEqual(a.counterMarkers, {});
   assert.strictEqual(a.legend, null);
 });
@@ -692,4 +692,99 @@ test('undo/redo report success + depths (the undo-count toast contract)', () => 
   assert.strictEqual(u.redo(), true);
   assert.strictEqual(u.undoDepth(), 2);
   assert.strictEqual(u.redo(), false);
+});
+
+// --- Ghosts ----------------------------------------------------------------
+// A ghost is a reference COPY of a batch of marks that is never tallied. These
+// tests pin the three properties the feature rests on: capture takes copies
+// (not references), the show/hide toggles gate the stamp as well as the draw,
+// and stamping mints fresh ids so a stamped mark is a new mark.
+
+function ghostFixture() {
+  const state = {
+    counters: [{ id: 'wc', name: 'Water Closet', color: '#e8c547' }],
+    lineTypes: [{ id: 'waste', name: 'Waste', color: '#47c88e' }],
+    pages: [{}],
+  };
+  const { ctx } = makeCtx(state);
+  ctx.getLineRealWorldLengthFeet = () => 0;
+  const m = createAnnotationModel(ctx);
+  const ann = m.makeAnnotations();
+  ann.counterMarkers.wc = [{ x: 10, y: 10, id: 'm1' }, { x: 20, y: 20, id: 'm2' }, { x: 900, y: 900, id: 'far' }];
+  ann.quickLines = [
+    { x1: 10, y1: 30, x2: 40, y2: 30, id: 'q1', lineTypeId: 'waste' },
+    { x1: 10, y1: 30, x2: 900, y2: 30, id: 'qOut', lineTypeId: 'waste' },   // one end outside
+  ];
+  return { m, ann, state };
+}
+
+test('captureGhostFromRect: both-ends rule, deep copies, fresh ids', () => {
+  const { m, ann } = ghostFixture();
+  const g = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'Typical');
+  assert.ok(g, 'a box with marks in it produces a ghost');
+  assert.deepStrictEqual(m.ghostCounts(g), { counters: 2, lines: 1 });
+  // The half-outside run is excluded — same semantics as Delete Area.
+  assert.strictEqual(g.src.quickLines.length, 1);
+  assert.strictEqual(g.src.quickLines[0].x2, 40);
+  // Copies, not references: moving the ghost must not drag the real marks.
+  assert.notStrictEqual(g.src.counterMarkers.wc[0], ann.counterMarkers.wc[0]);
+  assert.notStrictEqual(g.src.counterMarkers.wc[0].id, 'm1');
+  m.translateGhost(g, 100, 0);
+  assert.strictEqual(ann.counterMarkers.wc[0].x, 10, 'source marker is untouched');
+  assert.strictEqual(g.src.counterMarkers.wc[0].x, 110);
+});
+
+test('captureGhostFromRect: an empty box yields null, never an empty ghost', () => {
+  const { m, ann } = ghostFixture();
+  assert.strictEqual(m.captureGhostFromRect(ann, 0, 500, 500, 600, 600, 'Typical'), null);
+});
+
+test('ghostBounds tracks the visible parts only', () => {
+  const { m, ann } = ghostFixture();
+  const g = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'Typical');
+  const all = m.ghostBounds(g);
+  assert.deepStrictEqual([all.x1, all.y1, all.x2, all.y2], [10, 10, 40, 30]);
+  g.showLines = false;
+  const countsOnly = m.ghostBounds(g);
+  assert.deepStrictEqual([countsOnly.x1, countsOnly.y1, countsOnly.x2, countsOnly.y2], [10, 10, 20, 20]);
+  g.showCounters = false;
+  assert.strictEqual(m.ghostBounds(g), null, 'nothing visible -> no outline to draw');
+});
+
+test('stampGhostIntoAnnotations: honors the toggles, mints fresh ids, adds real marks', () => {
+  const { m, ann } = ghostFixture();
+  const g = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'Typical');
+  m.translateGhost(g, 200, 0);
+  const before = ann.counterMarkers.wc.length;
+  const res = m.stampGhostIntoAnnotations(ann, g);
+  assert.deepStrictEqual(res, { counters: 2, lines: 1 });
+  assert.strictEqual(ann.counterMarkers.wc.length, before + 2);
+  assert.strictEqual(ann.counterMarkers.wc[before].x, 210, 'stamped where the ghost sits');
+  const stampedIds = ann.counterMarkers.wc.slice(before).map(mk => mk.id);
+  assert.strictEqual(new Set(stampedIds).size, 2);
+  assert.ok(!stampedIds.includes('m1'));
+  // Hidden parts are not stamped — what you cannot see is what you do not get.
+  const g2 = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'Typical');
+  g2.showCounters = false;
+  const res2 = m.stampGhostIntoAnnotations(ann, g2);
+  assert.strictEqual(res2.counters, 0);
+  assert.ok(res2.lines > 0);
+});
+
+test('ghosts are excluded from pageHasAnyAnnotations (scaffolding is not takeoff)', () => {
+  const { m, ann, state } = ghostFixture();
+  const g = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'Typical');
+  const ghostOnly = m.makeAnnotations();
+  ghostOnly.ghosts = [g];
+  state.pages = [{ canvases: [{ id: 'c1', name: 'Main', annotations: ghostOnly }] }];
+  assert.strictEqual(!!m.pageHasAnyAnnotations(state.pages[0]), false);
+});
+
+test('ghostIndexAtPoint returns the topmost ghost under the point', () => {
+  const { m, ann } = ghostFixture();
+  const a = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'A');
+  const b = m.captureGhostFromRect(ann, 0, 0, 0, 100, 100, 'B');
+  ann.ghosts = [a, b];
+  assert.strictEqual(m.ghostIndexAtPoint(ann, { x: 15, y: 15 }), 1, 'last drawn wins');
+  assert.strictEqual(m.ghostIndexAtPoint(ann, { x: 800, y: 800 }), -1);
 });

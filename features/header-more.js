@@ -42,6 +42,7 @@
     { id: 'multiplyZoneBtn', name: 'Multiply Zone', key: 'X', tool: true },
     { id: 'scaleZoneBtn', name: 'Scale Zone', key: '', tool: true },
     { id: 'roomBtn', name: 'Room Sizer', key: 'V', tool: true },
+    { id: 'ghostBtn', name: 'Ghost / Stamp', key: 'G', tool: true },
     { id: 'deleteZoneBtn', name: 'Delete Area', key: '', tool: true },
     { id: 'noteBtn', name: 'Note', key: 'N', tool: true },
     { id: 'legendBtn', name: 'Legend', key: '' },

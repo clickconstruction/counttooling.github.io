@@ -547,6 +547,80 @@ function createCanvasDraw(deps) {
     });
   }
 
+  // --- Ghosts (reference copies) --------------------------------------------
+  // A ghost is a translucent copy of a batch of marks, used as a stencil for
+  // repeating a "typical" layout. It is drawn ONLY on the live overlay: the
+  // export path (renderAnnotationsToContext) never calls this, so ghosts stay
+  // off deliverable PDFs the same way the grid overlay does.
+  //
+  // Every ghost is painted OPAQUE into a scratch buffer and the buffer is
+  // blitted once at ghostAlpha. That detour is load-bearing: drawAnnotationsCore
+  // resets ctx.globalAlpha to 1 as it paints each kind, so a pre-set alpha on
+  // the live context is wiped. Compositing also fades the batch AS A WHOLE —
+  // where a ghost line crosses a ghost counter the fade stays even instead of
+  // compounding into a dark spot.
+  let ghostBuf = null;
+  function getGhostBuffer(w, h) {
+    if (typeof document === 'undefined') return null;
+    if (!ghostBuf) ghostBuf = document.createElement('canvas');
+    if (ghostBuf.width !== w || ghostBuf.height !== h) { ghostBuf.width = w; ghostBuf.height = h; }
+    else ghostBuf.getContext('2d').clearRect(0, 0, w, h);
+    return ghostBuf;
+  }
+  function drawGhosts(ctx, ann, env) {
+    const ghosts = ann?.ghosts || [];
+    if (!ghosts.length) return;
+    const alpha = env.ghostAlpha != null ? env.ghostAlpha : 0.35;
+    const buf = getGhostBuffer(ctx.canvas?.width || 0, ctx.canvas?.height || 0);
+    if (!buf || !buf.width) return;
+    const bctx = buf.getContext('2d');
+    ghosts.forEach(g => {
+      // The per-ghost show/hide toggles are applied HERE, by building the
+      // payload the core draws — so "hidden" means genuinely not painted, and
+      // the same predicate drives ghostBounds and the stamp.
+      const payload = {
+        counterMarkers: g.showCounters === false ? {} : (g.src?.counterMarkers || {}),
+        quickLines: g.showLines === false ? [] : (g.src?.quickLines || []),
+        polylines: g.showLines === false ? [] : (g.src?.polylines || []),
+        highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], legend: null
+      };
+      drawAnnotationsCore(bctx, payload, { ...env, selection: null, drawNoteHandles: false });
+    });
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(buf, 0, 0);
+    ctx.restore();
+    // Outlines are painted on the LIVE context at full strength: the batch is
+    // faded, but its handle must not be — you have to see what you are about
+    // to grab.
+    ghosts.forEach(g => {
+      const b = env.ghostBounds ? env.ghostBounds(g) : null;
+      if (!b) return;
+      const tl = env.tc({ x: b.x1, y: b.y1 }), br = env.tc({ x: b.x2, y: b.y2 });
+      const pad = 6 * (env.fontScale || 1);
+      const x = Math.min(tl.x, br.x) - pad, y = Math.min(tl.y, br.y) - pad;
+      const w = Math.abs(br.x - tl.x) + pad * 2, h = Math.abs(br.y - tl.y) + pad * 2;
+      const active = env.ghostActiveId && g.id === env.ghostActiveId;
+      ctx.save();
+      ctx.setLineDash([6, 5]);
+      ctx.lineWidth = active ? 2 : 1;
+      ctx.strokeStyle = active ? '#e8c547' : 'rgba(232,197,71,0.55)';
+      ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([]);
+      const label = g.label || 'Typical';
+      const fontSize = 11 * (env.fontScale || 1);
+      ctx.font = fontSize + 'px ' + (env.fontFamily || 'DM Sans') + ', sans-serif';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = active ? 'rgba(232,197,71,0.92)' : 'rgba(20,20,20,0.78)';
+      ctx.fillRect(x, y - fontSize - 6, tw + 10, fontSize + 6);
+      ctx.fillStyle = active ? '#17171a' : '#e8c547';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + 5, y - fontSize / 2 - 3);
+      ctx.restore();
+    });
+  }
+
   function drawLegend(ctx, page, pageIdx, ann, scale, tc) {
     const state = deps.getState();
     if (!state.showLegendOverlay || !ann.legend) return;
@@ -767,6 +841,7 @@ function createCanvasDraw(deps) {
   return {
     drawRoomBoxesToContext,
     drawAnnotationsCore,
+    drawGhosts,
     drawLegend,
     drawGrid,
   };

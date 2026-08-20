@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(ghost): the Ghost / Stamp tool — copy a typical as a reference overlay
+
+New header tool (⋯ menu "Ghost / Stamp", hotkey G, TOOL.GHOST): rubber-band a
+batch of placed counters + lines (same two-corner gesture and both-ends-inside
+capture rule as Delete Area, via `collectItemsToDeleteInRect`) into a 35%%-alpha
+reference copy that rides the cursor to placement, drags as a batch, and can be
+STAMPED down as real counted marks — a 4-restroom floor is capture once, drop/
+stamp four times. Ghosts are a DISTINCT annotation kind (`ann.ghosts[]`, src
+annotation-shaped in absolute PDF-space) so no tally surface — footer, sidebar,
+Summary, legend, report, Copy to /Tooling, Copy Summary, PDF exports — can read
+one; `stampGhostIntoAnnotations` is the single door to counted marks (fresh
+ids, undo snapshot; the stamp toast names the recovery: "Stamped in error?
+Ctrl+Z undoes it."). Per-ghost right-click menu: Stamp / Show counts / Show
+runs / Delete. Rides save/load + export/import + the IndexedDB backup through
+the one `applyPageAnnotationsFromData` sanitizer; rotates with the page via the
+existing per-kind walker; drawn on the live overlay only (never the export
+path, like the grid), composited through a scratch buffer so the batch fades
+evenly. Drag uses the note-pattern `justFinishedDragGhost` click swallow (the
+browser's post-mouseup click must not arm a capture corner — pinned by a
+real-pointer-events spec); the drop click carries the ghost by the final delta
+so touch (no mousemove) works. Model half pure in annotation-model.js
+(`captureGhostFromRect` / `ghostCounts` / `ghostBounds` / `translateGhost` /
+`stampGhostIntoAnnotations` / `ghostIndexAtPoint`, unit-tested); gesture + menu
+in features/ghost.js. Regression: [ghost.spec.js](ghost.spec.js) (6 tests).
+
 ## fix(settings): Project Settings composition quick wins (B18)
 
 From the 2026-08-17 Project Settings composition audit (JOURNEY-MAP.md B18):

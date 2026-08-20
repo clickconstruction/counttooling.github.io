@@ -55,14 +55,15 @@ test.describe('Header ⋯ More tools overflow', () => {
     await expect(page.locator('#counterBtn')).toBeVisible();
     await expect(page.locator('#quickLine')).toBeVisible();
 
-    // Menu: 9 named rows with hotkey badges where defined.
+    // Menu: 10 named rows with hotkey badges where defined.
     await page.locator('#headerMoreBtn').click();
     const rows = page.locator('#headerMoreMenu .hm-row');
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
     await expect(rows.first()).toContainText('Polyline');
     await expect(rows.first().locator('.hm-key')).toHaveText('P');
     await expect(page.locator('#headerMoreMenu')).toContainText('Multiply Zone');
     await expect(page.locator('#headerMoreMenu')).toContainText('Room Sizer');
+    await expect(rows.filter({ hasText: 'Ghost' }).locator('.hm-key')).toHaveText('G');
     await expect(rows.filter({ hasText: 'Note' }).locator('.hm-key')).toHaveText('N');
 
     // Row click drives the REAL button: Note tool activates, menu closes,

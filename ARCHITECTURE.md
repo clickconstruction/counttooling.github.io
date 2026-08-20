@@ -29,6 +29,7 @@ off — and where it doesn't.
 | File | Lines | Status / verdict |
 |------|------:|------------------|
 <<<<<<< HEAD
+<<<<<<< HEAD
 | [app.js](app.js) | 6,941 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
@@ -41,13 +42,24 @@ off — and where it doesn't.
 | [canvas-draw.js](canvas-draw.js) | 854 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 2,608 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 >>>>>>> claude/f5b3-dossier-j2
+=======
+| [app.js](app.js) | 6,817 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
+| [canvas-draw.js](canvas-draw.js) | 779 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
+| [app/index.html](app/index.html) | 2,602 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+>>>>>>> claude/f5b3-dossier-j4
 | [styles.css](styles.css) | 1,526 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 696 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 772 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 576 | Self-contained report builder with a frozen `window.*` contract. Leave. |
+<<<<<<< HEAD
 | `features/*.js` (60 files) | 13,623 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+=======
+| `features/*.js` (59 files) | 13,923 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+>>>>>>> claude/f5b3-dossier-j4
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -516,6 +528,7 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L582 - Undo/redo stacks
 - L722 - [sync] Checkout probe, hashing & PDF cache
 - L784 - Math & Format Helpers
+<<<<<<< HEAD
 - L1197 - Coordinate Helpers
 - L1205 - PDF render bitmap cache
 - L1259 - Sharp crop tile (deep-zoom sharpening + window-first commits)
@@ -622,6 +635,62 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L6732 - View-only mode
 - L6738 - Init / boot
 >>>>>>> claude/f5b3-dossier-j2
+=======
+- L1201 - Coordinate Helpers
+- L1209 - PDF render bitmap cache
+- L1263 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1274 - PDF Rendering
+- L1994 - UI Render Functions
+- L2570 - Inline rename & polyline edit mode
+- L2684 - Modal primitives (showModal / hideModal)
+- L2714 - Toasts & line color picker
+- L2768 - Airboard cloud sync
+- L2813 - Supabase RPC & presence heartbeat
+- L2853 - User activity / event telemetry
+- L2896 - Supabase auth & dev auth
+- L3028 - [sync] Checkout subscription & permission refresh
+- L3038 - Modals & Handlers
+- L3106 - PDF intake (upload, test PDF, hashing)
+- L3114 - Toolbar tool buttons
+- L3249 - Tool sidebar buttons & legend overlay
+- L3340 - Add Line Type modal
+- L3425 - Line color & sidebar handlers
+- L3634 - Polyline modal & drawing
+- L3665 - Zoom bar & page navigation
+- L3691 - Export canvas JSON
+- L3707 - PDF download helpers
+- L3716 - View-link URL helpers & show-highlights/notes
+- L3788 - Custom icon upload handler
+- L3798 - Export & report dropdown menus
+- L3885 - Sidebar drawer toggles
+- L3896 - Mobile actions burger menu pointer & header logo
+- L3908 - User Activity pointer (format.js + features/user-activity.js)
+- L3920 - My Settings pointer (features/my-settings.js)
+- L3943 - Auth & settings entry buttons
+  - L3988 - Project Settings checkout & Save Status bell
+  - L4089 - [sync] Checkout expired recovery
+  - L4145 - [sync] Turn In
+  - L4246 - Share modal pointer & copy-project openers
+  - L4277 - Settings menu actions
+  - L4298 - Auth sign-in form
+  - L4322 - Save Project modal
+  - L4335 - Checkout expired recovery modal wiring
+  - L4440 - Last-session restore prompt
+  - L4447 - Canvas Repair modal wiring
+- L4600 - Canvas Event Handlers
+- L5000 - Event Binding
+- L5010 - Aim loupe (mobile press-hold precise placement)
+- L5150 - Zoom transform preview & commit
+- L5229 - Canvas mouse, wheel & touch handlers
+- L5890 - Global dropdown dismissal & keyboard hotkeys
+- L6169 - [sync] Manual save to cloud
+- L6179 - [sync] Auto-save
+- L6186 - [sync] Local backup (IndexedDB takeoff state)
+- L6319 - [sync] Checkout keep-alive
+- L6333 - App feature registry
+- L6606 - View-only mode
+- L6612 - Init / boot
+>>>>>>> claude/f5b3-dossier-j4
 
 <!-- END SECTION TOC -->
 

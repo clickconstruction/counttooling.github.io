@@ -1,7 +1,7 @@
 ---
 title: Preparing a plan set
 description: Get a bid set ready to count — upload PDFs, trim to just your sheets, rotate and rename pages, and add addendum sheets without losing work.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 1.5
 icon: move
 category: Getting started
@@ -15,18 +15,19 @@ Open the app and click **Upload PDF** in the header — the same upload also liv
 
 ## Trim the set with Prepare PDF
 
-When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start:
+When a fresh PDF comes in, the **Prepare PDF** dialog opens on a thumbnail grid of every sheet — the whole set at a glance, everything kept to start, with a running **"14 of 14 kept"** count in the toolbar so you always know what's going through.
 
-![The Prepare PDF dialog: ① rotate a sideways page, ② delete the pages you don't need, then ③ Save & Open.](/guides/img/prepare-pdf.png)
-
-- **Keep or delete pages** — the **Delete** button drops the page you're previewing; use **‹ Prev / Next ›** to walk the set and cut cover sheets, specs, and other trades' drawings.
-- **Rotate** [[rotate]] — turn a sideways-scanned sheet 90° at a time so it reads correctly. (You can also rotate any page later with `R`; your marks rotate with the page.)
-- **Rename pages** — the name field at the top renames the project or the page you're on ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too.
-- **Save & Open** — commit the trimmed set and start counting; **Download Trimmed PDF** saves the cut-down set as its own file if you want it outside the app.
+- **Tap a sheet to drop it** — it dims with a red **Dropped** tag; tap again to bring it back. **Shift-click** toggles a whole range at once: click the first sheet, shift-click the last, and everything between flips with it.
+- **Keep all / Drop all / Invert** — the fast path on a big combined set: hit **Drop all**, tap just your sheets, done. (Or tap your sheets and hit **Invert** — same result.)
+- **Undo** is one press per action — a bulk drop or a shift-click range comes back in a single step, and `Ctrl`/`Cmd`+`Z` works while the dialog is open.
+- **Look closer with the magnifier** — the 🔍 on a cell opens that sheet full size. From there **‹ Prev / Next ›** (or the arrow keys) walks every sheet, kept *and* dropped, with its sheet size shown; **Drop / Restore** toggles the one you're viewing; **⊞ All sheets** takes you back to the grid.
+- **Rotate** [[rotate]] — the ⟳ on a cell (or the Rotate button in the zoomed view) turns a sideways-scanned sheet 90° at a time so it reads correctly. (You can also rotate any page later with `R`; your marks rotate with the page.)
+- **Rename pages** — the field at the top names the project; open a sheet with the 🔍 and switch to the **&gt; Page Name** tab to name the sheet itself ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too.
+- **Save & Open** — commit the trimmed set and start counting; **Download Trimmed PDF** saves the cut-down set as its own file if you want it outside the app. Both stay disabled until at least one sheet is kept, so you can't save an empty set by accident.
 
 ## Add pages later (addenda)
 
-When an addendum or revised sheet arrives mid-bid, click **Upload PDF** [[upload]] again while your project is open — the new sheets are added to the current set. The project keeps its name, a toast confirms "Added N sheets" to it by name, and nothing you've already counted moves or changes. Signed-in users can instead use **Project Settings > Add additional PDF pages** to trim the addendum first (the "Add pages" dialog, titled with your project's name) before it joins the set.
+When an addendum or revised sheet arrives mid-bid, click **Upload PDF** [[upload]] again while your project is open — the new sheets are added to the current set. The project keeps its name, a toast confirms "Added N sheets" to it by name, and nothing you've already counted moves or changes. Signed-in users can instead use **Project Settings > Add additional PDF pages** to trim the addendum first (the "Add pages" dialog, titled with your project's name — the same thumbnail grid) before it joins the set.
 
 ## Find your way around a big set
 

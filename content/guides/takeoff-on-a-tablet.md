@@ -1,7 +1,7 @@
 ---
 title: Takeoffs on a tablet in the field
 description: Touch gestures, the aim loupe for fingertip precision, and full offline support — how CountTooling works on a tablet at the job site, not just at a desk.
-updated: 2026-08-10
+updated: 2026-08-20
 order: 8.5
 icon: move
 category: On the job site
@@ -14,8 +14,8 @@ Field questions get answered where the work is — a basement, a mechanical room
 ## Touch that actually works
 
 - **One finger pans, pinch zooms** — plan navigation feels like a map app, and it stays smooth on big, dense sheets.
-- **Long-press** any mark for its context menu — the same edit and delete options as right-click on desktop.
-- **The aim loupe**: press and hold with a placing tool active and a magnifier appears above your finger with a crosshair, so you can set a counter or line endpoint *precisely* even though your fingertip covers the spot. Slide to aim, release to place. The crosshair rides just above your fingertip on purpose — that offset is what keeps your finger from hiding the exact point you're placing on, so aim with the crosshair, not the finger.
+- **Long-press** any mark for its context menu — the same edit and delete options as right-click on desktop. One habit to learn: long-press opens the menu in **Move** [[move]] mode. While a placement tool is armed — counter, line, zone, room — press-and-hold summons the aim loupe instead (that's the next bullet), so tap Move first, then hold the mark.
+- **The aim loupe**: press and hold with a placing tool active and a magnifier appears above your finger with a crosshair, so you can set a counter or line endpoint *precisely* even though your fingertip covers the spot. Slide to aim, release to place — a quick tap still places instantly, no loupe. The crosshair rides just above your fingertip on purpose: that gap is deliberate design, not a glitch — it's exactly what keeps your finger from hiding the point you're placing on. Aim with the crosshair, not the finger.
 - The **zoom rail** — tap the zoom % in the footer for a big vertical slider with labeled ticks, much friendlier than pinching to an exact level:
 
 ![The zoom rail on a tablet: a large log-scale slider with labeled ticks and a draggable readout thumb, on the right edge where a thumb can reach it.](/guides/img/zoom-rail.png)

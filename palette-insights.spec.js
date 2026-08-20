@@ -183,4 +183,74 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
     // @ts-ignore
     expect(page.__errors).toEqual([]);
   });
+
+  // ---- B13 "Reuse-standards naming": one trade name, one honest empty state ----
+
+  test('one trade name: "My Standards" on the menu link and the modal heading', async ({ page }) => {
+    await expect(page.locator('#mySettingsPaletteInsights')).toHaveText('My Standards');
+    await expect(page.locator('#paletteInsightsModal h2')).toHaveText('My Standards');
+    // The software-y names never reach user-visible copy on this surface
+    // (code identifiers keep the paletteInsights prefix — that is fine).
+    const copy = await page.evaluate(() =>
+      document.getElementById('paletteInsightsModal').textContent + ' ' +
+      document.getElementById('mySettingsPaletteInsights').textContent);
+    expect(copy).not.toMatch(/palette insights|analyze my usage/i);
+    // The signed-out gate speaks the same language.
+    await page.evaluate(() => window.App.openPaletteInsightsModal());
+    await expect(page.locator('#airboardToastText')).toContainText(/standards/i);
+    expect(await page.locator('#airboardToastText').textContent()).not.toMatch(/palette/i);
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
+  test('zero RPC rows: ONE honest empty state — no per-list threshold lines, filter and Add-all tucked away', async ({ page }) => {
+    await page.evaluate(() => {
+      const App = window.App;
+      App.state.supabaseSession = { user: { id: 'u1' } };
+      App.getSupabase = () => ({ rpc: async () => ({ data: [], error: null }) });
+      App.fetchUserAirboard = async () => ({ counters: [], lineTypes: [] });
+      return App.openPaletteInsightsModal();
+    });
+    await expect(page.locator('#paletteInsightsEmpty')).toBeVisible();
+    // Exactly one message: the two contradicting per-list "at this threshold"
+    // lines are gone when there was nothing to filter in the first place.
+    await expect(page.locator('#paletteInsightsModal .pi-empty:visible')).toHaveCount(1);
+    // Nothing exists at ANY threshold, so the filter (and Add-all) would lie.
+    await expect(page.locator('#paletteInsightsFilterRow')).toBeHidden();
+    await expect(page.locator('#paletteInsightsAddAll')).toBeHidden();
+    await expect(page.locator('#paletteInsightsHidden')).toHaveText('');
+    // Reopen WITH data: the lists come back and the empty state goes away.
+    await page.locator('#paletteInsightsClose').click();
+    await openWithStubs(page);
+    await expect(page.locator('#paletteInsightsEmpty')).toBeHidden();
+    await expect(page.locator('#paletteInsightsFilterRow')).toBeVisible();
+    await expect(page.locator('#paletteInsightsAddAll')).toBeVisible();
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
+  test('a list emptied BY the filter keeps its own per-list line (rows exist)', async ({ page }) => {
+    // Only the counter clears the default 2+ bar; the lone line type is a
+    // one-off — so the line list explains itself per-list while the single
+    // no-data empty state stays hidden.
+    const rows = [
+      { kind: 'counter', item_id: 'c-wc', name: 'Water Closet', icon: 'M0 0h10v10H0z', color: '#e8c547', curve_style: null, project_count: 4, placement_count: 40, last_used_at: '2026-07-30T00:00:00Z' },
+      { kind: 'lineType', item_id: 'lt-w', name: '2in Waste', icon: null, color: '#47c88e', curve_style: 'straight', project_count: 1, placement_count: 3, last_used_at: '2026-07-30T00:00:00Z' },
+    ];
+    await page.evaluate((rows) => {
+      const App = window.App;
+      App.state.supabaseSession = { user: { id: 'u1' } };
+      App.getSupabase = () => ({ rpc: async () => ({ data: rows, error: null }) });
+      App.fetchUserAirboard = async () => ({ counters: [], lineTypes: [] });
+      return App.openPaletteInsightsModal();
+    }, rows);
+    await page.waitForSelector('#paletteInsightsCounters .pi-row');
+    await expect(page.locator('#paletteInsightsEmpty')).toBeHidden();
+    await expect(page.locator('#paletteInsightsLines .pi-empty')).toHaveCount(1);
+    // Wording matches the visible "Used in at least" filter — no "threshold" jargon.
+    expect(await page.locator('#paletteInsightsLines .pi-empty').textContent()).not.toMatch(/threshold/i);
+    await expect(page.locator('#paletteInsightsHidden')).toHaveText('1 hidden');
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
 });

@@ -46,8 +46,28 @@
     const r = new FileReader();
     r.onload = () => {
       const state = App.state;
+      // T3-B2: the catch used to wrap the WHOLE apply, so a valid export that
+      // tripped a downstream bug was mislabeled "Invalid import file" — and a
+      // wrong-shape-but-valid JSON silently wiped the palette. Narrowed: parse
+      // + shape-gate first (refuse before touching state), then apply with its
+      // own honest failure message. Raw errors go to the console either way.
+      let data;
       try {
-        const data = JSON.parse(r.result);
+        data = JSON.parse(r.result);
+      } catch (err) {
+        console.error('[Import canvas] not JSON', err);
+        App.showToast('This file isn\'t a canvas export — use Export Canvas to make one.', 5000);
+        return;
+      }
+      // Shape gate: an Export Canvas file always carries counters/lineTypes/
+      // pages arrays. Valid JSON without any of them is some other file.
+      const looksLikeExport = data && typeof data === 'object' && !Array.isArray(data) &&
+        (Array.isArray(data.counters) || Array.isArray(data.lineTypes) || Array.isArray(data.pages));
+      if (!looksLikeExport) {
+        App.showToast('This file isn\'t a canvas export — use Export Canvas to make one.', 5000);
+        return;
+      }
+      try {
         state.counters = Array.isArray(data.counters) ? data.counters : [];
         state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
         state.groups = App.ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
@@ -64,7 +84,15 @@
         if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;
         if (data.gridSettings) state.gridSettings = data.gridSettings;
         if (Array.isArray(data.customIconPaths)) App.saveUserCustomIcons(data.customIconPaths);
-        (data.pages || []).forEach(p => {
+        // T3-B2 partial import: the export can cover more pages than the open
+        // PDF — pages whose index doesn't exist here are silently dropped by
+        // the matcher (state.pages[p.index] is undefined). Count what actually
+        // landed and tell the user when it's only some of them.
+        const importPages = Array.isArray(data.pages) ? data.pages : [];
+        let appliedPages = 0;
+        importPages.forEach(p => {
+          if (!p) return;
+          if (state.pages[p.index]) appliedPages++;
           App.applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
         });
         if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
@@ -73,7 +101,14 @@
         App.markProjectDirty();
         App.updateUI();
         App.renderPdf();
-      } catch (err) { alert('Invalid import file'); }
+        if (importPages.length > 0 && appliedPages < importPages.length) {
+          App.showToast('Applied marks to ' + appliedPages + ' of ' + importPages.length +
+            ' pages — the export covers more pages than this PDF.', 6000);
+        }
+      } catch (err) {
+        console.error('[Import canvas] apply failed', err);
+        App.showToast('Couldn\'t apply this canvas file.', 5000);
+      }
     };
     r.readAsText(f);
     e.target.value = '';

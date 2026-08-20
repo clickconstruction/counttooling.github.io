@@ -166,8 +166,6 @@
       .sidebar-header-buttons { display: flex; }
       .sidebar-header-buttons #setScaleSidebar { display: flex; justify-content: center; align-items: center; }
       .sidebar-tool-buttons { display: flex; }
-      .header #clearPage { display: none; }
-      .sidebar-clear-page { display: block; }
       .status-bar { flex-wrap: nowrap; }
       .status-bar #statusMode { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 0; }
       .page-info-label { display: none; }
@@ -400,7 +398,12 @@
     .sidebar-snap-icon-btn:hover { color: var(--text); }
     .sidebar-snap-icon-btn.active { color: var(--yellow); background: transparent; box-shadow: 0 0 0 0; }
     .sidebar-snap-icon-btn.active:hover { color: var(--yellow); }
-    .sidebar-clear-page { display: none; }
+    /* Clear Page lives in the sidebar at every width (the header #clearPage
+       button is retired behind .replaced-by-status-bar, and the Project
+       Settings gear route is sign-in-gated). Collapse the section only in
+       viewer mode, where updateUI's viewerHideIds inline-hides the button —
+       otherwise viewers would see an empty bordered section. */
+    .sidebar-clear-page:has(> #clearPageSidebar[style*="display: none"]) { display: none; }
     .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; -webkit-tap-highlight-color: transparent; }
     .canvas-wrapper { flex: 1; overflow: hidden; position: relative; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
     .canvas-container { position: absolute; left: 0; top: 0; transform-origin: 0 0; }

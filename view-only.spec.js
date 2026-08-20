@@ -39,6 +39,7 @@ function projectPayload() {
       rooms: [],
       pages: [{
         index: 0,
+        label: 'Smith Residence.pdf — p1',
         scale: { pixelsPerUnit: 5, unit: 'ft' },
         rotation: 0,
         canvases: [{
@@ -143,6 +144,8 @@ test.describe('View-only mode (view-link boot)', () => {
         quickLines: ann.quickLines.length,
         scalePpu: s.pages[0].scale?.pixelsPerUnit,
         page1Scale: s.pages[1].scale,
+        page0Label: s.pages[0].label,
+        page1Label: s.pages[1].label,
         allowedEmail: localStorage.getItem('view:allowed:' + token),
       };
     }, TOKEN);
@@ -158,6 +161,10 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(after.quickLines).toBe(1);
     expect(after.scalePpu).toBe(5);
     expect(after.page1Scale).toBeNull();
+    // B6: the saved per-page label wins; a page with no saved label falls
+    // back to the plan name — never the old hardcoded "document.pdf".
+    expect(after.page0Label).toBe('Smith Residence.pdf — p1');
+    expect(after.page1Label).toBe('View Spec Project — p2');
     expect(after.allowedEmail).toBe('crew@clickplumbing.com');
     expect(realErrors(errors)).toEqual([]);
   });
@@ -188,7 +195,7 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
-  test('cancel at the email gate: no load, app stays usable', async ({ page }) => {
+  test('cancel at the email gate: static email-needed card, editor never exposed', async ({ page }) => {
     const errors = [];
     collectErrors(page, errors);
     await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
@@ -201,6 +208,12 @@ test.describe('View-only mode (view-link boot)', () => {
       () => !document.getElementById('viewLinkEmailModal')?.classList.contains('visible'),
       { timeout: 5000 },
     );
+    // B6: cancelling the gate shows the full-screen card (the T1-12 surface),
+    // not the empty editor; Reload is the retry (the boot IS the retry loop).
+    await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 5000 });
+    await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
+      'This plan needs your email — reload to try again.');
+    await expect(page.locator('#viewLinkDeadRetry')).toBeVisible();
     const after = await page.evaluate(() => ({
       pages: window.App.state.pages.length,
       hasPdf: document.body.classList.contains('has-pdf'),
@@ -209,6 +222,43 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(after.pages).toBe(0);
     expect(after.hasPdf).toBe(false);
     expect(after.isViewer).toBe(false);
+
+    // Reload from the card re-runs the boot: the gate re-asks and the plan loads.
+    await page.locator('#viewLinkDeadRetry').click();
+    await submitEmail(page, 'crew@clickplumbing.com');
+    await expectViewerLoaded(page);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('allowed-domain hint and placeholder come from VIEW_LINK_ALLOWED_DOMAINS', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    // Config override (normally set in config.js/config.local.js) — the
+    // client hint must follow it, not the stale clickplumbing.com hardcode.
+    await page.addInitScript(() => { window.VIEW_LINK_ALLOWED_DOMAINS = 'acme-mech.com, sub.example.com'; });
+    // Server rejects without a message: the client builds the hint itself.
+    await routeViewProject(page, (email) => email.endsWith('@acme-mech.com')
+      ? { status: 200, body: projectPayload() }
+      : { status: 403, body: { error: 'domain_restricted' } });
+
+    await page.goto('/app/?t=' + TOKEN);
+    await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
+    // B6: the email placeholder is wired to the first configured domain.
+    await expect(page.locator('#viewLinkEmailInput')).toHaveAttribute('placeholder', 'you@acme-mech.com');
+    await page.locator('#viewLinkEmailInput').fill('outsider@example.com');
+    await page.locator('#viewLinkEmailSubmit').click();
+
+    await page.waitForFunction(() => {
+      const err = document.getElementById('viewLinkEmailError');
+      return document.getElementById('viewLinkEmailModal')?.classList.contains('visible')
+        && err && err.style.display !== 'none';
+    }, { timeout: 10000 });
+    await expect(page.locator('#viewLinkEmailError')).toHaveText(
+      'Access restricted to acme-mech.com, sub.example.com');
+
+    await page.locator('#viewLinkEmailInput').fill('crew@acme-mech.com');
+    await page.locator('#viewLinkEmailSubmit').click();
+    await expectViewerLoaded(page);
     expect(realErrors(errors)).toEqual([]);
   });
 

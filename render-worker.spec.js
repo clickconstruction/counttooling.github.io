@@ -185,6 +185,53 @@ test.describe('Render worker', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a second document re-adopts without falling back (workerPort teardown race)', async ({ page }) => {
+    // Production telemetry: `render_worker_fallback` with source "doc-load"
+    // and message "PDFWorker.fromPort - the worker is being destroyed" on
+    // every second document of a session. The worker's 'load' handler called
+    // doc.destroy() fire-and-forget and immediately getDocument()ed on the
+    // same GlobalWorkerOptions.workerPort; pdf.js marks the port's cached
+    // PDFWorker _pendingDestroy until the async teardown completes, and
+    // fromPort THROWS for any getDocument issued in that window — so every
+    // re-adoption failed and the whole session fell back to main-thread
+    // rasters. The worker must await the old document's destroy() first.
+    const errors = [];
+    await boot(page, errors);
+    await page.waitForFunction(() => window.App.__renderWorkerState() === 'ready', null, { timeout: 15000 });
+
+    // Append a sheet: pdf-intake merges the buffers and rebinds every page
+    // proxy to a brand-new pdf.js document (new transport identity) — the
+    // exact production "doc-load" path that re-adopts into the live worker.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+
+    // Force cold rasters on the NEW document until one lands in the worker
+    // (the first kicks re-adoption; a later one must worker-raster) — or the
+    // service declares the session failed, the bug's terminal state.
+    const result = await page.evaluate(async () => {
+      const before = window.App.__renderServiceStats().workerRastered;
+      for (let i = 0; i < 20; i++) {
+        window.App.clearPdfBitmapCache();
+        window.App.renderPdf();
+        await new Promise((r) => setTimeout(r, 500));
+        if (window.App.__renderWorkerState() === 'failed') break;
+        if (window.App.__renderServiceStats().workerRastered > before) break;
+      }
+      const s = window.App.__renderServiceStats();
+      return {
+        state: window.App.__renderWorkerState(),
+        workerGained: s.workerRastered - before,
+        fallbacks: s.fallbacks,
+        mode: window.App.__renderServiceMode(),
+      };
+    });
+    expect(result.state).toBe('ready');
+    expect(result.mode).toBe('worker');
+    expect(result.workerGained).toBeGreaterThanOrEqual(1);
+    expect(result.fallbacks).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
   test('embedded-font pages render identical ink in worker and main modes', async ({ page, context }) => {
     const errors = [];
     const samplePlan = path.join(__dirname, 'samples', 'sample-plan.pdf');

@@ -137,4 +137,102 @@ test.describe('Hide-marks header toggle', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('hidden marks do not catch the mouse: drag cannot move a note, context menu inert', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await expect(page.locator('#hideMarksBtn')).toBeVisible();
+
+    // Inject a note on page 1's active canvas (same shape as the Note modal's
+    // add path) and a PDF-point -> client-point mapper (live zoom + pan).
+    await page.evaluate(() => {
+      const s = window.state;
+      s.tool = window.App.TOOL.NONE;
+      const page0 = s.pages[0];
+      const canvas = window.App.ensureActiveCanvas(page0);
+      canvas.annotations.notes = canvas.annotations.notes || [];
+      canvas.annotations.notes.push({
+        x: 200, y: 200, text: 'Anchor note', id: window.App.uid(),
+        width: 150, fontSize: 14, placementRotation: page0.rotation ?? 0, color: '#e8c547',
+      });
+      s.currentPage = 0;
+      window.App.renderAnnotations();
+      window.__pdfToClient = (px, py) => {
+        const r = document.getElementById('canvasWrapper').getBoundingClientRect();
+        return { x: r.left + px * s.zoom + s.pan.x, y: r.top + py * s.zoom + s.pan.y };
+      };
+    });
+
+    const notePos = () => page.evaluate(() => {
+      const n = window.App.ensureActiveCanvas(window.state.pages[0]).annotations.notes[0];
+      return { x: n.x, y: n.y };
+    });
+    // Drag from inside the note's text body (local +60,+7 — clear of the
+    // font-size and width handles) by 32pt in PDF space.
+    const dragOnNote = async () => {
+      const { x, y } = await notePos();
+      const from = await page.evaluate(([px, py]) => window.__pdfToClient(px, py), [x + 60, y + 7]);
+      const to = await page.evaluate(([px, py]) => window.__pdfToClient(px, py), [x + 60 + 32, y + 7 + 32]);
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y, { steps: 5 });
+      await page.mouse.up();
+    };
+
+    // CONTROL (marks shown): the same drag DOES move the note — proves the
+    // coordinates actually target it, so the hidden assertion can't pass by
+    // missing the target.
+    const p0 = await notePos();
+    await dragOnNote();
+    const p1 = await notePos();
+    expect(Math.hypot(p1.x - p0.x, p1.y - p0.y)).toBeGreaterThan(20);
+
+    // Hide marks -> the invisible note must not catch the mouse.
+    await page.locator('#hideMarksBtn').click();
+    await page.waitForFunction(() => window.state.hideMarks === true);
+
+    // The identical drag while hidden must NOT move the note (it pans instead).
+    await dragOnNote();
+    const p2 = await notePos();
+    expect(p2).toEqual(p1);
+
+    // Hover over the (hidden) note: no move cursor, no legend-resize hover.
+    const hover = await page.evaluate(([px, py]) => window.__pdfToClient(px, py), [p1.x + 60, p1.y + 7]);
+    await page.mouse.move(hover.x, hover.y);
+    const hoverState = await page.evaluate(() => ({
+      cursor: document.getElementById('annCanvas').style.cursor,
+      hoverLegendResize: window.state.hoverLegendResize,
+    }));
+    expect(hoverState.cursor).not.toBe('move');
+    expect(hoverState.hoverLegendResize).toBe(false);
+
+    // Right-click on the hidden note: context targeting is inert.
+    const ctxPt = await page.evaluate(([px, py]) => window.__pdfToClient(px, py), [p1.x + 60, p1.y + 7]);
+    await page.mouse.click(ctxPt.x, ctxPt.y, { button: 'right' });
+    const ctx = await page.evaluate(() => ({
+      target: window.state.ctxTarget,
+      menuVisible: document.getElementById('contextMenu').classList.contains('visible'),
+    }));
+    expect(ctx.target).toBeNull();
+    expect(ctx.menuVisible).toBe(false);
+
+    // Re-show -> position unchanged, and the same drag moves it again
+    // (the target is still there and drag mechanics still work).
+    await page.locator('#hideMarksBtn').click();
+    await page.waitForFunction(() => window.state.hideMarks === false);
+    const p3 = await notePos();
+    expect(p3).toEqual(p1);
+    await dragOnNote();
+    const p4 = await notePos();
+    expect(Math.hypot(p4.x - p3.x, p4.y - p3.y)).toBeGreaterThan(20);
+
+    expect(errors).toEqual([]);
+  });
 });

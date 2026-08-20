@@ -114,4 +114,115 @@ test.describe('window.App registry pilot - Counter modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('create-tab icon search is visible and filters; modal counter search hides off the Choose tab', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+
+    // #18: the icon search must actually be on screen (it used to ship with an
+    // inline display:none — a live handler with no UI).
+    await expect(page.locator('#counterIconSearchGroup')).toBeVisible();
+    // B17: the modal-level "Search counters..." box only filters the Choose
+    // list, so it must be hidden on the Create tab.
+    await expect(page.locator('#counterModalSearchInput')).toBeHidden();
+
+    // Filtering narrows the library grid.
+    const allCells = await page.locator('#counterIconGrid .icon-cell').count();
+    expect(allCells).toBeGreaterThan(1);
+    await page.locator('#counterIconSearch').fill('shower');
+    const filtered = await page.locator('#counterIconGrid .icon-cell').count();
+    expect(filtered).toBeGreaterThan(0);
+    expect(filtered).toBeLessThan(allCells);
+    // A filtered cell still selects on click with the shared wiring.
+    await page.locator('#counterIconGrid .icon-cell').first().click();
+    expect(await page.locator('#counterIconGrid .icon-cell.selected').count()).toBe(1);
+
+    // The search filters only the library grid, so it hides on the Custom tab.
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]').click();
+    await expect(page.locator('#counterIconSearchGroup')).toBeHidden();
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="icon"]').click();
+    await expect(page.locator('#counterIconSearchGroup')).toBeVisible();
+
+    // Back on Choose, the counter search returns.
+    await page.locator('#counterModal .counter-tab[data-tab="choose"]').click();
+    await expect(page.locator('#counterModalSearchInput')).toBeVisible();
+
+    expect(errors).toEqual([]);
+  });
+
+  test('C lands on Create when empty; back-to-back "+ Add" and exact twins never mint identical counters', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const modalClosed = () => page.waitForFunction(
+      () => !document.getElementById('counterModal')?.classList.contains('visible'),
+      { timeout: 5000 },
+    );
+
+    // With NO counters yet, the C hotkey lands on the prefilled Create tab
+    // instead of the dead-end empty Choose tab.
+    await page.keyboard.press('c');
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await expect(page.locator('#counterCreatePanel')).toBeVisible();
+    const prefill0 = await page.locator('#counterName').inputValue();
+    expect(prefill0.trim()).not.toBe('');
+    await page.locator('#counterCreate').click();
+    await modalClosed();
+
+    // "+ Add" prefills the NEXT unused icon, so an untouched second create
+    // cannot mint an identical twin.
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const prefill1 = await page.locator('#counterName').inputValue();
+    expect(prefill1).not.toBe(prefill0);
+    await page.locator('#counterCreate').click();
+    await modalClosed();
+
+    const [c0, c1] = await page.evaluate(() =>
+      window.state.counters.map((c) => ({ name: c.name, icon: c.icon, color: c.color })));
+    expect(c1.name).not.toBe(c0.name);
+    expect(c1.icon).not.toBe(c0.icon);
+
+    // Forcing an exact twin (same name + icon + default color) de-twins with a
+    // numbered suffix and a rotated color, so tallies cannot silently split
+    // between two indistinguishable counters at pricing time.
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.locator('#counterIconGrid .icon-cell').first().click(); // c0's icon
+    await page.locator('#counterName').fill(c0.name);
+    await page.locator('#counterCreate').click();
+    await modalClosed();
+
+    const all = await page.evaluate(() =>
+      window.state.counters.map((c) => ({ name: c.name, icon: c.icon, color: c.color })));
+    const minted = all[all.length - 1];
+    expect(minted.icon).toBe(c0.icon);
+    expect(minted.name).toBe(c0.name + ' 2');
+    expect(minted.color).not.toBe(c0.color);
+    const keys = all.map((c) => c.name + '|' + c.icon + '|' + c.color);
+    expect(new Set(keys).size).toBe(keys.length);
+
+    // With counters existing, C still lands on Choose.
+    await page.keyboard.press('c');
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await expect(page.locator('#counterChoosePanel')).toBeVisible();
+    await expect(page.locator('#counterCreatePanel')).toBeHidden();
+
+    expect(errors).toEqual([]);
+  });
 });

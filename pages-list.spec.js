@@ -60,4 +60,49 @@ test.describe('Pages list (features/pages-list.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('double-click renames the active row; other-row click still navigates + fit-zooms', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Regression (JOURNEY-MAP Tier-2 #27): double-clicking the ACTIVE row's
+    // name must open the inline rename. Before the fix, the first click of the
+    // double-click re-ran fitZoom -> updateUI -> renderPagesList, whose
+    // innerHTML rebuild destroyed the clicked node so dblclick never fired.
+    const activeName = page.locator('#pagesList .sidebar-item.active .name');
+    await activeName.dblclick();
+    const renameInput = page.locator('#pagesList .rename-input');
+    await expect(renameInput).toHaveCount(1);
+
+    // The rename actually lands.
+    await renameInput.fill('Renamed via dblclick');
+    await renameInput.press('Enter');
+    await page.waitForFunction(() => window.state.pages[0].label === 'Renamed via dblclick');
+    await expect(page.locator('#pagesList .sidebar-item').first().locator('.name')).toHaveText('Renamed via dblclick');
+
+    // Badge-click rename path still works (Escape cancels without saving).
+    await page.locator('#pagesList .sidebar-item.active .page-num-badge-editable').click();
+    await expect(renameInput).toHaveCount(1);
+    await renameInput.press('Escape');
+    await expect(renameInput).toHaveCount(0);
+    await page.waitForFunction(() => window.state.pages[0].label === 'Renamed via dblclick');
+
+    // Clicking a DIFFERENT row still switches pages AND fit-zooms: pan is
+    // knocked off-center first, then must be reset by fitZoom on the switch.
+    await page.evaluate(() => { window.state.pan = { x: 55, y: 44 }; });
+    await page.locator('#pagesList .sidebar-item').nth(1).click();
+    await page.waitForFunction(() => window.state.currentPage === 1
+      && window.state.pan.x === 0 && window.state.pan.y === 0);
+    await expect(page.locator('#pagesList .sidebar-item').nth(1)).toHaveClass(/active/);
+
+    expect(errors).toEqual([]);
+  });
 });

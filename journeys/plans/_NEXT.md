@@ -6,13 +6,25 @@ in order, with Will's decision gates marked ⚑.
 ## Stage 1 — Deploy watch (this week, cheap)
 1. Will: the 15-minute hand-walk (_RELEASE-CHECKLIST.md) on real projects.
 2. Will: one PipeTooling paste of a mixed scaled/unscaled line type (two-row check).
-3. Orchestrator: read-only telemetry pulls at day+1 and day+7 — `client_error`
-   flat (clean landing) + new events flowing (`restore_prompt_shown`, `scale_set`,
-   `copy_summary`, `artboard_load`, `view_link_dead`, `render_worker_fallback`,
-   which now records for the first time ever). Anything hot → fix-forward PR.
-4. Housekeeping: delete the 13 merged `claude/*` topic branches.
+3. ~~Orchestrator: read-only telemetry pulls at day+1 and day+7~~ — **DONE
+   2026-08-20 (day+10): [../_telemetry-2026-08-20.md](../_telemetry-2026-08-20.md).**
+   Clean landing; all six new event kinds flow; four Tier-1 fixes recorded zero
+   activations (untriggered, not broken — unfalsified, not validated). The one
+   hot item, the render-worker teardown race (23 events / 6 of ~8 users, one
+   signature), was fixed forward in the 2026-08-20 batch.
+4. ~~Housekeeping: delete the 13 merged `claude/*` topic branches.~~ — **DONE**
+   (0 stale `origin/claude/*` branches remained as of 2026-08-20).
 
 ## Stage 2 — ⚑ Tier-2 scope gate (after ~1 week of telemetry)
+**Telemetry landed 2026-08-20 and the re-ranked head of the queue was executed
+the same day** (render-worker race, #13, #17/#18, #19, #24, #25, #26, #27, B3
+minus the descoped chooser item, B14's Clear Page copy, B17's counter half,
+Tier-4 G1–G5/G9) — see [../_telemetry-2026-08-20.md](../_telemetry-2026-08-20.md)
+and [../_signed-out-surface-audit.md](../_signed-out-surface-audit.md) (net-new,
+awaiting a ⚑ gate-direction decision). Still open from the original candidate
+list: #15 toasts (must land alone), the drag-gesture half of #14, and the J1
+first-ten-minutes pair. B4/B5 demoted on the exit-path evidence.
+
 Re-rank the 16 Tier-2 rows with real usage data before planning. Standing
 candidates for the top: Clear Page unreachable (#13, blocker-grade), the toast
 system rework (#15 — it obstructed three Tier-1 implementations), the Esc-ladder

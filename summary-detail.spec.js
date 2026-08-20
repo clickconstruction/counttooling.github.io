@@ -46,6 +46,15 @@ test.describe('Summary count detail (features/summary-detail.js)', () => {
       window.App.updateUI();
     });
 
+    // JOURNEY Tier-2 #24: before opening the modal, the sidebar surfaces must
+    // already agree on the multiply-adjusted number the modal breaks down —
+    // 2 markers placed, one doubled by the x2 zone = 3 — and label it in
+    // trade words on the COUNTERS badge and the Summary row alike.
+    await expect(page.locator('#countersList .sidebar-item', { hasText: 'WC' }).locator('.badge'))
+      .toHaveText('2 placed · 3 with repeats');
+    await expect(page.locator('#summaryList .sidebar-item[data-id="c1"] .badge'))
+      .toHaveText('2 placed · 3 with repeats');
+
     // Counter path: 1 marker inside the x2 zone + 1 outside = 3 effective.
     await page.evaluate(() => window.App.openSummaryCountDetailModal('counter', 'c1'));
     await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/);

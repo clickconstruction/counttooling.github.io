@@ -1,7 +1,7 @@
 ---
 title: Measuring room volumes with the Room Sizer
 description: Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.
-updated: 2026-07-31
+updated: 2026-08-20
 order: 5.5
 icon: room
 category: Measuring
@@ -33,7 +33,7 @@ The tool stays armed after Apply, so the loop for the next room is just two clic
 
 ## Where the totals show up
 
-- **The Rooms section** appears in the left sidebar as soon as the first box exists — per-room floor area and air volume, with each box listed underneath (click a box row to jump to its page; click the room to rename, recolor, or delete it).
+- **The Rooms section** appears in the left sidebar as soon as the first box exists — per-room floor area and air volume, with each box listed underneath (click a box row to jump to its page; the **✕** on a box row deletes just that box, no questions asked — `Ctrl`+`Z` brings it back; click the room name to rename, recolor, or delete the whole room — that delete asks first, because it takes every box the room owns).
 
 ![The Rooms sidebar section: each room's floor area and air volume, with its boxes' dimensions listed underneath.](/guides/img/rooms-sidebar.png)
 - **The summary legend** [[legend]] gets a row per room with its volume (turn this off in Legend Settings — right-click the legend button — if you don't want it on the sheet).

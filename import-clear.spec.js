@@ -5,8 +5,11 @@
  * Page confirm flow, extracted from app.js onto the window.App registry.
  *
  * Pins the moved surface end-to-end: the sidebar Clear Page button opens the
- * confirm modal naming the active canvas; Cancel leaves the annotations
- * intact; Confirm empties the active canvas (and only that page's canvas);
+ * confirm modal (exact wording pinned — no layer qualifier on a single-layer
+ * page; on a multi-layer page it names the active layer, default or renamed,
+ * and scopes the wipe to it); Cancel leaves the annotations intact; Confirm
+ * empties ONLY the active layer (sibling layer and other pages keep their
+ * marks) and Undo restores it;
  * App.showClearPageModal is registered for the Project Settings row; and a
  * canvas JSON file chosen through #importInput replaces the palette
  * (counters/line types) via the moved change handler.
@@ -39,26 +42,60 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     expect(await page.evaluate(() => typeof window.App.showClearPageModal)).toBe('function');
 
-    // Open via the sidebar button; the message names the active canvas.
+    // Open via the sidebar button. Page 0 has a single layer, so the message
+    // needs no layer qualifier — clearing the only layer IS clearing the page.
     await page.evaluate(() => document.getElementById('clearPage').click());
     await page.waitForSelector('#clearPageConfirmModal.visible', { timeout: 5000 });
-    await expect(page.locator('#clearPageConfirmMessage')).toContainText('Main');
+    await expect(page.locator('#clearPageConfirmMessage')).toHaveText(
+      'Remove all marks from this page? You can undo this.');
 
     // Cancel leaves the markers alone.
     await page.evaluate(() => document.getElementById('clearPageCancel').click());
     await expect(page.locator('#clearPageConfirmModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers?.c1 || []).length)).toBe(1);
 
-    // Confirm clears page 0's active canvas only.
+    // Add a second layer to page 0 with the default "Layer N" name and make it
+    // active with its own marker. The multi-layer message must name the layer
+    // and scope the wipe to it — without the awkward '"Layer 2" layer' doubling.
+    await page.evaluate(() => {
+      const s = window.state;
+      const layer2 = { id: 'canvas-l2', name: 'Layer 2', annotations: window.App.makeAnnotations() };
+      layer2.annotations.counterMarkers = { c1: [{ x: 70, y: 70, id: 'm3', group: null }] };
+      s.pages[0].canvases.push(layer2);
+      s.activeCanvasIdByPage[0] = 'canvas-l2';
+      window.App.updateUI();
+    });
     await page.evaluate(() => document.getElementById('clearPage').click());
     await page.waitForSelector('#clearPageConfirmModal.visible');
+    await expect(page.locator('#clearPageConfirmMessage')).toHaveText(
+      'Remove all marks from "Layer 2"? Other layers on this page keep their marks. You can undo this.');
+    await page.evaluate(() => document.getElementById('clearPageCancel').click());
+
+    // Renamed (free-text) layer: the message carries the user's name verbatim.
+    await page.evaluate(() => {
+      window.state.pages[0].canvases[1].name = 'Electrical';
+    });
+    await page.evaluate(() => document.getElementById('clearPage').click());
+    await page.waitForSelector('#clearPageConfirmModal.visible');
+    await expect(page.locator('#clearPageConfirmMessage')).toHaveText(
+      'Remove all marks from "Electrical"? Other layers on this page keep their marks. You can undo this.');
+
+    // Confirm clears ONLY page 0's active layer: its sibling "Main" layer and
+    // page 1 both keep their marks (the layer qualifier is load-bearing).
     await page.evaluate(() => document.getElementById('clearPageConfirm').click());
     const afterClear = await page.evaluate(() => ({
-      p0: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers?.c1 || []).length,
+      active: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers?.c1 || []).length,
+      sibling: (window.state.pages[0].canvases[0].annotations.counterMarkers?.c1 || []).length,
       p1: (window.App.getActiveAnnotations(window.state.pages[1]).counterMarkers?.c1 || []).length,
     }));
-    expect(afterClear.p0).toBe(0);
+    expect(afterClear.active).toBe(0);
+    expect(afterClear.sibling).toBe(1);
     expect(afterClear.p1).toBe(1);
+
+    // "You can undo this." is a real promise: the handler pushes an undo
+    // snapshot before wiping, so Undo restores the cleared layer.
+    await page.evaluate(() => document.getElementById('undoBtn').click());
+    expect(await page.evaluate(() => (window.state.pages[0].canvases[1].annotations.counterMarkers?.c1 || []).length)).toBe(1);
 
     // JSON import through the moved #importInput handler replaces the palette.
     const payload = JSON.stringify({

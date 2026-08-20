@@ -77,4 +77,88 @@ test.describe('Sidebar lists (features/sidebar-lists.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // JOURNEY Tier-2 #24: the COUNTERS badge used to show a RAW marker sum while
+  // Summary (and the footer, count-detail modal, and report) showed the
+  // multiply-zone-adjusted total — two disagreeing numbers in one sidebar,
+  // neither labeled. Pins: one multiply-adjusted arithmetic everywhere, and
+  // trade-word labels ("N placed · M with repeats") on both surfaces whenever
+  // Multiply Zones inflate a count — across all three usage-filter scopes.
+  test('multiply zones: COUNTERS badge, Summary rows, and footer agree, labeled across filter scopes', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // The journey-map repro: 7 markers for c1 on page 0 — 3 inside a x3
+    // Multiply Zone, 4 outside — so 7 placed but totals bill 4 + 3x3 = 13.
+    // c2 has one un-zoned marker on page 1 (plain badges must stay plain).
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters = [
+        { id: 'c1', name: 'Water Closet', icon: 'M0 0h10v10H0z', color: '#e8c547' },
+        { id: 'c2', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#4a9eff' },
+      ];
+      const c0 = window.App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.multiplyZones = [{ x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 3, id: 'z1' }];
+      c0.annotations.counterMarkers = { c1: [
+        { x: 10, y: 10, id: 'i1' }, { x: 20, y: 20, id: 'i2' }, { x: 30, y: 30, id: 'i3' },
+        { x: 100, y: 100, id: 'o1' }, { x: 110, y: 110, id: 'o2' },
+        { x: 120, y: 120, id: 'o3' }, { x: 130, y: 130, id: 'o4' },
+      ] };
+      const c1 = window.App.ensureActiveCanvas(s.pages[1]);
+      c1.annotations.counterMarkers = { c2: [{ x: 40, y: 40, id: 'm-p2' }] };
+      window.App.updateUI();
+    });
+
+    const wcBadge = page.locator('#countersList .sidebar-item', { hasText: 'Water Closet' }).locator('.badge');
+    const lavBadge = page.locator('#countersList .sidebar-item', { hasText: 'Lavatory' }).locator('.badge');
+    const wcSummary = page.locator('#summaryList .sidebar-item[data-id="c1"] .badge');
+    const lavSummary = page.locator('#summaryList .sidebar-item[data-id="c2"] .badge');
+
+    // One arithmetic, labeled the same way on both surfaces.
+    await expect(wcBadge).toHaveText('7 placed · 13 with repeats');
+    await expect(wcSummary).toHaveText('7 placed · 13 with repeats');
+    await expect(wcBadge).toHaveAttribute('title', /7 markers placed[\s\S]*13/);
+    await expect(wcSummary).toHaveAttribute('title', /7 markers placed[\s\S]*13/);
+    // Un-zoned counter: plain number, both places, no label noise.
+    await expect(lavBadge).toHaveText('1');
+    await expect(lavSummary).toHaveText('[1]');
+    // Footer runs the same multiply-adjusted arithmetic: 13 + 1.
+    expect(await page.evaluate(() => window.App.getFooterTotalsCached().count)).toBe(14);
+
+    // The usage-filter scopes change row VISIBILITY only — never the
+    // arithmetic or the label. (currentPage is 0; c2 lives on page 1.)
+    for (const scope of ['page', 'project', 'off']) {
+      await page.evaluate((sc) => { window.App.setCounterListFilterScope(sc); window.App.updateUI(); }, scope);
+      await expect(wcBadge).toHaveText('7 placed · 13 with repeats');
+      if (scope === 'page') {
+        await expect(page.locator('#countersList .sidebar-item')).toHaveCount(1);
+      } else {
+        await expect(lavBadge).toHaveText('1');
+      }
+      await expect(wcSummary).toHaveText('7 placed · 13 with repeats');
+    }
+
+    // Grouped Summary path: tag one in-zone marker; every group row keeps the
+    // adjusted arithmetic with its own per-group trade-word label.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.groups = [{ id: 'g1', name: 'Restroom A', color: '#c94f7c' }];
+      const c0 = window.App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers.c1[0].group = 'g1';   // one x3 marker
+      window.App.updateUI();
+    });
+    // Restroom A: 1 placed x3 = 3. Untagged: 6 placed -> 2x3 + 4 = 10.
+    await expect(page.locator('#summaryList .sidebar-item[data-id="c1"] .badge')).toHaveText(
+      ['1 placed · 3 with repeats', '6 placed · 10 with repeats']);
+
+    expect(errors).toEqual([]);
+  });
 });

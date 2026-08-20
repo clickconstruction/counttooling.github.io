@@ -222,3 +222,140 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// B3 copy-cluster regressions: the view-link no-link toast must diagnose the
+// view-only session FIRST (not "Sign in…"), the copy drop-ups must stay
+// anchored to their buttons (the stylesheet's .show-report-menu right:0 must
+// not stretch a fixed menu to the viewport edge), the two copy menus must
+// close each other (their buttons stopPropagation, so the global document-
+// click dismissal never runs), and the Set-scale detour must offer a one-tap
+// "Copy again" resume that re-runs the gated copy inside a fresh user gesture.
+test.describe('Copy cluster fixes (B3)', () => {
+  const seedCounterData = () => async (page) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      const c0 = App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      App.updateUI();
+    });
+  };
+
+  test('view-link session gets the view-only toast, not "Sign in"', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await seedCounterData()(page);
+
+    // A view-link load (features/view-only.js) sets currentProjectId AND
+    // loadedViaViewLink, with no signed-in session — the exact combination
+    // that used to fall into the "Sign in to include a view link" branch.
+    await page.evaluate(() => {
+      window.state.currentProjectId = 'view-proj';
+      window.state.loadedViaViewLink = true;
+      window.state.supabaseSession = null;
+    });
+    await page.evaluate(() => {
+      document.querySelector('.pipe-tooling-option[data-mode="this-canvas"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForFunction(() => {
+      const el = document.getElementById('airboardToastText');
+      return el && (el.textContent || '').includes('Counts copied');
+    }, { timeout: 5000 });
+    const toast = await page.evaluate(() => document.getElementById('airboardToastText').textContent);
+    expect(toast).toContain('View-only sessions cannot create a share link');
+    expect(toast).not.toContain('Sign in');
+    expect(errors).toEqual([]);
+  });
+
+  test('Copy to /Tooling drop-up stays anchored to its button', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await seedCounterData()(page);
+
+    await page.click('#forPipeTooling');
+    await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);
+    const r = await page.evaluate(() => {
+      const m = document.getElementById('forPipeToolingMenu').getBoundingClientRect();
+      const b = document.getElementById('forPipeTooling').getBoundingClientRect();
+      return { menu: { left: m.left, right: m.right, top: m.top, bottom: m.bottom, width: m.width }, btn: { left: b.left, top: b.top }, vw: window.innerWidth };
+    });
+    // Anchored, not stretched: without right:auto the stylesheet's right:0
+    // pulled the fixed menu's right edge to the viewport edge.
+    expect(r.menu.right).toBeLessThan(r.vw - 40);
+    expect(r.menu.width).toBeLessThan(450);
+    // Drop-up: opens above the button, left edge on the button (clamp slack).
+    expect(r.menu.bottom).toBeLessThanOrEqual(r.btn.top + 1);
+    expect(Math.abs(r.menu.left - r.btn.left)).toBeLessThan(30);
+    expect(errors).toEqual([]);
+  });
+
+  test('the two copy menus close each other', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await seedCounterData()(page);
+
+    await page.click('#forPipeTooling');
+    await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);
+    await page.click('#copySummaryText');
+    await expect(page.locator('#copySummaryTextMenu')).toHaveClass(/visible/);
+    await expect(page.locator('#forPipeToolingMenu')).not.toHaveClass(/visible/);
+    await page.click('#forPipeTooling');
+    await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);
+    await expect(page.locator('#copySummaryTextMenu')).not.toHaveClass(/visible/);
+    expect(errors).toEqual([]);
+  });
+
+  test('"Copy again" chip resumes the copy after the Set-scale detour', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.lineTypes = [{ id: 'lt1', name: 'Copper', color: '#4a9eff' }];
+      s.pages[1].label = 'P-2 Underground';
+      const c1 = App.ensureActiveCanvas(s.pages[1]);
+      c1.annotations.quickLines = [{ x1: 100, y1: 100, x2: 220, y2: 100, color: '#4a9eff', id: 'q1', lineTypeId: 'lt1', group: null }];
+      App.updateUI();
+    });
+
+    // Unscaled line page -> check modal -> Set scale detour.
+    await page.evaluate(() => {
+      document.querySelector('.pipe-tooling-option[data-mode="visible"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
+    await page.locator('#toolingScaleCheckGoSet').click();
+    await expect(page.locator('#scaleModal')).toHaveClass(/visible/);
+    // The resume chip is up, named for the surface it will re-run.
+    await expect(page.locator('#copyAgainChip')).toBeVisible();
+    await expect(page.locator('#copyAgainChip')).toContainText('Copy to /Tooling');
+
+    // Set the scale (modal closed via Escape; scale seeded directly).
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => { window.state.pages[1].scale = { pixelsPerUnit: 24, unit: 'ft', label: 'set' }; });
+
+    // One tap: the chip's click re-runs the gated copy inside its own user
+    // gesture — clean walk now, so the copy lands on the clipboard.
+    await page.locator('#copyAgainChip').click();
+    await page.waitForFunction(() => {
+      const el = document.getElementById('airboardToastText');
+      return el && /view link/i.test(el.textContent || '');
+    }, { timeout: 5000 });
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('ft of Copper');
+    await expect(page.locator('#copyAgainChip')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+});

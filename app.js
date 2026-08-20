@@ -2745,26 +2745,121 @@
   // App.onCounterLineTypeDetailsHidden callback.
 
   // SECTION: Toasts & line color picker
+  // T2-15 toast rework: toasts are no longer full-screen .modal-overlay
+  // click-blockers. At boot the toast surfaces (#airboardToastModal,
+  // #setScaleFirstModal, #outOfBoundsModal, #pipeToolingCopiedModal) move
+  // into #toastStack — a fixed bottom-right corner stack that is
+  // pointer-events:none (no click is ever swallowed) and z-index 500, above
+  // every .modal-overlay (200/210/260), so a validation toast fired while a
+  // dialog is open stays visible (the roomBoxModal occlusion bug). The ids
+  // and the showModal/hideModal `.visible` contract are unchanged, so every
+  // caller and existing spec keeps working. Concurrent toasts STACK: a new
+  // showToast() parks the still-live previous message in a throwaway
+  // .toast-chip that finishes out its own lifetime instead of being erased.
+  const TOAST_SURFACE_IDS = ['airboardToastModal', 'setScaleFirstModal', 'outOfBoundsModal', 'pipeToolingCopiedModal'];
+  let toastStackEl = null;
+  function ensureToastStack() {
+    if (!toastStackEl || !toastStackEl.isConnected) {
+      toastStackEl = document.getElementById('toastStack');
+      if (!toastStackEl) {
+        toastStackEl = document.createElement('div');
+        toastStackEl.id = 'toastStack';
+        document.body.appendChild(toastStackEl);
+      }
+      TOAST_SURFACE_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement !== toastStackEl) toastStackEl.appendChild(el);
+      });
+    }
+    return toastStackEl;
+  }
+  ensureToastStack();
+
   let airboardToastTimer = null;
+  let airboardToastDeadline = 0;
+  // Stacking: when the primary toast is still on screen with a different
+  // message, park that message in a chip that lives out the remainder of its
+  // own duration — a burst of toasts stacks instead of each erasing the last.
+  function archiveActiveToast(nextMsg) {
+    const modal = document.getElementById('airboardToastModal');
+    const textEl = document.getElementById('airboardToastText');
+    if (!modal || !textEl || !modal.classList.contains('visible')) return;
+    const text = textEl.textContent;
+    if (!text || text === nextMsg) return;
+    const chip = document.createElement('div');
+    chip.className = 'toast-chip';
+    chip.textContent = text;
+    ensureToastStack().appendChild(chip);
+    setTimeout(() => chip.remove(), Math.max(600, airboardToastDeadline - Date.now()));
+  }
   function showToast(msg, durationMs) {
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
+    archiveActiveToast(msg || '');
     const el = document.getElementById('airboardToastText');
     if (el) el.textContent = msg || '';
     showModal('airboardToastModal');
+    airboardToastDeadline = Date.now() + (durationMs ?? 2000);
     airboardToastTimer = setTimeout(() => { hideModal('airboardToastModal'); airboardToastTimer = null; }, durationMs ?? 2000);
   }
+  // Escape-path dismissal: hide the primary toast AND any archived chips.
+  function dismissToasts() {
+    hideModal('airboardToastModal');
+    if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
+    if (toastStackEl) toastStackEl.querySelectorAll('.toast-chip').forEach((c) => c.remove());
+  }
 
+  // T2-15: the Measure result is a footer status-bar chip, not a toast — the
+  // old 5s "Distance:" overlay sat exactly on the measure→zone hand-off and
+  // swallowed the next clicks. The chip lives beside the same footer slot the
+  // tool hints coach from and never intercepts input.
+  let measureDistanceChipTimer = null;
+  function showMeasureDistanceChip(formatted) {
+    let chip = document.getElementById('measureDistanceChip');
+    if (!chip) {
+      const coords = document.getElementById('statusCoords');
+      if (!coords || !coords.parentElement) { showToast('Distance: ' + formatted, 5000); return; }
+      chip = document.createElement('span');
+      chip.id = 'measureDistanceChip';
+      coords.parentElement.insertBefore(chip, coords.nextSibling);
+    }
+    chip.textContent = 'Distance: ' + formatted;
+    chip.classList.add('visible');
+    if (measureDistanceChipTimer) clearTimeout(measureDistanceChipTimer);
+    measureDistanceChipTimer = setTimeout(() => { chip.classList.remove('visible'); measureDistanceChipTimer = null; }, 8000);
+  }
+
+  // Turn In progress is NOT a toast: it deliberately keeps the full-screen
+  // blocking .modal-overlay behavior (clicks during the upload could mutate
+  // the project mid-export). It used to ride #airboardToastModal; it now has
+  // its own dynamically created overlay so the non-blocking toast rework
+  // can't accidentally unblock it.
   let turnInProgressActive = false;
+  function ensureTurnInProgressModal() {
+    let m = document.getElementById('turnInProgressModal');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'turnInProgressModal';
+      m.className = 'modal-overlay';
+      const card = document.createElement('div');
+      card.className = 'modal-card modal-card-toast';
+      const p = document.createElement('p');
+      p.id = 'turnInProgressText';
+      card.appendChild(p);
+      m.appendChild(card);
+      document.body.appendChild(m);
+    }
+    return m;
+  }
   function setTurnInProgress(label) {
+    const m = ensureTurnInProgressModal();
     if (!label) {
-      if (turnInProgressActive) hideModal('airboardToastModal');
+      if (turnInProgressActive) m.classList.remove('visible');
       turnInProgressActive = false;
       return;
     }
-    if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
-    const el = document.getElementById('airboardToastText');
+    const el = document.getElementById('turnInProgressText');
     if (el) el.textContent = 'Turn In: ' + label;
-    showModal('airboardToastModal');
+    m.classList.add('visible');
     turnInProgressActive = true;
   }
 
@@ -4776,7 +4871,7 @@
       const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
       const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
       const formatted = formatDistFeetInches(dist, effScale);
-      showToast('Distance: ' + formatted, 5000);
+      showMeasureDistanceChip(formatted);
       state.scalePointA = null;
       state.scalePointB = null;
       state.scaleMode = SCALE_MODES.NONE;
@@ -6101,18 +6196,16 @@
       }
     }
     if (e.key === 'Escape') {
-      // showToast() is itself a modal (#airboardToastModal) and the ladder
-      // below closes modals before it reaches any tool, so a toast on screen
-      // eats the Escape a live gesture was meant to get. The Ghost capture
-      // flow toasts after EVERY step, which would make that near-permanent —
-      // so while a Ghost gesture is IN FLIGHT, clear the toast up front and
-      // let the real ladder run. Deliberately narrow: only the toast (a
-      // genuine modal still wins), and only mid-gesture (an idle-in-Ghost
-      // Escape keeps the two-press rhythm every other tool has). Retire this
-      // with the queued non-blocking-toast work (JOURNEY-MAP Tier-2 #15).
+      // Toasts are non-blocking (T2-15) but still hold a slot in the ladder
+      // below, so a toast on screen would eat the Escape a live gesture was
+      // meant to get. The Ghost capture flow toasts after EVERY step, which
+      // would make that near-permanent — so while a Ghost gesture is IN
+      // FLIGHT, clear the toast up front and let the real ladder run.
+      // Deliberately narrow: only the toast (a genuine modal still wins), and
+      // only mid-gesture (an idle-in-Ghost Escape keeps the two-press rhythm
+      // every other tool has).
       if (state.tool === TOOL.GHOST && (state.placingGhost || state.ghostRectStart) && document.getElementById('airboardToastModal')?.classList.contains('visible')) {
-        hideModal('airboardToastModal');
-        if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
+        dismissToasts();
       }
       if (state.gridOriginPickMode) {
         state.gridOriginPickMode = false;
@@ -6150,7 +6243,7 @@
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
-      else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
+      else if (document.getElementById('airboardToastModal').classList.contains('visible')) { dismissToasts(); }
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.
       else if (document.getElementById('keyboardMapModal').classList.contains('visible')) { hideModal('keyboardMapModal'); }

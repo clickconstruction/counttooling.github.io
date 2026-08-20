@@ -508,9 +508,39 @@
     .header .replaced-by-status-bar { display: none !important; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
+    /* T2-15 non-blocking toasts: app.js moves the toast surfaces
+       (#airboardToastModal, #setScaleFirstModal, #outOfBoundsModal,
+       #pipeToolingCopiedModal) into this fixed bottom-right stack at boot.
+       Inside it the .modal-overlay wrapper loses its full-screen dim (the
+       old inset:0 z-200 rule swallowed every click for the toast's life and
+       painted BEHIND equal-z-index dialogs). pointer-events:none on the
+       stack and everything in it means no toast ever eats a click; z-index
+       500 puts toasts above every modal (200/210/260) and menu (300/400) so
+       a validation toast fired over an open dialog stays visible. Archived
+       .toast-chip entries (older concurrent toasts) stack in the same
+       column. */
+    #toastStack { position: fixed; right: 12px; bottom: calc(48px + var(--safe-bottom)); z-index: 500;
+      display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px;
+      max-width: min(92vw, 480px); pointer-events: none; }
+    #toastStack * { pointer-events: none; }
+    #toastStack .modal-overlay { display: none; position: static; inset: auto; background: none; z-index: auto; max-width: 100%; }
+    #toastStack .modal-overlay.visible { display: block; }
+    #toastStack .modal-card { padding: 12px 18px; max-width: 100%; border-color: var(--border2); box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+    #toastStack .toast-chip { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
+      padding: 12px 18px; max-width: 100%; font-size: 1rem; color: var(--text); white-space: pre-line;
+      text-align: center; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+    /* Measure result chip in the footer status bar (replaces the old 5s
+       "Distance:" toast that blocked the measure→zone hand-off). */
+    #measureDistanceChip { display: none; padding: 1px 8px; border-radius: 999px; background: var(--accent);
+      color: #000; font-weight: 600; white-space: nowrap; }
+    #measureDistanceChip.visible { display: inline-block; }
+    /* Turn In progress overlay (deliberately still a blocking full-screen
+       modal — see setTurnInProgress in app.js). */
+    #turnInProgressText { margin: 0; font-size: 1rem; white-space: pre-line; text-align: center; }
     /* Dead/unreachable view-link failure screen (features/view-only.js).
-       z-index 400 sits above .modal-overlay/toasts (200) and every menu (300)
-       so nothing can paint over it; opaque var(--bg) fully hides the empty
+       z-index 400 sits above every .modal-overlay (200) and menu (300) so
+       none can paint over it (only transient click-through toasts at 500
+       ever float above); opaque var(--bg) fully hides the empty
        editor underneath. */
     .view-link-dead-screen { display: none; position: fixed; inset: 0; z-index: 400;
       background: var(--bg); align-items: center; justify-content: center;

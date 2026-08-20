@@ -8,7 +8,9 @@
  * Delete Canvas confirm (`#deleteCanvasConfirmModal` -> the private
  * performDeleteCanvas), and the footer layers menu (`#canvasLayersBtn` /
  * `#canvasMenu` / `#canvasMenuAdd`) plus the `#addCanvasBtn` and
- * show-all-canvases peek (`#showAllCanvasesBtn`) toggles.
+ * show-all-canvases peek (`#showAllCanvasesBtn`) toggles. The layers menu
+ * also carries the mobile "Show all layers" row (`#canvasMenuShowAll`, built
+ * here at load) — the <=768px route to the same peek flag.
  *
  * Loaded as a classic <script src="/features/canvas-layers.js"> AFTER app.js.
  * Its own IIFE: reaches state + helpers through the shared window.App
@@ -334,6 +336,65 @@
     }
   };
 
+  // --- Mobile "Show all layers" row (#canvasMenuShowAll) --------------------
+  // The desktop peek button (#showAllCanvasesBtn) is display:none !important
+  // at <=768px, so the layers menu — the mobile canvas switcher — carries a
+  // toggle row flipping the SAME state.showAllCanvases flag through the same
+  // renderAnnotations/updateUI path (no new mode, no new state; updateUI keeps
+  // the desktop button's indicator in sync for a resize back over 768px).
+  // Built here, not in app/index.html: the row is wholly owned by this file,
+  // and it lives OUTSIDE #canvasMenuList so renderCanvasSwitcher's innerHTML
+  // wipe never touches it. Reuses the desktop peek chooser's check styles.
+  // Refreshed on every menu open (the only time it's visible), not in updateUI.
+  function updateCanvasMenuShowAllRow() {
+    const state = App.state;
+    const row = document.getElementById('canvasMenuShowAll');
+    const sep = document.getElementById('canvasMenuShowAllSep');
+    if (!row) return;
+    const page = state.pages[state.currentPage];
+    const canvases = page ? App.getPageCanvases(page) : [];
+    const show = canvases.length > 1;   // same 2+-layer gate as the desktop button
+    row.style.display = show ? '' : 'none';
+    if (sep) sep.style.display = show ? '' : 'none';
+    const check = row.querySelector('.canvas-peek-check');
+    if (check) {
+      check.classList.toggle('checked', !!state.showAllCanvases);
+      check.textContent = state.showAllCanvases ? '✓' : '';
+    }
+  }
+
+  (function buildCanvasMenuShowAllRow() {
+    const menu = document.getElementById('canvasMenu');
+    const addBtn = document.getElementById('canvasMenuAdd');
+    if (!menu || !addBtn) return;
+    const sep = document.createElement('div');
+    sep.className = 'canvas-menu-sep';
+    sep.id = 'canvasMenuShowAllSep';
+    sep.style.display = 'none';
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.id = 'canvasMenuShowAll';
+    row.className = 'canvas-menu-item canvas-peek-item';
+    row.style.display = 'none';
+    const check = document.createElement('span');
+    check.className = 'canvas-peek-check';
+    const label = document.createElement('span');
+    label.className = 'canvas-peek-name';
+    label.textContent = 'Show all layers';
+    row.appendChild(check);
+    row.appendChild(label);
+    row.onclick = (e) => {
+      e.stopPropagation();
+      const state = App.state;
+      state.showAllCanvases = !state.showAllCanvases;   // the desktop button's exact toggle
+      App.renderAnnotations();
+      App.updateUI();
+      updateCanvasMenuShowAllRow();   // menu stays open — checkbox semantics
+    };
+    menu.insertBefore(sep, addBtn);
+    menu.insertBefore(row, addBtn);
+  })();
+
   const canvasLayersBtn = document.getElementById('canvasLayersBtn');
   const canvasMenu = document.getElementById('canvasMenu');
   const canvasMenuAdd = document.getElementById('canvasMenuAdd');
@@ -344,6 +405,7 @@
         canvasMenu.classList.remove('visible');
         return;
       }
+      updateCanvasMenuShowAllRow();   // before placement — the row affects offsetHeight
       canvasMenu.style.left = '-9999px';
       canvasMenu.classList.add('visible');
       const btnRect = canvasLayersBtn.getBoundingClientRect();

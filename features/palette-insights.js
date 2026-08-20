@@ -2,11 +2,12 @@
   'use strict';
   const App = (window.App = window.App || {});
   /*
-   * features/palette-insights.js - the "Palette insights" modal: a
-   * cross-project analysis of the user's counters and line types (via the
+   * features/palette-insights.js - the "My Standards" modal (trade name; code
+   * identifiers keep the original paletteInsights prefix): a cross-project
+   * analysis of the user's counters and line types (via the
    * user_palette_usage RPC, which aggregates server-side so the client never
    * downloads whole project JSONB blobs), with one-click ADDITIVE adds to the
-   * cloud Artboard. Opened from My Settings -> Artboard -> Analyze My Usage.
+   * cloud Artboard. Opened from My Settings -> Artboard -> My Standards.
    *
    * Identity is name-based (case-insensitive): counter/line-type ids are
    * uid()-scoped per project, so "already on your Artboard" and the add-dedupe
@@ -195,12 +196,30 @@
     document.getElementById('paletteInsightsAddAll').textContent = 'Add all shown (' + addable + ')';
   }
 
+  // No-data vs filtered-out are different truths: when the RPC returned zero
+  // rows, nothing exists at ANY threshold, so showing the filter plus two
+  // per-list "at this threshold" lines would blame the filter for data that
+  // was never there. Zero rows -> ONE honest empty state (#paletteInsightsEmpty)
+  // with the filter/Add-all chrome hidden; a list emptied BY the filter keeps
+  // its own per-list line, worded like the visible "Used in at least" control.
+  function setNoDataState(noData) {
+    document.getElementById('paletteInsightsEmpty').style.display = noData ? '' : 'none';
+    document.getElementById('paletteInsightsLists').style.display = noData ? 'none' : '';
+    document.getElementById('paletteInsightsFilterRow').style.display = noData ? 'none' : '';
+    document.getElementById('paletteInsightsAddAll').style.display = noData ? 'none' : '';
+  }
+
   function renderRows() {
     renderMinSeg();
     const countersEl = document.getElementById('paletteInsightsCounters');
     const linesEl = document.getElementById('paletteInsightsLines');
     countersEl.innerHTML = '';
     linesEl.innerHTML = '';
+    setNoDataState(!insightRows.length);
+    if (!insightRows.length) {
+      document.getElementById('paletteInsightsHidden').textContent = '';
+      return;
+    }
     const shown = visibleRows();
     const hiddenCount = insightRows.length - shown.length;
     document.getElementById('paletteInsightsHidden').textContent = hiddenCount ? hiddenCount + ' hidden' : '';
@@ -210,20 +229,21 @@
       String(a.name).localeCompare(String(b.name));
     const counters = shown.filter((r) => r.kind === 'counter').sort(rank);
     const lines = shown.filter((r) => r.kind !== 'counter').sort(rank);
-    if (!counters.length) countersEl.innerHTML = '<p class="pi-empty">No counters at this threshold.</p>';
+    if (!counters.length) countersEl.innerHTML = '<p class="pi-empty">No counters used in this many bids.</p>';
     counters.forEach((it) => countersEl.appendChild(rowEl(it)));
-    if (!lines.length) linesEl.innerHTML = '<p class="pi-empty">No line types at this threshold.</p>';
+    if (!lines.length) linesEl.innerHTML = '<p class="pi-empty">No line types used in this many bids.</p>';
     lines.forEach((it) => linesEl.appendChild(rowEl(it)));
   }
 
   async function openPaletteInsightsModal() {
     const user = App.state.supabaseSession?.user;
     if (!App.SUPABASE_ENABLED || !user || !App.getSupabase()) {
-      App.showToast('Sign in to analyze your palette usage.', 4000);
+      App.showToast('Sign in to see your standards — your most-used counters and lines across bids.', 4000);
       return;
     }
     const subtitleEl = document.getElementById('paletteInsightsSubtitle');
     subtitleEl.textContent = 'Loading your usage…';
+    setNoDataState(false);
     document.getElementById('paletteInsightsCounters').innerHTML = '';
     document.getElementById('paletteInsightsLines').innerHTML = '';
     App.hideModal('mySettingsModal');
@@ -237,9 +257,11 @@
       insightRows = Array.isArray(rpc.data) ? rpc.data : [];
       onArtboard.counter = new Set(((ab && ab.counters) || []).map((c) => nameKey(c.name)));
       onArtboard.lineType = new Set(((ab && ab.lineTypes) || []).map((lt) => nameKey(lt.name)));
+      // Zero rows: renderRows shows the single #paletteInsightsEmpty message —
+      // keep the subtitle quiet so there is exactly one empty state.
       subtitleEl.textContent = insightRows.length
-        ? 'Across your cloud projects · ranked by how many bids use each item'
-        : 'No cloud projects yet — save a project and check back.';
+        ? 'Your most-used counters and lines across bids · most-shared first'
+        : '';
       renderRows();
     } catch (e) {
       subtitleEl.textContent = (e && e.message) || 'Analysis failed. Try again.';

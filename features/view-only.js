@@ -14,6 +14,38 @@
   // read from App at call time; viewCache* / pdfjsLib are classic-script
   // globals.
 
+  // B6: the allowed-domain hint comes from config (window.VIEW_LINK_ALLOWED_DOMAINS,
+  // set in config.js/config.local.js; comma-separated). The literal here is
+  // only the last-resort default, mirroring the Edge Function's own default
+  // in supabase/functions/_shared/viewLink.ts — keep the two in sync.
+  function viewLinkAllowedDomains() {
+    const raw = (typeof window.VIEW_LINK_ALLOWED_DOMAINS === 'string' && window.VIEW_LINK_ALLOWED_DOMAINS.trim())
+      ? window.VIEW_LINK_ALLOWED_DOMAINS
+      : 'clickplumbing.com';
+    return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
+  // B6: page labels prefer the saved per-page label (the uploader's file name
+  // or an owner rename, persisted as data.pages[].label) and fall back to the
+  // plan name — never the old hardcoded "document.pdf". Old saves may have the
+  // generic placeholder baked in; treat it as absent so the plan name wins.
+  function buildViewPageLabels(d, planName, numPages) {
+    const saved = new Map();
+    (Array.isArray(d && d.pages) ? d.pages : []).forEach((p) => {
+      if (p && typeof p.label === 'string' && p.label.trim()) saved.set(p.index, p.label);
+    });
+    const name = (typeof planName === 'string' && planName.trim()) ? planName.trim() : 'document.pdf';
+    const labels = [];
+    for (let i = 0; i < numPages; i++) {
+      const s = saved.get(i);
+      labels.push((s && !/^document\.pdf( — p\d+)?$/.test(s))
+        ? s
+        : (numPages > 1 ? name + ' — p' + (i + 1) : name));
+    }
+    return labels;
+  }
+  App.buildViewPageLabels = buildViewPageLabels;   // shared with restore-last-session.js (same root cause)
+
   // Pending resolver for the email prompt; the global Escape handler
   // (app.js hotkeys) cancels through App.cancelViewLinkEmailPrompt.
   let viewLinkEmailResolve = null;
@@ -158,6 +190,9 @@
         const cancelBtn = document.getElementById('viewLinkEmailCancel');
         if (!modal || !input) { resolve(null); return; }
         viewLinkEmailResolve = resolve;
+        // B6: the placeholder follows the configured allowed domains (the
+        // you@clickplumbing.com in app/index.html is only the pre-JS default).
+        input.placeholder = 'you@' + viewLinkAllowedDomains()[0];
         // keepError: re-shown after a domain_restricted rejection -- the caller
         // just set the message; clearing it here made the modal reappear with
         // no explanation (looked like an endless silent loop).
@@ -187,10 +222,10 @@
 
     if (!email) {
       await showViewEmailModal();
-      if (!email) return;
+      if (!email) { showViewLinkEmailNeeded(); return; }
     }
 
-    const domainMsg = (typeof window.VIEW_LINK_ALLOWED_DOMAINS === 'string' ? window.VIEW_LINK_ALLOWED_DOMAINS : 'clickplumbing.com');
+    const domainMsg = viewLinkAllowedDomains().join(', ');
 
     async function fetchViewProject(useEmail) {
       const res = await fetch(SUPABASE_URL + '/functions/v1/get-view-project', {
@@ -239,7 +274,7 @@
           const errEl = document.getElementById('viewLinkEmailError');
           if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
           email = await showViewEmailModal(true);
-          if (!email) return;
+          if (!email) { showViewLinkEmailNeeded(); return; }
         } else if (cachedProjectData && !(e && e.viewLinkDead)) {
           projectData = cachedProjectData;   // offline / transient -- use the cached snapshot
           break;
@@ -275,9 +310,12 @@
     clearPdfBitmapCache();
     state.pages = [];
     const numPages = pdf.numPages;
+    // B6: label pages with the saved label / plan name (the GC sees the
+    // plan's name, not "document.pdf").
+    const pageLabels = buildViewPageLabels(d, projectData.name, numPages);
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+      const label = pageLabels[i];
       const canvasId = uid();
       state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       state.activeCanvasIdByPage[i] = canvasId;
@@ -327,6 +365,7 @@
     const retry = document.getElementById('viewLinkDeadRetry');
     if (retry) {
       retry.style.display = dead ? 'none' : '';
+      retry.textContent = 'Retry';   // the email-needed card relabels it "Reload"
       retry.onclick = () => window.location.reload();
     }
     const screen = document.getElementById('viewLinkDeadScreen');
@@ -334,6 +373,24 @@
     // Signed-in sessions only (logUserEvent no-ops otherwise) — the anonymous
     // GC emits nothing; server-side dead-token logging is a follow-up.
     App.logUserEvent && App.logUserEvent('view_link_dead', null, { reason: dead ? 'inactive' : 'network' });
+  }
+
+  // B6: cancelling the email gate (button or Escape) used to drop the visitor
+  // into the empty editor — a dead end that looked like the app for making
+  // takeoffs. Show the same full-screen surface as the dead-link screen
+  // (T1-12) instead; reloading re-runs the boot, which IS the retry loop, so
+  // the Reload button is just location.reload().
+  function showViewLinkEmailNeeded() {
+    const msg = document.getElementById('viewLinkDeadMessage');
+    if (msg) msg.textContent = 'This plan needs your email — reload to try again.';
+    const retry = document.getElementById('viewLinkDeadRetry');
+    if (retry) {
+      retry.style.display = '';
+      retry.textContent = 'Reload';
+      retry.onclick = () => window.location.reload();
+    }
+    const screen = document.getElementById('viewLinkDeadScreen');
+    if (screen) screen.classList.add('visible');
   }
 
   App.shareViewerScale = shareViewerScale;

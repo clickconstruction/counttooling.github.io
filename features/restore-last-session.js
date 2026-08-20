@@ -121,9 +121,17 @@
     App.clearPdfBitmapCache();
     state.pages = [];
     const numPages = pdf.numPages;
+    // B6: label pages with the saved per-page label / project name instead of
+    // the old hardcoded "document.pdf". Shared helper lives in
+    // features/view-only.js (same root cause there); the inline fallback only
+    // covers the defensive case of that script having failed to load.
+    const pageLabels = (App.buildViewPageLabels || ((dd, nm, n) => {
+      const name = (typeof nm === 'string' && nm.trim()) ? nm.trim() : 'document.pdf';
+      return Array.from({ length: n }, (_, i) => (n > 1 ? name + ' — p' + (i + 1) : name));
+    }))(d, proj.name, numPages);
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+      const label = pageLabels[i];
       const canvasId = App.uid();
       state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
       state.activeCanvasIdByPage[i] = canvasId;

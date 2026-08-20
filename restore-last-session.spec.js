@@ -89,6 +89,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
     const restored = await page.evaluate(() => ({
       name: window.state.currentProjectName,
+      pageLabel: window.state.pages[0].label,
       counters: window.state.counters.length,
       rooms: window.state.rooms.length,
       markers: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers.c1 || []).length,
@@ -97,6 +98,9 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
       modalOpen: document.getElementById('lastSessionRestoreModal').classList.contains('visible'),
     }));
     expect(restored.name).toBe('Restored Takeoff');
+    // B6: the restored page is labeled with the plan name (no saved per-page
+    // label in the payload), never the old hardcoded "document.pdf".
+    expect(restored.pageLabel).toBe('Restored Takeoff');
     expect(restored.counters).toBe(1);
     expect(restored.rooms).toBe(1);
     expect(restored.markers).toBe(1);

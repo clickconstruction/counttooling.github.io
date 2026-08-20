@@ -1,6 +1,6 @@
 # J2 — A 200-sheet combined set → just my sheets, named my way
 
-Personas: P E H · Status: ● walked 2026-08-02 (headless Chromium 1380×900, signed-out local; cloud legs blocked — see Walk notes)
+Personas: P E H · Status: ● walked 2026-08-02 (headless Chromium 1380×900, signed-out local; cloud legs blocked — see Walk notes) · re-walked 2026-08-20 after the Prepare-PDF grid rebuild — see the Addendum at the end
 
 > Seeded from the Phase-1 cross-index workflow (2026-08-02). Walked in Phase 2 with
 > test-2pages.pdf + test-page.pdf (multi-file merge) and a synthetic 24-sheet
@@ -169,3 +169,151 @@ What the re-drive established beyond the walk:
 - **Finding 9 has a twist:** the badge's `title` attribute is not empty — it says 'Click to rename or delete', so the only tooltip present points at a different feature than the badge's color coding. The teach proposal's tooltip must merge with or relocate around it.
 
 Things the walker missed (minor, no new findings warranted): the Escape-discard (finding 4) also swallows page renames typed in the '> Page Name' tab, not just deletes/rotates — reproduced; worth covering in the discard-confirm wording. All proposal spirit-test claims were re-scored independently; two carry caveats now recorded inline (the signed-out Prepare dialog adds one click to the no-trim upload path; the thumbnail grid must replace, not accompany, the sheet-walk).
+
+## Addendum — 2026-08-20 grid rebuild walk
+
+Drift-patrol re-walk (the `_NEXT.md` standing practice) after the 2026-08-20 f5 batch
+rebuilt this journey's core surface: commit `470875c` "thumbnail-grid trim replaces the
+one-sheet-at-a-time walk" (Tier-2 #26) landed via `claude/f5-prepare-pdf-trim-grid`, and
+`9630191` fixed the dead double-click rename (Tier-2 #27). Walk base: this lane's
+worktree forked from post-Ghost main, so the tree walked is `claude/f5-journey-batch-integration`
+**merged over the Ghost/Stamp lineage** — i.e. what merged main will look like; the
+merge was clean in app code (doc-TOC/sw-hash conflicts only) and the served
+`features/prepare-pdf.js` was curl-verified to contain the grid before any walking.
+Ghost/Stamp itself never intruded on this journey — it is a canvas tool, the Prepare
+modal is untouched by it, and no Ghost surface appeared anywhere in the trim/organize
+flow (its only adjacency is an Escape-ladder toast special-case that requires a Ghost
+gesture to be in flight). Environment: headless Chromium 1380×900 against a local
+static server (port 4910), all non-localhost traffic aborted, signed-out; fixtures
+test-2pages.pdf plus synthetic 40-sheet and 200-sheet combined sets built with the
+vendored pdf-lib (6 disciplines, ARCH-D landscape). The signed-in fresh-upload leg was
+exercised via the same `App.openPreparePdfModal(...)` + state-clearing handoff
+`promptLoadAnnotations` runs (unchanged in pdf-intake.js); the append leg via the real
+`setPendingAddAdditionalPages` dispatcher with a stubbed `currentProjectId`.
+
+### The new route (walked) — 13 steps, 6 decision points
+
+The step count barely moves; the *click volume inside step 3* is where the journey
+changed. The old route spent one Delete click plus one preview render per unwanted sheet;
+the new route trims any set in a handful of taps on a grid that shows everything at once.
+
+1. Open the app and click 'Upload PDF' (all five entry points unchanged; multi-file
+   merge-in-order unchanged)
+2. **Signed-in only** (gate unchanged — see finding 3): the Prepare dialog opens **on a
+   thumbnail grid of every sheet** — title still 'Prepare PDF for Cloud', new description
+   'Name your project, then tap the pages you do not need before saving', toolbar
+   'Keep all / Drop all / Invert / Undo', live '40 of 40 kept' counter, and an inline
+   hint ('Tap a sheet to keep or drop it · Shift-click toggles a range · 🔍 opens the
+   sheet'). Thumbs rasterise lazily (IntersectionObserver): ~7 visible tiles render
+   first, the rest on scroll. Modal opened in **21 ms on 40 sheets, 31 ms on 200** — the
+   old open-time eager per-page byte-size loop (200 pdf-lib builds on open) is gone
+3. Trim in one pass: tap a tile to drop it (red border, dimmed thumb, 'Dropped' ribbon),
+   tap again to restore; shift-click paints the anchor click's state across a range;
+   'Drop all' + tap the keepers is the keep-few route. **Measured: 40 → 6 plumbing
+   sheets in 4 clicks** (drop-ranges route) **and 200 → the 15-sheet P-set in 3 clicks
+   (~0.3 s): Drop all → click P-101 → shift-click P-115.** The old walk took 20 clicks
+   for 24→4 and projected ~185 for 200→15
+4. Slip? Undo is **one press per user action** — a bulk Drop all undoes in a single
+   press (kept-set snapshots, cap 200), and Ctrl/Cmd+Z is captured by the modal (verified
+   it does not leak into the app's annotation undo behind the overlay)
+5. Rotate: ⟳ on the tile re-renders that thumb in place, or rotate inside the zoom view
+   where the dims readout still flips (17.0 × 11.0 in → 11.0 × 17.0 in) — both verified,
+   rotation carries into the committed pages
+6. 🔍 on a tile opens the single-sheet **zoom view** (the old preview, demoted from
+   default to inspection tool): it walks ALL sheets kept and dropped with Prev/Next or
+   arrow keys, the label appends '— DROPPED' on dropped sheets, the old 'Delete' button
+   became a **Drop/Restore toggle** (same undo stack), and '⊞ All sheets' returns to the
+   grid. Per-sheet byte size now computes lazily for the sheet being viewed
+7. Type the project name ('Project name' tab, unchanged)
+8. Rename a sheet: zoom it → '> Page Name' tab → type; the tile caption updates on blur.
+   Per-sheet rename cost is unchanged from the old route (one visit per sheet)
+9. Optionally 'Download Trimmed PDF' (unchanged)
+10. 'Open' or 'Save & Open' — **all three commit/export buttons disable at 0 kept**, so
+    Drop-all-then-commit is unreachable (verified). Commit of the 200→15 trim built the
+    trimmed PDF in ~276 ms; committed set verified: 6/15 pages, custom label, rotation,
+    project name all carried into the app. Escape/Cancel here still discards silently
+    (finding 4)
+11. Rename later from the sidebar: **double-click the sheet name now works** (fixed by
+    `9630191`; verified live on both active and inactive rows) — the badge-click path
+    remains as the second affordance
+12. Append an addendum: 'Add pages — <project>' opens the same grid (verified: 40 tiles,
+    name row hidden, new copy 'Tap the pages you do not need before adding them...');
+    Drop all + 2 taps + Open appended exactly 2 sheets, **kept the project name** and
+    toasted 'Added 2 sheets to Riverside Clinic Plumbing' (findings 1 and 8 fixes both
+    re-verified end-to-end)
+13. Big-set navigation post-commit (badges, ‹‹/››, Page Settings) — unchanged, not
+    re-walked
+
+Decision points: which sheets to keep · **trim strategy (taps vs shift-ranges vs
+Drop-all-and-keep vs Invert — new)** · rotate or not · project + sheet names ·
+Open vs Save & Open vs Download · Page Settings toggles.
+
+**Click arithmetic, old vs new (the journey's headline):** 200-sheet set → 15-sheet
+P-set was ~185 Delete clicks plus ~185 preview renders; it is now **3 clicks and no
+renders you have to wait for**. The 24→4 demo case (20 clicks) is now 3–5 clicks.
+
+### Per-finding status (all 9 re-driven or re-verified in code)
+
+| # | was | status 2026-08-20 |
+|---|-----|-------------------|
+| 1 | blocker — append silently renames the project | **RESOLVED** (shortlist #8, merged 2026-08-10) — re-verified: append kept the name and toasted; the fresh-upload rename now guards on `startPageIdx === 0 && !currentProjectId` (pdf-intake.js) |
+| 2 | stumble — double-click sheet rename dead | **RESOLVED by this batch** (`9630191`, 2026-08-20) — re-driven: dblclick opens the rename input on active AND inactive rows |
+| 3 | stumble — signed-out never sees Prepare | **PERSISTS** — re-driven: signed-out fresh 40-sheet upload opens all pages directly, no modal; the `supabaseSession?.user` gate in pdf-intake.js is unchanged. B15 still queued, and it stings more now: signed-out users also miss the grid |
+| 4 | stumble — Escape/Cancel silently discards the upload | **PERSISTS** — re-driven: Drop all → Escape → pages 0, buffer null, no confirm (app.js Escape ladder → `closePreparePdfModal`). New sharpener for B15: see new finding N4 |
+| 5 | stumble — one-sheet-at-a-time trim, ~185 clicks | **RESOLVED by this batch** (`470875c`, Tier-2 #26) — the grid **replaced** the sheet-walk as the default view, exactly as the proposal's flag demanded; measured 3 clicks for the 200→15 case |
+| 6 | papercut — Undo restores a sheet invisibly | **RESOLVED by this batch** — undo un-dims the tile in place before your eyes; bulk actions undo in one press; the zoom view marks dropped sheets '— DROPPED' |
+| 7 | papercut — corrupt PDF fresh upload fails silently | **PERSISTS** — re-driven: text file renamed .pdf → no dialog, no toast, pages 0, unhandled `InvalidPDFException`; fresh path still has no try/catch (append path still alerts). B2 still queued |
+| 8 | papercut — append gives no feedback | **RESOLVED** (T1-08 + the parity toast on the append-mode commit) — re-verified: 'Added 2 sheets to Riverside Clinic Plumbing' |
+| 9 | papercut — badge meanings unexplained in-app | **PERSISTS** — pages-list.js badge `title` is still only 'Click to rename or delete'. G6 still queued |
+
+### New findings (grid-specific, adversarial pass)
+
+| # | severity | what happens | why it hurts | verdict |
+|---|----------|--------------|--------------|---------|
+| N1 | papercut | The shift-click range anchor survives bulk actions: click a tile (anchor set to its resulting state), press 'Keep all', then shift-click another tile — the range paints **drop** across both, from an anchor whose own sheet is visibly kept again (reproduced: 5..10 all dropped after Keep all). The anchor also survives Undo. | A shift-click made right after a bulk reset silently drops a range the user never painted; the anchor tile's on-screen state contradicts what the paint does. One-press Undo recovers, which is what keeps this a papercut. | CONFIRMED — reproduced deterministically; `preparePdfRangeAnchor` is cleared only on open, not by Keep all / Drop all / Invert / Undo (features/prepare-pdf.js) |
+| N2 | papercut | Keep/drop is mouse-only in the grid: tiles are divs with `tabIndex` −1 and no role, so Tab reaches only each tile's ⟳/🔍 buttons — a keyboard user cannot toggle a sheet in the grid (and there is no aria state for 'Dropped'). | The journey's new headline surface is invisible to keyboard and assistive-tech users; their only trim path is the zoom-view walk, which is the old click-per-sheet economy. | CONFIRMED — inspected live DOM (`cellTabIndex: -1`, no role); arrow keys work in the zoom view only, by design |
+| N3 | papercut | In grid view the '> Page Name' tab silently edits the invisible 'current' sheet — sheet 1 on open, or whichever sheet was last zoomed. The only feedback is that one tile's caption updates on blur. | A user who types a sheet name while looking at the grid renames a sheet they never chose; nothing on screen says which sheet the field is bound to until after the fact. | CONFIRMED — reproduced: on a fresh grid the field showed sheet 1's label and typing renamed tile 1; the intended flow (zoom → rename) works, this is the unguarded shortcut next to it |
+| N4 | papercut | Escape in the **zoom view** closes the whole modal — with finding 4's silent discard — instead of stepping back to the grid. | 'Zoom in to check one sheet, press Escape to back out' is the natural gesture; it now costs the entire trim session in one keystroke. Sharpens B15's confirm-before-discard case (and B15's fix should also make Escape-in-zoom mean '⊞ All sheets'). | CONFIRMED — reproduced: Escape from the zoom view left `#preparePdfModal` closed, pages 0, buffer null; the modal's key handler deliberately leaves Escape to app.js's ladder |
+
+Adversarial checks that did NOT stumble (all reproduced clean, zero console/page errors
+across every run): rapid 11× tap-toggling one tile (state consistent, odd count = dropped,
+one undo per toggle); shift-range across already-dropped sheets (paint semantics are
+idempotent — no double-toggle flicker — and one Undo reverts the whole paint exactly);
+Drop all then commit (Open, Download, AND Save & Open all disabled at '0 of N kept');
+one-press undo after a bulk drop; drop-all-but-one then Invert (exact complement, 39/40
+kept); Ctrl/Cmd+Z captured by the modal; rotate from the grid (thumb re-renders in place,
+`renderedRot` tracks) and from the zoom view (dims flip), both surviving commit;
+**close-then-reopen re-renders every thumb** (the previously-fixed blank-thumbs bug stayed
+fixed — pixel-identical stats first open vs reopen on the 40-sheet set); append-mode grid
+parity. Performance holds at 200 sheets: open 31 ms, lazy thumbs (~30 rendered in the
+first second, rest on scroll), trim 3 clicks in ~0.3 s, commit ~276 ms on the tiny
+synthetic fixture (real 50 MB scans still unmeasured — no such fixture offline).
+
+### Dossier body sections this addendum supersedes
+
+- Current-route step 4 (the Delete-walk) and step 9's 'Delete disables on the last
+  remaining sheet': the empty set is now *reachable* in the grid (Drop all) but
+  *uncommittable* (all three buttons disable) — a better shape than the old guard.
+- Friction findings 1, 2, 5, 6, 8 — resolved per the table above.
+- Proposals 'rework — Sheet-grid trim' (shipped as specified, including the
+  replace-not-accompany flag), 'rework — Appending... must never rename' (shipped),
+  'rework — Make sheet rename land on the first natural gesture' (shipped, first
+  variant), 'polish — Say something when nothing happens' (append half shipped; the
+  corrupt-PDF half of B2 is still open), 'polish — Undo should jump the preview to the
+  restored sheet' (obsoleted by the grid — the tile un-dims in place).
+- Terminology rows for the old descriptions; current copy is 'Name your project, then
+  tap the pages you do not need before saving.' / 'Tap the pages you do not need before
+  adding them to the current project.' plus toolbar words 'Keep all / Drop all / Invert /
+  Undo', tile ribbon 'Dropped', button 'Drop'/'Restore', and '⊞ All sheets'. 'Prepare
+  PDF for Cloud' still stands (B15's retitle is unshipped).
+- Guide coverage: preparing-a-plan-set.md was rewritten for the grid in the same batch
+  (`00ec18d`), so the guide-vs-app drift window here is closed.
+
+### Demo moment (refreshed — the grid changes the sell)
+
+Drop a 200-sheet combined set on the app. The Prepare dialog opens as a wall of sheet
+thumbnails — your whole bid set on one screen. Click **Drop all**, click **P-101**,
+shift-click **P-115**: the counter reads **'15 of 200 kept'** — three clicks, under a
+second, and every dropped sheet is sitting right there, dimmed, one tap from coming
+back. Click Open and the P-set *is* the project. The old demo needed ten seconds of
+Delete-Delete-Delete; the new one is done before you finish the sentence.

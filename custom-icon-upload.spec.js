@@ -82,6 +82,58 @@ test.describe('Custom icon upload (features/custom-icon-upload.js)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('uploaded icon is scrolled into the grid viewport without jolting the modal (Tier-2 #19)', async ({ page }) => {
+    const errors = [];
+    await bootWithCreateCounterOpen(page, errors);
+    // Drive the REAL tab flow: the custom panel is display:none until the
+    // Custom Icons tab is clicked; a hidden grid has zero height and would
+    // make any visibility assertion vacuous.
+    await page.click('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]');
+    const pre = await page.evaluate(() => {
+      const g = document.getElementById('counterIconGridCustom');
+      const card = document.querySelector('#counterModal .modal-card');
+      return {
+        gridVisible: g.getBoundingClientRect().height > 0,
+        overflows: g.scrollHeight > g.clientHeight,
+        cardScrollTop: card ? card.scrollTop : 0,
+        pageScrollTop: document.scrollingElement.scrollTop,
+      };
+    });
+    expect(pre.gridVisible).toBe(true);
+    // The bundled custom icons alone overflow the 200px grid, so the appended
+    // upload lands below the fold unless the grid is scrolled.
+    expect(pre.overflows).toBe(true);
+
+    await page.locator('#customIconUploadInput').setInputFiles({
+      name: 'below-the-fold.svg', mimeType: 'image/svg+xml', buffer: GOOD_SVG,
+    });
+    await page.waitForSelector('#counterIconGridCustom .icon-cell.selected');
+
+    const post = await page.evaluate(() => {
+      const g = document.getElementById('counterIconGridCustom');
+      const sel = g.querySelector('.icon-cell.selected');
+      const gr = g.getBoundingClientRect();
+      const cr = sel.getBoundingClientRect();
+      const card = document.querySelector('#counterModal .modal-card');
+      return {
+        // Geometry, not a hardcoded offset: the cell's rect must sit inside
+        // the grid's visible rect regardless of how many icons exist.
+        cellTopInView: cr.top >= gr.top - 1,
+        cellBottomInView: cr.bottom <= gr.bottom + 1,
+        gridScrolled: g.scrollTop > 0,
+        cardScrollTop: card ? card.scrollTop : 0,
+        pageScrollTop: document.scrollingElement.scrollTop,
+      };
+    });
+    expect(post.cellTopInView).toBe(true);
+    expect(post.cellBottomInView).toBe(true);
+    expect(post.gridScrolled).toBe(true);
+    // Only the grid scrolled — no jolt of the modal card or the page.
+    expect(post.cardScrollTop).toBe(pre.cardScrollTop);
+    expect(post.pageScrollTop).toBe(pre.pageScrollTop);
+    expect(errors).toEqual([]);
+  });
+
   test('an SVG with no supported shapes is rejected with the alert and adds nothing', async ({ page }) => {
     const errors = [];
     await bootWithCreateCounterOpen(page, errors);

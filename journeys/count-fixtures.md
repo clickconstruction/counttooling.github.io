@@ -1,6 +1,6 @@
 # J4 — Build the counter palette and count
 
-Personas: P E · Status: ● walked (Phase 2, 2026-08-02 — desktop only; Mobile: no per plan) · re-walked 2026-08-09 (fresh naive attempt + every finding re-verified; 1 new bug, 2 new stumbles — see findings 11–13)
+Personas: P E · Status: ● walked (Phase 2, 2026-08-02 — desktop only; Mobile: no per plan) · re-walked 2026-08-09 (fresh naive attempt + every finding re-verified; 1 new bug, 2 new stumbles — see findings 11–13) · drift-patrol addendum 2026-08-20 (create-flow batch walked; 7 findings resolved, 1 new stumble + 3 papercuts — see Addendum)
 
 > Seeded from the Phase-1 cross-index workflow (2026-08-02). Phase-2 walk done
 > 2026-08-02 against the real app (headless Chromium, local static server,
@@ -196,3 +196,146 @@ Adversarial pass, independent of both walks. Method: same recipe (throwaway node
 **Score: 12 CONFIRMED, 1 DOWNGRADED (finding 3 stumble→papercut), 0 KILLED.** All 13 proposals pass an independent spirit test — the two teach entries correctly refuse to add UI, and the two keeps are accurate. Nothing manufactured found; the dossier under-claims if anything (finding 1's mechanism is a two-part gap — prompt gating AND no mark re-application at PDF open — which the restore-prompt rework must address together).
 
 **Missed by the walker (minor):** the app boots and counts cleanly even when the vendor supabase-js file fails to load (accidentally exercised by the round-1 cloud guard) — decent offline resilience, worth a line in the offline guide, not a finding.
+
+## Addendum — 2026-08-20 create-flow walk (drift patrol)
+
+Standing-practice drift patrol after the 2026-08-20 batch changed this journey's
+surfaces: the counter-create flow (features/counter.js — Tier-2 #17/#18, plus the
+merged Tier-1 #1/#11 fixes now live) and the custom-icon upload reveal
+(features/custom-icon-upload.js — Tier-2 #19). Method: same recipe as prior walks —
+headless Chromium via `@playwright/test`, zero-dep static serve on **port 4911**,
+fresh browser profile per run, signed out, `samples/sample-plan.pdf` into
+`#pdfInput`; cloud guard aborted all non-127.0.0.1 requests and **zero remote
+requests fired**; zero page errors across every run. **Base note:** walked on
+`claude/f5-journey-batch-integration` merged over the freshly-landed Ghost/Stamp
+main (i.e. the tree merged main will become), because this lane's worktree forked
+from post-Ghost main; the Ghost tool shares no surface with this journey and the
+create-flow results were byte-identical on both the pure-batch tip and the merged
+tree (both were driven). Walk screenshots not committed (single-file addendum rule);
+each is described inline where it matters.
+
+### Route after the batch
+
+Step and decision counts are unchanged — **11 steps, 5 decision points** — but two
+steps changed shape and the C-entry penalty is gone:
+
+- **Step 2 (was: + Add → Create prefilled "Water Closet" unconditionally):** C,
+  #counterBtn, and + Add now all land the same place. With **zero counters, C
+  lands directly on the prefilled Create tab** (verified: active tab `create`,
+  name "Water Closet", first icon selected) instead of the old empty Choose dead
+  end. The prefill walks to the **first library icon not already used by an
+  existing counter**: two back-to-back bare "+ Add → Create Counter" runs
+  produced "Water Fountain" then "Sink" (distinct names AND icons) where the old
+  flow minted two identical "Water Closet" twins. With counters existing, C still
+  lands on Choose with the search box focused — per-entry defaults otherwise as
+  recorded.
+- **Step 6 (custom icon upload):** a successful upload now scrolls the grid to
+  the new icon and pulses its selection ring — verified in **all three surfaces**:
+  Create Counter (grid scrollTop 0→144, cell selected AND visible in the 200px
+  viewport, 1 running Web Animation on the cell), Quick Count with its Custom
+  Icons sub-tab open (0→144, visible, pulsing), and Details (0→188, visible,
+  and the upload immediately assigns the icon to the item with an undo snapshot —
+  Ctrl+Z verified reverting it). The old "pixel-identical modal" no-op is gone.
+  Guard detail verified: uploading while a paired grid is hidden (zero-height
+  rect) leaves that grid untouched — no error, no phantom scroll.
+- **Icon search (was finding 4, permanently hidden):** now visible on the Create
+  tab's Icon sub-tab ("Search icon" / "Search..."), hidden on the Custom Icons
+  sub-tab (it filters the library grid only — correct). Search matches the icons'
+  terms, not just names: "drain" surfaces an icon *named* "Circle Ring", which is
+  the right behavior for trade lookups.
+- **First count via C is now 10 actions from boot** (load PDF, C, Create Counter,
+  7 clicks) — identical to the recorded + Add path; the old C-entry cost 2 extra
+  actions (read the empty Choose text, click the Create tab). The naive-attempt
+  figure of "empty app to 7 counted fixtures in 10 actions" now holds for the
+  hotkey path too, with zero sidebar interaction.
+
+New on-screen copy verified verbatim: Choose empty state **"No counters yet — use
+the Create tab above to add one."** (accurate — the tab strip is directly above;
+but see new finding 14 for when it isn't); search-miss **"No counters match. Try
+the Create or Quick tabs above."** The modal-level "Search counters..." box now
+hides on the Create/Quick tabs (finding 8's B17 half, shipped) and shows only on
+Choose. Rapid tab-bouncing (Create→Quick→Choose→Create→Quick→Create) is clean: a
+typed name survives the round trips (the Create panel repopulates only on modal
+open, not tab switch), the search row toggles correctly per tab, zero errors.
+
+### Twin guard, driven to the edge
+
+The bare-click twin trap is dead by construction (unused-icon prefill above). The
+exact-twin guard was then forced deliberately: name "Water Closet", the toilet
+icon, and Water Closet's color (#e8c547) hand-set to strict equality. Create
+produced **"Water Closet 2" in #e85447** (COLORS[0] red — the first preset not on
+a same-icon counter) — names numbered, color rotated, tallies never merge, and a
+deliberate same-name counter stays possible (the guard requires the full
+name+icon+color triple). **Legibility verdict: the outcome reads clearly** — two
+sidebar rows, "Water Closet" yellow and "Water Closet 2" red, are unmistakable —
+but the mechanism is silent: no toast says "renamed — that counter already
+exists", so a user who typed the duplicate on purpose meets a mystery " 2". One
+row's worth of polish (a one-line toast on rename) is defensible but not urgent;
+it should NOT block the batch. Note the guard lives on the Create button only —
+Quick Count's Add is a different path (see finding 2/#16 below).
+
+### Finding status after the batch
+
+| # | was | status 2026-08-20 | evidence |
+|---|-----|-------------------|----------|
+| 1 | blocker | **RESOLVED** (T1-01, merged 2026-08-10; re-verified this walk) | Signed-out F5 with 3 marks → "Project from Last Session — You have a local session from your last visit: sample-​plan. What would you like to do? Keep and Open / Discard"; Keep and Open restored 1 page / 3 counters / **3 of 3 marks**, fully offline |
+| 2 | stumble | **PERSISTS — fix in flight** (Tier-2 #16 is being fixed on a sibling branch of this same batch cycle; not on this tree) | Re-driven: Quick "Add Counter" with the "?" box untouched → "0.5in PEX Tee" with icon AND color strictly equal to Water Closet's. Mitigation verified: uploading a custom icon from the Quick tab binds it — the quick counter then carries the uploaded icon (color still default yellow) |
+| 3 | papercut | **PERSISTS** (B1 Esc-ladder omnibus, queued) | Re-driven: Esc left counterSettingsModal, groupModal, and counterLineTypeDetailsModal visible |
+| 4 | stumble | **RESOLVED 2026-08-20** (#18) | Icon search visible + live on the Icon sub-tab; custom-icons.md's promised search now exists. **But the row's height caused new finding 14** |
+| 5 | stumble | PERSISTS (teach — intended auth design) | app.js gear handler unchanged: signed-out → authBtn.click() |
+| 6 | papercut | **RESOLVED 2026-08-20** (#17) | C on zero counters lands on the prefilled Create tab |
+| 7 | papercut | **RESOLVED 2026-08-20** (#17) | Blanked name + Create → counter named after the picked icon ("Hose Bib"), literal "Counter" fallback gone from the reachable path |
+| 8 | papercut | **RESOLVED 2026-08-20** (B17 counter half) | "Search counters..." hidden on Create/Quick, shown on Choose |
+| 9 | papercut | PERSISTS (teach verdict stands) | quick-modals.js: instant splice, `length <= 1` guardrail unchanged |
+| 10 | papercut | PERSISTS (B17's PLUM half not shipped) | `.sidebar-plum-row` still `display:none` in styles.css; live handler still bound |
+| 11 | stumble | **RESOLVED** (T1-11, merged 2026-08-10; re-verified) | Mid-count Choose badge reads 7 with sidebar at 7 — `getMergedAnnotationsForPage` sums across canvases |
+| 12 | stumble | **RESOLVED 2026-08-20** (#19) | All three surfaces reveal the upload (scroll + ring pulse); rejected-SVG alert text unchanged verbatim |
+| 13 | stumble | **RESOLVED 2026-08-20** (#17) | Unused-icon prefill + exact-twin guard (numbered suffix, rotated color); bare twins impossible, forced twins de-twinned |
+
+Score: **7 resolved** (1, 4, 6, 7, 8, 11, 12, 13 — with 1 and 11 landed earlier
+and re-verified live), **1 persists with fix in flight** (2/#16), **4 persist as
+queued/teach** (3, 5, 9, 10).
+
+### New findings (2026-08-20)
+
+| # | severity | what happens | why it hurts | verdict |
+|---|----------|--------------|--------------|---------|
+| 14 | stumble (REGRESSION) | On viewports ≤ ~730px tall the Counter modal's Choose/Create/Quick tab strip sits under the app header, which intercepts every click (driven at 1280×680/700/720: tab center above the header's 52px bottom edge, `elementFromPoint` returns the header; at 740+ it clears). The modal has no internal scroll (`overflow-y: visible`; at ≤700 its top edge is clipped off-viewport entirely). Cause measured, not guessed: hiding the new icon-search row restores clickability down to 680 — **the #18 fix grew the Create panel ~64px past the header line**. 1366×768 laptops (~620–660px of browser viewport) and 1280×720 displays are squarely inside the broken band. | The tab strip is the modal's primary navigation. With counters existing, C lands on Choose and there is no mouse path to Create/Quick except the workarounds (+ Add for Create, Shift+Q for Quick) — exactly the surfaces a first-time laptop user doesn't know yet. Same failure family as the known Set Scale ≤900px clip. | CONFIRMED (driven at six heights with/without the search row; screenshot shows the tab strip buried with only its active-tab underline peeking below the header) |
+| 15 | papercut | Icon search with a zero-match term ("zzzz") renders an empty grid — no "no icons match" message, no hint (contrast: the Choose list's search-miss has copy). The name box keeps the prefill; nothing is selected in either grid. | A blank pane reads as broken, and the guide's new truthful search deserves a truthful miss state. | CONFIRMED (grid 0 cells, innerHTML empty) |
+| 16 | papercut | Create Counter clicked while a zero-match search is active silently falls back to library icon #1 — the toilet — under the stale prefilled name and default yellow: the walk minted "Shower" wearing Water Closet's exact glyph AND color. Finding-2's indistinguishable-marks failure, reachable through the brand-new search surface. | Two names, one glyph, one color — the error surfaces at pricing time, again. | CONFIRMED (created counter `icon === getOrderedIcons()[0].value`, color #e8c547) |
+| 17 | papercut | The prefilled name never follows a deliberately picked icon: name-fill-from-icon only fires when the box is empty, and the box is now never empty (the prefill guarantees it). Searching "drain", picking the matched icon, and creating produced a counter named "Shower" carrying the drain glyph. The auto-select-on-search compounds it: typing a term silently moves the selection to the first match while the name stays put. | Every icon override mints a name/icon mismatch to re-open and rename later — the exact cleanup the prefill was built to kill. | CONFIRMED (pre-existing fill-if-empty mechanics, newly load-bearing now that the prefill always occupies the box and the search invites overrides) |
+
+Numbering continues the dossier's table (1–13 above). 15–17 are cheap, one-surface
+fixes; 14 is the one that should ride the next batch — either the Set Scale clip
+recipe (max-height + internal scroll on the modal) or a header-aware top clamp.
+
+### Demo moment (refreshed)
+
+Cold app, plan loaded, zero counters. Press **C** — no empty tab, no hunting: the
+Create tab is already open with "Water Closet" typed, the toilet icon ringed, a
+color waiting. One click on Create Counter and you're armed; seven clicks and the
+sidebar badge, the on-sheet legend, and the Choose tab's count (now truthful) all
+say 7. Ten actions from boot, and the second counter is even faster: + Add has
+already moved the suggestion to the next fixture. The 2026-08-09 demo moment
+(Quick Keys, groups, live legend) still stands on top of this — but the first ten
+seconds are now the C key, not the sidebar.
+
+### Walk notes (2026-08-20)
+
+- Environment: `npx serve -l 4911`, config.local.js stubbed empty, fresh profile
+  per run; `setInputFiles` drives both `#pdfInput` and the hidden
+  `#customIconUploadInput` directly (no DataTransfer needed); `window.alert`
+  wrapped before upload dispatch (Playwright auto-dismisses natives).
+- The walk itself hit finding 14 before it was looked for: the phase-1 driver ran
+  at Playwright's default 1280×720 and could not click the Choose tab — the
+  header swallowed the click. The main walk ran at 1280×950; the clip probe then
+  bisected heights 680–900 with and without the search row.
+- Quick Count's Custom Icons sub-tab must be open for the upload cell to be
+  reachable there (the "+" lives inside the grid); the reveal fires correctly in
+  that state and skips the two hidden sibling grids by their zero-height rects.
+- Not re-walked (unchanged walls): mobile (out of scope per plan), Artboard sync,
+  Manage Icons via the signed-in gear, admin surfaces. The signed-out restore
+  prompt IS now walkable and was (finding 1, resolved).
+- Sibling-lane caveat: finding 2/#16's fix was in flight on another branch of
+  this same batch cycle while this walk ran — its status here is a statement
+  about THIS tree, and the next patrol should expect it resolved.

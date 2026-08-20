@@ -12,7 +12,11 @@ module.exports = defineConfig({
   // -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v<ver>-noble
   // bash -lc "npx playwright test render-pixels.spec.js --update-snapshots").
   // Cloud/dev-auth specs need no ignore: they self-skip without DEV_AUTH_*.
-  testIgnore: [],
+  // Never discover specs inside .claude/ — Claude Code worktrees are full
+  // repo copies living under .claude/worktrees/, so without this a run from
+  // the primary checkout collects every sibling worktree's specs (and dies on
+  // their node_modules). CI clones clean and is unaffected.
+  testIgnore: ['**/.claude/**'],
   // Per-FILE parallelism only (fullyParallel stays false, so tests within a
   // spec keep their in-file ordering). Each test gets an isolated browser
   // context (own storage/IndexedDB) against the shared static server, so

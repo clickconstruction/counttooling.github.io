@@ -13,6 +13,26 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(export): Copy to /Tooling confirmation reports counts vs line feet
+
+The "Copied to clipboard." confirmation after **Copy to /Tooling** now carries
+a second line with the by-unit split of what was copied — "29 counts (1,122 ea)
+· 6 line types (444.74 ft)", plus "· N unscaled runs (X px)" when an Export-
+anyway copy included unscaled lines. It is the mirror of PipeTooling's import
+toast (its `countRowUnit` kernel, v2.2113 there), so an estimator can reconcile
+copy against import at a glance; counts and feet are never summed together.
+
+- report.js: pure `summarizeToolingExport(text)` reads the export text back and
+  buckets rows by the name prefix (`ft of` → ft, `px of` → px, everything else
+  incl. indented child rows → ea; `[Group] ` prefix tolerated; view-link footer
+  and blank lines skipped) + `formatToolingExportSummary(s)`; both on `window`
+  and in the CommonJS test footer (3 node tests in report.test.js).
+- features/output.js: `doCopyPipeTooling` fills `#pipeToolingCopiedDetail`
+  (new `<p>` in the modal, hidden when empty) and holds the modal 2.6s instead
+  of 1.5s when there is a split to read; the no-link toast paths append the
+  split; the Copy Summary path clears the detail so a stale split never rides
+  along. The export TEXT is unchanged — the importer contract is untouched.
+
 ## feat(ghost): the Ghost / Stamp tool — copy a typical as a reference overlay
 
 New header tool (⋯ menu "Ghost / Stamp", hotkey G, TOOL.GHOST): rubber-band a

@@ -2,7 +2,7 @@
 // Run with: npm run test:unit  (uses the built-in node:test runner; no deps)
 const test = require('node:test');
 const assert = require('node:assert');
-const { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries } = require('./report.js');
+const { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary } = require('./report.js');
 
 test('escapeHtml returns empty string for null/undefined', () => {
   assert.strictEqual(escapeHtml(null), '');
@@ -125,4 +125,33 @@ test('orderGroupIds tolerates a getGroupName that returns null for deleted group
   const ordered = orderGroupIds({ live: {}, deleted: {} }, {}, getGroupName);
   assert.strictEqual(ordered.length, 2);
   assert.ok(ordered.includes('live') && ordered.includes('deleted'));
+});
+
+test('summarizeToolingExport buckets counts / ft / px from the export text, never summing across', () => {
+  const text = [
+    'WC\t12\t1, 2',
+    '  Wax ring\t12\t1, 2',                    // child row (indented) → ea
+    '[Rough-In] ft of 2in Copper\t148.50\t1, 2',
+    'ft of 4in PVC\t60.00\t3',
+    'px of 1in Gas\t367\t4',
+    '',
+    'View link:\thttps://counttooling.com/app/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21',
+  ].join('\n');
+  const s = summarizeToolingExport(text);
+  assert.deepStrictEqual(s.ea, { items: 2, total: 24 });
+  assert.deepStrictEqual(s.ft, { items: 2, total: 208.5 });
+  assert.deepStrictEqual(s.px, { items: 1, total: 367 });
+});
+
+test('summarizeToolingExport is empty for no text and ignores the footer alone', () => {
+  assert.deepStrictEqual(summarizeToolingExport(''), { ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } });
+  const s = summarizeToolingExport('View link:\thttps://counttooling.com/app/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21');
+  assert.strictEqual(s.ea.items + s.ft.items + s.px.items, 0);
+});
+
+test('formatToolingExportSummary mirrors the PipeTooling import toast wording', () => {
+  const s = summarizeToolingExport('WC\t1122\t1\nLav\t4\t1\nft of x\t444.74\t2');
+  assert.strictEqual(formatToolingExportSummary(s), '2 counts (1,126 ea) · 1 line type (444.74 ft)');
+  assert.strictEqual(formatToolingExportSummary(summarizeToolingExport('px of y\t367\t1')), '1 unscaled run (367 px)');
+  assert.strictEqual(formatToolingExportSummary(summarizeToolingExport('')), '');
 });

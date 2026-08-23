@@ -48,6 +48,8 @@ test.describe('Output cluster (features/output.js)', () => {
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await page.waitForSelector('#pipeToolingCopiedModal.visible', { timeout: 5000 });
+    // Copy Summary never shows the /Tooling by-unit detail line.
+    expect(await page.evaluate(() => getComputedStyle(document.getElementById('pipeToolingCopiedDetail')).display)).toBe('none');
     const emailText = await page.evaluate(() => navigator.clipboard.readText());
     expect(emailText).toContain('Floor Drain');
     expect(emailText).toContain('2');
@@ -68,6 +70,9 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(pipeText).not.toContain('View link:');   // no cloud project -> no footer
     const toast = await page.evaluate(() => document.getElementById('airboardToastText').textContent);
     expect(toast).toContain('Save the project to the cloud');
+    // The by-unit split rides along (mirror of PipeTooling's import toast):
+    // 1 counter row totalling 2, 1 line type at 10 ft — never summed together.
+    expect(toast).toContain('1 count (2 ea) · 1 line type (10 ft)');
 
     // --- Download current page: menu opens (multi-page), option downloads ---
     await page.evaluate(() => document.getElementById('downloadCurrentPageBtn').click());

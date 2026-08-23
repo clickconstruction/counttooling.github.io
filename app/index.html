@@ -1200,6 +1200,9 @@
   <div class="modal-overlay" id="pipeToolingCopiedModal">
     <div class="modal-card modal-card-toast">
       <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
+      <!-- Copy to /Tooling fills this with the by-unit split of what was copied
+           (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
+      <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
     </div>
   </div>
   <!-- Pre-export scale check for Copy to /Tooling: pages that carry lines but

@@ -404,6 +404,39 @@
     return lines.join('\n');
   }
 
+  // Mirror of PipeTooling's import toast (its countRowUnit kernel): read the
+  // /Tooling export text BACK and bucket rows by unit from the name prefix —
+  // counts (ea), `ft of` line types (ft), `px of` unscaled runs (px). The
+  // view-link footer and blank lines are skipped; child rows (indented) count
+  // as ea. Buckets are never summed together. Both ends of the bridge report
+  // the same numbers, so an estimator can reconcile copy against import.
+  function summarizeToolingExport(text) {
+    const out = { ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } };
+    if (!text) return out;
+    String(text).split(/\r?\n/).forEach((line) => {
+      if (!line.trim()) return;
+      if (/https?:\/\/\S*[?&]t=/.test(line) || /^\s*view link/i.test(line)) return;
+      const cells = line.split('\t');
+      const name = (cells[0] || '').trim().replace(/^\[[^\]]*\]\s*/, '');
+      const value = parseFloat(cells[1]);
+      const bucket = /^px\s+of\s/i.test(name) ? out.px : /^ft\s+of\s/i.test(name) ? out.ft : out.ea;
+      bucket.items += 1;
+      bucket.total += Number.isFinite(value) ? value : 0;
+    });
+    return out;
+  }
+
+  // "29 counts (1,122 ea) · 6 line types (444.74 ft) · 1 unscaled run (367 px)"
+  // — empty buckets omitted; '' when nothing was exported.
+  function formatToolingExportSummary(s) {
+    const fmt = (n) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const parts = [];
+    if (s.ea.items) parts.push(s.ea.items + (s.ea.items === 1 ? ' count (' : ' counts (') + fmt(s.ea.total) + ' ea)');
+    if (s.ft.items) parts.push(s.ft.items + (s.ft.items === 1 ? ' line type (' : ' line types (') + fmt(s.ft.total) + ' ft)');
+    if (s.px.items) parts.push(s.px.items + (s.px.items === 1 ? ' unscaled run (' : ' unscaled runs (') + fmt(s.px.total) + ' px)');
+    return parts.join(' · ');
+  }
+
   // Cheap existence probe: would getPipeToolingSummary() be non-empty? Same
   // annotation source and same "counts or lines" rule (a marker under a defined
   // counter id, or a quick line / polyline whose lineTypeId matches a defined
@@ -565,12 +598,14 @@
     window.printReport = printReport;
     window.getPipeToolingSummary = getPipeToolingSummary;
     window.getPipeToolingHasData = getPipeToolingHasData;
+    window.summarizeToolingExport = summarizeToolingExport;
+    window.formatToolingExportSummary = formatToolingExportSummary;
     window.getReportHasRooms = getReportHasRooms;
     window.getEmailTextSummary = getEmailTextSummary;
   }
 
   // Node test harness only: inert in the browser (where `module` is undefined).
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries };
+    module.exports = { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary };
   }
 })();

@@ -50,6 +50,16 @@
     }).catch(() => { /* best-effort; doCopyPipeTooling retries inline */ });
   }
 
+  // Second line of #pipeToolingCopiedModal ("29 counts (1,122 ea) · 6 line types
+  // (444.74 ft)"); '' hides it. Cleared by the Copy Summary path so a stale
+  // split never rides along with an email-summary copy.
+  function setCopiedDetail(text) {
+    const el = document.getElementById('pipeToolingCopiedDetail');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.display = text ? '' : 'none';
+  }
+
   async function doCopyPipeTooling(getAnnFn, pageIndices, mode) {
     const state = App.state;
     const opts = {};
@@ -85,14 +95,20 @@
         noLinkToast = 'Counts copied. View-only sessions cannot create a share link.';
       }
     }
+    // What went on the clipboard, by unit — the same split PipeTooling's import
+    // toast reports, so the two ends reconcile (counts vs line feet, never summed).
+    const splitText = (typeof window.summarizeToolingExport === 'function' && typeof window.formatToolingExportSummary === 'function')
+      ? window.formatToolingExportSummary(window.summarizeToolingExport(text))
+      : '';
     try {
       await navigator.clipboard.writeText(text);
       App.logUserEvent('copy_summary', state.currentProjectId || null, { surface: 'pipe-tooling', mode: mode || 'visible' });
       if (noLinkToast) {
-        App.showToast(noLinkToast);
+        App.showToast(splitText ? noLinkToast + ' ' + splitText + '.' : noLinkToast);
       } else {
+        setCopiedDetail(splitText);
         App.showModal('pipeToolingCopiedModal');
-        setTimeout(() => App.hideModal('pipeToolingCopiedModal'), 1500);
+        setTimeout(() => App.hideModal('pipeToolingCopiedModal'), splitText ? 2600 : 1500);
       }
     } catch (err) {
       alert('Could not copy to clipboard: ' + (err.message || err));
@@ -265,6 +281,7 @@
     try {
       await navigator.clipboard.writeText(text);
       App.logUserEvent('copy_summary', App.state.currentProjectId || null, { surface: 'email-summary', mode: mode || 'visible' });
+      setCopiedDetail('');
       App.showModal('pipeToolingCopiedModal');
       setTimeout(() => App.hideModal('pipeToolingCopiedModal'), 1500);
     } catch (err) {

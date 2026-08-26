@@ -65,7 +65,7 @@ const ICON_BTN = {
   'multiply-zone': 'multiplyZoneBtn', 'scale-zone': 'scaleZoneBtn', 'delete-area': 'deleteZoneBtn',
   note: 'noteBtn', legend: 'legendBtn', grid: 'gridBtn', counter: 'counterBtn',
   line: 'quickLine', polyline: 'polylineBtn', 'hide-marks': 'hideMarksBtn', room: 'roomBtn',
-  'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn',
+  'save-status': 'saveStatusBtnHeader', share: 'headerShareBtn', 'drop-sizes': 'dropSizesBtn',
   // keys: the keypad glyph's ink spans 96..640 inside a 0 0 640 640 viewBox
   // (whitespace baked into the drawing), which rendered off-center in the
   // square icon chips — the vb override crops the viewBox to the ink.

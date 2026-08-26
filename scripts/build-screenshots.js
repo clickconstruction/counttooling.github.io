@@ -97,6 +97,27 @@ async function takeoffSetup(page) {
   await page.waitForTimeout(350);
 }
 
+// takeoffSetup plus drops (drop-size peek / Drop sizes toggle shots): the waste
+// line gets a 3 ft start drop, and a copper riser dropping 10 ft joins it — two
+// markers, two different values, so the shots show real variety.
+async function dropSetup(page) {
+  await takeoffSetup(page);
+  await page.evaluate(() => {
+    const s = window.state, App = window.App, uid = () => App.uid();
+    const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
+    const pw = vp.width, ph = vp.height;
+    const ann = s.pages[0].canvases[0].annotations;
+    const waste = ann.quickLines[0];
+    waste.startDrop = 3; waste.startDropUnit = 'ft';
+    const cu = uid();
+    s.lineTypes.push({ id: cu, name: '2" Cu riser', color: '#4a9eff', curveStyle: 'straight' });
+    ann.quickLines.push({ id: uid(), x1: 0.68 * pw, y1: 0.30 * ph, x2: 0.68 * pw, y2: 0.62 * ph, lineTypeId: cu, color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' });
+    App.renderPdf();
+    App.updateUI();
+  });
+  await page.waitForTimeout(250);
+}
+
 // Lay two finished room boxes onto the plan (Room Sizer guide), aligned with the
 // sample plan's real rooms (Office 101 and Conference 103) so the boxes read as
 // tracing actual rooms. The legend is nudged left so it isn't clipped at the edge.
@@ -124,7 +145,7 @@ async function roomSetup(page) {
 // is answered by a Playwright route (the view-only.spec.js recipe) with a takeoff
 // laid out on the sample plan, and the "signed URL" is the same-origin sample PDF.
 const VIEW_TOKEN = 'demo-view-token';
-function viewProjectPayload() {
+function viewProjectPayload(withDrops) {
   const pw = 921.6, ph = 597.6; // sample-plan.pdf page size in points (12.8 × 8.3 in)
   const wcX = [0.3717, 0.4003, 0.4289, 0.5310, 0.5596, 0.5882, 0.6168];
   const lavX = [0.3676, 0.3962, 0.4248, 0.5270, 0.5556, 0.5841, 0.6127];
@@ -137,7 +158,9 @@ function viewProjectPayload() {
         { id: 'wc', name: 'Water Closet', icon: DOT, color: '#e8c547' },
         { id: 'lav', name: 'Lavatory', icon: DOT, color: '#4a9eff' },
       ],
-      lineTypes: [{ id: 'lt', name: 'Waste line', color: '#47c88e', curveStyle: 'straight' }],
+      lineTypes: withDrops
+        ? [{ id: 'lt', name: 'Waste line', color: '#47c88e', curveStyle: 'straight' }, { id: 'cu', name: '2" Cu riser', color: '#4a9eff', curveStyle: 'straight' }]
+        : [{ id: 'lt', name: 'Waste line', color: '#47c88e', curveStyle: 'straight' }],
       groups: [], rooms: [],
       pages: [{
         index: 0,
@@ -150,9 +173,16 @@ function viewProjectPayload() {
               wc: wcX.map((fx) => ({ x: fx * pw, y: 0.4962 * ph, id: uid(), group: null })),
               lav: lavX.map((fx) => ({ x: fx * pw, y: 0.7134 * ph, id: uid(), group: null })),
             },
-            quickLines: [{ id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: 'lt', color: '#47c88e', group: null }],
+            quickLines: withDrops
+              ? [
+                  { id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: 'lt', color: '#47c88e', group: null, startDrop: 3, startDropUnit: 'ft' },
+                  { id: uid(), x1: 0.68 * pw, y1: 0.30 * ph, x2: 0.68 * pw, y2: 0.62 * ph, lineTypeId: 'cu', color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' },
+                ]
+              : [{ id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: 'lt', color: '#47c88e', group: null }],
             polylines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [],
-            legend: { x: pw - 210, y: 16, w: 195, h: 60, userResized: false },
+            // withDrops: legend sits lower so the shot's "label them all" callout
+            // (anchored under the header's Drop sizes button) doesn't cover it.
+            legend: { x: pw - 210, y: withDrops ? 90 : 16, w: 195, h: 60, userResized: false },
           },
         }],
       }],
@@ -160,7 +190,7 @@ function viewProjectPayload() {
     },
   };
 }
-async function routeViewProject(page) {
+async function routeViewProject(page, withDrops) {
   const CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -168,7 +198,7 @@ async function routeViewProject(page) {
   };
   await page.route('**/functions/v1/get-view-project', async (route) => {
     if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: CORS }); return; }
-    await route.fulfill({ status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(viewProjectPayload()) });
+    await route.fulfill({ status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(viewProjectPayload(withDrops)) });
   });
 }
 
@@ -734,6 +764,59 @@ const SHOTS = [
       await page.waitForTimeout(500);
     },
     boxes: [{ sel: '#hideMarksBtn', label: 'Hide marks' }],
+  },
+
+  // Drop-size peek — a pinned chip over the waste line's 3 ft drop (measuring guide).
+  {
+    name: 'drop-peek',
+    clip: '#canvasWrapper',
+    async setup(page) {
+      await dropSetup(page);
+      await page.evaluate(() => {
+        const q = window.state.pages[0].canvases[0].annotations.quickLines[0];
+        window.App.onDropPeekClick({ x: q.x1, y: q.y1 }, null);   // pin the 3 ft chip
+      });
+      await page.waitForTimeout(200);
+    },
+    boxes: [{ sel: '#dropPeekChip', label: 'Hover or tap a drop marker' }],
+  },
+
+  // Drop sizes toggle on — every drop labeled on the sheet, header button active
+  // (measuring guide).
+  {
+    name: 'drop-sizes-toggle',
+    clip: '.app',
+    async setup(page) {
+      await dropSetup(page);
+      await page.evaluate(() => window.App.toggleDropSizes());
+      await page.waitForTimeout(200);
+    },
+    boxes: [{ sel: '#dropSizesBtn', label: 'Drop sizes' }],
+  },
+
+  // Drop-size peek in a view-link session — wendi's use case (sharing guide).
+  {
+    name: 'view-drop-peek',
+    clip: '.app',
+    noLoad: true,
+    async setup(page, baseUrl) {
+      await routeViewProject(page, true);
+      await page.addInitScript((token) => {
+        try { localStorage.setItem('view:allowed:' + token, 'inspector@clickplumbing.com'); } catch (_) {}
+      }, VIEW_TOKEN);
+      await page.goto(baseUrl + '/app/?t=' + VIEW_TOKEN, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0 && window.state && window.state.isViewer; }, { timeout: 20000 });
+      await page.waitForTimeout(500);
+      await page.evaluate(() => {
+        const q = window.state.pages[0].canvases[0].annotations.quickLines[0];
+        window.App.onDropPeekClick({ x: q.x1, y: q.y1 }, null);   // pin the 3 ft chip
+      });
+      await page.waitForTimeout(200);
+    },
+    boxes: [
+      { sel: '#dropPeekChip', label: 'Tap any drop marker' },
+      { sel: '#dropSizesBtn', label: 'Or label them all' },
+    ],
   },
 ];
 

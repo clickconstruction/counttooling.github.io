@@ -13,6 +13,39 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(drops): drop-size peek + "Drop sizes" toggle (view-mode readable drops)
+
+Field request (wendi, viewing a shared plan): *"ability to see drop distances
+in view mode that is not clunky / getting in the way."* Drops rendered only as
+their endpoint glyph; the value lived in Line Properties, which viewers cannot
+open. Two tiers of disclosure, zero pixels added at rest
+([features/drop-peek.js](features/drop-peek.js)):
+
+- **Peek** — with the Move tool, hover (or tap — the synthesized touch click
+  rides the same handleCanvasClick path) a drop marker for a DOM chip naming
+  the line type and the drop in its stored unit; click pins it; any
+  pointerdown / wheel / keydown dismisses it, so a pan, zoom, page flip,
+  rotate, or undo can never strand a stale chip. Hit-testing rides
+  `collectDropNodes`, so a chain joint peeks its ONE carried value.
+- **"Drop sizes" toggle** — `#dropSizesBtn` beside the Hide-marks eye (burger
+  drawer row on mobile), painting a small white value chip beside every drop
+  glyph via the new `env.showDropSizes` in canvas-draw.js's
+  `drawAnnotationsCore` (placement: outward along the run, pushed past the
+  glyph by the chip's own extent). Live overlay only — export/print envs never
+  set the flag. Shown only when the project has drops. Persisted per device
+  (`view:dropSizes:<token>` for view links, restored beside `view:hideMarks`;
+  `clickcount-show-drop-sizes` otherwise) — a visual preference like
+  hide-marks, deliberately not in project save/load.
+
+canvas-draw gained `deps.formatDropLabel` (the recent-drops.js formatter).
+Tests: the drop-size-label unit test in
+[canvas-draw.test.js](canvas-draw.test.js) +
+[drop-peek.spec.js](drop-peek.spec.js) (real-hover peek, pin, all three
+dismissals, toggle gating/persistence/reload, armed-tool + hide-marks
+silence).
+
+---
+
 ## feat(export): Copy to /Tooling confirmation reports counts vs line feet
 
 The "Copied to clipboard." confirmation after **Copy to /Tooling** now carries

@@ -53,6 +53,7 @@ function makeDeps(state) {
     getNoteRotationRad: () => 0,
     iconRenderVb: () => 640,
     iconRenderCenter: () => ({ x: 320, y: 320 }),
+    formatDropLabel: (v, u) => (typeof v === 'number' && v > 0 ? v + ' ' + String(u || 'ft') : ''),
   };
 }
 
@@ -105,6 +106,42 @@ test('drawDropMarker: circle arcs, X crosses, save/restore balanced, inner strok
   assert.strictEqual(callsOf(x, 'arc').length, 0);
   assert.strictEqual(callsOf(x, 'moveTo').length, 2); // the two X strokes
   assert.ok(setsOf(x, 'strokeStyle').includes('#4a9eff')); // default color
+});
+
+test('drop-size labels: env.showDropSizes paints a value chip per carried drop, absent otherwise', () => {
+  const state = makeState();
+  const draw = createCanvasDraw(makeDeps(state));
+  const ann = Object.assign(emptyAnn(), {
+    quickLines: [{ x1: 0, y1: 0, x2: 100, y2: 0, color: '#4a9eff', id: 'q1', lineTypeId: 'lt-straight', startDrop: 3, startDropUnit: 'ft', endDrop: 0.5, endDropUnit: 'in' }],
+    polylines: [{ points: [{ x: 0, y: 50 }, { x: 50, y: 50 }, { x: 50, y: 100 }], color: '#e85447', id: 'p1', lineTypeId: 'lt-straight', endDrop: 10, endDropUnit: 'ft' }],
+  });
+
+  // Default env (no showDropSizes): glyphs only, no label text.
+  const off = makeCtx();
+  draw.drawAnnotationsCore(off, ann, makeEnv());
+  assert.ok(!callsOf(off, 'fillText').some(c => /ft|in/.test(String(c[1]))));
+
+  // showDropSizes: one label per drop, in each drop's own stored unit.
+  const on = makeCtx();
+  draw.drawAnnotationsCore(on, ann, makeEnv({ showDropSizes: true }));
+  const texts = callsOf(on, 'fillText').map(c => c[1]);
+  assert.ok(texts.includes('3 ft'), 'quick-line start drop labeled: ' + JSON.stringify(texts));
+  assert.ok(texts.includes('0.5 in'), 'quick-line end drop labeled in its own unit');
+  assert.ok(texts.includes('10 ft'), 'polyline end drop labeled');
+
+  // The quick line's start label sits OUTWARD of the start point (the run goes
+  // +x, so the label center must be at negative x, past the marker).
+  const startLabel = callsOf(on, 'fillText').find(c => c[1] === '3 ft');
+  assert.ok(startLabel[2] < 0, 'start label placed along the outward direction, got x=' + startLabel[2]);
+  const endLabel = callsOf(on, 'fillText').find(c => c[1] === '0.5 in');
+  assert.ok(endLabel[2] > 100, 'end label placed past the end point, got x=' + endLabel[2]);
+
+  // A formatter that declines (empty string) suppresses the chip entirely.
+  const deps = makeDeps(state);
+  deps.formatDropLabel = () => '';
+  const none = makeCtx();
+  createCanvasDraw(deps).drawAnnotationsCore(none, ann, makeEnv({ showDropSizes: true }));
+  assert.ok(!callsOf(none, 'fillText').some(c => /ft|in/.test(String(c[1]))));
 });
 
 test('drawRoomBoxesToContext: box renders rect + name; scale-less gets "no scale"; tiny box skips text', () => {

@@ -294,6 +294,7 @@
     state.loadedViaViewLink = true;
     state.viewToken = viewToken;
     state.hideMarks = localStorage.getItem('view:hideMarks:' + viewToken) === '1';
+    state.showDropSizes = localStorage.getItem('view:dropSizes:' + viewToken) === '1';
     applyViewerTempScales();   // restore this device's temp scales (owner scale wins)
     state.isViewer = true;
     state.canCheckOut = false;

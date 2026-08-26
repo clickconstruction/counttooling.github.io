@@ -320,7 +320,10 @@ ignored when it no longer fits the viewport), `dropPanelPos` (same, for the
 Drop tool palette), `recentDrops` (the last 5 drop sizes as
 `{ value, unit }`, per device — the shared vocabulary behind the Line
 Properties Recent chips and the Drop tool palette; pure core
-`nextRecentDrops` in recent-drops.js).
+`nextRecentDrops` in recent-drops.js), `clickcount-show-drop-sizes` (the
+"Drop sizes" canvas-label toggle for non-view sessions, per device — a visual
+preference like hide-marks, deliberately NOT in project save/load; view-link
+sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
 
 - `numberKeyBindings` (Quick Keys) is per-project in save/load/export/import, AND
   rides the cloud Artboard (`user_airboard.number_key_bindings`) so a standard
@@ -329,7 +332,8 @@ Properties Recent chips and the Drop tool palette; pure core
 - `customIconPaths` lives in **IndexedDB** (in-memory cache, per-user key; one-time
   migration from localStorage / legacy key).
 - Per view token (localStorage): `view:allowed:<token>` (accepted viewer email),
-  `view:hideMarks:<token>`, `view:scale:<token>` (the viewer's temporary local
+  `view:hideMarks:<token>`, `view:dropSizes:<token>` (the viewer's "Drop sizes"
+  toggle — features/drop-peek.js), `view:scale:<token>` (the viewer's temporary local
   page scales — the offline fallback when the shared `set-view-scale` write
   fails; a page-index → scale map, server scale wins on restore).
 - Per-project, in save/load: `maxZoom`, `groups`, `groupsEnabled` (the Groups

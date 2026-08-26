@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-08-23 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-08-26 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,062 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,073 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
-| [canvas-draw.js](canvas-draw.js) | 854 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,644 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,549 | All CSS, token-organized. Leave. |
+| [canvas-draw.js](canvas-draw.js) | 899 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
+| [app/index.html](app/index.html) | 2,648 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,556 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 696 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 845 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 611 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (61 files) | 13,958 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (62 files) | 14,246 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -206,6 +206,8 @@ modules. Candidates in priority order:
 | [recent-drops.js](recent-drops.js) | The recent line-DROP list core, sibling of [recent-colors.js](recent-colors.js): `RECENT_DROPS_MAX` (5), pure `nextRecentDrops(list, value, unit)` (newest-first, deduped on value+unit, non-positive ignored), and `formatDropLabel(value, unit)`. One device-local store (localStorage `recentDrops`) behind BOTH drop speed surfaces — the Line Properties Recent chips and the Drop tool palette — so they can never offer different size vocabularies. Guarded CommonJS footer; tested in [constants.test.js](constants.test.js). |
 | [features/drop-mode.js](features/drop-mode.js) | The **Drop tool** (`TOOL.DROP`, hotkey B): pick a size once, then one click per line end adds that vertical drop — the modal round trip per riser is gone. While armed, every line end renders as a labeled target ring (`drawDropNodesOverlay`, called from `renderAnnotations`); clicks route `handleCanvasClick` → `App.commitDropClick(pdf)` → the pure node model in [annotation-model.js](annotation-model.js) (`collectDropNodes` / `applyDropToNode`), which collapses coincident line ends into ONE node and writes a node's drop to exactly one end — the chain-joint double-count guard. Same size again clears (click-to-toggle); each click is one undo step; snapshot only when a dry-run probe says something will change. The `#dropPanel` palette reuses the Chain-panel idiom (draggable, `dropPanelPos`, closable without leaving the tool, Esc ladder) and lists `state.recentDrops` + a custom value/unit entry committing through `App.pushRecentDrop`. Regression: [drop-mode.spec.js](drop-mode.spec.js). |
 | [drop-mode.spec.js](drop-mode.spec.js) | Playwright regression for the Drop tool + the recent-drops surfaces: arm/palette/custom-size flow, one-drop-per-shared-joint, toggle-clear, per-click undo, the Esc ladder, the context-menu "Drop N ft here" repeat row (nearest-end targeting via `ctxTarget.pdf`), the Line Properties Recent chips reading the same store, decimal + ft-in entry storing exactly what the field shows, and the no-op-close-stays-clean contract (not dirty, no undo slot burned). |
+| [features/drop-peek.js](features/drop-peek.js) | **Drop-size disclosure** (wendi's view-mode request): with the Move tool, hovering/tapping a drop marker shows a DOM peek chip (`#dropPeekChip` — line-type name + the drop in its stored unit); a click PINS it, and any pointerdown / wheel / keydown dismisses it (covers pan, zoom, page nav, rotate, undo). Hit-tests through `App.collectDropNodes` (coincident ends = ONE node = one value), mirrors renderAnnotations' active-vs-merged source pick, and is gated to `TOOL.NONE` + `!hideMarks` — so it works for viewers (the handleCanvasClick viewer gate admits NONE). Also owns the **"Drop sizes" toggle** `#dropSizesBtn` (beside `#hideMarksBtn`; mirrored as a burger-drawer row on mobile): flips `state.showDropSizes`, which renderAnnotations passes as `env.showDropSizes` so canvas-draw paints a value chip beside every drop glyph — live overlay only, exports untouched. Button shows only when the project has drops (`App.projectHasAnyDrops`). Persisted per device: `view:dropSizes:<token>` (restored by features/view-only.js) or `clickcount-show-drop-sizes`. app.js hooks: `App.onDropPeekHover` (mousemove tail), `App.onDropPeekClick` (TOOL.NONE click branch), `App.updateDropSizesButton` (updateUI). Regression: [drop-peek.spec.js](drop-peek.spec.js). |
+| [drop-peek.spec.js](drop-peek.spec.js) | Playwright regression for drop-size disclosure: a REAL hover over a drop marker shows the chip (name + value in the drop's own unit, one value at a chain joint) and hover-away hides it; click pins; pointerdown / wheel / keydown each dismiss; the `#dropSizesBtn` toggle appears only once the project has drops, flips state + aria-pressed, persists per device, and survives a reload; no peek while a draw tool is armed or Hide marks is on. |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [scripts/build-filemap.js](scripts/build-filemap.js) | Node script (no deps) that restamps the "Large-file map" table above: each row's Lines cell, the `features/*.js (NN files) \| total` aggregate, and the caption date (only when a count moved, so `--check` is deterministic day to day). Generator owns the numbers; humans own which files are listed and the Status/verdict prose — a hand-added row gets its count kept fresh. `npm run build:filemap`; `--check` in `npm run check` |
 | [scripts/build-macros.js](scripts/build-macros.js) | Node script that renders the Macros (Keyboard Shortcuts) table rows in [app/index.html](app/index.html) between generated markers from the `HOTKEYS` table in [constants.js](constants.js) — the same single source the keydown handler executes, so handler/list/Keyboard-Map can't drift (the V-row bug class). Row icons declared `{btn: id}` are extracted LIVE from that element's SVG (missing element/SVG = hard error). Regenerating changes app/index.html, so run `npm run build:sw` after. `npm run build:macros`; `--check` in `npm run check` |
@@ -515,56 +517,56 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1213 - PDF render bitmap cache
 - L1267 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1278 - PDF Rendering
-- L2036 - UI Render Functions
-- L2616 - Inline rename & polyline edit mode
-- L2730 - Modal primitives (showModal / hideModal)
-- L2760 - Toasts & line color picker
-- L2814 - Airboard cloud sync
-- L2859 - Supabase RPC & presence heartbeat
-- L2899 - User activity / event telemetry
-- L2958 - Supabase auth & dev auth
-- L3090 - [sync] Checkout subscription & permission refresh
-- L3100 - Modals & Handlers
-- L3168 - PDF intake (upload, test PDF, hashing)
-- L3176 - Toolbar tool buttons
-- L3346 - Tool sidebar buttons & legend overlay
-- L3437 - Add Line Type modal
-- L3522 - Line color & sidebar handlers
-- L3731 - Polyline modal & drawing
-- L3762 - Zoom bar & page navigation
-- L3788 - Export canvas JSON
-- L3804 - PDF download helpers
-- L3813 - View-link URL helpers & show-highlights/notes
-- L3885 - Custom icon upload handler
-- L3895 - Export & report dropdown menus
-- L3982 - Sidebar drawer toggles
-- L3993 - Mobile actions burger menu pointer & header logo
-- L4005 - User Activity pointer (format.js + features/user-activity.js)
-- L4017 - My Settings pointer (features/my-settings.js)
-- L4040 - Auth & settings entry buttons
-  - L4085 - Project Settings checkout & Save Status bell
-  - L4177 - [sync] Checkout expired recovery
-  - L4233 - [sync] Turn In
-  - L4343 - Share modal pointer & copy-project openers
-  - L4374 - Settings menu actions
-  - L4395 - Auth sign-in form
-  - L4419 - Save Project modal
-  - L4432 - Checkout expired recovery modal wiring
-  - L4537 - Last-session restore prompt
-  - L4544 - Canvas Repair modal wiring
-- L4731 - Canvas Event Handlers
-- L5157 - Event Binding
-- L5167 - Aim loupe (mobile press-hold precise placement)
-- L5308 - Zoom transform preview & commit
-- L5387 - Canvas mouse, wheel & touch handlers
-- L6092 - Global dropdown dismissal & keyboard hotkeys
-- L6393 - [sync] Manual save to cloud
-- L6403 - [sync] Auto-save
-- L6410 - [sync] Local backup (IndexedDB takeoff state)
-- L6543 - [sync] Checkout keep-alive
-- L6557 - App feature registry
-- L6851 - View-only mode
-- L6857 - Init / boot
+- L2038 - UI Render Functions
+- L2619 - Inline rename & polyline edit mode
+- L2733 - Modal primitives (showModal / hideModal)
+- L2763 - Toasts & line color picker
+- L2817 - Airboard cloud sync
+- L2862 - Supabase RPC & presence heartbeat
+- L2902 - User activity / event telemetry
+- L2961 - Supabase auth & dev auth
+- L3093 - [sync] Checkout subscription & permission refresh
+- L3103 - Modals & Handlers
+- L3171 - PDF intake (upload, test PDF, hashing)
+- L3179 - Toolbar tool buttons
+- L3349 - Tool sidebar buttons & legend overlay
+- L3440 - Add Line Type modal
+- L3525 - Line color & sidebar handlers
+- L3734 - Polyline modal & drawing
+- L3765 - Zoom bar & page navigation
+- L3791 - Export canvas JSON
+- L3807 - PDF download helpers
+- L3816 - View-link URL helpers & show-highlights/notes
+- L3888 - Custom icon upload handler
+- L3898 - Export & report dropdown menus
+- L3985 - Sidebar drawer toggles
+- L3996 - Mobile actions burger menu pointer & header logo
+- L4008 - User Activity pointer (format.js + features/user-activity.js)
+- L4020 - My Settings pointer (features/my-settings.js)
+- L4043 - Auth & settings entry buttons
+  - L4088 - Project Settings checkout & Save Status bell
+  - L4180 - [sync] Checkout expired recovery
+  - L4236 - [sync] Turn In
+  - L4346 - Share modal pointer & copy-project openers
+  - L4377 - Settings menu actions
+  - L4398 - Auth sign-in form
+  - L4422 - Save Project modal
+  - L4435 - Checkout expired recovery modal wiring
+  - L4540 - Last-session restore prompt
+  - L4547 - Canvas Repair modal wiring
+- L4734 - Canvas Event Handlers
+- L5165 - Event Binding
+- L5175 - Aim loupe (mobile press-hold precise placement)
+- L5316 - Zoom transform preview & commit
+- L5395 - Canvas mouse, wheel & touch handlers
+- L6103 - Global dropdown dismissal & keyboard hotkeys
+- L6404 - [sync] Manual save to cloud
+- L6414 - [sync] Auto-save
+- L6421 - [sync] Local backup (IndexedDB takeoff state)
+- L6554 - [sync] Checkout keep-alive
+- L6568 - App feature registry
+- L6862 - View-only mode
+- L6868 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -935,6 +937,12 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   also offers **"Drop N ft here"** (the last-used size, applied to the nearest
   end) so the second-and-later drops never need the modal. See
   [features/drop-mode.js](features/drop-mode.js).
+- **Drop-size peek + "Drop sizes" toggle** — reading drops back without opening
+  Line Properties (and the only way to read them in view mode): hover/tap a
+  drop marker with the Move tool for a pinned peek chip, or flip `#dropSizesBtn`
+  to label every drop glyph on the canvas (live overlay only — exports/prints
+  unchanged; per-device persistence). See
+  [features/drop-peek.js](features/drop-peek.js).
 - **Line types curveStyle** — `'straight'` (default) or `'arc'`; arc quick lines
   render as quadratic Beziers and use arc length for totals; persisted in
   save/load and export/import.
@@ -1255,7 +1263,9 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   (`copyOrCreateViewLinkToClipboard`, which now flushes a pending save first) and the
   **Copy to PipeTooling** export footer;
   revoking a link clears the export's prefetch cache. View-link viewers also get the
-  **Hide marks** header toggle, remembered per token across reloads. `initViewOnlyMode`
+  **Hide marks** header toggle, remembered per token across reloads, and the
+  **drop-size peek + "Drop sizes" toggle** (features/drop-peek.js — `view:dropSizes:<token>`,
+  restored next to `view:hideMarks`). `initViewOnlyMode`
   **revalidates against the server when online** (reusing the cached PDF blob by hash,
   falling back to the cached snapshot offline) so a viewer isn't pinned to a stale copy
   after the owner re-saves — backed by the new `updatedAt` (Edge Function + view-cache

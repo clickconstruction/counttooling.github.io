@@ -19,6 +19,8 @@
 //   wrapNoteText(text, maxWidth, font, lineHeight)       -> { lines }
 //   getNoteRotationRad(note, page)                       -> radians
 //   iconRenderVb(iconPath) / iconRenderCenter(iconPath)  -> vb num / {x,y}
+//   formatDropLabel(value, unit)                         -> "3 ft" | "" (the
+//                     recent-drops.js formatter; drives the drop-size labels)
 //
 // drawAnnotationsCore(ctx, ann, env) walks the persisted mark kinds in the
 // frozen paint order (quickLines -> polylines -> highlights -> multiplyZones
@@ -43,6 +45,10 @@
 //   selection         { id, isPoly } | null — live-only glow (2x width +
 //                     shadowBlur) on the selected quick line / polyline
 //   drawNoteHandles   live-only note resize/rotate handle squares
+//   showDropSizes     live-only (the "Drop sizes" toggle): paint a small
+//                     white value chip ("3 ft") beside every drop glyph,
+//                     offset along the run's outward direction. The export
+//                     env never sets it — PDFs/prints are unchanged.
 // Zone chrome (stroke 2, dash [6,4], label pad 4, inset 6, the 30x20 min-size
 // threshold) is deliberately raw in BOTH paths (does not scale on export) —
 // a preserved historical quirk, not an omission.
@@ -229,6 +235,37 @@ function createCanvasDraw(deps) {
       ctx.textBaseline = 'alphabetic';
     };
 
+    // Drop-size label ("3 ft" white chip) beside a drop glyph — env.showDropSizes
+    // only (the live "Drop sizes" toggle; export envs never set it). Placement is
+    // deterministic: centered past the marker along the run's OUTWARD direction
+    // (through the end, away from the adjacent point), pushed out by the chip's
+    // own projected extent so it clears the glyph at any text length or angle.
+    // The node model (collectDropNodes) guarantees coincident line ends carry a
+    // drop on exactly ONE end, so a shared joint paints exactly one chip.
+    const drawDropSizeLabel = (endPdf, innerPdf, value, unit) => {
+      const label = deps.formatDropLabel ? deps.formatDropLabel(value, unit) : '';
+      if (!label) return;
+      const p = tc(endPdf), q2 = tc(innerPdf);
+      let dx = p.x - q2.x, dy = p.y - q2.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len > 0.001) { dx /= len; dy /= len; } else { dx = 0.707; dy = -0.707; }
+      const fontSize = 10 * env.fontScale;
+      ctx.font = fontSize + 'px ' + env.fontFamily;
+      const tw = ctx.measureText(label).width;
+      const pad = env.labelPad;
+      const ext = Math.abs(dx) * (tw / 2 + pad) + Math.abs(dy) * (fontSize / 2 + pad);
+      const d = env.dropSize * 1.3 + 3 * env.fontScale + ext;
+      const cx = p.x + dx * d, cy = p.y + dy * d;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillRect(cx - tw / 2 - pad, cy - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, cx, cy);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    };
+
     const drawGroupDot = (midPdf, groupId) => {
       const mid = tc(midPdf);
       const groupColor = deps.getGroupColor(groupId);
@@ -264,6 +301,10 @@ function createCanvasDraw(deps) {
       const drawDrop = (p) => drawDropMarker(ctx, p, env.dropSize, q.color || '#4a9eff', env.dropStyle);
       if ((q.startDrop || 0) > 0) drawDrop(a);
       if ((q.endDrop || 0) > 0) drawDrop(b);
+      if (env.showDropSizes) {
+        if ((q.startDrop || 0) > 0) drawDropSizeLabel(aPdf, bPdf, q.startDrop, q.startDropUnit);
+        if ((q.endDrop || 0) > 0) drawDropSizeLabel(bPdf, aPdf, q.endDrop, q.endDropUnit);
+      }
       if (q.showLength) {
         const tickLen = lts.parallelEndsSize ?? 10;
         const drawPerpTick = (endPdf, tangentPdf) => {
@@ -315,6 +356,10 @@ function createCanvasDraw(deps) {
       const drawDrop = (p) => drawDropMarker(ctx, p, env.dropSize, poly.color || '#4a9eff', env.dropStyle);
       if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[0]));
       if ((poly.endDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[pts.length - 1]));
+      if (env.showDropSizes && pts.length > 1) {
+        if ((poly.startDrop || 0) > 0) drawDropSizeLabel(pts[0], pts[1], poly.startDrop, poly.startDropUnit);
+        if ((poly.endDrop || 0) > 0) drawDropSizeLabel(pts[pts.length - 1], pts[pts.length - 2], poly.endDrop, poly.endDropUnit);
+      }
       if (poly.showLength && pts.length >= 2) {
         const tickLen = lts.parallelEndsSize ?? 10;
         const drawPerpTick = (endPdf, tangentPdf) => {

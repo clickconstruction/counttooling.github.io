@@ -1605,6 +1605,7 @@
     getPageScale: (pi) => getPageScale(pi),
     getLineLengthFeetForTotals: (line, pageIdx, isPoly, ann) => getLineLengthFeetForTotals(line, pageIdx, isPoly, ann),
     getLineLengthSplitForTotals: (line, pageIdx, isPoly, ann) => getLineLengthSplitForTotals(line, pageIdx, isPoly, ann),
+    formatDropLabel: (value, unit) => formatDropLabel(value, unit),
   });
 
   function renderAnnotations() {
@@ -1817,6 +1818,7 @@
       fontFamily: 'DM Sans',
       selection: sel ? { id: state.selectedLineId, isPoly: state.selectedLineIsPoly } : null,
       drawNoteHandles: true,
+      showDropSizes: !!state.showDropSizes,   // the "Drop sizes" toggle (features/drop-peek.js); live overlay only
     });
     if (state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
@@ -2278,6 +2280,7 @@
         : 'Show the Groups section and Assign-to-Group menus in this project';
     }
     updateHideMarksButton();
+    App.updateDropSizesButton && App.updateDropSizesButton();   // features/drop-peek.js
     const activeLineEl = document.getElementById('headerActiveLineType');
     const activeCounterEl = document.getElementById('headerActiveCounter');
     if (activeLineEl) {
@@ -5096,6 +5099,11 @@
       App.openNoteModal('add', '', { x: pdf.x, y: pdf.y });
     } else if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
       if (state.draggingVertexIdx !== null) state.draggingVertexIdx = null;
+    } else if (state.tool === TOOL.NONE) {
+      // Drop-size peek: a stationary click/tap on a drop marker pins the value
+      // chip (viewers included — the tool gate above admits NONE). Logic in
+      // features/drop-peek.js; `e` may be null on the aim-loupe commit path.
+      App.onDropPeekClick && App.onDropPeekClick(pdf, e);
     }
     // The one shared post-click refresh. Debounced: rapid mark placement must
     // never rebuild the sidebar per click (the canvas repaint above is
@@ -5565,6 +5573,9 @@
         annCanvas.style.cursor = (t && t.type === 'legendResize') ? 'se-resize' : (t && (t.type === 'legendDrag' || t.type === 'legend')) ? 'move' : (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : (!overUi && isAimingTool()) ? 'crosshair' : '';
       }
     }
+    // Drop-size peek hover (features/drop-peek.js) — after the cursor block so
+    // the feature can promote the cursor to a pointer over a drop marker.
+    App.onDropPeekHover && App.onDropPeekHover(pdf);
     updateStatus();
   }
   (cWrapper || pdfCanvas).addEventListener('mousemove', handleCanvasMouseMove);

@@ -63,6 +63,16 @@
       () => document.getElementById('hideMarksBtn')?.click(),
       document.getElementById(state.hideMarks ? 'hideMarksIconHide' : 'hideMarksIconShow')
     );
+    // 1a. Drop sizes (mirrors #dropSizesBtn — .consolidated-mobile hides the
+    //     header button here, so the drawer is the mobile surface). Same gating
+    //     as updateDropSizesButton: only when the project has drops to label.
+    if (App.projectHasAnyDrops && (state.showDropSizes || App.projectHasAnyDrops())) {
+      addItem(
+        state.showDropSizes ? 'Hide drop sizes' : 'Drop sizes',
+        () => document.getElementById('dropSizesBtn')?.click(),
+        document.getElementById('dropSizesBtn')
+      );
+    }
     // 1b. Save status (the bell) — mobile CSS hides #saveStatusBtnHeader
     //     outright, so the drawer is the only mobile surface for it. Same
     //     gating as the header bell (supabase enabled + a cloud project); the

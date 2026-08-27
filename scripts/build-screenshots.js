@@ -536,12 +536,34 @@ const SHOTS = [
         const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
         const pw = vp.width, ph = vp.height;
         const ann = s.pages[0].canvases[0].annotations;
-        ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid() });
+        ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid(), label: 'Fixture schedule' });
         ann.notes.push({ x: 0.135 * pw, y: 0.56 * ph, text: 'Confirm fixture spec — see addendum 2', id: App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' });
         App.renderAnnotations();
       });
       await page.waitForTimeout(250);
     },
+  },
+
+  // Named highlights + the bookmarks panel (annotating guide).
+  {
+    name: 'highlight-bookmarks',
+    clip: '.app',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state, App = window.App;
+        const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
+        const pw = vp.width, ph = vp.height;
+        const ann = s.pages[0].canvases[0].annotations;
+        ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid(), label: 'Fixture schedule' });
+        ann.highlights.push({ x1: 0.09 * pw, y1: 0.13 * ph, x2: 0.4 * pw, y2: 0.3 * ph, id: App.uid(), label: 'Pipe material' });
+        App.renderAnnotations();
+        // Arm the Highlight tool — its bookmarks panel opens with the rows.
+        document.getElementById('highlightBtn').click();
+      });
+      await page.waitForTimeout(300);
+    },
+    boxes: [{ sel: '#highlightPanel', label: 'Click a row to jump to its page' }],
   },
 
   // Right-click context menu on a placed mark (fixing-mistakes guide).

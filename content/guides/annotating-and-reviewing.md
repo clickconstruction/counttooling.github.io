@@ -1,7 +1,7 @@
 ---
 title: Highlights, notes, and reading the bare drawing
-description: Flag regions with highlights, pin questions as notes, style the on-canvas legend, and peel the whole takeoff off the drawing with one tap.
-updated: 2026-08-10
+description: Flag regions with named highlights that double as jump-to bookmarks, pin questions as notes, style the legend, and peel the takeoff off with one tap.
+updated: 2026-08-27
 order: 5.8
 icon: note
 category: Working with plans
@@ -9,11 +9,19 @@ category: Working with plans
 
 Not everything on a takeoff is a count. Questions, flags, and review marks belong on the sheet too — where they're impossible to lose.
 
-![A highlight flagging a region and a note pinned where the question applies — both right on the sheet, neither touching the counts.](/guides/img/annotate.png)
+![A named highlight flagging a region and a note pinned where the question applies — both right on the sheet, neither touching the counts.](/guides/img/annotate.png)
 
 ## Highlights
 
 The **Highlight** [[highlight]] tool (`H`) draws a translucent rectangle over a region — "look at this," without touching any numbers. Two clicks: corner, corner. Use them to flag conflicts, unclear areas, or scope boundaries; they can be [bundled into the exported PDF](/guides/reports-and-exports/) so reviewers see them too.
+
+### Name a highlight — and jump back to it
+
+A highlight can carry a name: **right-click it → "Name highlight…"**. The name paints as a small tag on the sheet, and it turns the highlight into a bookmark. With the Highlight tool active, the **Highlights panel** lists every highlight in the project with its page — click a row to jump straight to that page, or the ✎ to name or rename one. (Right-clicking the Highlight button opens the same panel.)
+
+![Named highlights on the sheet and the Highlights panel listing them as jump-to rows.](/guides/img/highlight-bookmarks.png)
+
+That's the hand-off move when someone else checks your bid: highlight the pipe-material spec, name it "Pipe material," do the same for the fixture schedule and any note that matters — the reviewer opens the panel and lands on each reference point in one click instead of paging through the set. Names ride the project through save, share, and export/import, and the tags print on [exported PDFs](/guides/reports-and-exports/).
 
 ## Notes
 

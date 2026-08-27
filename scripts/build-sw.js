@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 /**
- * Stamps the service-worker cache key (`CACHE_VERSION` in sw.js) with a content
- * hash of every asset listed in the worker's own PRECACHE_URLS. The hash changes
- * if and only if a precached asset's bytes change, so each deploy that alters the
- * shell automatically gets a fresh cache name — the browser then installs the new
- * worker, re-precaches the current asset set, and purges the stale cache.
+ * Stamps the service worker's two generated blocks:
+ *
+ *  - `CACHE_VERSION` — a joint content hash of every asset listed in the
+ *    worker's own PRECACHE_URLS. The hash changes if and only if a precached
+ *    asset's bytes change, so each deploy that alters the shell automatically
+ *    gets a fresh cache name — the browser then installs the new worker,
+ *    re-precaches the current asset set, and purges the stale cache.
+ *  - `PRECACHE_SHA256` — a per-file sha256 map the install uses to VERIFY each
+ *    fetched asset before caching it (GitHub Pages deploys propagate
+ *    non-atomically, so a mid-deploy install could otherwise permanently
+ *    precache a mixed shell; a mismatch now aborts the install and the browser
+ *    retries once the CDN settles).
  *
  * This replaces the old manual "remember to bump CACHE_VERSION" step (which was
  * forgotten across 10 deploys, leaving returning browsers on stale code). A raw
@@ -12,8 +19,8 @@
  * not then verify freshness; a content hash is deterministic and enforceable.
  *
  * Usage:
- *   node scripts/build-sw.js          rewrite CACHE_VERSION in place
- *   node scripts/build-sw.js --check  exit non-zero if it is stale (CI)
+ *   node scripts/build-sw.js          rewrite both blocks in place
+ *   node scripts/build-sw.js --check  exit non-zero if either is stale (CI)
  */
 
 const fs = require('fs');
@@ -23,6 +30,7 @@ const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const SW = path.join(ROOT, 'sw.js');
 const VERSION_RE = /const CACHE_VERSION = '([^']*)';/;
+const HASHES_RE = /const PRECACHE_SHA256 = \{[\s\S]*?\};/;
 
 // Map a precache URL to the repo file that serves it. Directory URLs ('/app/')
 // resolve to their index.html; everything else is a path relative to the repo root.
@@ -93,6 +101,17 @@ function computeHash(urls) {
   return hash.digest('hex').slice(0, 12);
 }
 
+// The per-file integrity map, rendered exactly as it appears in sw.js (one
+// full-sha256 entry per URL, declaration order). Runs after computeHash, so
+// every file is known to exist.
+function renderFileHashes(urls) {
+  const entries = urls.map((url) => {
+    const hex = crypto.createHash('sha256').update(fs.readFileSync(urlToFile(url))).digest('hex');
+    return `  '${url}': '${hex}',`;
+  });
+  return `const PRECACHE_SHA256 = {\n${entries.join('\n')}\n};`;
+}
+
 function main() {
   const check = process.argv.slice(2).includes('--check');
 
@@ -103,26 +122,46 @@ function main() {
     process.exit(1);
   }
 
+  const hm = swText.match(HASHES_RE);
+  if (!hm) {
+    console.error("Could not find `const PRECACHE_SHA256 = {...};` in sw.js.");
+    process.exit(1);
+  }
+
   const current = m[1];
   const urls = parsePrecacheUrls(swText);
   checkPrecacheCoversShell(urls);
   const expected = computeHash(urls);
+  const currentHashes = hm[0];
+  const expectedHashes = renderFileHashes(urls);
 
-  if (current === expected) {
+  const versionFresh = current === expected;
+  const hashesFresh = currentHashes === expectedHashes;
+  if (versionFresh && hashesFresh) {
     console.log(`Service worker cache version up to date (${expected}).`);
     return;
   }
 
   if (check) {
+    const what = [
+      versionFresh ? null : `cache version (sw.js has '${current}', expected '${expected}')`,
+      hashesFresh ? null : 'PRECACHE_SHA256 integrity map',
+    ].filter(Boolean).join(' and ');
     console.error(
-      `Service worker cache version is stale (sw.js has '${current}', expected '${expected}').\n` +
+      `Service worker generated block(s) stale: ${what}.\n` +
       'Run `npm run build:sw` and commit the result so returning browsers fetch the new assets.',
     );
     process.exit(1);
   }
 
-  fs.writeFileSync(SW, swText.replace(VERSION_RE, `const CACHE_VERSION = '${expected}';`), 'utf8');
-  console.log(`Stamped sw.js cache version: '${current}' -> '${expected}'.`);
+  fs.writeFileSync(
+    SW,
+    swText
+      .replace(VERSION_RE, `const CACHE_VERSION = '${expected}';`)
+      .replace(HASHES_RE, expectedHashes),
+    'utf8',
+  );
+  console.log(`Stamped sw.js cache version: '${current}' -> '${expected}' (+ ${urls.length}-entry integrity map).`);
 }
 
 main();

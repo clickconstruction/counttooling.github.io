@@ -1317,11 +1317,22 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   carries a `hidden` attribute as a belt-and-braces guard so a stale stylesheet (no
   `.zoom-rail` rules) can't render its markup as bottom-left artifacts during that one
   mixed load.
-- **CACHE_VERSION is generated (`npm run build:sw`)** — `CACHE_VERSION` in [sw.js](sw.js)
-  is a content hash of every asset in `PRECACHE_URLS`, stamped by
-  [scripts/build-sw.js](scripts/build-sw.js); never edit it by hand. Run `npm run build:sw`
+- **CACHE_VERSION + PRECACHE_SHA256 are generated (`npm run build:sw`)** — both blocks in
+  [sw.js](sw.js) are stamped by [scripts/build-sw.js](scripts/build-sw.js); never edit them
+  by hand. `CACHE_VERSION` is a joint content hash of every asset in `PRECACHE_URLS`;
+  `PRECACHE_SHA256` maps each URL to its own full sha256 for the **verified install**:
+  `install` fetches every asset with `cache: 'reload'` (origin-fresh, past the HTTP cache),
+  hashes it via `crypto.subtle`, and rejects the whole install on any mismatch or non-OK
+  fetch. Why: GitHub Pages deploys propagate non-atomically (per-file CDN caches, ~10 min),
+  so a visit mid-deploy could fetch a mixed shell — and since `cacheFirst` never
+  revalidates, an unverified install would capture that mix into the version-stamped cache
+  PERMANENTLY (field report 2026-08: "trouble loading things after a hard reload"). A
+  failed install leaves the old SW in control and the browser retries on a later visit
+  once the CDN settles; entries verified before the failure are byte-correct for the new
+  version and harmlessly re-put on the retry. Browsers without `crypto.subtle` fall back
+  to unverified caching. Run `npm run build:sw`
   after changing any precached asset (`npm run check` includes `build:sw -- --check`, so a
-  stale hash fails CI — this replaced the old manual bump, which kept being forgotten).
+  stale stamp fails CI — this replaced the old manual bump, which kept being forgotten).
   `PRECACHE_URLS` itself is still hand-maintained: when adding/renaming a shell file, update
   the app/index.html tag **and** `PRECACHE_URLS`, then rerun `build:sw`.
   `doGlobalReloadNow` also best-effort clears Cache Storage as

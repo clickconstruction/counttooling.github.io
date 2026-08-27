@@ -78,6 +78,23 @@ test.describe('PWA', () => {
     expect(scope.replace(/\/$/, '')).toMatch(/\/app$/);
   });
 
+  test('precache integrity map (PRECACHE_SHA256) covers every precache URL', async ({ page }) => {
+    // The install above succeeding IS the happy-path verification test (every
+    // asset was fetched, sha256-hashed, and matched before caching); this pins
+    // the generated map's shape so a build-sw regression can't quietly stamp a
+    // partial map and reduce the verify to a no-op.
+    await page.goto('/app/');
+    const sw = await page.evaluate(() => fetch('/sw.js').then((r) => r.text()));
+    const urlsBlock = sw.slice(sw.indexOf('const PRECACHE_URLS = ['), sw.indexOf('];'));
+    const urls = [...urlsBlock.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    const mapStart = sw.indexOf('const PRECACHE_SHA256 = {');
+    const mapBlock = sw.slice(mapStart, sw.indexOf('};', mapStart));
+    const entries = new Map([...mapBlock.matchAll(/'([^']+)': '([0-9a-f]{64})'/g)].map((m) => [m[1], m[2]]));
+    expect(urls.length).toBeGreaterThan(50);
+    for (const url of urls) expect(entries.has(url), `missing sha256 for ${url}`).toBe(true);
+    expect(entries.size).toBe(urls.length);
+  });
+
   test('app boots and renders a PDF offline from the SW cache', async ({ page, context }) => {
     const pageErrors = [];
     const consoleErrors = [];

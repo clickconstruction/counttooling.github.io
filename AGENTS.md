@@ -42,9 +42,12 @@
   `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is
   same-origin except Supabase. [sw.js](sw.js) precaches the whole shell for offline use;
   [manifest.webmanifest](manifest.webmanifest) + head meta make it installable.
-  **`CACHE_VERSION` in [sw.js](sw.js) is GENERATED — never edit it by hand.** It is a
-  content hash of every precached asset, stamped by `npm run build:sw`
-  ([scripts/build-sw.js](scripts/build-sw.js)); run it after changing any precached file
+  **`CACHE_VERSION` and `PRECACHE_SHA256` in [sw.js](sw.js) are GENERATED — never edit
+  them by hand.** Both are stamped by `npm run build:sw`
+  ([scripts/build-sw.js](scripts/build-sw.js)): the joint content hash that names the
+  cache, and the per-file sha256 map the install uses to verify every fetched asset
+  before caching it (a mid-deploy CDN serving a mixed shell aborts the install instead
+  of poisoning the cache). Run it after changing any precached file
   (`npm run check` includes `build:sw -- --check` and fails when stale; the admin
   global-force-reload is the backstop). When you add/rename a shell file (a
   `features/*.js`, a `vendor/*` lib, a font), update the app/index.html tag **and**

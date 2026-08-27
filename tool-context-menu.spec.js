@@ -55,6 +55,7 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
       counterBtn: counter, counterBtnSidebar: counter, headerActiveCounter: counter,
       quickLine: lineType, quickLineSidebar: lineType,
       polylineBtn: lineType, polylineBtnSidebar: lineType, headerActiveLineType: lineType,
+      highlightBtn: ['Highlights panel…'], highlightBtnSidebar: ['Highlights panel…'],
       multiplyZoneBtn: ['Multiply Zone Settings…'], multiplyZoneBtnSidebar: ['Multiply Zone Settings…'],
       scaleZoneBtn: ['Scale Zone Settings…'], scaleZoneBtnSidebar: ['Scale Zone Settings…'],
       legendBtn: ['Legend Settings…'], legendBtnSidebar: ['Legend Settings…'],
@@ -63,7 +64,7 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
     expect(map.noSettings).not.toContain('moveBtn');
     expect(map.noSettings).not.toContain('measureBtn');
     expect(map.noSettings).not.toContain('scaleZoneBtn');
-    expect(map.noSettings).toContain('highlightBtn');
+    expect(map.noSettings).not.toContain('highlightBtn');
     expect(map.noSettings).toContain('hideMarksBtn');
     expect(errors).toEqual([]);
   });
@@ -165,10 +166,21 @@ test.describe('Tool context menu (features/tool-context-menu.js)', () => {
   test('tools with no settings toast instead of opening a menu', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
-    await rightClickTool(page, 'highlightBtn', 'Highlight');
+    await rightClickTool(page, 'noteBtn', 'Note');
     await expect(page.locator('#toolContextMenu')).toBeHidden();
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     expect(await page.locator('#airboardToastText').textContent()).toContain('No settings');
+    expect(errors).toEqual([]);
+  });
+
+  test('highlight: right-click offers the bookmarks panel and arms the tool', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    await rightClickTool(page, 'highlightBtn', 'Highlight');
+    await expect(page.locator('#toolContextMenu')).toBeVisible();
+    await page.locator('#toolContextMenu button', { hasText: 'Highlights panel…' }).click();
+    await expect(page.locator('#highlightPanel')).toBeVisible();
+    expect(await page.evaluate(() => window.App.state.tool === window.App.TOOL.HIGHLIGHT)).toBe(true);
     expect(errors).toEqual([]);
   });
 

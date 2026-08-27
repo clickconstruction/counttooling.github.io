@@ -2148,6 +2148,7 @@
     if (dropBtnEl) dropBtnEl.classList.toggle('active', state.tool === TOOL.DROP);
     // Same pattern for the Drop tool's size palette (features/drop-mode.js).
     App.onDropToolSync && App.onDropToolSync();
+    App.onHighlightToolSync && App.onHighlightToolSync();
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
     const counterBtn = document.getElementById('counterBtn');
@@ -3286,6 +3287,8 @@
     state.deleteZoneStart = null;
     state.roomBoxStart = null;
     state.tool = TOOL.HIGHLIGHT;
+    // Re-click while active reopens a closed bookmarks panel (the Chain pattern).
+    App.openHighlightPanel && App.openHighlightPanel();
     updateUI();
   };
   document.getElementById('multiplyZoneBtn').onclick = () => {
@@ -4767,6 +4770,17 @@
     ctxEditSzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'scaleZone' ? 'block' : 'none';
     const ctxEditRoomBoxBtn = document.getElementById('ctxEditRoomBox');
     if (ctxEditRoomBoxBtn) ctxEditRoomBoxBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'roomBox' ? 'block' : 'none';
+    const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
+    if (ctxNameHighlightBtn) {
+      const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';
+      ctxNameHighlightBtn.style.display = isHl ? 'block' : 'none';
+      if (isHl) {
+        const page = state.pages[state.currentPage];
+        const ann = page ? getActiveAnnotations(page) : null;
+        const h = ann?.highlights?.[state.ctxTarget.index];
+        ctxNameHighlightBtn.textContent = h?.label ? 'Rename highlight…' : 'Name highlight…';
+      }
+    }
     const nameRow = document.getElementById('ctxTargetNameRow');
     if (nameRow) {
       const t = state.ctxTarget;
@@ -4784,6 +4798,10 @@
             targetLabel = lt ? (lt.name || 'Line') : '\u2014';
           }
         }
+      } else if (t && t.type === 'highlight') {
+        const page = state.pages[state.currentPage];
+        const ann = page ? getActiveAnnotations(page) : null;
+        targetLabel = ann?.highlights?.[t.index]?.label || null;
       }
       if (targetLabel != null) {
         nameRow.textContent = targetLabel;
@@ -6332,7 +6350,10 @@
         updateUI();
         renderAnnotations();
       } else if (state.tool === TOOL.HIGHLIGHT) {
+        // Esc ladder: cancel the in-progress rect -> close the bookmarks
+        // panel (tool stays active) -> exit to Move.
         if (state.highlightStart) { state.highlightStart = null; renderAnnotations(); updateUI(); }
+        else if (App.isHighlightPanelOpen && App.isHighlightPanelOpen()) { App.closeHighlightPanel(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.MULTIPLY_ZONE) {
         if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderAnnotations(); updateUI(); }

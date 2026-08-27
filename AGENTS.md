@@ -317,7 +317,9 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `chainPanelPos` (the dragged Chain palette position, per device;
 ignored when it no longer fits the viewport), `dropPanelPos` (same, for the
-Drop tool palette), `recentDrops` (the last 5 drop sizes as
+Drop tool palette), `highlightPanelPos` (same, for the Highlights bookmarks
+panel — features/highlight-labels.js; the highlight *labels* themselves ride
+the annotations, not localStorage), `recentDrops` (the last 5 drop sizes as
 `{ value, unit }`, per device — the shared vocabulary behind the Line
 Properties Recent chips and the Drop tool palette; pure core
 `nextRecentDrops` in recent-drops.js), `clickcount-show-drop-sizes` (the

@@ -1470,6 +1470,19 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="highlightNameModal">
+    <div class="modal-card">
+      <h2 id="highlightNameModalTitle">Name Highlight</h2>
+      <div class="form-group">
+        <label>Label — shown on the plan and listed in the Highlights panel</label>
+        <input type="text" id="highlightNameInput" placeholder="e.g. Pipe material" autocomplete="off" maxlength="80" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="actions">
+        <button id="highlightNameCancel">Cancel</button>
+        <button id="highlightNameSave">Save</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="multiplyZoneModal">
     <div class="modal-card">
       <h2>Multiply Zone</h2>
@@ -2545,6 +2558,21 @@
     </div>
     <div class="chain-panel-foot" id="dropPanelFoot"></div>
   </div>
+  <!-- Highlight bookmarks panel: shown while TOOL.HIGHLIGHT is active. Rows
+       are BUILT by features/highlight-labels.js from every page's highlights
+       (merged across canvas layers); a row click jumps to its page, ✎ names /
+       renames it (the label rides the highlight annotation through save/load
+       and export/import). -->
+  <div class="chain-panel drop-panel highlight-panel" id="highlightPanel" style="display:none;">
+    <div class="chain-panel-head" id="highlightPanelHead">
+      <span class="chain-panel-grip" aria-hidden="true">⠿</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M315 315l158.4-215L444.1 70.6 229 229 315 315zm-187 5s0 0 0 0l0-71.7c0-15.3 7.2-29.6 19.5-38.6L420.6 8.4C428 2.9 437 0 446.2 0c11.4 0 22.4 4.5 30.5 12.6l54.8 54.8c8.1 8.1 12.6 19 12.6 30.5c0 9.2-2.9 18.2-8.4 25.6L334.4 396.5c-9 12.3-23.4 19.5-38.6 19.5L224 416l-25.4 25.4c-12.5 12.5-32.8 12.5-45.3 0l-50.7-50.7c-12.5-12.5-12.5-32.8 0-45.3L128 320zM7 466.3l63-63 70.6 70.6-31 31c-4.5 4.5-10.6 7-17 7L24 512c-13.3 0-24-10.7-24-24l0-4.7c0-6.4 2.5-12.5 7-17z"/></svg>
+      <span>Highlights</span>
+      <button type="button" id="highlightPanelClose" class="chain-panel-close" title="Close (Highlight stays active)" aria-label="Close panel">×</button>
+    </div>
+    <div class="highlight-list" id="highlightList"></div>
+    <div class="chain-panel-foot" id="highlightPanelFoot"></div>
+  </div>
   <div class="context-menu" id="contextMenu">
     <button id="ctxEdit" style="display:none;">Edit</button>
     <button id="ctxRepeatDrop" class="ctx-repeat-drop" style="display:none;">Drop here</button>
@@ -2554,6 +2582,7 @@
     <button id="ctxEditMultiplyZone" style="display:none;">Edit multiplier</button>
     <button id="ctxEditScaleZone" style="display:none;">Edit scale</button>
     <button id="ctxEditRoomBox" style="display:none;">Edit room box</button>
+    <button id="ctxNameHighlight" style="display:none;">Name highlight…</button>
     <button class="danger" id="ctxDelete">Delete</button>
     <div id="ctxTargetNameRow" class="context-menu-target-name" aria-hidden="true"></div>
   </div>
@@ -2618,6 +2647,7 @@
   <script src="/features/chain.js"></script>
   <script src="/features/drop-mode.js"></script>
   <script src="/features/drop-peek.js"></script>
+  <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>
   <script src="/features/child-counts.js"></script>
   <script src="/report.js"></script>

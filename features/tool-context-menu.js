@@ -56,6 +56,12 @@
   const SCALE_EDIT_ACTIONS = [
     { label: 'Set / edit scale…', run: () => { if (App.state.pages.length) App.openScaleModal(); else App.showToast('Open a plan first.', 2000); } },
   ];
+  // Highlight's "settings" is its bookmarks panel: arm the tool (the button
+  // click also reopens the panel) so the named-highlight list is one gesture
+  // away from either button.
+  const HIGHLIGHT_ACTIONS = [
+    { label: 'Highlights panel…', run: () => { const el = document.getElementById('highlightBtn'); if (el) el.click(); } },
+  ];
 
   const TOOL_CONTEXT = {
     moveBtn: SCALE_EDIT_ACTIONS,
@@ -70,6 +76,8 @@
     polylineBtn: LINE_TYPE_ACTIONS,
     polylineBtnSidebar: LINE_TYPE_ACTIONS,
     headerActiveLineType: LINE_TYPE_ACTIONS,
+    highlightBtn: HIGHLIGHT_ACTIONS,
+    highlightBtnSidebar: HIGHLIGHT_ACTIONS,
     multiplyZoneBtn: MULTIPLY_ZONE_ACTIONS,
     multiplyZoneBtnSidebar: MULTIPLY_ZONE_ACTIONS,
     scaleZoneBtn: SCALE_ZONE_ACTIONS,
@@ -84,7 +92,6 @@
   // the right-click convention never looks broken.
   const NO_SETTINGS_TOOLS = [
     'setScale', 'setScaleSidebar',
-    'highlightBtn', 'highlightBtnSidebar',
     'deleteZoneBtn', 'deleteZoneBtnSidebar',
     'noteBtn', 'noteBtnSidebar',
     'roomBtn', 'roomBtnSidebar',

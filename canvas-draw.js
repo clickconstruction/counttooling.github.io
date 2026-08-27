@@ -415,6 +415,26 @@ function createCanvasDraw(deps) {
       ctx.fillStyle = h.color || '#e8c547'; ctx.globalAlpha = h.opacity != null ? h.opacity : 0.25;
       ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.globalAlpha = 1;
+      if (h.label) {
+        // Named-highlight tag: solid swatch of the highlight color with dark
+        // text, hung ABOVE the top-left corner so it never covers the
+        // highlighted content; when the rect touches the page top there is no
+        // room above, so it drops just inside the corner instead.
+        const fontSize = 12 * env.fontScale;
+        ctx.font = '600 ' + fontSize + 'px ' + env.fontFamily;
+        const tw = ctx.measureText(h.label).width;
+        const pad = 4;
+        const tagH = fontSize + pad * 2;
+        const pageTopY = tc({ x: minX, y: 0 }).y;
+        const rectX = tl.x;
+        const rectY = (tl.y - tagH - 2 < pageTopY) ? tl.y + 2 : tl.y - tagH - 2;
+        ctx.fillStyle = h.color || '#e8c547';
+        ctx.fillRect(rectX, rectY, tw + pad * 2, tagH);
+        ctx.fillStyle = '#1a1a1a';
+        ctx.textBaseline = 'top';
+        ctx.fillText(h.label, rectX + pad, rectY + pad);
+        ctx.textBaseline = 'alphabetic';
+      }
     });
     // Shared zone-label placement (multiply + scale zones): center or a corner
     // inset inside the zone rect. Returns the text anchor and the backing

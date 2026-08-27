@@ -6,15 +6,20 @@
  * Two tiers, both viewer-safe (TOOL.NONE is admitted through the viewer tool
  * gate in handleCanvasClick):
  *
- * - PEEK (always on): with the Move tool active, hovering a drop marker —
- *   or tapping it on touch, where the synthesized click flows through the
- *   same handleCanvasClick path — shows a floating DOM chip naming the line
- *   type and the drop size in its stored unit ("3 ft", "6 in"). A click PINS
- *   the chip (tap-friendly); any pointerdown, wheel, or keydown dismisses it,
- *   which also covers pan starts, zooms, page nav, and every keyboard action
- *   that could move the sheet under a stale chip. Hit-testing rides the
- *   node model (collectDropNodes) — coincident line ends are ONE node
- *   carrying ONE drop, so a chain joint peeks a single unambiguous value.
+ * - PEEK (always on): with the Move tool active, hovering a drop marker or a
+ *   COUNTER MARKER — or tapping one on touch, where the synthesized click
+ *   flows through the same handleCanvasClick path — shows a floating DOM
+ *   chip. For a drop it names the line type and the drop size in its stored
+ *   unit ("3 ft", "6 in"); for a counter marker it names the counter and the
+ *   marker's number in that type's page tally ("Water Closet — #4 · 7 on
+ *   this page" — wendi's follow-up: identify the counter under the pointer
+ *   in view mode). A click PINS the chip (tap-friendly); any pointerdown,
+ *   wheel, or keydown dismisses it, which also covers pan starts, zooms,
+ *   page nav, and every keyboard action that could move the sheet under a
+ *   stale chip. Drop hit-testing rides the node model (collectDropNodes) —
+ *   coincident line ends are ONE node carrying ONE drop, so a chain joint
+ *   peeks a single unambiguous value; when a drop node and a counter marker
+ *   are both in reach, the nearest wins.
  *
  * - TOGGLE (#dropSizesBtn, beside #hideMarksBtn): paints a small value chip
  *   beside every drop glyph via env.showDropSizes in canvas-draw.js's
@@ -82,7 +87,36 @@
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d <= r && d < bestD) { best = n; bestD = d; }
     });
-    return best;
+    return best ? { node: best, d: bestD } : null;
+  }
+
+  // Counter markers under the pointer — same generosity as drop nodes.
+  function findCounterMarkerAt(pdf) {
+    const state = App.state;
+    const ann = visibleAnnotations();
+    if (!ann || !pdf || !ann.counterMarkers) return null;
+    const r = HIT_PX / (state.zoom || 1);
+    let best = null, bestD = Infinity;
+    Object.entries(ann.counterMarkers).forEach(([typeId, arr]) => {
+      (arr || []).forEach((m, i) => {
+        const dx = m.x - pdf.x, dy = m.y - pdf.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d <= r && d < bestD) { best = { typeId, marker: m, index: i, count: arr.length }; bestD = d; }
+      });
+    });
+    return best ? { ...best, d: bestD } : null;
+  }
+
+  // The peek target under the pointer: the nearest of a drop node and a
+  // counter marker, so the read gesture never guesses wrong where both crowd.
+  // Returns { kind: 'drop', node } or { kind: 'marker', typeId, marker, index, count }.
+  function findPeekTargetAt(pdf) {
+    const n = findDropNodeAt(pdf);
+    const m = findCounterMarkerAt(pdf);
+    if (n && m) return n.d <= m.d ? { kind: 'drop', node: n.node } : { kind: 'marker', ...m };
+    if (n) return { kind: 'drop', node: n.node };
+    if (m) return { kind: 'marker', ...m };
+    return null;
   }
 
   // The line end that carries the node's drop (the node model zeroes every
@@ -109,28 +143,46 @@
     return chipEl;
   }
 
-  function nodeKey(node) { return node.x + ':' + node.y; }
+  // Stable identity per target kind: a drop node by its PDF point, a counter
+  // marker by its id (falling back to type+index for pre-id legacy markers).
+  function targetKey(t) {
+    return t.kind === 'drop'
+      ? 'n:' + t.node.x + ':' + t.node.y
+      : 'm:' + (t.marker.id || t.typeId + ':' + t.index);
+  }
 
-  function showChipForNode(node, pin) {
+  function showChipForTarget(t, pin) {
     const state = App.state;
     const ann = visibleAnnotations();
     if (!ann) return;
-    const line = carryingLine(ann, node);
-    const lt = line ? (state.lineTypes || []).find((l) => l.id === line.lineTypeId) : null;
-    const name = (lt && lt.name) || 'Line';
-    const color = (lt && lt.color) || (line && line.color) || '#4a9eff';
-    const label = App.formatDropLabel(node.value, node.unit || 'ft');
-    if (!label) return;
+    let name, color, valueHtml, at;
+    if (t.kind === 'drop') {
+      const line = carryingLine(ann, t.node);
+      const lt = line ? (state.lineTypes || []).find((l) => l.id === line.lineTypeId) : null;
+      name = (lt && lt.name) || 'Line';
+      color = (lt && lt.color) || (line && line.color) || '#4a9eff';
+      const label = App.formatDropLabel(t.node.value, t.node.unit || 'ft');
+      if (!label) return;
+      valueHtml = App.escapeHtml(label) + ' drop';
+      at = { x: t.node.x, y: t.node.y };
+    } else {
+      const c = (state.counters || []).find((x) => x.id === t.typeId);
+      name = (c && c.name) || 'Counter';
+      color = (c && c.color) || '#e8c547';
+      // The number matches the index painted on the marker itself.
+      valueHtml = '#' + (t.index + 1) + ' · ' + t.count + ' on this page';
+      at = { x: t.marker.x, y: t.marker.y };
+    }
     const el = ensureChip();
     el.innerHTML =
       '<div class="drop-peek-name"><span class="drop-peek-swatch" style="background:' + App.escapeHtml(color) + '"></span>' +
       App.escapeHtml(name) + '</div>' +
-      '<div class="drop-peek-value">' + App.escapeHtml(label) + ' drop</div>';
-    // Node PDF-space -> client px: toCanvas gives backing-buffer px; the
+      '<div class="drop-peek-value">' + valueHtml + '</div>';
+    // Target PDF-space -> client px: toCanvas gives backing-buffer px; the
     // canvas's CSS rect carries both the DPR division and any CSS scaling.
     const annCanvas = document.getElementById('annCanvas');
     const rect = annCanvas.getBoundingClientRect();
-    const bc = App.toCanvas({ x: node.x, y: node.y });
+    const bc = App.toCanvas(at);
     const cx = rect.left + bc.x * (rect.width / (annCanvas.width || 1));
     const cy = rect.top + bc.y * (rect.height / (annCanvas.height || 1));
     el.style.display = '';
@@ -143,7 +195,7 @@
     el.style.left = left + 'px';
     el.style.top = top + 'px';
     chipVisible = true;
-    shownNodeKey = nodeKey(node);
+    shownNodeKey = targetKey(t);
     pinnedNodeKey = pin ? shownNodeKey : null;
   }
 
@@ -171,17 +223,17 @@
       if (cursorPromoted && annCanvas) { annCanvas.style.cursor = ''; cursorPromoted = false; }
       return;
     }
-    const node = findDropNodeAt(pdf);
+    const target = findPeekTargetAt(pdf);
     if (annCanvas) {
       // Promote only the cursor app.js left unset — never fight a busier one.
-      if (node && !annCanvas.style.cursor) { annCanvas.style.cursor = 'pointer'; cursorPromoted = true; }
-      else if (!node && cursorPromoted) { if (annCanvas.style.cursor === 'pointer') annCanvas.style.cursor = ''; cursorPromoted = false; }
+      if (target && !annCanvas.style.cursor) { annCanvas.style.cursor = 'pointer'; cursorPromoted = true; }
+      else if (!target && cursorPromoted) { if (annCanvas.style.cursor === 'pointer') annCanvas.style.cursor = ''; cursorPromoted = false; }
     }
     if (pinnedNodeKey) return;   // a pinned chip holds until an explicit dismiss
-    // Same node, chip already up: nothing to rebuild (the node is fixed in
+    // Same target, chip already up: nothing to rebuild (the target is fixed in
     // PDF-space and the sheet can't have moved without a dismissal event).
-    if (node && chipVisible && shownNodeKey === nodeKey(node)) return;
-    if (node) showChipForNode(node, false);
+    if (target && chipVisible && shownNodeKey === targetKey(target)) return;
+    if (target) showChipForTarget(target, false);
     else if (chipVisible) hideChip();
   };
 
@@ -193,10 +245,10 @@
       const dx = e.clientX - lastPointerDown.x, dy = e.clientY - lastPointerDown.y;
       if (Math.sqrt(dx * dx + dy * dy) > CLICK_SLOP_PX) return;
     }
-    const node = findDropNodeAt(pdf);
-    if (!node) { hideChip(); return; }
-    if (pinnedNodeKey === nodeKey(node)) { hideChip(); return; }   // same node: toggle off
-    showChipForNode(node, true);
+    const target = findPeekTargetAt(pdf);
+    if (!target) { hideChip(); return; }
+    if (pinnedNodeKey === targetKey(target)) { hideChip(); return; }   // same target: toggle off
+    showChipForTarget(target, true);
   };
 
   // --- the Drop sizes toggle ------------------------------------------------

@@ -1,7 +1,7 @@
 ---
 title: Counting fixtures with counters
 description: Place point counts on a plan with custom icons and colors, keep a live tally, and organize them into groups — the heart of any takeoff.
-updated: 2026-08-13
+updated: 2026-08-27
 order: 3
 icon: counter
 category: Counting
@@ -29,6 +29,7 @@ On a dense plan it's easy to lose track. A few things help:
 - **Groups** — assign related counters to a group (say, all the fixtures in one restroom) to see subtotals and keep colors meaningful.
 - **Show only counters used** — filter the list to counters placed on this page, or anywhere in this project, so you're not scrolling past palette items you never used. A newly created counter always stays visible until you place its first mark.
 - **Counter settings** — adjust icon size, opacity, the count number, and the ring so marks stay legible at any zoom.
+- **Point at a mark to identify it** — with the **Move** [[move]] tool, hover any placed marker (or tap it on touch) and a chip names its counter and its number in that type's page tally: *"Water Closet — #4 · 7 on this page"*. A click pins the chip; clicking elsewhere, scrolling, or any key dismisses it. Works in [view-link sessions](/guides/sharing-and-view-links/) too, so a reviewer never has to guess what a symbol is.
 
 ## Fixing mistakes
 

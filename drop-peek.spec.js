@@ -131,6 +131,49 @@ test.describe('Drop-size peek + Drop sizes toggle', () => {
     expect(errors).toEqual([]);
   });
 
+  test('counter markers peek their counter name (wendi: identify the counter in view mode)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await loadPdf(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters.push({ id: 'c-peek-1', name: 'Water Closet', icon: 'M0 0', color: '#e8c547' });
+      const canvas = window.App.ensureActiveCanvas(s.pages[0]);
+      canvas.annotations.counterMarkers['c-peek-1'] = [
+        { x: 120, y: 300, id: 'mk1' },
+        { x: 200, y: 300, id: 'mk2' },
+      ];
+      window.App.updateUI();
+      window.App.renderAnnotations();
+    });
+
+    const chip = page.locator('#dropPeekChip');
+    const mk2 = await screenPointForPdf(page, { x: 200, y: 300 });
+    const empty = await screenPointForPdf(page, { x: 160, y: 360 });
+
+    // REAL hover over the second marker: counter name + its number in the
+    // type's page tally (matching the index painted on the marker).
+    await page.mouse.move(empty.x, empty.y);
+    await page.mouse.move(mk2.x, mk2.y);
+    await expect(chip).toBeVisible();
+    await expect(chip).toContainText('Water Closet');
+    await expect(chip).toContainText('#2 · 2 on this page');
+
+    // Hover away hides; click pins and survives the pointer leaving.
+    await page.mouse.move(empty.x, empty.y);
+    await expect(chip).toBeHidden();
+    await page.mouse.click(mk2.x, mk2.y);
+    await expect(chip).toBeVisible();
+    await page.mouse.move(empty.x, empty.y);
+    await expect(chip).toBeVisible();
+    await page.mouse.click(empty.x, empty.y);
+    await expect(chip).toBeHidden();
+
+    expect(errors).toEqual([]);
+  });
+
   test('peek stays out of the way: no chip while a draw tool is armed or marks are hidden', async ({ page }) => {
     await loadPdf(page);
     await seedDrops(page);

@@ -1,7 +1,7 @@
 ---
 title: Sharing takeoffs and view links
 description: Work together without stepping on each other — share projects with viewers or editors, check out to edit, and send email-gated view-only links that need no sign-in.
-updated: 2026-08-26
+updated: 2026-08-27
 order: 7
 icon: share
 category: Collaboration
@@ -41,7 +41,7 @@ The viewer gets the live takeoff — the real marks, tallies, and legend, not a 
 ![A view-link session: the live takeoff with its tallies and legend. The eye button hides the marks to read the bare drawing.](/guides/img/view-link-viewer.png)
 
 - The **Hide marks** [[hide-marks]] eye peels the takeoff off the drawing and back — handy on a phone, and their choice is remembered per link.
-- **Drop sizes are readable, not just visible.** Tapping any drop marker peeks its size in a chip (*"3 ft drop"*), and the **Drop sizes** [[drop-sizes]] toggle labels every drop on the sheet at once — off by default so the drawing stays clean, and remembered per link like Hide marks. Risers and stacks answer themselves instead of prompting a call. (Full detail: [reading drops back](/guides/measuring-runs-lines-and-polylines/).)
+- **Every mark identifies itself.** Tapping a counter marker peeks its name and number (*"Water Closet — #4 · 7 on this page"*), and tapping any drop marker peeks its size in a chip (*"3 ft drop"*), and the **Drop sizes** [[drop-sizes]] toggle labels every drop on the sheet at once — off by default so the drawing stays clean, and remembered per link like Hide marks. Risers and stacks answer themselves instead of prompting a call. (Full detail: [reading drops back](/guides/measuring-runs-lines-and-polylines/).)
 
 ![A view-link session reading drops: tapping a marker peeks "3 ft drop", and the header toggle can label them all.](/guides/img/view-drop-peek.png)
 - The **Measure** [[measure]] tool works in view mode, so they can check a dimension themselves in two clicks. On a sheet with no scale set yet it reads in raw `px` — set the scale (press `S`) and it reads feet.

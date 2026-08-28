@@ -132,7 +132,7 @@
     if (ownEl && ownEl.value === 'mine') filtered = filtered.filter(function (p) { return p.is_owner; });
     else if (ownEl && ownEl.value === 'shared') filtered = filtered.filter(function (p) { return !p.is_owner; });
     if (roleEl && roleEl.value) filtered = filtered.filter(function (p) { return (p.my_access_role || '') === roleEl.value; });
-    if (App.state.isAdmin && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
+    if ((App.state.isAdmin || App.state.isOverseer) && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
     if (searchEl) {
       const q = (searchEl.value || '').trim().toLowerCase();
       if (q) filtered = filtered.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1; });
@@ -389,6 +389,30 @@
     rowMain.onclick = async () => {
       if (shared.inProgress) return;
       shared.inProgress = true;
+      const { listEl } = lp;
+      div.classList.add('loading');
+      listEl.classList.add('loading');
+      const metaEl = div.querySelector('.load-project-meta');
+      const origMeta = metaEl ? metaEl.textContent : '';
+      if (metaEl) metaEl.textContent = 'Loading…';
+      try {
+        await loadCloudProjectRow(proj, {
+          hostModalId: 'loadProjectModal',
+          showError: function (html) { listEl.innerHTML = html; },
+        });
+      } finally {
+        shared.inProgress = false;
+        div.classList.remove('loading');
+        listEl.classList.remove('loading');
+        if (metaEl) metaEl.textContent = origMeta;
+      }
+    };
+  }
+  // Host-agnostic cloud-project load (shared with features/bid-board.js): takes
+  // a list_accessible_projects row, hydrates app state, and closes
+  // ui.hostModalId when done (the canvas-only flow hands off to its own modal).
+  // Load failures render via ui.showError(html) in the host's list area.
+  async function loadCloudProjectRow(proj, ui) {
       const {
         state, hideModal, showToast,
         hydrateProjectFromCloudRow, clearCheckoutExpiredAttention,
@@ -400,13 +424,6 @@
         setAutoSaveDirty, setLastModifiedAt, setLastSaveIncludedPdf,
       } = App;
       const supabase = App.getSupabase();
-      const { listEl } = lp;
-      div.classList.add('loading');
-      listEl.classList.add('loading');
-      const metaEl = div.querySelector('.load-project-meta');
-      const origMeta = metaEl ? metaEl.textContent : '';
-      if (metaEl) metaEl.textContent = 'Loading…';
-      try {
       // A1: Clear any stale pendingCanvasLoad from a previous canvas-only
       // load whose file picker the user dismissed, so it can't apply to
       // the project we're about to open.
@@ -454,7 +471,7 @@
               // path needs it set so the next PDF upload knows which project
               // these annotations belong to.
               state.pendingCanvasLoad = { projectId: proj.id, name: proj.name || 'Untitled', data: d, pdf_hash: null };
-              hideModal('loadProjectModal');
+              hideModal(ui.hostModalId);
               state.sidebarReorderModeActive = false;
               // C1: Replaced the toast + auto-pdfInput.click() pair with a
               // dedicated modal so the user has a clear next action.
@@ -466,7 +483,7 @@
           state.pdfBuffer = null;
           state.pdfBufferSize = 0;
         } catch (e) {
-          listEl.innerHTML = '<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>';
+          ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>');
           return;
         }
       } else {
@@ -498,7 +515,7 @@
       const preservedPendingCanvasLoad = state.pendingCanvasLoad;
       hydrateProjectFromCloudRow(proj, { source: 'load_project' });
       if (preservedPendingCanvasLoad) state.pendingCanvasLoad = preservedPendingCanvasLoad;
-      hideModal('loadProjectModal');
+      hideModal(ui.hostModalId);
       state.sidebarReorderModeActive = false;
       if (!proj.pdf_path) {
         // C1: Replaced the toast + auto-pdfInput.click() pair with a
@@ -507,13 +524,6 @@
       }
       fitZoom();
       updateUI();
-      } finally {
-        shared.inProgress = false;
-        div.classList.remove('loading');
-        listEl.classList.remove('loading');
-        if (metaEl) metaEl.textContent = origMeta;
-      }
-    };
   }
   async function renderLoadProjectListRows(lp) {
     const { listEl } = lp;
@@ -610,7 +620,7 @@
           if (roleEl2) roleEl2.value = '';
           if (searchEl2) searchEl2.value = '';
           let ownerEmailsUnique = [];
-          if (state.isAdmin) {
+          if (state.isAdmin || state.isOverseer) {
             const seenO = Object.create(null);
             for (let ei = 0; ei < projectsAll.length; ei++) {
               const emo = projectsAll[ei].owner_email;
@@ -618,10 +628,10 @@
             }
             ownerEmailsUnique.sort();
           }
-          if (ownerWrap2) ownerWrap2.style.display = (state.isAdmin && ownerEmailsUnique.length > 1) ? 'inline-flex' : 'none';
+          if (ownerWrap2) ownerWrap2.style.display = ((state.isAdmin || state.isOverseer) && ownerEmailsUnique.length > 1) ? 'inline-flex' : 'none';
           if (ownerEmailSel2) {
             ownerEmailSel2.innerHTML = '<option value="">All owners</option>';
-            if (state.isAdmin) {
+            if (state.isAdmin || state.isOverseer) {
               for (let ej = 0; ej < ownerEmailsUnique.length; ej++) {
                 const opto = document.createElement('option');
                 opto.value = ownerEmailsUnique[ej];
@@ -693,4 +703,5 @@
     }
 
   App.openLoadProjectModal = openLoadProjectModal;
+  App.loadCloudProjectRow = loadCloudProjectRow;
 })();

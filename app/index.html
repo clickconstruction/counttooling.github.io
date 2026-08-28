@@ -233,6 +233,7 @@
           <button id="authBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Sign In</button>
           <button id="saveProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Save Project to Cloud</button>
           <button id="loadProjectBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Load Project from Cloud</button>
+          <button id="bidBoardBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">All Bids</button>
           <button id="manageUsersBtnSidebar" class="sidebar-btn supabase-only" style="display:none;">Manage Users</button>
           <button id="exportBtnSidebar" class="sidebar-btn">Export</button>
           <button id="importBtnSidebar" class="sidebar-btn">Import</button>
@@ -2213,6 +2214,29 @@
       </div>
     </div>
   </div>
+  <!-- Bid Board: the overseer's read-only "all bids" browser. Cards are BUILT
+       by features/bid-board.js from list_accessible_projects rows; a card
+       click opens the bid via App.loadCloudProjectRow (always viewer mode for
+       overseers — no checkout arm server-side). -->
+  <div class="modal-overlay" id="bidBoardModal">
+    <div class="modal-card modal-card-fullscreen">
+      <div class="bid-board-header">
+        <h2>All Bids</h2>
+        <div class="bid-board-filters">
+          <input type="search" id="bidBoardSearch" placeholder="Search bids…" autocomplete="off" aria-label="Search bids by name" class="bid-board-search" />
+          <span class="bid-board-owner-wrap">
+            <select id="bidBoardOwnerFilter" class="bid-board-owner-filter" aria-label="Filter by estimator"></select>
+          </span>
+        </div>
+      </div>
+      <p class="form-group bid-board-intro">Every bid in the company, newest first. Click one to view it — read-only, nothing can be changed by accident.</p>
+      <div id="bidBoardError" class="form-group" style="display:none;"></div>
+      <div id="bidBoardList" class="bid-board-list form-group"></div>
+      <div class="actions">
+        <button id="bidBoardClose">Close</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="loadProjectModal">
     <div class="modal-card modal-card-fullscreen">
       <div class="load-project-modal-header">
@@ -2616,6 +2640,7 @@
   <script src="/features/manage-projects.js"></script>
   <script src="/features/user-admin.js"></script>
   <script src="/features/load-project.js"></script>
+  <script src="/features/bid-board.js"></script>
   <script src="/features/copy-project.js"></script>
   <script src="/features/prepare-pdf.js"></script>
   <script src="/features/quick-modals.js"></script>

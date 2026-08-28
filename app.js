@@ -212,6 +212,7 @@
     currentProjectName: null,
     isAdmin: false,
     isOverseer: false,
+    isDigitalTwin: false,
     pendingDeletePage: null,
     supabaseSession: null,
     pdfBuffer: null,
@@ -705,7 +706,7 @@
   function handleCrossTabSignOut(source) {
     try { pushSaveEvent('cross_tab_signout', 'Sign-out received from another tab', source || ''); } catch (_) {}
     try { resetLocalSessionState(); } catch (_) {}
-    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; } catch (_) {}
+    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; state.isDigitalTwin = false; } catch (_) {}
     // Clear lastAuthUserId so the local SIGNED_OUT event that follows (once
     // supabase-js syncs the auth storage change) skips a redundant broadcast.
     lastAuthUserId = null;
@@ -2328,6 +2329,7 @@
       if (globalReloadBtn) globalReloadBtn.style.display = (loggedIn && state.isAdmin) ? '' : 'none';
       const statusBarAuth = document.getElementById('statusBarAuth');
       if (statusBarAuth) { statusBarAuth.textContent = loggedIn ? (state.supabaseSession?.user?.email || 'Sign Out') : 'Sign In'; statusBarAuth.style.display = ''; }
+      if (window.App?.renderTwinBanner) window.App.renderTwinBanner();
     } else {
       document.querySelectorAll('.supabase-only').forEach(el => { el.style.display = 'none'; });
       document.querySelectorAll('#statusBarActions .supabase-only').forEach(el => { el.style.display = 'none'; });
@@ -2387,7 +2389,7 @@
           editBanner.classList.add('edit-status-available');
         } else if (state.checkedOutEmail) {
           const span = document.createElement('span');
-          span.textContent = state.checkedOutEmail + ' is editing';
+          span.textContent = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
           editBanner.appendChild(span);
           editBanner.classList.add('edit-status-viewing');
         } else {
@@ -2977,9 +2979,10 @@
     state.supabaseSession = session;
     if (session?.user) {
       lastAuthUserId = session.user.id;
-      const { data: profile } = await supabase.from('profiles').select('is_admin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
       state.isOverseer = !!profile?.is_overseer;
+      state.isDigitalTwin = !!profile?.is_digital_twin;
       startPresenceHeartbeat();
       maybeLogSessionStartOnce();
       checkGlobalForceReload();
@@ -2988,6 +2991,7 @@
       lastAuthUserId = null;
       state.isAdmin = false;
       state.isOverseer = false;
+      state.isDigitalTwin = false;
       stopPresenceHeartbeat();
     }
     updateSaveStatusIndicator();
@@ -3003,9 +3007,10 @@
           resetLocalSessionState();
           lastAuthUserId = newUserId;
           if (session?.user) {
-            const { data: profile } = await supabase.from('profiles').select('is_admin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
             state.isAdmin = !!profile?.is_admin;
             state.isOverseer = !!profile?.is_overseer;
+            state.isDigitalTwin = !!profile?.is_digital_twin;
             startPresenceHeartbeat();
             maybeLogSessionStartOnce();
           }
@@ -3019,9 +3024,10 @@
       if (session?.user) {
         const userChanged = newUserId !== prevUserId;
         lastAuthUserId = newUserId;
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         state.isOverseer = !!profile?.is_overseer;
+        state.isDigitalTwin = !!profile?.is_digital_twin;
         startPresenceHeartbeat();
         maybeLogSessionStartOnce();
         checkGlobalForceReload();
@@ -3057,6 +3063,7 @@
         stopPresenceHeartbeat();
         state.isAdmin = false;
         state.isOverseer = false;
+        state.isDigitalTwin = false;
         const hadSession = !!prevUserId;
         lastAuthUserId = null;
         // Per-user data hygiene: wipe only on a REAL sign-out (a user existed in
@@ -4122,7 +4129,7 @@
         statusEl.innerHTML = 'You have this project<br><strong style="text-decoration:underline">checked out.</strong>';
         checkInBtn.style.display = '';
       } else if (state.checkedOutEmail) {
-        statusEl.textContent = state.checkedOutEmail + ' is editing.';
+        statusEl.textContent = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing.';
         if (state.isAdmin) forceBtn.style.display = '';
       }
       updateSaveStatusIndicator();
@@ -7051,9 +7058,10 @@
         window.history.replaceState({}, '', u.toString());
       }
       if (ok) {
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_overseer').eq('user_id', state.supabaseSession.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', state.supabaseSession.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         state.isOverseer = !!profile?.is_overseer;
+        state.isDigitalTwin = !!profile?.is_digital_twin;
       }
     }
     // T1-01: the local "Project from Last Session" offer is HOISTED out of the

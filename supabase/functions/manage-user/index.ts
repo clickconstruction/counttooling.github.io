@@ -3,10 +3,14 @@ import { jsonRes } from '../_shared/json.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 // CT↔PT user bridge — the CountTooling half (see PipeTooling docs; built 2026-08-28).
-// PipeTooling is the single system of record for people; this function is the ONLY way
-// accounts are provisioned, flagged, retired, or renamed on CountTooling now. It is
-// called exclusively by PipeTooling's `ct-bridge` edge function (server → server), never
-// by a browser.
+// PipeTooling is the single system of record for people, and this function is the
+// COMMANDED path for provisioning, flagging, retiring, and renaming CountTooling
+// accounts. It is called exclusively by PipeTooling's `ct-bridge` edge function
+// (server → server), never by a browser. CT's own User Admin doors stay open as the
+// manual escape hatch (settled 2026-08-28): admin-create-user (off-the-record creation
+// — the panel says so; PT's weekly roster audit catches the drift), admin-delete-user
+// (true deletion + project reassignment — deliberately NOT a bridge verb; PT can only
+// ban), and admin-set-password (the bridge never touches credentials).
 //
 // Auth: X-Bridge-Secret must match CT_MANAGE_USER_SECRET (compared as SHA-256 digests —
 // constant-time in effect). Rotating the secret severs the bridge.

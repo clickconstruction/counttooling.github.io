@@ -110,7 +110,7 @@
   // identity/dates/activity cells — only the action column differs, so each
   // surface composes these instead of duplicating the row template.
   const userDataAttrs = (u) => ' data-user-id="' + escHtml(u.id) + '" data-email="' + escHtml(u.email || '') + '"';
-  const userEmailCellHtml = (u) => '<span class="settings-user-email" title="' + escHtml(u.email) + '">' + escHtml(u.email || '—') + '</span>';
+  const userEmailCellHtml = (u) => '<span class="settings-user-email" title="' + escHtml(u.email) + '">' + escHtml(u.email || '—') + (App.twinBadgeHtml ? App.twinBadgeHtml(u) : '') + '</span>';
   const userRoleCellHtml = (u) => '<span class="settings-user-role">' + (u.role || 'User') + '</span>';
   const userDatesInnerHtml = (u) =>
     '<span class="settings-user-last" title="Last sign-in">' + App.formatLastSignIn(u.last_sign_in_at) + '</span>' +

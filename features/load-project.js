@@ -167,7 +167,7 @@
       : '';
     let lockBadge = '';
     if (proj.can_edit) lockBadge = ' <span class="badge" style="background:var(--green);color:var(--bg);font-size:11px;">You\'re editing</span>';
-    else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>';
+    else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>' + (App.twinBadgeHtml ? App.twinBadgeHtml(proj.checked_out_email) : '');
     else if (proj.can_check_out) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Available</span>';
     const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
     const metaParts = [date, sizeStr].filter(Boolean);
@@ -635,7 +635,7 @@
               for (let ej = 0; ej < ownerEmailsUnique.length; ej++) {
                 const opto = document.createElement('option');
                 opto.value = ownerEmailsUnique[ej];
-                opto.textContent = ownerEmailsUnique[ej];
+                opto.textContent = App.twinEmailText ? App.twinEmailText(ownerEmailsUnique[ej]) : ownerEmailsUnique[ej];
                 ownerEmailSel2.appendChild(opto);
               }
             }

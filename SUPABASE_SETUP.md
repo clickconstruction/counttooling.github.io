@@ -147,9 +147,22 @@ supabase functions deploy admin-list-users
 supabase functions deploy invite-to-project
 supabase functions deploy get-view-project
 supabase functions deploy set-view-scale
+supabase functions deploy twin-login
+supabase functions deploy manage-user
 ```
 
 (Or run `./deploy-admin-functions.sh`, which deploys the admin functions with `--no-verify-jwt`.)
+
+### Function secrets
+
+Beyond the platform-provided `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`, two functions carry their own shared secret. Set them with `supabase secrets set NAME=...`; `supabase secrets list` shows names and digests (never values).
+
+| Secret | Used by | Purpose |
+|---|---|---|
+| `TWIN_LOGIN_SECRET` | `twin-login` | Header secret a cloud agent harness presents to mint a digital-twin session. Rotating it is the fleet-wide kill switch. |
+| `CT_MANAGE_USER_SECRET` | `manage-user` | Header secret PipeTooling's `ct-bridge` presents to provision/flag/retire CountTooling accounts. Rotating it severs the bridge. |
+
+Neither secret can escalate on its own: `twin-login` additionally requires the fleet email pattern **and** `profiles.is_digital_twin = true`, so a leak can only ever produce a twin session, never a real person's.
 
 ### Scheduled test-account cleanup (`cleanup-test-accounts`)
 

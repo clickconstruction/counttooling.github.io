@@ -60,6 +60,17 @@
     .global-reload-banner-btn { background: #000; color: var(--yellow); border: 0; border-radius: 4px; padding: 4px 12px; font-weight: 600; cursor: pointer; }
     .global-reload-banner-btn-secondary { background: transparent; color: #000; border: 1px solid #000; border-radius: 4px; padding: 2px 8px; cursor: pointer; line-height: 1; }
     @media (max-width: 768px) { .global-reload-banner { font-size: 0.85rem; padding: 6px 10px; } }
+
+    /* Digital twin chrome (PipeTooling docs/DIGITAL_TWINS_PLAN.md Phase E2): an
+       agent-operated session must never read as a person's. The banner sits above
+       .app, so body.twin-session shortens .app by the same height - the app shell
+       is a fixed-viewport flex column (height: 100dvh) and would otherwise clip. */
+    .twin-banner { display: none; align-items: center; justify-content: center; gap: 8px; height: 28px; padding: 0 12px; background: var(--accent); color: var(--bg); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .twin-banner-bot { font-size: 0.95rem; line-height: 1; }
+    body.twin-session .twin-banner { display: flex; }
+    body.twin-session .app { height: calc(100vh - 28px); height: calc(100dvh - 28px); }
+    .twin-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 10px; background: var(--accent); color: var(--bg); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: baseline; white-space: nowrap; }
+    @media (max-width: 768px) { .twin-banner { font-size: 0.72rem; letter-spacing: 0.04em; } }
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
     .header-edit-status.edit-status-available { background: transparent; color: #81c784; border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }

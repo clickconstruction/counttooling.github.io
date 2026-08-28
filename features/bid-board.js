@@ -19,6 +19,12 @@
   let boardRows = [];
   let loadInProgress = false;
 
+  // Test-harness accounts whose spec-run projects would otherwise clutter the
+  // board (a daily cron purges them after 7 days, but fresh runs appear every
+  // day). Mirrors the TEST_ACCOUNTS list in
+  // supabase/functions/cleanup-test-accounts/index.ts.
+  const HIDDEN_TEST_OWNERS = ['dev-agent@clickplumbing.com', 'test@clickplumbing.com'];
+
   function esc(s) { return App.escapeHtml(s); }
 
   // "who made it" display: strip the domain so cards read as names, with the
@@ -42,6 +48,18 @@
     return days + ' days ago';
   }
 
+  function reviewBadgeHtml(proj) {
+    if (proj.review_status === 'ready') {
+      const since = proj.review_requested_at ? ' title="Ready since ' + esc(new Date(proj.review_requested_at).toLocaleDateString()) + '"' : '';
+      return '<span class="bid-card-badge bid-card-badge-ready"' + since + '>Ready for review</span>';
+    }
+    if (proj.review_status === 'reviewed') {
+      const when = proj.reviewed_at ? ' title="Reviewed ' + esc(new Date(proj.reviewed_at).toLocaleDateString()) + '"' : '';
+      return '<span class="bid-card-badge bid-card-badge-reviewed"' + when + '>Reviewed ✓</span>';
+    }
+    return '';
+  }
+
   function bidCardHtml(proj) {
     let date = proj.updated_at ? new Date(proj.updated_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
     const ago = daysAgoLabel(proj.updated_at);
@@ -56,14 +74,17 @@
     const cloudBadge = proj.pdf_path
       ? '<span class="bid-card-badge bid-card-badge-cloud" title="Canvas and PDF are both in the cloud">✓ Fully cloud</span>'
       : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud — the PDF was never uploaded">Canvas only</span>';
+    const canMarkReviewed = proj.review_status === 'ready' && (App.state.isOverseer || App.state.isAdmin);
     return '<div class="bid-card" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
       '<div class="bid-card-name">' + esc(proj.name || 'Untitled') + '</div>' +
       '<div class="bid-card-owner" title="' + esc(proj.owner_email || '') + '">' + esc(ownerLabel(proj.owner_email)) + '</div>' +
       '<div class="bid-card-meta">' +
+        reviewBadgeHtml(proj) +
         (counts ? '<span class="bid-card-badge">' + esc(counts) + '</span>' : '') +
         cloudBadge +
         (date ? '<span class="bid-card-date">' + esc(date) + '</span>' : '') +
       '</div>' +
+      (canMarkReviewed ? '<button type="button" class="bid-card-review-btn">Mark reviewed</button>' : '') +
       '<div class="bid-card-status">Loading…</div>' +
       '</div>';
   }
@@ -86,7 +107,15 @@
       listEl.innerHTML = '<p class="bid-board-empty">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>';
       return;
     }
-    listEl.innerHTML = rows.map(bidCardHtml).join('');
+    // "Ready for review" bids get their own lane pinned above the rest — the
+    // estimator's handoff signal is the first thing an overseer sees.
+    const ready = rows.filter(function (p) { return p.review_status === 'ready'; });
+    const rest = rows.filter(function (p) { return p.review_status !== 'ready'; });
+    listEl.innerHTML = ready.length
+      ? '<div class="bid-board-lane-title">Ready for review (' + ready.length + ')</div>' +
+        ready.map(bidCardHtml).join('') +
+        (rest.length ? '<div class="bid-board-lane-title">All bids</div>' + rest.map(bidCardHtml).join('') : '')
+      : rows.map(bidCardHtml).join('');
     listEl.querySelectorAll('.bid-card').forEach(function (card) {
       const proj = boardRows.find(function (p) { return p.id === card.dataset.projectId; });
       if (!proj) return;
@@ -113,6 +142,23 @@
       };
       card.onclick = open;
       card.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void open(); } };
+      const reviewBtn = card.querySelector('.bid-card-review-btn');
+      if (reviewBtn) {
+        reviewBtn.onclick = async function (e) {
+          e.stopPropagation();
+          reviewBtn.disabled = true;
+          const res = await App.setProjectReviewStatus(proj.id, 'reviewed');
+          if (res && res.ok) {
+            proj.review_status = 'reviewed';
+            proj.reviewed_at = new Date().toISOString();
+            App.showToast('Marked "' + (proj.name || 'Untitled') + '" reviewed.', 3000);
+            renderBidBoardList();
+          } else {
+            App.showToast((res && res.error) || 'Could not mark reviewed.', 4000);
+            reviewBtn.disabled = false;
+          }
+        };
+      }
     });
   }
 
@@ -151,7 +197,7 @@
         listEl.innerHTML = '<p class="bid-board-empty" style="color:var(--red);">Failed to load bids.</p>';
         return;
       }
-      boardRows = projects || [];
+      boardRows = (projects || []).filter(function (p) { return HIDDEN_TEST_OWNERS.indexOf(p.owner_email || '') === -1; });
       fillOwnerFilter();
       renderBidBoardList();
     } catch (e) {

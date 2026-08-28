@@ -22,6 +22,8 @@ Any project member can add people, and roles can be changed or removed from the 
 
 To avoid two people saving over each other, editing uses **check-out**: an editor checks the project out to make changes, and **turns it in** when done to release it. The lock holds while you're active and expires after about 30 minutes of inactivity, so a project never stays stuck if someone walks away. (Admins can force a turn-in if needed.) When the project frees up, anyone waiting is notified that it's available.
 
+When a bid is *finished* — not just turned in for the day — Project Settings has a **Bid review** row to mark it **Ready for review** for the company's reviewer. See [Reviewing every bid](/guides/reviewing-all-bids/#the-review-handoff).
+
 ## View-only links — no sign-in
 
 Sometimes you just need to show a takeoff to someone who isn't a CountTooling user — a GC, an owner, an inspector. A **view link** does that:

@@ -1771,6 +1771,13 @@
           </div>
         </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
+        <!-- Bid review handoff: status text + transition button, rendered by
+             features/review-flow.js each time this modal becomes visible. -->
+        <div class="form-group supabase-only settings-review-row" id="settingsReviewRow" style="display:none;">
+          <span class="settings-review-label">Bid review</span>
+          <span id="settingsReviewStatusText" class="settings-review-status"></span>
+          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsReviewToggleBtn" style="width:auto;">Mark ready for review</button>
+        </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
         <div class="settings-menu-links-row">
@@ -2670,6 +2677,7 @@
   <script src="/features/user-admin.js"></script>
   <script src="/features/load-project.js"></script>
   <script src="/features/bid-board.js"></script>
+  <script src="/features/review-flow.js"></script>
   <script src="/features/copy-project.js"></script>
   <script src="/features/prepare-pdf.js"></script>
   <script src="/features/quick-modals.js"></script>

@@ -19,6 +19,12 @@
   let boardRows = [];
   let loadInProgress = false;
 
+  // Test-harness accounts whose spec-run projects would otherwise clutter the
+  // board (a daily cron purges them after 7 days, but fresh runs appear every
+  // day). Mirrors the TEST_ACCOUNTS list in
+  // supabase/functions/cleanup-test-accounts/index.ts.
+  const HIDDEN_TEST_OWNERS = ['dev-agent@clickplumbing.com', 'test@clickplumbing.com'];
+
   function esc(s) { return App.escapeHtml(s); }
 
   // "who made it" display: strip the domain so cards read as names, with the
@@ -151,7 +157,7 @@
         listEl.innerHTML = '<p class="bid-board-empty" style="color:var(--red);">Failed to load bids.</p>';
         return;
       }
-      boardRows = projects || [];
+      boardRows = (projects || []).filter(function (p) { return HIDDEN_TEST_OWNERS.indexOf(p.owner_email || '') === -1; });
       fillOwnerFilter();
       renderBidBoardList();
     } catch (e) {

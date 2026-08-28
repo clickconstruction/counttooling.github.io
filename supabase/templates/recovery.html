@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background-color:#0f0f11;">
+    <!-- CountTooling password-reset email (supabase/config.toml [auth.email.template.recovery]).
+         Table layout + inline styles only: email clients strip <style> and block webfonts.
+         Explicit colors everywhere so dark-mode clients don't invert the brand. -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f11;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background-color:#17171a;border:1px solid #2e2e36;border-radius:8px;">
+            <tr>
+              <td style="padding:28px 32px 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:#e8c547;" align="center">
+                CountTooling
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:18px;font-weight:bold;color:#f0ede8;" align="center">
+                Reset your password
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 32px 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#9e9b96;" align="center">
+                Click the button below to choose a new password.
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:24px 32px 0;">
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background-color:#e8c547;color:#0f0f11;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;text-decoration:none;padding:13px 36px;border-radius:8px;">
+                  Reset password
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:22px 32px 0;" align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1e1e22;border:1px solid #3a3a44;border-radius:6px;">
+                  <tr>
+                    <td style="padding:10px 14px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#e8b84a;" align="left">
+                      The link opens the reset on whichever device you use &mdash; finish it there and you're signed in on that device.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px 0;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5e5c58;" align="center">
+                The link expires in 1 hour and works once.<br>
+                Didn't ask to reset your password? You can safely ignore this email &mdash; your password stays unchanged.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 32px 28px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:17px;color:#5e5c58;border-top:1px solid #2e2e36;margin-top:18px;" align="center">
+                Button not working? Paste this link into your browser:<br>
+                <a href="{{ .ConfirmationURL }}" style="color:#9e9b96;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </td>
+            </tr>
+          </table>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;">
+            <tr>
+              <td style="padding:16px 8px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#5e5c58;" align="center">
+                CountTooling &middot; PDF takeoffs for plumbing estimating &middot; <a href="https://counttooling.com" style="color:#5e5c58;">counttooling.com</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

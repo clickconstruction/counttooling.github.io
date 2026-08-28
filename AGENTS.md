@@ -211,7 +211,11 @@
   `cleanup-test-accounts` (the pg_cron-invoked daily purge of week-old
   test-account projects + storage — see SUPABASE_SETUP.md),
   `invite-to-project`, `get-view-project`, `set-view-scale` (viewer sets a
-  page scale for everyone; token + email-domain gated); `admin-reassign-projects` +
+  page scale for everyone; token + email-domain gated),
+  `twin-login` (digital-twin session mint for cloud agent harnesses — secret-header
+  auth via `TWIN_LOGIN_SECRET`, estimator fleet email pattern +
+  `profiles.is_digital_twin` required; see PipeTooling's `docs/DIGITAL_TWINS_PLAN.md`);
+  `admin-reassign-projects` +
   `admin-delete-user` share the `_shared/reassignProjects.ts` ownership-move
   engine). Config via `config.js` (see
   [SUPABASE_SETUP.md](SUPABASE_SETUP.md)). PDF uploads capped at 50 MB.

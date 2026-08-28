@@ -198,6 +198,14 @@ Each function still validates auth in-code via `getUser()` (except `get-view-pro
 
 **View links:** `get-view-project` validates tokens and email domain (default: clickplumbing.com). Set `VIEW_LINK_ALLOWED_DOMAINS` in Supabase Dashboard (Functions > get-view-project > Secrets) if different. The function also returns the project's `updated_at` (as `updatedAt`); the client (`initViewOnlyMode`) revalidates against the server on open and only re-renders/refreshes the view cache when it changed, so a viewer isn't pinned to a stale snapshot after the owner re-saves (the cached PDF blob is reused when its hash matches; offline falls back to the cache). The deployed function inlines its CORS headers (the repo source imports `_shared/cors.ts` — functionally identical; a CLI deploy bundles `_shared`). `set-view-scale` (same token + domain gate, also reads `VIEW_LINK_ALLOWED_DOMAINS`) lets a viewer set a page's scale for everyone: it sanitizes the scale payload and writes `projects.data.pages[i].scale` with a `viewerSet {email, at}` stamp that drives the owner's must-clear notice in the app.
 
+### Magic-link email (sign-in fallback)
+
+The Sign In modal offers an emailed one-time link after two failed password attempts
+(`features/auth-magic-link.js`). It rides the project's auth email: Supabase's built-in
+SMTP is capped around 2 emails/hour — fine for a fallback, configure custom SMTP
+(Auth → SMTP settings) if it sees real traffic. The send uses `shouldCreateUser: false`,
+so it can never provision an account.
+
 ## 4. Create First Admin
 
 1. In Supabase Dashboard > Authentication > Users, click "Add user" > "Create new user"

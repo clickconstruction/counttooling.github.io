@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,113 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,115 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 919 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,709 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,612 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 2,734 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,637 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 707 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 845 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 611 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (65 files) | 14,852 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (66 files) | 15,041 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -210,6 +210,8 @@ modules. Candidates in priority order:
 | [features/drop-peek.js](features/drop-peek.js) | **Drop-size + counter-name disclosure** (wendi's view-mode requests): with the Move tool, hovering/tapping a drop marker OR a counter marker shows a DOM peek chip (`#dropPeekChip` — line-type name + the drop in its stored unit, or the counter's name + "#N · M on this page" matching the index painted on the marker); a click PINS it, and any pointerdown / wheel / keydown dismisses it (covers pan, zoom, page nav, rotate, undo). Drop hit-tests ride `App.collectDropNodes` (coincident ends = ONE node = one value), counter hits scan `counterMarkers`, nearest target wins; both mirror renderAnnotations' active-vs-merged source pick and are gated to `TOOL.NONE` + `!hideMarks` — so it works for viewers (the handleCanvasClick viewer gate admits NONE). Also owns the **"Drop sizes" toggle** `#dropSizesBtn` (beside `#hideMarksBtn`; mirrored as a burger-drawer row on mobile): flips `state.showDropSizes`, which renderAnnotations passes as `env.showDropSizes` so canvas-draw paints a value chip beside every drop glyph — live overlay only, exports untouched. Button shows only when the project has drops (`App.projectHasAnyDrops`). Persisted per device: `view:dropSizes:<token>` (restored by features/view-only.js) or `clickcount-show-drop-sizes`. app.js hooks: `App.onDropPeekHover` (mousemove tail), `App.onDropPeekClick` (TOOL.NONE click branch), `App.updateDropSizesButton` (updateUI). Regression: [drop-peek.spec.js](drop-peek.spec.js). |
 | [drop-peek.spec.js](drop-peek.spec.js) | Playwright regression for the peek chip: a REAL hover over a drop marker shows it (name + value in the drop's own unit, one value at a chain joint) and hover-away hides it; a hover over a counter marker names its counter + "#N · M on this page"; click pins; pointerdown / wheel / keydown each dismiss; the `#dropSizesBtn` toggle appears only once the project has drops, flips state + aria-pressed, persists per device, and survives a reload; no peek while a draw tool is armed or Hide marks is on. |
 | [features/highlight-labels.js](features/highlight-labels.js) | **Named highlights** (wendi's review request): label a highlight and jump back to it. Right-click a highlight → `#ctxNameHighlight` ("Name/Rename highlight…", shown by `showContextMenu`) → `#highlightNameModal` writes `h.label` onto the annotation — drawn by `drawAnnotationsCore` (canvas-draw.js) as a solid tag above the rect's top-left in live + export, and riding save/load + export/import untouched (the appliers pass highlight arrays through whole). The `#highlightPanel` bookmarks panel reuses the Chain/Drop palette idiom (shown while `TOOL.HIGHLIGHT` is armed, draggable via `highlightPanelPos`, Esc ladder: cancel rect → close panel → exit tool): rows list every page's highlights merged across canvas layers (page order, named first); row click = jump to that page (`currentPage` + `fitZoom`, the lines-list pattern), ✎ = name/rename. app.js hooks: `App.onHighlightToolSync` (updateUI), `App.openHighlightPanel` (`#highlightBtn` re-click), `App.isHighlightPanelOpen`/`App.closeHighlightPanel` (Escape branch). The tool's right-click context action ("Highlights panel…", features/tool-context-menu.js) arms the tool + opens the panel. Regression: [highlight-labels.spec.js](highlight-labels.spec.js). |
+| [features/twin-badge.js](features/twin-badge.js) | **Digital-twin visibility** (PipeTooling `docs/DIGITAL_TWINS_PLAN.md`, Phase E2 — the CountTooling half). Twins are agent-operated accounts that do real takeoffs, so the program's review loop depends on a twin never reading as a person. Two surfaces: (1) the signed-in twin's own chrome banner (`renderTwinBanner`, driven from `state.isDigitalTwin` — read from `profiles.is_digital_twin` alongside `is_admin` at all four auth sites in app.js — and called from `updateUI`; sets `body.twin-session`, which shortens `.app` by the 28px banner height so the fixed-viewport shell is not clipped); (2) badges on every surface that names somebody ELSE — the checkout holder (header edit status + status bar + [features/load-project.js](features/load-project.js) + [features/manage-projects.js](features/manage-projects.js) + [features/turn-in.js](features/turn-in.js)), project shares ([features/share-links.js](features/share-links.js)), project owners (Manage Projects meta + the Load Project admin owner filter), the share/User Activity pickers ([features/user-activity.js](features/user-activity.js) + [features/user-activity-overview.js](features/user-activity-overview.js)), and the admin user list ([features/user-admin.js](features/user-admin.js)). Identifying another user has **two** sources and `isTwinUser` ORs them: an explicit `is_digital_twin` on the row (the admin list only — added to `list_users_for_admin()` and to the `admin-list-users` fallback), and the fleet email pattern `twin-<role>-<n>@twins.counttooling.local` everywhere else, since checkout/share rows carry only an email. The role segment is left open rather than pinned to `estimator` so a later role rollout does not silently stop badging. Registers `App.isTwinEmail`, `App.isTwinUser`, `App.twinBadgeHtml` (innerHTML surfaces), `App.twinEmailText` (textContent surfaces), `App.renderTwinBanner`. Only App.* dep is `App.state`. Regression: [twin-badge.spec.js](twin-badge.spec.js). |
+| [features/auth-magic-link.js](features/auth-magic-link.js) | **Email sign-in fallback**: after two failed password attempts on the SAME email, the Sign In modal reveals an offer block — “Email me a sign-in link” — that sends a magic link via `signInWithOtp` with **`shouldCreateUser: false`** (PipeTooling is the system of record; a typo'd email must never provision a CT-only account) and `emailRedirectTo` `/app/` (allowlisted). Link consumption is the stock `detectSessionInUrl` + `onAuthStateChange` path twin-login's mints already exercise — this file owns only the modal UX: TWO entry points sharing one send path — the always-visible quiet link under the actions (“No password? Email me a sign-in link” — PT-provisioned accounts are born with unusable random passwords, so the link IS their sign-in; it yields whenever the offer box is up, never both at once) and the failure-gated offer box (per-email counter, app.js's submit handler reports via `App.onAuthSignInFailed(email)`; per-email so a typo'd address's failures don't qualify the corrected one) — plus the “Check your email” sent state with the open-on-THIS-device warning and a 60s resend cooldown, and reset on modal close (`App.onAuthMagicLinkReset` from the hideModal ladder — the groups.js precedent) or successful sign-in. OTP errors surface honestly but translated (`friendlyOtpError`: “Signups not allowed for otp” → no-account-ask-your-admin; rate limit and ban get plain words; enumeration-hardening traded away for an invite-only tool). App.* deps: `getSupabase`. Regression: [auth-magic-link.spec.js](auth-magic-link.spec.js) (5 tests, GoTrue endpoints stubbed via routes — always run). |
 | [highlight-labels.spec.js](highlight-labels.spec.js) | Playwright regression for named highlights: the bookmarks panel appears when the tool is armed and lists seeded highlights across pages (unnamed count in the foot); a REAL right-click on a highlight offers "Name highlight…", the modal's Enter/Save writes `h.label`, the label paints ink, the panel re-sorts named-first and the same right-click now reads "Rename highlight…"; a row click jumps to the row's page; the context-menu name row echoes the label; and the Esc ladder (close panel → exit tool) + re-click-reopens contract. |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
 | [scripts/build-filemap.js](scripts/build-filemap.js) | Node script (no deps) that restamps the "Large-file map" table above: each row's Lines cell, the `features/*.js (NN files) \| total` aggregate, and the caption date (only when a count moved, so `--check` is deterministic day to day). Generator owns the numbers; humans own which files are listed and the Status/verdict prose — a hand-added row gets its count kept fresh. `npm run build:filemap`; `--check` in `npm run check` |
@@ -523,53 +525,53 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2040 - UI Render Functions
 - L2625 - Inline rename & polyline edit mode
 - L2739 - Modal primitives (showModal / hideModal)
-- L2769 - Toasts & line color picker
-- L2823 - Airboard cloud sync
-- L2868 - Supabase RPC & presence heartbeat
-- L2908 - User activity / event telemetry
-- L2967 - Supabase auth & dev auth
-- L3111 - [sync] Checkout subscription & permission refresh
-- L3121 - Modals & Handlers
-- L3189 - PDF intake (upload, test PDF, hashing)
-- L3197 - Toolbar tool buttons
-- L3369 - Tool sidebar buttons & legend overlay
-- L3460 - Add Line Type modal
-- L3545 - Line color & sidebar handlers
-- L3754 - Polyline modal & drawing
-- L3785 - Zoom bar & page navigation
-- L3811 - Export canvas JSON
-- L3827 - PDF download helpers
-- L3836 - View-link URL helpers & show-highlights/notes
-- L3908 - Custom icon upload handler
-- L3918 - Export & report dropdown menus
-- L4005 - Sidebar drawer toggles
-- L4016 - Mobile actions burger menu pointer & header logo
-- L4028 - User Activity pointer (format.js + features/user-activity.js)
-- L4040 - My Settings pointer (features/my-settings.js)
-- L4063 - Auth & settings entry buttons
-  - L4108 - Project Settings checkout & Save Status bell
-  - L4200 - [sync] Checkout expired recovery
-  - L4256 - [sync] Turn In
-  - L4366 - Share modal pointer & copy-project openers
-  - L4397 - Settings menu actions
-  - L4418 - Auth sign-in form
-  - L4442 - Save Project modal
-  - L4455 - Checkout expired recovery modal wiring
-  - L4560 - Last-session restore prompt
-  - L4567 - Canvas Repair modal wiring
-- L4754 - Canvas Event Handlers
-- L5200 - Event Binding
-- L5210 - Aim loupe (mobile press-hold precise placement)
-- L5351 - Zoom transform preview & commit
-- L5430 - Canvas mouse, wheel & touch handlers
-- L6138 - Global dropdown dismissal & keyboard hotkeys
-- L6442 - [sync] Manual save to cloud
-- L6452 - [sync] Auto-save
-- L6459 - [sync] Local backup (IndexedDB takeoff state)
-- L6592 - [sync] Checkout keep-alive
-- L6606 - App feature registry
-- L6900 - View-only mode
-- L6906 - Init / boot
+- L2770 - Toasts & line color picker
+- L2824 - Airboard cloud sync
+- L2869 - Supabase RPC & presence heartbeat
+- L2909 - User activity / event telemetry
+- L2968 - Supabase auth & dev auth
+- L3112 - [sync] Checkout subscription & permission refresh
+- L3122 - Modals & Handlers
+- L3190 - PDF intake (upload, test PDF, hashing)
+- L3198 - Toolbar tool buttons
+- L3370 - Tool sidebar buttons & legend overlay
+- L3461 - Add Line Type modal
+- L3546 - Line color & sidebar handlers
+- L3755 - Polyline modal & drawing
+- L3786 - Zoom bar & page navigation
+- L3812 - Export canvas JSON
+- L3828 - PDF download helpers
+- L3837 - View-link URL helpers & show-highlights/notes
+- L3909 - Custom icon upload handler
+- L3919 - Export & report dropdown menus
+- L4006 - Sidebar drawer toggles
+- L4017 - Mobile actions burger menu pointer & header logo
+- L4029 - User Activity pointer (format.js + features/user-activity.js)
+- L4041 - My Settings pointer (features/my-settings.js)
+- L4064 - Auth & settings entry buttons
+  - L4109 - Project Settings checkout & Save Status bell
+  - L4201 - [sync] Checkout expired recovery
+  - L4257 - [sync] Turn In
+  - L4367 - Share modal pointer & copy-project openers
+  - L4398 - Settings menu actions
+  - L4419 - Auth sign-in form
+  - L4444 - Save Project modal
+  - L4457 - Checkout expired recovery modal wiring
+  - L4562 - Last-session restore prompt
+  - L4569 - Canvas Repair modal wiring
+- L4756 - Canvas Event Handlers
+- L5202 - Event Binding
+- L5212 - Aim loupe (mobile press-hold precise placement)
+- L5353 - Zoom transform preview & commit
+- L5432 - Canvas mouse, wheel & touch handlers
+- L6140 - Global dropdown dismissal & keyboard hotkeys
+- L6444 - [sync] Manual save to cloud
+- L6454 - [sync] Auto-save
+- L6461 - [sync] Local backup (IndexedDB takeoff state)
+- L6594 - [sync] Checkout keep-alive
+- L6608 - App feature registry
+- L6902 - View-only mode
+- L6908 - Init / boot
 
 <!-- END SECTION TOC -->
 

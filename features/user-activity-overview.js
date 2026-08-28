@@ -65,7 +65,7 @@
     const member = d.member_since ? App.formatUserActivityDateTime(d.member_since) : '—';
     const n = d.project_count || 0;
     return '<div class="ua-overview-header">' +
-      '<div><span style="font-weight:600;">' + ovEsc(d.email || email || '') + '</span> <span class="ua-role-pill">' + ovEsc(d.role || 'User') + '</span></div>' +
+      '<div><span style="font-weight:600;">' + ovEsc(d.email || email || '') + '</span>' + (App.twinBadgeHtml ? App.twinBadgeHtml(d.email || email) : '') + ' <span class="ua-role-pill">' + ovEsc(d.role || 'User') + '</span></div>' +
       '<div style="color:var(--text3);font-size:0.85rem;margin-top:4px;">Member since ' + ovEsc(member) +
       ' · Owns ' + n + ' project' + (n === 1 ? '' : 's') +
       ' · Last sign-in ' + ovEsc(App.formatLastSignIn(d.last_sign_in_at)) +

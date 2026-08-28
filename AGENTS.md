@@ -169,7 +169,11 @@
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is
   CI-ignored — darwin-rasterized baselines — and cloud-gated specs self-skip
   without dev-auth secrets; a stub `config.local.js` prevents the localhost-only
-  include from 404ing).
+  include from 404ing). **Fresh clones/worktrees need that same stub locally**
+  — `config.local.js` is gitignored so a new worktree doesn't inherit it, and
+  without one the localhost-only include 404s, tripping every spec's
+  no-console-errors assertion (~150 failures):
+  `echo '// stub' > config.local.js` before running specs.
 - **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
   covers all the `.js` — the browser modules (`geometry.js`, `constants.js`,
   `idb.js`, `format.js`, `icons.js`, `icon-render.js`, `line-metrics.js`,
@@ -214,7 +218,10 @@
   page scale for everyone; token + email-domain gated),
   `twin-login` (digital-twin session mint for cloud agent harnesses — secret-header
   auth via `TWIN_LOGIN_SECRET`, estimator fleet email pattern +
-  `profiles.is_digital_twin` required; see PipeTooling's `docs/DIGITAL_TWINS_PLAN.md`);
+  `profiles.is_digital_twin` required; see PipeTooling's `docs/DIGITAL_TWINS_PLAN.md`),
+  `manage-user` (the CT↔PT user bridge — PipeTooling is the system of record for
+  people and commands account provisioning/flagging/retirement here over
+  `X-Bridge-Secret` / `CT_MANAGE_USER_SECRET`; server→server only, never a browser);
   `admin-reassign-projects` +
   `admin-delete-user` share the `_shared/reassignProjects.ts` ownership-move
   engine). Config via `config.js` (see

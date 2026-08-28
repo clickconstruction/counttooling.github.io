@@ -15,6 +15,8 @@ const STUB_ROWS = [
   { id: 'p1', name: 'Riverside Apartments', owner_email: 'wendi@example.com', counter_count: 214, line_count: 38, updated_at: '2026-08-27T12:00:00Z', pdf_path: 'u/p1.pdf', is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer' },
   { id: 'p2', name: 'Oak Hill Elementary', owner_email: 'wendi@example.com', counter_count: 96, line_count: 12, updated_at: '2026-08-26T12:00:00Z', pdf_path: 'u/p2.pdf', is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer' },
   { id: 'p3', name: 'Lakeway Medical Office', owner_email: 'jake@example.com', counter_count: 310, line_count: 54, updated_at: '2026-08-25T12:00:00Z', pdf_path: null, is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer' },
+  // Test-harness debris: must be hidden from the board entirely.
+  { id: 'p4', name: 'IndexedDB Test 1787863165971', owner_email: 'dev-agent@clickplumbing.com', counter_count: 1, line_count: 0, updated_at: '2026-08-28T12:00:00Z', pdf_path: 'u/p4.pdf', is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer' },
 ];
 
 async function bootApp(page) {
@@ -75,7 +77,9 @@ test.describe('Bid Board - overseer all-bids browser', () => {
 
     await page.evaluate(() => window.App.openBidBoard());
     await expect(page.locator('#bidBoardModal')).toBeVisible();
+    // 4 stub rows, but the dev-agent test-harness row is filtered out.
     await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(3);
+    await expect(page.locator('#bidBoardList')).not.toContainText('IndexedDB Test');
 
     // Card content: name, estimator label (local-part), counts, No PDF badge.
     const firstCard = page.locator('#bidBoardList .bid-card').first();

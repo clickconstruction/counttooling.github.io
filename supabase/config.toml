@@ -4,7 +4,7 @@
 [api]
 enabled = true
 port = 54321
-schemas = ["public"]
+schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
@@ -45,3 +45,19 @@ verify_jwt = false
 
 [functions.twin-login]
 verify_jwt = false
+
+[auth]
+enabled = true
+# Twin magic-link mints must land on the deployed app (was unset -> localhost:3000 fallback,
+# found during the 2026-08-28 two-app mint smoke). jwt_expiry and MFA mirror the remote
+# values so config push only changes the URLs — do NOT trim these.
+site_url = "https://counttooling.com"
+additional_redirect_urls = ["https://counttooling.com/**"]
+jwt_expiry = 36000
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

@@ -211,6 +211,7 @@
     currentProjectId: null,
     currentProjectName: null,
     isAdmin: false,
+    isOverseer: false,
     isDigitalTwin: false,
     pendingDeletePage: null,
     supabaseSession: null,
@@ -705,7 +706,7 @@
   function handleCrossTabSignOut(source) {
     try { pushSaveEvent('cross_tab_signout', 'Sign-out received from another tab', source || ''); } catch (_) {}
     try { resetLocalSessionState(); } catch (_) {}
-    try { state.supabaseSession = null; state.isAdmin = false; state.isDigitalTwin = false; } catch (_) {}
+    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; state.isDigitalTwin = false; } catch (_) {}
     // Clear lastAuthUserId so the local SIGNED_OUT event that follows (once
     // supabase-js syncs the auth storage change) skips a redundant broadcast.
     lastAuthUserId = null;
@@ -2320,6 +2321,8 @@
       if (loadProjectBtnSidebar) loadProjectBtnSidebar.style.display = loggedIn ? '' : 'none';
       if (manageUsersBtn) manageUsersBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
+      const bidBoardBtnSidebar = document.getElementById('bidBoardBtnSidebar');
+      if (bidBoardBtnSidebar) bidBoardBtnSidebar.style.display = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
       const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
       if (settingsManageProjectsBtn) settingsManageProjectsBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const globalReloadBtn = document.getElementById('advancedGlobalForceReload');
@@ -2976,15 +2979,18 @@
     state.supabaseSession = session;
     if (session?.user) {
       lastAuthUserId = session.user.id;
-      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin').eq('user_id', session.user.id).maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
+      state.isOverseer = !!profile?.is_overseer;
       state.isDigitalTwin = !!profile?.is_digital_twin;
       startPresenceHeartbeat();
       maybeLogSessionStartOnce();
       checkGlobalForceReload();
+      App.maybeAutoOpenBidBoard && App.maybeAutoOpenBidBoard();
     } else {
       lastAuthUserId = null;
       state.isAdmin = false;
+      state.isOverseer = false;
       state.isDigitalTwin = false;
       stopPresenceHeartbeat();
     }
@@ -3001,8 +3007,9 @@
           resetLocalSessionState();
           lastAuthUserId = newUserId;
           if (session?.user) {
-            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin').eq('user_id', session.user.id).maybeSingle();
+            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
             state.isAdmin = !!profile?.is_admin;
+            state.isOverseer = !!profile?.is_overseer;
             state.isDigitalTwin = !!profile?.is_digital_twin;
             startPresenceHeartbeat();
             maybeLogSessionStartOnce();
@@ -3017,8 +3024,9 @@
       if (session?.user) {
         const userChanged = newUserId !== prevUserId;
         lastAuthUserId = newUserId;
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin').eq('user_id', session.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
+        state.isOverseer = !!profile?.is_overseer;
         state.isDigitalTwin = !!profile?.is_digital_twin;
         startPresenceHeartbeat();
         maybeLogSessionStartOnce();
@@ -3050,9 +3058,11 @@
           }
         }
         reconcileOrphanedCountersAndLineTypes();
+        App.maybeAutoOpenBidBoard && App.maybeAutoOpenBidBoard();
       } else {
         stopPresenceHeartbeat();
         state.isAdmin = false;
+        state.isOverseer = false;
         state.isDigitalTwin = false;
         const hadSession = !!prevUserId;
         lastAuthUserId = null;
@@ -7048,8 +7058,9 @@
         window.history.replaceState({}, '', u.toString());
       }
       if (ok) {
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin').eq('user_id', state.supabaseSession.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', state.supabaseSession.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
+        state.isOverseer = !!profile?.is_overseer;
         state.isDigitalTwin = !!profile?.is_digital_twin;
       }
     }

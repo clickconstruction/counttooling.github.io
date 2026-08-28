@@ -858,6 +858,7 @@
     .summary-count-detail-row img { max-width: 200px; border-radius: 6px; border: 1px solid var(--border); display: block; }
     .modal-card-fullscreen { max-width: 95vw; width: 95vw; max-height: 90vh; height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
     .modal-card-fullscreen #loadProjectList { max-height: none; flex: 1; min-height: 200px; overflow-y: auto; }
+    .modal-card-fullscreen #bidBoardList { max-height: none; flex: 1; min-height: 200px; overflow-y: auto; align-content: start; }
     .manage-icons-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
     .manage-icons-list .manage-icon-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
     .manage-icons-list .manage-icon-row .icon-svg { flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
@@ -1115,6 +1116,10 @@
     .user-list-modal .settings-user-set-password { flex: none; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--accent); }
     .user-list-modal .settings-user-set-password:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
     .user-list-modal .settings-user-set-password svg { width: 18px; height: 18px; display: block; }
+    .user-list-modal .settings-user-overseer { flex: none; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text3); }
+    .user-list-modal .settings-user-overseer:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
+    .user-list-modal .settings-user-overseer.active { color: var(--accent); }
+    .user-list-modal .settings-user-overseer svg { width: 18px; height: 18px; display: block; }
     .user-list-modal .settings-user-dates { width: 86px; flex: none; display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
     #manageUserModal .settings-user-dates-btn { border: none; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
     #manageUserModal .settings-user-dates-btn:hover { background: rgba(232, 197, 71, 0.14); }
@@ -1123,14 +1128,17 @@
     .user-list-modal .settings-user-header span { color: var(--text3); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: visible; }
     .user-list-modal .settings-user-header .settings-user-set-password-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
+    .user-list-modal .settings-user-header .settings-user-overseer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
     /* Manage Users: tighten the three action icons (set-password / transfer / activity) into a
        button group. The same negative margin is applied to the matching header spacers so the
        Role/Projects/dates columns stay aligned between the header and the rows. */
     #manageUserModal .settings-user-transfer,
+    #manageUserModal .settings-user-overseer,
     #manageUserModal .settings-user-activity,
     #manageUserModal .settings-user-header .settings-user-transfer-head,
+    #manageUserModal .settings-user-header .settings-user-overseer-head,
     #manageUserModal .settings-user-header .settings-user-activity-head { margin-left: -8px; }
     /* Per-user activity overview modal */
     .ua-overview-header { padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
@@ -1577,3 +1585,28 @@ body.hotkey-peek .hk-badge { display: block; }
 .tool-context-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--text); font-size: 0.9rem; border-radius: 5px; cursor: pointer; }
 .tool-context-menu button:hover, .tool-context-menu button:focus { background: var(--surface3); outline: none; }
 .macros-context-tip { margin-top: 10px; font-size: 0.8rem; color: var(--text3); }
+
+/* --- Bid Board (overseer "all bids" browser; features/bid-board.js).
+   Presentation-friendly: large card grid, big names, estimator + counts at a
+   glance. Shares the modal-card-fullscreen shell with Load Project. --- */
+#bidBoardModal .bid-board-header { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+#bidBoardModal .bid-board-header h2 { margin: 0; }
+#bidBoardModal .bid-board-filters { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; justify-content: flex-end; min-width: 0; }
+#bidBoardModal .bid-board-search { flex: 1 1 160px; min-width: 0; max-width: 320px; padding: 7px 10px; font-size: 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); box-sizing: border-box; font-family: inherit; }
+#bidBoardModal .bid-board-owner-filter { padding: 7px 10px; font-size: 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); max-width: 100%; font-family: inherit; }
+#bidBoardModal .bid-board-intro { color: var(--text2); }
+#bidBoardModal .bid-board-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+#bidBoardModal .bid-board-empty { color: var(--text2); margin: 0; grid-column: 1 / -1; }
+#bidBoardModal .bid-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+#bidBoardModal .bid-card:hover, #bidBoardModal .bid-card:focus-visible { background: var(--surface2); border-color: var(--accent); outline: none; }
+#bidBoardModal .bid-card-name { font-size: 1.05rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+#bidBoardModal .bid-card-owner { font-size: 0.85rem; color: var(--accent); }
+#bidBoardModal .bid-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#bidBoardModal .bid-card-badge { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--surface2); color: var(--text2); }
+#bidBoardModal .bid-card-badge-warn { background: var(--yellow); color: var(--bg); }
+#bidBoardModal .bid-card-badge-cloud { background: var(--green); color: var(--bg); }
+#bidBoardModal .bid-card-date { font-size: 0.78rem; color: var(--text3); margin-left: auto; }
+#bidBoardModal .bid-card-status { display: none; font-size: 0.8rem; color: var(--text2); }
+#bidBoardModal .bid-card.loading { pointer-events: none; opacity: 0.75; cursor: wait; }
+#bidBoardModal .bid-card.loading .bid-card-status { display: block; }
+#bidBoardModal .bid-board-list.loading .bid-card { pointer-events: none; }

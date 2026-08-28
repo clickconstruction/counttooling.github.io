@@ -55,6 +55,12 @@ site_url = "https://counttooling.com"
 additional_redirect_urls = ["https://counttooling.com/**"]
 jwt_expiry = 36000
 
+# Branded magic-link email (the sign-in fallback + twin mints). Sender identity
+# (from-address) is custom SMTP, configured in the dashboard - the template is ours.
+[auth.email.template.magic_link]
+subject = "Sign in to CountTooling"
+content_path = "./supabase/templates/magic-link.html"
+
 [auth.mfa]
 max_enrolled_factors = 10
 

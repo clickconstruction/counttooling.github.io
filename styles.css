@@ -88,6 +88,13 @@
     .auth-magic-sent-actions { justify-content: center; margin-top: 4px; }
     .auth-magic-sent-actions button:disabled { background: var(--surface3); color: var(--text3); cursor: default; }
     .auth-magic-sent-expiry { margin: 14px 0 0; color: var(--text3); font-size: 0.75rem; }
+    .auth-magic-always { margin: 16px 0 0; text-align: center; }
+    .auth-magic-always-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; background: none; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; color: var(--text2); }
+    .auth-magic-always-btn svg { color: var(--text3); }
+    .auth-magic-always-btn #authMagicAlwaysLabel { color: var(--accent); font-weight: 600; }
+    .auth-magic-always-btn:hover { background: var(--surface2); }
+    .auth-magic-always-btn:hover #authMagicAlwaysLabel { text-decoration: underline; text-underline-offset: 3px; }
+    .auth-magic-always-btn:disabled { opacity: 0.6; cursor: default; }
     @media (max-width: 768px) { .twin-banner { font-size: 0.72rem; letter-spacing: 0.04em; } }
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }

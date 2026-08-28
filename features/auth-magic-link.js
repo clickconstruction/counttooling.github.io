@@ -12,10 +12,14 @@
    * same path twin-login's minted links already exercise - so this file owns
    * only the modal UX:
    *
-   *   - a per-email failure counter (app.js reports failures via
-   *     App.onAuthSignInFailed(email)); the offer block reveals at 2. Counting
-   *     per email keeps a typo'd address's failures from qualifying the
-   *     corrected one.
+   *   - TWO entry points sharing one send path: the always-visible quiet link
+   *     under the actions ("No password? Email me a sign-in link" - every
+   *     PT-provisioned account is born with an unusable random password, so
+   *     the link IS their sign-in and must not hide behind failure), and the
+   *     louder offer box revealed by the per-email failure counter at 2
+   *     (app.js reports failures via App.onAuthSignInFailed(email); per-email
+   *     so a typo'd address's failures don't qualify the corrected one). The
+   *     quiet link yields to the offer box - never both at once.
    *   - the send action + the "Check your email" sent state, with the
    *     open-on-THIS-device warning (the link signs in whichever browser opens
    *     it - the classic magic-link trap), a 60s resend cooldown (GoTrue's
@@ -23,9 +27,11 @@
    *   - reset on modal close (app.js hideModal calls App.onAuthMagicLinkReset,
    *     the groups.js precedent) and on successful password sign-in.
    *
-   * OTP errors (rate limit, deactivated account, unknown email) surface
-   * honestly - enumeration-hardening deliberately traded away for an
-   * invite-only tool.
+   * OTP errors surface honestly but translated (friendlyOtpError):
+   * GoTrue's "Signups not allowed for otp" is really "no account with that
+   * email" (shouldCreateUser: false + invite-only), so say that and point at
+   * the admin; rate limits and bans get plain words too. Enumeration-
+   * hardening deliberately traded away for an invite-only tool.
    * Boundary rule: read shared deps from App.* at call time, never captured at
    * load. See ARCHITECTURE.md "Feature files / window.App registry".
    */
@@ -42,18 +48,32 @@
 
   function showEl(id, show) { const el = $(id); if (el) el.style.display = show ? '' : 'none'; }
 
+  function syncEntryPoints(offerVisible) {
+    showEl('authMagicOffer', offerVisible);
+    showEl('authMagicAlwaysWrap', !offerVisible);
+  }
+
   function onAuthSignInFailed(email) {
     const key = normEmail(email);
     if (!key) return;
     failCounts[key] = (failCounts[key] || 0) + 1;
-    if (failCounts[key] >= OFFER_AFTER) showEl('authMagicOffer', true);
+    if (failCounts[key] >= OFFER_AFTER) syncEntryPoints(true);
+  }
+
+  // GoTrue's raw messages, translated for the two cases people actually hit.
+  function friendlyOtpError(error) {
+    const msg = String((error && error.message) || '');
+    if (/signups? not allowed/i.test(msg)) return 'No account found for that email. CountTooling accounts are set up by your admin — ask them to add you.';
+    if (/rate limit/i.test(msg)) return 'Email limit reached — wait a few minutes and try again.';
+    if (/banned/i.test(msg)) return 'This account has been deactivated — ask your admin.';
+    return msg || 'Could not send the link';
   }
 
   function reset() {
     failCounts = Object.create(null);
     lastSentEmail = '';
     stopCooldown();
-    showEl('authMagicOffer', false);
+    syncEntryPoints(false);
     showEl('authMagicSent', false);
     showEl('authForm', true);
     const err = $('authMagicSentError'); if (err) err.style.display = 'none';
@@ -104,23 +124,24 @@
     }
   }
 
-  async function onOfferClick() {
+  async function requestLink(btnId, labelId) {
     const email = normEmail($('authEmail') && $('authEmail').value);
     const errEl = $('authError');
     if (errEl) errEl.style.display = 'none';
     if (!email) {
       if (errEl) { errEl.textContent = 'Enter your email above first'; errEl.style.display = 'block'; }
+      const em = $('authEmail'); if (em) em.focus();
       return;
     }
-    const btn = $('authMagicSend');
-    const label = $('authMagicSendLabel');
+    const btn = $(btnId);
+    const label = $(labelId);
     if (btn) btn.disabled = true;
     if (label) label.textContent = 'Sending…';
     const error = await sendLink(email, errEl);
     if (btn) btn.disabled = false;
     if (label) label.textContent = 'Email me a sign-in link';
     if (error) {
-      if (errEl) { errEl.textContent = error.message || 'Could not send the link'; errEl.style.display = 'block'; }
+      if (errEl) { errEl.textContent = friendlyOtpError(error); errEl.style.display = 'block'; }
       return;
     }
     lastSentEmail = email;
@@ -135,7 +156,7 @@
     const error = await sendLink(lastSentEmail, errEl);
     if (error) {
       if (btn) { btn.disabled = false; btn.textContent = 'Resend link'; }
-      if (errEl) { errEl.textContent = error.message || 'Could not resend the link'; errEl.style.display = 'block'; }
+      if (errEl) { errEl.textContent = friendlyOtpError(error); errEl.style.display = 'block'; }
       return;
     }
     startCooldown();
@@ -149,7 +170,9 @@
   }
 
   const sendBtn = $('authMagicSend');
-  if (sendBtn) sendBtn.onclick = onOfferClick;
+  if (sendBtn) sendBtn.onclick = () => requestLink('authMagicSend', 'authMagicSendLabel');
+  const alwaysBtn = $('authMagicAlways');
+  if (alwaysBtn) alwaysBtn.onclick = () => requestLink('authMagicAlways', 'authMagicAlwaysLabel');
   const resendBtn = $('authMagicResend');
   if (resendBtn) resendBtn.onclick = onResendClick;
   const backBtn = $('authMagicBack');
@@ -158,7 +181,7 @@
   const emailInput = $('authEmail');
   if (emailInput) emailInput.addEventListener('input', () => {
     const key = normEmail(emailInput.value);
-    showEl('authMagicOffer', (failCounts[key] || 0) >= OFFER_AFTER);
+    syncEntryPoints((failCounts[key] || 0) >= OFFER_AFTER);
   });
 
   App.onAuthSignInFailed = onAuthSignInFailed;

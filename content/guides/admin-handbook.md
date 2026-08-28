@@ -15,6 +15,7 @@ CountTooling accounts are admin-provisioned — there's no self-signup — so ad
 - **Manage User** — the full user table: role, owned-project count, last sign-in, and last active. Per-row actions:
   - **Set password** (🔑) — reset any user's password. This is also the locked-out path: there's no self-serve "forgot password", so a user who's locked out gets a new password from you.
   - **Transfer projects** (⇄) — move *all* of a user's projects to someone else; stored PDFs and inherited view links move with them.
+  - **Overseer toggle** (👁) — grant or remove the read-only [Overseer role](/guides/reviewing-all-bids/): the user sees every bid in the company (the All Bids board) but can never change one. The lit eye and the *Overseer* role label mark who has it.
   - **View activity** (♥) — the per-user activity overview.
   - **Delete** — with a choice: delete the user's projects too, or **reassign them to another user first**. You can't delete yourself.
 - **All Users** — the same table, read-only.

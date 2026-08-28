@@ -840,7 +840,116 @@ const SHOTS = [
       { sel: '#dropSizesBtn', label: 'Or label them all' },
     ],
   },
+
+  // --- Overseer guide shots (synthetic bids + demo emails — no cloud) ----------
+
+  // The All Bids board as an overseer lands on it after sign-in.
+  {
+    name: 'overseer-all-bids',
+    clip: '.app',
+    setup: overseerBoardSetup,
+    callouts: [
+      { n: 1, sel: '#bidBoardSearch' },
+      { n: 2, sel: '#bidBoardOwnerFilter' },
+      { n: 3, sel: '#bidBoardList .bid-card' },
+    ],
+    boxes: [{ sel: '#bidBoardList .bid-card-badge-warn', label: 'Cloud status' }],
+  },
+
+  // A bid open in the overseer's read-only viewer ("Viewing only" banner).
+  {
+    name: 'overseer-viewing-only',
+    clip: '.app',
+    async setup(page) {
+      await takeoffSetup(page);
+      await page.evaluate(() => {
+        const s = window.state, App = window.App;
+        s.supabaseSession = { user: { id: 'demo-overseer', email: 'overseer@clickplumbing.com' } };
+        s.isOverseer = true; s.isAdmin = false; s.isViewer = true; s.canCheckOut = false;
+        s.currentProjectId = 'demo-overseer-project';
+        s.currentProjectName = 'Riverside Apartments — Plumbing';
+        App.updateUI();
+      });
+      await page.waitForTimeout(250);
+    },
+    boxes: [{ sel: '#headerEditStatusBanner', label: 'Read-only — nothing can be changed' }],
+  },
+
+  // Manage Users with the overseer eye-toggle (admin granting the role).
+  {
+    name: 'overseer-grant-toggle',
+    clip: '#manageUserModal .modal-card',
+    async setup(page) {
+      const day = 864e5, now = Date.now();
+      const demoUsers = [
+        { id: 'du-1', email: 'alex@clickplumbing.com', role: 'Admin', is_overseer: false, project_count: 12, last_sign_in_at: new Date(now).toISOString(), last_seen_at: new Date(now).toISOString() },
+        { id: 'du-2', email: 'jordan@clickplumbing.com', role: 'Overseer', is_overseer: true, project_count: 0, last_sign_in_at: new Date(now - day).toISOString(), last_seen_at: new Date(now - day).toISOString() },
+        { id: 'du-3', email: 'sam@clickplumbing.com', role: 'User', is_overseer: false, project_count: 31, last_sign_in_at: new Date(now).toISOString(), last_seen_at: new Date(now).toISOString() },
+      ];
+      await page.route('**/rest/v1/rpc/list_users_for_admin', async (route) => {
+        if (route.request().method() === 'OPTIONS') {
+          await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
+          return;
+        }
+        await route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify(demoUsers) });
+      });
+      await page.evaluate(() => {
+        const s = window.state;
+        s.isAdmin = true;
+        s.supabaseSession = { user: { id: 'du-1', email: 'alex@clickplumbing.com' }, access_token: 'demo' };
+        window.App.openManageUserModal();
+      });
+      await page.waitForSelector('#manageUserModal .settings-user-overseer', { timeout: 10000 });
+      await page.waitForTimeout(250);
+    },
+    boxes: [{ sel: '#manageUserModal .settings-user-overseer.active', label: 'Overseer toggle' }],
+  },
 ];
+
+// Synthetic list_accessible_projects rows for the Bid Board shots: realistic
+// bid names and demo estimator emails, dates relative to the run so the
+// "days ago" labels read naturally. One canvas-only row shows the warn badge.
+function overseerBidRows() {
+  const day = 864e5, now = Date.now();
+  let n = 0;
+  const row = (name, owner, cnt, ln, daysAgo, pdf) => ({
+    id: 'ov-demo-' + (++n), name, owner_email: owner,
+    counter_count: cnt, line_count: ln,
+    updated_at: new Date(now - daysAgo * day).toISOString(),
+    pdf_path: pdf ? 'demo/plan.pdf' : null,
+    is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer',
+  });
+  return [
+    row('Riverside Apartments — Plumbing', 'wendi@clickplumbing.com', 214, 38, 0, true),
+    row('Oak Hill Elementary Reno', 'wendi@clickplumbing.com', 96, 12, 1, true),
+    row('Lakeway Medical Office — Permit Set', 'jordan@clickplumbing.com', 310, 54, 2, true),
+    row('Sunset Strip Retail Shell', 'trace@clickplumbing.com', 45, 9, 5, true),
+    row('Travis County Annex', 'jordan@clickplumbing.com', 128, 22, 9, false),
+    row('Hyde Park Duplexes — Issued for Bid', 'trace@clickplumbing.com', 61, 17, 12, true),
+    row('Mueller Hangar TI', 'wendi@clickplumbing.com', 154, 41, 15, true),
+    row('Barton Springs Bathhouse', 'jordan@clickplumbing.com', 88, 26, 21, true),
+  ];
+}
+
+// Boot the board the way an overseer sees it: fake session + overseer flags,
+// App.getSupabase stubbed so list_accessible_projects returns the demo rows.
+async function overseerBoardSetup(page) {
+  await page.evaluate(async (rows) => {
+    const s = window.state, App = window.App;
+    s.supabaseSession = { user: { id: 'demo-overseer', email: 'overseer@clickplumbing.com' }, access_token: 'demo' };
+    s.isOverseer = true; s.isAdmin = false;
+    // Read-only flags so no "Unsaved"/save affordances leak into an overseer shot
+    // (loadApp's sample-plan upload would otherwise read as an editable project).
+    s.isViewer = true; s.canCheckOut = false;
+    App.getSupabase = () => ({ rpc: async () => ({ data: rows, error: null }) });
+    App.updateUI();
+    const pdfLabel = document.getElementById('statusPdfLabel');
+    if (pdfLabel && pdfLabel.parentElement) pdfLabel.parentElement.style.visibility = 'hidden';
+    await App.openBidBoard();
+  }, overseerBidRows());
+  await page.waitForSelector('#bidBoardList .bid-card', { timeout: 5000 });
+  await page.waitForTimeout(250);
+}
 
 async function loadApp(page, baseUrl) {
   await page.goto(baseUrl + '/app/', { waitUntil: 'networkidle' });

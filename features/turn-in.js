@@ -97,7 +97,7 @@
     }
     if (opts.onDenied) opts.onDenied();
     await App.refreshProjectPermissions();
-    const msg = App.state.checkedOutEmail ? 'Project is checked out by ' + App.state.checkedOutEmail : (result.error || 'Failed to check out');
+    const msg = App.state.checkedOutEmail ? 'Project is checked out by ' + (App.twinEmailText ? App.twinEmailText(App.state.checkedOutEmail) : App.state.checkedOutEmail) : (result.error || 'Failed to check out');
     App.showToast(msg, 5000);
     return false;
   }

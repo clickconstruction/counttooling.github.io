@@ -70,7 +70,7 @@
       users.forEach(function(u) {
         const opt = document.createElement('option');
         opt.value = (u.email || '').toLowerCase();
-        opt.textContent = u.email || u.id;
+        opt.textContent = App.twinEmailText ? App.twinEmailText(u.email || u.id) : (u.email || u.id);
         userSelect.appendChild(opt);
       });
     }
@@ -86,9 +86,9 @@
         div.className = 'share-project-row' + (s.role === 'owner' ? ' share-project-owner-row' : '');
         div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);';
         if (s.role === 'owner') {
-          div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;color:var(--text2);">Owner: ' + esc(s.email || s.user_id) + '</span></div>';
+          div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;color:var(--text2);">Owner: ' + esc(s.email || s.user_id) + (App.twinBadgeHtml ? App.twinBadgeHtml(s.email) : '') + '</span></div>';
         } else {
-          div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;">' + esc(s.email || s.user_id) + '</span><select class="share-project-role-select" style="padding:4px 8px;font-size:0.85rem;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);" data-user-id="' + s.user_id + '"><option value="viewer"' + (s.role === 'viewer' ? ' selected' : '') + '>Viewer</option><option value="editor"' + (s.role === 'editor' ? ' selected' : '') + '>Editor</option></select></div><button type="button" class="danger share-project-remove-btn" style="padding:6px;border-radius:4px;cursor:pointer;border:none;background:transparent;color:var(--red);" aria-label="Remove" data-user-id="' + s.user_id + '">' + trashSvg + '</button>';
+          div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;"><span style="flex-shrink:0;">' + esc(s.email || s.user_id) + (App.twinBadgeHtml ? App.twinBadgeHtml(s.email) : '') + '</span><select class="share-project-role-select" style="padding:4px 8px;font-size:0.85rem;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);" data-user-id="' + s.user_id + '"><option value="viewer"' + (s.role === 'viewer' ? ' selected' : '') + '>Viewer</option><option value="editor"' + (s.role === 'editor' ? ' selected' : '') + '>Editor</option></select></div><button type="button" class="danger share-project-remove-btn" style="padding:6px;border-radius:4px;cursor:pointer;border:none;background:transparent;color:var(--red);" aria-label="Remove" data-user-id="' + s.user_id + '">' + trashSvg + '</button>';
           div.querySelector('.share-project-remove-btn').onclick = async () => {
             const sb = App.getSupabase ? App.getSupabase() : null;
             if (!sb) return;

@@ -75,7 +75,7 @@
     if (listOk && Array.isArray(users) && users.length) {
       const sorted = users.slice().sort((a, b) => String(a.email || '').localeCompare(String(b.email || ''), undefined, { sensitivity: 'base' }));
       sorted.forEach((u) => {
-        html += '<option value="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + esc(u.email || '—') + '</option>';
+        html += '<option value="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + esc(App.twinEmailText ? App.twinEmailText(u.email || '—') : (u.email || '—')) + '</option>';
       });
     }
     sel.innerHTML = html;

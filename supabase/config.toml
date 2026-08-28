@@ -39,3 +39,9 @@ verify_jwt = false
 
 [functions.set-view-scale]
 verify_jwt = false
+
+[functions.manage-user]
+verify_jwt = false
+
+[functions.twin-login]
+verify_jwt = false

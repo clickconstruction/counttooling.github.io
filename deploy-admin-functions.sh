@@ -10,4 +10,5 @@ supabase functions deploy admin-delete-user --no-verify-jwt
 supabase functions deploy admin-reassign-projects --no-verify-jwt
 supabase functions deploy admin-set-password --no-verify-jwt
 supabase functions deploy admin-delete-project --no-verify-jwt
+supabase functions deploy twin-login --no-verify-jwt
 echo "Done."

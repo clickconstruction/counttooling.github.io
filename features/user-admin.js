@@ -41,6 +41,7 @@
   const escHtml = (s) => App.escapeHtml(s);
   const TRANSFER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 9l-4-4v3H8v2h9v3l4-4zM3 15l4 4v-3h9v-2H7v-3l-4 4z"/></svg>';
   const KEY_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12.65 10A5.99 5.99 0 0 0 7 6a6 6 0 0 0 0 12 5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
+  const OVERSEER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 5c-5.5 0-9.9 3.6-11.7 7 1.8 3.4 6.2 7 11.7 7s9.9-3.6 11.7-7C21.9 8.6 17.5 5 12 5zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>';
   const projectCountNote = (u) => (u && u.project_count != null) ? ('Owns ' + u.project_count + ' project' + (u.project_count === 1 ? '' : 's') + '.') : '';
 
   // One admin-headers builder for the six fetch sites in this file (the
@@ -162,6 +163,7 @@
       const headerHtml = userListHeaderHtml(
         '<span class="settings-user-set-password-head"></span>' +
         '<span class="settings-user-transfer-head"></span>' +
+        '<span class="settings-user-overseer-head"></span>' +
         '<span class="settings-user-activity-head"></span>' +
         '<span class="settings-user-delete-head"></span>');
       listEl.innerHTML = headerHtml + users.map((u) => {
@@ -175,6 +177,7 @@
           '</button>' +
           '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password"' + userDataAttrs(u) + '>' + KEY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects"' + userDataAttrs(u) + '>' + TRANSFER_ICON_SVG + '</button>' +
+          '<button type="button" class="settings-user-overseer' + (u.is_overseer ? ' active' : '') + '" aria-pressed="' + (u.is_overseer ? 'true' : 'false') + '" aria-label="' + (u.is_overseer ? 'Remove overseer' : 'Make overseer') + '" title="' + (u.is_overseer ? 'Remove overseer (sees every project, read-only)' : 'Make overseer (sees every project, read-only)') + '" data-overseer="' + (u.is_overseer ? '1' : '0') + '"' + userDataAttrs(u) + '>' + OVERSEER_ICON_SVG + '</button>' +
           userActivityBtnHtml(u) +
           '<button type="button" class="settings-user-delete"' + userDataAttrs(u) + (isSelf ? ' disabled' : '') + '>Delete</button>' +
           '</div>';
@@ -188,6 +191,29 @@
       });
       listEl.querySelectorAll('.settings-user-transfer').forEach((btn) => {
         btn.onclick = () => openTransferModal(btn.dataset.userId, btn.dataset.email);
+      });
+      listEl.querySelectorAll('.settings-user-overseer').forEach((btn) => {
+        btn.onclick = async () => {
+          const makeOverseer = btn.dataset.overseer !== '1';
+          btn.disabled = true;
+          try {
+            const res = await fetch(App.SUPABASE_URL + '/rest/v1/rpc/admin_set_overseer', {
+              method: 'POST', headers: adminHeaders(session, true),
+              body: JSON.stringify({ p_user_id: btn.dataset.userId, p_value: makeOverseer })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data && data.ok) {
+              App.showToast((btn.dataset.email || 'User') + (makeOverseer ? ' is now an overseer (sees every bid, read-only).' : ' is no longer an overseer.'), 3500);
+              fetchAndRender();
+            } else {
+              App.showToast((data && data.error) || 'Could not update overseer.', 4000);
+              btn.disabled = false;
+            }
+          } catch (e) {
+            App.showToast(e?.message || 'Could not update overseer.', 4000);
+            btn.disabled = false;
+          }
+        };
       });
       listEl.querySelectorAll('.settings-user-count-link').forEach((btn) => {
         btn.onclick = () => openUserProjectsModal(btn.dataset.userId, btn.dataset.email);

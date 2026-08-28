@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'ac83ac646f88';
+const CACHE_VERSION = 'b27419065ca1';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -252,7 +252,7 @@ const PRECACHE_SHA256 = {
   '/features/hotkey-peek.js': '6f8453b22b2a5ee1b84d5760c00b47dc45f94a435ff59f7d9c991b88b6f30820',
   '/features/child-counts.js': 'fd265b35eaa72e8dfa01a931a38ede166427a0d9ec6340b33a68272781d5f8ac',
   '/features/twin-badge.js': '2b3f7def0ce1691fd9468af9a01aab67a74eb17dd764130bdc00d5464bce010b',
-  '/features/auth-magic-link.js': '6a2032bb8ac7961702f8db2367f0d03f161108d268584fb4f4854642531eedbd',
+  '/features/auth-magic-link.js': '8fd46bcd8d3fb06ea0f974c251d76f1ea3b54e2ce4b5a6be6d1d66290c8afc2d',
   '/report.js': '97ca529dbd4ddee55129ecf2206debb3534f744f24e3e5ff6af292c720cbf3ba',
   '/vendor/pdf.min-3.11.174.js': '5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946',
   '/vendor/pdf.worker.min-3.11.174.js': 'feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b',

@@ -127,9 +127,56 @@ test.describe('Email sign-in fallback', () => {
     await page.click('#authMagicSend');
 
     await expect(page.locator('#authError')).toBeVisible();
-    await expect(page.locator('#authError')).toContainText('Signups not allowed');
+    // GoTrue's raw "Signups not allowed for otp" is translated to the truth:
+    // no account, and accounts come from the admin.
+    await expect(page.locator('#authError')).toContainText('No account found for that email');
     await expect(page.locator('#authMagicSent')).toBeHidden();
     await expect(page.locator('#authForm')).toBeVisible();
+  });
+
+  test('quiet always-visible link: works with zero failures, yields to the offer box', async ({ page }) => {
+    const otpCalls = [];
+    await stubAuth(page, otpCalls);
+    await openAuthModal(page);
+
+    // Visible from the start - PT-provisioned accounts never had a password,
+    // so the link must not hide behind failed attempts.
+    await expect(page.locator('#authMagicAlwaysWrap')).toBeVisible();
+    await expect(page.locator('#authMagicAlways')).toContainText('No password?');
+
+    // Empty email: inline nudge, no request.
+    await page.click('#authMagicAlways');
+    await expect(page.locator('#authError')).toContainText('Enter your email above first');
+    expect(otpCalls.length).toBe(0);
+
+    // With an email: same send path, same sent state.
+    await page.fill('#authEmail', 'wendi@clickplumbingsupply.com');
+    await page.click('#authMagicAlways');
+    await expect(page.locator('#authMagicSent')).toBeVisible();
+    expect(otpCalls.length).toBe(1);
+    expect(otpCalls[0].body.create_user).toBe(false);
+
+    // Back, then qualify the offer box: the quiet link yields - never both.
+    await page.click('#authMagicBack');
+    await failSignIn(page, 'wendi@clickplumbingsupply.com', 'wrong1');
+    await failSignIn(page, 'wendi@clickplumbingsupply.com', 'wrong2');
+    await expect(page.locator('#authMagicOffer')).toBeVisible();
+    await expect(page.locator('#authMagicAlwaysWrap')).toBeHidden();
+  });
+
+  test('rate-limit error gets plain words', async ({ page }) => {
+    await stubAuth(page, []);
+    await page.unroute('**/auth/v1/otp**');
+    await page.route('**/auth/v1/otp**', (route) => route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 429, msg: 'Email rate limit exceeded' }),
+    }));
+    await openAuthModal(page);
+
+    await page.fill('#authEmail', 'wendi@clickplumbingsupply.com');
+    await page.click('#authMagicAlways');
+    await expect(page.locator('#authError')).toContainText('Email limit reached');
   });
 
   test('closing the modal resets everything', async ({ page }) => {

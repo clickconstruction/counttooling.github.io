@@ -99,6 +99,24 @@ nothing you do while reviewing can damage a bid.
 When you're done, close the project or open **All Bids** again for the next one. Next time you
 sign in, CountTooling brings you back to the bid you last had open; the board is one click away.
 
+## The review handoff
+
+"It's in there, go look at it" now has a button. When an estimator finishes a bid, they open
+**Project Settings** and use the **Bid review** row to **Mark ready for review**. From then on:
+
+- On the overseer's board, that bid jumps into a pinned **Ready for review** lane at the top,
+  wearing a gold badge — no searching, no asking who finished what.
+- After looking it over, the overseer clicks **Mark reviewed** right on the card. The bid
+  drops out of the lane and keeps a quiet **Reviewed ✓** badge, so both sides can see it's
+  been seen.
+- If the estimator changes the bid afterward, they can **Mark ready again** from the same
+  Project Settings row (or **Withdraw** a request that went up too early).
+
+Who can do what is enforced by the server, not the buttons: only the bid's owner, an editor
+on it, or an admin can mark it ready or withdraw; only an overseer or admin can mark it
+reviewed. The same badges show up in **Load Project** rows, so estimators see the state of
+their own bids wherever they look.
+
 ## Granting the role (admins)
 
 Overseer is a per-account flag that only an admin can set, from **User Settings → Manage

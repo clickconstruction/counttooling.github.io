@@ -2746,6 +2746,7 @@
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
   function hideModal(id) {
     if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
+    if (id === 'authModal') App.onAuthMagicLinkReset && App.onAuthMagicLinkReset();
     if (id === 'counterLineTypeDetailsModal') App.onCounterLineTypeDetailsHidden && App.onCounterLineTypeDetailsHidden();
     if (id === 'canvasDetailsModal') App.onCanvasDetailsHidden && App.onCanvasDetailsHidden();
     if (id === 'deleteCanvasConfirmModal') App.onDeleteCanvasConfirmHidden && App.onDeleteCanvasConfirmHidden();
@@ -4421,6 +4422,7 @@
       if (error) {
         errEl.textContent = error.message || 'Sign in failed';
         errEl.style.display = 'block';
+        if (window.App?.onAuthSignInFailed) window.App.onAuthSignInFailed(email);
         return;
       }
       state.supabaseSession = data.session;

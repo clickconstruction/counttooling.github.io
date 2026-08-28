@@ -1998,6 +1998,11 @@
           <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
         </div>
         <p id="authError" class="form-group" style="color:var(--red);display:none;"></p>
+        <div id="authMagicOffer" class="form-group auth-magic-offer" style="display:none;">
+          <p class="auth-magic-offer-title">Having trouble signing in?</p>
+          <button type="button" id="authMagicSend" class="auth-magic-send-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg><span id="authMagicSendLabel">Email me a sign-in link</span></button>
+          <p class="auth-magic-offer-caption">One click in the email signs you in — no password needed.</p>
+        </div>
         <div class="actions">
           <button type="button" id="authCancel">Cancel</button>
           <button type="submit" id="authSignIn">Sign In</button>
@@ -2006,6 +2011,22 @@
           <button type="button" id="authDevBypass" class="settings-menu-link" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:0.9rem;">Sign in as test user</button>
         </p>
       </form>
+      <div id="authMagicSent" class="auth-magic-sent" style="display:none;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>
+        <p class="auth-magic-sent-title">Check your email</p>
+        <p class="auth-magic-sent-sub">We sent a one-time sign-in link to</p>
+        <p id="authMagicSentEmail" class="auth-magic-sent-email"></p>
+        <div class="auth-magic-sent-warn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+          <p>The link signs in whichever device opens it — open the email on <b>this</b> computer.</p>
+        </div>
+        <p id="authMagicSentError" style="color:var(--red);display:none;margin:0 0 10px;font-size:0.85rem;"></p>
+        <div class="actions auth-magic-sent-actions">
+          <button type="button" id="authMagicBack">Try password again</button>
+          <button type="button" id="authMagicResend" disabled>Resend in 1:00</button>
+        </div>
+        <p class="auth-magic-sent-expiry">Link expires in 1 hour.</p>
+      </div>
     </div>
   </div>
   <div class="modal-overlay" id="adminPanelModal">
@@ -2656,6 +2677,7 @@
   <script src="/features/hotkey-peek.js"></script>
   <script src="/features/child-counts.js"></script>
   <script src="/features/twin-badge.js"></script>
+  <script src="/features/auth-magic-link.js"></script>
   <script src="/report.js"></script>
   <script>
     // Boot sanity guard (intentional inline exception, like the supabase-enabled

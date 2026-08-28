@@ -70,6 +70,24 @@
     body.twin-session .twin-banner { display: flex; }
     body.twin-session .app { height: calc(100vh - 28px); height: calc(100dvh - 28px); }
     .twin-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 10px; background: var(--accent); color: var(--bg); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: baseline; white-space: nowrap; }
+    /* Email sign-in fallback (features/auth-magic-link.js): the offer box under a
+       repeated password failure, and the link-sent state that replaces the form. */
+    .auth-magic-offer { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+    .auth-magic-offer-title { margin: 0; color: var(--text); font-size: 0.9rem; }
+    .auth-magic-send-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; min-height: 44px; border-radius: 6px; border: 1px solid var(--accent); background: transparent; color: var(--accent); font-weight: 600; font-size: 0.9rem; font-family: inherit; cursor: pointer; }
+    .auth-magic-send-btn:hover { background: rgba(232, 197, 71, 0.08); }
+    .auth-magic-send-btn:disabled { opacity: 0.6; cursor: default; }
+    .auth-magic-offer-caption { margin: 0; color: var(--text2); font-size: 0.8rem; }
+    .auth-magic-sent { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .auth-magic-sent-title { margin: 12px 0 6px; font-size: 1.05rem; font-weight: 600; color: var(--text); }
+    .auth-magic-sent-sub { margin: 0 0 4px; color: var(--text2); font-size: 0.9rem; }
+    .auth-magic-sent-email { margin: 0 0 14px; color: var(--text); font-weight: 600; font-size: 0.95rem; overflow-wrap: anywhere; }
+    .auth-magic-sent-warn { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid var(--border2); border-radius: 6px; background: var(--surface2); text-align: left; }
+    .auth-magic-sent-warn svg { flex-shrink: 0; margin-top: 2px; }
+    .auth-magic-sent-warn p { margin: 0; color: var(--yellow); font-size: 0.82rem; }
+    .auth-magic-sent-actions { justify-content: center; margin-top: 4px; }
+    .auth-magic-sent-actions button:disabled { background: var(--surface3); color: var(--text3); cursor: default; }
+    .auth-magic-sent-expiry { margin: 14px 0 0; color: var(--text3); font-size: 0.75rem; }
     @media (max-width: 768px) { .twin-banner { font-size: 0.72rem; letter-spacing: 0.04em; } }
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }

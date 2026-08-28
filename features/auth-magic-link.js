@@ -71,7 +71,7 @@
     if (!btn) return;
     let left = RESEND_COOLDOWN_S;
     btn.disabled = true;
-    const paint = () => { btn.textContent = 'Resend in 0:' + String(left).padStart(2, '0'); };
+    const paint = () => { btn.textContent = 'Resend in ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); };
     paint();
     cooldownTimer = setInterval(() => {
       left -= 1;

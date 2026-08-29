@@ -46,6 +46,9 @@ verify_jwt = false
 [functions.twin-login]
 verify_jwt = false
 
+[functions.import-takeoff]
+verify_jwt = false
+
 [auth]
 enabled = true
 # Twin magic-link mints must land on the deployed app (was unset -> localhost:3000 fallback,

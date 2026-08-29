@@ -2890,3 +2890,12 @@ The CountTooling half of PipeTooling's cross-app RFI loop (`docs/RFI_LOOP_PLAN.m
 sidebar **Copy RFI Flags** button exports them (all pages/canvases, tab-delimited,
 project-name header) for paste into PipeTooling's RFI queue. `features/rfi-flags.js` +
 `rfi-flags.spec.js`; button wired in the Output cluster of `app/index.html`.
+
+## Agent takeoff door: import-takeoff + eval kernel (2026-08-29)
+
+Wave 3 of PipeTooling's estimator-twin pipeline, CT side: `supabase/functions/import-takeoff`
+(twin-only, own-project, idempotent-by-name, canvas-only, loud field-naming 400s — contract
+in TAKEOFF_IMPORT.md) writes an agent's takeoff.json as a normal reviewable project in the
+exact save-engine data shape; `takeoff-eval.js` (+node tests) diffs any takeoff against a
+reference — counts per counter name, decimal feet per line-type name (unscaled px kept
+separate) — the scoring rail for agent-vs-human comparison.

@@ -2882,3 +2882,11 @@ No incident data — this is defense-in-depth that makes the class detectable + 
 - Tests: `rotation-share-roundtrip.spec.js` generates a `/Rotate-90` PDF in-browser, runs
   editor→viewer-reconstruct (incl. a real multi-page case that must not warn), asserts the
   stamp/round-trip/guard; + `bakeFramesMatch` unit cases.
+
+## RFI flags (2026-08-29)
+
+The CountTooling half of PipeTooling's cross-app RFI loop (`docs/RFI_LOOP_PLAN.md` R2):
+`RFI:`-prefixed canvas notes are GC questions captured at the ambiguous spot; the new
+sidebar **Copy RFI Flags** button exports them (all pages/canvases, tab-delimited,
+project-name header) for paste into PipeTooling's RFI queue. `features/rfi-flags.js` +
+`rfi-flags.spec.js`; button wired in the Output cluster of `app/index.html`.

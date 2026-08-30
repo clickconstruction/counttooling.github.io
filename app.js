@@ -2602,6 +2602,16 @@
     if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); }
     updateUI();
   }
+  // T2-08: every line-type create surface hands the user the pen, exactly as
+  // counter create (features/counter.js) and the picker's Create tab already do.
+  function armLineToolAfterCreate() {
+    if (!state.pages.length) return;          // palette prep, no plan open — nothing to draw on
+    if (state.drawingPolyline) return;        // never abandon an in-flight polyline trace
+    if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Quick Line'); return; }
+    state.tool = TOOL.LINE;
+    state.quickLineStart = null;
+    collapsePagesSectionForPlacing();
+  }
 
   // quickKeyBadgeHtml + renderCountersList + renderLineTypesList +
   // renderGroupsList + countItemsInGroup (the sidebar Counters / Line Types /
@@ -3256,6 +3266,13 @@
       state.quickLineStart = null;
       renderAnnotations();
     }
+    // T2-08: exactly one line type — nothing to choose, arm it directly.
+    if (state.lineTypes.length === 1) {
+      state.activeLineTypeId = state.lineTypes[0].id;
+      armLineToolAfterCreate();
+      updateUI();
+      return;
+    }
     App.showChooseLineTypeModal();
   };
   document.getElementById('chainBtn').onclick = () => {
@@ -3497,10 +3514,8 @@
     App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
     markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
     hideModal('lineTypeModal');
+    armLineToolAfterCreate();
     updateUI();
   };
 
@@ -6728,6 +6743,8 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  // T2-08 arm-on-create (features/quick-line.js + features/choose-create-line-type.js).
+  App.armLineToolAfterCreate = armLineToolAfterCreate;
   // Chain tool deps (features/chain.js) — publish-only; all defined in app.js.
   App.isPointInPageBounds = isPointInPageBounds;
   App.showOutOfBoundsToast = showOutOfBoundsToast;

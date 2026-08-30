@@ -7,10 +7,10 @@
  * zoom-% call site firing before the registry is populated) plus the rail's
  * behavior contract: the zoom-% toggle (rail only - Zoom Settings opens from
  * the rail's gear, coexisting above the modal backdrop), the log-scale drag
- * (clamped to [0.2, getMaxZoom()]), the ~5s idle auto-fade + yellow thumb,
- * tick rebuild when the max zoom changes, thumb resync on external zoom
- * changes, mobile parity (old #zoomOverlay popover gone), and outside-click /
- * Escape dismissal.
+ * (clamped to [0.2, getMaxZoom()]), stays-until-dismissed persistence (B9:
+ * the old ~5s idle auto-fade is gone) + yellow thumb, tick rebuild when the
+ * max zoom changes, thumb resync on external zoom changes, mobile parity
+ * (old #zoomOverlay popover gone), and outside-click / Escape dismissal.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -65,21 +65,33 @@ test.describe('Zoom Rail (features/zoom-rail.js)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('rail auto-fades away after ~5s without interaction', async ({ page }) => {
+  test('rail stays until dismissed - persists well past the retired ~5s idle window (B9)', async ({ page }) => {
     const errors = [];
     await bootWithPdf(page, errors);
 
     await page.evaluate(() => window.App.openZoomRail());
     await page.waitForSelector('#zoomRail.visible', { timeout: 3000 });
 
-    // Untouched, the rail fades out (5s idle + 0.35s fade) and fully hides.
-    await page.waitForFunction(() => !document.getElementById('zoomRail').classList.contains('visible'), { timeout: 8000 });
+    // B9 (J15): the invisible ~5s idle auto-fade is gone — untouched, the rail
+    // must still be up (and fully opaque) after the old window has long passed.
+    // Unrelated updateUI churn must not dismiss it either.
+    await page.waitForTimeout(6000);
+    await page.evaluate(() => window.App.updateUI());
+    const after = await page.evaluate(() => ({
+      visible: document.getElementById('zoomRail').classList.contains('visible'),
+      opacity: getComputedStyle(document.getElementById('zoomRail')).opacity,
+    }));
+    expect(after.visible).toBe(true);
+    expect(after.opacity).toBe('1');
 
     // The thumb is the accent yellow (visual contract for the grab handle).
-    await page.evaluate(() => window.App.openZoomRail());
-    await page.waitForSelector('#zoomRail.visible', { timeout: 3000 });
     const thumbBg = await page.evaluate(() => getComputedStyle(document.getElementById('zoomRailThumb')).backgroundColor);
     expect(thumbBg).toBe('rgb(232, 197, 71)');   // var(--accent) #e8c547
+
+    // Still dismisses on demand: outside click closes it (the Escape variant
+    // is covered by the dedicated dismissal test below).
+    await page.mouse.click(400, 300);
+    await page.waitForFunction(() => !document.getElementById('zoomRail').classList.contains('visible'), { timeout: 3000 });
 
     expect(errors).toEqual([]);
   });

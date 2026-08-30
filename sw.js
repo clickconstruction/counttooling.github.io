@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'c8fd3881971d';
+const CACHE_VERSION = '997dbaf79352';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -166,7 +166,7 @@ const PRECACHE_SHA256 = {
   '/app/': '4b525486a546aaa8c6b3b4ccd6ee001cf5bf8f217bf70f893e29037f7140f519',
   '/app/index.html': '4b525486a546aaa8c6b3b4ccd6ee001cf5bf8f217bf70f893e29037f7140f519',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '7324f71c678a232236b2852057b0542d9a00943e0f21259e59acc4adca34d3fb',
+  '/styles.css': 'd7c772c3b1295fc4eb1f7b02b8befbfa67939c85bb542c87cab45ae73ce4f6c2',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
   '/icons-custom.js': 'f764721b21760d0138c3f4f5bd67427201e5f7e85a76e72501fb2c3a3852390e',
@@ -188,7 +188,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': '0dd72fb689f22d5f3b4e171ecf9a13d579cbb7c3957c22ebb2d15a7713628f82',
   '/pdf-tile-cache.js': 'cd2631a09682e5b5216e805f4d44c5a75c5bbc01fbbb6237d2bf62bf021e5ade',
-  '/app.js': 'd8d719d3efcd617eba5426c3e487c1cd2682c09f2bc3a240e9ea42815093a5b4',
+  '/app.js': '362ba9476e669851dad6d7106282d507eabfc0d003e91682d5b9cf09e431b1ca',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '79d960d07694924c2c8f02972157bc8249a2a633bf191ec3bad662b5bc577a09',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -197,7 +197,7 @@ const PRECACHE_SHA256 = {
   '/features/custom-icon-upload.js': 'be658684a030a35c972d942c68c1c25389377495018b835a6ea42e69be56777f',
   '/features/note.js': 'b7cc88aa00ac8a2450c59299959108ae3bd5b18b0e420fd61264533c23347d6b',
   '/features/zoom.js': 'cceb56f7ae4c91124aa17b246b276b9796463dc27ce93835a849f5a3d31f31fc',
-  '/features/zoom-rail.js': '6f7ba9773c77b3c5d28977d087525fec3de534387a669344b5bdc7d04538e60d',
+  '/features/zoom-rail.js': 'd9fd46d047c55cac555c2c1cfac70f4d36b9f537302efc400a3e240d6edfbcc6',
   '/features/manage-icons.js': '05d99d299583073854b53f7fd67601b791357e19cb3c4c72f17fde645496ccc0',
   '/features/multiply-zone-settings.js': 'e808757a5758d7c0ba64d989ef3f6e051266b40a26ff01ae9ea8187b7b834dee',
   '/features/export-pdfs.js': '78b87c4447cdabf313f6bb0d3d69283d0ed34189a6d466f8b3892f4f5aa35746',
@@ -205,15 +205,15 @@ const PRECACHE_SHA256 = {
   '/features/page-settings.js': '2e9b961016930ea467a50e9a426cf8aa3a901f10dd2fb2fbe11a9186c7020e40',
   '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',
   '/features/line-type-settings.js': '91bcfa06e0f4d29360effb6b1178d869020cbb5aa427f2e2550eb3b1fa48ed60',
-  '/features/choose-create-line-type.js': '7dffa9677ad53b10eabc18fde7c7041b1f84ac94e6df15c254386083a2a7f516',
-  '/features/scale.js': '423815f8ed63c44b3053032cd318ab157270f5de20386cb751ead7b606142190',
+  '/features/choose-create-line-type.js': 'c8cb905e7e0d38bf85460cabf7cec5f82f611810b57f6cb37380039ccd113839',
+  '/features/scale.js': 'dc5a5d2be704ffc1304d523f4e5f930d0d58cc047617d7fe6b9d439f2e178109',
   '/features/scale-zone-settings.js': '67a8a802e7aeaf629a235dbd0e4d9c42ea5c746412ae6749b90ecf35be7a9c9f',
   '/features/groups.js': '2c066be00c8316d3a1b7bead6e4f6a3f180aab076f4b577f1bde524ef0662cff',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
   '/features/quick-line.js': 'cef59db53a32bf198bb42b2aae35f41de5dc8e4cd2f1baf92e5b799f222f7d30',
-  '/features/counter.js': '908de5bdfc8e355073b82b33c1fe634ddd9cb17694c13b0863b1eac0cc2b0651',
+  '/features/counter.js': 'e0924f519edbd05b358c1fc2ad6df7fce3336ee4c7f30511bc39eb535b1d4ab1',
   '/features/save-status.js': 'bf601563da95998a4bfa9d8957306368b65d599fc3f3bccb729b7f42c17d585a',
-  '/features/status-bar.js': '13c0930cd47698992549e8c3756970fe90d6b172f89f48ba266d50faad8e582f',
+  '/features/status-bar.js': '96641f20a80a68b6b0f9a78413c493bc583c8c853343f976e5c2c7c6150bbed6',
   '/features/turn-in.js': '72210800834f658a0878d70fe1664d0675a3868aada9d655ed4cab13a76bf0d4',
   '/features/manage-projects.js': 'c010b8f2b84ba5715ca33a6e907baf3de488fad439b9651d966d795674fe257c',
   '/features/user-admin.js': 'e4065ca14f9a9188f92373587d2afebf58b2ae89ad059729ebed31557e042a15',

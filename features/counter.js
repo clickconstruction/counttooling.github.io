@@ -85,6 +85,9 @@
         state.pagesListCollapsed = true;
         document.getElementById('pagesSection').classList.add('collapsed');
         document.getElementById('pagesCollapseIcon').textContent = '▶';
+        // B9 (J1 J15): armed — close the mobile drawer so the next tap lands
+        // on the plan (cancelling the picker leaves the drawer open instead).
+        App.closeMobileSidebar && App.closeMobileSidebar();
         App.updateUI();
       };
       list.appendChild(div);
@@ -232,6 +235,9 @@
     document.getElementById('pagesSection').classList.add('collapsed');
     document.getElementById('pagesCollapseIcon').textContent = '▶';
     App.hideModal('counterModal');
+    // B9 (J1 J15): Create Counter hands the user the pen — close the mobile
+    // drawer so the first tap lands on the plan, not a drawer button under it.
+    App.closeMobileSidebar && App.closeMobileSidebar();
     App.updateUI();
   };
 

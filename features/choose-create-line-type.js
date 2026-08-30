@@ -63,6 +63,9 @@
         state.pagesListCollapsed = true;
         document.getElementById('pagesSection').classList.add('collapsed');
         document.getElementById('pagesCollapseIcon').textContent = '▶';
+        // B9 (J1 J15): armed — close the mobile drawer so the next tap lands
+        // on the plan (cancelling the picker leaves the drawer open instead).
+        App.closeMobileSidebar && App.closeMobileSidebar();
         App.updateUI();
       };
       list.appendChild(div);

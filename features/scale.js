@@ -218,7 +218,10 @@
           scaleInfo.textContent += ' Presets here are corrected as if printed on ' + sheetName + ', matching the page scale.';
         }
       } else {
-        scaleInfo.textContent = 'Click Select on PDF, then click two points on the drawing to define a scale line.';
+        // B9 (J15): touch copy — "tap", not desktop-mouse "click".
+        scaleInfo.textContent = (App.isCoarsePointer && App.isCoarsePointer())
+          ? 'Tap Select on PDF, then tap two points on the drawing to define a scale line.'
+          : 'Click Select on PDF, then click two points on the drawing to define a scale line.';
       }
       showScaleTab('presets');
     }

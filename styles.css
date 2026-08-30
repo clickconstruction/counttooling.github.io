@@ -195,7 +195,11 @@
     @media (min-width: 769px) { .header-active-type { display: none !important; } }
       .header .header-primary-divider { display: none; }
       .header .spacer { flex: 0; min-width: 0; }
-      .header-tools-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex: 1; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; }
+      /* B9 (J15): padding-right >= the burger button's tap zone (44px + the 8px
+         header gap) rides in the strip's scrollable overflow, so at full scroll
+         the last tool rests clear of #headerBurger instead of flush against the
+         clip edge beside it — the visible tool takes the tap, not the drawer. */
+      .header-tools-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex: 1; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; padding-right: 52px; }
       .header-tools-scroll::-webkit-scrollbar { display: none; }
       .header-tools-scroll > * { flex-shrink: 0; }
       .sidebar-logo { display: flex; }
@@ -1148,6 +1152,8 @@
     .counter-tab:hover { color: var(--text); }
     .counter-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
     .counter-tab-shortcut { font-size: 0.75rem; color: var(--text3); margin-left: 4px; font-weight: 400; }
+    /* B9 (J15): the ⇧Q chord chip means nothing on a keyboardless device. */
+    @media (pointer: coarse) { .counter-tab-shortcut { display: none; } }
     .counter-tab-panel { margin-top: 0; }
     .counter-icon-tabs { display: flex; gap: 0; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
     .counter-icon-tab { flex: 1; padding: 8px 12px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-family: inherit; font-size: 0.9rem; cursor: pointer; }
@@ -1355,9 +1361,10 @@
        z-index 300 keeps it interactive above .modal-overlay (200) so it coexists with
        the Zoom Settings modal on desktop. The toast region (350) can paint over
        it for a few seconds but never blocks it (pointer-events: none). */
-    .zoom-rail { position: fixed; right: 12px; top: calc(52px + var(--safe-top) + 12px); bottom: calc(70px + var(--safe-bottom)); width: 64px; display: none; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; z-index: 300; box-shadow: 0 4px 16px rgba(0,0,0,0.18); opacity: 1; transition: opacity 0.3s; }
+    /* B9 (J15): no idle auto-fade — the rail stays until dismissed (outside
+       tap, Escape, re-tap the zoom %), so the .fade-out state is gone. */
+    .zoom-rail { position: fixed; right: 12px; top: calc(52px + var(--safe-top) + 12px); bottom: calc(70px + var(--safe-bottom)); width: 64px; display: none; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; z-index: 300; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
     .zoom-rail.visible { display: flex; }
-    .zoom-rail.fade-out { opacity: 0; }
     .zoom-rail-btn { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 1.25rem; flex-shrink: 0; }
     .zoom-rail-btn:hover { background: var(--surface3); }
     .zoom-rail-track { position: relative; flex: 1; align-self: stretch; margin: 6px 8px; min-height: 120px; cursor: pointer; touch-action: none; }

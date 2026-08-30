@@ -45,9 +45,9 @@ B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 | B7 sign-in wall copy | claude/t3-b07-signin-copy | ☑ merged 2026-08-30, pushed ckpt 3 |
 | B8 scale modal small fixes | claude/t3-b08-scale-fixes | ☑ merged 2026-08-30, pushed ckpt 3 |
 | B9 mobile/touch | claude/t3-b09-mobile-touch | ☑ merged 2026-08-30, pushed ckpt 3 |
-| B10 legend & proof | | queued |
-| B11 signed-out save signal | | queued |
-| B12 import canvas row | | queued |
+| B10 legend & proof | claude/t3-b10-legend-proof | ☑ merged 2026-08-30, pushed ckpt 4 (PR #60 CI vehicle; +regen-baselines workflow) |
+| B11 signed-out save signal | claude/t3-b11-local-save-signal | ☑ merged 2026-08-30, pushed ckpt 4 |
+| B12 import canvas row | claude/t3-b12-import-canvas-row | ☑ merged 2026-08-30, pushed ckpt 4 |
 | B13 reuse-standards naming | | queued |
 | B14 cannot-be-undone honesty | | queued |
 | B15 prepare-pdf batch (rescoped) | | queued |

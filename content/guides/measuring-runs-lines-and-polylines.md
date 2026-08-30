@@ -23,7 +23,7 @@ The **Line** [[line]] tool is a two-click straight run: click the start, click t
 
 ## Polylines
 
-For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape.
+For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape. Backed into a corner? `Esc` removes the last point (press again to keep unwinding); finish with `Enter` or double-click.
 
 ## Arcs and drops
 

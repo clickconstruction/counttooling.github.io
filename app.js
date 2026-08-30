@@ -6336,7 +6336,13 @@
         document.getElementById('canvasDetailsClose').click();
       }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
-      else if (state.drawingPolyline) { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
+      else if (state.drawingPolyline) {
+        // Staged like Quick Line/Ghost: each Escape unwinds one clicked vertex;
+        // with none left, Escape exits to Move. A stray Esc never costs more
+        // than the last click. (JOURNEY-MAP Tier-2 #22)
+        if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
+        else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
+      }
       else if (state.tool === TOOL.LINE) {
         if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }

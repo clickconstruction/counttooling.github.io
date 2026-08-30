@@ -56,7 +56,7 @@
     const filtered = q ? state.counters.filter(c => (c.name || '').toLowerCase().includes(q)) : state.counters;
     if (!filtered.length) {
       empty.style.display = 'block';
-      empty.textContent = q ? 'No counters match. Try Create Counter or Quick Count.' : 'Add a counter first using Create Counter.';
+      empty.textContent = q ? 'No counters match. Try Create Counter or Quick Count.' : 'No counters yet — use the Create tab above.';
       return;
     }
     empty.style.display = 'none';
@@ -77,44 +77,25 @@
       list.appendChild(div);
     });
   }
-  document.getElementById('counterBtn').onclick = () => {
-    const modalSearchInput = document.getElementById('counterModalSearchInput');
-    if (modalSearchInput) { modalSearchInput.value = ''; }
-    showCounterTab('choose');
-    populateCounterChooseList();
-    requestAnimationFrame(() => { setTimeout(() => modalSearchInput?.focus(), 0); });
-    document.getElementById('counterName').value = '';
-    document.getElementById('counterIconSearch').value = '';
-    const grid = document.getElementById('counterIconGrid');
-    const icons = App.getOrderedIcons();
-    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === 0);
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => { grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); });
-    App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
-    App.showModal('counterModal');
-  };
-  // counterBtn's right-click handler lives in features/tool-context-menu.js.
-  document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
-  const counterModalSearchInput = document.getElementById('counterModalSearchInput');
-  if (counterModalSearchInput) {
-    counterModalSearchInput.oninput = counterModalSearchInput.onkeyup = () => populateCounterChooseList(counterModalSearchInput.value);
-    counterModalSearchInput.onkeydown = (e) => {
-      if (e.key === 'Enter') {
-        const first = document.querySelector('#counterChooseList .sidebar-item');
-        if (first) { first.click(); e.preventDefault(); }
-      }
-    };
-  }
-  document.getElementById('counterChooseCancel').onclick = () => App.hideModal('counterModal');
-
-  document.getElementById('addCounter').onclick = () => {
-    showCounterTab('create');
+  // One shared prep for the Create panel — both openers (#counterBtn and
+  // #addCounter) call it, so the old two-opener behavioral fork (C-route:
+  // blank name, no custom grid; +Add-route: prefilled, custom grid) is gone.
+  // Prefill walks App.getOrderedIcons() for the first icon whose name no
+  // existing counter uses (respects the user's iconOrder; falls back to
+  // icon[0] when every name is taken) and selects that cell so the name
+  // matches the visible selection.
+  function prepCreatePanel() {
+    const state = App.state;
     showCounterIconTab('icon');
     const icons = App.getOrderedIcons();
-    document.getElementById('counterName').value = App.getIconName(icons[0].value);
+    const usedNames = new Set(state.counters.map(c => (c.name || '').trim().toLowerCase()));
+    let prefillIdx = icons.findIndex(ic => !usedNames.has(App.getIconName(ic.value).trim().toLowerCase()));
+    if (prefillIdx < 0) prefillIdx = 0;
+    document.getElementById('counterName').value = App.getIconName(icons[prefillIdx].value);
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
-    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === 0);
+    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === prefillIdx);
     const effectiveCustom = App.getEffectiveCustomIcons();
     customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom);
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
@@ -138,6 +119,67 @@
       };
     });
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
+  }
+
+  // Twin resolution for a to-be-created counter. Pure-shaped on purpose
+  // (name, icon, color, counters, palette — no App.* reads) so T2 #16 /
+  // T2-07 can lift it onto App / recent-colors.js without a rewrite.
+  // Same trimmed name (case-insensitive) → lowest free numbered suffix
+  // ("Water Closet 2", " 3", …). Only when that twin ALSO matches icon AND
+  // color exactly does the color rotate — to the first palette entry no
+  // counter uses (fallback: the next palette index after the chosen color) —
+  // so a deliberate same-name/different-color counter keeps its color.
+  function resolveCounterTwin(name, icon, color, counters, palette) {
+    const norm = (s) => (s || '').trim().toLowerCase();
+    const twins = counters.filter(c => norm(c.name) === norm(name));
+    if (!twins.length) return { name, color };
+    const usedNames = new Set(counters.map(c => norm(c.name)));
+    let n = 2;
+    while (usedNames.has(norm(name + ' ' + n))) n++;
+    const suffixed = name + ' ' + n;
+    const exactTwin = twins.some(c => c.icon === icon && norm(c.color) === norm(color));
+    if (!exactTwin) return { name: suffixed, color };
+    const usedColors = new Set(counters.map(c => norm(c.color)));
+    let rotated = (palette || []).find(c => !usedColors.has(norm(c)));
+    if (!rotated) {
+      const idx = (palette || []).findIndex(c => norm(c) === norm(color));
+      rotated = palette && palette.length ? palette[(idx + 1) % palette.length] : color;
+    }
+    return { name: suffixed, color: rotated };
+  }
+
+  document.getElementById('counterBtn').onclick = () => {
+    const state = App.state;
+    const modalSearchInput = document.getElementById('counterModalSearchInput');
+    if (modalSearchInput) { modalSearchInput.value = ''; }
+    prepCreatePanel();
+    if (state.counters.length === 0) {
+      // Fresh project: land on Create, prefilled — exactly like + Add.
+      showCounterTab('create');
+    } else {
+      showCounterTab('choose');
+      populateCounterChooseList();
+      requestAnimationFrame(() => { setTimeout(() => modalSearchInput?.focus(), 0); });
+    }
+    App.showModal('counterModal');
+  };
+  // counterBtn's right-click handler lives in features/tool-context-menu.js.
+  document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
+  const counterModalSearchInput = document.getElementById('counterModalSearchInput');
+  if (counterModalSearchInput) {
+    counterModalSearchInput.oninput = counterModalSearchInput.onkeyup = () => populateCounterChooseList(counterModalSearchInput.value);
+    counterModalSearchInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        const first = document.querySelector('#counterChooseList .sidebar-item');
+        if (first) { first.click(); e.preventDefault(); }
+      }
+    };
+  }
+  document.getElementById('counterChooseCancel').onclick = () => App.hideModal('counterModal');
+
+  document.getElementById('addCounter').onclick = () => {
+    showCounterTab('create');
+    prepCreatePanel();
     App.showModal('counterModal');
   };
   document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>
@@ -161,10 +203,13 @@
   document.getElementById('counterCancel').onclick = () => App.hideModal('counterModal');
   document.getElementById('counterCreate').onclick = () => {
     const state = App.state;
-    const name = document.getElementById('counterName').value.trim() || 'Counter';
     const sel = document.querySelector('#counterIconGrid .icon-cell.selected') || document.querySelector('#counterIconGridCustom .icon-cell.selected');
     const icon = sel ? sel.dataset.path : App.getOrderedIcons()[0].value;
-    const color = document.getElementById('counterColorRow').dataset.selectedColor || App.COLORS[2];
+    // A blank name falls back to the selected icon's name — never the
+    // literal string 'Counter' (repeat blanks used to collide under it).
+    const rawName = document.getElementById('counterName').value.trim() || App.getIconName(icon);
+    const rawColor = document.getElementById('counterColorRow').dataset.selectedColor || App.COLORS[2];
+    const { name, color } = resolveCounterTwin(rawName, icon, rawColor, state.counters, App.COLORS);
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color };
     state.counters.push(newCounter);

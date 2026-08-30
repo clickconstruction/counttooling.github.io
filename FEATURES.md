@@ -23,7 +23,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 
 ## Counting
 
-- **Counters (custom name, color, icon)** — One click per fixture with a symbol that reads on a busy sheet, tallied live as you go.
+- **Counters (custom name, color, icon)** — One click per fixture with a symbol that reads on a busy sheet, tallied live as you go. The Create tab opens prefilled with the next unused icon's name (on a fresh project, C lands straight on it), and an exact duplicate create is auto-renamed ("Water Closet 2") in a fresh color so it can't silently split a tally.
 - **Custom SVG icon upload + bundled trade icon library** — Your counters can look like the actual fixture (P-trap, floor drain, 45-elbow), so the marked-up plan stays legible to anyone.
 - **Groups** — Subtotal related items (one restroom group, one riser) so a dense sheet stays organized and auditable. Per-project and out of the way: the Groups section only appears when a project uses groups (or opts in via Project Settings), so the sidebar stays clean for everyone else.
 - **Counter settings (size, opacity, rings, numbers, outline)** — Marks stay legible at any zoom level and print scale.

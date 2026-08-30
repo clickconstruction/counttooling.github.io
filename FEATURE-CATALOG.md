@@ -118,7 +118,10 @@ reflects all ten automatically.
 *Problem:* The manual clicker-and-highlighter count is slow, unauditable, and impossible to
 reconstruct when someone asks "which ones did you count?"
 *Useful because:* Every count is one click that leaves a visible, color-coded mark on the plan, and
-the tally updates live across the whole project.
+the tally updates live across the whole project. Creating is two clicks, not data entry: the Create
+tab opens prefilled with the next unused icon's name (a fresh project's C hotkey lands straight on
+it), and an exact duplicate create is auto-renamed ("Water Closet 2") in a fresh color so a stray
+double-create can't silently split a tally.
 
 **Custom SVG icon upload + bundled trade icon library**
 *Problem:* Generic dots make a marked-up plan unreadable to anyone but its author.

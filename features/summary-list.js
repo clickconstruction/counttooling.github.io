@@ -53,8 +53,12 @@
         (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
           if (!counterByGroup[gid]) counterByGroup[gid] = {};
-          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, pageIndices: [] };
+          if (!counterByGroup[gid][c.id]) counterByGroup[gid][c.id] = { name: c.name, total: 0, placed: 0, pageIndices: [] };
+          // T2-11: total is the multiply-adjusted number the row shows; placed
+          // (marks physically on the sheet) feeds the hover title when a
+          // multiply zone makes them differ.
           counterByGroup[gid][c.id].total += App.getMultiplyZoneForPoint(ann, m);
+          counterByGroup[gid][c.id].placed++;
           if (!counterByGroup[gid][c.id].pageIndices.includes(pi)) counterByGroup[gid][c.id].pageIndices.push(pi);
         });
       });
@@ -93,6 +97,7 @@
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
           div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="badge">[' + r.total + ']</span>';
+          if (r.total !== r.placed) div.title = r.placed + ' placed · ' + r.total + ' with repeats';
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
           appendChildRows(el, 'counter', c.id, gid, childTotals);
@@ -126,16 +131,20 @@
       });
     } else {
       App.state.counters.forEach(c => {
-        const count = App.state.pages.reduce((n, p, pi) => {
-          const ann = App.getActiveAnnotations(p);
-          return n + ((ann?.counterMarkers?.[c.id] || []).reduce((s, m) => s + App.getMultiplyZoneForPoint(ann, m), 0));
-        }, 0);
+        // T2-11: one shared arithmetic — the row shows withRepeats, the hover
+        // title carries placed when a multiply zone makes them differ.
+        let placed = 0, count = 0;
+        App.state.pages.forEach(p => {
+          const t = App.counterTally(App.getActiveAnnotations(p), c.id);
+          placed += t.placed; count += t.withRepeats;
+        });
         if (count > 0) {
           const div = document.createElement('div');
           div.className = 'sidebar-item summary-item-clickable';
           div.dataset.type = 'counter';
           div.dataset.id = c.id;
           div.innerHTML = '<span class="name">' + esc(c.name) + '</span><span class="badge">[' + count + ']</span>';
+          if (count !== placed) div.title = placed + ' placed · ' + count + ' with repeats';
           div.onclick = () => App.openSummaryCountDetailModal('counter', c.id);
           el.appendChild(div);
           appendChildRows(el, 'counter', c.id, 'null', childTotals);

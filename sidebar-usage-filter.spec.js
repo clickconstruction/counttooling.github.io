@@ -115,6 +115,56 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     expect(errors).toEqual([]);
   });
 
+  // T2-11 — the filter scope only HIDES unused rows; the badge expression is
+  // all-pages in every scope. With a multiply zone in play, the with-repeats
+  // badge number must be identical across off/page/project — this pins that a
+  // future scope mode can never re-fork the badge arithmetic (the resolved
+  // sidebar-lists.js:39 caution from the J18 dossier).
+  test('counters badge value is identical across off/page/project scopes with a zone seeded', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await loadTwoPagePdf(page);
+
+    // c1: 2 marks on page 0 (1 inside a x3 zone -> 4 with repeats) + 1 mark
+    // on page 1 -> 5 with repeats all-pages, in every scope.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters = [{ id: 'c1', name: 'Water Closet', icon: 'M0 0h10v10H0z', color: '#e8c547' }];
+      const c0 = window.App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers = { c1: [{ x: 10, y: 10, id: 'm1' }, { x: 100, y: 100, id: 'm2' }] };
+      c0.annotations.multiplyZones.push({ x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 3, id: 'z1' });
+      const c1 = window.App.ensureActiveCanvas(s.pages[1]);
+      c1.annotations.counterMarkers = { c1: [{ x: 30, y: 30, id: 'm3' }] };
+      window.App.updateUI();
+    });
+
+    const badge = page.locator('#countersList .sidebar-item', { hasText: 'Water Closet' }).locator('.badge');
+    const btn = page.locator('#counterShowOnlyOnPageInlineBtn');
+
+    // Off scope.
+    await expect(badge).toHaveText('5');
+    await expect(badge).toHaveAttribute('title', '3 placed · 5 with repeats');
+
+    // Page scope: row still visible (used on page 0), badge unchanged.
+    await btn.click();
+    await expect(btn).toHaveAttribute('data-scope', 'page');
+    await expect(badge).toHaveText('5');
+    await expect(badge).toHaveAttribute('title', '3 placed · 5 with repeats');
+
+    // Project scope: same number again.
+    await btn.click();
+    await expect(btn).toHaveAttribute('data-scope', 'project');
+    await expect(badge).toHaveText('5');
+    await expect(badge).toHaveAttribute('title', '3 placed · 5 with repeats');
+
+    // Back to off for a clean device state.
+    await btn.click();
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    await expect(badge).toHaveText('5');
+
+    expect(errors).toEqual([]);
+  });
+
   test('cycle clicks narrate the landed state via the two-line toast', async ({ page }) => {
     const errors = [];
     collectErrors(page, errors);

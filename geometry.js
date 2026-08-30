@@ -169,6 +169,15 @@
     }
     return null;
   }
+  // Counter tally for one annotations object. placed = marks physically on the
+  // sheet; withRepeats = multiply-zone-adjusted total (the number every
+  // user-facing rollup shows — Summary, footer, legend, report already use it).
+  function counterTally(ann, counterId) {
+    const markers = ann?.counterMarkers?.[counterId] || [];
+    let withRepeats = 0;
+    markers.forEach(m => { withRepeats += getMultiplyZoneForPoint(ann, m); });
+    return { placed: markers.length, withRepeats };
+  }
 
   // Parse & format primitives
   function formatLineLengthRealSum(realSum, scale) {
@@ -452,7 +461,7 @@
       ptDist, snapLineToAngle, polylineDistance, polygonArea, distToSegment,
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
       rotatePoint90CW, pointInRect, rectsOverlap, clampMenuPosition,
-      getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine,
+      getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine, counterTally,
       formatLineLengthRealSum, formatFeet, formatFeetPx, parseRealWorldLength, parseFraction,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,

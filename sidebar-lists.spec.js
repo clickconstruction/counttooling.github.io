@@ -77,4 +77,68 @@ test.describe('Sidebar lists (features/sidebar-lists.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // T2-11 — the Counters badge shows the multiply-adjusted total, so it can
+  // never silently disagree with the Summary row again. Single-layer fixture
+  // on purpose: Counters tallies MERGED canvases and Summary tallies the
+  // active layer (G10 convention, out of scope here) — cross-surface equality
+  // is only asserted where the layer axis cannot fork the numbers.
+  test('counters badge matches the Summary number under a multiply zone; tooltip only when repeats apply', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Seed: c1 has 3 marks with 1 inside a x3 zone (3 placed -> 5 with
+    // repeats); c2 has 1 mark and no zone contact (tooltip must be absent).
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters = [
+        { id: 'c1', name: 'Water Closet', icon: 'M0 0h10v10H0z', color: '#e8c547' },
+        { id: 'c2', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#4a9eff' },
+      ];
+      const c0 = window.App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers = {
+        c1: [{ x: 10, y: 10, id: 'm1' }, { x: 100, y: 100, id: 'm2' }, { x: 110, y: 110, id: 'm3' }],
+        c2: [{ x: 200, y: 200, id: 'm4' }],
+      };
+      c0.annotations.multiplyZones.push({ x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 3, id: 'z1' });
+      window.App.updateUI();
+    });
+
+    const wcBadge = page.locator('#countersList .sidebar-item', { hasText: 'Water Closet' }).locator('.badge');
+    await expect(wcBadge).toHaveText('5');
+    await expect(wcBadge).toHaveAttribute('title', '3 placed · 5 with repeats');
+
+    // Summary row shows the SAME number ([5]) and the same tooltip.
+    const summaryRow = page.locator('#summaryList .sidebar-item', { hasText: 'Water Closet' });
+    await expect(summaryRow.locator('.badge')).toHaveText('[5]');
+    await expect(summaryRow).toHaveAttribute('title', '3 placed · 5 with repeats');
+
+    // Zone-free counter: same number as today, no tooltip noise.
+    const lavBadge = page.locator('#countersList .sidebar-item', { hasText: 'Lavatory' }).locator('.badge');
+    await expect(lavBadge).toHaveText('1');
+    expect(await lavBadge.getAttribute('title')).toBe(null);
+    const lavSummary = page.locator('#summaryList .sidebar-item', { hasText: 'Lavatory' });
+    await expect(lavSummary.locator('.badge')).toHaveText('[1]');
+    expect(await lavSummary.getAttribute('title')).toBe(null);
+
+    // Deleting the zone re-converges every surface on the placed number.
+    await page.evaluate(() => {
+      const c0 = window.App.ensureActiveCanvas(window.state.pages[0]);
+      c0.annotations.multiplyZones = [];
+      window.App.updateUI();
+    });
+    await expect(wcBadge).toHaveText('3');
+    expect(await wcBadge.getAttribute('title')).toBe(null);
+    await expect(page.locator('#summaryList .sidebar-item', { hasText: 'Water Closet' }).locator('.badge')).toHaveText('[3]');
+
+    expect(errors).toEqual([]);
+  });
 });

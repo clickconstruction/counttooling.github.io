@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'd41a4ebcd3e0';
+const CACHE_VERSION = '44843b5bc8ac';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -171,7 +171,7 @@ const PRECACHE_SHA256 = {
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
   '/icons-custom.js': 'f764721b21760d0138c3f4f5bd67427201e5f7e85a76e72501fb2c3a3852390e',
   '/icon-render.js': '5d1908bb487beec11db3b198b8314155497ad554389448ac6b69ecf4e10cf16e',
-  '/geometry.js': 'b849f3585871950d0b923102bafaf745bc2cdf12f4edbaf998bb715e0e34f03d',
+  '/geometry.js': '53252a22d0abcb6d4fc2141c7d7127e7e7b420a0c6f25a89a967006fdbde4171',
   '/line-metrics.js': '5d4b0d85794dd694cb8cffb8fe125b8dce64c270c34e6c5fe2dbf9677d4f333d',
   '/canvas-draw.js': '4db0d77145896746087c7638d07d07f991a983a1230df92080581dc6185305bf',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
@@ -188,7 +188,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': '0dd72fb689f22d5f3b4e171ecf9a13d579cbb7c3957c22ebb2d15a7713628f82',
   '/pdf-tile-cache.js': 'cd2631a09682e5b5216e805f4d44c5a75c5bbc01fbbb6237d2bf62bf021e5ade',
-  '/app.js': 'dc82f7dd18224ac9dc192c6f3379123fb09e7d996b5724c7c4530c4f43c166c3',
+  '/app.js': '43036dd3830f2ec2816107abdd179693525c1cfd85a370f515f0e6813a479abd',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '71c606962b3d12944aba1151b26f1b859bd4a2e1c0c30ca35f4190bc8082ca03',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -211,7 +211,7 @@ const PRECACHE_SHA256 = {
   '/features/groups.js': '58d955386b5f5c10d40444646a9852a962eca0aff418cfa9ae1366dde08d8a8d',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
   '/features/quick-line.js': 'cef59db53a32bf198bb42b2aae35f41de5dc8e4cd2f1baf92e5b799f222f7d30',
-  '/features/counter.js': '0df543e5812c344de8165f2f207d2232fd86b4625c2546d2c72eb4ddce31afd3',
+  '/features/counter.js': 'f1ffbf89d463866892aa4e18702bc37d3c3413e7bbc4e012883a35587ae5e1bb',
   '/features/save-status.js': 'bf601563da95998a4bfa9d8957306368b65d599fc3f3bccb729b7f42c17d585a',
   '/features/status-bar.js': '13c0930cd47698992549e8c3756970fe90d6b172f89f48ba266d50faad8e582f',
   '/features/turn-in.js': '72210800834f658a0878d70fe1664d0675a3868aada9d655ed4cab13a76bf0d4',
@@ -238,7 +238,7 @@ const PRECACHE_SHA256 = {
   '/features/canvas-layers.js': '70e4624b94af4a178bebc998bfa521eac07a4a519510aff81f55837673e4e06b',
   '/features/ghost.js': '30c28ea6ee106cc520244660c5d7aff3cabc44b986b503fe57276e98ba1a01e7',
   '/features/canvas-switcher.js': '3fc5c3743603a92ceb082499805c9a59c4c790208fa895e3f0043447b2949637',
-  '/features/summary-list.js': 'b9f95119f211f81c3554f14f7849edee50c077bdc1056a06862c88aaa277ab6b',
+  '/features/summary-list.js': '24369f746fc954d1f4e15322a4b6c660e8d0a918f532dc5e793ac94262e1e959',
   '/features/my-settings.js': '1cab2c975110185083e0b6c269464894483bc58cff880e66e122c1da806c8d70',
   '/features/palette-insights.js': '90b3434032f8ba887e14de28c359924b22a8e7b16f32352b3543df811fcc8b13',
   '/features/user-activity.js': 'f88508d8555a48fbf47a882b97ea2bbc218dcf19d496bd4a47da3b0d0eda78c5',
@@ -246,7 +246,7 @@ const PRECACHE_SHA256 = {
   '/features/tool-context-menu.js': 'b188d4f9da3823fd020442ac6372dfd89b7d74fe459e6fb193a5fe961de1a3a5',
   '/features/lines-list.js': '77f2e61df196cda4fb3f476d8d48d8ed7348ab20b1d71a7cfbe7e126a0fc279c',
   '/features/pages-list.js': 'faa3aa0fb6e168add717068b412067fa20c022735e169d84e038ae97fb6971bc',
-  '/features/sidebar-lists.js': '4f05460805e93834449fbe3c76a386023d7705a2f1a4b282cfc0d4dd86439f8c',
+  '/features/sidebar-lists.js': '4f4ba78b104b68f3dcf6e34eb8ad349922e43537cccf2cedeac93af822ebfbf8',
   '/features/quick-keys.js': 'df1540eb417c11006f1340c77a9b51b92e3a3c9ac6a5c307cc7ce0c9574d9af6',
   '/features/keyboard-map.js': 'adb5bc7bd0558467b919d29f5232167f994ed21e1d6b2cfe6e23164d6b9aa178',
   '/features/chain.js': 'e747c2f5f83432a3e3af3a669331b752d9d4ecccce11f3687d1f7dd0e3cd614b',

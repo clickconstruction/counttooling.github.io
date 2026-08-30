@@ -158,6 +158,38 @@ test('getMultiplyZoneForLine requires both endpoints inside', () => {
   assert.strictEqual(g.getMultiplyZoneForLine(ann, { points: [{ x: 2, y: 2 }, { x: 50, y: 50 }, { x: 8, y: 8 }] }, true), 3);
 });
 
+test('counterTally: no zones -> placed equals withRepeats', () => {
+  const ann = { counterMarkers: { c1: [{ x: 1, y: 1 }, { x: 2, y: 2 }] } };
+  assert.deepStrictEqual(g.counterTally(ann, 'c1'), { placed: 2, withRepeats: 2 });
+});
+
+test('counterTally: one of two markers inside a x3 zone', () => {
+  const ann = {
+    counterMarkers: { c1: [{ x: 5, y: 5 }, { x: 50, y: 50 }] },
+    multiplyZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, multiplier: 3 }],
+  };
+  assert.deepStrictEqual(g.counterTally(ann, 'c1'), { placed: 2, withRepeats: 4 });
+});
+
+test('counterTally: empty/missing ann and unknown counterId are safe zeros', () => {
+  assert.deepStrictEqual(g.counterTally({}, 'c1'), { placed: 0, withRepeats: 0 });
+  assert.deepStrictEqual(g.counterTally(null, 'c1'), { placed: 0, withRepeats: 0 });
+  assert.deepStrictEqual(g.counterTally(undefined, 'c1'), { placed: 0, withRepeats: 0 });
+  const ann = { counterMarkers: { c1: [{ x: 1, y: 1 }] } };
+  assert.deepStrictEqual(g.counterTally(ann, 'nope'), { placed: 0, withRepeats: 0 });
+});
+
+test('counterTally: multiplier honored per zone (x2 and x3, one marker each)', () => {
+  const ann = {
+    counterMarkers: { c1: [{ x: 5, y: 5 }, { x: 25, y: 25 }] },
+    multiplyZones: [
+      { x1: 0, y1: 0, x2: 10, y2: 10, multiplier: 2 },
+      { x1: 20, y1: 20, x2: 30, y2: 30, multiplier: 3 },
+    ],
+  };
+  assert.deepStrictEqual(g.counterTally(ann, 'c1'), { placed: 2, withRepeats: 5 });
+});
+
 test('getScaleZoneForLine gates on a present scale and both endpoints', () => {
   const withScale = { scaleZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, scale: { pixelsPerUnit: 2, unit: 'ft' } }] };
   const noScale = { scaleZones: [{ x1: 0, y1: 0, x2: 10, y2: 10 }] };

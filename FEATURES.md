@@ -71,6 +71,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 ## Output & reporting
 
 - **Live footer totals** — A running `[counts | length]` across all pages and canvases, zones applied, always in view.
+- **Live length while drawing** — The footer coaching hint shows the running feet-inches of the line or polyline you're tracing, updating with the cursor — like pulling a tape, no commit needed.
 - **Summary panel + count detail** — Click any total for a per-page breakdown with thumbnails showing exactly where the items are.
 - **Show Report** — A printable report scoped to this canvas, this page, or the whole project.
 - **Export PDFs** — A marked-up deliverable PDF with adjustable marker/line sizes, the report, and highlights/notes bundled in — ready to send.

@@ -19,11 +19,11 @@ Every run belongs to a **line type** — a named template with a color and a str
 
 ## Straight lines
 
-The **Line** [[line]] tool is a two-click straight run: click the start, click the end. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.
+The **Line** [[line]] tool is a two-click straight run: click the start, click the end. While you're aiming, the footer bar shows the running length live, so you can trace to a target footage or check a printed dimension before you commit. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.
 
 ## Polylines
 
-For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape. Backed into a corner? `Esc` removes the last point (press again to keep unwinding); finish with `Enter` or double-click.
+For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape — and the footer shows the running total as you trace, cursor segment included. Backed into a corner? `Esc` removes the last point (press again to keep unwinding); finish with `Enter` or double-click.
 
 ## Arcs and drops
 

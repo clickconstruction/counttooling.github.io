@@ -17,6 +17,11 @@
 //   -> { type:'cancel', reqId }
 //   -> { type:'dispose' }
 //
+// load/dispose are serialized through an internal promise chain — the shared
+// pdf.js workerPort tolerates only one document handoff at a time, and the
+// previous document's destroy() must be awaited before the next getDocument
+// (see the docChain comment below).
+//
 // pdf.js parsing runs on this thread too (its nested worker is attempted
 // first; pdf.js falls back to its "fake worker" transparently) — either
 // way, none of it is the UI thread. Same-origin importScripts of the
@@ -76,39 +81,64 @@ let doc = null;
 let docGen = 0;
 const tasks = new Map();   // reqId -> pdf.js RenderTask
 
+// Load/dispose are SERIALIZED through this chain, and every previous
+// document's destroy is AWAITED before the next getDocument touches the port.
+// pdf.js caches one PDFWorker per workerPort (PDFWorker.fromPort) and
+// `loadingTask.destroy()` marks that cached worker `_pendingDestroy`
+// synchronously but clears it only after the async transport teardown — so a
+// getDocument issued on the same port before the destroy settles throws
+// "PDFWorker.fromPort - the worker is being destroyed", the doc load fails,
+// and render-service permanently falls the session back to main-thread
+// rasters. Awaiting inside one chain also stops a superseded load's cleanup
+// from destroying the shared port worker under the newer document's feet.
+let docChain = Promise.resolve();
+
+async function destroyDoc(d) {
+  if (!d) return;
+  try { await d.destroy(); } catch (_) { /* already down */ }
+}
+
+async function handleLoad(m) {
+  const old = doc;
+  doc = null;
+  await destroyDoc(old);
+  if (m.gen !== docGen) return;   // superseded while destroying; the newer load is queued behind us
+  try {
+    // Same substitute-font config as App.getPdfDocument (app.js) — without it,
+    // PDFs whose fonts aren't embedded raster every glyph as the .notdef box.
+    // useWorkerFetch must be EXPLICIT here: with cMapUrl/standardFontDataUrl
+    // set but useWorkerFetch unset, pdf.js computes the default by touching
+    // `document.baseURI` — ReferenceError in worker scope, doc load fails,
+    // session falls back to main. True is also the right value: the nested
+    // pdf.js worker fetch()es both URLs itself.
+    const loaded = await pdfjsLib.getDocument({
+      data: m.buffer,
+      useWorkerFetch: true,
+      standardFontDataUrl: '/vendor/standard_fonts/',
+      cMapUrl: '/vendor/cmaps/',
+      cMapPacked: true,
+      canvasFactory: offscreenCanvasFactory,
+      filterFactory: noopFilterFactory,
+      ownerDocument: workerFontsAvailable ? { fonts: self.fonts } : undefined,
+      disableFontFace: !workerFontsAvailable,
+    }).promise;
+    if (m.gen !== docGen) { await destroyDoc(loaded); return; }   // superseded mid-load
+    doc = loaded;
+    self.postMessage({ type: 'loaded', gen: m.gen, ok: true });
+  } catch (err) {
+    if (m.gen === docGen) self.postMessage({ type: 'loaded', gen: m.gen, ok: false, error: String((err && err.message) || err) });
+  }
+}
+
 self.onmessage = async (e) => {
   const m = e.data || {};
   if (m.type === 'load') {
-    docGen = m.gen;
-    if (doc) { try { doc.destroy(); } catch (_) { /* already down */ } doc = null; }
-    try {
-      // Same substitute-font config as App.getPdfDocument (app.js) — without it,
-      // PDFs whose fonts aren't embedded raster every glyph as the .notdef box.
-      // useWorkerFetch must be EXPLICIT here: with cMapUrl/standardFontDataUrl
-      // set but useWorkerFetch unset, pdf.js computes the default by touching
-      // `document.baseURI` — ReferenceError in worker scope, doc load fails,
-      // session falls back to main. True is also the right value: the nested
-      // pdf.js worker fetch()es both URLs itself.
-      doc = await pdfjsLib.getDocument({
-        data: m.buffer,
-        useWorkerFetch: true,
-        standardFontDataUrl: '/vendor/standard_fonts/',
-        cMapUrl: '/vendor/cmaps/',
-        cMapPacked: true,
-        canvasFactory: offscreenCanvasFactory,
-        filterFactory: noopFilterFactory,
-        ownerDocument: workerFontsAvailable ? { fonts: self.fonts } : undefined,
-        disableFontFace: !workerFontsAvailable,
-      }).promise;
-      if (m.gen !== docGen) { try { doc.destroy(); } catch (_) {} doc = null; return; }   // superseded mid-load
-      self.postMessage({ type: 'loaded', gen: m.gen, ok: true });
-    } catch (err) {
-      if (m.gen === docGen) self.postMessage({ type: 'loaded', gen: m.gen, ok: false, error: String((err && err.message) || err) });
-    }
+    docGen = m.gen;   // stamped synchronously so an older load already in the chain sees itself superseded
+    docChain = docChain.then(() => handleLoad(m));
     return;
   }
   if (m.type === 'dispose') {
-    if (doc) { try { doc.destroy(); } catch (_) { /* already down */ } doc = null; }
+    docChain = docChain.then(() => { const old = doc; doc = null; return destroyDoc(old); });
     return;
   }
   if (m.type === 'cancel') {
@@ -136,7 +166,10 @@ self.onmessage = async (e) => {
       self.postMessage({ type: 'result', reqId: m.reqId, bitmap }, [bitmap]);
     } catch (err) {
       tasks.delete(m.reqId);
-      const cancelled = !!(err && err.name === 'RenderingCancelledException');
+      // A raster whose document was superseded mid-flight (new load destroyed
+      // it) is a cancellation, not a worker failure — reporting it as an error
+      // would fall the whole session back to main-thread rasters.
+      const cancelled = !!(err && err.name === 'RenderingCancelledException') || m.gen !== docGen;
       self.postMessage({ type: 'result', reqId: m.reqId, cancelled, error: cancelled ? undefined : String((err && err.message) || err) });
     }
   }

@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(render-worker): awaited destroy — re-adoption no longer falls the session back to main
+
+Production telemetry (`user_activity.render_worker_fallback`, recorded since
+2026-08-10) showed 25 events across 6 users, all `doc-load: PDFWorker.fromPort -
+the worker is being destroyed…`. Root cause, deterministic on every
+RE-adoption (project switch, re-upload, page append — any new pdf.js document
+after the worker already held one): [render-worker.js](render-worker.js)'s
+`load` handler called the previous document's `doc.destroy()` **without
+awaiting it** and invoked `getDocument` on the next line. pdf.js caches one
+`PDFWorker` per `GlobalWorkerOptions.workerPort` (`PDFWorker.fromPort`);
+`loadingTask.destroy()` marks that cached worker `_pendingDestroy`
+*synchronously* and clears it only after the async transport teardown — so the
+immediate `getDocument` hit `fromPort` mid-destroy, threw, the load reported
+`ok:false`, and [render-service.js](render-service.js) `failWorker`'d the whole
+session into main-thread rasters (the perf layer silently lost until reload).
+
+Fix (worker-side sequencing): `load`/`dispose` are now serialized through an
+internal promise chain and every `destroy()` is awaited before the next
+`getDocument` touches the shared port. This also fixes the latent
+superseded-mid-load hazard where destroying a stale document tore down the
+port-cached `PDFWorker` under the newer document's feet. A raster that dies
+because its generation was superseded mid-flight now reports `cancelled`
+instead of an error (an error result also session-failed the worker).
+`docGen` is still stamped synchronously on message receipt so queued stale
+loads skip themselves.
+
+Regression: [render-worker.spec.js](render-worker.spec.js) "rapid double
+project-load stays worker-rastered with zero fallbacks" — two back-to-back
+re-uploads must re-adopt to `ready` each time (previously `failed` on the
+first), then a forced cold raster proves worker mode with zero fallbacks.
+Verified red on the old worker code, green on the fix.
+
 ## feat(drops): drop-size peek + "Drop sizes" toggle (view-mode readable drops)
 
 Field request (wendi, viewing a shared plan): *"ability to see drop distances

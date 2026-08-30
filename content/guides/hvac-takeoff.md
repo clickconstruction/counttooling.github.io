@@ -15,7 +15,7 @@ HVAC estimating starts from a number most takeoff tools can't produce: **how muc
 
 The **Room Sizer** [[room]] tool turns rooms into floor areas (ft²) and air volumes (ft³) — the inputs for ventilation rates, air changes per hour, and rough equipment sizing.
 
-[Set the page scale](/guides/setting-the-scale/) first (room sizes come from the drawing, so the tool won't start without one), pick the Room Sizer (or press `V`), and click two opposite corners of a room — a live readout shows the length × width while you move. When the second corner lands, the **Room Size** dialog opens:
+[Set the page scale](/guides/setting-the-scale/) first (room sizes come from the drawing, so the tool won't start without one), pick the Room Sizer (or press `V`), and drag a box across a room (or click two opposite corners) — a live readout shows the length × width while you move. When the second corner lands, the **Room Size** dialog opens:
 
 ![The Room Size dialog: ① the dimensions table with live area and volume totals, ② the ceiling height field with recent-height chips, ③ the Add to Room list.](/guides/img/room-size-modal.png)
 

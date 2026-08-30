@@ -176,6 +176,12 @@
   function openRoomBoxModal(rect) {
     const state = App.state;
     if (state.isViewer) return;
+    // A ~zero-size box is a mis-click (drag-release + tap-same-spot both produce
+    // them) — refuse the dialog instead of offering 0'-0" x 0'-0" (J7 friction #5).
+    // Both dims must be under 6 logical px at the current zoom: a thin sliver
+    // room (long in one dimension) stays legal.
+    const zoom = state.zoom || 1;
+    if (Math.abs(rect.x2 - rect.x1) * zoom < 6 && Math.abs(rect.y2 - rect.y1) * zoom < 6) return;
     state.pendingRoomBox = rect;
     state.pendingRoomBoxEdit = null;
     document.getElementById('roomBoxModalTitle').textContent = 'Room Size';

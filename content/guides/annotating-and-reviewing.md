@@ -13,7 +13,7 @@ Not everything on a takeoff is a count. Questions, flags, and review marks belon
 
 ## Highlights
 
-The **Highlight** [[highlight]] tool (`H`) draws a translucent rectangle over a region — "look at this," without touching any numbers. Two clicks: corner, corner. Use them to flag conflicts, unclear areas, or scope boundaries; they can be [bundled into the exported PDF](/guides/reports-and-exports/) so reviewers see them too.
+The **Highlight** [[highlight]] tool (`H`) draws a translucent rectangle over a region — "look at this," without touching any numbers. Drag a box — or click corner, corner. Use them to flag conflicts, unclear areas, or scope boundaries; they can be [bundled into the exported PDF](/guides/reports-and-exports/) so reviewers see them too.
 
 ### Name a highlight — and jump back to it
 

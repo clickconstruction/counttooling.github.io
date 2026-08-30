@@ -477,6 +477,9 @@
           <span id="statusMode">Ready</span>
           <span id="statusCoords">—</span>
           <span id="statusTotals" class="status-totals" style="display:none;"></span>
+          <!-- Measure-tool result chip: renders state.lastMeasure while it
+               belongs to the current page (features/status-bar.js, T2 #15). -->
+          <span id="statusMeasure" class="status-totals" style="display:none;"></span>
           <span id="statusWarmup" class="status-warmup" style="display:none;" title="Rendering every sheet in the background so page jumps are instant"></span>
           <div class="status-bar-actions" id="statusBarActions">
             <span class="status-bar-link status-bar-desktop-only has-icon" id="statusBarQuickKeys" title="Quick Keys — bind counters and line types to the number row">
@@ -1196,24 +1199,9 @@
       </div>
     </div>
   </div>
-  <div class="modal-overlay" id="setScaleFirstModal">
-    <div class="modal-card modal-card-toast">
-      <p id="setScaleFirstText" style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></p>
-    </div>
-  </div>
-  <div class="modal-overlay" id="outOfBoundsModal">
-    <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
-    </div>
-  </div>
-  <div class="modal-overlay" id="pipeToolingCopiedModal">
-    <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
-      <!-- Copy to /Tooling fills this with the by-unit split of what was copied
-           (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
-      <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
-    </div>
-  </div>
+  <!-- The four toast surfaces (#setScaleFirstModal, #outOfBoundsModal,
+       #pipeToolingCopiedModal, #airboardToastModal) live in #toastRegion near
+       the end of this file — non-blocking corner cards, JOURNEY-MAP Tier-2 #15. -->
   <!-- Pre-export scale check for Copy to /Tooling: pages that carry lines but
        have no scale would export pixel lengths; features/output.js fills the
        list and wires the three actions. -->
@@ -1241,11 +1229,6 @@
         <button type="button" id="importCanvasAfterPdfCancel">Cancel</button>
         <button type="button" class="btn-yellow" id="importCanvasAfterPdfChoose">Choose canvas file…</button>
       </div>
-    </div>
-  </div>
-  <div class="modal-overlay" id="airboardToastModal">
-    <div class="modal-card modal-card-toast">
-      <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
     </div>
   </div>
   <div class="modal-overlay" id="macrosModal">
@@ -2548,6 +2531,39 @@
         <button id="deleteCanvasCancel">Cancel</button>
         <button id="deleteCanvasConfirm" class="danger">Delete</button>
       </div>
+    </div>
+  </div>
+  <!-- Turn-in progress: the ONE deliberate blocking overlay (save + checkout
+       release in flight — app.js setTurnInProgress). It used to share
+       #airboardToastModal with showToast; now that toasts are non-blocking it
+       keeps the full-screen .modal-overlay treatment on its own element. -->
+  <div class="modal-overlay" id="turnInProgressModal">
+    <div class="modal-card modal-card-toast">
+      <p id="turnInProgressText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
+    </div>
+  </div>
+  <!-- Toast region (JOURNEY-MAP Tier-2 #15): every toast is a passive corner
+       card in this stacked flex column — z-index 350 (above modals/menus),
+       pointer-events none (blocks nothing; .toast-interactive is the per-card
+       opt-in for cards that carry a real control — T2-06). Ids stay on the
+       element that gets .visible so showModal/hideModal and every spec
+       selector keep working. Distinct simultaneous toasts stack honestly;
+       each keeps its own timer (app.js "SECTION: Toasts"). -->
+  <div id="toastRegion" role="status" aria-live="polite">
+    <div class="toast-card" id="setScaleFirstModal">
+      <p id="setScaleFirstText" style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></p>
+    </div>
+    <div class="toast-card" id="outOfBoundsModal">
+      <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
+    </div>
+    <div class="toast-card" id="pipeToolingCopiedModal">
+      <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
+      <!-- Copy to /Tooling fills this with the by-unit split of what was copied
+           (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
+      <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
+    </div>
+    <div class="toast-card" id="airboardToastModal">
+      <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
     </div>
   </div>
   <div class="canvas-menu" id="canvasMenu">

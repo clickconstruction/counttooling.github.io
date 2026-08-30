@@ -2780,17 +2780,19 @@
     airboardToastTimer = setTimeout(() => { hideModal('airboardToastModal'); airboardToastTimer = null; }, durationMs ?? 2000);
   }
 
+  // Turn-in progress is a deliberate BLOCKING overlay (save + checkout release
+  // in flight) with its own element — it is a progress state, not a toast, and
+  // no longer shares #airboardToastModal with showToast (Tier-2 #15).
   let turnInProgressActive = false;
   function setTurnInProgress(label) {
     if (!label) {
-      if (turnInProgressActive) hideModal('airboardToastModal');
+      if (turnInProgressActive) hideModal('turnInProgressModal');
       turnInProgressActive = false;
       return;
     }
-    if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
-    const el = document.getElementById('airboardToastText');
+    const el = document.getElementById('turnInProgressText');
     if (el) el.textContent = 'Turn In: ' + label;
-    showModal('airboardToastModal');
+    showModal('turnInProgressModal');
     turnInProgressActive = true;
   }
 
@@ -4911,7 +4913,13 @@
       const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
       const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
       const formatted = formatDistFeetInches(dist, effScale);
-      showToast('Distance: ' + formatted, 5000);
+      // Footer chip, not a toast (Tier-2 #15): the 5s Distance toast used to
+      // eat the first Scale Zone corner click at the measure→zone hand-off.
+      // In-memory only (like state.localPdfHash) — a per-sheet fact: the chip
+      // renders only while lastMeasure.pageIdx === state.currentPage
+      // (features/status-bar.js), a new measure overwrites it, and a
+      // PDF/project load resets state.
+      state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage };
       state.scalePointA = null;
       state.scalePointB = null;
       state.scaleMode = SCALE_MODES.NONE;
@@ -6252,32 +6260,17 @@
       }
     }
     if (e.key === 'Escape') {
-      // showToast() is itself a modal (#airboardToastModal) and the ladder
-      // below closes modals before it reaches any tool, so a toast on screen
-      // eats the Escape a live gesture was meant to get. The Ghost capture
-      // flow toasts after EVERY step, which would make that near-permanent —
-      // so while a Ghost gesture is IN FLIGHT, clear the toast up front and
-      // let the real ladder run. Deliberately narrow: only the toast (a
-      // genuine modal still wins), and only mid-gesture (an idle-in-Ghost
-      // Escape keeps the two-press rhythm every other tool has). Retire this
-      // with the queued non-blocking-toast work (JOURNEY-MAP Tier-2 #15).
-      if (state.tool === TOOL.GHOST && (state.placingGhost || state.ghostRectStart) && document.getElementById('airboardToastModal')?.classList.contains('visible')) {
-        hideModal('airboardToastModal');
-        if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
-      }
+      // Toasts are non-blocking corner cards (Tier-2 #15): they self-dismiss
+      // and never consume Escape, so the ladder below goes straight to real
+      // modals and tools. (The old Ghost mid-gesture pre-clear hack and the
+      // toast rungs died with the modal toasts.)
       if (state.gridOriginPickMode) {
         state.gridOriginPickMode = false;
         showModal('gridSettingsModal');
         updateUI();
         return;
       }
-      if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
-        hideModal('setScaleFirstModal');
-        if (setScaleFirstToastTimer) { clearTimeout(setScaleFirstToastTimer); setScaleFirstToastTimer = null; }
-      } else if (document.getElementById('outOfBoundsModal').classList.contains('visible')) {
-        hideModal('outOfBoundsModal');
-        if (outOfBoundsToastTimer) { clearTimeout(outOfBoundsToastTimer); outOfBoundsToastTimer = null; }
-      } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
+      if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
         hideModal('chooseLineTypeModal');
       } else if (document.getElementById('scaleModal').classList.contains('visible')) {
         if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
@@ -6290,7 +6283,6 @@
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
       else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
-      else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
@@ -6301,7 +6293,6 @@
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
-      else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.
       else if (document.getElementById('keyboardMapModal').classList.contains('visible')) { hideModal('keyboardMapModal'); }

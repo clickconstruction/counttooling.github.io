@@ -215,6 +215,20 @@
         totalsEl.style.display = '';
       }
     }
+    // Measure-tool result chip (Tier-2 #15): shows state.lastMeasure while it
+    // belongs to the current page — page flips hide it, flipping back shows it
+    // again (a fact about that sheet), a new measure overwrites it.
+    const measureEl = document.getElementById('statusMeasure');
+    if (measureEl) {
+      const lm = state.lastMeasure;
+      if (lm && lm.pageIdx === state.currentPage) {
+        measureEl.textContent = lm.text;
+        measureEl.title = lm.text;
+        measureEl.style.display = '';
+      } else {
+        measureEl.style.display = 'none';
+      }
+    }
   }
 
   function getCloudSaveSummary() {

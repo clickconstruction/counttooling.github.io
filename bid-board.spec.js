@@ -67,6 +67,13 @@ test.describe('Bid Board - overseer all-bids browser', () => {
       document.getElementById('bidBoardBtnSidebar')?.style.display === 'none');
     expect(btnHidden).toBe(true);
 
+    // ...and so does the desktop status-bar entry (link + its separator).
+    const statusHidden = await page.evaluate(() => ({
+      link: document.getElementById('statusBarBidBoard')?.style.display === 'none',
+      sep: document.getElementById('statusBarBidBoardSep')?.style.display === 'none',
+    }));
+    expect(statusHidden).toEqual({ link: true, sep: true });
+
     expect(errors).toEqual([]);
   });
 
@@ -78,6 +85,16 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     const btnVisible = await page.evaluate(() =>
       document.getElementById('bidBoardBtnSidebar')?.style.display !== 'none');
     expect(btnVisible).toBe(true);
+
+    // Desktop status-bar entry shows too, and clicking it opens the board.
+    const statusVisible = await page.evaluate(() => ({
+      link: document.getElementById('statusBarBidBoard')?.style.display !== 'none',
+      sep: document.getElementById('statusBarBidBoardSep')?.style.display !== 'none',
+    }));
+    expect(statusVisible).toEqual({ link: true, sep: true });
+    await page.evaluate(() => document.getElementById('statusBarBidBoard').click());
+    await expect(page.locator('#bidBoardModal')).toBeVisible();
+    await page.click('#bidBoardClose');
 
     await page.evaluate(() => window.App.openBidBoard());
     await expect(page.locator('#bidBoardModal')).toBeVisible();

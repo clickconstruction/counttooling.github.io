@@ -255,6 +255,8 @@
   function wireBidBoard() {
     const btnSidebar = document.getElementById('bidBoardBtnSidebar');
     if (btnSidebar) btnSidebar.onclick = function () { void openBidBoard(); };
+    const statusLink = document.getElementById('statusBarBidBoard');
+    if (statusLink) statusLink.onclick = function () { void openBidBoard(); };
     const closeBtn = document.getElementById('bidBoardClose');
     if (closeBtn) closeBtn.onclick = function () { App.hideModal('bidBoardModal'); };
   }

@@ -17,7 +17,9 @@ Open the Counter [[counter]] modal and switch to the **Quick** tab — that's th
 2. Watch the name preview assemble itself.
 3. **Add** — the counter is created, selected, and ready to place.
 
-The Type choice also picks a matching icon automatically, so a floor drain gets a floor-drain symbol without a trip to the icon grid.
+Once you've bound an icon to a Type (select the icon, then click the type-icon box next to the Type picker), that Type picks its icon automatically — so a floor drain gets a floor-drain symbol without a trip to the icon grid.
+
+And if the counter you're adding would come out looking identical to one you already have (same icon, same color), the color rotates automatically to a free palette entry — the preview shows the exact color you'll get — so two different fittings never wear the same mark on the sheet.
 
 ![The Quick Count tab: pick ① Size, ② Type, and ③ Material — the name assembles itself and the icon follows the type.](/guides/img/quick-count.png)
 

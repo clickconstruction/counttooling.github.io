@@ -144,7 +144,9 @@ print.
 **Quick Count / Quick Plumbing / Quick Line creators (Size / Type / Material pickers)**
 *Problem:* Building a palette by typing "2\" PVC Waste" forty times is data entry, not estimating.
 *Useful because:* Two clicks on modifier chips create a correctly-named, correctly-colored palette
-item — and your modifier preferences follow your account.
+item — and your modifier preferences follow your account. A new Quick Count counter never
+duplicates an existing counter's icon+color: the color auto-rotates to a free palette entry, and
+the panel previews the exact color it will mint.
 
 **Show only on current page**
 *Problem:* On multi-sheet projects the sidebar fills with every sheet's items, drowning the ones

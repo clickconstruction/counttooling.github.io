@@ -62,9 +62,17 @@ test.describe('Mobile right-side burger menu', () => {
     // 3b. Save status row: absent without a cloud project (mobile CSS hides the
     //     header bell outright, so the drawer is the ONLY mobile surface for it).
     expect(items).not.toContain('Save status');
+    // B6 (J13 J14): a cloud project alone is NOT enough — a view-link session
+    // sets currentProjectId, and the anonymous viewer must never get the
+    // save/sync console. The row needs a signed-in session too.
     await page.evaluate(() => {
       window.state.currentProjectId = 'fake-project-id';
       document.getElementById('saveStatusBtnHeader').classList.add('save-status-bell-attention');
+      window.App.updateBurgerMenu();
+    });
+    expect(await itemText()).not.toContain('Save status');
+    await page.evaluate(() => {
+      window.state.supabaseSession = { user: { id: 'u-spec', email: 'crew@clickplumbing.com' } };
       window.App.updateBurgerMenu();
     });
     expect(await itemText()).toContain('Save status');
@@ -77,6 +85,7 @@ test.describe('Mobile right-side burger menu', () => {
     await page.evaluate(() => {
       window.App.hideModal('saveStatusModal');
       window.state.currentProjectId = null;
+      window.state.supabaseSession = null;
       document.getElementById('saveStatusBtnHeader').classList.remove('save-status-bell-attention');
       window.App.updateUI();
     });

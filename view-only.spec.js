@@ -115,6 +115,32 @@ test.describe('View-only mode (view-link boot)', () => {
       failure: typeof window.App?.showViewLinkFailure,
     }));
     expect(wired).toEqual({ init: 'function', cancel: 'function', notice: 'function', failure: 'function' });
+
+    // B6 (J14): without config the domain surfaces keep the default fallback.
+    const domains = await page.evaluate(() => ({
+      placeholder: document.getElementById('viewLinkEmailInput').placeholder,
+      shareCopy: document.getElementById('shareViewLinksDomains').textContent,
+    }));
+    expect(domains.placeholder).toBe('you@clickplumbing.com');
+    expect(domains.shareCopy).toBe('clickplumbing.com');
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('VIEW_LINK_ALLOWED_DOMAINS wires the email-gate placeholder and the share-modal copy (B6, J14)', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await page.addInitScript(() => { window.VIEW_LINK_ALLOWED_DOMAINS = 'example.org, other.example'; });
+    await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
+
+    await page.goto('/app/?t=' + TOKEN);
+    await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
+    const wired = await page.evaluate(() => ({
+      placeholder: document.getElementById('viewLinkEmailInput').placeholder,
+      shareCopy: document.getElementById('shareViewLinksDomains').textContent,
+    }));
+    // The placeholder shows the FIRST configured domain; the share copy names them all.
+    expect(wired.placeholder).toBe('you@example.org');
+    expect(wired.shareCopy).toBe('example.org, other.example');
     expect(realErrors(errors)).toEqual([]);
   });
 
@@ -159,6 +185,56 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(after.scalePpu).toBe(5);
     expect(after.page1Scale).toBeNull();
     expect(after.allowedEmail).toBe('crew@clickplumbing.com');
+
+    // B6 (J12 J14): page labels carry the plan name, not "document.pdf".
+    const labels = await page.evaluate(() => window.App.state.pages.map((p) => p.label));
+    expect(labels).toEqual(['View Spec Project — p1', 'View Spec Project — p2']);
+
+    // B6 viewer surface trim: editor-only surfaces are gone for the viewer…
+    const trimmed = await page.evaluate(() => ({
+      exportDropdown: document.getElementById('exportDropdown').style.display,
+      exportCanvasOpt: document.querySelector('.export-dropdown-option[data-action="canvas"]').style.display,
+      exportBothOpt: document.querySelector('.export-dropdown-option[data-action="both"]').style.display,
+      roomBtn: document.getElementById('roomBtn').style.display,
+      roomBtnSidebar: document.getElementById('roomBtnSidebar').style.display,
+      burgerRows: Array.from(document.querySelectorAll('#rightMenuList .right-menu-item'))
+        .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()),
+      bannerDisplay: document.getElementById('headerEditStatusBanner').style.display,
+      bannerText: (document.getElementById('headerEditStatusBanner').textContent || '').trim(),
+    }));
+    // …the Export menu has no viewer rows (Canvas/Both hidden; a view session
+    // carries no PDF buffer/path), so the whole dropdown leaves.
+    expect(trimmed.exportDropdown).toBe('none');
+    expect(trimmed.exportCanvasOpt).toBe('none');
+    expect(trimmed.exportBothOpt).toBe('none');
+    // Room Sizer rides viewerHideIds now.
+    expect(trimmed.roomBtn).toBe('none');
+    expect(trimmed.roomBtnSidebar).toBe('none');
+    // The mobile drawer never offers the Save Status engineering console to an
+    // anonymous viewer (no supabase session).
+    expect(trimmed.burgerRows).not.toContain('Save status');
+    // …and the "Viewing only" banner tells the anonymous viewer what this is.
+    expect(trimmed.bannerDisplay).toBe('');
+    expect(trimmed.bannerText).toBe('Viewing only');
+
+    // The same surfaces are present outside view sessions (flip the flag and
+    // re-run updateUI on the same project state).
+    const editorVis = await page.evaluate(() => {
+      window.App.state.isViewer = false;
+      window.App.updateUI();
+      const vis = {
+        exportDropdown: document.getElementById('exportDropdown').style.display,
+        exportCanvasOpt: document.querySelector('.export-dropdown-option[data-action="canvas"]').style.display,
+        roomBtn: document.getElementById('roomBtn').style.display,
+      };
+      window.App.state.isViewer = true;
+      window.App.updateUI();
+      return vis;
+    });
+    expect(editorVis.exportDropdown).toBe('inline-flex');
+    expect(editorVis.exportCanvasOpt).toBe('');
+    expect(editorVis.roomBtn).toBe('');
+
     expect(realErrors(errors)).toEqual([]);
   });
 
@@ -188,7 +264,7 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
-  test('cancel at the email gate: no load, app stays usable', async ({ page }) => {
+  test('cancel at the email gate: static email-required card, editor never exposed, Reload restarts the gate', async ({ page }) => {
     const errors = [];
     collectErrors(page, errors);
     await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
@@ -197,18 +273,26 @@ test.describe('View-only mode (view-link boot)', () => {
     await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
     await page.locator('#viewLinkEmailCancel').click();
 
-    await page.waitForFunction(
-      () => !document.getElementById('viewLinkEmailModal')?.classList.contains('visible'),
-      { timeout: 5000 },
-    );
+    // B6 (J13 J14): Cancel shows the static card, never the empty editor.
+    await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 5000 });
+    await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
+      'This plan needs your email — reload to try again.');
+    await expect(page.locator('#viewLinkDeadRetry')).toBeVisible();
+    await expect(page.locator('#viewLinkDeadRetry')).toHaveText('Reload');
     const after = await page.evaluate(() => ({
       pages: window.App.state.pages.length,
       hasPdf: document.body.classList.contains('has-pdf'),
       isViewer: window.App.state.isViewer,
+      promptVisible: document.getElementById('viewLinkEmailModal')?.classList.contains('visible'),
     }));
     expect(after.pages).toBe(0);
     expect(after.hasPdf).toBe(false);
     expect(after.isViewer).toBe(false);
+    expect(after.promptVisible).toBe(false);
+
+    // Reload restarts the gate (the boot IS the retry loop).
+    await page.locator('#viewLinkDeadRetry').click();
+    await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
     expect(realErrors(errors)).toEqual([]);
   });
 

@@ -24,6 +24,38 @@
     }
   };
 
+  // The allowed email domain(s) for view links — config.js may set
+  // window.VIEW_LINK_ALLOWED_DOMAINS (comma-separated; the Edge Function env
+  // is the real gate). ONE fallback shared by every surface that names the
+  // domain (B6, J14): the rejection message, the email-gate placeholder, and
+  // the Share modal copy (share-links.js).
+  function viewLinkDomains() {
+    return (typeof window.VIEW_LINK_ALLOWED_DOMAINS === 'string' && window.VIEW_LINK_ALLOWED_DOMAINS)
+      ? window.VIEW_LINK_ALLOWED_DOMAINS : 'clickplumbing.com';
+  }
+  // Wire the email-gate placeholder to the configured domain at load (the
+  // static markup carries the default as a fallback).
+  (function () {
+    const input = document.getElementById('viewLinkEmailInput');
+    if (input) input.placeholder = 'you@' + viewLinkDomains().split(',')[0].trim();
+  })();
+
+  // B6 (J13 J14): Cancel/Escape at the email gate shows a static full-screen
+  // card instead of stranding the viewer in the empty editor. Reuses the
+  // dead-link screen chrome; the button reloads, which restarts the gate.
+  function showViewEmailRequiredScreen() {
+    const msg = document.getElementById('viewLinkDeadMessage');
+    if (msg) msg.textContent = 'This plan needs your email — reload to try again.';
+    const retry = document.getElementById('viewLinkDeadRetry');
+    if (retry) {
+      retry.style.display = '';
+      retry.textContent = 'Reload';
+      retry.onclick = () => window.location.reload();
+    }
+    const screen = document.getElementById('viewLinkDeadScreen');
+    if (screen) screen.classList.add('visible');
+  }
+
   // A viewer-set scale applies FOR EVERYONE: it is shared through the
   // set-view-scale Edge Function (token + email gated), which writes it into
   // the owner's project data with a viewerSet stamp so the owner gets a
@@ -187,10 +219,13 @@
 
     if (!email) {
       await showViewEmailModal();
-      if (!email) return;
+      // B6 (J13 J14): Cancel/Escape at the gate used to strand the viewer in
+      // the empty editor — a wall of tools with nothing behind them. The
+      // static card says what's needed and how to try again.
+      if (!email) { showViewEmailRequiredScreen(); return; }
     }
 
-    const domainMsg = (typeof window.VIEW_LINK_ALLOWED_DOMAINS === 'string' ? window.VIEW_LINK_ALLOWED_DOMAINS : 'clickplumbing.com');
+    const domainMsg = viewLinkDomains();
 
     async function fetchViewProject(useEmail) {
       const res = await fetch(SUPABASE_URL + '/functions/v1/get-view-project', {
@@ -239,7 +274,7 @@
           const errEl = document.getElementById('viewLinkEmailError');
           if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
           email = await showViewEmailModal(true);
-          if (!email) return;
+          if (!email) { showViewEmailRequiredScreen(); return; }
         } else if (cachedProjectData && !(e && e.viewLinkDead)) {
           projectData = cachedProjectData;   // offline / transient -- use the cached snapshot
           break;
@@ -275,9 +310,13 @@
     clearPdfBitmapCache();
     state.pages = [];
     const numPages = pdf.numPages;
+    // B6 (J12 J14): page labels carry the plan name, not a hardcoded
+    // "document.pdf" — the viewer's Pages sidebar / report headings should say
+    // which plan this is (restore-last-session.js fixes the same root cause).
+    const planName = projectData.name || 'Untitled';
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+      const label = numPages > 1 ? (planName + ' — p' + (i + 1)) : planName;
       const canvasId = uid();
       state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       state.activeCanvasIdByPage[i] = canvasId;

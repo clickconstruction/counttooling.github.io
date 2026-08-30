@@ -2262,7 +2262,7 @@
     // page's scale status on them and may set a temporary, local-only scale
     // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the
     // Measure tool reads real units. See noteViewerTempScale.
-    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'dropBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'ghostBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn'];
+    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'dropBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'ghostBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn', 'roomBtn', 'roomBtnSidebar'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -2342,7 +2342,14 @@
     if (settingsCloseProject) settingsCloseProject.style.display = (!state.pages.length && !state.currentProjectId) ? 'none' : '';
     const editBanner = document.getElementById('headerEditStatusBanner');
     if (editBanner) {
-      const show = SUPABASE_ENABLED && state.supabaseSession?.user && (state.pages.length > 0 || state.currentProjectId);
+      // B6 (J13): anonymous view-link sessions get the same "Viewing only"
+      // banner signed-in viewers see — without it, the recipient has no cue
+      // that this is a window, not a workbench. All the branches above the
+      // final "Viewing only" fallback are session-gated (checkout/save need
+      // a user), so an anonymous viewer always lands on the fallback.
+      const show = SUPABASE_ENABLED
+        && (state.supabaseSession?.user || (state.isViewer && state.loadedViaViewLink))
+        && (state.pages.length > 0 || state.currentProjectId);
       if (!show) {
         editBanner.style.display = 'none';
         editBanner.innerHTML = '';
@@ -2532,7 +2539,11 @@
     const exportBothOpt = document.querySelector('.export-dropdown-option[data-action="both"]');
     const hasCanvasMarkupForExport = projectHasAnyCanvasMarkup();
     if (!shieldImportMode) {
-      const showCanvasBoth = hasCanvasMarkupForExport ? '' : 'none';
+      // B6 (J13 J14): Export Canvas/Both are editor tools (canvas JSON hand-off),
+      // never a viewer surface. Hiding them here leaves a view session's menu
+      // with no rows (view links carry no pdfBuffer/pdfStoragePath), so the
+      // empty-dropdown check below removes the whole Export menu for free.
+      const showCanvasBoth = (hasCanvasMarkupForExport && !state.isViewer) ? '' : 'none';
       if (exportCanvasOpt) exportCanvasOpt.style.display = showCanvasBoth;
       if (exportBothOpt) exportBothOpt.style.display = showCanvasBoth;
     }
@@ -2543,7 +2554,7 @@
     }
     let showExportDropdown = showExportDropdownBase;
     if (showExportDropdown && !shieldImportMode && exportContent) {
-      const anyExportRow = hasPdfExport || hasCanvasMarkupForExport;
+      const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer);
       if (!anyExportRow) showExportDropdown = false;
     }
     if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';

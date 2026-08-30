@@ -36,9 +36,9 @@ B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 
 | Batch | Branch | Status |
 |---|---|---|
-| B1 Esc ladder | claude/t3-b01-esc-ladder | ⏳ running |
-| B2 intake/import feedback | | queued |
-| B3 copy cluster | | queued |
+| B1 Esc ladder | claude/t3-b01-esc-ladder | ☑ merged 2026-08-30, pushed ckpt 1 |
+| B2 intake/import feedback | claude/t3-b02-intake-feedback | ☑ merged 2026-08-30, pushed ckpt 1 |
+| B3 copy cluster | claude/t3-b03-copy-cluster | ☑ merged 2026-08-30, pushed ckpt 1 |
 | B4 export naming (+B18 dialect) | | queued |
 | B5 pdf-bundle pagination | | queued |
 | B6 viewer/share trim | | queued |

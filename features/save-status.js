@@ -59,6 +59,14 @@
     if (calloutEl) calloutEl.style.display = App.isCheckoutExpiredAttention() ? '' : 'none';
     applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryCanvas'), sum.canvas, 'dot');
     applySaveStatusSummaryBlock(document.getElementById('saveStatusSummaryPdf'),    sum.pdf,    'square');
+    // B11 (J12): signed-out, the panel tells the truth — the summary rows show
+    // the local stamp (getCloudSaveSummary) and this line adds the sign-in
+    // nudge. Only when signing in is actually possible (Supabase enabled).
+    const signedOutHintEl = document.getElementById('saveStatusSignedOutHint');
+    if (signedOutHintEl) {
+      const signedOut = App.SUPABASE_ENABLED && !App.state.supabaseSession?.user;
+      signedOutHintEl.style.display = signedOut ? '' : 'none';
+    }
     if (listEl) {
       const entries = App.getSaveStatusLog().slice().reverse();
       if (!entries.length) {

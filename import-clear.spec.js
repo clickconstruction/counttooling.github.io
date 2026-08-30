@@ -10,9 +10,27 @@
  * App.showClearPageModal is registered for the Project Settings row; and a
  * canvas JSON file chosen through #importInput replaces the palette
  * (counters/line types) via the moved change handler.
+ *
+ * Also pins the T2-01 visibility fix: #clearPageSidebar is hidden before a PDF
+ * loads (body:not(.has-pdf) gate), visible and live via a real click at
+ * desktop width once one is loaded, hidden for viewers, and reachable inside
+ * the mobile hamburger drawer.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
+
+// Seed a counter marker on page 0's active canvas ("Main") — shared by the
+// clear-flow tests below.
+async function seedPage0Marker(page) {
+  await page.evaluate(() => {
+    const s = window.state;
+    s.counters = [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+    const c0 = window.App.ensureActiveCanvas(s.pages[0]);
+    c0.name = 'Main';
+    c0.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+    window.App.updateUI();
+  });
+}
 
 test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
   test('clear-page confirm flow and JSON import', async ({ page }) => {
@@ -79,6 +97,71 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     expect(imported.names).toContain('Imported Counter');
     expect(imported.lineType).toBe('Imported Line');
     expect(imported.orphanRecreated).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('sidebar Clear Page is visible and live at desktop width', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.setViewportSize({ width: 1380, height: 800 });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // Before any PDF loads, the body:not(.has-pdf) gate hides the section.
+    await expect(page.locator('#clearPageSidebar')).toBeHidden();
+
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // With a PDF loaded the button is visible — no sign-in, no Project Settings.
+    await expect(page.locator('#clearPageSidebar')).toBeVisible();
+
+    await seedPage0Marker(page);
+
+    // A REAL click (not evaluate) opens the confirm; Confirm empties the canvas.
+    await page.locator('#clearPageSidebar').click();
+    await page.waitForSelector('#clearPageConfirmModal.visible', { timeout: 5000 });
+    await expect(page.locator('#clearPageConfirmMessage')).toContainText('Main');
+    await page.locator('#clearPageConfirm').click();
+    await expect(page.locator('#clearPageConfirmModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers?.c1 || []).length)).toBe(0);
+
+    // Viewer sessions hide the button (app.js viewerHideIds inline-hide);
+    // returning to a non-viewer session resets it to visible.
+    await page.evaluate(() => { window.state.isViewer = true; window.App.updateUI(); });
+    await expect(page.locator('#clearPageSidebar')).toBeHidden();
+    await page.evaluate(() => { window.state.isViewer = false; window.App.updateUI(); });
+    await expect(page.locator('#clearPageSidebar')).toBeVisible();
+
+    expect(errors).toEqual([]);
+  });
+
+  test('sidebar Clear Page is reachable inside the mobile hamburger drawer', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await seedPage0Marker(page);
+
+    // Open the left slide-in drawer; the Clear Page section renders inside it
+    // and a real click on the button opens the confirm modal.
+    await page.locator('#hamburger').click();
+    await expect(page.locator('body')).toHaveClass(/sidebar-open/);
+    await expect(page.locator('#clearPageSidebar')).toBeVisible();
+    await page.locator('#clearPageSidebar').click();
+    await page.waitForSelector('#clearPageConfirmModal.visible', { timeout: 5000 });
+    await expect(page.locator('#clearPageConfirmMessage')).toContainText('Main');
+    await page.locator('#clearPageCancel').click();
+    await expect(page.locator('#clearPageConfirmModal')).not.toHaveClass(/visible/);
 
     expect(errors).toEqual([]);
   });

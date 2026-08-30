@@ -8,6 +8,14 @@
  * doCopyEmailSummary), and Download current page (`#downloadCurrentPageBtn` +
  * its mode menu + downloadCurrentPageAsPdf).
  *
+ * Tier-3 B3 (J11/J13): the two copy scope drop-ups anchor to their buttons
+ * (`right:auto`) and close each other; both copy buttons skip the scope
+ * chooser at 1 page / 1 canvas (like Download); clipboard failure speaks
+ * plain words; and the pre-copy scale gate's "Set scale" detour arms a
+ * one-tap "Copy again" resume toast (#copyAgainModal, fired via the
+ * App.onScaleApplied callback that features/scale.js invokes on every
+ * scale commit).
+ *
  * Loaded as a classic <script src="/features/output.js"> AFTER app.js. Its own
  * IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, and binds the
@@ -60,6 +68,13 @@
     el.style.display = text ? '' : 'none';
   }
 
+  // Plain-words clipboard failure (B3/J11): say what happened and what to do —
+  // no raw DOMException text. The error itself still goes to the console.
+  function showCopyFailed(err) {
+    console.error('[copy]', err);
+    alert('Nothing was copied — the browser blocked clipboard access. Click the copy button again, and allow clipboard access if the browser asks.');
+  }
+
   async function doCopyPipeTooling(getAnnFn, pageIndices, mode) {
     const state = App.state;
     const opts = {};
@@ -87,12 +102,16 @@
           }
         }
         if (url) text += '\n\nView link:\t' + url;
+      } else if (state.loadedViaViewLink) {
+        // B3 (J11/J13): loadedViaViewLink FIRST — a view-link session has a
+        // project id and usually no supabase session, so behind the sign-in
+        // check this accurate branch was dead ("Sign in to include a view
+        // link" — a lie: signing in wouldn't help a view-only session).
+        noLinkToast = 'Counts copied. View-only sessions cannot create a share link.';
       } else if (!state.currentProjectId) {
         noLinkToast = 'Counts copied. Save the project to the cloud to include a view link.';
       } else if (!state.supabaseSession?.user) {
         noLinkToast = 'Counts copied. Sign in to include a view link.';
-      } else if (state.loadedViaViewLink) {
-        noLinkToast = 'Counts copied. View-only sessions cannot create a share link.';
       }
     }
     // What went on the clipboard, by unit — the same split PipeTooling's import
@@ -111,7 +130,7 @@
         setTimeout(() => App.hideModal('pipeToolingCopiedModal'), splitText ? 2600 : 1500);
       }
     } catch (err) {
-      alert('Could not copy to clipboard: ' + (err.message || err));
+      showCopyFailed(err);
     }
   }
 
@@ -124,7 +143,18 @@
   // scale zone's). Pages without line marks never flag. On a hit, a confirm
   // modal offers Set scale (jump + open the Set Scale modal), Export anyway,
   // or Cancel. Counters need no scale, so counter-only pages pass untouched.
-  let pendingToolingExport = null;   // { getAnnFn, pageIndices, firstIdx, doCopy, mode } awaiting the modal's verdict
+  let pendingToolingExport = null;   // { getAnnFn, pageIndices, firstIdx, doCopy, surface, mode } awaiting the modal's verdict
+
+  // B3 (J11): resume after the Set-scale detour. "Set scale" stashes the
+  // interrupted copy here (plus the project id as a staleness guard); every
+  // scale apply — page or zone; features/scale.js calls App.onScaleApplied
+  // after each commit — offers a one-tap "Copy again" toast (a T2-04
+  // .toast-interactive card, T2-06's 6s gate-toast duration). Its click
+  // re-runs the SAME gated copy inside the user gesture, so
+  // collectUnscaledLinePages re-walks and the clipboard write stays
+  // permitted. Any fresh copy attempt supersedes the stash.
+  let resumeToolingExport = null;
+  let copyAgainToastTimer = null;
 
   function collectUnscaledLinePages(getAnnFn, pageIndices) {
     const state = App.state;
@@ -152,9 +182,10 @@
   // check. On a hit it stashes { …, doCopy } and opens the modal; on a clean
   // walk it copies straight away (zero added steps on the happy path).
   async function runGatedCopy(getAnnFn, pageIndices, doCopy, surface, mode) {
+    resumeToolingExport = null;   // a fresh copy attempt supersedes any pending Copy-again resume
     const flagged = collectUnscaledLinePages(getAnnFn, pageIndices);
     if (flagged.length) {
-      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, mode };
+      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, surface, mode };
       App.logUserEvent('unscaled_ft_block', App.state.currentProjectId || null,
         { surface, flaggedPages: flagged.length });
       const listEl = document.getElementById('toolingScaleCheckList');
@@ -190,6 +221,8 @@
       const pending = pendingToolingExport;
       App.hideModal('toolingScaleCheckModal');
       if (!pending) return;
+      // Arm the one-tap resume: the next scale apply offers "Copy again" (B3).
+      resumeToolingExport = { ...pending, projectId: App.state.currentProjectId };
       if (pending.firstIdx !== App.state.currentPage) {
         App.state.currentPage = pending.firstIdx;
         App.fitZoom();
@@ -201,19 +234,73 @@
   // the stashed export so a later reopen can't fire a stale copy.
   App.onToolingScaleCheckHidden = () => { pendingToolingExport = null; };
 
+  // Feature-to-feature callback (registry pattern): features/scale.js invokes
+  // this after every scale commit (page or zone). While a Set-scale detour is
+  // armed, surface the "Copy again" resume toast; otherwise a no-op.
+  App.onScaleApplied = () => {
+    if (!resumeToolingExport) return;
+    if (resumeToolingExport.projectId !== App.state.currentProjectId) { resumeToolingExport = null; return; }
+    if (copyAgainToastTimer) clearTimeout(copyAgainToastTimer);
+    App.showModal('copyAgainModal');
+    copyAgainToastTimer = setTimeout(() => { App.hideModal('copyAgainModal'); copyAgainToastTimer = null; }, 6000);
+  };
+  const copyAgainLink = document.getElementById('copyAgainLink');
+  if (copyAgainLink) {
+    copyAgainLink.onclick = async () => {
+      if (copyAgainToastTimer) { clearTimeout(copyAgainToastTimer); copyAgainToastTimer = null; }
+      App.hideModal('copyAgainModal');
+      const resume = resumeToolingExport;
+      resumeToolingExport = null;
+      if (!resume || resume.projectId !== App.state.currentProjectId) return;
+      // The click is the user gesture: the gate re-walks synchronously and the
+      // clipboard write inside the stashed doCopy stays permitted.
+      await runGatedCopy(resume.getAnnFn, resume.pageIndices, resume.doCopy, resume.surface, resume.mode);
+    };
+  }
+
   const forPipeToolingBtn = document.getElementById('forPipeTooling');
   const forPipeToolingMenu = document.getElementById('forPipeToolingMenu');
   const forPipeToolingDropdown = document.getElementById('forPipeToolingDropdown');
+  const copySummaryTextBtn = document.getElementById('copySummaryText');
+  const copySummaryTextMenu = document.getElementById('copySummaryTextMenu');
+  const copySummaryTextDropdown = document.getElementById('copySummaryTextDropdown');
+
+  // Shared close for the two copy scope menus: hide + re-parent back into the
+  // dropdown (mobile body-appends them). Both buttons stopPropagation, so the
+  // app.js document click-away never sees the OTHER menu open — the menus
+  // close each other here instead (B3/J11).
+  function closeScopeMenu(menu, dropdown) {
+    if (!menu) return;
+    menu.classList.remove('visible');
+    if (dropdown && menu.parentElement !== dropdown) dropdown.appendChild(menu);
+  }
+  // B3 (J13): at 1 page / 1 canvas every scope option is the same set — skip
+  // the chooser and copy directly, like the Download button already does.
+  function isSingleScope() {
+    const state = App.state;
+    const page = state.pages[state.currentPage];
+    const canvases = page ? App.getPageCanvases(page) : [];
+    return state.pages.length <= 1 && canvases.length <= 1;
+  }
+
   if (forPipeToolingBtn && forPipeToolingMenu) {
     forPipeToolingBtn.onclick = (e) => {
       e.stopPropagation();
+      if (isSingleScope()) {
+        closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
+        runGatedCopy(null, [App.state.currentPage], doCopyPipeTooling, 'pipe-tooling', 'this-canvas');
+        return;
+      }
       if (forPipeToolingMenu.classList.contains('visible')) {
-        forPipeToolingMenu.classList.remove('visible');
-        if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
+        closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
       } else {
+        closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
         prefetchExportViewLink();
         forPipeToolingMenu.style.left = '-9999px';
-        forPipeToolingMenu.style.right = '';
+        // 'auto' (not '') — the stylesheet's `right:0` otherwise pins the
+        // fixed-position menu to the viewport edge and stretches it into a
+        // full-window band (J11 friction #8). Anchor to the button instead.
+        forPipeToolingMenu.style.right = 'auto';
         forPipeToolingMenu.classList.add('visible');
         const btnRect = forPipeToolingBtn.getBoundingClientRect();
         forPipeToolingMenu.style.position = 'fixed';
@@ -230,28 +317,28 @@
     opt.onclick = async (e) => {
       e.stopPropagation();
       const mode = opt.dataset.mode;
-      if (forPipeToolingMenu) {
-        forPipeToolingMenu.classList.remove('visible');
-        if (forPipeToolingDropdown && forPipeToolingMenu.parentElement !== forPipeToolingDropdown) forPipeToolingDropdown.appendChild(forPipeToolingMenu);
-      }
+      closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
       if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doCopyPipeTooling, 'pipe-tooling', mode);
       else if (mode === 'visible') await runGatedCopy(null, null, doCopyPipeTooling, 'pipe-tooling', mode);
       else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyPipeTooling, 'pipe-tooling', mode);
     };
   });
 
-  const copySummaryTextBtn = document.getElementById('copySummaryText');
-  const copySummaryTextMenu = document.getElementById('copySummaryTextMenu');
-  const copySummaryTextDropdown = document.getElementById('copySummaryTextDropdown');
   if (copySummaryTextBtn && copySummaryTextMenu) {
     copySummaryTextBtn.onclick = (e) => {
       e.stopPropagation();
+      if (isSingleScope()) {
+        closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
+        runGatedCopy(null, [App.state.currentPage], doCopyEmailSummary, 'email-summary', 'this-canvas');
+        return;
+      }
       if (copySummaryTextMenu.classList.contains('visible')) {
-        copySummaryTextMenu.classList.remove('visible');
-        if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
+        closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
       } else {
+        closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
         copySummaryTextMenu.style.left = '-9999px';
-        copySummaryTextMenu.style.right = '';
+        // Same `right:auto` anchor as the /Tooling drop-up (J11 friction #8).
+        copySummaryTextMenu.style.right = 'auto';
         copySummaryTextMenu.classList.add('visible');
         const btnRect = copySummaryTextBtn.getBoundingClientRect();
         copySummaryTextMenu.style.position = 'fixed';
@@ -285,17 +372,14 @@
       App.showModal('pipeToolingCopiedModal');
       setTimeout(() => App.hideModal('pipeToolingCopiedModal'), 1500);
     } catch (err) {
-      alert('Could not copy to clipboard: ' + (err.message || err));
+      showCopyFailed(err);
     }
   }
   document.querySelectorAll('.copy-summary-option').forEach(opt => {
     opt.onclick = async (e) => {
       e.stopPropagation();
       const mode = opt.dataset.mode;
-      if (copySummaryTextMenu) {
-        copySummaryTextMenu.classList.remove('visible');
-        if (copySummaryTextDropdown && copySummaryTextMenu.parentElement !== copySummaryTextDropdown) copySummaryTextDropdown.appendChild(copySummaryTextMenu);
-      }
+      closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
       // T1-05: Copy Summary runs the same pre-copy scale gate as Copy to
       // /Tooling (previously a direct, ungated call).
       if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doCopyEmailSummary, 'email-summary', mode);

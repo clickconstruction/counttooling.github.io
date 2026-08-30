@@ -64,7 +64,13 @@
         if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;
         if (data.gridSettings) state.gridSettings = data.gridSettings;
         if (Array.isArray(data.customIconPaths)) App.saveUserCustomIcons(data.customIconPaths);
-        (data.pages || []).forEach(p => {
+        // B2 / J10: count how many of the export's page entries actually land
+        // on a page of THIS plan — a shorter plan used to drop the extras
+        // silently (applyPageAnnotationsFromData no-ops on a missing page).
+        const pageEntries = Array.isArray(data.pages) ? data.pages : [];
+        let appliedPages = 0;
+        pageEntries.forEach(p => {
+          if (state.pages[p.index]) appliedPages++;
           App.applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
         });
         if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
@@ -73,7 +79,16 @@
         App.markProjectDirty();
         App.updateUI();
         App.renderPdf();
-      } catch (err) { alert('Invalid import file'); }
+        if (pageEntries.length && appliedPages < pageEntries.length) {
+          App.showToast('Applied marks to ' + appliedPages + ' of ' + pageEntries.length +
+            ' pages — the plan has fewer pages than the export.', 6000);
+        }
+      } catch (err) {
+        // B2 / J12: in-app toast (T2-04 toast region) instead of the native
+        // alert('Invalid import file'), and it says what a valid file IS.
+        console.error('[Import Canvas]', err);
+        App.showToast('That file isn’t a canvas export — Import Canvas reads the .json file that Export Canvas creates.', 6000);
+      }
     };
     r.readAsText(f);
     e.target.value = '';

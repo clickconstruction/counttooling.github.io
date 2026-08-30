@@ -133,6 +133,42 @@ test.describe('robust PDF upload', () => {
   });
 });
 
+// --- Tier-3 B2 / J2 friction #7: corrupt-PDF fresh upload says something ---
+// A corrupt/unreadable file on the FRESH upload path used to die as a silent
+// unhandled promise rejection (no dialog, no toast, pages stayed 0) while the
+// append path alerted. handleFreshUpload now catches the pdf.js parse failure,
+// rolls this upload back, and toasts the J2-verified copy.
+test.describe('corrupt-PDF fresh upload feedback', () => {
+  test('fresh corrupt upload toasts and leaves the session empty (no silent rejection)', async ({ page }) => {
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    // The deliberate console.error('[Upload PDF]', ...) diagnostic is allowed;
+    // anything else on the console error channel is a regression.
+    const consoleErrors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !/\[Upload PDF\]/.test(m.text())) consoleErrors.push(m.text());
+    });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles({
+      name: 'broken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf'),
+    });
+    await expect(page.locator('#airboardToastText'))
+      .toHaveText('"broken.pdf" didn’t open as a PDF. Try re-exporting it.');
+    const after = await page.evaluate(() => ({
+      pages: window.state.pages.length,
+      inputCleared: document.getElementById('pdfInput').value === '',
+    }));
+    expect(after.pages).toBe(0);
+    expect(after.inputCleared).toBe(true);
+    // The whole point of the fix: the failure surfaces as a toast, not as an
+    // unhandled rejection (Playwright reports those as pageerror).
+    expect(pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+  });
+});
+
 // --- T1-08 / J2: append-upload never renames the open project ---
 // Uploading a second PDF while pages are loaded (or a cloud project is open)
 // appends the sheets WITHOUT clobbering state.currentProjectName, and toasts
@@ -166,6 +202,30 @@ test.describe('append never renames the open project', () => {
     // but the visible-state check below would not). Content only, not styling,
     // so T2-15's non-blocking-corner rework won't break this.
     await expect(page.locator('#airboardToastText')).toHaveText('Added 1 sheet to Riverside Clinic Plumbing');
+  });
+
+  test('corrupt append upload rolls back and toasts — no pages added, name kept', async ({ page }) => {
+    // Tier-3 B2 / J2 friction #7: the second-upload (append) route through
+    // handleFreshUpload must also survive a corrupt file: pages roll back to
+    // the pre-upload count and the toast says so.
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    await freshUploadTwoPages(page);
+    await page.locator('#pdfInput').setInputFiles({
+      name: 'broken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf'),
+    });
+    await expect(page.locator('#airboardToastText'))
+      .toHaveText('"broken.pdf" didn’t open as a PDF. Try re-exporting it. No pages were added.');
+    const after = await page.evaluate(() => ({
+      pages: window.state.pages.length,
+      name: window.state.currentProjectName,
+      hasBuffer: !!window.state.pdfBuffer,
+    }));
+    expect(after.pages).toBe(2);
+    expect(after.name).toBe('test-2pages');
+    expect(after.hasBuffer).toBe(true);
+    expect(pageErrors).toEqual([]);
   });
 
   test('upload into an open cloud project (stubbed id) never renames it', async ({ page }) => {

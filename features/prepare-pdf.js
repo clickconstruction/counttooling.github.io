@@ -627,6 +627,14 @@
     App.markProjectDirty();
     App.updateUI();
     requestAnimationFrame(() => { App.fitZoom(); App.renderPdf(); });
+    // B2 / J2 friction #8 parity: an append committed through Save & Open gets
+    // the same "Added N sheets" feedback as the Open commit above. (A save
+    // failure toast below may replace it — the failure is the more urgent news.)
+    if (r.appended) {
+      const added = r.appendedCount || 0;
+      App.showToast('Added ' + added + ' sheet' + (added === 1 ? '' : 's') + ' to ' +
+        (App.state.currentProjectName || 'Untitled'), 3500);
+    }
     const saveResult = await App.performSaveProjectToCloud({ name: r.name, includePdf: true, pdfBuffer: r.pdfBuffer });
     if (!saveResult.ok) {
       if (App.isAuthError(saveResult.error)) {

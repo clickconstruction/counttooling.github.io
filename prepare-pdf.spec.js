@@ -204,6 +204,33 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     await expect(page.locator('#airboardToastText')).toHaveText('Added 1 sheet to test-2pages');
   });
 
+  test('append-mode Save & Open commit also toasts "Added N sheets" (Tier-3 B2)', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(async () => {
+      // The cloud save itself is out of scope here — stub it so the signed-out
+      // spec exercises only the commit + feedback path.
+      window.App.performSaveProjectToCloud = async () => ({ ok: true });
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const pdf = await window.App.getPdfDocument(buf.slice(0)).promise;
+      const newPages = [];
+      for (let i = 0; i < pdf.numPages; i++) {
+        newPages.push({ pdfPage: await pdf.getPage(i + 1), label: 'test-page.pdf', rotation: 0 });
+      }
+      window.App.openPreparePdfModal(newPages, buf, window.state.currentProjectName || 'Untitled', { mode: 'append' });
+    });
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 5000 });
+
+    await page.locator('#preparePdfSaveAndOpen').click();
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/, { timeout: 10000 });
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('test-2pages');
+    await expect(page.locator('#airboardToastText')).toHaveText('Added 1 sheet to test-2pages');
+  });
+
   // ---- T2-15: the thumbnail-grid trim (grid replaces the walk as default) ----
 
   // Opens the modal in fresh-project mode with a 3-page set (test-2pages.pdf +

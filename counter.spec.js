@@ -250,4 +250,35 @@ test.describe('T2-05 counter-modal create ergonomics', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // T2-05 commit 2 — the icon search ships visible: the inline display:none
+  // on #counterIconSearchGroup is gone, the group shows on the Icon tab only
+  // (the live handler filters the built-in grid), and typing filters the grid.
+  test('icon search is visible on the Icon tab, hidden on Custom Icons, and filters the grid', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const searchGroup = page.locator('#counterIconSearchGroup');
+    await expect(searchGroup).toBeVisible();
+
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]').click();
+    await expect(searchGroup).toBeHidden();
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="icon"]').click();
+    await expect(searchGroup).toBeVisible();
+
+    const fullCount = await page.locator('#counterIconGrid .icon-cell').count();
+    await page.locator('#counterIconSearch').fill('water');
+    // oninput fires on fill; the grid rebuilds synchronously.
+    const filtered = await page.evaluate(() => {
+      const cells = Array.from(document.querySelectorAll('#counterIconGrid .icon-cell'));
+      return { count: cells.length, firstSelected: cells[0]?.classList.contains('selected') || false };
+    });
+    expect(filtered.count).toBeGreaterThan(0);
+    expect(filtered.count).toBeLessThan(fullCount);
+    expect(filtered.firstSelected).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
 });

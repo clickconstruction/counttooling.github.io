@@ -45,6 +45,11 @@
     const customPanel = document.getElementById('counterIconCustomPanel');
     if (iconPanel) iconPanel.style.display = tab === 'icon' ? '' : 'none';
     if (customPanel) customPanel.style.display = tab === 'custom' ? '' : 'none';
+    // The #counterIconSearch handler filters the built-in grid only, so the
+    // search group shows only while the Icon tab is active (a Custom-tab
+    // search box that filtered nothing would be a new inert-search papercut).
+    const searchGroup = document.getElementById('counterIconSearchGroup');
+    if (searchGroup) searchGroup.style.display = tab === 'icon' ? '' : 'none';
   }
   function populateCounterChooseList(query) {
     const state = App.state;

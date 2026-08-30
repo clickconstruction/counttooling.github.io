@@ -126,7 +126,9 @@ double-create can't silently split a tally.
 **Custom SVG icon upload + bundled trade icon library**
 *Problem:* Generic dots make a marked-up plan unreadable to anyone but its author.
 *Useful because:* Counters can look like the actual fixture (floor drain, P-trap, 45-elbow, water
-heater), so the takeoff doubles as a legible drawing anyone can review.
+heater), so the takeoff doubles as a legible drawing anyone can review. A search box above the
+icon grid filters the library by name, so finding the right symbol is a few keystrokes instead of
+scrolling ~250 cells.
 
 **Groups — subtotals for related items**
 *Problem:* A dense sheet with hundreds of marks becomes an undifferentiated cloud; restroom groups

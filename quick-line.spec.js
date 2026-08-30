@@ -24,6 +24,11 @@ test.describe('window.App registry pilot - Quick Line modal', () => {
     // 1. Upload a 2-page PDF.
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    // Scale the page so the T2-08 arm-on-create fires (unscaled create is
+    // covered by choose-create-line-type.spec.js T2-08b).
+    await page.evaluate(() => {
+      window.state.pages[window.state.currentPage].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
+    });
 
     // 2. Registry contract: the entry point this feature now publishes.
     expect(await page.evaluate(() => typeof window.App?.populateQuickLineModal)).toBe('function');
@@ -54,10 +59,16 @@ test.describe('window.App registry pilot - Quick Line modal', () => {
     const after = await page.evaluate(() => {
       const lts = window.state.lineTypes;
       const last = lts[lts.length - 1];
-      return { count: lts.length, activeIsLast: window.state.activeLineTypeId === last?.id };
+      return {
+        count: lts.length,
+        activeIsLast: window.state.activeLineTypeId === last?.id,
+        toolIsLine: window.state.tool === window.App.TOOL.LINE,
+      };
     });
     expect(after.count).toBe(before + 1);
     expect(after.activeIsLast).toBe(true);
+    // T2-08: Quick-tab Add hands the user the pen ("active, and ready to trace").
+    expect(after.toolIsLine).toBe(true);
 
     expect(errors).toEqual([]);
   });

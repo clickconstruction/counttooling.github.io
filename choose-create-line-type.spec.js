@@ -82,4 +82,116 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
 
     expect(errors).toEqual([]);
   });
+
+  // T2-08: every line-type create surface arms the Line tool (was: 3 of 4
+  // dropped back to Move, dead-ending the naive sidebar-+Add-then-click path).
+  test('T2-08a: sidebar + Add on a scaled page arms the pen and draws', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error' && !(msg.location()?.url || '').includes('config.local.js')) errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      window.state.pages[window.state.currentPage].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
+    });
+
+    await page.evaluate(() => document.getElementById('addLineType').click());
+    await page.waitForSelector('#lineTypeModal.visible', { timeout: 5000 });
+    await page.locator('#lineTypeName').fill('Armed Line');
+    await page.locator('#lineTypeCreate').click();
+    await page.waitForFunction(
+      () => !document.getElementById('lineTypeModal')?.classList.contains('visible'),
+      { timeout: 5000 },
+    );
+
+    const armed = await page.evaluate(() => {
+      const lts = window.state.lineTypes;
+      const last = lts[lts.length - 1];
+      return {
+        toolIsLine: window.state.tool === window.App.TOOL.LINE,
+        activeIsLast: window.state.activeLineTypeId === last?.id,
+        lastId: last?.id,
+      };
+    });
+    expect(armed.toolIsLine).toBe(true);
+    expect(armed.activeIsLast).toBe(true);
+
+    // Two plan clicks commit a quick line of the NEW type — the naive path works.
+    const wrapper = page.locator('#canvasWrapper');
+    await wrapper.click({ position: { x: 150, y: 150 } });
+    await wrapper.click({ position: { x: 250, y: 150 } });
+    const committed = await page.evaluate(() => {
+      const ann = window.App.ensureActiveCanvas(window.state.pages[window.state.currentPage]).annotations;
+      const q = ann.quickLines?.[ann.quickLines.length - 1];
+      return { count: ann.quickLines?.length || 0, lineTypeId: q?.lineTypeId };
+    });
+    expect(committed.count).toBe(1);
+    expect(committed.lineTypeId).toBe(armed.lastId);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('T2-08b: create on an unscaled page selects the type, stays in Move, shows the scale-gate toast', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await page.evaluate(() => document.getElementById('addLineType').click());
+    await page.waitForSelector('#lineTypeModal.visible', { timeout: 5000 });
+    await page.locator('#lineTypeName').fill('Unscaled Line');
+    await page.locator('#lineTypeCreate').click();
+    await page.waitForFunction(
+      () => !document.getElementById('lineTypeModal')?.classList.contains('visible'),
+      { timeout: 5000 },
+    );
+
+    const after = await page.evaluate(() => {
+      const lts = window.state.lineTypes;
+      const last = lts[lts.length - 1];
+      return {
+        lastName: last?.name,
+        activeIsLast: window.state.activeLineTypeId === last?.id,
+        toolIsNone: window.state.tool === window.App.TOOL.NONE,
+        toastVisible: document.getElementById('setScaleFirstModal')?.classList.contains('visible'),
+      };
+    });
+    expect(after.lastName).toBe('Unscaled Line');
+    expect(after.activeIsLast).toBe(true);
+    expect(after.toolIsNone).toBe(true);
+    expect(after.toastVisible).toBe(true);
+  });
+
+  test('T2-08c: Quick Line skips the chooser at exactly one type, opens it at two', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      const s = window.state;
+      s.pages[s.currentPage].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
+      s.lineTypes = [{ id: 'lt-only', name: 'Only', color: '#4a9eff', curveStyle: 'straight' }];
+      s.activeLineTypeId = null;
+    });
+
+    await page.evaluate(() => document.getElementById('quickLine').click());
+    const single = await page.evaluate(() => ({
+      toolIsLine: window.state.tool === window.App.TOOL.LINE,
+      active: window.state.activeLineTypeId,
+      chooserVisible: document.getElementById('chooseLineTypeModal')?.classList.contains('visible'),
+    }));
+    expect(single.toolIsLine).toBe(true);
+    expect(single.active).toBe('lt-only');
+    expect(single.chooserVisible).toBe(false);
+
+    // With two types the chooser opens exactly as today.
+    await page.evaluate(() => {
+      window.state.lineTypes.push({ id: 'lt-2', name: 'Second', color: '#ff6b6b', curveStyle: 'straight' });
+      document.getElementById('quickLine').click();
+    });
+    await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 5000 });
+  });
 });

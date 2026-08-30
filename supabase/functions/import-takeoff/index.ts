@@ -32,8 +32,8 @@ type TakeoffPage = {
 }
 type TakeoffJson = {
   version: 1
-  counters: Array<{ id: string; name: string; icon?: string; color?: string }>
-  lineTypes: Array<{ id: string; name: string; color?: string }>
+  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string }>
+  lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string }>
   pages: TakeoffPage[]
 }
 
@@ -149,22 +149,58 @@ Deno.serve(async (req) => {
     }
 
     // Build the exact save-engine data shape (bakeFrame null; canvas-only when no PDF).
+    // Layered canvases (robot-pdf-intake follow-up, 2026-08-30): each counter/lineType
+    // may name a `canvas` — annotations group into per-page canvases by that name, so
+    // the app's existing canvas switcher / show-all / hide-marks give reviewers
+    // per-layer toggling (Fixtures / one per pipe system / Fittings) with no new UI.
+    // Elements without a canvas land on "Main" (back-compat).
+    const canvasOf = new Map<string, string>()
+    for (const c of t.counters) canvasOf.set(`c:${c.id}`, String(c.canvas ?? '').trim() || 'Main')
+    for (const lt of t.lineTypes) canvasOf.set(`l:${lt.id}`, String(lt.canvas ?? '').trim() || 'Main')
+    const canvasOrder: string[] = []
+    const seeCanvas = (name: string) => {
+      if (!canvasOrder.includes(name)) canvasOrder.push(name)
+    }
+    for (const c of t.counters) seeCanvas(canvasOf.get(`c:${c.id}`)!)
+    for (const lt of t.lineTypes) seeCanvas(canvasOf.get(`l:${lt.id}`)!)
+    if (!canvasOrder.length) canvasOrder.push('Main')
+
     const maxIndex = Math.max(Math.max(...t.pages.map((p) => p.index)), (pdfPageCount ?? 0) - 1)
     const pageByIndex = new Map(t.pages.map((p) => [p.index, p]))
     const uid = () => crypto.randomUUID().slice(0, 8)
+    type Annotations = { counterMarkers: Record<string, Array<Pt & { id: string; group: null }>>; polylines: unknown[]; quickLines: unknown[]; highlights: unknown[]; notes: unknown[]; multiplyZones: unknown[]; scaleZones: unknown[]; roomBoxes: unknown[]; ghosts: unknown[]; legend: null }
     const pages = Array.from({ length: maxIndex + 1 }, (_, i) => {
       const p = pageByIndex.get(i)
-      const quickLines = (p?.quickLines ?? []).map((q) => ({ ...q, id: `q_${uid()}`, color: null, group: null }))
-      const polylines = (p?.polylines ?? []).map((pl) => ({ points: pl.points, lineTypeId: pl.lineTypeId, id: `pl_${uid()}`, color: null, group: null }))
-      const counterMarkers: Record<string, Array<Pt & { id: string; group: null }>> = {}
-      for (const [cid, marks] of Object.entries(p?.counterMarkers ?? {})) {
-        counterMarkers[cid] = marks.map((m) => ({ x: m.x, y: m.y, id: `m_${uid()}`, group: null }))
+      const emptyAnn = (): Annotations => ({ counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], legend: null })
+      const byCanvas = new Map<string, Annotations>()
+      const annFor = (name: string): Annotations => {
+        let a = byCanvas.get(name)
+        if (!a) {
+          a = emptyAnn()
+          byCanvas.set(name, a)
+        }
+        return a
       }
-      const notes = (p?.notes ?? []).map((n) => ({ x: n.x, y: n.y, text: n.text, id: `n_${uid()}`, width: 180, fontSize: 14 }))
+      for (const q of p?.quickLines ?? []) {
+        annFor(canvasOf.get(`l:${q.lineTypeId}`)!).quickLines.push({ ...q, id: `q_${uid()}`, color: null, group: null })
+      }
+      for (const pl of p?.polylines ?? []) {
+        annFor(canvasOf.get(`l:${pl.lineTypeId}`)!).polylines.push({ points: pl.points, lineTypeId: pl.lineTypeId, id: `pl_${uid()}`, color: null, group: null })
+      }
+      for (const [cid, marks] of Object.entries(p?.counterMarkers ?? {})) {
+        const ann = annFor(canvasOf.get(`c:${cid}`)!)
+        ann.counterMarkers[cid] = marks.map((m) => ({ x: m.x, y: m.y, id: `m_${uid()}`, group: null }))
+      }
+      const noteTarget = byCanvas.size ? (canvasOrder.find((n) => byCanvas.has(n)) ?? canvasOrder[0]!) : canvasOrder[0]!
+      for (const n of p?.notes ?? []) {
+        annFor(noteTarget).notes.push({ x: n.x, y: n.y, text: n.text, id: `n_${uid()}`, width: 180, fontSize: 14 })
+      }
+      if (!byCanvas.size) byCanvas.set(canvasOrder[0]!, emptyAnn())
+      const canvases = canvasOrder.filter((n) => byCanvas.has(n)).map((name) => ({ id: `c_${uid()}`, name, annotations: byCanvas.get(name)! }))
       return {
         index: i,
         label: p?.label,
-        canvases: [{ id: `c_${uid()}`, name: 'Main', annotations: { counterMarkers, polylines, quickLines, highlights: [], notes, multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], legend: null } }],
+        canvases,
         scale: p?.scale ?? undefined,
         rotation: 0,
         bakeFrame: null,

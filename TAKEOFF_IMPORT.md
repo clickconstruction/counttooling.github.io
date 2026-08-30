@@ -21,6 +21,12 @@ rejected by name; the pages array is padded to cover every PDF page. A failed PD
 never unwinds the imported marks: the response's `pdf.ok`/`pdf.error` reports loudly.
 Omit `pdf_url` for the original canvas-only behavior.
 
+**Layered canvases** (2026-08-30): counters and lineTypes may carry a `canvas` name —
+annotations group into per-page canvas layers by it (convention: `Fixtures`, one canvas
+per pipe system named after it, `Fittings`). Reviewers toggle layers over the plan with
+the app's existing canvas switcher / Show-all / Hide-marks — no new UI. Elements without
+a `canvas` land on `Main` (back-compat).
+
 ## Payload
 
 ```json

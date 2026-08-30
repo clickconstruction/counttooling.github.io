@@ -7,7 +7,8 @@
  *
  * Pins the moved surface: the Multiply Zone Apply creates a zone with the
  * typed multiplier from a pending rect (the create path the canvas click
- * seeds), the context-menu edit path updates an existing zone's multiplier,
+ * seeds) and keeps the tool armed with a visible hint (Tier-3 B8 / J6),
+ * the context-menu edit path updates an existing zone's multiplier,
  * Cancel clears the pending state, and the Delete Zone cancel/confirm
  * bindings behave (cancel clears; confirm with nothing pending is a no-op).
  * The Delete Page confirm handlers are exercised by delete-page.spec.js.
@@ -43,7 +44,11 @@ test.describe('Zone & page-action modals (features/zone-modals.js)', () => {
     expect(zone.multiplier).toBe(3);
     expect(zone.x1).toBe(10);
     await expect(page.locator('#multiplyZoneModal')).not.toHaveClass(/visible/);
-    expect(await page.evaluate(() => window.state.tool)).toBe(0); // TOOL.NONE after create
+    // Tier-3 B8 / J6: a NEW zone commit keeps the tool armed (with a visible
+    // armed-hint toast) so the next typical floor is one drag away.
+    expect(await page.evaluate(() => window.state.tool)).toBe(await page.evaluate(() => window.App.TOOL.MULTIPLY_ZONE));
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => document.getElementById('airboardToastText').textContent)).toContain('stays armed');
 
     // --- Edit path: pendingMultiplyZoneEdit updates the existing zone ---
     await page.evaluate(() => {

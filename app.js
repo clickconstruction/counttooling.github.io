@@ -2845,14 +2845,15 @@
       setScaleFirstToastTimer = null;
     }, 6000);
   }
-  // Bound once: hide the toast, then open the Set Scale dialog (same no-plan
-  // guard as the tool context menu's "Set / edit scale…" item; openScaleModal
-  // is registered by features/scale.js — read from App at call time).
+  // Bound once: hide the toast, then open the Set Scale dialog. The no-plan
+  // "Open a plan first." gate lives inside openScaleModal itself (Tier-3 B8:
+  // one gate for every entrance; openScaleModal is registered by
+  // features/scale.js — read from App at call time).
   const setScaleFirstLinkEl = document.getElementById('setScaleFirstLink');
   if (setScaleFirstLinkEl) setScaleFirstLinkEl.onclick = () => {
     if (setScaleFirstToastTimer) { clearTimeout(setScaleFirstToastTimer); setScaleFirstToastTimer = null; }
     hideModal('setScaleFirstModal');
-    if (state.pages.length) App.openScaleModal(); else showToast('Open a plan first.', 2000);
+    App.openScaleModal();
   };
   let outOfBoundsToastTimer = null;
   function showOutOfBoundsToast() {

@@ -86,8 +86,17 @@
           if (!canvas.annotations.multiplyZones) canvas.annotations.multiplyZones = [];
           canvas.annotations.multiplyZones.push({ x1: pending.x1, y1: pending.y1, x2: pending.x2, y2: pending.y2, multiplier: mult, id: App.uid() });
         }
-        state.tool = App.TOOL.NONE;
+        // J6 stay-armed (Tier-3 B8, gated on T2-10's drag gesture, now
+        // shipped): a NEW zone commit keeps Multiply Zone armed so the next
+        // typical floor is one drag away (the counter-tool pattern), with a
+        // visible armed hint (J6 caution: silently-armed would make the
+        // post-Apply pan click a silent corner 1). Toasts are non-blocking
+        // corner cards since T2-15, so the hint never eats the next drag.
+        // Context-menu edits (the branch above) arrive with no tool armed
+        // and still leave the tool alone.
+        state.tool = App.TOOL.MULTIPLY_ZONE;
         App.markProjectDirty();
+        App.showToast('Zone added — Multiply Zone stays armed: drag the next zone, or press Esc to finish.', 4000);
       }
       App.updateUI();
       App.renderAnnotations();

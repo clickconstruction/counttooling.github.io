@@ -147,6 +147,18 @@
   }
   function openScaleModal() {
     const state = App.state;
+    // ONE no-plan gate for every scale entrance (Tier-3 B8 / J3): the header
+    // and sidebar buttons + the S hotkey (which clicks #setScale), the tool
+    // context menu's "Set / edit scale…", and the arm-time gate link all
+    // funnel through here. Without a page there is nothing to scale — and an
+    // open modal at 0 pages could fake a "Scale set" success toast against no
+    // page at all. Same copy as the old per-caller guards it replaces.
+    if (!state.pages.length) { App.showToast('Open a plan first.', 2000); return; }
+    // Feet default is a REAL value (Tier-3 B8 / J3): the markup ships
+    // value="1"; re-seed it here so a reopen after the user cleared the field
+    // still presents the working default instead of an empty input.
+    const feetEl = document.getElementById('scaleCustomFeet');
+    if (feetEl && !feetEl.value) feetEl.value = '1';
     clearSheetCorrection();   // recomputed by refreshSheetWarning when the presets tab shows
     const finishingTwoPoints = state.scalePointA && state.scalePointB;
     const tabsEl = document.getElementById('scaleModalTabs');
@@ -285,7 +297,14 @@
     const canvas = page && App.ensureActiveCanvas(page);
     resetScaleModalZoneMode();
     App.hideModal('scaleModal');
-    state.tool = App.TOOL.NONE;
+    // J6 stay-armed (Tier-3 B8, gated on T2-10's drag gesture, now shipped):
+    // a NEW zone commit keeps the Scale Zone tool armed so the next detail
+    // region is one drag away (the counter-tool pattern). Context-menu edits
+    // arrived with no tool armed — those still exit to Move. The two-point
+    // verify hand-off is untouched: zone applies never route through
+    // handOffToVerify (page-flavor only).
+    const stayArmed = !!pending && !edit;
+    state.tool = stayArmed ? App.TOOL.SCALE_ZONE : App.TOOL.NONE;
     state.scaleMode = App.SCALE_MODES.NONE;
     state.scalePointA = null;
     state.scalePointB = null;
@@ -310,6 +329,11 @@
     App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
+    // The visible armed hint the stay-armed behavior ships with (J6 caution:
+    // silently-armed would make the post-Apply pan click a silent corner 1).
+    // Toasts are non-blocking corner cards since T2-15, so this never eats
+    // the very next zone drag.
+    if (stayArmed) App.showToast('Zone scale set — Scale Zone stays armed: drag the next zone, or press Esc to finish.', 4000);
     return true;
   }
   function showScaleTab(tab) {

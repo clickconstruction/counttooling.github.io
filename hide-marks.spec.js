@@ -137,4 +137,132 @@ test.describe('Hide-marks header toggle', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // T2-03: hide-marks means the sheet is read-only-bare — hitTest early-returns
+  // null while hidden, so invisible marks can't be dragged, right-clicked,
+  // dblclick-edited, or hover-cursored. With marks shown everything behaves as
+  // before (control assertions).
+  test('hidden marks are inert to the mouse', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Inject a note, a counter marker, and a legend on page 1's active canvas.
+    await page.evaluate(() => {
+      const s = window.state;
+      const uid = window.App.uid;
+      const cid = uid();
+      // eslint-disable-next-line no-undef
+      const icon = (typeof CIRCLE_PATH !== 'undefined') ? CIRCLE_PATH
+        : 'M512 320C512 426 426 512 320 512C214 512 128 426 128 320C128 214 214 128 320 128C426 128 512 214 512 320z';
+      s.counters.push({ id: cid, name: 'Inert Counter', icon, color: '#e8c547', size: 16 });
+      const ann = s.pages[0].canvases[0].annotations;
+      ann.counterMarkers[cid] = [{ x: 120, y: 380, id: uid(), group: null }];
+      ann.notes.push({ x: 200, y: 200, text: 'Hidden note', id: uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e8c547' });
+      ann.legend = { x: 350, y: 20, w: 100, h: 56 };
+      s.currentPage = 0;
+      window.App.renderAnnotations();
+      window.App.updateUI();
+    });
+
+    // PDF-space -> viewport client coords through the live canvas rect (the
+    // mapping tracks pan/zoom, so recompute after any pan).
+    const screenPointForPdf = (pdf) => page.evaluate((p) => {
+      const annCanvas = document.getElementById('annCanvas');
+      const rect = annCanvas.getBoundingClientRect();
+      const bc = window.App.toCanvas(p);
+      return {
+        x: rect.left + bc.x * (rect.width / annCanvas.width),
+        y: rect.top + bc.y * (rect.height / annCanvas.height),
+      };
+    }, pdf);
+    const notePos = () => page.evaluate(() => {
+      const n = window.state.pages[0].canvases[0].annotations.notes[0];
+      return { x: n.x, y: n.y };
+    });
+    const legendPos = () => page.evaluate(() => {
+      const l = window.state.pages[0].canvases[0].annotations.legend;
+      return { x: l.x, y: l.y };
+    });
+    const NOTE_BODY = { x: 230, y: 206 };    // inside the note's text box, clear of both handles
+    const LEGEND_HEADER = { x: 400, y: 28 }; // inside the legend header drag strip
+
+    // Hide marks.
+    await page.locator('#hideMarksBtn').click();
+    await page.waitForFunction(() => window.state.hideMarks === true);
+
+    // (a) Real drag at the hidden note: the note must not move — the gesture
+    // falls through to the normal sheet pan instead.
+    const panBefore = await page.evaluate(() => ({ ...window.state.pan }));
+    let pt = await screenPointForPdf(NOTE_BODY);
+    await page.mouse.move(pt.x, pt.y);
+    await page.mouse.down();
+    await page.mouse.move(pt.x + 40, pt.y + 40, { steps: 5 });
+    await page.mouse.up();
+    const panAfter = await page.evaluate(() => ({ ...window.state.pan }));
+    expect(await notePos()).toEqual({ x: 200, y: 200 });
+    expect(panAfter.x !== panBefore.x || panAfter.y !== panBefore.y).toBe(true);
+
+    // Same for the hidden legend header.
+    pt = await screenPointForPdf(LEGEND_HEADER);
+    await page.mouse.move(pt.x, pt.y);
+    await page.mouse.down();
+    await page.mouse.move(pt.x + 30, pt.y + 30, { steps: 5 });
+    await page.mouse.up();
+    expect(await legendPos()).toEqual({ x: 350, y: 20 });
+
+    // (b) Right-click on the hidden note: no per-mark context menu.
+    pt = await screenPointForPdf(NOTE_BODY);
+    await page.mouse.click(pt.x, pt.y, { button: 'right' });
+    expect(await page.evaluate(() => ({
+      menuVisible: document.getElementById('contextMenu').classList.contains('visible'),
+      ctxTarget: window.state.ctxTarget,
+    }))).toEqual({ menuVisible: false, ctxTarget: null });
+
+    // Dblclick on the hidden note: no note editor.
+    await page.mouse.dblclick(pt.x, pt.y);
+    expect(await page.evaluate(() => document.getElementById('noteModal').classList.contains('visible'))).toBe(false);
+
+    // (c) Hover over the hidden note: no move cursor.
+    pt = await screenPointForPdf(NOTE_BODY);
+    await page.mouse.move(pt.x, pt.y);
+    expect(await page.evaluate(() => document.getElementById('annCanvas').style.cursor)).not.toBe('move');
+
+    // Control: show marks again — the same interactions come back.
+    await page.locator('#hideMarksBtn').click();
+    await page.waitForFunction(() => window.state.hideMarks === false);
+
+    // Hover now shows the move cursor over the note.
+    pt = await screenPointForPdf(NOTE_BODY);
+    await page.mouse.move(pt.x, pt.y);
+    expect(await page.evaluate(() => document.getElementById('annCanvas').style.cursor)).toBe('move');
+
+    // Right-click now opens the per-mark menu on the note.
+    await page.mouse.click(pt.x, pt.y, { button: 'right' });
+    expect(await page.evaluate(() => ({
+      menuVisible: document.getElementById('contextMenu').classList.contains('visible'),
+      ctxType: window.state.ctxTarget && window.state.ctxTarget.type,
+    }))).toEqual({ menuVisible: true, ctxType: 'note' });
+    await page.evaluate(() => {   // dismiss (same statements the app's dismissers run)
+      document.getElementById('contextMenu').classList.remove('visible');
+      window.state.ctxTarget = null;
+    });
+
+    // The same drag now moves the note.
+    pt = await screenPointForPdf(NOTE_BODY);
+    await page.mouse.move(pt.x, pt.y);
+    await page.mouse.down();
+    await page.mouse.move(pt.x + 40, pt.y + 40, { steps: 5 });
+    await page.mouse.up();
+    const moved = await notePos();
+    expect(moved.x).toBeGreaterThan(200);
+    expect(moved.y).toBeGreaterThan(200);
+
+    expect(errors).toEqual([]);
+  });
 });

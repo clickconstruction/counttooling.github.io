@@ -1056,6 +1056,9 @@
   }
 
   function hitTest(pos, radius = 12) {
+    // T2-03: hide-marks means the sheet is read-only-bare — invisible marks
+    // must not catch the mouse. Mirrors renderAnnotations' early return.
+    if (state.hideMarks) return null;
     const r = radius / state.zoom;
     const page = state.pages[state.currentPage];
     if (!page) return null;

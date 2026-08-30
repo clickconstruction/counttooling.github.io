@@ -15,11 +15,13 @@
   // or admin; 'reviewed': overseer or admin) — this file never gates harder
   // than the server, it only hides the row where it could never apply.
 
-  async function setProjectReviewStatus(projectId, status) {
+  async function setProjectReviewStatus(projectId, status, note) {
     const supabase = App.getSupabase();
     if (!supabase) return { ok: false, error: 'Cloud not configured' };
     try {
-      const { data, error } = await supabase.rpc('set_project_review_status', { p_project_id: projectId, p_status: status });
+      const args = { p_project_id: projectId, p_status: status };
+      if (note != null) args.p_note = note;
+      const { data, error } = await supabase.rpc('set_project_review_status', args);
       if (error) return { ok: false, error: error.message };
       return data || { ok: false, error: 'No response' };
     } catch (e) {
@@ -27,15 +29,16 @@
     }
   }
 
-  function reviewStatusLine(status, requestedAt, reviewedAt) {
+  function reviewStatusLine(status, requestedAt, reviewedAt, note) {
     if (status === 'ready') return 'Ready for review' + (requestedAt ? ' since ' + new Date(requestedAt).toLocaleDateString() : '');
     if (status === 'reviewed') return 'Reviewed' + (reviewedAt ? ' ' + new Date(reviewedAt).toLocaleDateString() : '');
+    if (status === 'changes') return 'Changes requested' + (reviewedAt ? ' ' + new Date(reviewedAt).toLocaleDateString() : '') + (note ? ' — “' + note + '”' : '');
     return 'Not submitted for review';
   }
 
   function reviewButtonLabel(status) {
     if (status === 'ready') return 'Withdraw';
-    if (status === 'reviewed') return 'Mark ready again';
+    if (status === 'reviewed' || status === 'changes') return 'Mark ready again';
     return 'Mark ready for review';
   }
 
@@ -55,13 +58,13 @@
     if (btn) btn.disabled = true;
     try {
       const { data, error } = await supabase.from('projects')
-        .select('review_status, review_requested_at, reviewed_at')
+        .select('review_status, review_requested_at, reviewed_at, review_note')
         .eq('id', state.currentProjectId).maybeSingle();
       if (error || !data) {
         if (textEl) textEl.textContent = 'Review status unavailable.';
         return;
       }
-      if (textEl) textEl.textContent = reviewStatusLine(data.review_status, data.review_requested_at, data.reviewed_at);
+      if (textEl) textEl.textContent = reviewStatusLine(data.review_status, data.review_requested_at, data.reviewed_at, data.review_note);
       if (btn) {
         btn.textContent = reviewButtonLabel(data.review_status);
         btn.dataset.next = data.review_status === 'ready' ? '' : 'ready';

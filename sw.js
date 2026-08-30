@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '656da5d165ee';
+const CACHE_VERSION = '2c407310c8d1';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -167,7 +167,7 @@ const PRECACHE_SHA256 = {
   '/app/': '23a435cd12afa855c18e73d69560ffef38c6280bf1031505336fee2b15b6d58c',
   '/app/index.html': '23a435cd12afa855c18e73d69560ffef38c6280bf1031505336fee2b15b6d58c',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '1e850068b5f3a8538977f68ec33ef00f27c332ddacf3eaa5d5a77d965f31d3dd',
+  '/styles.css': '0bac09fc3c5d304d6ed6d12d895d1713b484cf09265d4585d6445a1bac0e6a78',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
   '/icons-custom.js': 'f764721b21760d0138c3f4f5bd67427201e5f7e85a76e72501fb2c3a3852390e',
@@ -219,8 +219,8 @@ const PRECACHE_SHA256 = {
   '/features/manage-projects.js': 'c010b8f2b84ba5715ca33a6e907baf3de488fad439b9651d966d795674fe257c',
   '/features/user-admin.js': 'e4065ca14f9a9188f92373587d2afebf58b2ae89ad059729ebed31557e042a15',
   '/features/load-project.js': 'c54c8fbbd7edba08c47c299e17c3ce8a3732ddc646da31760bef7de390c35b00',
-  '/features/bid-board.js': '420ccca9099f38262ec25d635d86cd1bad0f092a2ae254759ecd2b58213e18f0',
-  '/features/review-flow.js': '293f332c7f9733d2eb4fd869f7413cb1af79b586aa722ac70a6ca167f5f88e4b',
+  '/features/bid-board.js': '6dcc4cdefd58b39bed4a6c22789f2aa894359e77b846429ceded5b60962edf23',
+  '/features/review-flow.js': '7fe62b8120ac3ea327db6851365a4b17ef19e60fa8bf5646ccc3970d142f2405',
   '/features/copy-project.js': 'd8ada1451aa982b207180e03fb0707b274eddd6af2c521856bce32a77c94a7c3',
   '/features/prepare-pdf.js': '83851f7a712e6ad31c822c66c83a9ff51ac1f399514e8ae62f3a8bbebb870551',
   '/features/quick-modals.js': '41e4b0f8e18266283b4cd2bdaf1b58d242a4670e38869f77c11039bc928c1c96',

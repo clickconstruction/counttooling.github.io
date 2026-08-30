@@ -1724,6 +1724,9 @@ body.hotkey-peek .hk-badge { display: block; }
 #bidBoardModal .bid-card-review-btn { align-self: flex-start; margin-top: 2px; padding: 6px 12px; font-size: 0.8rem; font-family: inherit; border-radius: 6px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
 #bidBoardModal .bid-card-review-btn:hover { background: rgba(232, 197, 71, 0.14); }
 #bidBoardModal .bid-card-review-btn:disabled { opacity: 0.6; cursor: wait; }
+#bidBoardModal .bid-card-changes-btn { align-self: flex-start; margin-top: 2px; margin-left: 6px; padding: 6px 12px; font-size: 0.8rem; font-family: inherit; border-radius: 6px; border: 1px solid var(--yellow); background: transparent; color: var(--yellow); cursor: pointer; }
+#bidBoardModal .bid-card-changes-btn:hover { background: rgba(232, 197, 71, 0.14); }
+#bidBoardModal .bid-card-changes-btn:disabled { opacity: 0.6; cursor: wait; }
 .settings-review-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 2px 2px; border-top: 1px solid var(--border); margin-top: 6px; }
 .settings-review-row .settings-review-label { font-size: 0.8rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
 .settings-review-row .settings-review-status { flex: 1; min-width: 0; font-size: 0.9rem; color: var(--text2); }

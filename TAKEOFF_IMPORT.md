@@ -9,8 +9,23 @@ and POSTs them; the marks land as a normal, reviewable, twin-owned project.
 `POST /functions/v1/import-takeoff` · Auth: the TWIN's own session JWT
 (`Authorization: Bearer <access_token>` from a twin-login mint) — **twin accounts only**
 (`profiles.is_digital_twin`), always the caller's own project. Idempotent by
-`(owner, name)`: re-import replaces, never duplicates. Canvas-only (no PDF): a human
-attaches or copies the plan set when reviewing.
+`(owner, name)`: re-import replaces, never duplicates.
+
+**PDF leg** (robot-pdf-intake): pass `pdf_url` (+ optional `pdf_headers`, ≤4, e.g.
+`{"X-Twin-Token": "…"}` for PipeTooling's `plan-fetch?bid=b403` endpoint) and the function
+fetches the plan set server-side, verifies it is a PDF (magic bytes, ≤50 MB — the app's
+storage cap), counts pages with pdf-lib, stores it at the app's exact path
+(`<uid>/<project>/document.pdf`, `pdfs` bucket, upsert) and stamps `projects.pdf_path` —
+the project opens WITH plans under the marks. Page indexes beyond the PDF's page count are
+rejected by name; the pages array is padded to cover every PDF page. A failed PDF leg
+never unwinds the imported marks: the response's `pdf.ok`/`pdf.error` reports loudly.
+Omit `pdf_url` for the original canvas-only behavior.
+
+**Layered canvases** (2026-08-30): counters and lineTypes may carry a `canvas` name —
+annotations group into per-page canvas layers by it (convention: `Fixtures`, one canvas
+per pipe system named after it, `Fittings`). Reviewers toggle layers over the plan with
+the app's existing canvas switcher / Show-all / Hide-marks — no new UI. Elements without
+a `canvas` land on `Main` (back-compat).
 
 ## Payload
 
@@ -29,7 +44,8 @@ attaches or copies the plan set when reviewing.
       "counterMarkers": { "c-wc12": [{ "x": 120.5, "y": 340.0 }] },
       "quickLines":  [{ "x1": 0, "y1": 0, "x2": 240, "y2": 0, "lineTypeId": "lt-cw" }],
       "polylines":   [{ "points": [{ "x": 0, "y": 0 }, { "x": 10, "y": 20 }], "lineTypeId": "lt-cw" }],
-      "notes":       [{ "x": 200, "y": 200, "text": "RFI: fixture missing from schedule" }]
+      "notes":       [{ "x": 200, "y": 200, "text": "RFI: fixture missing from schedule",
+                        "detail": "optional long body — shows in the Notes ledger drawer, never on the sheet" }]
     }]
   }
 }
@@ -41,6 +57,17 @@ Coordinates are **canvas pixels in the page's base frame** (PDF viewport at scal
 1 unit = 1 PDF point), rotation 0. `scale.pixelsPerUnit` is px per FOOT in that same frame —
 derive it by dimension-string calibration (stated scales lie on reduced prints; see
 EXTRACTOR.md). `RFI:`-prefixed notes ride the existing RFI-flags convention.
+
+## Notes contract (Notes ledger, 2026-08-30)
+
+Keep each note's on-sheet `text` **short — one line, ≤ ~100 chars**: a question for
+RFIs, a label for everything else. Long provenance (how a run was traced, gate
+numbers, workflow detail) goes in the optional `detail` field (≤ 4000 chars) — it
+shows in the app's Notes ledger drawer and hover chip, never as plan-space text.
+In the app, RFI and `detail`-bearing notes render as numbered pins; the reviewer
+resolves or answers them in the drawer, and answers flow back to the twin via the
+`twin_rfis` bridge verb (surfaced in PT `get_work_state`). An answered RFI comes
+back `resolved: true` with the reviewer's `answer` — read it before re-asking.
 
 ## Validation & scoring
 

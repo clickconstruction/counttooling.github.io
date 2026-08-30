@@ -2364,6 +2364,13 @@
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const bidBoardBtnSidebar = document.getElementById('bidBoardBtnSidebar');
       if (bidBoardBtnSidebar) bidBoardBtnSidebar.style.display = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
+      // Desktop entry lives in the status bar (the mobile sidebar hides on wide
+      // screens, which left desktop overseers/admins with no way to open the board).
+      const statusBarBidBoard = document.getElementById('statusBarBidBoard');
+      const statusBarBidBoardSep = document.getElementById('statusBarBidBoardSep');
+      const showBidBoardLink = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
+      if (statusBarBidBoard) statusBarBidBoard.style.display = showBidBoardLink;
+      if (statusBarBidBoardSep) statusBarBidBoardSep.style.display = showBidBoardLink;
       const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
       if (settingsManageProjectsBtn) settingsManageProjectsBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const globalReloadBtn = document.getElementById('advancedGlobalForceReload');

@@ -44,7 +44,8 @@ a `canvas` land on `Main` (back-compat).
       "counterMarkers": { "c-wc12": [{ "x": 120.5, "y": 340.0 }] },
       "quickLines":  [{ "x1": 0, "y1": 0, "x2": 240, "y2": 0, "lineTypeId": "lt-cw" }],
       "polylines":   [{ "points": [{ "x": 0, "y": 0 }, { "x": 10, "y": 20 }], "lineTypeId": "lt-cw" }],
-      "notes":       [{ "x": 200, "y": 200, "text": "RFI: fixture missing from schedule" }]
+      "notes":       [{ "x": 200, "y": 200, "text": "RFI: fixture missing from schedule",
+                        "detail": "optional long body — shows in the Notes ledger drawer, never on the sheet" }]
     }]
   }
 }
@@ -56,6 +57,17 @@ Coordinates are **canvas pixels in the page's base frame** (PDF viewport at scal
 1 unit = 1 PDF point), rotation 0. `scale.pixelsPerUnit` is px per FOOT in that same frame —
 derive it by dimension-string calibration (stated scales lie on reduced prints; see
 EXTRACTOR.md). `RFI:`-prefixed notes ride the existing RFI-flags convention.
+
+## Notes contract (Notes ledger, 2026-08-30)
+
+Keep each note's on-sheet `text` **short — one line, ≤ ~100 chars**: a question for
+RFIs, a label for everything else. Long provenance (how a run was traced, gate
+numbers, workflow detail) goes in the optional `detail` field (≤ 4000 chars) — it
+shows in the app's Notes ledger drawer and hover chip, never as plan-space text.
+In the app, RFI and `detail`-bearing notes render as numbered pins; the reviewer
+resolves or answers them in the drawer, and answers flow back to the twin via the
+`twin_rfis` bridge verb (surfaced in PT `get_work_state`). An answered RFI comes
+back `resolved: true` with the reviewer's `answer` — read it before re-asking.
 
 ## Validation & scoring
 

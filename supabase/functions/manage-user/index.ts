@@ -186,6 +186,61 @@ Deno.serve(async (req) => {
           })),
         })
       }
+      case 'twin_rfis': {
+        // Notes-ledger loop (2026-08-30): PT's get_work_state surfaces the note
+        // ledger of one twin project — every note with its RFI kind, resolved
+        // state, and the reviewer's answer — so an answered RFI is a fact the
+        // agent reads on its next turn, not something a human has to relay.
+        const email = String(body.email ?? '').trim().toLowerCase()
+        const projectId = String(body.project_id ?? '').trim()
+        if (!email || !projectId) return jsonRes(400, { error: 'email + project_id required' })
+        const u = await findByEmail(admin, email)
+        if (!u) return jsonRes(404, { error: 'no such CT user' })
+        const { data: prof } = await admin.from('profiles').select('is_digital_twin').eq('user_id', u.id).maybeSingle()
+        if (prof?.is_digital_twin !== true) return jsonRes(400, { error: 'twin_rfis is twin-scoped — not a twin account' })
+        const { data: proj, error } = await admin.from('projects')
+          .select('id, name, data')
+          .eq('user_id', u.id)
+          .eq('id', projectId)
+          .maybeSingle()
+        if (error) return jsonRes(500, { error: `project read failed: ${error.message}` })
+        if (!proj) return jsonRes(404, { error: 'no such project for that twin' })
+        const RFI_RE = /^\s*RFI\s*:/i
+        const notes: Array<Record<string, unknown>> = []
+        let num = 0
+        const pages = (proj.data as { pages?: Array<{ name?: string; canvases?: Array<{ name?: string; annotations?: { notes?: Array<Record<string, unknown>> } }> }> })?.pages ?? []
+        pages.forEach((pg, pi) => {
+          const canvases = pg?.canvases ?? []
+          canvases.forEach((cv) => {
+            for (const n of cv?.annotations?.notes ?? []) {
+              const text = String(n?.text ?? '').trim()
+              if (!text) continue
+              num += 1
+              if (notes.length >= 100) continue
+              notes.push({
+                num,
+                page: pi + 1,
+                page_name: pg?.name ?? '',
+                canvas: canvases.length > 1 ? (cv?.name ?? '') : '',
+                kind: RFI_RE.test(text) ? 'rfi' : 'note',
+                text,
+                detail: typeof n?.detail === 'string' ? n.detail : undefined,
+                resolved: n?.resolved === true,
+                answer: typeof n?.answer === 'string' ? n.answer : undefined,
+              })
+            }
+          })
+        })
+        const rfis = notes.filter((x) => x.kind === 'rfi')
+        return jsonRes(200, {
+          project_id: proj.id,
+          name: proj.name,
+          total_notes: num,
+          open_rfis: rfis.filter((x) => !x.resolved).length,
+          answered_rfis: rfis.filter((x) => typeof x.answer === 'string').length,
+          notes,
+        })
+      }
       case 'set_twin_credential': {
         // Robot-ready train CT-4: per-twin credential parity. PT issues one token per
         // twin; its sha256 hash is mirrored here so CT's twin-login can verify the

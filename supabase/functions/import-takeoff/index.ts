@@ -28,7 +28,7 @@ type TakeoffPage = {
   counterMarkers?: Record<string, Pt[]>
   quickLines?: Array<{ x1: number; y1: number; x2: number; y2: number; lineTypeId: string }>
   polylines?: Array<{ points: Pt[]; lineTypeId: string }>
-  notes?: Array<{ x: number; y: number; text: string }>
+  notes?: Array<{ x: number; y: number; text: string; detail?: string }>
 }
 type TakeoffJson = {
   version: 1
@@ -136,6 +136,10 @@ Deno.serve(async (req) => {
       }
       for (const n of p.notes ?? []) {
         if (!num(n?.x) || !num(n?.y) || !String(n?.text ?? '').trim()) return bad(`pages[${p.index}].notes`, 'each note needs x,y,text')
+        // Notes-ledger contract: keep the on-sheet text short; long provenance
+        // rides in `detail` and shows in the ledger drawer, never on the sheet.
+        if (n.detail != null && typeof n.detail !== 'string') return bad(`pages[${p.index}].notes`, 'detail must be a string')
+        if (String(n.detail ?? '').length > 4000) return bad(`pages[${p.index}].notes`, 'detail over 4000 chars')
       }
     }
 
@@ -193,7 +197,8 @@ Deno.serve(async (req) => {
       }
       const noteTarget = byCanvas.size ? (canvasOrder.find((n) => byCanvas.has(n)) ?? canvasOrder[0]!) : canvasOrder[0]!
       for (const n of p?.notes ?? []) {
-        annFor(noteTarget).notes.push({ x: n.x, y: n.y, text: n.text, id: `n_${uid()}`, width: 180, fontSize: 14 })
+        const detail = String(n.detail ?? '').trim()
+        annFor(noteTarget).notes.push({ x: n.x, y: n.y, text: n.text, id: `n_${uid()}`, width: 180, fontSize: 14, ...(detail ? { detail } : {}) })
       }
       if (!byCanvas.size) byCanvas.set(canvasOrder[0]!, emptyAnn())
       const canvases = canvasOrder.filter((n) => byCanvas.has(n)).map((name) => ({ id: `c_${uid()}`, name, annotations: byCanvas.get(name)! }))

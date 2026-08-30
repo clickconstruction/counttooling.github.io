@@ -11,7 +11,10 @@
  * exists, the edit path (height/room rewrite), the room-delete cascade, the
  * export/import roundtrip carrying rooms + roomBoxes, and the rooms-only
  * export unlock (getReportHasRooms surfaces the report/summary buttons while
- * Copy to /Tooling stays counts/lines-only, T1-10).
+ * Copy to /Tooling stays counts/lines-only, T1-10). Also pins the T2-10
+ * min-size guard: openRoomBoxModal refuses a ~zero-size rect (both dims under
+ * 6 logical px at the current zoom), so a same-spot click-click can never
+ * open a 0'-0" x 0'-0" Room Size dialog.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -322,5 +325,60 @@ test('empty ceiling height error toast is VISIBLE above the still-open dialog (J
   });
   expect(hit.onScreen).toBe(true);
   expect(hit.inToast).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('~zero-size room box is refused: same-spot clicks open NO dialog; a real box still opens it (T2-10)', async ({ page }) => {
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await page.evaluate(() => {
+    window.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
+    window.state.tool = window.App.TOOL.ROOM;
+    // Synthetic clicks through the real wrapper click path (no dblclick noise).
+    window.__clickAt = (fx, fy, dxPx) => {
+      const s = window.state; const p = s.pages[s.currentPage];
+      const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+      const r = document.getElementById('canvasWrapper').getBoundingClientRect();
+      const x = r.left + (vp.width * fx) * s.zoom + s.pan.x + (dxPx || 0);
+      const y = r.top + (vp.height * fy) * s.zoom + s.pan.y;
+      document.getElementById('canvasWrapper').dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 }));
+    };
+  });
+
+  // Two clicks at the SAME point: corner arms, then the guard refuses the
+  // dialog — tool stays armed, no pending corner, coaching returns to corner 1.
+  await page.evaluate(() => { window.__clickAt(0.4, 0.4, 0); window.__clickAt(0.4, 0.4, 0); });
+  let out = await page.evaluate(() => ({
+    visible: document.getElementById('roomBoxModal').classList.contains('visible'),
+    start: window.state.roomBoxStart,
+    tool: window.state.tool === window.App.TOOL.ROOM,
+  }));
+  expect(out.visible).toBe(false);
+  expect(out.start).toBeNull();
+  expect(out.tool).toBe(true);
+
+  // Two clicks 3 client px apart: still under the 6px guard in both dims.
+  await page.evaluate(() => { window.__clickAt(0.5, 0.5, 0); window.__clickAt(0.5, 0.5, 3); });
+  out = await page.evaluate(() => ({
+    visible: document.getElementById('roomBoxModal').classList.contains('visible'),
+    start: window.state.roomBoxStart,
+    tool: window.state.tool === window.App.TOOL.ROOM,
+  }));
+  expect(out.visible).toBe(false);
+  expect(out.start).toBeNull();
+  expect(out.tool).toBe(true);
+
+  // Two clicks well apart still open the dialog (the guard is degenerate-only).
+  await page.evaluate(() => { window.__clickAt(0.3, 0.3, 0); window.__clickAt(0.6, 0.6, 0); });
+  await expect(page.locator('#roomBoxModal')).toHaveClass(/visible/);
+  const pend = await page.evaluate(() => window.state.pendingRoomBox);
+  expect(Math.abs(pend.x2 - pend.x1)).toBeGreaterThan(0);
+  await page.locator('#roomBoxCancel').click();
   expect(errors).toEqual([]);
 });

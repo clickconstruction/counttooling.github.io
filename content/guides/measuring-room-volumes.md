@@ -15,7 +15,7 @@ Counting fixtures and measuring runs covers most of a takeoff, but HVAC work sta
 
 1. [Set the page scale](/guides/setting-the-scale/) [[set-scale]] first — room sizes come from the drawing, so the tool won't start without one.
 2. Pick the **Room Sizer** [[room]] tool in the header (or press **V**).
-3. Click one corner of the room, then the opposite corner. While you move, a live readout shows the box's length × width.
+3. Drag a box across the room — or click one corner, then the opposite corner. While you move, a live readout shows the box's length × width.
 
 ## Give it a height and a room
 

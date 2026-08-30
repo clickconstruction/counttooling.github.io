@@ -206,6 +206,7 @@
     touchPanStart: null, touchPanning: false,
     aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
     aimOffsetPx: 0, aimMouseDownClient: null, justFinishedLoupe: false,
+    rectPress: null, rectDragging: false, justFinishedRectDrag: false,
     vertexDragStart: null, vertexDragMoved: false,
     lastScaleTapTime: 0,
     currentProjectId: null,
@@ -5254,6 +5255,14 @@
   const AIM_OFFSET_LOGICAL_PX = 44;    // crosshair sits this far ABOVE the fingertip
   const LOUPE_MAGNIFY = 2.5;
   const LOUPE_DIAMETER_LOGICAL = 120;
+  // Rect-tool drag gesture (mouse): press-drag past this threshold arms corner 1
+  // at the PRESS point and completes the rectangle on release. It matches the
+  // aim-timer move-cancel threshold so "drag" and "hold-to-aim" can never both
+  // claim a gesture: hold still 280ms -> loupe wins; move >6px first -> drag wins.
+  const RECT_DRAG_MIN_PX = 6;   // client px
+  const RECT_TOOL_START_KEY = { [TOOL.HIGHLIGHT]: 'highlightStart',
+    [TOOL.MULTIPLY_ZONE]: 'multiplyZoneStart', [TOOL.SCALE_ZONE]: 'scaleZoneStart',
+    [TOOL.ROOM]: 'roomBoxStart', [TOOL.DELETE_ZONE]: 'deleteZoneStart' };
 
   // Which tools support press-hold-aim: Measure, Quick Line, and an in-progress Polyline.
   // Tools that support press-hold-aim (loupe). All point-placement tools qualify;
@@ -5314,6 +5323,7 @@
     state.aimRafPending = false;
     state.aimOffsetPx = 0;
     state.aimMouseDownClient = null;
+    state.rectPress = null;   // a hold that entered the loupe must not later promote into a drag
     hideAimLoupe();
     renderAnnotations();
     updateUI();
@@ -5546,6 +5556,14 @@
       const c = { x: e.clientX, y: e.clientY };
       state.aimMouseDownClient = c;
       state.aimPressTimer = setTimeout(() => { state.aimPressTimer = null; enterAiming(c, { mouse: true }); }, AIM_PRESS_MS);
+      // Rect tools with no corner pending: remember the press so a
+      // >RECT_DRAG_MIN_PX move can promote it into a drag (corner 1 = press
+      // point). With a corner already pending, a drag simply completes at the
+      // release point via the trailing native click — today's behavior.
+      const startKey = RECT_TOOL_START_KEY[state.tool];
+      if (startKey && !state[startKey] && isPointInPageBounds(state.mousePos)) {
+        state.rectPress = { pdf: state.mousePos, client: c };
+      }
     }
   });
 
@@ -5562,8 +5580,17 @@
       }
       return;
     }
-    if (state.aimPressTimer && state.aimMouseDownClient && ptDist({ x: e.clientX, y: e.clientY }, state.aimMouseDownClient) > 6) {
+    if (state.aimPressTimer && state.aimMouseDownClient && ptDist({ x: e.clientX, y: e.clientY }, state.aimMouseDownClient) > RECT_DRAG_MIN_PX) {
       clearTimeout(state.aimPressTimer); state.aimPressTimer = null;   // moved before the hold fired
+      // The same move that cancels hold-to-aim promotes a rect-tool press into
+      // a drag: corner 1 lands at the PRESS point and the existing rubber-band
+      // preview takes over from here (mouseup completes the rectangle).
+      if (state.rectPress && RECT_TOOL_START_KEY[state.tool]
+          && !state[RECT_TOOL_START_KEY[state.tool]]) {
+        state[RECT_TOOL_START_KEY[state.tool]] = state.rectPress.pdf;
+        state.rectDragging = true;
+      }
+      state.rectPress = null;
     }
     if (state.isPanning && state.panStart) {
       state.pan = { x: e.clientX - state.panStart.x, y: e.clientY - state.panStart.y };
@@ -5681,6 +5708,23 @@
       clearTimeout(state.aimPressTimer); state.aimPressTimer = null;
       state.aimMouseDownClient = null;
     }
+    if (state.rectDragging) {
+      // Rect-tool drag: complete the rectangle at the release point through the
+      // tool's normal corner-2 click path, so overlap toasts, undo snapshots,
+      // dirty marking, and every dialog open identically to two-click.
+      state.rectDragging = false;
+      const key = RECT_TOOL_START_KEY[state.tool];
+      if (key && state[key]) {   // Esc mid-drag cleared the corner -> gesture is dead
+        const pt = canvasPointFromEvent(e);
+        const pdfUp = clampPointToPageBounds(canvasToPdf(pt.x, pt.y));   // same clamp the loupe uses
+        handleCanvasClick(null, pdfUp);
+        // TEMP T2-10 bake-in — remove after: drag-completion debug counter (Save Status log).
+        pushSaveEvent('rect_drag_complete', 'Rectangle completed by drag', JSON.stringify({ tool: state.tool }));
+      }
+      state.justFinishedRectDrag = true;   // swallow the trailing native click
+      return;
+    }
+    state.rectPress = null;   // sub-threshold press: plain click, the two-click path handles it
     if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
     if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
     if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
@@ -5720,6 +5764,15 @@
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
     if (state.aiming || state.aimPressTimer) cancelAiming();
     state.aimMouseDownClient = null;
+    if (state.rectDragging) {
+      // A drag that leaves the canvas dies whole — no phantom corner survives
+      // the exit (mirrors cancelAiming semantics).
+      const key = RECT_TOOL_START_KEY[state.tool];
+      if (key) state[key] = null;
+      state.rectDragging = false;
+      renderAnnotations();
+    }
+    state.rectPress = null;
     state.isPanning = false;
     state.panStart = null;
     state.resizingNoteIdx = null;
@@ -5762,11 +5815,12 @@
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
-    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe || state.justFinishedDragGhost) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; state.justFinishedDragGhost = false; return; }
+    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe || state.justFinishedDragGhost || state.justFinishedRectDrag) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; state.justFinishedDragGhost = false; state.justFinishedRectDrag = false; return; }
     state.justFinishedResize = false;
     state.justFinishedDragNote = false;
     state.justFinishedLegendResize = false;
     state.justFinishedLoupe = false;
+    state.justFinishedRectDrag = false;
     handleCanvasClick(e);
   });
 

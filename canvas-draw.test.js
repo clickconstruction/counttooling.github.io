@@ -424,13 +424,63 @@ test('drawLegend: mixed scaled/unscaled line rows read "N ft + M px", all-scaled
   assert.ok(texts2.includes('Waste 12.00 ft'), 'all-scaled row unchanged; got ' + JSON.stringify(texts2));
 });
 
-test('drawLegend: no rows -> "No items" placeholder', () => {
+// B10 (J8): an empty legend used to paint a mystery "No items" box on a
+// brand-new sheet — it now paints NOTHING, and legendHasRows exposes the same
+// gate so app.js hitTest can keep the invisible box from catching the mouse.
+test('drawLegend: no rows -> nothing painted; legendHasRows mirrors the gate', () => {
   const state = legendState({ counters: [], lineTypes: [], rooms: [] });
   const draw = createCanvasDraw(legendDeps(state));
   const ctx = makeCtx();
-  draw.drawLegend(ctx, makePage(612, 792), 0, { legend: { x: 10, y: 10, w: 80, h: 40 }, counterMarkers: {}, quickLines: [], polylines: [], roomBoxes: [] }, 1, tc1);
-  const texts = callsOf(ctx, 'fillText').map(c => c[1]);
-  assert.deepStrictEqual(texts, ['No items']);
+  const emptyAnn = { legend: { x: 10, y: 10, w: 80, h: 40 }, counterMarkers: {}, quickLines: [], polylines: [], roomBoxes: [] };
+  draw.drawLegend(ctx, makePage(612, 792), 0, emptyAnn, 1, tc1);
+  assert.strictEqual(ctx.calls.length, 0, 'empty legend paints nothing; got ' + JSON.stringify(ctx.calls));
+  assert.strictEqual(draw.legendHasRows(emptyAnn, 0), false);
+
+  // Populated: rows exist -> hittable again.
+  const draw2 = createCanvasDraw(legendDeps(legendState()));
+  assert.strictEqual(draw2.legendHasRows(legendAnn(), 0), true);
+});
+
+// B10 (J18): the legend's scope ("This sheet" — current-page numbers beside
+// project-total surfaces) is printed on the legend itself, as a small grey
+// header above the rows.
+test('drawLegend: "This sheet" scope header paints first, above the rows', () => {
+  const state = legendState();
+  const draw = createCanvasDraw(legendDeps(state));
+  const ctx = makeCtx();
+  draw.drawLegend(ctx, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  const textCalls = callsOf(ctx, 'fillText');
+  const texts = textCalls.map(c => c[1]);
+  assert.strictEqual(texts[0], 'This sheet', 'header first; got ' + JSON.stringify(texts));
+  // Rows start below the header band (12pt at legendScale 1).
+  const headerY = textCalls[0][3];
+  const firstRowY = textCalls[1][3];
+  assert.ok(firstRowY >= headerY + 12, 'rows offset below the header');
+});
+
+// B10 (J18): the anchor lives in page coords — an R rotation (sheet w/h swap)
+// or an anchor parked near the right edge must walk the box left/up until the
+// wanted width fits, instead of starving the box and clipping rows.
+test('drawLegend: off-page (post-rotation) and right-edge anchors are walked back on-sheet at ideal width', () => {
+  const state = legendState();
+  const draw = createCanvasDraw(legendDeps(state));
+
+  // Post-rotation: anchor at x=700 on a sheet now 612 wide (was 792 pre-R).
+  const annRot = legendAnn();
+  annRot.legend = { x: 700, y: 16, w: 100, h: 56 };
+  draw.drawLegend(makeCtx(), makePage(612, 792), 0, annRot, 1, tc1);
+  assert.ok(annRot.legend.x + annRot.legend.w <= 612 - 10, 'legend back inside the rotated sheet; got x=' + annRot.legend.x + ' w=' + annRot.legend.w);
+
+  // Right-edge anchor: x leaves less room than the ideal width -> the anchor
+  // shifts left and the box keeps its ideal width (rows no longer clipped).
+  const annEdge = legendAnn();
+  annEdge.legend = { x: 612 - 110, y: 16, w: 100, h: 56 };
+  const ctrl = legendAnn();
+  ctrl.legend = { x: 20, y: 20, w: 100, h: 60 };
+  draw.drawLegend(makeCtx(), makePage(612, 792), 0, ctrl, 1, tc1);
+  draw.drawLegend(makeCtx(), makePage(612, 792), 0, annEdge, 1, tc1);
+  assert.strictEqual(annEdge.legend.w, ctrl.legend.w, 'edge-anchored box keeps the ideal width');
+  assert.ok(annEdge.legend.x + annEdge.legend.w <= 612 - 10, 'and sits fully on-sheet');
 });
 
 test('drawGrid: gated off without the overlay flag, spacing, or a page scale', () => {

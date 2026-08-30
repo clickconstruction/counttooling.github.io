@@ -686,12 +686,10 @@ function createCanvasDraw(deps) {
     });
   }
 
-  function drawLegend(ctx, page, pageIdx, ann, scale, tc) {
+  // The legend's row model, shared by drawLegend and the hitTest gate below.
+  // Pure over (state, ann, pageIdx) — no ctx, no mutation.
+  function computeLegendRows(ann, pageIdx) {
     const state = deps.getState();
-    if (!state.showLegendOverlay || !ann.legend) return;
-    const leg = ann.legend;
-    const legendScale = state.legendSettings?.legendScale ?? 1;
-    const effectiveScale = scale * legendScale;
     const counterRows = [];
     (state.counters || []).forEach(c => {
       const markers = ann.counterMarkers?.[c.id] || [];
@@ -731,7 +729,34 @@ function createCanvasDraw(deps) {
         if (any) roomRows.push({ name: rm.name || 'Room', color: rm.color || '#47c88e', volStr: Math.round(vol) + ' ft³' });
       });
     }
-    const hasRows = counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0;
+    return { counterRows, lineRows, roomRows, hasRows: counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0 };
+  }
+
+  // hitTest mirror of the empty-legend gate (B10 / J8): an empty legend is not
+  // painted (drawLegend returns before any ink), so the invisible box must not
+  // catch the mouse either.
+  function legendHasRows(ann, pageIdx) {
+    return computeLegendRows(ann, pageIdx).hasRows;
+  }
+
+  // The drawn legend header ("This sheet") — the legend tallies CURRENT-PAGE
+  // numbers beside project-total surfaces (Summary, footer), so its scope is
+  // printed on the legend itself (B10 / J18). Height is in PDF units, scaled
+  // like the rows; the text also participates in the auto-width fit.
+  const LEGEND_HEADER_TEXT = 'This sheet';
+  const LEGEND_HEADER_H_PDF = 12;
+
+  function drawLegend(ctx, page, pageIdx, ann, scale, tc) {
+    const state = deps.getState();
+    if (!state.showLegendOverlay || !ann.legend) return;
+    const leg = ann.legend;
+    const legendScale = state.legendSettings?.legendScale ?? 1;
+    const effectiveScale = scale * legendScale;
+    const { counterRows, lineRows, roomRows, hasRows } = computeLegendRows(ann, pageIdx);
+    // B10 (J8): a zero-mark sheet used to grow a mystery white "No items" box
+    // top-right (the overlay defaults on). An empty legend paints nothing at
+    // all now; hitTest mirrors the gate via legendHasRows.
+    if (!hasRows) return;
     ctx.font = (10 * effectiveScale) + 'px sans-serif';
     let maxTextWidthCanvas = 0;
     counterRows.forEach(r => {
@@ -746,14 +771,30 @@ function createCanvasDraw(deps) {
       const w = ctx.measureText((r.name || '') + ' ' + r.volStr).width;
       if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
     });
+    // The header participates in the auto-width fit at its own (smaller) font.
+    ctx.font = (8 * effectiveScale) + 'px sans-serif';
+    const headerWidthCanvas = ctx.measureText(LEGEND_HEADER_TEXT).width;
     const ROW_H_PDF = 14;
     const PAD_PDF = 6;
     const totalRows = counterRows.length + lineRows.length + roomRows.length;
-    const idealHeightPdf = legendScale * (hasRows ? (2 * PAD_PDF + totalRows * ROW_H_PDF) : 40);
-    const idealWidthPdf = hasRows ? (legendScale * (24 + 6 + 6) + maxTextWidthCanvas / scale) : legendScale * 80;
+    const idealHeightPdf = legendScale * (2 * PAD_PDF + LEGEND_HEADER_H_PDF + totalRows * ROW_H_PDF);
+    const idealWidthPdf = Math.max(
+      legendScale * (24 + 6 + 6) + maxTextWidthCanvas / scale,
+      legendScale * (6 + 6) + headerWidthCanvas / scale
+    );
     const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
     const pageW = vp.width, pageH = vp.height;
     const minW = 60 * legendScale, minH = 40 * legendScale;
+    // B10 (J18): the anchor lives in page coords, so an R rotation (which
+    // swaps the sheet's width/height) can leave it past the new edge, and an
+    // anchor parked near the right edge starves the box until rows run off
+    // the sheet. Walk the anchor left/up until the wanted size fits inside
+    // the same 10pt margin the clamps below use — BEFORE sizing, so the box
+    // keeps its ideal width whenever the sheet has room for it.
+    const wantW = Math.max(minW, idealWidthPdf, leg.userResized ? leg.w : 0);
+    const wantH = Math.max(minH, idealHeightPdf, leg.userResized ? leg.h : 0);
+    leg.x = Math.max(0, Math.min(leg.x, pageW - wantW - 10));
+    leg.y = Math.max(0, Math.min(leg.y, pageH - wantH - 10));
     if (!leg.userResized) {
       leg.w = Math.max(minW, Math.min(idealWidthPdf, pageW - leg.x - 10));
       leg.h = Math.max(minH, Math.min(idealHeightPdf, pageH - leg.y - 10));
@@ -810,12 +851,12 @@ function createCanvasDraw(deps) {
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     let rowY = tl.y + PAD;
-    if (!hasRows) {
-      ctx.fillStyle = '#666';
-      ctx.fillText('No items', tl.x + PAD, rowY);
-      ctx.restore();
-      return;
-    }
+    // Scope header (B10 / J18): small grey "This sheet" above the rows.
+    ctx.fillStyle = '#666';
+    ctx.font = (8 * effectiveScale) + 'px sans-serif';
+    ctx.fillText(LEGEND_HEADER_TEXT, tl.x + PAD, rowY);
+    rowY += LEGEND_HEADER_H_PDF * effectiveScale;
+    ctx.font = (10 * effectiveScale) + 'px sans-serif';
     counterRows.forEach(r => {
       const center = deps.iconRenderCenter(r.icon);
       const vb = deps.iconRenderVb(r.icon);
@@ -908,6 +949,7 @@ function createCanvasDraw(deps) {
     drawAnnotationsCore,
     drawGhosts,
     drawLegend,
+    legendHasRows,
     drawGrid,
   };
 }

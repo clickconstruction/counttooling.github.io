@@ -542,6 +542,15 @@
     .status-bar .status-bar-link.danger:hover { color: var(--red); }
     .status-bar .status-bar-sep { color: var(--text2); opacity: 0.6; user-select: none; }
     .status-bar .status-totals { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
+    /* B10 (J18): the totals pair is the audit entry — clickable, jumps to the Summary.
+       The inline words ride only on wide bars; narrow bars keep the compact pair
+       (full words stay in the tooltip) so the one-line-bar invariant holds. */
+    .status-bar #statusTotals { cursor: pointer; }
+    .status-bar #statusTotals:hover { color: var(--accent); }
+    .status-bar .status-totals-words { display: none; }
+    @media (min-width: 1280px) { .status-bar .status-totals-words { display: inline; } }
+    @keyframes summaryFlash { 0% { background: rgba(232,197,71,0.35); } 100% { background: transparent; } }
+    .sidebar-section.summary-flash { animation: summaryFlash 1.2s ease-out; }
     .status-bar .status-warmup { font-variant-numeric: tabular-nums; opacity: 0.55; white-space: nowrap; font-style: italic; }
     .status-bar .status-bar-desktop-only { display: none; }
     .status-bar .status-indicator-group { display: inline-flex; align-items: center; gap: 4px; }

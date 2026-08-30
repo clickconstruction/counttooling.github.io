@@ -4122,7 +4122,9 @@
 
   // The Manage Icons modal (openManageIconsModal + its Close/Cancel/Save
   // handlers) lives in features/manage-icons.js (window.App registry);
-  // openManageIconsModal is reached via App.openManageIconsModal at call time.
+  // openManageIconsModal is reached via App.openManageIconsModal at call time
+  // (single inbound call site: the counter Create tab's "Manage icons…" link
+  // in features/counter.js — re-homed out of Settings → Advanced, T2 #29).
   // getOrderedIcons/iconVbFor/getUserCustomIcons/saveUserCustomIcons/showToast
   // stay here and are published on App.
 
@@ -4154,7 +4156,7 @@
     // sidebar-logo gear -- so they open through one function and can't drift
     // apart on auth or title. No sign-in gate here:
     // the modal is mostly local work (add PDF pages, Close Project, quick keys,
-    // Advanced -> Manage Icons / Export / Import / Canvas Repair), and the
+    // Advanced -> Export / Import / Canvas Repair), and the
     // cloud rows inside prompt for sign-in themselves.
     function openProjectSettings() {
       const titleEl = document.getElementById('settingsTitle');
@@ -4365,7 +4367,6 @@
     document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
     document.querySelector('#settingsAdvancedModal .modal-card').onclick = (e) => e.stopPropagation();
     document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.loadTestPdf(); };
-    document.getElementById('advancedManageIcons').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openManageIconsModal(); };
     document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
     document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
     document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openCanvasRepairModal(); };

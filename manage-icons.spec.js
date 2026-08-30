@@ -108,4 +108,23 @@ test.describe('window.App registry pilot - Manage Icons modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // T2-13 — the Advanced opener is gone (the entry re-homed to the counter
+  // Create tab's #counterManageIcons link) while the registry contract holds:
+  // App.openManageIconsModal still resolves for programmatic callers
+  // (this spec + scripts/build-screenshots.js).
+  test('old Advanced opener removed; registry entry point still resolves', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    expect(await page.locator('#advancedManageIcons').count()).toBe(0);
+    expect(await page.evaluate(() => typeof window.App?.openManageIconsModal)).toBe('function');
+    expect(await page.locator('#counterManageIcons').count()).toBe(1);
+
+    expect(errors).toEqual([]);
+  });
 });

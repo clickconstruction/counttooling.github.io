@@ -101,6 +101,90 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('bad import file toasts in-app with the Export Canvas pointer (Tier-3 B2 / J12)', async ({ page }) => {
+    const pageErrors = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    // The deliberate console.error('[Import Canvas]', ...) diagnostic is
+    // allowed; anything else is a regression.
+    const consoleErrors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !/\[Import Canvas\]/.test(m.text())) consoleErrors.push(m.text());
+    });
+    // A native alert would mean the old dialog is back — fail loudly if any
+    // dialog fires.
+    page.on('dialog', async (d) => { pageErrors.push('unexpected dialog: ' + d.message()); await d.dismiss(); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await page.locator('#importInput').setInputFiles({
+      name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('this is not json {'),
+    });
+    await expect(page.locator('#airboardToastText'))
+      .toHaveText('That file isn’t a canvas export — Import Canvas reads the .json file that Export Canvas creates.');
+    expect(pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test('page-count mismatch import toasts "Applied marks to 1 of 2 pages…" (Tier-3 B2 / J10)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    // 1-page plan + a 2-page export: the second entry has no page to land on.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const exportJson = JSON.stringify({
+      counters: [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
+      lineTypes: [],
+      groups: [],
+      pages: [
+        { index: 0, label: 'Sheet 1', canvases: [{ id: 'cvA', name: 'Main', annotations: { counterMarkers: { c1: [{ x: 40, y: 40, id: 'mA' }] } } }], scale: null, rotation: 0 },
+        { index: 1, label: 'Sheet 2', canvases: [{ id: 'cvB', name: 'Main', annotations: { counterMarkers: { c1: [{ x: 60, y: 60, id: 'mB' }] } } }], scale: null, rotation: 0 },
+      ],
+    });
+    await page.locator('#importInput').setInputFiles({ name: 'two-pages.json', mimeType: 'application/json', buffer: Buffer.from(exportJson) });
+    await expect(page.locator('#airboardToastText'))
+      .toHaveText('Applied marks to 1 of 2 pages — the plan has fewer pages than the export.');
+    // Page 0's marks did land; the palette import ran.
+    const after = await page.evaluate(() => ({
+      p0: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers?.c1 || []).length,
+      counters: window.state.counters.map((c) => c.id),
+    }));
+    expect(after.p0).toBe(1);
+    expect(after.counters).toContain('c1');
+    expect(errors).toEqual([]);
+  });
+
+  test('matching page-count import stays quiet (no mismatch toast)', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const exportJson = JSON.stringify({
+      counters: [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
+      lineTypes: [],
+      groups: [],
+      pages: [
+        { index: 0, label: 'Sheet 1', canvases: [{ id: 'cvA', name: 'Main', annotations: { counterMarkers: { c1: [{ x: 40, y: 40, id: 'mA' }] } } }], scale: null, rotation: 0 },
+      ],
+    });
+    await page.locator('#importInput').setInputFiles({ name: 'one-page.json', mimeType: 'application/json', buffer: Buffer.from(exportJson) });
+    await page.waitForFunction(() => window.state.counters.some((c) => c.id === 'c1'));
+    const toast = await page.evaluate(() => ({
+      visible: document.getElementById('airboardToastModal').classList.contains('visible'),
+      text: document.getElementById('airboardToastText').textContent,
+    }));
+    expect(toast.text).not.toContain('Applied marks to');
+    expect(toast.visible).toBe(false);
+  });
+
   test('sidebar Clear Page is visible and live at desktop width', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

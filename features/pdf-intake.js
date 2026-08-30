@@ -76,8 +76,10 @@
     }
     const newBuffers = [];
     const newPages = [];
+    let readingName = null;
     try {
       for (const f of filesToProcess) {
+        readingName = f.name;
         const buf = await f.arrayBuffer();
         newBuffers.push(buf.slice(0));
         const pdf = await App.getPdfDocument(buf).promise;
@@ -89,7 +91,10 @@
         }
       }
     } catch (err) {
-      alert('Failed to read uploaded PDF: ' + (err?.message || 'unknown error'));
+      // B2 / J2 friction #7: non-blocking toast (T2-04 toast region), not
+      // alert() — same feedback class as the fresh path's corrupt-PDF catch.
+      console.error('[Add PDF pages]', err);
+      App.showToast('"' + (readingName || 'That file') + '" didn’t open as a PDF. Try re-exporting it. No pages were added.', 6000);
       e.target.value = '';
       return;
     }
@@ -98,7 +103,7 @@
       : await App.mergePdfBuffers(newBuffers);
     e.target.value = '';
     if (!newBuf || !newPages.length) {
-      alert('Failed to read uploaded PDF.');
+      App.showToast('Couldn’t read the uploaded PDF. No pages were added.', 6000);
       return;
     }
     App.openPreparePdfModal(newPages, newBuf, App.state.currentProjectName || 'Untitled', { mode: 'append' });
@@ -331,58 +336,89 @@
     if (startPageIdx > 0 && App.state.pdfBuffer) {
       buffersForMerge.push(App.state.pdfBuffer.slice ? App.state.pdfBuffer.slice(0) : App.state.pdfBuffer);
     }
-    for (const f of filesToProcess) {
-      if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-        alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
-        e.target.value = '';
-        return;
+    // B2 / J2 friction #7: a corrupt/unreadable file used to die here as a
+    // silent unhandled rejection (the append path alerted; the fresh path said
+    // nothing). One try/catch spans the per-file read/parse loop AND the merge
+    // so every failure rolls back this upload's pages/buffer and toasts —
+    // "I clicked and nothing happened" is gone. The pre-existing size-cap
+    // alerts inside are early returns, untouched by the catch.
+    const prevPdfBuffer = App.state.pdfBuffer;
+    const prevPdfBufferSize = App.state.pdfBufferSize;
+    const prevPdfStoragePath = App.state.pdfStoragePath;
+    let readingName = null;
+    try {
+      for (const f of filesToProcess) {
+        if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
+          alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
+          e.target.value = '';
+          return;
+        }
+        readingName = f.name;
+        const buf = await f.arrayBuffer();
+        const bufCopy = buf.slice(0);
+        if (!firstBuf) firstBuf = bufCopy;
+        buffersForMerge.push(bufCopy);
+        const pdf = await App.getPdfDocument(buf).promise;
+        const numPages = pdf.numPages;
+        for (let i = 0; i < numPages; i++) {
+          const pdfPage = await pdf.getPage(i + 1);
+          const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
+          const canvasId = App.uid();
+          const idx = App.state.pages.length;
+          App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
+          App.state.activeCanvasIdByPage[idx] = canvasId;
+        }
       }
-      const buf = await f.arrayBuffer();
-      const bufCopy = buf.slice(0);
-      if (!firstBuf) firstBuf = bufCopy;
-      buffersForMerge.push(bufCopy);
-      const pdf = await App.getPdfDocument(buf).promise;
-      const numPages = pdf.numPages;
-      for (let i = 0; i < numPages; i++) {
-        const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
-        const canvasId = App.uid();
-        const idx = App.state.pages.length;
-        App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
-        App.state.activeCanvasIdByPage[idx] = canvasId;
-      }
-    }
-    if (App.SUPABASE_ENABLED && buffersForMerge.length > 0) {
-      const projectedBytes = buffersForMerge.reduce(
-        (s, b) => s + ((b && (b.byteLength || b.length)) || 0),
-        0
-      );
-      if (projectedBytes > PDF_MAX_SIZE_BYTES) {
-        App.state.pages.length = startPageIdx;
-        Object.keys(App.state.activeCanvasIdByPage).forEach((k) => {
-          if (Number(k) >= startPageIdx) delete App.state.activeCanvasIdByPage[k];
-        });
-        alert(
-          'Total PDF size after merge would be ' +
-          (projectedBytes / 1024 / 1024).toFixed(1) +
-          ' MB. Maximum is 50 MB. No pages were added.'
+      readingName = null;   // past the per-file reads; a later failure is the merge, not one file
+      if (App.SUPABASE_ENABLED && buffersForMerge.length > 0) {
+        const projectedBytes = buffersForMerge.reduce(
+          (s, b) => s + ((b && (b.byteLength || b.length)) || 0),
+          0
         );
-        e.target.value = '';
-        return;
+        if (projectedBytes > PDF_MAX_SIZE_BYTES) {
+          App.state.pages.length = startPageIdx;
+          Object.keys(App.state.activeCanvasIdByPage).forEach((k) => {
+            if (Number(k) >= startPageIdx) delete App.state.activeCanvasIdByPage[k];
+          });
+          alert(
+            'Total PDF size after merge would be ' +
+            (projectedBytes / 1024 / 1024).toFixed(1) +
+            ' MB. Maximum is 50 MB. No pages were added.'
+          );
+          e.target.value = '';
+          return;
+        }
       }
-    }
-    if (buffersForMerge.length > 0) {
-      const merged = await App.mergePdfBuffers(buffersForMerge);
-      App.state.pdfBuffer = merged;
-      App.state.pdfBufferSize = merged ? (merged.byteLength ?? merged.length ?? merged.size ?? 0) : 0;
-      App.state.pdfStoragePath = null;
-      const mergedPdf = await App.getPdfDocument(merged.slice ? merged.slice(0) : merged).promise;
-      const numPages = mergedPdf.numPages;
-      App.clearPdfBitmapCache();   // pdfPage proxies rebound below — cached bitmaps would pin the old document
-      for (let i = 0; i < numPages && i < App.state.pages.length; i++) {
-        App.state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
+      if (buffersForMerge.length > 0) {
+        const merged = await App.mergePdfBuffers(buffersForMerge);
+        App.state.pdfBuffer = merged;
+        App.state.pdfBufferSize = merged ? (merged.byteLength ?? merged.length ?? merged.size ?? 0) : 0;
+        App.state.pdfStoragePath = null;
+        const mergedPdf = await App.getPdfDocument(merged.slice ? merged.slice(0) : merged).promise;
+        const numPages = mergedPdf.numPages;
+        App.clearPdfBitmapCache();   // pdfPage proxies rebound below — cached bitmaps would pin the old document
+        for (let i = 0; i < numPages && i < App.state.pages.length; i++) {
+          App.state.pages[i].pdfPage = await mergedPdf.getPage(i + 1);
+        }
+        if (!App.state.pendingCanvasLoad) App.markProjectDirty();
       }
-      if (!App.state.pendingCanvasLoad) App.markProjectDirty();
+    } catch (err) {
+      console.error('[Upload PDF]', err);
+      // Roll back everything this upload touched: the pages/canvas-ids pushed
+      // by the read loop and the buffer fields the merge block may have set.
+      App.state.pages.length = startPageIdx;
+      Object.keys(App.state.activeCanvasIdByPage).forEach((k) => {
+        if (Number(k) >= startPageIdx) delete App.state.activeCanvasIdByPage[k];
+      });
+      App.state.pdfBuffer = prevPdfBuffer;
+      App.state.pdfBufferSize = prevPdfBufferSize;
+      App.state.pdfStoragePath = prevPdfStoragePath;
+      e.target.value = '';
+      const suffix = (startPageIdx > 0 || filesToProcess.length > 1) ? ' No pages were added.' : '';
+      App.showToast(readingName
+        ? '"' + readingName + '" didn’t open as a PDF. Try re-exporting it.' + suffix
+        : 'Couldn’t read the uploaded PDF. No pages were added.', 6000);
+      return;
     }
     // Compute the upload hash ONCE for every downstream consumer (the
     // pending-canvas match, the cloud load-annotations prompt, and the

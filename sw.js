@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '8f6d4b59423d';
+const CACHE_VERSION = '5f8765ab9637';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -192,7 +192,7 @@ const PRECACHE_SHA256 = {
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '71c606962b3d12944aba1151b26f1b859bd4a2e1c0c30ca35f4190bc8082ca03',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
-  '/features/pdf-intake.js': '1837bbb6ce20599528cbf70616617172749ef96db83639f4113ea3550ea3cff5',
+  '/features/pdf-intake.js': '786f0961c6e2b0635f1d1b6741d5aa6d620c2611ba1e7ac7f5e6643903ae0ef3',
   '/features/line-color.js': '2fd4c7594f1a3686fd9323b7bc4d97f5b9c151b32475d5a4428062a075378ecb',
   '/features/custom-icon-upload.js': 'be658684a030a35c972d942c68c1c25389377495018b835a6ea42e69be56777f',
   '/features/note.js': 'b7cc88aa00ac8a2450c59299959108ae3bd5b18b0e420fd61264533c23347d6b',
@@ -221,14 +221,14 @@ const PRECACHE_SHA256 = {
   '/features/bid-board.js': '420ccca9099f38262ec25d635d86cd1bad0f092a2ae254759ecd2b58213e18f0',
   '/features/review-flow.js': '293f332c7f9733d2eb4fd869f7413cb1af79b586aa722ac70a6ca167f5f88e4b',
   '/features/copy-project.js': 'd8ada1451aa982b207180e03fb0707b274eddd6af2c521856bce32a77c94a7c3',
-  '/features/prepare-pdf.js': '7a7e1f736ff7e9070c1b4bea192a42f6bb3627fe772445d6cdffbe8f65ec0ada',
+  '/features/prepare-pdf.js': '83851f7a712e6ad31c822c66c83a9ff51ac1f399514e8ae62f3a8bbebb870551',
   '/features/quick-modals.js': '41e4b0f8e18266283b4cd2bdaf1b58d242a4670e38869f77c11039bc928c1c96',
   '/features/pdf-bundle.js': '23ef04083b78bd2e496e615b3f8123a9f70fa16f096fa3840dd308a8238e42e6',
   '/features/item-details.js': '77430062b3d86d9c25fe7b9bc7e745be8155105c9fb83f5dd80179bbd65d9e75',
   '/features/output.js': '8f3c9caf0d12a6aac434586953d68d6b7ee792ebb63aec60030061d98c406306',
   '/features/rfi-flags.js': '40681e1143dc5bc64374c4e6a0bf9e2f30c246f8c4c34d81bc5635e38ce64949',
   '/features/share-links.js': '7d711b9c88404ff4923c81e9bb3da81e2b40b388848207326ec502b51ecd2724',
-  '/features/import-clear.js': '3cfa037be5fd059da84a8899a0433106745a7f1819a0f529f0494fdda0191f28',
+  '/features/import-clear.js': '05701d6ad75af40bd7d277298e07eb84706b57b671fdc5dfaa9694b0605c242f',
   '/features/zone-modals.js': 'cd99684ccb9e20ed537cf3f832c170f7607d515102e99fd2cf6d7b7829f5c58a',
   '/features/restore-last-session.js': '4b7670d40d0b0e2e6eaa905b1dff1a02b819e49ae744b30747e7030fe6d16500',
   '/features/summary-detail.js': 'dc82451da2877e4cc06438f84f5133c10f134cbd7cdb83ad161650b87331bd91',

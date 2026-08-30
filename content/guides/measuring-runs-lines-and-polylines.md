@@ -55,6 +55,6 @@ Both are reading aids, not markup: they never ride into [exports, prints, or rep
 
 ## Quick one-off distances
 
-Just need to check a dimension without adding it to a takeoff? The **Measure** [[measure]] tool gives a distance in two clicks. If those two points fall inside a [scale zone](/guides/scale-zones-and-multiply-zones/), it uses that zone's scale automatically.
+Just need to check a dimension without adding it to a takeoff? The **Measure** [[measure]] tool gives a distance in two clicks — it appears in the footer bar and stays put while you keep working on that sheet. If those two points fall inside a [scale zone](/guides/scale-zones-and-multiply-zones/), it uses that zone's scale automatically.
 
 With counts and runs both on the plan, you're ready to [review and export](/guides/reports-and-exports/).

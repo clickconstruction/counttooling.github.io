@@ -37,7 +37,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Chain tool (T)** — One click per fixture: each click drops a counter and draws the connecting run back to the last one automatically — a 10-head sprinkler branch is 10 clicks, not 28.
 - **Arc line types** — Curved runs measure along the sweep, not the chord, so long-radius work isn't undercounted.
 - **Line drops** — Add vertical rise/fall at either end of a run so risers and stacks are in the footage, not forgotten.
-- **Measure tool (D)** — A two-click distance check without adding anything to the takeoff.
+- **Measure tool (D)** — A two-click distance check without adding anything to the takeoff; the distance sits in the footer and stays until you leave the sheet — no overlay to wait out.
 - **Snap to 45° angles (J)** — Lines lock to horizontal, vertical, and 45° — the angles real pipe and conduit actually run — so the takeoff looks as clean as the drawing.
 - **Grid overlay with snapping** — Lines follow a regular module for tidy, aligned tracing.
 - **Room Sizer (V)** — Draw room boxes with ceiling heights and get ft² and ft³ per room — the inputs for airflow, air changes, and equipment sizing.

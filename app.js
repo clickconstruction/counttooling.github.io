@@ -3111,7 +3111,11 @@
         }
         reconcileOrphanedCountersAndLineTypes();
         App.maybeAutoOpenBidBoard && App.maybeAutoOpenBidBoard();
+        // B7: a gated opener (User Settings / Save / Load) parked an intent on
+        // the wall — reopen that surface now that the profile flags are in.
+        consumeAuthGateReopen();
       } else {
+        clearAuthGate();
         stopPresenceHeartbeat();
         state.isAdmin = false;
         state.isOverseer = false;
@@ -3158,6 +3162,44 @@
     }
     state.supabaseSession = data.session;
     return true;
+  }
+
+  // Sign-in wall gate intents (Tier-3 B7, J16 J17). A gated opener (User
+  // Settings, Project Settings > Save, Load Project) routes through
+  // openAuthGate(key) instead of a bare #authBtn click, so the wall can say
+  // WHY it appeared (#authGateLine under the title) and the intended surface
+  // reopens once sign-in completes (consumed in onAuthStateChange after the
+  // profile flags load, so e.g. the admin rows in User Settings render).
+  // Cancel/Escape clear the intent; the magic-link path signs in via a full
+  // page reload, so its intent is intentionally lost (nothing to reopen into).
+  const AUTH_GATE_INTENTS = {
+    mySettings: { line: 'Sign in to open your settings and saved standards.', reopen: () => App.openMySettings() },
+    saveProject: { line: 'Sign in to save this project to the cloud.', reopen: () => document.getElementById('saveProjectBtn').click() },
+    loadProject: { line: 'Sign in to open your cloud projects.', reopen: () => App.openLoadProjectModal() },
+  };
+  let nextAuthGateKey = null;    // set by openAuthGate for the #authBtn click it dispatches
+  let pendingAuthGateKey = null; // the gate the open wall is holding for reopen-after-sign-in
+  function openAuthGate(key) {
+    nextAuthGateKey = AUTH_GATE_INTENTS[key] ? key : null;
+    document.getElementById('authBtn').click();
+  }
+  function clearAuthGate() { nextAuthGateKey = null; pendingAuthGateKey = null; }
+  function consumeAuthGateReopen() {
+    const gate = AUTH_GATE_INTENTS[pendingAuthGateKey];
+    pendingAuthGateKey = null;
+    if (gate) { try { gate.reopen(); } catch (_) { /* reopen is best-effort */ } }
+  }
+
+  // Raw browser fetch exceptions ("Failed to fetch") on the wall read as
+  // wrong-password or broken-app; say what actually happened. Real server
+  // messages (wrong password, etc.) pass through verbatim. (Tier-3 B7, J17)
+  function friendlyAuthError(error) {
+    const msg = String((error && error.message) || '');
+    if ((error && error.name === 'AuthRetryableFetchError') ||
+        /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg)) {
+      return 'Can’t reach the server — check your connection and try again.';
+    }
+    return msg || 'Sign in failed';
   }
 
   // SECTION: [sync] Checkout subscription & permission refresh
@@ -4163,8 +4205,19 @@
   if (SUPABASE_ENABLED) {
     document.getElementById('authBtn').onclick = () => {
       if (state.supabaseSession?.user) {
+        nextAuthGateKey = null;
         App.openMySettings();
       } else {
+        // A click dispatched by openAuthGate carries a gate intent; a plain
+        // Sign In click (status bar, drawer, ?signin=1) carries none.
+        pendingAuthGateKey = nextAuthGateKey;
+        nextAuthGateKey = null;
+        const gateLine = document.getElementById('authGateLine');
+        if (gateLine) {
+          const gate = AUTH_GATE_INTENTS[pendingAuthGateKey];
+          gateLine.textContent = gate ? gate.line : '';
+          gateLine.style.display = gate ? '' : 'none';
+        }
         document.getElementById('authError').style.display = 'none';
         document.getElementById('authError').textContent = '';
         document.getElementById('authEmail').value = '';
@@ -4196,7 +4249,10 @@
     const hideMarksBtnEl = document.getElementById('hideMarksBtn');
     if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
     document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
-    document.getElementById('statusBarAuth').onclick = () => App.openMySettings();
+    // The status-bar link reads "Sign In" signed out — route through #authBtn
+    // so it opens the PLAIN wall (no gate line); signed in, #authBtn opens
+    // User Settings exactly as openMySettings did. (Tier-3 B7)
+    document.getElementById('statusBarAuth').onclick = () => document.getElementById('authBtn').click();
     // SECTION: Project Settings checkout & Save Status bell
     function updateSettingsCheckoutSection() {
       const section = document.getElementById('settingsCheckoutSection');
@@ -4247,7 +4303,7 @@
     }
     document.getElementById('copyViewLinkBtn').onclick = () => copyOrCreateViewLinkToClipboard(document.getElementById('copyViewLinkBtn'));
     document.getElementById('settingsGearBtn').onclick = openProjectSettings;
-    document.getElementById('authCancel').onclick = () => hideModal('authModal');
+    document.getElementById('authCancel').onclick = () => { clearAuthGate(); hideModal('authModal'); };
     const authDevBypassWrap = document.getElementById('authDevBypassWrap');
     const authDevBypass = document.getElementById('authDevBypass');
     if (authDevBypassWrap) authDevBypassWrap.style.display = canUseDevAuth() ? 'block' : 'none';
@@ -4360,7 +4416,7 @@
     // getSession itself, recovering a stored session or showing authModal.)
     document.getElementById('settingsSaveProject').onclick = () => {
       hideModal('settingsModal');
-      if (SUPABASE_ENABLED && !state.supabaseSession?.user) { document.getElementById('authBtn').click(); return; }
+      if (SUPABASE_ENABLED && !state.supabaseSession?.user) { openAuthGate('saveProject'); return; }
       document.getElementById('saveProjectBtn').click();
     };
     document.getElementById('settingsAddAdditionalPages').onclick = async () => {
@@ -4520,7 +4576,7 @@
       }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        errEl.textContent = error.message || 'Sign in failed';
+        errEl.textContent = friendlyAuthError(error);
         errEl.style.display = 'block';
         if (window.App?.onAuthSignInFailed) window.App.onAuthSignInFailed(email);
         return;
@@ -6491,7 +6547,7 @@
       // so it must be checked first. (Tier-3 B1 / J16)
       else if (document.getElementById('paletteInsightsModal').classList.contains('visible')) { hideModal('paletteInsightsModal'); }
       else if (document.getElementById('mySettingsModal').classList.contains('visible')) { hideModal('mySettingsModal'); }
-      else if (document.getElementById('authModal').classList.contains('visible')) { hideModal('authModal'); }
+      else if (document.getElementById('authModal').classList.contains('visible')) { clearAuthGate(); hideModal('authModal'); }
       else if (document.getElementById('adminPanelModal').classList.contains('visible')) { hideModal('adminPanelModal'); }
       else if (document.getElementById('manageUserModal').classList.contains('visible')) { hideModal('manageUserModal'); }
       else if (document.getElementById('allUsersModal').classList.contains('visible')) { hideModal('allUsersModal'); }
@@ -6812,6 +6868,10 @@
   App.markProjectDirty = markProjectDirty;
   App.showModal = showModal;
   App.hideModal = hideModal;
+  // Sign-in wall gate (Tier-3 B7): feature-file gated openers
+  // (features/my-settings.js, features/load-project.js) route through this so
+  // the wall explains itself and the surface reopens after sign-in.
+  App.openAuthGate = openAuthGate;
   App.placeFixedMenu = placeFixedMenu;
   App.renderPdf = renderPdf;
   App.updateUI = updateUI;

@@ -586,6 +586,11 @@
           updateSaveStatusIndicator();
         }
         if (!user) {
+          // Tier-3 B7: route through the gate so the wall says why it opened
+          // and this modal reopens after sign-in. (openAuthGate's #authBtn
+          // path also refreshes the dev-bypass row, which the direct
+          // showModal fallback still handles itself.)
+          if (App.openAuthGate) { App.openAuthGate('loadProject'); return; }
           const authDevBypassWrapEl = document.getElementById('authDevBypassWrap');
           if (authDevBypassWrapEl) authDevBypassWrapEl.style.display = canUseDevAuth() ? 'block' : 'none';
           showModal('authModal');

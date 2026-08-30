@@ -36,7 +36,13 @@
   function openMySettings() {
     const state = App.state;
     const user = state.supabaseSession?.user;
-    if (!user) { document.getElementById('authBtn').click(); return; }
+    if (!user) {
+      // Tier-3 B7: route through the gate so the wall says why it opened and
+      // User Settings reopens after sign-in.
+      if (App.openAuthGate) App.openAuthGate('mySettings');
+      else document.getElementById('authBtn').click();
+      return;
+    }
     document.getElementById('mySettingsEmail').textContent = user.email || '—';
     document.getElementById('mySettingsNewPassword').value = '';
     document.getElementById('mySettingsConfirmPassword').value = '';

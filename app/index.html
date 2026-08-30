@@ -1981,6 +1981,7 @@
   <div class="modal-overlay" id="authModal">
     <div class="modal-card">
       <h2>Sign In</h2>
+      <p id="authGateLine" class="auth-gate-line" style="display:none;"></p>
       <form id="authForm">
         <div class="form-group">
           <label>Email</label>
@@ -2006,6 +2007,7 @@
         <p id="authDevBypassWrap" class="form-group" style="display:none;margin-top:12px;">
           <button type="button" id="authDevBypass" class="settings-menu-link" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:0.9rem;">Sign in as test user</button>
         </p>
+        <p id="authWallHelp" class="auth-wall-help">Accounts are set up by your office admin.<br>New here? Call <a href="tel:+15123600599">(512) 360-0599</a> to get set up.</p>
       </form>
       <div id="authMagicSent" class="auth-magic-sent" style="display:none;">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>
@@ -2027,8 +2029,8 @@
   </div>
   <div class="modal-overlay" id="adminPanelModal">
     <div class="modal-card">
-      <h2>Manage Users</h2>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Create new user accounts. Share the password with the user. To list or delete users, use Supabase Dashboard.</p>
+      <h2>Add User</h2>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Create the account, then hand the teammate their email and password.</p>
       <p class="form-group" style="margin-bottom:12px;color:var(--yellow);font-size:0.85rem;">Accounts are normally provisioned from PipeTooling (the system of record for people). A user created here is CT-only until PT's weekly roster audit flags the drift &mdash; use this as the escape hatch, not the front door.</p>
       <form id="adminCreateForm">
         <div class="form-group">
@@ -2054,7 +2056,7 @@
         <h2>Manage Users</h2>
         <button type="button" id="manageUserModalAllActivityBtn" class="manage-users-header-activity-btn" aria-label="View activity for all users"></button>
       </div>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Select a user to delete. You cannot delete yourself.</p>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Passwords, transfers, activity, and deletes &mdash; per user.</p>
       <div id="manageUserList" class="settings-users-list" style="max-height:64vh;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="manageUserModalClose">Close</button>
@@ -2152,7 +2154,7 @@
   <div class="modal-overlay" id="userActivityModal">
     <div class="modal-card modal-card-large">
       <div class="user-activity-modal-header">
-        <h2 id="userActivityModalTitle">User activity</h2>
+        <h2 id="userActivityModalTitle">Activity log</h2>
         <div id="userActivityModalViewToggle" class="user-activity-view-toggle user-activity-view-toggle-hidden" role="group" aria-label="View mode">
           <button type="button" id="userActivityViewEventsBtn" class="user-activity-view-btn" aria-pressed="true">Events</button>
           <button type="button" id="userActivityViewSummaryBtn" class="user-activity-view-btn" aria-pressed="false">Summary</button>
@@ -2183,7 +2185,7 @@
   </div>
   <div class="modal-overlay" id="userActivityOverviewModal">
     <div class="modal-card modal-card-large">
-      <h2>User activity</h2>
+      <h2>Activity overview</h2>
       <p id="uaoSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
       <div id="uaoBody" style="max-height:64vh;overflow-y:auto;"></div>
       <div class="actions" style="margin-top:16px;">

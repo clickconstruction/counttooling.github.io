@@ -95,6 +95,12 @@
     .auth-magic-always-btn:hover { background: var(--surface2); }
     .auth-magic-always-btn:hover #authMagicAlwaysLabel { text-decoration: underline; text-underline-offset: 3px; }
     .auth-magic-always-btn:disabled { opacity: 0.6; cursor: default; }
+    /* Sign-in wall context (Tier-3 B7): the why-am-I-here line under the title
+       (#authGateLine, shown only when a gated opener routed here) and the
+       static get-access footer (#authWallHelp). */
+    .auth-gate-line { margin: -8px 0 14px; color: var(--text2); font-size: 0.9rem; }
+    .auth-wall-help { margin: 16px 0 0; color: var(--text3); font-size: 0.82rem; line-height: 1.5; text-align: center; }
+    .auth-wall-help a { color: var(--text2); }
     @media (max-width: 768px) { .twin-banner { font-size: 0.72rem; letter-spacing: 0.04em; } }
     .header-edit-status { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; transition: all 0.2s ease; }
     .header-edit-status.edit-status-editing { background: transparent; color: var(--red); border: none; box-shadow: none; min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }

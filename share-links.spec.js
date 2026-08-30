@@ -74,8 +74,8 @@ async function openModal(page) {
     return document.querySelectorAll('#shareProjectList .share-project-row').length > 0
       && links && !/Loading/.test(links.textContent || '');
   }, { timeout: 5000 });
-  // The view-links section starts collapsed (app/index.html) — expand it so
-  // its buttons are clickable.
+  // The view-links section starts expanded (B6, J14); expand defensively in
+  // case an earlier interaction collapsed it.
   await page.evaluate(() => {
     const content = document.getElementById('shareViewLinksContent');
     if (content?.classList.contains('collapsed')) document.getElementById('shareViewLinksHeader')?.click();
@@ -98,7 +98,9 @@ test.describe('Share project & view links (features/share-links.js)', () => {
     await page.evaluate(() => window.App.openShareProjectModal());
     await expect(page.locator('#shareProjectModal')).not.toHaveClass(/visible/);
 
-    // The view-links collapse toggle bound at feature load works.
+    // The view-links collapse toggle bound at feature load works — and the
+    // section starts EXPANDED (B6, J14: view links are what most sharers come
+    // for), so the first click collapses it.
     const toggled = await page.evaluate(() => {
       const content = document.getElementById('shareViewLinksContent');
       const icon = document.getElementById('shareViewLinksCollapseIcon');
@@ -109,8 +111,9 @@ test.describe('Share project & view links (features/share-links.js)', () => {
       const after = { collapsed: content.classList.contains('collapsed'), icon: icon.textContent };
       return { before, mid, after };
     });
-    expect(toggled.mid.collapsed).toBe(!toggled.before);
-    expect(toggled.after.collapsed).toBe(toggled.before);
+    expect(toggled.before).toBe(false);
+    expect(toggled.mid).toEqual({ collapsed: true, icon: '▶' });
+    expect(toggled.after).toEqual({ collapsed: false, icon: '▼' });
 
     // The close binding hides a force-shown modal.
     await page.evaluate(() => {

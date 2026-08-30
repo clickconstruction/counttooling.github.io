@@ -2353,10 +2353,12 @@
       <div class="form-group" id="shareViewLinksSection" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px;" id="shareViewLinksHeader">
           <h3 style="font-size:1rem;margin:0;">View links</h3>
-          <span id="shareViewLinksCollapseIcon">▶</span>
+          <span id="shareViewLinksCollapseIcon">▼</span>
         </div>
-        <div id="shareViewLinksContent" class="collapsed">
-          <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (clickplumbing.com) to view.</p>
+        <!-- Expanded by default (Tier-3 B6, J14): view links are the outsider
+             path most sharers come here for. The header still collapses it. -->
+        <div id="shareViewLinksContent">
+          <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (<span id="shareViewLinksDomains">clickplumbing.com</span>) to view.</p>
           <button type="button" class="settings-menu-btn btn-yellow" id="shareViewLinkCreate" style="margin-bottom:12px;">Create view link</button>
           <div id="shareViewLinksList" style="max-height:160px;overflow-y:auto;"></div>
         </div>

@@ -169,6 +169,13 @@
         icon.textContent = collapsed ? '▶' : '▼';
       };
     }
+    // B6 (J14): the "Recipients enter their email (…)" copy names the live
+    // allowed domain(s) from config (VIEW_LINK_ALLOWED_DOMAINS), not a
+    // hardcoded company string; the markup keeps the default as fallback.
+    const domainsEl = document.getElementById('shareViewLinksDomains');
+    if (domainsEl && typeof window.VIEW_LINK_ALLOWED_DOMAINS === 'string' && window.VIEW_LINK_ALLOWED_DOMAINS) {
+      domainsEl.textContent = window.VIEW_LINK_ALLOWED_DOMAINS;
+    }
   })();
 
   document.getElementById('shareViewLinkCreate').onclick = async () => {

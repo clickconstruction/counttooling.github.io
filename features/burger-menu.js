@@ -74,12 +74,15 @@
       );
     }
     // 1b. Save status (the bell) — mobile CSS hides #saveStatusBtnHeader
-    //     outright, so the drawer is the only mobile surface for it. Same
-    //     gating as the header bell (supabase enabled + a cloud project); the
-    //     row icon inherits the bell's attention/offline coloring so a sync
-    //     failure is just as loud in the drawer.
+    //     outright, so the drawer is the only mobile surface for it. Gated on
+    //     a signed-in session like the header bell (updateSaveStatusIndicator)
+    //     — a view-link session SETS currentProjectId, so without the user
+    //     check an anonymous viewer got a save/sync engineering console for a
+    //     project they can't even save (B6, J13 J14). The row icon inherits
+    //     the bell's attention/offline coloring so a sync failure is just as
+    //     loud in the drawer.
     const bellBtn = document.getElementById('saveStatusBtnHeader');
-    if (App.SUPABASE_ENABLED && state.currentProjectId && bellBtn) {
+    if (App.SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && bellBtn) {
       rows.push({
         label: 'Save status',
         click: () => bellBtn.click(),

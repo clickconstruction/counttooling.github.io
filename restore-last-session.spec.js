@@ -94,9 +94,12 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
       markers: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers.c1 || []).length,
       roomBoxes: (window.App.getActiveAnnotations(window.state.pages[0]).roomBoxes || []).length,
       scale: window.state.pages[0].scale?.pixelsPerUnit,
+      pageLabel: window.state.pages[0].label,
       modalOpen: document.getElementById('lastSessionRestoreModal').classList.contains('visible'),
     }));
     expect(restored.name).toBe('Restored Takeoff');
+    // B6 (J12): page labels carry the project name, not "document.pdf".
+    expect(restored.pageLabel).toBe('Restored Takeoff');
     expect(restored.counters).toBe(1);
     expect(restored.rooms).toBe(1);
     expect(restored.markers).toBe(1);

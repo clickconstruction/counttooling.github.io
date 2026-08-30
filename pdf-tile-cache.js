@@ -123,6 +123,7 @@ function createPdfTileCache(ctx) {
     clearPyramidQueue();
     docWarmupDone.clear();          // new document (or rebind): the warm-up walk restarts
     zoomRungsPersistedKeys.clear();   // new doc identity: persist dedupe resets
+    zoomRungsRestoreAttempted.clear();   // restore attempts are per-generation — the bump just discarded any restored rungs, and the next document may share the content hash (Prepare commit of an untrimmed upload)
     updateDocWarmupIndicator();       // progress hint resets with the walk
     while (pdfBitmapCache.length) {
       const e = pdfBitmapCache.pop();
@@ -264,6 +265,11 @@ function createPdfTileCache(ctx) {
     const gen = pdfBitmapCacheGeneration;
     ctx.getRenderService().ensureDocHash(pdfPage).then((hash) => {
       if (!hash) return;
+      // Stale attempt from before a generation bump: its decodes would be
+      // discarded below, so it must not consume the NEW generation's attempt
+      // key either (the pre-Prepare transient render resolves its hash here
+      // after the commit's clear — same content hash, poisoned forever).
+      if (gen !== pdfBitmapCacheGeneration) return;
       const attemptKey = hash + '|' + pdfPage.pageNumber;
       if (zoomRungsRestoreAttempted.has(attemptKey)) return;
       zoomRungsRestoreAttempted.add(attemptKey);

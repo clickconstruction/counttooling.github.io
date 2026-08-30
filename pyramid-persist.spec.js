@@ -52,4 +52,35 @@ test.describe('Persistent pyramid', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('a same-hash generation bump re-arms the restore (commit-path poisoning)', async ({ page }) => {
+    // The signed-in fresh-upload ordering: the pre-Prepare transient render
+    // consumes the per-(doc,page) restore-attempt key, then the Prepare commit
+    // rebinds the SAME bytes (an untrimmed upload keeps the buffer, so the
+    // content hash is unchanged) and calls clearPdfBitmapCache — which
+    // discards every decoded rung. If the attempt key survives that bump, the
+    // committed document can never restore its persisted ladder. Repro without
+    // cloud auth: render the committed doc (attempt key consumed), then apply
+    // the exact bump commitPreparePdfToState performs and re-render.
+    const errors = [];
+    await boot(page, errors);
+
+    // A zoom step rasters the surrounding rungs (rung-prefetch.spec.js), so at
+    // least two page-1 rung rows persist — and leaves state.zoom continuous
+    // (fit + 0.1, off the rung grid), so the post-bump re-render's own capture
+    // collides with none of the persisted rung keys.
+    await page.waitForFunction(() => window.App.__pdfBitmapCacheStats().persisted >= 1, null, { timeout: 20000 });
+    await page.evaluate(() => { window.App.doZoomIn(); });
+    await page.waitForFunction(() => window.App.__pdfBitmapCacheStats().persisted >= 2, null, { timeout: 20000 });
+
+    const before = await page.evaluate(() => {
+      const s = window.App.__pdfBitmapCacheStats().restored;
+      window.App.clearPdfBitmapCache();   // what a same-hash Prepare commit does before rebinding pages
+      window.App.renderPdf();
+      return s;
+    });
+    await page.waitForFunction((prev) => window.App.__pdfBitmapCacheStats().restored > prev, before, { timeout: 20000 });
+
+    expect(errors).toEqual([]);
+  });
 });

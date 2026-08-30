@@ -108,7 +108,9 @@ agree instead of silently disagreeing by the rescale ratio.
 *Problem:* Typical floors and identical units force estimators to count the same layout ten times,
 or to remember to multiply by hand in the spreadsheet later (and forget).
 *Useful because:* Count one typical floor, wrap it in a ×10 zone, and every total in every export
-reflects all ten automatically.
+reflects all ten automatically. Every counter total surface shows the multiplied ("with repeats")
+number — sidebar badges, Choose tab, Summary, footer, legend, report all agree — and hovering a
+sidebar/Summary badge shows the placed count.
 
 ---
 

@@ -29,7 +29,7 @@ When the same layout repeats — typical floors, identical units, a row of match
 
 ![After drawing the zone rectangle, the multiplier dialog asks how many times the area repeats — everything inside counts that many times in the totals.](/guides/img/multiply-zone-value.png)
 
-Every counter and line whose anchor falls inside is multiplied by that factor in the totals. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten.
+Every counter and line whose anchor falls inside is multiplied by that factor in the totals. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten. Every total in the sidebar shows the with-repeats number; hover a counter's badge to see how many marks are physically placed.
 
 Here's both zones live on a sheet — note the legend: the four lavatories inside the ×3 zone count as twelve, so the Lavatory total reads 15, not 7:
 

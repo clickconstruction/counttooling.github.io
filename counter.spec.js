@@ -112,6 +112,47 @@ test.describe('window.App registry pilot - Counter modal', () => {
     const badge = page.locator('#counterChooseList .sidebar-item', { hasText: 'Badge Counter' }).locator('.badge');
     await expect(badge).toHaveText('4');
 
+    // T2-11: no multiply zone in this fixture, so no "placed" tooltip renders.
+    await expect(badge).not.toHaveAttribute('title', /placed/);
+
+    expect(errors).toEqual([]);
+  });
+
+  // T2-11 — the Choose-tab badge shows the multiply-adjusted ("with repeats")
+  // total, matching Summary/footer/report arithmetic, with the placed count in
+  // the hover title. Single-layer fixture (layer-axis parity is out of scope).
+  test('choose-tab badge shows the with-repeats total under a multiply zone', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Seed: 3 marks, 1 inside a x2 zone -> 2 placed outside + 1x2 = 4 total.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters.push({ id: 'cz1', name: 'Zone Counter', icon: 'M0 0h10v10H0z', color: '#e8c547' });
+      const canvas = window.App.ensureActiveCanvas(s.pages[0]);
+      canvas.annotations.counterMarkers.cz1 = [
+        { x: 10, y: 10, id: 'zm1' }, { x: 100, y: 100, id: 'zm2' }, { x: 110, y: 110, id: 'zm3' },
+      ];
+      canvas.annotations.multiplyZones.push({ x1: 0, y1: 0, x2: 50, y2: 50, multiplier: 2, id: 'z1' });
+      window.App.updateUI();
+    });
+
+    await page.evaluate(() => document.getElementById('counterBtn').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.waitForSelector('#counterChooseList .sidebar-item', { timeout: 5000 });
+    const badge = page.locator('#counterChooseList .sidebar-item', { hasText: 'Zone Counter' }).locator('.badge');
+    await expect(badge).toHaveText('4');
+    const title = await badge.getAttribute('title');
+    expect(title).toContain('placed');
+    expect(title).toContain('with repeats');
+    expect(title).toBe('3 placed · 4 with repeats');
+
     expect(errors).toEqual([]);
   });
 });

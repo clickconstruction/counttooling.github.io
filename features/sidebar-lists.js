@@ -71,8 +71,16 @@
       }
       const div = document.createElement('div');
       div.className = 'sidebar-item' + (state.activeCounterType === c.id && showEdit ? ' active' : '');
-      const count = state.pages.reduce((n, p) => n + ((App.getMergedAnnotationsForPage(p)?.counterMarkers?.[c.id] || []).length), 0);
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      // T2-11: the badge shows the multiply-adjusted ("with repeats") total —
+      // the same arithmetic as Summary, footer, legend, and report — with the
+      // placed count in the hover title when a zone makes them differ.
+      let placed = 0, withRepeats = 0;
+      state.pages.forEach(p => {
+        const t = App.counterTally(App.getMergedAnnotationsForPage(p), c.id);
+        placed += t.placed; withRepeats += t.withRepeats;
+      });
+      const badgeTitle = withRepeats !== placed ? ' title="' + placed + ' placed · ' + withRepeats + ' with repeats"' : '';
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + withRepeats + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');

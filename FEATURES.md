@@ -19,7 +19,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Verify-your-scale check mode** — Measure a known dimension and see the % error before you trust a whole bid to an assumed scale.
 - **Synthetic scale bar** — A dashed reference bar drawn on the sheet lets you eyeball a preset scale against a known dimension at any time.
 - **Scale zones** — A detail or isometric drawn at a different scale on the same sheet measures correctly without re-scaling the page. On a compressed/rescaled sheet, zone presets carry the same sheet-size correction as the page, so detail and plan agree.
-- **Multiply zones** — Count one typical floor, wrap it in a ×10 zone, and the totals reflect all ten — no duplicate clicking.
+- **Multiply zones** — Count one typical floor, wrap it in a ×10 zone, and the totals reflect all ten — no duplicate clicking. Every counter total surface shows the multiplied ("with repeats") number; hovering a sidebar or Summary badge shows how many marks are physically placed.
 
 ## Counting
 

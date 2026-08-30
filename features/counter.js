@@ -66,10 +66,18 @@
     }
     empty.style.display = 'none';
     filtered.forEach(c => {
-      const count = state.pages.reduce((n, p) => n + ((App.getMergedAnnotationsForPage(p)?.counterMarkers?.[c.id] || []).length), 0);
+      // T2-11: multiply-adjusted total, matching the sidebar Counters badge
+      // (T1-11 rule: these two must agree) and every rollup surface; placed
+      // count in the hover title when a zone makes them differ.
+      let placed = 0, withRepeats = 0;
+      state.pages.forEach(p => {
+        const t = App.counterTally(App.getMergedAnnotationsForPage(p), c.id);
+        placed += t.placed; withRepeats += t.withRepeats;
+      });
+      const badgeTitle = withRepeats !== placed ? ' title="' + placed + ' placed · ' + withRepeats + ' with repeats"' : '';
       const div = document.createElement('div');
       div.className = 'sidebar-item';
-      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge">' + count + '</span><span class="swatch" style="background:' + c.color + '"></span>';
+      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge"' + badgeTitle + '>' + withRepeats + '</span><span class="swatch" style="background:' + c.color + '"></span>';
       div.onclick = () => {
         state.activeCounterType = c.id;
         state.tool = App.TOOL.COUNTER;

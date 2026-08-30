@@ -6929,6 +6929,10 @@
   App.formatFeetInchesFromVal = formatFeetInchesFromVal;
   // Summary count-detail deps (features/summary-detail.js).
   App.getMultiplyZoneForPoint = getMultiplyZoneForPoint;
+  // T2-11 shared counter arithmetic: { placed, withRepeats } per annotations
+  // object — the badges (sidebar-lists.js, counter.js) and the Summary flat
+  // path all tally through this one primitive.
+  App.counterTally = counterTally;
   App.getLineLengthFeetForTotals = getLineLengthFeetForTotals;
   App.getLineLengthSplitForTotals = getLineLengthSplitForTotals;
   App.formatFeet = formatFeet;

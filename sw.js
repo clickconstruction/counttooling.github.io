@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'e6bcf1fec47b';
+const CACHE_VERSION = '8f6d4b59423d';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -188,7 +188,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': '0dd72fb689f22d5f3b4e171ecf9a13d579cbb7c3957c22ebb2d15a7713628f82',
   '/pdf-tile-cache.js': 'cd2631a09682e5b5216e805f4d44c5a75c5bbc01fbbb6237d2bf62bf021e5ade',
-  '/app.js': 'c705dfc6a3fc0f339ac28bb332666280fea65b2d570ce58b02e1bff7ff47f561',
+  '/app.js': '2da7b62da4a1131ea98572c54e1f1af3d0eedbd10e9c2d913c64b2cee60c761e',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '71c606962b3d12944aba1151b26f1b859bd4a2e1c0c30ca35f4190bc8082ca03',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -203,12 +203,12 @@ const PRECACHE_SHA256 = {
   '/features/export-pdfs.js': '78b87c4447cdabf313f6bb0d3d69283d0ed34189a6d466f8b3892f4f5aa35746',
   '/features/legend-settings.js': 'e795075ea58b5d7019b6daf67ae298cb088ca0f35a9d2538de04415ceb12ec09',
   '/features/page-settings.js': '2e9b961016930ea467a50e9a426cf8aa3a901f10dd2fb2fbe11a9186c7020e40',
-  '/features/counter-settings.js': 'da999dfd845d5ac65957af1ef422c70b501aa9640f097be642e773bf936601d4',
+  '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',
   '/features/line-type-settings.js': '91bcfa06e0f4d29360effb6b1178d869020cbb5aa427f2e2550eb3b1fa48ed60',
   '/features/choose-create-line-type.js': '7dffa9677ad53b10eabc18fde7c7041b1f84ac94e6df15c254386083a2a7f516',
   '/features/scale.js': '3f070bb33968971e0d79d8454a45d47f6e890bd8cbf48c9fb9ecc2a3b062f858',
   '/features/scale-zone-settings.js': '67a8a802e7aeaf629a235dbd0e4d9c42ea5c746412ae6749b90ecf35be7a9c9f',
-  '/features/groups.js': '58d955386b5f5c10d40444646a9852a962eca0aff418cfa9ae1366dde08d8a8d',
+  '/features/groups.js': '2c066be00c8316d3a1b7bead6e4f6a3f180aab076f4b577f1bde524ef0662cff',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
   '/features/quick-line.js': 'cef59db53a32bf198bb42b2aae35f41de5dc8e4cd2f1baf92e5b799f222f7d30',
   '/features/counter.js': '908de5bdfc8e355073b82b33c1fe634ddd9cb17694c13b0863b1eac0cc2b0651',
@@ -224,13 +224,13 @@ const PRECACHE_SHA256 = {
   '/features/prepare-pdf.js': '7a7e1f736ff7e9070c1b4bea192a42f6bb3627fe772445d6cdffbe8f65ec0ada',
   '/features/quick-modals.js': '41e4b0f8e18266283b4cd2bdaf1b58d242a4670e38869f77c11039bc928c1c96',
   '/features/pdf-bundle.js': '23ef04083b78bd2e496e615b3f8123a9f70fa16f096fa3840dd308a8238e42e6',
-  '/features/item-details.js': '2d14500dfd1657db1350abcc1a8e752720a68b237685220920f1e0fdea6b04a5',
+  '/features/item-details.js': '77430062b3d86d9c25fe7b9bc7e745be8155105c9fb83f5dd80179bbd65d9e75',
   '/features/output.js': '8f3c9caf0d12a6aac434586953d68d6b7ee792ebb63aec60030061d98c406306',
   '/features/rfi-flags.js': '40681e1143dc5bc64374c4e6a0bf9e2f30c246f8c4c34d81bc5635e38ce64949',
   '/features/share-links.js': '7d711b9c88404ff4923c81e9bb3da81e2b40b388848207326ec502b51ecd2724',
   '/features/import-clear.js': '3cfa037be5fd059da84a8899a0433106745a7f1819a0f529f0494fdda0191f28',
   '/features/zone-modals.js': 'cd99684ccb9e20ed537cf3f832c170f7607d515102e99fd2cf6d7b7829f5c58a',
-  '/features/restore-last-session.js': '8fe45df7b5a896b177246d1d21c55de0a007c7030ab02dcfbfc0501112a96f55',
+  '/features/restore-last-session.js': '4b7670d40d0b0e2e6eaa905b1dff1a02b819e49ae744b30747e7030fe6d16500',
   '/features/summary-detail.js': 'dc82451da2877e4cc06438f84f5133c10f134cbd7cdb83ad161650b87331bd91',
   '/features/room-sizer.js': '0db5f7780cb591fdfff151a930cf959337c7828b025a52a846f515194bb78df8',
   '/features/burger-menu.js': 'a479d4e3dfb43888d1dc39f16d7657cf194f61130180945e13981d5ae9a0d126',

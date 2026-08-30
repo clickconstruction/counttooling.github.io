@@ -44,10 +44,11 @@
 
   function openLastSessionRestorePrompt(pending) {
     if (!pending) return;
-    // NOTE for Tier-3 B1 (Esc ladder): if lastSessionRestoreModal ever joins
-    // the Esc ladder, Esc MUST route to the Discard-or-reopen semantics, not a
-    // bare hide — with the T1-01 clobber guard, a hidden-but-pending prompt
-    // would suspend takeoff backups for the whole session.
+    // Tier-3 B1 (Esc ladder): lastSessionRestoreModal is now in the ladder via
+    // App.dismissLastSessionRestorePrompt — NEVER a bare hideModal: with the
+    // T1-01 clobber guard, a hidden-but-pending prompt would suspend takeoff
+    // backups for the whole session. The dismiss helper clears pendingRestore
+    // and consumes nothing, so the offer returns next boot.
     pendingRestore = pending;
     const msgEl = document.getElementById('lastSessionRestoreMessage');
     if (msgEl) {
@@ -264,6 +265,16 @@
   };
 
   App.openLastSessionRestorePrompt = openLastSessionRestorePrompt;
+  // Esc route (Tier-3 B1 / J12): dismiss-for-now semantics. Clears
+  // pendingRestore so the T1-01 clobber guard releases takeoff-backup writes,
+  // but consumes NOTHING — the held key-aside record and the
+  // clickcount-last-project pointer both survive, so the Keep/Discard offer
+  // returns on the next boot, exactly like reloading without answering.
+  // (Discard stays an explicit button click; Esc must never delete a backup.)
+  App.dismissLastSessionRestorePrompt = () => {
+    pendingRestore = null;
+    App.hideModal('lastSessionRestoreModal');
+  };
   App.onLastSessionRestoreReset = () => { pendingRestore = null; };
   // Polled by the save engine's clobber guard (via the app.js ctx wiring):
   // takeoff-backup writes hold while the Keep/Discard prompt is unresolved.

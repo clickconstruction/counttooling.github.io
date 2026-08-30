@@ -57,6 +57,11 @@
   };
 
   document.getElementById('counterSettingsClose').onclick = () => App.hideModal('counterSettingsModal');
+  // Backdrop click closes like the Close button (Tier-3 B1 / J4; same
+  // e.target === overlay pattern as checkoutExpiredRecoveryModal in app.js).
+  document.getElementById('counterSettingsModal').onclick = (e) => {
+    if (e.target === e.currentTarget) App.hideModal('counterSettingsModal');
+  };
 
   document.getElementById('counterSettingsReorder').onclick = () => {
     const state = App.state;

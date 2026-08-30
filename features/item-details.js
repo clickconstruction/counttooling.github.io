@@ -405,6 +405,16 @@
   // handler block; the elements exist at load, handlers fire on user action).
   document.getElementById('counterLineTypeDetailsClose').onclick = () => { counterLineTypeDetailsItem = null; App.hideModal('counterLineTypeDetailsModal'); };
   document.getElementById('linePropertiesClose').onclick = () => closeLinePropertiesModal();
+  // Backdrop click closes like Close/Cancel (Tier-3 B1 / J4) — routed through
+  // the buttons so the pending-state resets fire. The delete-confirm overlay
+  // sits ON TOP of the details dialog, so a backdrop click only reaches (and
+  // closes) the top one.
+  document.getElementById('counterLineTypeDetailsModal').onclick = (e) => {
+    if (e.target === e.currentTarget) document.getElementById('counterLineTypeDetailsClose').click();
+  };
+  document.getElementById('deleteCounterLineTypeConfirmModal').onclick = (e) => {
+    if (e.target === e.currentTarget) document.getElementById('deleteCounterLineTypeCancel').click();
+  };
   document.getElementById('deleteCounterLineTypeCancel').onclick = () => { App.hideModal('deleteCounterLineTypeConfirmModal'); pendingDeleteCounterLineType = null; };
   document.getElementById('deleteCounterLineTypeConfirm').onclick = () => {
     App.hideModal('deleteCounterLineTypeConfirmModal');

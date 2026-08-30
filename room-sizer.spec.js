@@ -284,3 +284,43 @@ test('context-menu Delete removes a room box (regression: the ctxDelete switch l
   expect(after.menuVisible).toBe(false);
   expect(errors).toEqual([]);
 });
+
+test('empty ceiling height error toast is VISIBLE above the still-open dialog (J7 occlusion regression, T2 #15)', async ({ page }) => {
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+  await page.evaluate(() => {
+    window.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
+    window.App.openRoomBoxModal({ x1: 0, y1: 0, x2: 120, y2: 90 });
+  });
+  await expect(page.locator('#roomBoxModal')).toHaveClass(/visible/);
+
+  // Apply with the height empty: the dialog stays open and the rejection
+  // toast must actually be seen (it used to paint UNDER roomBoxModal at the
+  // same z-index — read as a broken Apply button).
+  await page.locator('#roomBoxHeight').fill('');
+  await page.evaluate(() => { document.getElementById('roomBoxApply').click(); });
+  await expect(page.locator('#roomBoxModal')).toHaveClass(/visible/);
+  await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+  await expect(page.locator('#airboardToastText')).toHaveText("Enter a ceiling height (e.g. 9.5 or 9'6).");
+
+  // Paint-order proof: elementFromPoint skips pointer-events:none nodes, so
+  // route through the production .toast-interactive opt-in — the topmost hit
+  // at the card center is the toast, not the open dialog's overlay.
+  const hit = await page.evaluate(() => {
+    const card = document.getElementById('airboardToastModal');
+    card.classList.add('toast-interactive');
+    const r = card.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    card.classList.remove('toast-interactive');
+    return { inToast: !!el?.closest('#airboardToastModal'), onScreen: r.width > 0 && r.height > 0 };
+  });
+  expect(hit.onScreen).toBe(true);
+  expect(hit.inToast).toBe(true);
+  expect(errors).toEqual([]);
+});

@@ -665,4 +665,60 @@ test.describe('window.App registry pilot - Scale modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('no eaten clicks: verify picks and a Scale Zone corner register while the post-apply toast is up (J3/J6 regression, T2 #15)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await stubNonStandardSheet(page);
+
+    // Corrected preset apply -> verify armed AND the coaching toast fires. Do
+    // NOT wait the toast out: the toasts are non-blocking corner cards now,
+    // and the two immediate verify picks must land while it is still up (the
+    // old full-screen toast ate them for its whole 2s lifetime).
+    await page.evaluate(() => window.App.openScaleModal());
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+    await page.locator('#scalePresetsList button').first().click();
+    await page.waitForFunction(() => window.state.scaleCheckMode === true, { timeout: 5000 });
+    const box = await page.locator('#canvasWrapper').boundingBox();
+    const pts = await page.evaluate(() => {
+      const p = window.state.pages[window.state.currentPage];
+      const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+      const z = window.state.zoom, pan = window.state.pan;
+      const y = (vp.height / 2) * z + pan.y;
+      return [
+        { x: vp.width * 0.25 * z + pan.x, y },
+        { x: vp.width * 0.75 * z + pan.x, y },
+      ];
+    });
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    await page.mouse.click(box.x + pts[0].x, box.y + pts[0].y);
+    // The first pick registered immediately — with the toast still up.
+    expect(await page.evaluate(() => !!window.state.scalePointA)).toBe(true);
+    await page.waitForTimeout(450); // the double-tap guard, not a toast wait
+    await page.mouse.click(box.x + pts[1].x, box.y + pts[1].y);
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => getComputedStyle(document.getElementById('scaleCheckPanel')).display)).not.toBe('none');
+    await page.locator('#scaleCheckCancel').click();
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+
+    // J6 half (the measure->zone hand-off order): arm Scale Zone and commit
+    // the first corner while a fresh toast is live — the click is not eaten.
+    await page.evaluate(() => {
+      window.state.tool = window.App.TOOL.SCALE_ZONE;
+      window.App.updateUI();
+      window.App.showToast('Scale set — verify it against a known dimension');
+    });
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    await page.waitForTimeout(450); // clear the shared double-tap guard from the last pick
+    await page.mouse.click(box.x + pts[0].x, box.y + pts[0].y);
+    expect(await page.evaluate(() => !!window.state.scaleZoneStart)).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
 });

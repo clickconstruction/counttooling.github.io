@@ -62,8 +62,23 @@ test.describe('window.App registry pilot - Export PDFs modal', () => {
     // 4. BULK SELECT: exclude all -> Download disabled; mark all -> enabled.
     await page.locator('#specificPagesAllExclude').click();
     expect(await page.locator('#specificPagesDownload').isDisabled()).toBe(true);
+    // B4 (J10): the disabled Download goes grey — no full-strength yellow with
+    // a pointer cursor. Compare against the enabled state below.
+    const disabledStyle = await page.evaluate(() => {
+      const b = document.getElementById('specificPagesDownload');
+      const cs = getComputedStyle(b);
+      return { bg: cs.backgroundColor, cursor: cs.cursor };
+    });
+    expect(disabledStyle.cursor).toBe('not-allowed');
     await page.locator('#specificPagesAllMarked').click();
     expect(await page.locator('#specificPagesDownload').isDisabled()).toBe(false);
+    const enabledStyle = await page.evaluate(() => {
+      const b = document.getElementById('specificPagesDownload');
+      const cs = getComputedStyle(b);
+      return { bg: cs.backgroundColor, cursor: cs.cursor };
+    });
+    expect(enabledStyle.cursor).toBe('pointer');
+    expect(disabledStyle.bg).not.toBe(enabledStyle.bg);   // yellow only when clickable
 
     // 5. SLIDER: set marker scale + dispatch input -> live val text updates.
     await page.evaluate(() => {

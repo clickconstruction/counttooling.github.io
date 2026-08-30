@@ -439,4 +439,122 @@ test.describe('Output cluster (features/output.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('B4 export naming: one trade dialect across the scope menus, layer qualifiers only when a page has layers', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const label = (sel) => page.evaluate((s) => document.querySelector(s)?.textContent.replace(/\s+/g, ' ').trim(), sel);
+    const hidden = (sel) => page.evaluate((s) => document.querySelector(s)?.style.display === 'none', sel);
+
+    // --- Single-canvas project: sheet dialect, no layer words anywhere ---
+    expect(await label('.pipe-tooling-option[data-mode="this-canvas"]')).toBe('This sheet');
+    expect(await label('.pipe-tooling-option[data-mode="visible"]')).toBe('Every sheet');
+    expect(await label('.copy-summary-option[data-mode="visible"]')).toBe('Every sheet');
+    expect(await label('.download-page-option[data-mode="this-canvas"]')).toBe('Download this sheet');
+    expect(await label('.download-page-option[data-mode="all-pages"]')).toBe('Download every sheet');
+    expect(await label('.show-report-option[data-mode="this-canvas"]')).toBe('This sheet');
+    expect(await label('.show-report-option[data-mode="all-pages-current-canvas"]')).toBe('Every sheet');
+    // "Everything" duplicates "Every sheet" when every page has one canvas — hidden.
+    expect(await hidden('.pipe-tooling-option[data-mode="all"]')).toBe(true);
+    expect(await hidden('.copy-summary-option[data-mode="all"]')).toBe(true);
+    expect(await hidden('.download-page-option[data-mode="all-pages-canvases"]')).toBe(true);
+    expect(await hidden('.show-report-option[data-mode="all-pages-canvases"]')).toBe(true);
+
+    // --- Add a second layer to page 1: qualifiers fill in, Everything appears ---
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      App.ensureActiveCanvas(s.pages[0]);
+      s.pages[0].canvases.push({ id: 'c-extra', name: 'Layer 2', annotations: App.makeAnnotations() });
+      App.updateUI();
+    });
+    expect(await label('.pipe-tooling-option[data-mode="visible"]')).toBe('Every sheet (visible layers)');
+    expect(await label('.copy-summary-option[data-mode="visible"]')).toBe('Every sheet (visible layers)');
+    expect(await label('.download-page-option[data-mode="this-canvas"]')).toBe('Download this sheet (active layer)');
+    expect(await label('.download-page-option[data-mode="all-canvases"]')).toBe('Download this sheet (every layer)');
+    expect(await label('.download-page-option[data-mode="all-pages"]')).toBe('Download every sheet (active layer)');
+    expect(await label('.show-report-option[data-mode="all-canvases-on-page"]')).toBe('This sheet — every layer');
+    expect(await label('.show-report-option[data-mode="all-pages-current-canvas"]')).toBe('Every sheet (active layer)');
+    expect(await hidden('.pipe-tooling-option[data-mode="all"]')).toBe(false);
+    expect(await label('.pipe-tooling-option[data-mode="all"]')).toBe('Everything');
+    expect(await hidden('.copy-summary-option[data-mode="all"]')).toBe(false);
+    expect(await hidden('.download-page-option[data-mode="all-pages-canvases"]')).toBe(false);
+    expect(await label('.download-page-option[data-mode="all-pages-canvases"]')).toBe('Download everything');
+    expect(await hidden('.show-report-option[data-mode="all-pages-canvases"]')).toBe(false);
+    expect(await label('.show-report-option[data-mode="all-pages-canvases"]')).toBe('Everything');
+
+    // The mode strings behind the labels are untouched: "Everything" still runs
+    // the merged-annotations copy.
+    await page.evaluate(() => {
+      document.querySelector('.pipe-tooling-option[data-mode="all"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    // No marks -> the empty-summary alert path; just assert no crash happened.
+    expect(errors).toEqual([]);
+  });
+
+  test('B4 export naming: cloud menu "Original PDF (no marks)", Export PDFs is the yellow primary, Highlight/Note Pages renamed', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    const alerts = [];
+    page.on('dialog', (d) => { alerts.push(d.message()); d.accept().catch(() => {}); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // The wrong-file-to-GC trap (J10): the original-PDF row says what it is.
+    expect(await page.evaluate(() =>
+      document.querySelector('.export-dropdown-option[data-action="pdf"]').textContent.trim()
+    )).toBe('Original PDF (no marks)');
+
+    // Weight swap (J10/J13): Export PDFs is the yellow primary; Copy to
+    // /Tooling drops to neighbor weight.
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      const c = App.ensureActiveCanvas(s.pages[0]);
+      c.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      App.updateUI();
+    });
+    const weights = await page.evaluate(() => {
+      const exp = document.getElementById('specificPages');
+      const pt = document.getElementById('forPipeTooling');
+      return {
+        expPrimary: exp.classList.contains('sidebar-btn-primary'),
+        ptPrimary: pt.classList.contains('sidebar-btn-primary'),
+        expBg: getComputedStyle(exp).backgroundColor,
+        ptBg: getComputedStyle(pt).backgroundColor,
+      };
+    });
+    expect(weights.expPrimary).toBe(true);
+    expect(weights.ptPrimary).toBe(false);
+    expect(weights.expBg).not.toBe(weights.ptBg);
+
+    // Highlight/Note Pages (PDF) renames (J8) — buttons and the jsPDF fallback alert.
+    expect(await page.evaluate(() => document.getElementById('bundleHighlights').textContent.trim())).toBe('Highlight Pages (PDF)');
+    expect(await page.evaluate(() => document.getElementById('bundleNotes').textContent.trim())).toBe('Note Pages (PDF)');
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      const c = App.ensureActiveCanvas(s.pages[0]);
+      c.annotations.highlights = [{ x: 10, y: 10, w: 40, h: 20, id: 'h1' }];
+      const saved = window.jspdf;
+      window.jspdf = null;              // simulate the vendored lib missing
+      App.updateUI();
+      document.getElementById('bundleHighlights').click();
+      window.jspdf = saved;
+    });
+    await expect.poll(() => alerts.length, { timeout: 5000 }).toBeGreaterThan(0);
+    expect(alerts[0]).toContain('Highlight Pages (PDF) requires jsPDF');
+
+    expect(errors).toEqual([]);
+  });
 });

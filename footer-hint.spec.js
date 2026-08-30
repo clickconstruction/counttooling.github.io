@@ -33,8 +33,10 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
 
     // Desktop-width borderline case (the >768px regime is where the bar
     // wraps): the name + hint overflow the row, the name alone fits — so
-    // dropping the hint is exactly what keeps the bar on one line.
-    await page.setViewportSize({ width: 1000, height: 800 });
+    // dropping the hint is exactly what keeps the bar on one line. (1050px,
+    // not 1000: B4's status-bar links grew — "quick keys | shortcuts" — which
+    // moved this borderline by ~50px.)
+    await page.setViewportSize({ width: 1050, height: 800 });
     await page.evaluate(() => window.App.updateStatus());
     await expect(page.locator('#statusMode')).not.toContainText('Tap start point');
     // The right-side actions stayed on the same row as the mode text.
@@ -131,9 +133,10 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
     });
     await expect(page.locator('#statusMode')).toContainText('Tap end point — 10\'-0"');
 
-    // The borderline-width regime from the wrap test: the long project name
-    // alone fits, name + hint doesn't — hint AND readout drop together.
-    await page.setViewportSize({ width: 1000, height: 800 });
+    // The borderline-width regime from the wrap test (1050px since B4's wider
+    // status-bar links): the long project name alone fits, name + hint
+    // doesn't — hint AND readout drop together.
+    await page.setViewportSize({ width: 1050, height: 800 });
     await page.evaluate(() => window.App.updateStatus());
     await expect(page.locator('#statusMode')).not.toContainText('Tap end point');
     // The worst-case key keeps the verdict stable while the cursor moves.

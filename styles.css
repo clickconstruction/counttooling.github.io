@@ -712,7 +712,7 @@
     .modal-card .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
     .modal-card .actions button { padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; border: none; font-family: inherit; min-height: 44px; }
     .modal-card .actions button:first-child { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-    .modal-card .actions button:first-child:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .modal-card .actions button:first-child:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .modal-card .actions button:last-child { background: var(--accent); color: var(--bg); }
     .settings-menu { display: flex; flex-direction: column; gap: 8px; }
     .settings-close-checkout-row .settings-menu-btn { width: auto; flex: 1; min-width: 0; }
@@ -760,11 +760,14 @@
     #shareViewLinksContent.collapsed { display: none !important; }
     .share-view-link-revoke { color: var(--red); font-weight: 700; background: transparent; border: none; }
     .share-view-link-revoke:hover { color: var(--red); font-weight: 700; background: rgba(232,84,71,0.2); }
-    .modal-card .actions button:last-child:hover { background: var(--accent2); }
+    .modal-card .actions button:last-child:hover:not(:disabled) { background: var(--accent2); }
     .modal-card .actions button.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-    .modal-card .actions button.secondary:hover { background: var(--surface3); border-color: var(--border2); }
+    .modal-card .actions button.secondary:hover:not(:disabled) { background: var(--surface3); border-color: var(--border2); }
     .modal-card .actions button.danger { background: var(--red); color: #fff; }
-    .modal-card .actions button.danger:hover { background: rgba(232,84,71,0.9); }
+    .modal-card .actions button.danger:hover:not(:disabled) { background: rgba(232,84,71,0.9); }
+    /* B4 (J10): a disabled action button goes grey — never full-strength yellow
+       with a pointer cursor (the Export PDFs Download button after Exclude All). */
+    .modal-card .actions button:disabled { background: var(--surface3); color: var(--text3); cursor: not-allowed; }
     .prepare-pdf-controls { display: flex; flex-direction: column; gap: 10px; align-items: stretch; width: 100%; }
     .prepare-pdf-controls .prepare-pdf-actions-row { display: flex; gap: 10px; justify-content: center; }
     .prepare-pdf-controls button {
@@ -1338,6 +1341,10 @@
     .pipe-tooling-option:hover { background: var(--surface2); }
     .copy-summary-option { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; border-radius: 4px; }
     .copy-summary-option:hover { background: var(--surface2); }
+    /* B4: the "(… layer)" scope qualifiers inside the report/copy drop-ups sit on
+       their own line, like the download menu's .dl-qual. Their text is filled by
+       updateUI only when a page has more than one canvas (data-qual). */
+    .show-report-menu .dl-qual { display: block; }
     /* Zoom rail — the giant vertical zoom slider on the right edge (features/zoom-rail.js).
        z-index 300 keeps it interactive above .modal-overlay (200) so it coexists with
        the Zoom Settings modal on desktop. The toast region (350) can paint over

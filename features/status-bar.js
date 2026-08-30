@@ -205,25 +205,28 @@
         // fixed worst-case placeholder ('' = no readout, key on toolHint).
         let toolHintKeyed = '';
         const TOOL = App.TOOL, SCALE_MODES = App.SCALE_MODES;
+        // B9 (J15): touch talks "Tap", mouse talks "Click" — same hints, the
+        // trade's word for the device in hand (App.isCoarsePointer, live).
+        const press = App.isCoarsePointer && App.isCoarsePointer() ? 'Tap' : 'Click';
         if (state.tool === TOOL.MEASURE) toolHint = state.aiming ? 'Hold + drag to aim; release to place' : (state.scaleMode === SCALE_MODES.POINT_A ? 'Tap first point (or hold to aim)' : 'Tap second point (or hold to aim)');
-        else if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
+        else if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? press + ' first point' : press + ' second point';
         else if (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) {
           toolHint = state.tool === TOOL.LINE
             ? (state.quickLineStart ? 'Tap end point' : 'Tap start point')
-            : 'Click to add points';
+            : press + ' to add points';
           const readout = liveDrawReadout();
           if (readout) {
             toolHintKeyed = toolHint + ' — ' + HINT_READOUT_PLACEHOLDER;
             toolHint += ' — ' + readout;
           }
         }
-        else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
-        else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? 'Click second corner' : 'Click first corner';
-        else if (state.tool === TOOL.SCALE_ZONE) toolHint = state.scaleZoneStart ? 'Click second corner' : 'Click first corner';
-        else if (state.tool === TOOL.ROOM) toolHint = state.roomBoxStart ? 'Click second corner' : 'Click first corner';
-        else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? 'Click second corner' : 'Click first corner';
-        else if (state.tool === TOOL.NOTE) toolHint = 'Click to add note';
-        else if (state.tool === TOOL.COUNTER) toolHint = 'Click to place marker';
+        else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? press + ' second corner' : press + ' first corner';
+        else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? press + ' second corner' : press + ' first corner';
+        else if (state.tool === TOOL.SCALE_ZONE) toolHint = state.scaleZoneStart ? press + ' second corner' : press + ' first corner';
+        else if (state.tool === TOOL.ROOM) toolHint = state.roomBoxStart ? press + ' second corner' : press + ' first corner';
+        else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? press + ' second corner' : press + ' first corner';
+        else if (state.tool === TOOL.NOTE) toolHint = press + ' to add note';
+        else if (state.tool === TOOL.COUNTER) toolHint = press + ' to place marker';
         else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
         // The hint only rides when the bar stays on ONE line (field feedback
         // 2026-08-14): on narrow layouts the status bar flex-wraps, and a long

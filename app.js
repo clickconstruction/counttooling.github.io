@@ -31,6 +31,16 @@
     return pdfjsLib.getDocument(params);
   }
 
+  // B9 (J15): coarse-pointer detection for the touch copy swaps — "Tap" status
+  // hints, no "(right-click …)" tooltip suffixes, no ⇧Q chips. Read live (not
+  // captured) so a convertible that gains a mouse gets desktop wording on the
+  // next repaint.
+  function isCoarsePointer() { return window.matchMedia('(pointer: coarse)').matches; }
+  // Desktop tool tooltips advertise the right-click context menu; touch opens
+  // it by long-press, so the suffix is dropped there. Used by the dynamic
+  // title writers (updateUI); static titles are scrubbed once at boot.
+  function withRightClickHint(base) { return isCoarsePointer() ? base : base + ' (right-click for settings)'; }
+
   const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || '';
   const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) || '';
   const SUPABASE_ENABLED = !!(SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.includes('supabase'));
@@ -2164,10 +2174,10 @@
         : null;
       if (counter) {
         counterBtn.innerHTML = '<svg viewBox="' + iconVbFor(counter.icon) + '" width="28" height="28"><path fill="' + (counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + counter.icon + '"/></svg>';
-        counterBtn.title = (counter.name || 'Counter') + ' (right-click for settings)';
+        counterBtn.title = withRightClickHint(counter.name || 'Counter');
       } else {
         counterBtn.innerHTML = COUNTER_BTN_DEFAULT_SVG;
-        counterBtn.title = 'Counter (right-click for settings)';
+        counterBtn.title = withRightClickHint('Counter');
       }
     }
     const moveBtnSidebar = document.getElementById('moveBtnSidebar');
@@ -2181,10 +2191,10 @@
       const svgEl = counterBtnSidebar.querySelector('svg');
       if (counter && svgEl) {
         svgEl.outerHTML = '<svg viewBox="' + iconVbFor(counter.icon) + '" width="18" height="18"><path fill="' + (counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + counter.icon + '"/></svg>';
-        counterBtnSidebar.title = (counter.name || 'Counter') + ' (right-click for settings)';
+        counterBtnSidebar.title = withRightClickHint(counter.name || 'Counter');
       } else if (svgEl) {
         svgEl.outerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';
-        counterBtnSidebar.title = 'Counter (right-click for settings)';
+        counterBtnSidebar.title = withRightClickHint('Counter');
       }
     }
     if (moveBtnSidebar) moveBtnSidebar.classList.toggle('active', state.tool === TOOL.NONE);
@@ -2618,13 +2628,15 @@
   function setActiveCounterType(id) {
     state.activeCounterType = state.activeCounterType === id ? null : id;
     state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE;
-    if (state.activeCounterType) collapsePagesSectionForPlacing();
+    // B9 (J1 J15): arming closes the mobile drawer (the next tap belongs on
+    // the plan); toggling OFF keeps it open — the user is managing the list.
+    if (state.activeCounterType) { collapsePagesSectionForPlacing(); closeMobileSidebar(); }
     updateUI();
   }
   function setActiveLineType(id) {
     state.activeLineTypeId = state.activeLineTypeId === id ? null : id;
     state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE;
-    if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); }
+    if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); closeMobileSidebar(); }
     updateUI();
   }
   // T2-08: every line-type create surface hands the user the pen, exactly as
@@ -2636,6 +2648,7 @@
     state.tool = TOOL.LINE;
     state.quickLineStart = null;
     collapsePagesSectionForPlacing();
+    closeMobileSidebar();   // B9 (J1 J15): armed — next action is on the plan
   }
 
   // quickKeyBadgeHtml + renderCountersList + renderLineTypesList +
@@ -4146,6 +4159,26 @@
 
   document.getElementById('hamburger').onclick = () => document.body.classList.toggle('sidebar-open');
   document.getElementById('sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
+  // B9 (J1 J15): picking a tool closes the mobile left drawer — after arming,
+  // the next action is always on the plan, and the open drawer covered ~60% of
+  // a phone screen (stray taps landed on drawer buttons underneath). The class
+  // only has effect <=768px, so the removal is a safe no-op on desktop.
+  // Counters / Line Types row picks funnel through setActiveCounterType /
+  // setActiveLineType (close on arm, never on toggle-off); the picker-modal
+  // arms (choose a counter / line type, Create Counter) close from their own
+  // handlers so a cancelled picker leaves the drawer where it was. This
+  // listener covers the drawer's tool grid. NOT tool picks (drawer stays):
+  // Legend / Grid (overlay toggles), Done Editing, and the two picker openers
+  // (Counter, Quick Line — they arm nothing until the modal commits).
+  function closeMobileSidebar() { document.body.classList.remove('sidebar-open'); }
+  const sidebarToolGridEl = document.querySelector('.sidebar-tool-buttons');
+  if (sidebarToolGridEl) {
+    sidebarToolGridEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn || ['legendBtnSidebar', 'gridBtnSidebar', 'doneEditingSidebar', 'counterBtnSidebar', 'quickLineSidebar'].includes(btn.id)) return;
+      closeMobileSidebar();
+    });
+  }
   // SECTION: Mobile actions burger menu pointer & header logo
   // The burger drawer (closeBurgerMenu / updateBurgerMenu + the #headerBurger /
   // #rightMenuBackdrop bindings) and the desktop header-overflow compact mode
@@ -6968,6 +7001,11 @@
   App.setActiveLineType = setActiveLineType;
   // T2-08 arm-on-create (features/quick-line.js + features/choose-create-line-type.js).
   App.armLineToolAfterCreate = armLineToolAfterCreate;
+  // B9 (J1 J15): the picker-modal arm paths (features/counter.js,
+  // features/choose-create-line-type.js) close the mobile drawer on commit.
+  App.closeMobileSidebar = closeMobileSidebar;
+  // B9 (J15): coarse-pointer copy swaps (features/status-bar.js, features/scale.js).
+  App.isCoarsePointer = isCoarsePointer;
   // Chain tool deps (features/chain.js) — publish-only; all defined in app.js.
   App.isPointInPageBounds = isPointInPageBounds;
   App.showOutOfBoundsToast = showOutOfBoundsToast;
@@ -7173,6 +7211,14 @@
     // Scale reference-line visibility is a device view-preference (localStorage), not
     // project data — the line geometry itself rides on page.scale.refLine.
     try { const v = localStorage.getItem('showScaleRefLine'); if (v != null) state.showScaleRefLine = v === 'true'; } catch (_) { /* private mode */ }
+    // B9 (J15): touch copy — the static tool tooltips advertise right-click,
+    // but touch opens those context menus by long-press. Scrub the suffix once
+    // at boot on coarse pointers (dynamic writers go through withRightClickHint).
+    if (isCoarsePointer()) {
+      document.querySelectorAll('[title*="(right-click"]').forEach((el) => {
+        el.title = el.title.replace(/\s*\(right-click[^)]*\)/, '');
+      });
+    }
     // PWA: register the service worker (offline shell + cached PDF/lib assets).
     // Scoped to /app/ — the app lives there; the marketing site at / is plain static
     // HTML, outside the SW. Registered for every entry path, incl. the view-link branch.

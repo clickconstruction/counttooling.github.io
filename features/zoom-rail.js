@@ -10,10 +10,10 @@
  * at user-action time), and binds the rail's track/buttons at this file's
  * load. The zoom-% click toggles the rail; Zoom Settings opens only from the
  * rail's gear button (the rail's z-index 300 floats above the modal backdrop's
- * 200 so both stay usable together). The rail auto-fades away after a few
- * seconds without interaction (not while dragging or while the Zoom Settings
- * modal is open); hovering it cancels the fade. The rail replaced the old
- * #zoomOverlay popover on mobile.
+ * 200 so both stay usable together). The rail stays up until dismissed -
+ * outside click, Escape, or re-clicking the zoom % (B9/J15: the old ~5s idle
+ * auto-fade was an invisible timer that lost the rail mid-adjustment on a
+ * field pause). The rail replaced the old #zoomOverlay popover on mobile.
  *
  * The track maps zoom logarithmically (equal distance per doubling) between
  * the hard-coded 0.2 minimum and App.getMaxZoom(), with tick marks at round
@@ -49,16 +49,9 @@
   const thumbLabel = document.getElementById('zoomRailThumbLabel');
   const ticksEl = document.getElementById('zoomRailTicks');
 
-  // Auto-fade: the rail fades away after this long without interaction.
-  const IDLE_HIDE_MS = 5000;
-  const FADE_MS = 350;    // slightly past the 0.3s CSS opacity transition
-
   let builtMax = null;    // the maxZoom the ticks were last built for
   let dragging = false;
   let commitTimer = null; // mid-drag safety re-render (long slow drags stay crisp)
-  let idleTimer = null;   // arms the auto-fade
-  let fadeTimer = null;   // ends the fade (removes .visible)
-  let lastSyncZoom = null;
 
   // Log mapping: t in [0,1] bottom->top; zoom = MIN * (max/MIN)^t.
   function zoomToT(z, max) { return Math.log(z / MIN_ZOOM) / Math.log(max / MIN_ZOOM); }
@@ -132,7 +125,6 @@
   track.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     applyZoom(zoomFromPointer(e));
-    touchRail();
     if (commitTimer) clearTimeout(commitTimer);
     commitTimer = setTimeout(() => { commitTimer = null; App.commitWheelZoom(); }, 400);
   });
@@ -151,53 +143,28 @@
   // designed to coexist with the Zoom Settings modal.
   document.getElementById('zoomRailSettings').onclick = (e) => { e.stopPropagation(); App.showZoomModal(); };
 
-  // Any interaction with the rail re-arms the auto-fade countdown.
-  function touchRail() {
-    cancelFade();
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      idleTimer = null;
-      // Never fade mid-drag or while the Zoom Settings modal is up.
-      if (dragging || document.getElementById('zoomModal')?.classList.contains('visible')) { touchRail(); return; }
-      beginFade();
-    }, IDLE_HIDE_MS);
-  }
-  function cancelFade() {
-    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
-    rail.classList.remove('fade-out');
-  }
-  function beginFade() {
-    rail.classList.add('fade-out');
-    fadeTimer = setTimeout(() => { fadeTimer = null; closeZoomRail(); }, FADE_MS);
-  }
-
+  // B9 (J15): no idle auto-fade — the rail stays where the user put it until
+  // an explicit dismissal (outside click, Escape, re-click the zoom %, or the
+  // project unloading). The old ~5s timer was invisible: a field pause (glance
+  // at the drawing, gloves) lost the rail mid-adjustment.
   function openZoomRail() {
     if (!App.state.pages.length) return;
     buildTicks();
-    cancelFade();
     // The [hidden] attribute keeps the rail invisible even under a stale-cache
     // "mixed shell" load (new HTML + a previous version's CSS, which lacks the
     // .zoom-rail rules); with current CSS the classes drive display as usual.
     rail.hidden = false;
     rail.classList.add('visible');
     positionThumb();
-    lastSyncZoom = App.state.zoom;
-    touchRail();
   }
   function closeZoomRail() {
-    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
-    cancelFade();
     rail.classList.remove('visible');
     rail.hidden = true;
   }
   function toggleZoomRail() {
-    if (rail.classList.contains('visible') && !rail.classList.contains('fade-out')) closeZoomRail();
+    if (rail.classList.contains('visible')) closeZoomRail();
     else openZoomRail();
   }
-
-  // Hovering (or touching) the rail cancels an in-progress fade and re-arms it.
-  rail.addEventListener('pointerenter', () => { if (rail.classList.contains('visible')) touchRail(); });
-  rail.addEventListener('pointerdown', () => { if (rail.classList.contains('visible')) touchRail(); });
 
   // Dismissal: outside click. The rail, its opener, and the Zoom Settings
   // modal (a full-screen .modal-overlay - clicks on it or its backdrop) all
@@ -217,10 +184,6 @@
     if (!App.state.pages.length) { closeZoomRail(); return; }
     if (App.getMaxZoom() !== builtMax) buildTicks(); // Zoom Settings changed max while open
     positionThumb();
-    // Only an actual zoom change (wheel/pinch/+-/fit) re-arms the auto-fade -
-    // unrelated updateUI() calls (placing marks, page nav) must not keep the
-    // rail alive forever.
-    if (App.state.zoom !== lastSyncZoom) { lastSyncZoom = App.state.zoom; touchRail(); }
   };
   App.openZoomRail = openZoomRail;
   App.closeZoomRail = closeZoomRail;

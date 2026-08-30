@@ -13,12 +13,12 @@ that has a key.
 
 ## The shortcut list and the Keyboard Map
 
-Click **macros** [[macros]] in the bottom-right status bar to open the full
+Click **shortcuts** [[macros]] in the bottom-right status bar to open the full
 shortcut list. On desktop, a **keyboard map** sits right at the top of it: every
 key that does something lights up yellow, and hovering a lit key tells you what
 it does. On a phone or tablet, tap **See Keyboard** to open the same map.
 
-![The Macros dialog with the keyboard map on top — every mapped key lights up, and the shortcut list scrolls underneath.](/guides/img/keyboard-map.png)
+![The Keyboard Shortcuts dialog with the keyboard map on top — every mapped key lights up, and the shortcut list scrolls underneath.](/guides/img/keyboard-map.png)
 
 The ones worth learning first:
 
@@ -45,7 +45,7 @@ The biggest time sink on a busy sheet isn't placing marks — it's changing *wha
 you're placing. **Quick Keys** puts your own counters and line types on the
 number row.
 
-1. Click **keys** [[keys]] in the status bar (next to macros).
+1. Click **quick keys** [[keys]] in the status bar (next to shortcuts).
 2. For each number `1`–`0`, pick a counter or line type from this project. On a
    big palette, type in the **search box** at the top — every dropdown filters
    to matching names as you type (already-bound items always stay put).

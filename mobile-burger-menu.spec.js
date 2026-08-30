@@ -52,10 +52,12 @@ test.describe('Mobile right-side burger menu', () => {
     const sections = await sectionText();
     expect(items).toContain('Hide marks');                       // marks row
     expect(sections).toContain('Download');                       // download section present
-    expect(items).toContain('Print Current Page (Current Canvas)'); // always-present download mode
-    // 2 pages -> the all-plan-pages modes are present
-    expect(items).toContain('Print All Plan Pages (Current Canvas)');
-    expect(items).toContain('Print All Pages (All Canvases)');
+    // B4 dialect: single-canvas project, so the "(active layer)" qualifiers are
+    // empty and the "Download everything" duplicate of "Download every sheet" hides.
+    expect(items).toContain('Download this sheet');              // always-present download mode
+    // 2 pages -> the every-sheet mode is present
+    expect(items).toContain('Download every sheet');
+    expect(items).not.toContain('Download everything');
 
     // 3b. Save status row: absent without a cloud project (mobile CSS hides the
     //     header bell outright, so the drawer is the ONLY mobile surface for it).
@@ -106,9 +108,9 @@ test.describe('Mobile right-side burger menu', () => {
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await page.locator('#headerBurger').click();
-    const downloadRows = (await page.locator('#rightMenuList .right-menu-item', { hasText: 'Print' }).allTextContents())
+    const downloadRows = (await page.locator('#rightMenuList .right-menu-item', { hasText: 'Download' }).allTextContents())
       .map(t => t.replace(/\s+/g, ' ').trim());
-    expect(downloadRows).toEqual(['Print Current Page (Current Canvas)']);
+    expect(downloadRows).toEqual(['Download this sheet']);
   });
 
   test('mobile shared-project viewer gets the copy-link Share row, never the editor modal row', async ({ page }) => {

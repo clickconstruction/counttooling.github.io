@@ -42,7 +42,7 @@ Trace duct and pipe runs with **Line** [[line]] and **Polyline** [[polyline]] to
 ![The Export PDFs dialog: ① set marker and line sizes, ② choose whether to include the report and bundle highlights/notes, then ③ download.](/guides/img/export-pdfs.png)
 
 - The **legend** [[legend]] and [Show Report](/guides/reports-and-exports/) break everything down by type — counts, lengths, and room volumes.
-- **Export PDF** hands over a marked-up plan with the report bundled in.
+- **Export PDFs** hands over a marked-up plan with the report bundled in.
 - **Copy Summary** drops the numbers into an email; totals are always decimal feet, so they line up across mixed sheets.
 
 For the general workflow end to end, see [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/).

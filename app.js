@@ -2556,7 +2556,20 @@
     const allPagesOpt = document.querySelector('.download-page-option[data-mode="all-pages"]');
     const allPagesCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-pages-canvases"]');
     if (allPagesOpt) allPagesOpt.style.display = state.pages.length > 1 ? '' : 'none';
-    if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = state.pages.length > 1 ? '' : 'none';
+    // B4 (J10 J13 J18) — one trade dialect across the scope menus. When every
+    // page has one canvas: the "(… layer)" qualifiers say nothing, so they
+    // render empty (textContent, not display:none — the burger drawer copies
+    // labels via textContent, which would leak hidden text), and the
+    // "Everything" rows duplicate "Every sheet" scope-for-scope, so the
+    // duplicates hide.
+    const anyMultiCanvas = state.pages.some(p => getPageCanvases(p).length > 1);
+    document.querySelectorAll('.scope-qual').forEach(el => { el.textContent = anyMultiCanvas ? (el.dataset.qual || '') : ''; });
+    if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = (state.pages.length > 1 && anyMultiCanvas) ? '' : 'none';
+    const reportEverythingOpt = document.querySelector('.show-report-option[data-mode="all-pages-canvases"]');
+    if (reportEverythingOpt) reportEverythingOpt.style.display = anyMultiCanvas ? '' : 'none';
+    document.querySelectorAll('.pipe-tooling-option[data-mode="all"], .copy-summary-option[data-mode="all"]').forEach(el => {
+      el.style.display = anyMultiCanvas ? '' : 'none';
+    });
     if (App.updateBurgerMenu) App.updateBurgerMenu();
     if (App.scheduleHeaderCollapseCheck) App.scheduleHeaderCollapseCheck();
     document.querySelectorAll('.pipe-tooling-option[data-mode="this-canvas"], .copy-summary-option[data-mode="this-canvas"]').forEach(el => {
@@ -3930,7 +3943,7 @@
   document.getElementById('bundleHighlights').onclick = async () => {
     if (!App.hasAnyHighlights()) return;
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Show Highlights requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Highlight Pages (PDF) requires jsPDF. Please refresh the page.'); return; }
     const btn = document.getElementById('bundleHighlights');
     const origText = btn.textContent;
     btn.textContent = 'Opening…';
@@ -3951,7 +3964,7 @@
   document.getElementById('bundleNotes').onclick = async () => {
     if (!App.hasAnyNotes()) return;
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Show Notes requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Note Pages (PDF) requires jsPDF. Please refresh the page.'); return; }
     const btn = document.getElementById('bundleNotes');
     const origText = btn.textContent;
     btn.textContent = 'Opening…';

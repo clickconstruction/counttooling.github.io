@@ -60,7 +60,7 @@ test.describe('Desktop header overflow → compact mode', () => {
     await expect(page.locator('body')).toHaveClass(/right-menu-open/);
     const rows = await page.locator('#rightMenuList .right-menu-item').allTextContents();
     expect(rows.some((t) => /Hide marks/.test(t))).toBe(true);
-    expect(rows.some((t) => /Export PDF/.test(t))).toBe(true);
+    expect(rows.some((t) => /Original PDF/.test(t))).toBe(true); // B4: cloud-menu "Export PDF" renamed
 
     expect(errors).toEqual([]);
   });

@@ -27,7 +27,7 @@ For a plan with isometrics or details drawn at a different scale, wrap a **scale
 
 - The **legend** and **Show Report** give you counts and lengths by type as you work.
 - **Copy to PipeTooling** drops the takeoff straight into a bid for pricing.
-- **Export PDF** hands a marked-up, reviewable plan to whoever needs it — with the report, highlights, and notes included.
+- **Export PDFs** hands a marked-up, reviewable plan to whoever needs it — with the report, highlights, and notes included.
 
 Because it runs in the browser and saves as you go, you can start a plumbing takeoff on a desktop and pick it up on a tablet in the field.
 

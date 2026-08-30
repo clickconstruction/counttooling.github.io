@@ -31,7 +31,7 @@ A high-rise with ten identical floors: count one, wrap it in a [multiply zone](/
 ## Deliver the numbers
 
 - The **legend** [[legend]] keeps live totals on-sheet; [Show Report](/guides/reports-and-exports/) gives the full breakdown by type and page.
-- **Export PDF** produces the marked-up deliverable with the report attached.
+- **Export PDFs** produces the marked-up deliverable with the report attached.
 - **Copy Summary** puts a clean text tally in an email; totals are always decimal feet regardless of each sheet's scale unit.
 
 New to the tool? Start with [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/) — the workflow is the same for every trade.

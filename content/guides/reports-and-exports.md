@@ -1,6 +1,6 @@
 ---
 title: Reports, exports, and sending a takeoff onward
-description: Turn your marked-up plan into numbers and deliverables — the on-canvas legend, Show Report, Export PDF, Copy to PipeTooling, and email summaries.
+description: Turn your marked-up plan into numbers and deliverables — the on-canvas legend, Show Report, Export PDFs, Copy to PipeTooling, and email summaries.
 updated: 2026-08-10
 order: 6
 icon: legend
@@ -21,10 +21,10 @@ A takeoff is only useful once it's numbers someone can price or check. CountTool
 
 Open **Show Report** for the full breakdown in a new tab. You can scope it to:
 
-- this canvas,
-- all canvases on the current page,
-- all plan pages (current canvas), or
-- everything — all pages and canvases.
+- **This sheet**,
+- **This sheet — every layer** (when the page has more than one canvas layer),
+- **Every sheet**, or
+- **Everything** — every sheet, every layer (when any page has more than one).
 
 ## Export a marked-up PDF
 
@@ -38,7 +38,7 @@ The sidebar's **Export PDFs** button opens the dialog above and produces a deliv
 
 You can export specific pages, just the marked ones, or the whole set.
 
-Two similar names, two different files: the sidebar **Export PDFs** button makes the marked-up deliverable, while **Export PDF** in the header cloud menu downloads the project's *original* PDF — the clean plan, no marks. When you're sending the takeoff onward, you want **Export PDFs**.
+Two different files: the sidebar **Export PDFs** button makes the marked-up deliverable, while **Original PDF (no marks)** in the header cloud menu downloads the clean plan exactly as it was uploaded. When you're sending the takeoff onward, you want **Export PDFs**.
 
 ## Send it to where it gets priced
 
@@ -48,7 +48,7 @@ Two similar names, two different files: the sidebar **Export PDFs** button makes
 ### Pages without a scale
 
 Totals never mix pixel lengths into feet. A line drawn on a page with no scale is measured in raw pixels, and every total — the footer, the sidebar, the legend, the report, and both copy buttons — keeps it in its own `px` bucket (`12.50 ft + 200 px`, never one summed number). In the exports, unscaled runs appear as separate `px of` rows/bullets so nothing pixel-measured can masquerade as feet in a bid. Set the page's scale to move those runs into the feet total.
-- **Download current page** — the yellow printer button downloads the sheet you're on as a PDF; on multi-page or multi-layer projects it offers a scope menu (this canvas, all canvases on the page, all pages).
+- **Download current page** — the yellow printer button downloads the sheet you're on as a PDF; on multi-page or multi-layer projects it offers a scope menu (this sheet, every sheet, everything).
 - **Export / Import Canvas** — your marks alone (palette, groups, and all) as a small JSON file, without the PDF — the easy way to hand a takeoff to someone who already has the plan set. See [Canvas layers](/guides/canvas-layers/).
 
 ## Reading the bare drawing

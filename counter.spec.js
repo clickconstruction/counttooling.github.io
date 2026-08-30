@@ -323,3 +323,62 @@ test.describe('T2-05 counter-modal create ergonomics', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// T2-13 — the Manage Icons opener re-homed from Settings → Advanced to a
+// "Manage icons…" link under the Create-tab icon grids (same form-group, so it
+// shows on both the Icon and Custom Icons sub-tabs). Hide-then-open keeps the
+// Escape chain honest: the counter modal must never be visible behind
+// Manage Icons.
+test.describe('T2-13 Manage icons… link on the Create tab', () => {
+  test('link opens Manage Icons; rename round-trips into the +Add prefill', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // 1. + Add → the link is visible on the Icon sub-tab AND the Custom
+    // Icons sub-tab (it sits in the shared form-group, outside both panels).
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const link = page.locator('#counterManageIcons');
+    await expect(link).toBeVisible();
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]').click();
+    await expect(link).toBeVisible();
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="icon"]').click();
+
+    // 2. Click: counter modal hides, Manage Icons opens (never both visible).
+    await link.click();
+    await page.waitForSelector('#manageIconsModal.visible', { timeout: 5000 });
+    const modals = await page.evaluate(() => ({
+      counter: document.getElementById('counterModal').classList.contains('visible'),
+      manage: document.getElementById('manageIconsModal').classList.contains('visible'),
+    }));
+    expect(modals.counter).toBe(false);
+    expect(modals.manage).toBe(true);
+
+    // 3. Rename the first built-in icon and Save.
+    await page.evaluate(() => {
+      const row = document.querySelector('#manageIconsList .manage-icon-row');
+      const inp = row.querySelector('input');
+      inp.value = 'T2-13 Renamed';
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.locator('#manageIconsSave').click();
+    await page.waitForFunction(
+      () => !document.getElementById('manageIconsModal')?.classList.contains('visible'),
+      { timeout: 5000 },
+    );
+
+    // 4. Reopen + Add: the prefill walk (zero counters → icons[0]) renders the
+    // renamed name. Assert the rendered value, not any fixed icon constant.
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await expect(page.locator('#counterName')).toHaveValue('T2-13 Renamed');
+
+    expect(errors).toEqual([]);
+  });
+});

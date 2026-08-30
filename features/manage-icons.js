@@ -5,8 +5,9 @@
  * Loaded as a classic <script src="features/manage-icons.js"> AFTER app.js. Its
  * own IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
- * openManageIconsModal back onto App (the single inbound call site - Advanced ->
- * Manage Icons - calls App.openManageIconsModal at user-action time), and binds
+ * openManageIconsModal back onto App (the single inbound call site - the
+ * counter Create tab's "Manage icons…" link in features/counter.js - calls
+ * App.openManageIconsModal at user-action time), and binds
  * the modal's Close / Cancel / Save buttons at this file's load.
  *
  * getOrderedIcons / iconVbFor / getUserCustomIcons / saveUserCustomIcons /

@@ -183,6 +183,10 @@
     };
   }
   document.getElementById('counterChooseCancel').onclick = () => App.hideModal('counterModal');
+  // Hide-then-open (mirrors the retired Advanced opener) is load-bearing: the
+  // Escape chain checks counterModal before manageIconsModal, so the two must
+  // never be visible together.
+  document.getElementById('counterManageIcons').onclick = () => { App.hideModal('counterModal'); App.openManageIconsModal(); };
 
   document.getElementById('addCounter').onclick = () => {
     showCounterTab('create');

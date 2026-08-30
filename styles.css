@@ -1139,6 +1139,14 @@
     #scaleModal .modal-card > :not(.counter-tab-panel) { flex: 0 0 auto; }
     #scaleModal .counter-tab-panel { overflow-y: auto; min-height: 0; }
     #scaleModal .scale-presets-list { max-height: none; }
+    /* Same disease for the Counter modal: the Create tab (grown by T2-13's
+       "Manage icons…" row) outgrows short viewports and flex-centering pushes
+       the search row + tabs above the top edge, under the z-250 header where
+       clicks land on the toolbar instead. Clamp the card and scroll the active
+       tab panel; search row and tabs stay pinned. */
+    #counterModal .modal-card { display: flex; flex-direction: column; max-height: min(85vh, calc(100vh - 64px)); overflow: hidden; }
+    #counterModal .modal-card > :not(.counter-tab-panel) { flex: 0 0 auto; }
+    #counterModal .counter-tab-panel { overflow-y: auto; min-height: 0; }
     .scale-presets-list { max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .scale-presets-list button { width: 100%; padding: 10px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.95rem; cursor: pointer; }
     .scale-presets-list button:hover { background: var(--surface3); }

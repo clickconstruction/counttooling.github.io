@@ -2586,8 +2586,18 @@
     }
     const exportImportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="import-canvas"]');
     if (exportImportCanvasOpt) {
-      const showImportCanvas = !shieldImportMode && !state.isViewer && !hasCanvasMarkupForExport ? '' : 'none';
-      exportImportCanvasOpt.style.display = showImportCanvas;
+      // B12 (J12): with marks on the canvas this row used to vanish outright —
+      // mid-recovery that reads as the feature disappearing. Editors now always
+      // see the row; when marks exist it greys out (disabled, so the click
+      // never fires) with the unblock path spelled inline via the
+      // #importCanvasBlockedNote qualifier (textContent, not display:none —
+      // the burger drawer copies labels via textContent, which would leak
+      // hidden text). Viewers still never see it (B6); shield-import mode
+      // hides the whole menu content anyway.
+      exportImportCanvasOpt.style.display = (!shieldImportMode && !state.isViewer) ? '' : 'none';
+      exportImportCanvasOpt.disabled = hasCanvasMarkupForExport;
+      const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
+      if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks — clear or undo first)' : '';
     }
     let showExportDropdown = showExportDropdownBase;
     if (showExportDropdown && !shieldImportMode && exportContent) {

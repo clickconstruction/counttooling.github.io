@@ -48,7 +48,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Highlights** — Flag a region for attention without affecting any counts.
 - **Notes (movable, resizable)** — Put questions and reminders right on the sheet where they matter.
 - **Legend overlay** — A draggable on-canvas summary keeps live counts and lengths in view while you work — and prints with the sheet.
-- **Hide marks (eye toggle)** — Peel the whole takeoff off the drawing to read the bare plan, then flip it back — purely visual, data untouched.
+- **Hide marks (eye toggle)** — Peel the whole takeoff off the drawing to read the bare plan, then flip it back — purely visual, data untouched — and hidden marks can't be grabbed by accident.
 - **Drop-size peek + Drop sizes toggle** — Hover or tap any drop marker to read its rise/fall ("3 ft") without opening anything — viewers included — or flip one header toggle to label every drop on the sheet; off by default so a dense plan stays clean.
 - **Canvas layers (multiple canvases per page)** — Keep alternates, trades, or bid options as separate overlays on the same sheet and switch with the arrow keys.
 - **Show-all-canvases peek** — See every layer at once to compare, without changing what you're editing — or right-click the peek button to show just the current layer plus one or two chosen others.

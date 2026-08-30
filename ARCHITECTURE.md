@@ -28,7 +28,7 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,121 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,124 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 919 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
@@ -211,6 +211,7 @@ modules. Candidates in priority order:
 | [drop-mode.spec.js](drop-mode.spec.js) | Playwright regression for the Drop tool + the recent-drops surfaces: arm/palette/custom-size flow, one-drop-per-shared-joint, toggle-clear, per-click undo, the Esc ladder, the context-menu "Drop N ft here" repeat row (nearest-end targeting via `ctxTarget.pdf`), the Line Properties Recent chips reading the same store, decimal + ft-in entry storing exactly what the field shows, and the no-op-close-stays-clean contract (not dirty, no undo slot burned). |
 | [features/drop-peek.js](features/drop-peek.js) | **Drop-size + counter-name disclosure** (wendi's view-mode requests): with the Move tool, hovering/tapping a drop marker OR a counter marker shows a DOM peek chip (`#dropPeekChip` — line-type name + the drop in its stored unit, or the counter's name + "#N · M on this page" matching the index painted on the marker); a click PINS it, and any pointerdown / wheel / keydown dismisses it (covers pan, zoom, page nav, rotate, undo). Drop hit-tests ride `App.collectDropNodes` (coincident ends = ONE node = one value), counter hits scan `counterMarkers`, nearest target wins; both mirror renderAnnotations' active-vs-merged source pick and are gated to `TOOL.NONE` + `!hideMarks` — so it works for viewers (the handleCanvasClick viewer gate admits NONE). Also owns the **"Drop sizes" toggle** `#dropSizesBtn` (beside `#hideMarksBtn`; mirrored as a burger-drawer row on mobile): flips `state.showDropSizes`, which renderAnnotations passes as `env.showDropSizes` so canvas-draw paints a value chip beside every drop glyph — live overlay only, exports untouched. Button shows only when the project has drops (`App.projectHasAnyDrops`). Persisted per device: `view:dropSizes:<token>` (restored by features/view-only.js) or `clickcount-show-drop-sizes`. app.js hooks: `App.onDropPeekHover` (mousemove tail), `App.onDropPeekClick` (TOOL.NONE click branch), `App.updateDropSizesButton` (updateUI). Regression: [drop-peek.spec.js](drop-peek.spec.js). |
 | [drop-peek.spec.js](drop-peek.spec.js) | Playwright regression for the peek chip: a REAL hover over a drop marker shows it (name + value in the drop's own unit, one value at a chain joint) and hover-away hides it; a hover over a counter marker names its counter + "#N · M on this page"; click pins; pointerdown / wheel / keydown each dismiss; the `#dropSizesBtn` toggle appears only once the project has drops, flips state + aria-pressed, persists per device, and survives a reload; no peek while a draw tool is armed or Hide marks is on. |
+| [hide-marks.spec.js](hide-marks.spec.js) | Playwright regression for the Hide-marks eye toggle: pixel-level overlay blank/restore, icon swap + aria state, data preserved, hidden state persisting across page nav — plus the **inertness coverage** (T2-03): with marks hidden, a REAL drag at a hidden note/legend moves nothing (the gesture pans the sheet), right-click opens no per-mark menu (`ctxTarget` stays null), dblclick opens no note editor, and the cursor never shows `move`; with marks shown the same drag/right-click/hover work as before (controls). |
 | [features/highlight-labels.js](features/highlight-labels.js) | **Named highlights** (wendi's review request): label a highlight and jump back to it. Right-click a highlight → `#ctxNameHighlight` ("Name/Rename highlight…", shown by `showContextMenu`) → `#highlightNameModal` writes `h.label` onto the annotation — drawn by `drawAnnotationsCore` (canvas-draw.js) as a solid tag above the rect's top-left in live + export, and riding save/load + export/import untouched (the appliers pass highlight arrays through whole). The `#highlightPanel` bookmarks panel reuses the Chain/Drop palette idiom (shown while `TOOL.HIGHLIGHT` is armed, draggable via `highlightPanelPos`, Esc ladder: cancel rect → close panel → exit tool): rows list every page's highlights merged across canvas layers (page order, named first); row click = jump to that page (`currentPage` + `fitZoom`, the lines-list pattern), ✎ = name/rename. app.js hooks: `App.onHighlightToolSync` (updateUI), `App.openHighlightPanel` (`#highlightBtn` re-click), `App.isHighlightPanelOpen`/`App.closeHighlightPanel` (Escape branch). The tool's right-click context action ("Highlights panel…", features/tool-context-menu.js) arms the tool + opens the panel. Regression: [highlight-labels.spec.js](highlight-labels.spec.js). |
 | [features/twin-badge.js](features/twin-badge.js) | **Digital-twin visibility** (PipeTooling `docs/DIGITAL_TWINS_PLAN.md`, Phase E2 — the CountTooling half). Twins are agent-operated accounts that do real takeoffs, so the program's review loop depends on a twin never reading as a person. Two surfaces: (1) the signed-in twin's own chrome banner (`renderTwinBanner`, driven from `state.isDigitalTwin` — read from `profiles.is_digital_twin` alongside `is_admin` at all four auth sites in app.js — and called from `updateUI`; sets `body.twin-session`, which shortens `.app` by the 28px banner height so the fixed-viewport shell is not clipped); (2) badges on every surface that names somebody ELSE — the checkout holder (header edit status + status bar + [features/load-project.js](features/load-project.js) + [features/manage-projects.js](features/manage-projects.js) + [features/turn-in.js](features/turn-in.js)), project shares ([features/share-links.js](features/share-links.js)), project owners (Manage Projects meta + the Load Project admin owner filter), the share/User Activity pickers ([features/user-activity.js](features/user-activity.js) + [features/user-activity-overview.js](features/user-activity-overview.js)), and the admin user list ([features/user-admin.js](features/user-admin.js)). Identifying another user has **two** sources and `isTwinUser` ORs them: an explicit `is_digital_twin` on the row (the admin list only — added to `list_users_for_admin()` and to the `admin-list-users` fallback), and the fleet email pattern `twin-<role>-<n>@twins.counttooling.local` everywhere else, since checkout/share rows carry only an email. The role segment is left open rather than pinned to `estimator` so a later role rollout does not silently stop badging. Registers `App.isTwinEmail`, `App.isTwinUser`, `App.twinBadgeHtml` (innerHTML surfaces), `App.twinEmailText` (textContent surfaces), `App.renderTwinBanner`. Only App.* dep is `App.state`. Regression: [twin-badge.spec.js](twin-badge.spec.js). |
 | [takeoff-eval.js](takeoff-eval.js) + [supabase/functions/import-takeoff](supabase/functions/import-takeoff/index.ts) | **The agent takeoff door** (Wave 3 of PipeTooling's estimator-twin pipeline; payload contract [TAKEOFF_IMPORT.md](TAKEOFF_IMPORT.md)). `import-takeoff`: twin-only (profiles.is_digital_twin), always the caller's own project, idempotent by (owner, name) — re-import replaces, never duplicates — canvas-only (no PDF; a human attaches/copies the set at review), builds the exact save-engine data shape (single Main canvas per page, palette from the payload, `data.agentImport` provenance), 400s NAME the failing field so agents self-correct. `takeoff-eval.js` (UMD, node-tested in [takeoff-eval.test.js](takeoff-eval.test.js)): `tally`/`diffTakeoffs` — counts per counter NAME, decimal feet per line-type NAME (copy-tooling-feet denomination: unscaled px reported separately, never summed), match/over/under/missing/extra verdicts + summary accuracy — the scoring rail for agent-vs-human takeoffs. |
@@ -522,60 +523,60 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L592 - Undo/redo stacks
 - L732 - [sync] Checkout probe, hashing & PDF cache
 - L794 - Math & Format Helpers
-- L1207 - Coordinate Helpers
-- L1215 - PDF render bitmap cache
-- L1269 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1280 - PDF Rendering
-- L2040 - UI Render Functions
-- L2625 - Inline rename & polyline edit mode
-- L2739 - Modal primitives (showModal / hideModal)
-- L2770 - Toasts & line color picker
-- L2824 - Airboard cloud sync
-- L2869 - Supabase RPC & presence heartbeat
-- L2909 - User activity / event telemetry
-- L2968 - Supabase auth & dev auth
-- L3112 - [sync] Checkout subscription & permission refresh
-- L3122 - Modals & Handlers
-- L3190 - PDF intake (upload, test PDF, hashing)
-- L3198 - Toolbar tool buttons
-- L3370 - Tool sidebar buttons & legend overlay
-- L3461 - Add Line Type modal
-- L3546 - Line color & sidebar handlers
-- L3755 - Polyline modal & drawing
-- L3786 - Zoom bar & page navigation
-- L3812 - Export canvas JSON
-- L3828 - PDF download helpers
-- L3837 - View-link URL helpers & show-highlights/notes
-- L3909 - Custom icon upload handler
-- L3919 - Export & report dropdown menus
-- L4006 - Sidebar drawer toggles
-- L4017 - Mobile actions burger menu pointer & header logo
-- L4029 - User Activity pointer (format.js + features/user-activity.js)
-- L4041 - My Settings pointer (features/my-settings.js)
-- L4064 - Auth & settings entry buttons
-  - L4109 - Project Settings checkout & Save Status bell
-  - L4201 - [sync] Checkout expired recovery
-  - L4257 - [sync] Turn In
-  - L4367 - Share modal pointer & copy-project openers
-  - L4398 - Settings menu actions
-  - L4419 - Auth sign-in form
-  - L4444 - Save Project modal
-  - L4457 - Checkout expired recovery modal wiring
-  - L4562 - Last-session restore prompt
-  - L4569 - Canvas Repair modal wiring
-- L4756 - Canvas Event Handlers
-- L5202 - Event Binding
-- L5212 - Aim loupe (mobile press-hold precise placement)
-- L5353 - Zoom transform preview & commit
-- L5432 - Canvas mouse, wheel & touch handlers
-- L6140 - Global dropdown dismissal & keyboard hotkeys
-- L6450 - [sync] Manual save to cloud
-- L6460 - [sync] Auto-save
-- L6467 - [sync] Local backup (IndexedDB takeoff state)
-- L6600 - [sync] Checkout keep-alive
-- L6614 - App feature registry
-- L6908 - View-only mode
-- L6914 - Init / boot
+- L1210 - Coordinate Helpers
+- L1218 - PDF render bitmap cache
+- L1272 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1283 - PDF Rendering
+- L2043 - UI Render Functions
+- L2628 - Inline rename & polyline edit mode
+- L2742 - Modal primitives (showModal / hideModal)
+- L2773 - Toasts & line color picker
+- L2827 - Airboard cloud sync
+- L2872 - Supabase RPC & presence heartbeat
+- L2912 - User activity / event telemetry
+- L2971 - Supabase auth & dev auth
+- L3115 - [sync] Checkout subscription & permission refresh
+- L3125 - Modals & Handlers
+- L3193 - PDF intake (upload, test PDF, hashing)
+- L3201 - Toolbar tool buttons
+- L3373 - Tool sidebar buttons & legend overlay
+- L3464 - Add Line Type modal
+- L3549 - Line color & sidebar handlers
+- L3758 - Polyline modal & drawing
+- L3789 - Zoom bar & page navigation
+- L3815 - Export canvas JSON
+- L3831 - PDF download helpers
+- L3840 - View-link URL helpers & show-highlights/notes
+- L3912 - Custom icon upload handler
+- L3922 - Export & report dropdown menus
+- L4009 - Sidebar drawer toggles
+- L4020 - Mobile actions burger menu pointer & header logo
+- L4032 - User Activity pointer (format.js + features/user-activity.js)
+- L4044 - My Settings pointer (features/my-settings.js)
+- L4067 - Auth & settings entry buttons
+  - L4112 - Project Settings checkout & Save Status bell
+  - L4204 - [sync] Checkout expired recovery
+  - L4260 - [sync] Turn In
+  - L4370 - Share modal pointer & copy-project openers
+  - L4401 - Settings menu actions
+  - L4422 - Auth sign-in form
+  - L4447 - Save Project modal
+  - L4460 - Checkout expired recovery modal wiring
+  - L4565 - Last-session restore prompt
+  - L4572 - Canvas Repair modal wiring
+- L4759 - Canvas Event Handlers
+- L5205 - Event Binding
+- L5215 - Aim loupe (mobile press-hold precise placement)
+- L5356 - Zoom transform preview & commit
+- L5435 - Canvas mouse, wheel & touch handlers
+- L6143 - Global dropdown dismissal & keyboard hotkeys
+- L6453 - [sync] Manual save to cloud
+- L6463 - [sync] Auto-save
+- L6470 - [sync] Local backup (IndexedDB takeoff state)
+- L6603 - [sync] Checkout keep-alive
+- L6617 - App feature registry
+- L6911 - View-only mode
+- L6917 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -1108,7 +1109,10 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   clears the overlay then early-returns, so the bare PDF shows through (counters,
   lines, highlights, notes, legend all hide at once — purely visual; the underlying
   data is untouched, and exports/reports use `renderAnnotationsToContext` so they're
-  unaffected). The icon swaps eye ⇄ eye-slash via `updateHideMarksButton` (called
+  unaffected). Hide-marks also blanks **hit testing** (T2-03): `hitTest`
+  early-returns null while hidden, so hidden marks can't be dragged, edited, or
+  context-menued — a drag falls through to the normal sheet pan, matching the
+  paint. The icon swaps eye ⇄ eye-slash via `updateHideMarksButton` (called
   from `updateUI`). Persists across pages/zoom (every render checks the flag) and,
   in view-link sessions, across reloads (`localStorage` `view:hideMarks:<token>`,
   restored in `initViewOnlyMode`).

@@ -132,6 +132,53 @@ test.describe('Render worker', () => {
     expect(errors).toEqual([]);
   });
 
+  test('rapid double project-load stays worker-rastered with zero fallbacks', async ({ page }) => {
+    // Regression: every re-adoption (project switch / re-upload) posts a new
+    // 'load' to the SAME worker, whose previous document's destroy() used to
+    // run unawaited — pdf.js then threw "PDFWorker.fromPort - the worker is
+    // being destroyed" from the very next getDocument on the shared port,
+    // the load failed, and the whole session fell back to main-thread
+    // rasters (production telemetry: render_worker_fallback "doc-load: ...").
+    const errors = [];
+    await boot(page, errors);
+    await page.waitForFunction(() => window.App.__renderWorkerState() === 'ready', null, { timeout: 15000 });
+
+    // Two back-to-back re-uploads (the intake appends pages, rebuilding the
+    // PDF — a NEW pdf.js document/transport each time) — each one re-adopts
+    // into the live worker.
+    const docs = [
+      { file: 'test-page.pdf', pages: 3 },
+      { file: 'test-2pages.pdf', pages: 5 },
+    ];
+    for (const d of docs) {
+      await page.locator('#pdfInput').setInputFiles(path.join(__dirname, d.file));
+      await page.waitForFunction((n) => document.querySelectorAll('#pagesList .sidebar-item').length === n, d.pages, { timeout: 15000 });
+      // The first raster of the new doc kicks re-adoption (gen bump is
+      // synchronous, so slots[0].loaded is false until the new load lands).
+      await page.waitForFunction(() => {
+        const s = window.App.__renderServiceStats();
+        const st = window.App.__renderWorkerState();
+        return st === 'failed' || (st === 'ready' && s.slots[0] && s.slots[0].loaded);
+      }, null, { timeout: 15000 });
+      expect(await page.evaluate(() => window.App.__renderWorkerState())).toBe('ready');
+    }
+
+    // Prove the final document actually rasters in the worker, fallback-free.
+    const result = await page.evaluate(async () => {
+      const before = window.App.__renderServiceStats().workerRastered;
+      window.App.clearPdfBitmapCache();
+      window.App.renderPdf();
+      await new Promise((r) => setTimeout(r, 1500));
+      const s = window.App.__renderServiceStats();
+      return { workerGained: s.workerRastered - before, fallbacks: s.fallbacks, mode: window.App.__renderServiceMode() };
+    });
+    expect(result.workerGained).toBeGreaterThanOrEqual(1);
+    expect(result.fallbacks).toBe(0);
+    expect(result.mode).toBe('worker');
+    expect(await page.evaluate(canvasHasContentFn)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
   test('DISABLE_RENDER_WORKER escape hatch keeps everything on the main thread', async ({ page }) => {
     const errors = [];
     await page.addInitScript(() => { window.DISABLE_RENDER_WORKER = true; });

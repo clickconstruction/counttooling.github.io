@@ -157,6 +157,10 @@
       <button id="dropSizesBtn" class="header-settings-gear sidebar-triggers consolidated-mobile" style="display:none;" aria-label="Drop sizes" aria-pressed="false" title="Drop sizes">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M192 96h256v44H192zM320 176l62 76H358v136h24l-62 76-62-76h24V252h-24zM192 500h256v44H192z"/></svg>
       </button>
+      <button id="notesLedgerBtn" class="header-settings-gear sidebar-triggers consolidated-mobile notes-ledger-btn" style="display:none;" aria-label="Notes ledger" aria-expanded="false" title="Notes ledger">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L384 544L544 384L544 160C544 124.7 515.3 96 480 96L160 96zM192 208L448 208L448 252L192 252L192 208zM192 300L448 300L448 344L192 344L192 300zM192 392L320 392L320 436L192 436L192 392zM400 500L400 448C400 421.5 421.5 400 448 400L500 400L400 500z"/></svg>
+        <span id="notesLedgerBadge" class="notes-ledger-badge" style="display:none;"></span>
+      </button>
       <button id="headerShareBtn" class="header-settings-gear sidebar-triggers supabase-only consolidated-mobile" aria-label="Share" title="Share">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
       </button>
@@ -2695,6 +2699,28 @@
     <button class="danger" id="ctxDelete">Delete</button>
     <div id="ctxTargetNameRow" class="context-menu-target-name" aria-hidden="true"></div>
   </div>
+  <div id="notesLedgerDrawer" class="notes-ledger-drawer" role="dialog" aria-label="Notes ledger">
+    <div class="notes-ledger-head">
+      <span class="notes-ledger-heading">Notes</span>
+      <div class="notes-ledger-filters">
+        <button type="button" class="notes-ledger-filter active" data-filter="all">All</button>
+        <button type="button" class="notes-ledger-filter" data-filter="rfi">RFI</button>
+        <button type="button" class="notes-ledger-filter" data-filter="open">Open</button>
+      </div>
+      <button type="button" class="notes-ledger-close" aria-label="Close">×</button>
+    </div>
+    <div class="notes-ledger-list"></div>
+    <div class="notes-ledger-foot">
+      <label class="notes-ledger-mode">On sheet
+        <select id="notesDisplayMode">
+          <option value="auto">Auto (pin long + RFI)</option>
+          <option value="text">Always text</option>
+          <option value="pins">Always pins</option>
+        </select>
+      </label>
+      <button type="button" id="notesLedgerCopyRfi">Copy RFI flags</button>
+    </div>
+  </div>
   <script src="/app.js"></script>
   <script src="/features/canvas-repair.js"></script>
   <script src="/features/view-only.js"></script>
@@ -2734,6 +2760,7 @@
   <script src="/features/item-details.js"></script>
   <script src="/features/output.js"></script>
   <script src="/features/rfi-flags.js"></script>
+  <script src="/features/notes-ledger.js"></script>
   <script src="/features/share-links.js"></script>
   <script src="/features/import-clear.js"></script>
   <script src="/features/zone-modals.js"></script>

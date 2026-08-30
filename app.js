@@ -1150,6 +1150,13 @@
     }
     for (let i = 0; i < (ann.notes || []).length; i++) {
       const n = ann.notes[i];
+      // Ledger-pin notes (features/notes-ledger.js) hit-test as a circle at the
+      // anchor — no text box, no resize/font handles.
+      if (App.isPinNote && App.isPinNote(n)) {
+        const pinRadPdf = 10 / state.zoom;
+        if (ptDist(pos, { x: n.x, y: n.y }) <= Math.max(r, pinRadPdf)) return { type: 'note', index: i };
+        continue;
+      }
       const noteRot = getNoteRotationRad(n, page);
       const cosR = Math.cos(noteRot), sinR = Math.sin(noteRot);
       const localToViewport = (note, lx, ly) => ({ x: note.x + cosR * lx - sinR * ly, y: note.y + sinR * lx + cosR * ly });
@@ -1841,6 +1848,17 @@
       selection: sel ? { id: state.selectedLineId, isPoly: state.selectedLineIsPoly } : null,
       drawNoteHandles: true,
       showDropSizes: !!state.showDropSizes,   // the "Drop sizes" toggle (features/drop-peek.js); live overlay only
+      // Notes-ledger pins (features/notes-ledger.js); live overlay only — the
+      // map is built once per render, keyed by note object reference.
+      notePin: (() => {
+        const pinMap = App.getNotesPinMap ? App.getNotesPinMap() : null;
+        if (!pinMap) return null;
+        const eff = currentEffDpr;
+        return (n) => {
+          const info = pinMap.get(n);
+          return info ? { ...info, r: info.r * eff } : null;
+        };
+      })(),
     });
     if (state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
@@ -2065,6 +2083,9 @@
     // (features/header-more.js) re-syncs its button/menu active state after
     // every UI reconcile.
     App.onHeaderMoreSync && App.onHeaderMoreSync();
+    // Same seam: the Notes ledger (features/notes-ledger.js) re-syncs its
+    // header badge and, when open, its drawer rows.
+    App.onNotesLedgerSync && App.onNotesLedgerSync();
     notePerfSample('updateUIMs', performance.now() - t0);
   }
   // N3: rapid mark placement must never rebuild the sidebar per click — the

@@ -45,6 +45,11 @@
 //   selection         { id, isPoly } | null — live-only glow (2x width +
 //                     shadowBlur) on the selected quick line / polyline
 //   drawNoteHandles   live-only note resize/rotate handle squares
+//   notePin           live-only (features/notes-ledger.js): (note) -> pin
+//                     info { num, color, resolved, r } | null. Non-null draws
+//                     the note as a numbered ledger pin instead of its text
+//                     block. The export env never sets it — PDFs/prints keep
+//                     full note text.
 //   showDropSizes     live-only (the "Drop sizes" toggle): paint a small
 //                     white value chip ("3 ft") beside every drop glyph,
 //                     offset along the run's outward direction. The export
@@ -520,6 +525,37 @@ function createCanvasDraw(deps) {
     drawRoomBoxesToContext(ctx, ann, env.pageIdx, tc, env.fontScale);
     (ann.notes || []).forEach(n => {
       if (!n.text) return;
+      const pin = env.notePin ? env.notePin(n) : null;
+      if (pin) {
+        const p = tc({ x: n.x, y: n.y });
+        const r = pin.r || 9;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        if (pin.resolved) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.lineWidth = Math.max(1.5, r / 4.5);
+          ctx.strokeStyle = pin.color;
+          ctx.stroke();
+          ctx.fillStyle = pin.color;
+        } else {
+          ctx.fillStyle = pin.color;
+          ctx.fill();
+          ctx.lineWidth = Math.max(1, r / 6);
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+        }
+        ctx.font = '500 ' + Math.round(r * (pin.num >= 100 ? 0.9 : 1.1)) + 'px DM Sans';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(pin.num), p.x, p.y + 0.5);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.restore();
+        return;
+      }
       const w = n.width || 150;
       const fontSize = n.fontSize || 14;
       const noteScale = env.fontScale;

@@ -57,6 +57,10 @@
       const when = proj.reviewed_at ? ' title="Reviewed ' + esc(new Date(proj.reviewed_at).toLocaleDateString()) + '"' : '';
       return '<span class="bid-card-badge bid-card-badge-reviewed"' + when + '>Reviewed ✓</span>';
     }
+    if (proj.review_status === 'changes') {
+      const note = proj.review_note ? ' title="' + esc(proj.review_note) + '"' : '';
+      return '<span class="bid-card-badge bid-card-badge-warn"' + note + '>Changes requested</span>';
+    }
     return '';
   }
 
@@ -84,7 +88,10 @@
         cloudBadge +
         (date ? '<span class="bid-card-date">' + esc(date) + '</span>' : '') +
       '</div>' +
-      (canMarkReviewed ? '<button type="button" class="bid-card-review-btn">Mark reviewed</button>' : '') +
+      (canMarkReviewed
+        ? '<button type="button" class="bid-card-review-btn">Mark reviewed</button>' +
+          '<button type="button" class="bid-card-changes-btn">Request changes…</button>'
+        : '') +
       '<div class="bid-card-status">Loading…</div>' +
       '</div>';
   }
@@ -156,6 +163,28 @@
           } else {
             App.showToast((res && res.error) || 'Could not mark reviewed.', 4000);
             reviewBtn.disabled = false;
+          }
+        };
+      }
+      const changesBtn = card.querySelector('.bid-card-changes-btn');
+      if (changesBtn) {
+        changesBtn.onclick = async function (e) {
+          e.stopPropagation();
+          // The server refuses a blank note ('changes' without guidance is noise) —
+          // prompt keeps this dependency-free; cancel aborts cleanly.
+          const note = window.prompt('What should change before this bid comes back?');
+          if (note == null || !note.trim()) return;
+          changesBtn.disabled = true;
+          const res = await App.setProjectReviewStatus(proj.id, 'changes', note.trim());
+          if (res && res.ok) {
+            proj.review_status = 'changes';
+            proj.review_note = note.trim();
+            proj.reviewed_at = new Date().toISOString();
+            App.showToast('Changes requested on "' + (proj.name || 'Untitled') + '".', 3000);
+            renderBidBoardList();
+          } else {
+            App.showToast((res && res.error) || 'Could not request changes.', 4000);
+            changesBtn.disabled = false;
           }
         };
       }

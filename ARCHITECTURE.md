@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,314 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,374 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 919 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,786 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,716 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 710 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
+| [app/index.html](app/index.html) | 2,788 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,722 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 715 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 845 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 611 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (68 files) | 16,035 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (68 files) | 16,050 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -177,7 +177,7 @@ modules. Candidates in priority order:
 | [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
 | [features/canvas-layers.js](features/canvas-layers.js) | Thirty-first feature-file split (`window.App` registry pilot #31; the last candidate named by the original extraction recipe) — the **canvas-layer management UI**: the Add Canvas modal (`#addCanvasModal`, new/duplicate modes; duplicate deep-copies the active layer via the new publish-only dep `App.deepCopyAnnotations`), the Canvas Details modal (`#canvasDetailsModal`, rename-committed on close; the Escape branch in app.js dispatches `#canvasDetailsClose`'s click so the commit lives in one place), the Delete Canvas confirm (→ the private `performDeleteCanvas`, which reactivates the first remaining layer), the footer layers menu (`#canvasLayersBtn`/`#canvasMenu`/`#canvasMenuAdd`), `#addCanvasBtn`, the show-all-canvases peek toggle, and the selective peek chooser (`#canvasPeekMenu` — right-click on `#showAllCanvasesBtn`; a checklist over the page's layers writing `state.peekCanvasIdsByPage`, active layer pinned, tool-context-menu-style dismissal listeners attached only while open, Escape swallowed in capture phase). The three state flags (`pendingAddCanvasMode`/`pendingCanvasEdit`/`pendingDeleteCanvas`) move as private `let`s; the `hideModal` resets go through the `App.onCanvasDetailsHidden`/`App.onDeleteCanvasConfirmHidden` callbacks; the canvas switcher's edit pen (renderCanvasSwitcher, app.js) opens the details modal via `App.openCanvasDetailsModal`. The canvas JSON export (`#exportBtn`) that shared the old section stays in app.js under the renamed marker `// SECTION: Export canvas JSON` |
 | [canvas-layers.spec.js](canvas-layers.spec.js) | Playwright regression for pilot #31 — Add creates an empty active layer; duplicate mode deep-copies the seeded layer's markers into a distinct annotations object; rename commits via Done **and** via Escape (same `#canvasDetailsClose` path); the delete confirm names the layer, removes it, and reactivates the first remaining one. Asserts no console / page errors; `npx playwright test canvas-layers.spec.js` (the peek toggle is covered by [show-all-canvases.spec.js](show-all-canvases.spec.js)) |
-| [features/my-settings.js](features/my-settings.js) | Thirty-second feature-file split (`window.App` registry pilot #32) — the **My Settings modal** (`#mySettingsModal`), the surface pilot #20 deliberately deferred: `openMySettings` (signed-out falls through to the auth modal via a dispatched `#authBtn` click), the **Artboard** rows (Save/Load via the newly-published engine helpers `App.saveUserAirboard`/`App.fetchUserAirboard`, Export to `artboard-backup.json`, Clear-with-defaults using the newly-published `App.PLUMBING_DEFAULTS`/`App.LINE_DEFAULTS`), the change-password form (`supabase.auth.updateUser` via `App.getSupabase()`), sign-out, close, and the admin Manage-Users/Manage-User/All-Users openers (feature-to-feature: `App.openManageUserModal`/`App.openAllUsersModal` + a dispatched `#manageUsersBtn` click into [features/user-admin.js](features/user-admin.js), whose `#mySettingsMyActivity` binding was already there). Registers `App.openMySettings`; the three openers (`#authBtn` signed-in path, `#sidebarLogoUser`, `#statusBarAuth`) stay in app.js as deferred `App.*` calls. The Airboard engine (`fetchUserAirboard`/`saveUserAirboard`) and the auth sign-in form stay in app.js (markers renamed `// SECTION: My Settings pointer` / `// SECTION: Settings menu actions` / `// SECTION: Auth sign-in form`) |
+| [features/my-settings.js](features/my-settings.js) | Thirty-second feature-file split (`window.App` registry pilot #32) — the **My Settings modal** (`#mySettingsModal`), the surface pilot #20 deliberately deferred: `openMySettings` (signed-out falls through to the sign-in wall via `App.openAuthGate('mySettings')` — Tier-3 B7: the wall shows a why-am-I-here line and reopens My Settings after sign-in), the **Artboard** rows (Save/Load via the newly-published engine helpers `App.saveUserAirboard`/`App.fetchUserAirboard`, Export to `artboard-backup.json`, Clear-with-defaults using the newly-published `App.PLUMBING_DEFAULTS`/`App.LINE_DEFAULTS`), the change-password form (`supabase.auth.updateUser` via `App.getSupabase()`), sign-out, close, and the admin Manage-Users/Manage-User/All-Users openers (feature-to-feature: `App.openManageUserModal`/`App.openAllUsersModal` + a dispatched `#manageUsersBtn` click into [features/user-admin.js](features/user-admin.js), whose `#mySettingsMyActivity` binding was already there). Registers `App.openMySettings`; the three openers (`#authBtn` signed-in path, `#sidebarLogoUser`, `#statusBarAuth` — the status-bar link now dispatches `#authBtn` so its signed-out click opens the PLAIN wall) stay in app.js as deferred `App.*` calls. The Airboard engine (`fetchUserAirboard`/`saveUserAirboard`) and the auth sign-in form stay in app.js (markers renamed `// SECTION: My Settings pointer` / `// SECTION: Settings menu actions` / `// SECTION: Auth sign-in form`) |
 | [my-settings.spec.js](my-settings.spec.js) | Playwright regression for pilot #32 — always-run: `App.openMySettings` registered; signed-out open falls through to the auth modal; Export artboard yields a real `artboard-backup.json` download; Clear artboard empties the palette + resets active tool state; the close binding hides a force-shown modal. The airboard cloud round-trip and password change stay cloud-gated per convention. Asserts no console / page errors; `npx playwright test my-settings.spec.js` |
 | [features/palette-insights.js](features/palette-insights.js) | **Palette Insights** (`#paletteInsightsModal`, opened from My Settings → Artboard → **Analyze My Usage**): cross-project counter / line-type usage via the `user_palette_usage` RPC (server-side aggregation — the client never downloads whole project JSONB blobs), ranked unadded-first, then by project breadth (breadth beats raw volume — one huge bid shouldn't dominate), then placements; the min-projects segmented filter (localStorage-persisted) filters both lists AND drives "Add all shown". One-click **ADDITIVE** adds to the cloud Artboard — a narrow fetch-merge-upsert of only the counters/line_types columns, deliberately NOT `App.saveUserAirboard` (the wholesale save, which would replace the Artboard with the current project's palette). Identity is case-insensitive name matching (counter/line-type ids are `uid()`-scoped per project); adds also land immediately in the open project. Regression: [palette-insights.spec.js](palette-insights.spec.js) |
 | [features/user-activity.js](features/user-activity.js) | Thirty-third feature-file split (`window.App` registry pilot #33; the last rung of the modal ladder) — the **admin User Activity modal** (`#userActivityModal`, the raw event log): `openUserActivityModal` (per-user events or the all-users view via raw `fetch()` against `list_user_activity_for_admin`), the Events/Summary view toggle (`list_user_activity_summary_for_admin`), the user-select dropdown (`list_users_for_admin`), the client-side filter over `state.userActivityAllRowsCache`, and the close binding; the `userActivitySelectSuppress` flag moves as a private `let`. The rich per-user **Activity overview** was split out to [features/user-activity-overview.js](features/user-activity-overview.js) 2026-07-30 at this file's documented domain seam (zero shared symbols); `App.openUserActivityModal` re-homes here — [features/user-admin.js](features/user-admin.js) consumes it at call time. Uses the published `SUPABASE_URL`/`SUPABASE_ANON_KEY` + the session token from `App.state` (these calls never used supabase-js). Three new publishes for the format.js helpers it renders with (`filterUserActivityRows`/`renderUserActivityAllUsersTableHtml`/`formatLastSignInUserActivity` — format.js globals are lint-invisible to the features eslint group); the pure formatters themselves stay in [format.js](format.js) |
@@ -223,6 +223,7 @@ modules. Candidates in priority order:
 | [takeoff-eval.js](takeoff-eval.js) + [supabase/functions/import-takeoff](supabase/functions/import-takeoff/index.ts) | **The agent takeoff door** (Wave 3 of PipeTooling's estimator-twin pipeline; payload contract [TAKEOFF_IMPORT.md](TAKEOFF_IMPORT.md)). `import-takeoff`: twin-only (profiles.is_digital_twin), always the caller's own project, idempotent by (owner, name) — re-import replaces, never duplicates — canvas-only (no PDF; a human attaches/copies the set at review), builds the exact save-engine data shape (single Main canvas per page, palette from the payload, `data.agentImport` provenance), 400s NAME the failing field so agents self-correct. `takeoff-eval.js` (UMD, node-tested in [takeoff-eval.test.js](takeoff-eval.test.js)): `tally`/`diffTakeoffs` — counts per counter NAME, decimal feet per line-type NAME (copy-tooling-feet denomination: unscaled px reported separately, never summed), match/over/under/missing/extra verdicts + summary accuracy — the scoring rail for agent-vs-human takeoffs. |
 | [features/rfi-flags.js](features/rfi-flags.js) | **RFI flags** — the CountTooling half of the cross-app RFI loop (PipeTooling `docs/RFI_LOOP_PLAN.md` R2; estimator-twin pipeline Wave 2.2). Convention: a canvas note whose text starts with `RFI:` (case-insensitive, optional space before the colon) is a question for the GC, dropped at the exact ambiguous spot while drawing — human estimators and agent twins share the identical capture gesture, zero CT-side schema. The sidebar **Copy RFI Flags** button (`#copyRfiFlags`, Output cluster next to Copy Summary) collects every such note across ALL pages and ALL canvases into a tab-delimited clipboard list — header `RFI flags\t<project>`, then `p<N> <pageName>[ · <canvas>]\t<question>` rows (the canvas label appears only on multi-canvas pages, where it disambiguates) — that pastes into PipeTooling's RFI queue, the same clipboard seam Copy to /Tooling uses for counts. Empty case alerts instead of copying. Registers `App.collectRfiFlags` / `App.buildRfiFlagsText` / `App.copyRfiFlags`; deps read at call time: `state`, `showToast`, `logUserEvent` (best-effort). Regression: [rfi-flags.spec.js](rfi-flags.spec.js). |
 | [features/auth-magic-link.js](features/auth-magic-link.js) | **Email sign-in fallback**: after two failed password attempts on the SAME email, the Sign In modal reveals an offer block — “Email me a sign-in link” — that sends a magic link via `signInWithOtp` with **`shouldCreateUser: false`** (PipeTooling is the system of record; a typo'd email must never provision a CT-only account) and `emailRedirectTo` `/app/` (allowlisted). Link consumption is the stock `detectSessionInUrl` + `onAuthStateChange` path twin-login's mints already exercise — this file owns only the modal UX: TWO entry points sharing one send path — the always-visible quiet link under the actions (“No password? Email me a sign-in link” — PT-provisioned accounts are born with unusable random passwords, so the link IS their sign-in; it yields whenever the offer box is up, never both at once) and the failure-gated offer box (per-email counter, app.js's submit handler reports via `App.onAuthSignInFailed(email)`; per-email so a typo'd address's failures don't qualify the corrected one) — plus the “Check your email” sent state with the open-on-THIS-device warning and a 60s resend cooldown, and reset on modal close (`App.onAuthMagicLinkReset` from the hideModal ladder — the groups.js precedent) or successful sign-in. OTP errors surface honestly but translated (`friendlyOtpError`: “Signups not allowed for otp” → no-account-ask-your-admin; rate limit and ban get plain words; enumeration-hardening traded away for an invite-only tool). App.* deps: `getSupabase`. Regression: [auth-magic-link.spec.js](auth-magic-link.spec.js) (5 tests, GoTrue endpoints stubbed via routes — always run). |
+| [auth-wall.spec.js](auth-wall.spec.js) | Playwright regression for the Sign-In wall copy & gate intents (Tier-3 B7, J13 J16 J17): the static `#authWallHelp` office-admin + phone lines; `#authGateLine` shown only for gated openers (`App.openAuthGate` — User Settings / Project Settings > Save / Load Project) and cleared by Cancel/Escape or a plain open; reopen-after-sign-in (stubbed GoTrue password grant + a blanket `rest/v1` stub, the auth-magic-link.spec route pattern); fetch exceptions rendered as plain words while server messages pass through; and the rewritten admin modal copy (Add User heading/subtitle, Manage Users subtitle, the de-duplicated Activity log / Activity overview headings). Always runs — no cloud needed; `npx playwright test auth-wall.spec.js` |
 | [highlight-labels.spec.js](highlight-labels.spec.js) | Playwright regression for named highlights: the bookmarks panel appears when the tool is armed and lists seeded highlights across pages (unnamed count in the foot); a REAL right-click on a highlight offers "Name highlight…", the modal's Enter/Save writes `h.label`, the label paints ink, the panel re-sorts named-first and the same right-click now reads "Rename highlight…"; a row click jumps to the row's page; the context-menu name row echoes the label; and the Esc ladder (close panel → exit tool) + re-click-reopens contract. |
 | [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale. Refuses to run while [app.js](app.js) or this file holds an unresolved git conflict marker (`assertNoConflictMarkers` from [scripts/lib/markers.js](scripts/lib/markers.js) — see the build-sw bullet in PWA/offline for the incident) |
 | [scripts/build-filemap.js](scripts/build-filemap.js) | Node script (no deps) that restamps the "Large-file map" table above: each row's Lines cell, the `features/*.js (NN files) \| total` aggregate, and the caption date (only when a count moved, so `--check` is deterministic day to day). Generator owns the numbers; humans own which files are listed and the Status/verdict prose — a hand-added row gets its count kept fresh. Refuses to run while this file or any counted file holds an unresolved git conflict marker ([scripts/lib/markers.js](scripts/lib/markers.js) guard — markers would both corrupt the splice and inflate the counts). `npm run build:filemap`; `--check` in `npm run check` |
@@ -542,48 +543,48 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2920 - Supabase RPC & presence heartbeat
 - L2960 - User activity / event telemetry
 - L3019 - Supabase auth & dev auth
-- L3163 - [sync] Checkout subscription & permission refresh
-- L3173 - Modals & Handlers
-- L3241 - PDF intake (upload, test PDF, hashing)
-- L3249 - Toolbar tool buttons
-- L3449 - Tool sidebar buttons & legend overlay
-- L3540 - Add Line Type modal
-- L3623 - Line color & sidebar handlers
-- L3832 - Polyline modal & drawing
-- L3875 - Zoom bar & page navigation
-- L3901 - Export canvas JSON
-- L3917 - PDF download helpers
-- L3926 - View-link URL helpers & show-highlights/notes
-- L3998 - Custom icon upload handler
-- L4008 - Export & report dropdown menus
-- L4095 - Sidebar drawer toggles
-- L4106 - Mobile actions burger menu pointer & header logo
-- L4118 - User Activity pointer (format.js + features/user-activity.js)
-- L4130 - My Settings pointer (features/my-settings.js)
-- L4155 - Auth & settings entry buttons
-  - L4200 - Project Settings checkout & Save Status bell
-  - L4292 - [sync] Checkout expired recovery
-  - L4348 - [sync] Turn In
-  - L4457 - Share modal pointer & copy-project openers
-  - L4488 - Settings menu actions
-  - L4509 - Auth sign-in form
-  - L4534 - Save Project modal
-  - L4547 - Checkout expired recovery modal wiring
-  - L4652 - Last-session restore prompt
-  - L4659 - Canvas Repair modal wiring
-- L4846 - Canvas Event Handlers
-- L5298 - Event Binding
-- L5308 - Aim loupe (mobile press-hold precise placement)
-- L5458 - Zoom transform preview & commit
-- L5537 - Canvas mouse, wheel & touch handlers
-- L6289 - Global dropdown dismissal & keyboard hotkeys
-- L6631 - [sync] Manual save to cloud
-- L6641 - [sync] Auto-save
-- L6648 - [sync] Local backup (IndexedDB takeoff state)
-- L6781 - [sync] Checkout keep-alive
-- L6795 - App feature registry
-- L7101 - View-only mode
-- L7107 - Init / boot
+- L3205 - [sync] Checkout subscription & permission refresh
+- L3215 - Modals & Handlers
+- L3283 - PDF intake (upload, test PDF, hashing)
+- L3291 - Toolbar tool buttons
+- L3491 - Tool sidebar buttons & legend overlay
+- L3582 - Add Line Type modal
+- L3665 - Line color & sidebar handlers
+- L3874 - Polyline modal & drawing
+- L3917 - Zoom bar & page navigation
+- L3943 - Export canvas JSON
+- L3959 - PDF download helpers
+- L3968 - View-link URL helpers & show-highlights/notes
+- L4040 - Custom icon upload handler
+- L4050 - Export & report dropdown menus
+- L4137 - Sidebar drawer toggles
+- L4148 - Mobile actions burger menu pointer & header logo
+- L4160 - User Activity pointer (format.js + features/user-activity.js)
+- L4172 - My Settings pointer (features/my-settings.js)
+- L4197 - Auth & settings entry buttons
+  - L4256 - Project Settings checkout & Save Status bell
+  - L4348 - [sync] Checkout expired recovery
+  - L4404 - [sync] Turn In
+  - L4513 - Share modal pointer & copy-project openers
+  - L4544 - Settings menu actions
+  - L4565 - Auth sign-in form
+  - L4590 - Save Project modal
+  - L4603 - Checkout expired recovery modal wiring
+  - L4708 - Last-session restore prompt
+  - L4715 - Canvas Repair modal wiring
+- L4902 - Canvas Event Handlers
+- L5354 - Event Binding
+- L5364 - Aim loupe (mobile press-hold precise placement)
+- L5514 - Zoom transform preview & commit
+- L5593 - Canvas mouse, wheel & touch handlers
+- L6345 - Global dropdown dismissal & keyboard hotkeys
+- L6687 - [sync] Manual save to cloud
+- L6697 - [sync] Auto-save
+- L6704 - [sync] Local backup (IndexedDB takeoff state)
+- L6837 - [sync] Checkout keep-alive
+- L6851 - App feature registry
+- L7161 - View-only mode
+- L7167 - Init / boot
 
 <!-- END SECTION TOC -->
 

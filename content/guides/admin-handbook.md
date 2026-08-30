@@ -1,7 +1,7 @@
 ---
 title: Admin handbook
 description: Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.
-updated: 2026-08-10
+updated: 2026-08-30
 order: 11
 icon: share
 category: For admins
@@ -27,7 +27,7 @@ CountTooling accounts are admin-provisioned — there's no self-signup — so ad
 
 ## Activity
 
-- **User Activity** — the raw event log (per user or all users), plus a summary view with rolling 1/7/30-day counts.
+- **Activity log** — the raw event log (per user or all users), plus a summary view with rolling 1/7/30-day counts. (The all-users log opens from the heart button in the Manage Users header.)
 - **Activity overview** — click a user's dates cell or heart icon for the rich view: totals, per-event breakdown, active days, and a day-grouped recent feed ("Placed 22 counters · Lobby · 1:56–2:17 PM").
 - Every signed-in user has the same view of *their own* history via **My Activity** in User Settings.
 

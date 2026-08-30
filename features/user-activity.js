@@ -206,7 +206,9 @@
     const toolbar = document.getElementById('userActivityToolbar');
     const filterInp = document.getElementById('userActivityFilterInput');
     const viewToggle = document.getElementById('userActivityModalViewToggle');
-    if (titleEl) titleEl.textContent = allUsers ? 'All user activity' : 'User activity';
+    // Tier-3 B7 (J17): "Activity log" (not "User activity") so this raw-log
+    // modal is never confused with the "Activity overview" modal by title.
+    if (titleEl) titleEl.textContent = allUsers ? 'Activity log — all users' : 'Activity log';
     if (subEl) {
       if (allUsers) subEl.textContent = 'Latest events across all users (newest first).';
       else subEl.textContent = (email ? ('Activity for ' + email) : String(userId)) + ' Event times are US Central (Chicago).';

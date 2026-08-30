@@ -1,0 +1,58 @@
+# Tier-3 execution ledger (Stage 4) — started 2026-08-30
+
+Queue: B1 → B17 in numeric order, strictly sequential, one agent per batch on
+`claude/t3-bNN-<slug>` cut from latest main. Same loop as Tier 2: agent (full
+tests + check, no push/merge) → orchestrator verify on branch → merge in
+main-integration → row status updated here → pushes batched at checkpoints.
+Batch contents are the Tier-3 table rows in JOURNEY-MAP.md — each row IS the
+plan; no separate plans of record (per _NEXT.md Stage 4: mechanical, small PRs).
+
+B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
+"keys"/"macros" dialect rename, which travels with B4's naming pass, and
+(b) the coarse-pointer keyboard-links question — ⚑ Will's product call, open.
+
+## Rescope notes (Tier-1/Tier-2 landings since the batches were written)
+
+- **B1** — the Esc ladder moved: T2-02 added the polyline per-vertex pop,
+  T2-13 added the counterModal→manageIcons hide-then-open chain. Re-grep
+  app.js `:5775` anchors; new rows must slot into the CURRENT ladder order.
+- **B4** — carries B18's queued item: status-bar "keys"/"macros" →
+  "keyboard shortcuts" dialect (drags working-faster-with-the-keyboard.md and
+  its `[[macros]]` ICON_BTN chip along). Advanced "Export PDF" delete and the
+  Export Canvas demotion already shipped 2026-08-17 — do not redo.
+- **B8** — the "zone tools stay armed after Apply" item was gated on Tier-2
+  #14 (rect drag): landed 2026-08-30, gate satisfied, item ships.
+- **B11** — was "ship WITH Tier-1 #1": T1-01 shipped 2026-08-10, unblocked.
+- **B15** — rescoped by T2-15 (grid trim replaced the sheet walk): the
+  Escape/Cancel discard confirm is MORE urgent (a grid mis-tap drops the whole
+  upload); "Undo jumps the preview" applies to sheet view only; re-check the
+  pdf-intake.js:361 signed-out gate against the new grid entry path.
+- **B17** — distinct from the shipped T2 row 18 fix (that was the Create-tab
+  ICON search): this batch hides the modal-level "Search counters…" box
+  (index.html:569-71) that filters neither Create nor Quick. Re-grep — T2-05
+  rewrote this modal's markup.
+
+## Status
+
+| Batch | Branch | Status |
+|---|---|---|
+| B1 Esc ladder | claude/t3-b01-esc-ladder | ⏳ running |
+| B2 intake/import feedback | | queued |
+| B3 copy cluster | | queued |
+| B4 export naming (+B18 dialect) | | queued |
+| B5 pdf-bundle pagination | | queued |
+| B6 viewer/share trim | | queued |
+| B7 sign-in wall copy | | queued |
+| B8 scale modal small fixes | | queued |
+| B9 mobile/touch | | queued |
+| B10 legend & proof | | queued |
+| B11 signed-out save signal | | queued |
+| B12 import canvas row | | queued |
+| B13 reuse-standards naming | | queued |
+| B14 cannot-be-undone honesty | | queued |
+| B15 prepare-pdf batch (rescoped) | | queued |
+| B16 cold start drag-drop | | queued |
+| B17 dead-UI removal | | queued |
+
+Checkpoint pushes after: B3, B6, B9, B12, B15, B17 (row flips + ledger update
+ride each checkpoint commit).

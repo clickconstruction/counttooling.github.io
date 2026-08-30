@@ -39,7 +39,7 @@ The **legend** [[legend]] overlay is the on-sheet scoreboard: counts and lengths
 
 ## Hide marks — the bare drawing
 
-The eye button [[hide-marks]] in the header peels the entire overlay off — counters, lines, highlights, notes, legend — so the drawing underneath reads clean. Tap again to bring everything back. It's purely visual: no data changes, exports are unaffected, and it persists as you flip pages. [View-link](/guides/sharing-and-view-links/) recipients get the same toggle, and their choice is remembered per link.
+The eye button [[hide-marks]] in the header peels the entire overlay off — counters, lines, highlights, notes, legend — so the drawing underneath reads clean. Tap again to bring everything back. It's purely visual: no data changes, exports are unaffected, and it persists as you flip pages. While hidden, marks can't be moved or edited either, so it's safe to hand the mouse to anyone. [View-link](/guides/sharing-and-view-links/) recipients get the same toggle, and their choice is remembered per link.
 
 ## The grid
 

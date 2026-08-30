@@ -220,7 +220,8 @@ with the sheet so the deliverable carries its own summary.
 **Hide marks (eye toggle)**
 *Problem:* Sometimes you (or a GC) need to read the bare drawing under a dense takeoff.
 *Useful because:* One tap peels the entire overlay off and one tap brings it back — purely visual,
-data untouched, and viewers on share links get it too.
+data untouched, and viewers on share links get it too — and hidden marks can't be
+grabbed by accident.
 
 **Canvas layers — multiple overlays per page**
 *Problem:* Alternates, bid options, and multiple trades on one sheet either collide in one layer or

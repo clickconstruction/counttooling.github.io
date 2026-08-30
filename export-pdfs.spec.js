@@ -72,13 +72,17 @@ test.describe('window.App registry pilot - Export PDFs modal', () => {
     expect(disabledStyle.cursor).toBe('not-allowed');
     await page.locator('#specificPagesAllMarked').click();
     expect(await page.locator('#specificPagesDownload').isDisabled()).toBe(false);
-    const enabledStyle = await page.evaluate(() => {
+    // A one-shot getComputedStyle read here raced the style recalc after the
+    // disabled attribute flips (transition not yet applied under parallel
+    // load) — poll until the enabled paint diverges from the disabled
+    // snapshot instead.
+    await expect.poll(() => page.evaluate(() => {
       const b = document.getElementById('specificPagesDownload');
-      const cs = getComputedStyle(b);
-      return { bg: cs.backgroundColor, cursor: cs.cursor };
-    });
-    expect(enabledStyle.cursor).toBe('pointer');
-    expect(disabledStyle.bg).not.toBe(enabledStyle.bg);   // yellow only when clickable
+      return getComputedStyle(b).backgroundColor;
+    })).not.toBe(disabledStyle.bg);   // yellow only when clickable
+    const enabledCursor = await page.evaluate(() =>
+      getComputedStyle(document.getElementById('specificPagesDownload')).cursor);
+    expect(enabledCursor).toBe('pointer');
 
     // 5. SLIDER: set marker scale + dispatch input -> live val text updates.
     await page.evaluate(() => {

@@ -39,13 +39,13 @@ test.describe('Polyline Escape — staged vertex unwind', () => {
     });
   });
 
-  // The toolbar button opens a name/color dialog first; Start begins the
-  // actual drawing mode (same arm path as snap-angles.spec.js).
+  // T2-12: with an active line type (seeded in beforeEach) the toolbar button
+  // arms drawing immediately — no dialog (same arm path as snap-angles.spec.js;
+  // the dialog flow itself is covered by polyline-arm.spec.js).
   async function armPolyline(page) {
     await page.evaluate(() => { document.getElementById('polylineBtn').click(); });
-    await page.waitForSelector('#polylineModal.visible', { timeout: 5000 });
-    await page.locator('#polylineStart').click();
-    await expect(page.locator('#polylineModal')).not.toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#polylineModal')).not.toHaveClass(/visible/);
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.POLYLINE && !!window.state.drawingPolyline, null, { timeout: 5000 });
   }
 
   const draftState = (page) => page.evaluate(() => ({

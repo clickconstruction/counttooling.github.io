@@ -104,12 +104,12 @@ test.describe('J snap — 45° increments', () => {
   test('polyline legs snap too, and turning J off restores freehand angles', async ({ page }) => {
     const wrapper = page.locator('#canvasWrapper');
 
-    // Polyline: each leg snaps against the PREVIOUS vertex. The toolbar button
-    // opens a name/color dialog first; Start begins the actual drawing mode.
+    // Polyline: each leg snaps against the PREVIOUS vertex. With the active
+    // line type seeded in beforeEach, the toolbar button arms drawing
+    // immediately — no dialog (T2-12; the dialog flow is polyline-arm.spec.js).
     await page.evaluate(() => { document.getElementById('polylineBtn').click(); });
-    await page.waitForSelector('#polylineModal.visible', { timeout: 5000 });
-    await page.locator('#polylineStart').click();
-    await expect(page.locator('#polylineModal')).not.toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#polylineModal')).not.toHaveClass(/visible/);
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.POLYLINE && !!window.state.drawingPolyline, null, { timeout: 5000 });
     await wrapper.click({ position: { x: 150, y: 150 } });
     await wrapper.click({ position: { x: 250, y: 201 } });   // ~27° -> 45°
     await wrapper.click({ position: { x: 350, y: 205 } });   // ~2°  -> horizontal

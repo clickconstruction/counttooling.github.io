@@ -6263,6 +6263,22 @@
   }, { passive: true });
 
   // SECTION: Global dropdown dismissal & keyboard hotkeys
+
+  // Escape dismisses the mark context menu ONLY — capture phase +
+  // stopImmediatePropagation mirrors features/tool-context-menu.js's
+  // onDocKeyDown, so the Escape ladder below never sees this press (no tool
+  // exit or modal close underneath the menu). Registered once and inert while
+  // the menu is hidden. (JOURNEY-MAP Tier-3 B1 / J9)
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const menu = document.getElementById('contextMenu');
+    if (!menu || !menu.classList.contains('visible')) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    menu.classList.remove('visible');
+    state.ctxTarget = null;
+  }, true);
+
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.context-menu') && !e.target.closest('#contextMenu')) document.getElementById('contextMenu').classList.remove('visible');
     const cm = document.getElementById('canvasMenu');
@@ -6384,7 +6400,24 @@
         updateUI();
         return;
       }
-      if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
+      if (document.getElementById('saveStatusModal').classList.contains('visible')) {
+        // z-index 210 — floats above every standard overlay, so it is the
+        // first modal rung. Routed through the close button so the 5s
+        // re-render tick timer is cleared (features/save-status.js).
+        // (JOURNEY-MAP Tier-3 B1 / J12)
+        document.getElementById('saveStatusModalClose').click();
+      } else if (document.getElementById('lastSessionRestoreModal').classList.contains('visible')) {
+        // T1-01 clobber guard: NOT a bare hide — the dismiss helper clears
+        // pendingRestore (takeoff backups resume) while consuming NOTHING
+        // (the held record and clickcount-last-project survive), so the
+        // Keep/Discard offer returns next boot, exactly like reloading
+        // without answering. See features/restore-last-session.js.
+        if (App.dismissLastSessionRestorePrompt) App.dismissLastSessionRestorePrompt();
+      } else if (document.getElementById('customIconTipsModal').classList.contains('visible')) {
+        // Icon tips open ON TOP of counterModal / the details dialog (their
+        // openers don't hide them), so this rung must precede both.
+        hideModal('customIconTipsModal');
+      } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
         hideModal('chooseLineTypeModal');
       } else if (document.getElementById('scaleModal').classList.contains('visible')) {
         if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
@@ -6394,7 +6427,19 @@
         updateUI();
       } else if (document.getElementById('counterModal').classList.contains('visible')) {
         hideModal('counterModal');
-      } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
+      }
+      // The five counter dialogs (JOURNEY-MAP Tier-3 B1 / J4). Stacking rules:
+      // the delete-confirm opens ON TOP of the details dialog (which stays
+      // visible), and "+ Add group" stacks groupModal OVER groupAssignModal —
+      // each inner surface is checked first. Rungs route through the dialogs'
+      // own Cancel/Close buttons so their pending-state resets fire
+      // (features/item-details.js, features/groups.js).
+      else if (document.getElementById('deleteCounterLineTypeConfirmModal').classList.contains('visible')) { document.getElementById('deleteCounterLineTypeCancel').click(); }
+      else if (document.getElementById('counterLineTypeDetailsModal').classList.contains('visible')) { document.getElementById('counterLineTypeDetailsClose').click(); }
+      else if (document.getElementById('groupModal').classList.contains('visible')) { document.getElementById('groupModalCancel').click(); }
+      else if (document.getElementById('groupAssignModal').classList.contains('visible')) { document.getElementById('groupAssignCancel').click(); }
+      else if (document.getElementById('counterSettingsModal').classList.contains('visible')) { hideModal('counterSettingsModal'); }
+      else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
       else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
       else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
@@ -6406,6 +6451,7 @@
       else if (document.getElementById('roomDeleteConfirmModal')?.classList.contains('visible')) { hideModal('roomDeleteConfirmModal'); }
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
+      else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.
@@ -6417,6 +6463,9 @@
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
       else if (document.getElementById('settingsAdvancedModal').classList.contains('visible')) { hideModal('settingsAdvancedModal'); }
       else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
+      // Palette Insights opens OVER My Settings (its opener doesn't hide it),
+      // so it must be checked first. (Tier-3 B1 / J16)
+      else if (document.getElementById('paletteInsightsModal').classList.contains('visible')) { hideModal('paletteInsightsModal'); }
       else if (document.getElementById('mySettingsModal').classList.contains('visible')) { hideModal('mySettingsModal'); }
       else if (document.getElementById('authModal').classList.contains('visible')) { hideModal('authModal'); }
       else if (document.getElementById('adminPanelModal').classList.contains('visible')) { hideModal('adminPanelModal'); }

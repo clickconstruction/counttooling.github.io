@@ -121,6 +121,17 @@
   }
 
   document.getElementById('addGroup').onclick = () => openGroupModal(null);
+  // Backdrop click closes like Cancel (Tier-3 B1 / J4) — routed through the
+  // Cancel buttons so the pending-state resets and the from-assign refresh
+  // fire. groupModal stacks OVER groupAssignModal ("+ Add group"), and each
+  // overlay only sees clicks on its own backdrop, so a backdrop click closes
+  // just the top dialog.
+  document.getElementById('groupModal').onclick = (e) => {
+    if (e.target === e.currentTarget) document.getElementById('groupModalCancel').click();
+  };
+  document.getElementById('groupAssignModal').onclick = (e) => {
+    if (e.target === e.currentTarget) document.getElementById('groupAssignCancel').click();
+  };
   document.getElementById('groupModalCancel').onclick = () => {
     if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
     pendingGroupEdit = null;

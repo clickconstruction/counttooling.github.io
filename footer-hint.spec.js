@@ -52,6 +52,105 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
   });
 });
 
+// Live length readout while drawing (T2 #21): the LINE/POLYLINE tool hints
+// grow a running feet-inches readout (Measure formatting, px fallback), and
+// the wrap cache keys on a fixed worst-case placeholder so a growing number
+// never re-measures or wraps the bar mid-draw.
+async function bootForReadout(page, { scale = { pixelsPerUnit: 9, unit: 'ft' } } = {}) {
+  await page.goto('/app/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await page.evaluate((sc) => {
+    const s = window.state;
+    s.currentProjectName = 'Readout';
+    s.pages[0].scale = sc;
+    s.lineTypes = [{ id: 'lt1', name: '2in Waste', color: '#47c88e', curveStyle: 'straight' }];
+    s.activeLineTypeId = 'lt1';
+    s.tool = window.App.TOOL.LINE;
+    window.App.updateUI();
+    window.App.updateStatus();
+  }, scale);
+}
+
+test.describe('Live length readout while drawing (T2 #21)', () => {
+  test('quick line shows live feet-inches readout', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 800 });
+    await bootForReadout(page);
+    await expect(page.locator('#statusMode')).toContainText('Tap start point');
+
+    await page.evaluate(() => {
+      window.state.quickLineStart = { x: 0, y: 0 };
+      window.state.mousePos = { x: 90, y: 0 };
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusMode')).toContainText('Tap end point — 10\'-0"');
+
+    // Moving the cursor updates the readout live.
+    await page.evaluate(() => {
+      window.state.mousePos = { x: 45, y: 0 };
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusMode')).toContainText('Tap end point — 5\'-0"');
+  });
+
+  test('polyline readout is cumulative', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 800 });
+    await bootForReadout(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      s.tool = window.App.TOOL.POLYLINE;
+      s.drawingPolyline = { id: 'p1', name: 'Run', color: '#47c88e', points: [{ x: 0, y: 0 }, { x: 90, y: 0 }], closed: false, lineTypeId: 'lt1', group: null };
+      s.mousePos = { x: 90, y: 90 };
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusMode')).toContainText('Click to add points — 20\'-0"');
+  });
+
+  test('no scale reads px, never feet', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 800 });
+    await bootForReadout(page, { scale: null });
+    await page.evaluate(() => {
+      window.state.quickLineStart = { x: 0, y: 0 };
+      window.state.mousePos = { x: 90, y: 0 };
+      window.App.updateStatus();
+    });
+    const text = await page.locator('#statusMode').textContent();
+    expect(text).toMatch(/— \d+ px/);
+    expect(text).not.toMatch(/\d+'-\d+"/);
+  });
+
+  test('narrow bar still drops the whole hint', async ({ page }) => {
+    await page.setViewportSize({ width: 1900, height: 800 });
+    await bootWithLineTool(page);
+    await page.evaluate(() => {
+      window.state.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft' };
+      window.state.quickLineStart = { x: 0, y: 0 };
+      window.state.mousePos = { x: 90, y: 0 };
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusMode')).toContainText('Tap end point — 10\'-0"');
+
+    // The borderline-width regime from the wrap test: the long project name
+    // alone fits, name + hint doesn't — hint AND readout drop together.
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.evaluate(() => window.App.updateStatus());
+    await expect(page.locator('#statusMode')).not.toContainText('Tap end point');
+    // The worst-case key keeps the verdict stable while the cursor moves.
+    await page.evaluate(() => {
+      window.state.mousePos = { x: 200, y: 0 };
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusMode')).not.toContainText('Tap end point');
+    const sameRow = await page.evaluate(() => {
+      const mode = document.getElementById('statusMode');
+      const actions = document.getElementById('statusBarActions');
+      return actions.offsetTop <= mode.offsetTop;
+    });
+    expect(sameRow).toBe(true);
+  });
+});
+
 test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
   test('measure result rides the footer, outlives the old 5s toast, follows its sheet, and is replaced by a new measure', async ({ page }) => {
     const errors = [];

@@ -6879,6 +6879,11 @@
   App.getLineLengthSplitForTotals = getLineLengthSplitForTotals;
   App.formatFeet = formatFeet;
   App.formatFeetPx = formatFeetPx;
+  // Live draw readout deps (features/status-bar.js updateStatus): the Measure
+  // feet-inches formatter and the arc-aware line length. getLineLengthPdfPts
+  // stays a window.* report.js global — this only aliases it onto App.
+  App.formatDistFeetInches = formatDistFeetInches;
+  App.getLineLengthPdfPts = getLineLengthPdfPts;
   // Room Sizer deps (features/room-sizer.js).
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;

@@ -1105,6 +1105,25 @@
       const best = lineCandidates.reduce((a, b) => a.dist <= b.dist ? a : b);
       return { type: best.type, index: best.index };
     }
+    // B10 (J8): the legend paints ON TOP of highlights/zones/boxes/notes, so
+    // it wins the hit contest over them too — a legend overlapping a highlight
+    // used to be completely inert (and the failed drag panned the whole
+    // sheet). Markers and lines above keep priority: small targets the legend
+    // body would otherwise swallow. Gated on legendHasRows — an empty legend
+    // is not painted (drawLegend), so the invisible box must not catch the
+    // mouse either.
+    const leg = ann.legend;
+    if (leg && state.showLegendOverlay
+        && pos.x >= leg.x && pos.x <= leg.x + leg.w && pos.y >= leg.y && pos.y <= leg.y + leg.h
+        && canvasDraw.legendHasRows(ann, state.currentPage)) {
+      const HEADER_H = 18;
+      const RESIZE_SIZE = 16;
+      if (pos.x >= leg.x + leg.w - RESIZE_SIZE && pos.y >= leg.y + leg.h - RESIZE_SIZE)
+        return { type: 'legendResize' };
+      if (pos.y <= leg.y + HEADER_H)
+        return { type: 'legendDrag' };
+      return { type: 'legend' };
+    }
     for (let i = 0; i < (ann.highlights || []).length; i++) {
       const h = ann.highlights[i];
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -1154,19 +1173,6 @@
       const lx = cosR * (pos.x - n.x) + sinR * (pos.y - n.y);
       const ly = -sinR * (pos.x - n.x) + cosR * (pos.y - n.y);
       if (lx >= 0 && lx <= w && ly >= 0 && ly <= heightPdf) return { type: 'note', index: i };
-    }
-    const leg = ann.legend;
-    if (leg && state.showLegendOverlay) {
-      const { x, y, w, h } = leg;
-      const HEADER_H = 18;
-      const RESIZE_SIZE = 16;
-      if (pos.x >= x && pos.x <= x + w && pos.y >= y && pos.y <= y + h) {
-        if (pos.x >= x + w - RESIZE_SIZE && pos.y >= y + h - RESIZE_SIZE)
-          return { type: 'legendResize' };
-        if (pos.y <= y + HEADER_H)
-          return { type: 'legendDrag' };
-        return { type: 'legend' };
-      }
     }
     return null;
   }
@@ -6519,6 +6525,11 @@
       // scale to measure with).
       const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
       if (hk && (hk.viewerAllowed || !state.isViewer)) {
+        // B10 (J18): R under the open Count-by-Page modal would rotate the
+        // sheet beneath thumbnails that never re-render — the modal's proof
+        // images would go stale against the live page. Ignore it until the
+        // modal closes (its footer ↻ twin is already blocked by the overlay).
+        if (hk.key === 'r' && document.getElementById('summaryCountDetailModal')?.classList.contains('visible')) return;
         if (hk.runner) HOTKEY_RUNNERS[hk.runner]();
         else document.getElementById(hk.btnId).click();
         e.preventDefault();

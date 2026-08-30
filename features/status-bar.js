@@ -269,9 +269,26 @@
         const countStr = (t.count || 0).toLocaleString();
         // Split buckets: feet (scaled lines) and raw px (unscaled) are never summed.
         const lenStr = App.formatFeetPx(t.lengthFt || 0, t.lengthPx || 0);
-        totalsEl.textContent = '[' + countStr + ' | ' + lenStr + ']';
-        totalsEl.title = countStr + ' counters | ' + lenStr + ' of lines'
-          + ((t.lengthPx || 0) > 0 ? ' — px lengths are on sheets with no scale' : '');
+        // B10 (J18): the bare "[14 | 225.00 ft]" pair was cryptic until hover
+        // — the words ride inline now, and the pair is the audit entry point
+        // (click scrolls to and flashes the Summary; binding below). The
+        // words are .status-totals-words spans, CSS-hidden on bars narrower
+        // than 1280px — the compact pair keeps the one-line-bar invariant
+        // (field feedback 2026-08-14) that the droppable tool hint protects,
+        // since totals, unlike the hint, never drop.
+        totalsEl.textContent = '';
+        const seg = (txt, words) => {
+          const sp = document.createElement('span');
+          sp.textContent = txt;
+          if (words) sp.className = 'status-totals-words';
+          totalsEl.appendChild(sp);
+        };
+        seg('[' + countStr); seg(' counts', true);
+        seg(' | ' + lenStr); seg(' of lines', true);
+        seg(']');
+        totalsEl.title = countStr + ' counts | ' + lenStr + ' of lines'
+          + ((t.lengthPx || 0) > 0 ? ' — px lengths are on sheets with no scale' : '')
+          + ' — click to see the Summary';
         totalsEl.style.display = '';
       }
     }
@@ -367,6 +384,22 @@
     if (inModal) { inModal.title = title; inModal.setAttribute('aria-label', aria); }
     if (header)  { header.title  = title; header.setAttribute('aria-label',  aria); }
   }
+
+  // B10 (J18): the footer totals looked like the audit entry but were two
+  // dead clicks — clicking them now jumps to the surface that itemizes them.
+  // Uncollapses the desktop sidebar if needed, scrolls the Summary section
+  // into view, and flashes it (the .summary-flash keyframe in styles.css;
+  // remove + reflow so a second click restarts the animation).
+  const statusTotalsEl = document.getElementById('statusTotals');
+  if (statusTotalsEl) statusTotalsEl.onclick = () => {
+    const section = document.getElementById('summarySection');
+    if (!section) return;
+    document.body.classList.remove('sidebar-collapsed');
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    section.classList.remove('summary-flash');
+    void section.offsetWidth;
+    section.classList.add('summary-flash');
+  };
 
   App.invalidateFooterTotals = invalidateFooterTotals;
   App.getFooterTotalsCached = getFooterTotalsCached;

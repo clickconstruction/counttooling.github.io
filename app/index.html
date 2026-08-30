@@ -581,7 +581,11 @@
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;">
             <input type="text" id="scaleCustomFraction" placeholder="1/4 or 0.25" style="flex:1;min-width:80px;">
             <span> inch = </span>
-            <input type="number" id="scaleCustomFeet" placeholder="1" min="0.01" step="0.1" style="flex:1;min-width:60px;">
+            <!-- Real default, not a placeholder (Tier-3 B8 / J3): 1/4" = 1 ft is the
+                 common case, so the feet half is pre-filled and Apply works after
+                 typing just the fraction. openScaleModal re-seeds "1" if it was
+                 left empty (features/scale.js). -->
+            <input type="number" id="scaleCustomFeet" value="1" min="0.01" step="0.1" style="flex:1;min-width:60px;">
             <span> ft</span>
             <button type="button" id="scaleCustomApply" class="settings-menu-btn">Apply</button>
           </div>

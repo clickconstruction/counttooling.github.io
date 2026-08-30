@@ -53,8 +53,11 @@
   // resting tool — and the tool whose readout is wrong when the scale is —
   // both give a direct path to review/edit it (features/scale.js registers
   // openScaleModal; registry-mediated, read at call time).
+  // The "Open a plan first." no-plan gate lives INSIDE openScaleModal now
+  // (Tier-3 B8) — one gate for every entrance, same copy as the per-caller
+  // guard this line used to carry.
   const SCALE_EDIT_ACTIONS = [
-    { label: 'Set / edit scale…', run: () => { if (App.state.pages.length) App.openScaleModal(); else App.showToast('Open a plan first.', 2000); } },
+    { label: 'Set / edit scale…', run: () => App.openScaleModal() },
   ];
   // Highlight's "settings" is its bookmarks panel: arm the tool (the button
   // click also reopens the panel) so the named-highlight list is one gesture

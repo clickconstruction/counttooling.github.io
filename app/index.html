@@ -2733,7 +2733,29 @@
         var text = document.getElementById('globalReloadBannerText');
         if (text) text.textContent = "Something didn't load. Reload to try again.";
         var reload = document.getElementById('globalReloadBannerReload');
-        if (reload) reload.onclick = function () { location.reload(); };
+        // A plain reload can loop forever when a stale service worker keeps
+        // serving a cached shell that skews against fresh JS (2026-08-30 brick).
+        // This Reload is the recovery path, so it does the full cure: unregister
+        // every service worker, delete every cache, then reload — each step
+        // best-effort so an old browser still gets the plain reload.
+        if (reload) reload.onclick = function () {
+          var done = function () { location.reload(); };
+          try {
+            var work = [];
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              work.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+                return Promise.all(rs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+            if (window.caches && caches.keys) {
+              work.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              }));
+            }
+            Promise.all(work).then(done, done);
+            setTimeout(done, 4000);
+          } catch (e) { done(); }
+        };
         var dismiss = document.getElementById('globalReloadBannerDismiss');
         if (dismiss) dismiss.onclick = function () { banner.style.display = 'none'; };
         banner.style.display = '';

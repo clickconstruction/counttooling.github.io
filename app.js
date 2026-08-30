@@ -3994,14 +3994,20 @@
       if (mode && typeof window.printReport === 'function') window.printReport(mode);
     };
   });
-  document.getElementById('settingsMacros').onclick = () => { hideModal('settingsModal'); showModal('macrosModal'); };
-  document.getElementById('statusBarMacros').onclick = () => showModal('macrosModal');
-  document.getElementById('settingsClearPage').onclick = () => { hideModal('settingsModal'); App.showClearPageModal(); };
-  document.getElementById('macrosModalClose').onclick = () => hideModal('macrosModal');
+  // Null-guarded (2026-08-30): a stale service-worker shell paired with fresh JS
+  // (or vice versa) can boot without a newer element — an unguarded `.onclick =`
+  // here threw at line level and killed the whole boot IIFE (App.state never
+  // registered, every feature file cascaded). Skew must degrade to one dead
+  // button, never a bricked session.
+  const wireClick = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  wireClick('settingsMacros', () => { hideModal('settingsModal'); showModal('macrosModal'); });
+  wireClick('statusBarMacros', () => showModal('macrosModal'));
+  wireClick('settingsClearPage', () => { hideModal('settingsModal'); App.showClearPageModal(); });
+  wireClick('macrosModalClose', () => hideModal('macrosModal'));
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
-  document.getElementById('customIconTipsClose').onclick = () => hideModal('customIconTipsModal');
+  wireClick('customIconTipsClose', () => hideModal('customIconTipsModal'));
   // The Note add/edit modal (openNoteModal + its Cancel/Done handlers) lives in
   // features/note.js (window.App registry); openNoteModal is reached via
   // App.openNoteModal at call time.

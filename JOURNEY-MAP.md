@@ -223,6 +223,29 @@ J4 count-fixtures are the daily core**; J3/J6/J7/J11/J13/J15/J16 are telemetry-b
 
 ### Tier 2 — high-traffic friction (confirmed stumbles on the daily core + cross-journey stumble clusters)
 
+> **⚑ Stage-2 re-rank, 2026-08-30** (per [journeys/plans/_NEXT.md](journeys/plans/_NEXT.md);
+> 20-day post-deploy telemetry: 0 client errors; counting is now the broadest daily
+> activity — 622 marks/8 users vs 495 lines/6 users; `unscaled_ft_block` fired 36×
+> for 2 users; restore Keep recovered real marks 25×; exports still rare).
+> Execution order, grouped into PR-shaped units:
+> **1.** #13 Clear Page (blocker-grade findability, S) ·
+> **2.** #22 polyline Esc staging (the tier's one work-loss item, S) ·
+> **3.** #25 hidden-marks hitTest (silent data mutation, S) ·
+> **4.** #15 toast-system rework (platform fix — unblocks #23, the occluded
+> room-height error, and the Distance hand-off; obstructed three Tier-1 builds; M) ·
+> **5.** counter-modal cluster #17+#18+#19 as ONE branch (same surface, counting-core
+> breadth, all S) ·
+> **6.** #23 scale-gate toast→link (direct answer to the 36 blocks; builds on #15; S) ·
+> **7.** #16 Quick Count icon/color dupes (S) ·
+> **8.** #20 create-arms-the-tool (S) · **9.** #21 live length readout (S) ·
+> **10.** #14 drag-gesture completion (M, 4 journeys) ·
+> **11.** #24 raw-vs-multiplied labeling (M, trust-numbers) ·
+> **12.** #28 polyline dialog tax (M) ·
+> **13.** #29 Manage Icons re-home (S — ⚑ needs Will's placement call) ·
+> **14.** #27 dblclick rename repair (S; trim/organize usage was light this window) ·
+> **15.** #26 thumbnail-grid trim (L — last: biggest build, lowest current traffic;
+> ⚑ Will confirms it stays in scope vs. deferring).
+
 | # | St | Item (journeys) | Evidence | Verified proposal | Effort | Telemetry |
 |---|---|---|---|---|---|---|
 | 13 | ☐ | Clear Page unreachable — header button CSS-killed, sidebar rule dead; only route is Project Settings, sign-in-gated on desktop (J9, blocker-grade gap) | styles.css:474 (`!important` kill), :372 (dead rule) | Un-dead the sidebar button (delete the stale display:none) and/or "Clear this page" in the pages row | S | none |

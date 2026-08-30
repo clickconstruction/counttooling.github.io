@@ -192,7 +192,20 @@
       } else {
         const projectSegment = state.currentProjectName || (state.pages.length ? 'Untitled' : '—');
         let lastSavedSegment = '—';
-        if (state.lastSavedAt) {
+        if (lastLocalBackupAt) {
+          // B11 (J12/J15): signed-out, the segment shows the local-save stamp
+          // the engine already tracks ("Saved on this device · 4:42 PM")
+          // instead of the permanent dash — the IDB backup lands ~1s after
+          // every change, so this replaces a false "never saved" signal.
+          // Narrow bars (<1280px, B10's footer-words threshold) compact the
+          // words to "Saved · 4:42 PM"; the mode is one text node so the swap
+          // is done here in JS — window.innerWidth, not a clientWidth read,
+          // because updateStatus runs per mousemove and must not force layout.
+          const timeStr = new Date(lastLocalBackupAt)
+            .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          const words = window.innerWidth >= 1280 ? 'Saved on this device' : 'Saved';
+          lastSavedSegment = words + ' · ' + timeStr;
+        } else if (state.lastSavedAt) {
           const d = new Date(state.lastSavedAt);
           const agoSec = (Date.now() - d.getTime()) / 1000;
           const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -312,6 +325,21 @@
     const state = App.state;
     const cloudMode = App.SUPABASE_ENABLED && state.supabaseSession?.user;
     if (!cloudMode) {
+      // B11 (J12): truthful signed-out copy — when the IDB backup has landed
+      // the work IS saved (on this device), so the panel says so instead of
+      // the false "Not signed in to cloud" + empty rows. The sign-in nudge
+      // line (#saveStatusSignedOutHint) is toggled by save-status.js.
+      const localAt = App.getLastLocalBackupAt();
+      if (localAt) {
+        const p = App.formatSaveTimeParts(localAt);
+        const pdfLocal = !!(state.pages && state.pages.length);
+        return {
+          canvas: { label: 'Canvas', state: 'green', status: 'Saved on this device', clock: p.clock, ago: p.ago },
+          pdf: pdfLocal
+            ? { label: 'PDF', state: 'green', status: 'Saved on this device', clock: p.clock, ago: p.ago }
+            : { label: 'PDF', state: 'grey',  status: 'No PDF in project',    clock: '', ago: '' }
+        };
+      }
       return {
         canvas: { label: 'Canvas', state: 'grey', status: 'Not signed in to cloud', clock: '', ago: '' },
         pdf:    { label: 'PDF',    state: 'grey', status: '',                       clock: '', ago: '' }

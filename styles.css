@@ -202,8 +202,6 @@
       .sidebar-header-buttons { display: flex; }
       .sidebar-header-buttons #setScaleSidebar { display: flex; justify-content: center; align-items: center; }
       .sidebar-tool-buttons { display: flex; }
-      .header #clearPage { display: none; }
-      .sidebar-clear-page { display: block; }
       .status-bar { flex-wrap: nowrap; }
       .status-bar #statusMode { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 0; }
       .page-info-label { display: none; }
@@ -436,7 +434,6 @@
     .sidebar-snap-icon-btn:hover { color: var(--text); }
     .sidebar-snap-icon-btn.active { color: var(--yellow); background: transparent; box-shadow: 0 0 0 0; }
     .sidebar-snap-icon-btn.active:hover { color: var(--yellow); }
-    .sidebar-clear-page { display: none; }
     .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; -webkit-tap-highlight-color: transparent; }
     .canvas-wrapper { flex: 1; overflow: hidden; position: relative; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
     .canvas-container { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -453,6 +450,7 @@
     .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; flex-shrink: 0; }
     .canvas-pills.canvas-pills-multi { border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding-left: 10px; padding-right: 10px; margin: 0 2px; }
     body:not(.has-pdf) .canvas-switcher { display: none; }
+    body:not(.has-pdf) .sidebar-clear-page { display: none; }
     .canvas-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; overflow-y: hidden; max-width: 280px; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
     .canvas-pills::-webkit-scrollbar { height: 6px; }
     .canvas-pills::-webkit-scrollbar-track { background: var(--surface2); border-radius: 3px; }

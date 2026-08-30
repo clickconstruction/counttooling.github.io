@@ -6,7 +6,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 ## Getting plans in
 
 - **PDF upload (multi-file, up to 50 MB)** — Start the takeoff directly on the actual plan set, with no printing, converting, or importing into a desktop tool first.
-- **Prepare PDF (keep/drop, reorder, rotate pages)** — Cut a 200-sheet set down to just the sheets you're bidding before you ever start counting.
+- **Prepare PDF (keep/drop from a sheet grid, rotate pages)** — Cut a 200-sheet set down to just the sheets you're bidding before you ever start counting: tap the sheets you don't need, or Keep none and tap the ones you do.
 - **Append pages** — Add the addendum or a late sheet to an in-progress takeoff without redoing anything.
 - **Page rotation (R)** — Fix a sideways-scanned sheet so the drawing and all your marks read right-side up.
 - **Page renaming + title truncation** — Call sheets what estimators call them ("P-201 Underground") so the sidebar is navigable at a glance.

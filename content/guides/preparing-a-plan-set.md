@@ -1,7 +1,7 @@
 ---
 title: Preparing a plan set
 description: Get a bid set ready to count — upload PDFs, trim to just your sheets, rotate and rename pages, and add addendum sheets without losing work.
-updated: 2026-08-10
+updated: 2026-08-30
 order: 1.5
 icon: move
 category: Getting started
@@ -15,13 +15,14 @@ Open the app and click **Upload PDF** in the header — the same upload also liv
 
 ## Trim the set with Prepare PDF
 
-When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start:
+When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start. It opens on a grid of sheet thumbnails — the whole set at a glance:
 
 ![The Prepare PDF dialog: ① rotate a sideways page, ② delete the pages you don't need, then ③ Save & Open.](/guides/img/prepare-pdf.png)
 
-- **Keep or delete pages** — the **Delete** button drops the page you're previewing; use **‹ Prev / Next ›** to walk the set and cut cover sheets, specs, and other trades' drawings.
-- **Rotate** [[rotate]] — turn a sideways-scanned sheet 90° at a time so it reads correctly. (You can also rotate any page later with `R`; your marks rotate with the page.)
-- **Rename pages** — the name field at the top renames the project or the page you're on ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too — double-click the sheet's name, or click its number badge.
+- **Tap the sheets you don't need** — each tap marks a sheet Removed (it dims with a red ✕ but stays in the grid); tap it again to bring it back. Cutting a big combined set down to your trade is faster inverted: click **Keep none**, then tap just the sheets you're bidding. **Keep all** resets. The bar above the grid always shows how many sheets you're keeping.
+- **Zoom into a sheet** — the magnifier on a kept tile opens the full-size view of that sheet, where **Rotate** [[rotate]] and per-sheet renaming live; **‹ All sheets** returns to the grid with your changes reflected. (You can also rotate any page later with `R`; your marks rotate with the page.)
+- **Rotate** [[rotate]] — in the zoomed sheet view, turn a sideways-scanned sheet 90° at a time so it reads correctly.
+- **Rename pages** — the name field at the top renames the project or, in the zoomed sheet view, the sheet you're on ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too — double-click the sheet's name, or click its number badge.
 - **Save & Open** — commit the trimmed set and start counting; **Download Trimmed PDF** saves the cut-down set as its own file if you want it outside the app.
 
 ## Add pages later (addenda)

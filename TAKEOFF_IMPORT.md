@@ -9,8 +9,17 @@ and POSTs them; the marks land as a normal, reviewable, twin-owned project.
 `POST /functions/v1/import-takeoff` · Auth: the TWIN's own session JWT
 (`Authorization: Bearer <access_token>` from a twin-login mint) — **twin accounts only**
 (`profiles.is_digital_twin`), always the caller's own project. Idempotent by
-`(owner, name)`: re-import replaces, never duplicates. Canvas-only (no PDF): a human
-attaches or copies the plan set when reviewing.
+`(owner, name)`: re-import replaces, never duplicates.
+
+**PDF leg** (robot-pdf-intake): pass `pdf_url` (+ optional `pdf_headers`, ≤4, e.g.
+`{"X-Twin-Token": "…"}` for PipeTooling's `plan-fetch?bid=b403` endpoint) and the function
+fetches the plan set server-side, verifies it is a PDF (magic bytes, ≤50 MB — the app's
+storage cap), counts pages with pdf-lib, stores it at the app's exact path
+(`<uid>/<project>/document.pdf`, `pdfs` bucket, upsert) and stamps `projects.pdf_path` —
+the project opens WITH plans under the marks. Page indexes beyond the PDF's page count are
+rejected by name; the pages array is padded to cover every PDF page. A failed PDF leg
+never unwinds the imported marks: the response's `pdf.ok`/`pdf.error` reports loudly.
+Omit `pdf_url` for the original canvas-only behavior.
 
 ## Payload
 

@@ -45,6 +45,19 @@
     if (path) return path;
     return App.getEffectiveCustomIcons()[0]?.value || App.getOrderedIcons()[0]?.value;
   }
+  // The color the Add button will actually mint for `iconPath` (T2 #16): the
+  // saved default — unless an existing counter already pairs that exact icon
+  // with that exact color, in which case the shared `nextUnusedCounterColor`
+  // (recent-colors.js, bare classic-script global) rotates to a free palette
+  // entry so Quick Count never creates an identical-looking twin. Per-create
+  // only: `plumbingModifiers.defaultColor` is never written back.
+  function getCounterQuickCountEffectiveColor(iconPath) {
+    const counters = App.state.counters || [];
+    const base = App.getPlumbingModifiers().defaultColor || App.COLORS[2];
+    const norm = (s) => String(s || '').toLowerCase();
+    const dupe = counters.some(c => c.icon === iconPath && norm(c.color) === norm(base));
+    return dupe ? nextUnusedCounterColor(counters, App.COLORS, base) : base;
+  }
   function updateCounterQuickCountNamePreview() {
     const size = document.getElementById('counterQuickCountSize')?.value;
     const type = document.getElementById('counterQuickCountType')?.value;
@@ -52,14 +65,20 @@
     const name = [size, material, type].filter(Boolean).join(' ');
     const nameEl = document.getElementById('counterQuickCountName');
     if (nameEl) nameEl.value = name;
+    // WYSIWYG (T2 #16): preview the color Add will actually mint — rotated
+    // when the default would duplicate an existing counter's icon+color.
+    const path = getCounterQuickCountEffectiveIconPath();
+    const base = App.getPlumbingModifiers().defaultColor || App.COLORS[2];
+    const color = getCounterQuickCountEffectiveColor(path);
     const iconEl = document.getElementById('counterQuickCountIcon');
     if (iconEl) {
-      const path = getCounterQuickCountEffectiveIconPath();
-      const color = App.getPlumbingModifiers().defaultColor || App.COLORS[2];
       iconEl.innerHTML = path ? '<svg viewBox="' + App.iconVbFor(path) + '" width="20" height="20"><path fill="' + color + '" d="' + path + '"/></svg>' : '';
     }
     const swatchEl = document.getElementById('counterQuickCountSwatch');
-    if (swatchEl) swatchEl.style.background = App.getPlumbingModifiers().defaultColor || App.COLORS[2];
+    if (swatchEl) {
+      swatchEl.style.background = color;
+      swatchEl.title = color === base ? 'Change color' : "Color adjusted so these marks don't match an existing counter";
+    }
   }
   function updateCounterQuickCountTypeIconBox() {
     const box = document.getElementById('counterQuickCountTypeIconBox');
@@ -229,9 +248,8 @@
     const name = (nameInput?.value?.trim() || computedName) || 'Plumbing';
     const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
     const icon = sel ? sel.dataset.path : (App.getEffectiveCustomIcons()[0]?.value || App.getOrderedIcons()[0]?.value);
-    const mods = App.getPlumbingModifiers();
     App.pushUndoSnapshot();
-    const newCounter = { id: App.uid(), name, icon, color: mods.defaultColor || App.COLORS[2] };
+    const newCounter = { id: App.uid(), name, icon, color: getCounterQuickCountEffectiveColor(icon) };
     App.state.counters.push(newCounter);
     App.state.activeCounterType = newCounter.id;
     App.state.tool = App.TOOL.COUNTER;

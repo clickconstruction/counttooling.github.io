@@ -133,6 +133,41 @@ test('nextRecentColors: falsy/invalid color returns the list unchanged (capped)'
   assert.deepStrictEqual(c.nextRecentColors(['#123456'], 42, PRESETS), ['#123456']);
 });
 
+// --- nextUnusedCounterColor (recent-colors.js) ------------------------------
+
+test('nextUnusedCounterColor: skips colors in use and returns the first free palette entry', () => {
+  const palette = ['#e85447', '#4a9eff', '#e8c547'];
+  assert.strictEqual(c.nextUnusedCounterColor([{ color: '#e8c547' }], palette, '#e8c547'), '#e85447');
+  assert.strictEqual(
+    c.nextUnusedCounterColor([{ color: '#e85447' }, { color: '#e8c547' }], palette, '#e8c547'),
+    '#4a9eff'
+  );
+});
+
+test('nextUnusedCounterColor: the in-use compare is case-insensitive', () => {
+  const palette = ['#e85447', '#4a9eff'];
+  assert.strictEqual(c.nextUnusedCounterColor([{ color: '#E85447' }], palette, '#e8c547'), '#4a9eff');
+});
+
+test('nextUnusedCounterColor: all palette entries used -> the entry after current, wrapping', () => {
+  const palette = ['#e85447', '#4a9eff', '#e8c547'];
+  const counters = palette.map(color => ({ color }));
+  assert.strictEqual(c.nextUnusedCounterColor(counters, palette, '#4a9eff'), '#e8c547');
+  assert.strictEqual(c.nextUnusedCounterColor(counters, palette, '#e8c547'), '#e85447', 'wraps past the end');
+});
+
+test('nextUnusedCounterColor: off-palette current with a fully used palette -> palette[0]', () => {
+  const palette = ['#e85447', '#4a9eff'];
+  const counters = palette.map(color => ({ color }));
+  assert.strictEqual(c.nextUnusedCounterColor(counters, palette, '#123456'), '#e85447');
+});
+
+test('nextUnusedCounterColor: empty counters -> palette[0]; empty palette -> current', () => {
+  const palette = ['#e85447', '#4a9eff'];
+  assert.strictEqual(c.nextUnusedCounterColor([], palette, '#e8c547'), '#e85447');
+  assert.strictEqual(c.nextUnusedCounterColor([{ color: '#e85447' }], [], '#e8c547'), '#e8c547');
+});
+
 // --- nextRecentDrops / formatDropLabel (recent-drops.js) --------------------
 
 test('nextRecentDrops: a used size is unshifted; same value+unit dedupes to the front', () => {

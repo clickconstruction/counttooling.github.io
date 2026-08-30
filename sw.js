@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '503b0ca86fda';
+const CACHE_VERSION = '7cfd5cee9557';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -179,7 +179,7 @@ const PRECACHE_SHA256 = {
   '/constants.js': '8400e88511718883173329bab3ad8921df64ee8d7e0896670bfbfd1846959beb',
   '/zoom-ladder.js': 'c8396a9b8610ce94c703b575e3180ad3152d17a5b23c9e576c8d45b980005ba3',
   '/hotkeys.js': '481ef7e17f26b8463bda701a46932eba606b1178db909e4042ef0133716bf3d3',
-  '/recent-colors.js': '285d2a35ef013b49c1705dc870029eefd6667309ecb85de12ace81d3624c103b',
+  '/recent-colors.js': '8f201f7c7e067580483aab71948653274ce8c97facfb0a25f56f51517e5c5f84',
   '/recent-drops.js': '3b04d7b96c6260858a3ce9de59a9e862fa88ddf3e563de3ef46d354020358b7b',
   '/idb.js': '9049553ce54d58b56dc33d8e166721ba26602cfd65b82098a6a51c59956c75da',
   '/format.js': 'c8958ee9c4f87c854deebc128f2db5b7e1c25b33dfe5d2f68334ac947b844ea5',
@@ -211,7 +211,7 @@ const PRECACHE_SHA256 = {
   '/features/groups.js': '58d955386b5f5c10d40444646a9852a962eca0aff418cfa9ae1366dde08d8a8d',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
   '/features/quick-line.js': '79e12501c2f7cb0291659ba9599a3a74df6835c252332c6776817730fc1020d1',
-  '/features/counter.js': 'a58a2cc9247dd371306aa4ebeaaade4ed43e49229d76b84b24dabe8a026be73f',
+  '/features/counter.js': '0df543e5812c344de8165f2f207d2232fd86b4625c2546d2c72eb4ddce31afd3',
   '/features/save-status.js': 'bf601563da95998a4bfa9d8957306368b65d599fc3f3bccb729b7f42c17d585a',
   '/features/status-bar.js': '9316bd4462d80dcaba4d4df07f3f94263f8036cd1d8db731b5a5ea1d0fca9ae9',
   '/features/turn-in.js': '72210800834f658a0878d70fe1664d0675a3868aada9d655ed4cab13a76bf0d4',
@@ -222,7 +222,7 @@ const PRECACHE_SHA256 = {
   '/features/review-flow.js': '293f332c7f9733d2eb4fd869f7413cb1af79b586aa722ac70a6ca167f5f88e4b',
   '/features/copy-project.js': 'd8ada1451aa982b207180e03fb0707b274eddd6af2c521856bce32a77c94a7c3',
   '/features/prepare-pdf.js': 'ca3a04c39e3cf4be32ed1b99a916d25392dede073620eebca565501fa08c3220',
-  '/features/quick-modals.js': 'f02e0a4e1efe1b151ecd2ce6b4b734473b8480fbff2c89c7e05c465483670072',
+  '/features/quick-modals.js': '41e4b0f8e18266283b4cd2bdaf1b58d242a4670e38869f77c11039bc928c1c96',
   '/features/pdf-bundle.js': '23ef04083b78bd2e496e615b3f8123a9f70fa16f096fa3840dd308a8238e42e6',
   '/features/item-details.js': '2d14500dfd1657db1350abcc1a8e752720a68b237685220920f1e0fdea6b04a5',
   '/features/output.js': '8f3c9caf0d12a6aac434586953d68d6b7ee792ebb63aec60030061d98c406306',

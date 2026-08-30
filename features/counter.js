@@ -127,13 +127,13 @@
   }
 
   // Twin resolution for a to-be-created counter. Pure-shaped on purpose
-  // (name, icon, color, counters, palette — no App.* reads) so T2 #16 /
-  // T2-07 can lift it onto App / recent-colors.js without a rewrite.
+  // (name, icon, color, counters, palette — no App.* reads).
   // Same trimmed name (case-insensitive) → lowest free numbered suffix
   // ("Water Closet 2", " 3", …). Only when that twin ALSO matches icon AND
-  // color exactly does the color rotate — to the first palette entry no
-  // counter uses (fallback: the next palette index after the chosen color) —
-  // so a deliberate same-name/different-color counter keeps its color.
+  // color exactly does the color rotate — via the shared
+  // `nextUnusedCounterColor` (recent-colors.js, bare classic-script global;
+  // Quick Count shares it, T2 #16) — so a deliberate same-name/
+  // different-color counter keeps its color.
   function resolveCounterTwin(name, icon, color, counters, palette) {
     const norm = (s) => (s || '').trim().toLowerCase();
     const twins = counters.filter(c => norm(c.name) === norm(name));
@@ -144,13 +144,7 @@
     const suffixed = name + ' ' + n;
     const exactTwin = twins.some(c => c.icon === icon && norm(c.color) === norm(color));
     if (!exactTwin) return { name: suffixed, color };
-    const usedColors = new Set(counters.map(c => norm(c.color)));
-    let rotated = (palette || []).find(c => !usedColors.has(norm(c)));
-    if (!rotated) {
-      const idx = (palette || []).findIndex(c => norm(c) === norm(color));
-      rotated = palette && palette.length ? palette[(idx + 1) % palette.length] : color;
-    }
-    return { name: suffixed, color: rotated };
+    return { name: suffixed, color: nextUnusedCounterColor(counters, palette, color) };
   }
 
   document.getElementById('counterBtn').onclick = () => {

@@ -57,6 +57,13 @@
     document.querySelectorAll(pairedGridSel + ' .icon-cell').forEach(x => x.classList.remove('selected'));
     gridEl.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
     cell.classList.add('selected');
+    // Visible success (T2-05 #19): the new cell lands below the grid's 200px
+    // fold, so scroll it into view and flash its selection ring — otherwise
+    // the modal is pixel-identical before/after and the upload reads as a
+    // no-op. One-shot animation; no removal listener needed (every upload
+    // rebuilds the grid via innerHTML, so flash-new never survives a rerender).
+    cell.scrollIntoView({ block: 'nearest' });
+    cell.classList.add('flash-new');
     return cell;
   }
 

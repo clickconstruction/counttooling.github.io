@@ -43,11 +43,14 @@ test.describe('Custom icon upload (features/custom-icon-upload.js)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('uploading an SVG adds the icon, refreshes the grid, selects it, and autofills the name', async ({ page }) => {
+  test('uploading an SVG adds the icon, refreshes the grid, selects it, scrolls it into view, and autofills the name', async ({ page }) => {
     const errors = [];
     await bootWithCreateCounterOpen(page, errors);
+    // Show the Custom Icons panel so the T2-05 visible-success assertions run
+    // against a rendered (laid-out, scrollable) grid.
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]').click();
     const before = await page.evaluate(() => window.App.getUserCustomIcons().length);
-    // Create Counter prefills the name from the first built-in icon; the
+    // Create Counter prefills the name from the next unused built-in icon; the
     // upload autofill only applies to an EMPTY field. Clear it to pin that.
     await page.locator('#counterName').fill('');
 
@@ -79,6 +82,26 @@ test.describe('Custom icon upload (features/custom-icon-upload.js)', () => {
     expect(after.hasCirclePath).toBe(true);
     expect(after.selectedIsAdded).toBe(true);
     expect(after.nameField).toBe('floor-drain-special');
+
+    // T2-05 #19 — visible success: the new cell must sit inside the grid's
+    // visible scroll window (pre-fix it appended ~308px down a 200px-tall
+    // grid at scrollTop 0, pixel-identical to a no-op) and carry the
+    // flash-new pulse class.
+    const vis = await page.evaluate(() => {
+      const grid = document.getElementById('counterIconGridCustom');
+      const cell = grid.querySelector('.icon-cell.selected');
+      const g = grid.getBoundingClientRect();
+      const c = cell.getBoundingClientRect();
+      return {
+        scrolled: grid.scrollTop > 0,
+        inWindow: c.top >= g.top - 1 && c.bottom <= g.bottom + 1,
+        flash: cell.classList.contains('flash-new'),
+      };
+    });
+    expect(vis.scrolled).toBe(true);
+    expect(vis.inWindow).toBe(true);
+    expect(vis.flash).toBe(true);
+
     expect(errors).toEqual([]);
   });
 

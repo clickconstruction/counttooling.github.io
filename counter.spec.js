@@ -115,3 +115,170 @@ test.describe('window.App registry pilot - Counter modal', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// T2-05 commit 1 — create ergonomics: both openers share prepCreatePanel()
+// (next-unused-icon name prefill, custom grid populated), C lands on Create
+// when the palette is empty, the twin guard suffixes + rotates color on an
+// exact duplicate, and a blank name never mints the literal "Counter".
+test.describe('T2-05 counter-modal create ergonomics', () => {
+  /** @param {import('@playwright/test').Page} page @param {string[]} errors */
+  async function boot(page, errors) {
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  }
+
+  test('zero counters: #counterBtn lands on Create prefilled like +Add; Choose empty state reworded', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+
+    await page.evaluate(() => document.getElementById('counterBtn').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const info = await page.evaluate(() => {
+      const App = window.App;
+      const icons = App.getOrderedIcons();
+      const cells = Array.from(document.querySelectorAll('#counterIconGrid .icon-cell'));
+      return {
+        createVisible: document.getElementById('counterCreatePanel').style.display !== 'none',
+        chooseVisible: document.getElementById('counterChoosePanel').style.display !== 'none',
+        expectedName: App.getIconName(icons[0].value),
+        name: /** @type {HTMLInputElement} */ (document.getElementById('counterName')).value,
+        selectedIdx: cells.findIndex((c) => c.classList.contains('selected')),
+        customCellCount: document.querySelectorAll('#counterIconGridCustom .icon-cell').length,
+      };
+    });
+    expect(info.createVisible).toBe(true);
+    expect(info.chooseVisible).toBe(false);
+    expect(info.name).toBe(info.expectedName);
+    expect(info.selectedIdx).toBe(0);
+    expect(info.customCellCount).toBeGreaterThan(0);
+
+    // Manual switch to Choose with zero counters shows the new copy verbatim.
+    await page.locator('#counterModal .counter-tab[data-tab="choose"]').click();
+    await expect(page.locator('#counterChooseEmpty')).toBeVisible();
+    await expect(page.locator('#counterChooseEmpty')).toHaveText('No counters yet — use the Create tab above.');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('next-unused prefill, twin guard (suffix + color rotate), blank-name fallback', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+
+    // Seed a counter named after icon[0]: the prefill must walk to icon[1].
+    await page.evaluate(() => {
+      const App = window.App;
+      const icons = App.getOrderedIcons();
+      window.state.counters.push({ id: 'seed-1', name: App.getIconName(icons[0].value), icon: icons[0].value, color: '#123456' });
+    });
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const prefill = await page.evaluate(() => {
+      const App = window.App;
+      const icons = App.getOrderedIcons();
+      const cells = Array.from(document.querySelectorAll('#counterIconGrid .icon-cell'));
+      return {
+        expectedName: App.getIconName(icons[1].value),
+        name: /** @type {HTMLInputElement} */ (document.getElementById('counterName')).value,
+        selectedIdx: cells.findIndex((c) => c.classList.contains('selected')),
+      };
+    });
+    expect(prefill.name).toBe(prefill.expectedName);
+    expect(prefill.selectedIdx).toBe(1);
+    const twinName = prefill.expectedName;
+
+    // Create the prefilled counter as-is (default color).
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => !document.getElementById('counterModal')?.classList.contains('visible'), { timeout: 5000 });
+    const first = await page.evaluate(() => {
+      const c = window.state.counters[window.state.counters.length - 1];
+      return { name: c.name, color: c.color };
+    });
+    expect(first.name).toBe(twinName);
+
+    // Exact twin (same name + icon + default color, changed nothing else):
+    // numbered suffix AND rotated color.
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.evaluate(() => {
+      document.querySelectorAll('#counterIconGrid .icon-cell')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.locator('#counterName').fill(twinName);
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => !document.getElementById('counterModal')?.classList.contains('visible'), { timeout: 5000 });
+    const second = await page.evaluate(() => {
+      const c = window.state.counters[window.state.counters.length - 1];
+      return { name: c.name, color: c.color };
+    });
+    expect(second.name).toBe(twinName + ' 2');
+    expect(second.color).not.toBe(first.color);
+
+    // Same name but a deliberately different color: suffix only, color kept.
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.evaluate(() => {
+      document.querySelectorAll('#counterIconGrid .icon-cell')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      const sw = document.querySelector('#counterColorRow .color-swatch[data-color="#2c3e50"]');
+      if (sw) sw.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.locator('#counterName').fill(twinName);
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => !document.getElementById('counterModal')?.classList.contains('visible'), { timeout: 5000 });
+    const third = await page.evaluate(() => {
+      const c = window.state.counters[window.state.counters.length - 1];
+      return { name: c.name, color: c.color };
+    });
+    expect(third.name).toBe(twinName + ' 3');
+    expect(third.color).toBe('#2c3e50');
+
+    // Blank name falls back to the selected icon's name — never "Counter".
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const prefillName = await page.locator('#counterName').inputValue();
+    await page.locator('#counterName').fill('');
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => !document.getElementById('counterModal')?.classList.contains('visible'), { timeout: 5000 });
+    const last = await page.evaluate(() => ({
+      name: window.state.counters[window.state.counters.length - 1].name,
+      anyLiteralCounter: window.state.counters.some((c) => c.name === 'Counter'),
+    }));
+    expect(last.name).toBe(prefillName);
+    expect(last.anyLiteralCounter).toBe(false);
+
+    expect(errors).toEqual([]);
+  });
+
+  // T2-05 commit 2 — the icon search ships visible: the inline display:none
+  // on #counterIconSearchGroup is gone, the group shows on the Icon tab only
+  // (the live handler filters the built-in grid), and typing filters the grid.
+  test('icon search is visible on the Icon tab, hidden on Custom Icons, and filters the grid', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const searchGroup = page.locator('#counterIconSearchGroup');
+    await expect(searchGroup).toBeVisible();
+
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]').click();
+    await expect(searchGroup).toBeHidden();
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="icon"]').click();
+    await expect(searchGroup).toBeVisible();
+
+    const fullCount = await page.locator('#counterIconGrid .icon-cell').count();
+    await page.locator('#counterIconSearch').fill('water');
+    // oninput fires on fill; the grid rebuilds synchronously.
+    const filtered = await page.evaluate(() => {
+      const cells = Array.from(document.querySelectorAll('#counterIconGrid .icon-cell'));
+      return { count: cells.length, firstSelected: cells[0]?.classList.contains('selected') || false };
+    });
+    expect(filtered.count).toBeGreaterThan(0);
+    expect(filtered.count).toBeLessThan(fullCount);
+    expect(filtered.firstSelected).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
+});

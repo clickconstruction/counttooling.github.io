@@ -695,6 +695,15 @@
     .modal-card .icon-cell svg { width: 24px; height: 24px; }
     .modal-card .icon-cell.icon-cell-upload { border: 2px dashed var(--border2); color: var(--text2); font-size: 1.2rem; }
     .modal-card .icon-cell.icon-cell-upload:hover { background: var(--surface3); color: var(--accent); border-color: var(--accent); }
+    /* One-shot pulse of the selection-ring color on a just-uploaded custom
+       icon (features/custom-icon-upload.js adds .flash-new after scrolling the
+       cell into view). No cleanup needed: uploads rebuild the grid wholesale. */
+    .modal-card .icon-cell.flash-new { animation: icon-cell-flash 1.2s ease-out 1; }
+    @keyframes icon-cell-flash {
+      0% { box-shadow: 0 0 0 0 var(--accent); }
+      40% { box-shadow: 0 0 0 5px var(--accent); }
+      100% { box-shadow: 0 0 0 5px transparent; }
+    }
     .modal-card .icon-grid-drop { grid-template-columns: repeat(5, 1fr); max-height: none; }
     .modal-card .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
     .modal-card .actions button { padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; border: none; font-family: inherit; min-height: 44px; }

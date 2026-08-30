@@ -115,7 +115,10 @@
     if (exportDropdown && exportDropdown.style.display !== 'none' && exOpts.length) {
       addSection('Export');
       const exIcon = document.getElementById('exportDropdownIconExport');
-      exOpts.forEach(o => addItem(o.textContent, () => o.click(), exIcon));
+      // B12 (J12): a disabled source row (the greyed Import Canvas row, marks
+      // on the canvas) clones as a disabled drawer row — same label +
+      // explainer text, greyed, inert.
+      exOpts.forEach(o => rows.push({ label: o.textContent, click: () => o.click(), iconSrc: exIcon, disabled: o.disabled }));
     }
     rows.forEach(r => {
       if (r.section) {
@@ -138,6 +141,7 @@
         // white-space:pre-line). Desktop menus keep the single-line source text.
         label.textContent = r.label.replace(' (', '\n(');
         btn.appendChild(label);
+        if (r.disabled) btn.disabled = true;
         btn.onclick = () => { r.click(); closeBurgerMenu(); };
         list.appendChild(btn);
       }

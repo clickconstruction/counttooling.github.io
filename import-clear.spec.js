@@ -249,4 +249,88 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('Import Canvas menu row greys out with the explainer instead of vanishing (Tier-3 B12 / J12)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.setViewportSize({ width: 1380, height: 800 });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const row = page.locator('.export-dropdown-option[data-action="import-canvas"]');
+    const note = page.locator('#importCanvasBlockedNote');
+
+    // Count row activations without opening a native file chooser.
+    await page.evaluate(() => {
+      window.__importClicks = 0;
+      document.getElementById('importInput').click = () => { window.__importClicks++; };
+    });
+
+    // Empty canvas: row visible + enabled, no explainer; a real click fires it.
+    await page.locator('#exportDropdownBtn').click();
+    await expect(row).toBeVisible();
+    await expect(row).toBeEnabled();
+    await expect(note).toHaveText('');
+    await row.click();
+    expect(await page.evaluate(() => window.__importClicks)).toBe(1);
+    await expect(page.locator('#exportDropdownMenu')).not.toHaveClass(/visible/);
+
+    // Marks on the canvas: still visible, but disabled with the unblock path.
+    await seedPage0Marker(page);
+    await page.locator('#exportDropdownBtn').click();
+    await expect(row).toBeVisible();
+    await expect(row).toBeDisabled();
+    await expect(note).toHaveText('(canvas has marks — clear or undo first)');
+
+    // A click on the disabled row does nothing (no import, menu stays open).
+    await row.click({ force: true });
+    expect(await page.evaluate(() => window.__importClicks)).toBe(1);
+    await expect(page.locator('#exportDropdownMenu')).toHaveClass(/visible/);
+    await page.locator('#exportDropdownBtn').click(); // close the menu
+
+    // Clear Page re-enables the row...
+    await page.locator('#clearPageSidebar').click();
+    await page.waitForSelector('#clearPageConfirmModal.visible', { timeout: 5000 });
+    await page.locator('#clearPageConfirm').click();
+    await expect(row).toBeEnabled();
+    await expect(note).toHaveText('');
+
+    // ...and undoing the clear (marks return) disables it again.
+    await page.keyboard.press('Control+z');
+    await expect(row).toBeDisabled();
+    await expect(note).toHaveText('(canvas has marks — clear or undo first)');
+
+    // Viewer behavior unchanged (B6): viewers never see the row at all.
+    await page.evaluate(() => { window.state.isViewer = true; window.App.updateUI(); });
+    expect(await page.evaluate(() => document.querySelector('.export-dropdown-option[data-action="import-canvas"]').style.display)).toBe('none');
+    await page.evaluate(() => { window.state.isViewer = false; window.App.updateUI(); });
+    expect(await page.evaluate(() => document.querySelector('.export-dropdown-option[data-action="import-canvas"]').style.display)).toBe('');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('burger drawer mirrors the disabled Import Canvas row on mobile (Tier-3 B12 / J12)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await seedPage0Marker(page);
+
+    await page.locator('#headerBurger').click();
+    const drawerRow = page.locator('.right-menu-item', { hasText: 'Import Canvas' });
+    await expect(drawerRow).toBeVisible();
+    await expect(drawerRow).toBeDisabled();
+    await expect(drawerRow).toContainText('(canvas has marks — clear or undo first)');
+
+    expect(errors).toEqual([]);
+  });
 });

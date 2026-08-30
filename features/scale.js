@@ -260,6 +260,9 @@
     App.markProjectDirty();
     App.shareViewerScale && App.shareViewerScale(state.currentPage);
     logScaleSet(scaleObj, method || 'two-point', false);
+    // Copy-resume hook (B3): features/output.js offers "Copy again" after a
+    // Set-scale detour — fired defensively after every scale commit.
+    App.onScaleApplied && App.onScaleApplied();
     state.tool = App.TOOL.NONE;
     state.scaleMode = App.SCALE_MODES.NONE;
     state.scalePointA = null;
@@ -303,6 +306,7 @@
       pageIndex: state.currentPage,
       edit: !!edit,
     });
+    App.onScaleApplied && App.onScaleApplied();   // copy-resume hook (B3)
     App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
@@ -337,6 +341,9 @@
           App.markProjectDirty();
           App.shareViewerScale && App.shareViewerScale(state.currentPage);
           logScaleSet(applied, 'preset', !!corrected);
+          // Copy-resume hook (B3) — before the corrected/verify early return:
+          // the scale IS applied (Esc keeps it), so the resume is offered.
+          App.onScaleApplied && App.onScaleApplied();
           if (corrected) { handOffToVerify(corrected); return; }   // T1-04: corrected apply → verify
           App.hideModal('scaleModal');
           App.updateUI();
@@ -409,6 +416,7 @@
     App.markProjectDirty();
     App.shareViewerScale && App.shareViewerScale(state.currentPage);
     logScaleSet(applied, 'custom', !!corrected);
+    App.onScaleApplied && App.onScaleApplied();   // copy-resume hook (B3), before the verify early return
     if (corrected) { handOffToVerify(corrected); return; }   // T1-04: corrected apply → verify
     App.hideModal('scaleModal');
     App.updateUI();

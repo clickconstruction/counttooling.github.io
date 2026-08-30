@@ -226,4 +226,217 @@ test.describe('Output cluster (features/output.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('view-link sessions get the accurate no-link toast (branch order, B3)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // A view-link session shape: project id present, loadedViaViewLink set,
+    // no supabase session. Before B3 the sign-in branch shadowed the accurate
+    // view-only one ("Sign in to include a view link" — a lie for viewers).
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      const c0 = App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      s.currentProjectId = 'proj-viewer';
+      s.loadedViaViewLink = true;
+      App.updateUI();
+    });
+    await page.evaluate(() => {
+      document.querySelector('.pipe-tooling-option[data-mode="this-canvas"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForFunction(() => /view-only/i.test(document.getElementById('airboardToastText')?.textContent || ''), { timeout: 5000 });
+    const toast = await page.evaluate(() => document.getElementById('airboardToastText').textContent);
+    expect(toast).toContain('View-only sessions cannot create a share link');
+    expect(toast).not.toContain('Sign in');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Floor Drain');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('copy scope drop-ups anchor to their buttons and close each other (B3)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      const c0 = App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      App.updateUI();
+    });
+
+    // Open the /Tooling drop-up: anchored to its button, NOT the full-window
+    // band the stylesheet's right:0 used to make (J11 friction #8).
+    await page.locator('#forPipeTooling').click();
+    await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);
+    const geo = await page.evaluate(() => {
+      const m = document.getElementById('forPipeToolingMenu').getBoundingClientRect();
+      const b = document.getElementById('forPipeTooling').getBoundingClientRect();
+      return { mLeft: m.left, mRight: m.right, mWidth: m.width, bLeft: b.left, vw: window.innerWidth };
+    });
+    expect(geo.mWidth).toBeLessThan(500);                    // not a viewport-wide band
+    expect(geo.mRight).toBeLessThan(geo.vw - 200);           // right edge is nowhere near the viewport edge
+    expect(Math.abs(geo.mLeft - geo.bLeft)).toBeLessThan(12); // anchored to the button's left
+
+    // The two copy menus close each other (both buttons stopPropagation, so
+    // the document click-away can't do it).
+    await page.locator('#copySummaryText').click();
+    await expect(page.locator('#copySummaryTextMenu')).toHaveClass(/visible/);
+    await expect(page.locator('#forPipeToolingMenu')).not.toHaveClass(/visible/);
+    const geo2 = await page.evaluate(() => {
+      const m = document.getElementById('copySummaryTextMenu').getBoundingClientRect();
+      return { mWidth: m.width, mRight: m.right, vw: window.innerWidth };
+    });
+    expect(geo2.mWidth).toBeLessThan(500);
+    expect(geo2.mRight).toBeLessThan(geo2.vw - 200);
+    await page.locator('#forPipeTooling').click();
+    await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);
+    await expect(page.locator('#copySummaryTextMenu')).not.toHaveClass(/visible/);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('1 page / 1 canvas skips the scope chooser on both copy buttons (B3/J13)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      const s = window.state, App = window.App, p = s.pages[0];
+      p.scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      s.lineTypes = [{ id: 'lt1', name: 'Copper', color: '#4a9eff' }];
+      const c = App.ensureActiveCanvas(p);
+      c.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      c.annotations.quickLines = [{ x1: 100, y1: 100, x2: 220, y2: 100, color: '#4a9eff', id: 'q1', lineTypeId: 'lt1', group: null }];
+      App.updateUI();
+    });
+
+    // Copy to /Tooling: no menu — straight to the gated copy (like Download).
+    await page.locator('#forPipeTooling').click();
+    await page.waitForFunction(() => /view link/i.test(document.getElementById('airboardToastText')?.textContent || ''), { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('forPipeToolingMenu').classList.contains('visible'))).toBe(false);
+    const pipeText = await page.evaluate(() => navigator.clipboard.readText());
+    expect(pipeText).toContain('Floor Drain');
+    expect(pipeText).toContain('\t');
+
+    // Copy Summary: same skip — copied modal, no menu.
+    await page.evaluate(() => { document.getElementById('airboardToastText').textContent = ''; });
+    await page.locator('#copySummaryText').click();
+    await page.waitForSelector('#pipeToolingCopiedModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('copySummaryTextMenu').classList.contains('visible'))).toBe(false);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Floor Drain');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('Copy again resumes the copy after the Set-scale detour (B3/J11)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Page 2: unscaled line — the gate flags it. Spy logUserEvent to prove the
+    // unscaled_ft_block event still fires from this surface.
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.lineTypes = [{ id: 'lt1', name: 'Copper', color: '#4a9eff' }];
+      s.pages[1].label = 'P-2 Underground';
+      const c1 = App.ensureActiveCanvas(s.pages[1]);
+      c1.annotations.quickLines = [{ x1: 100, y1: 100, x2: 220, y2: 100, color: '#4a9eff', id: 'q1', lineTypeId: 'lt1', group: null }];
+      window.__events = [];
+      const orig = App.logUserEvent;
+      App.logUserEvent = (name, pid, data) => { window.__events.push(name); return orig(name, pid, data); };
+      App.updateUI();
+    });
+    await page.evaluate(() => navigator.clipboard.writeText('SENTINEL'));
+
+    // Copy -> gate -> Set scale: jumps to the flagged page, arms the resume.
+    await page.evaluate(() => {
+      document.querySelector('.pipe-tooling-option[data-mode="visible"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => window.__events.includes('unscaled_ft_block'))).toBe(true);
+    await page.locator('#toolingScaleCheckGoSet').click();
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => window.state.currentPage)).toBe(1);
+
+    // Apply a preset — the one-tap "Copy again" toast appears; nothing has
+    // been copied yet.
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+    await page.locator('#scalePresetsList button').first().click();
+    await page.waitForSelector('#copyAgainModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('SENTINEL');
+
+    // One tap: the gate re-walks (clean now) and the copy lands.
+    await page.locator('#copyAgainLink').click();
+    await page.waitForFunction(() => /view link/i.test(document.getElementById('airboardToastText')?.textContent || ''), { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('copyAgainModal').classList.contains('visible'))).toBe(false);
+    expect(await page.evaluate(() => document.getElementById('toolingScaleCheckModal').classList.contains('visible'))).toBe(false);
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('of Copper');
+    expect(copied).not.toContain('px of Copper');   // scaled now — real feet, not pixels
+
+    expect(errors).toEqual([]);
+  });
+
+  test('clipboard failure speaks plain words, not a raw DOMException (B3/J11)', async ({ page }) => {
+    const errors = [];
+    // The failure path intentionally console.errors the raw error for
+    // diagnosis — filter it from the no-console-errors assertion.
+    page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('[copy]')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    const alerts = [];
+    page.on('dialog', (d) => { alerts.push(d.message()); d.accept().catch(() => {}); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      const c0 = App.ensureActiveCanvas(s.pages[0]);
+      c0.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      // Break the clipboard the way a denied permission does.
+      Clipboard.prototype.writeText = () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+      App.updateUI();
+    });
+    await page.evaluate(() => {
+      document.querySelector('.copy-summary-option[data-mode="this-canvas"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await expect.poll(() => alerts.length, { timeout: 5000 }).toBeGreaterThan(0);
+    expect(alerts[0]).toContain('Nothing was copied');
+    expect(alerts[0]).toContain('clipboard access');
+    expect(alerts[0]).not.toContain('NotAllowedError');
+    expect(alerts[0]).not.toContain('Write permission denied');
+    // No false "Copied to clipboard." card.
+    expect(await page.evaluate(() => document.getElementById('pipeToolingCopiedModal').classList.contains('visible'))).toBe(false);
+
+    expect(errors).toEqual([]);
+  });
 });

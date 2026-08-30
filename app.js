@@ -3325,11 +3325,32 @@
       showSetScaleFirstToast('Polyline');
       return;
     }
+    // T2-12: an in-flight draft is resumed, never replaced — re-press mid-draw
+    // (or after the T1-05 page-switch disarm left an orphan draft) just re-arms
+    // the tool; before, the dialog reopened and Start silently discarded every
+    // clicked vertex. Finish/Esc/M remain the ways to start fresh.
+    if (state.drawingPolyline) { state.tool = TOOL.POLYLINE; updateUI(); return; }
+    const activeLt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
+    if (activeLt) {
+      // T2-12: a line type is active — P behaves like L: no dialog, the run
+      // takes the type's color and an auto-name; the dialog stays reachable
+      // by pressing P with no active type. (JOURNEY-MAP Tier-2 #28)
+      state.drawingPolyline = { id: uid(), name: nextPolylineName(), color: activeLt.color, points: [], closed: false, lineTypeId: activeLt.id, group: state.activeGroupId || null };
+      state.tool = TOOL.POLYLINE;
+      updateUI();
+      return;
+    }
     document.getElementById('polylineLineType').innerHTML = state.lineTypes.map(lt => '<option value="' + lt.id + '">' + lt.name + '</option>').join('') || '<option value="">—</option>';
     document.getElementById('polylineName').value = '';
     const cr = document.getElementById('polylineColorRow');
     cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
     cr.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => { cr.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected')); s.classList.add('selected'); });
+    // T2-12: with zero line types the select's sole option is "—" and Start
+    // used to commit a lineTypeId:null run whose footage landed under
+    // "Unassigned" — block it with the picker's empty-state copy instead.
+    const none = state.lineTypes.length === 0;
+    document.getElementById('polylineEmpty').style.display = none ? '' : 'none';
+    document.getElementById('polylineStart').disabled = none;
     showModal('polylineModal');
   };
   document.getElementById('highlightBtn').onclick = () => {
@@ -3788,10 +3809,14 @@
   document.getElementById('polylineCancel').onclick = () => hideModal('polylineModal');
   document.getElementById('polylineStart').onclick = () => {
     const lineTypeId = document.getElementById('polylineLineType').value || state.lineTypes[0]?.id;
+    // T2-12 belt-and-braces: the button is disabled with zero line types, but a
+    // forced click must still never commit a lineTypeId:null polyline (its
+    // footage would vanish into Lines → "Unassigned").
+    if (!lineTypeId) return;
     const name = document.getElementById('polylineName').value.trim() || 'Polyline';
     const colorSel = document.querySelector('#polylineColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
-    state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId: lineTypeId || null, group: state.activeGroupId || null };
+    state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId, group: state.activeGroupId || null };
     state.tool = TOOL.POLYLINE;
     hideModal('polylineModal');
     updateUI();
@@ -3799,6 +3824,14 @@
 
   document.getElementById('finishPolyline').onclick = () => finishPolyline(false);
   document.getElementById('closePolygon').onclick = () => finishPolyline(true);
+
+  // Auto-name for dialog-skipped polylines (T2-12 immediate arm): "Polyline N",
+  // N = project-wide polyline count + 1. Cosmetic; collisions after deletes are fine.
+  function nextPolylineName() {
+    let n = 0;
+    for (const p of state.pages) for (const c of getPageCanvases(p)) n += (c.annotations?.polylines?.length || 0);
+    return 'Polyline ' + (n + 1);
+  }
 
   function finishPolyline(closed) {
     if (!state.drawingPolyline || state.drawingPolyline.points.length < 2) return;

@@ -164,7 +164,7 @@ counting.
 *Problem:* Tracing runs with a scale ruler or measuring wheel on paper is the single biggest time
 sink in a linear takeoff.
 *Useful because:* Click the path and the real-world length lands in the totals instantly, read off
-the calibrated scale.
+the calibrated scale. With a line type active, P starts tracing immediately — no dialog.
 
 **Arc line types**
 *Problem:* Curved runs measured as straight chords under-count material.

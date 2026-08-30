@@ -42,9 +42,9 @@ B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 | B4 export naming (+B18 dialect) | claude/t3-b04-export-naming | ☑ merged 2026-08-30, pushed ckpt 2 |
 | B5 pdf-bundle pagination | claude/t3-b05-bundle-pagination | ☑ merged 2026-08-30, pushed ckpt 2 |
 | B6 viewer/share trim | claude/t3-b06-viewer-trim | ☑ merged 2026-08-30, pushed ckpt 2 |
-| B7 sign-in wall copy | | queued |
-| B8 scale modal small fixes | | queued |
-| B9 mobile/touch | | queued |
+| B7 sign-in wall copy | claude/t3-b07-signin-copy | ☑ merged 2026-08-30, pushed ckpt 3 |
+| B8 scale modal small fixes | claude/t3-b08-scale-fixes | ☑ merged 2026-08-30, pushed ckpt 3 |
+| B9 mobile/touch | claude/t3-b09-mobile-touch | ☑ merged 2026-08-30, pushed ckpt 3 |
 | B10 legend & proof | | queued |
 | B11 signed-out save signal | | queued |
 | B12 import canvas row | | queued |

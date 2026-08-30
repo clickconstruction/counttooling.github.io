@@ -362,7 +362,10 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   loaded PDF would render the page in a different orientation than the marks were baked
   against (`computePageBakeFrame` stamps it, `verifyPageBakeFrame` checks it on load via the
   pure `bakeFramesMatch`; on mismatch it warns + toasts + sets `page.bakeMismatch`, never
-  auto-corrects). The IndexedDB takeoff backup carries the parallel `pageBakeFrames` array.
+  auto-corrects). Each saved page also carries `label` (the custom sheet name from the
+  pages-sidebar rename / Prepare PDF), restored by `applyPageAnnotationsFromData` over the
+  caller-seeded default. The IndexedDB takeoff backup carries the parallel
+  `pageBakeFrames` and `pageLabels` arrays.
 - In-memory only (not persisted): `state.pdfBufferSize` (bytes; set whenever
   `state.pdfBuffer` is set, because pdf.js detaches the buffer making `byteLength`
   0), `state.localPdfHash` (sha256 of a locally-uploaded, never-saved PDF —

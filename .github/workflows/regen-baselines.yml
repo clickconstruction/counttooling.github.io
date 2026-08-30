@@ -1,0 +1,36 @@
+# Regenerate the render-pixels linux baselines on a real CI runner.
+#
+# Why: the committed *-chromium-linux.png baselines must be rendered in the
+# same environment CI tests in. The documented docker recipe
+# (playwright.config.js) needs a Docker daemon, which dev machines don't
+# always have. This workflow is the fallback: push the branch whose visuals
+# changed to a ref named ci/regen-baselines/<anything> and CI renders fresh
+# linux baselines with --update-snapshots, then uploads them as the
+# "linux-baselines" artifact. Download, commit them on your topic branch,
+# delete the ci/regen-baselines/* ref.
+#
+# It never runs on normal pushes or PRs — only the dedicated ref prefix.
+name: Regenerate linux baselines
+
+on:
+  push:
+    branches: ['ci/regen-baselines/**']
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # webServer comes from playwright.config.js (npx serve -l 3456).
+      - run: npx playwright test render-pixels.spec.js --update-snapshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-baselines
+          path: render-pixels.spec.js-snapshots/*-chromium-linux.png
+          retention-days: 7

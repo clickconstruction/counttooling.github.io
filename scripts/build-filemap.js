@@ -20,12 +20,14 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { assertNoConflictMarkers } = require('./lib/markers');
 
 const ROOT = path.join(__dirname, '..');
 const ARCH = path.join(ROOT, 'ARCHITECTURE.md');
 
 function countLines(file) {
   const s = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  assertNoConflictMarkers(s, file);
   // wc -l semantics: number of newline characters.
   let n = 0;
   for (let i = 0; i < s.length; i++) if (s[i] === '\n') n++;
@@ -67,6 +69,7 @@ function rebuild(src) {
 }
 
 const src = fs.readFileSync(ARCH, 'utf8');
+assertNoConflictMarkers(src, 'ARCHITECTURE.md');
 const { out, changed } = rebuild(src);
 const check = process.argv.includes('--check');
 

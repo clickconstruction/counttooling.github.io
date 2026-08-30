@@ -26,6 +26,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { assertNoConflictMarkers } = require('./lib/markers');
 
 const ROOT = path.join(__dirname, '..');
 const SW = path.join(ROOT, 'sw.js');
@@ -75,6 +76,19 @@ function checkPrecacheCoversShell(urls) {
   }
 }
 
+// Merge-conflict guard over the precached SOURCE files: a conflicted asset
+// would hash "successfully" and get its broken bytes stamped into the
+// integrity map. Only text assets can carry git markers (git never merges
+// binaries), so fonts/PNGs are skipped. Missing files are computeHash's error.
+const TEXT_EXT = new Set(['.js', '.mjs', '.css', '.html', '.json', '.svg', '.md', '.map', '.txt', '.webmanifest']);
+function checkPrecacheConflictMarkers(urls) {
+  for (const url of urls) {
+    const file = urlToFile(url);
+    if (!TEXT_EXT.has(path.extname(file)) || !fs.existsSync(file)) continue;
+    assertNoConflictMarkers(fs.readFileSync(file, 'utf8'), path.relative(ROOT, file));
+  }
+}
+
 // Hash url + bytes for every precache asset, in declaration order. Missing files
 // are a hard error: a precache entry that 404s would break `cache.addAll` and
 // abort the whole SW install offline.
@@ -116,6 +130,7 @@ function main() {
   const check = process.argv.slice(2).includes('--check');
 
   const swText = fs.readFileSync(SW, 'utf8');
+  assertNoConflictMarkers(swText, 'sw.js');
   const m = swText.match(VERSION_RE);
   if (!m) {
     console.error("Could not find `const CACHE_VERSION = '...';` in sw.js.");
@@ -130,6 +145,7 @@ function main() {
 
   const current = m[1];
   const urls = parsePrecacheUrls(swText);
+  checkPrecacheConflictMarkers(urls);
   checkPrecacheCoversShell(urls);
   const expected = computeHash(urls);
   const currentHashes = hm[0];

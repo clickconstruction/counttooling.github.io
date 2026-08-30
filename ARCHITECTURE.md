@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,124 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,115 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 919 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,744 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,648 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 2,760 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,666 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 710 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 845 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 611 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (68 files) | 15,265 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (68 files) | 15,279 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -60,7 +60,8 @@ modules. Candidates in priority order:
 
 | File | Purpose |
 |------|---------|
-| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines) |
+| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines). Includes `#toastRegion` — the four toast surfaces (`#setScaleFirstModal`, `#outOfBoundsModal`, `#pipeToolingCopiedModal`, `#airboardToastModal`) are **non-blocking corner cards** at z-index 350 (above every modal, `pointer-events:none` on the region; `.toast-interactive` is the per-card opt-in for cards that carry a real control), plus `#turnInProgressModal`, turn-in's own deliberate blocking overlay (Tier-2 #15). Regression: [toast-region.spec.js](toast-region.spec.js) |
+| [toast-region.spec.js](toast-region.spec.js) | Playwright regression owning the toast-system contract (Tier-2 #15) — a live toast blocks nothing (canvas hit-testing + a real counter click land during the toast), toasts paint above open modals (paint-order proved through the `.toast-interactive` opt-in, since `elementFromPoint` skips `pointer-events:none` nodes), two simultaneous toasts flex-stack without overlap and dismiss on their own timers, the pointer-events contract (region `none`, cards inherit, `.toast-interactive` computes `auto` — the T2-06 hook), and Escape is never consumed by a toast (one press closes the open modal; the toast still self-dismisses). `npx playwright test toast-region.spec.js` |
 | [index.html](index.html) | The **static marketing landing** at `/` — plain HTML sharing `marketing.css`, no app JS, outside the SW scope; forwards old `/?t=`/`?devAuth=1` links to `/app/` |
 | [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~6.5k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
@@ -190,7 +191,7 @@ modules. Candidates in priority order:
 | [lines-list.spec.js](lines-list.spec.js) | Playwright regression for the Lines-list split — registry contract (entry point + the five publish-only deps), then the moved behavior end-to-end on a seeded 2-page takeoff (two named quick lines + a polyline, one type): per-type grouping with `3 lines · 25.00 ft` totals, expand/collapse persisting to `linesTypeExpanded` localStorage, the search input filtering by line name through the real handler, row click selecting + jumping to the line's page, and a second click deselecting. Renders through the real `updateUI()` path, so the defensive hot-path seam is exercised, not just the direct call. Note: the Lines *section* starts minimized (`state.linesListCollapsed`), so the spec expands it before clicking rows. `npx playwright test lines-list.spec.js` |
 | [features/pages-list.js](features/pages-list.js) | The **sidebar Pages section renderer** (`renderPagesList` + the private `formatPageTitleStartEnd` start/end truncation) — extracted per the lines-list recipe (defensive updateUI seam, publish-only deps, zero moved state). Rows carry the scale/annotation page-number badge, the canvas-count badge, click-to-navigate, and (editors) the rename/delete affordances via `App.startRename`. New publish-only deps: `App.pageHasAnyAnnotations`, `App.startRename`, `App.exitEditMode`. Registers `App.renderPagesList` (consumed by app.js's `updateUI` defensively and by features/page-settings.js). Regression: [pages-list.spec.js](pages-list.spec.js) |
 | [features/sidebar-lists.js](features/sidebar-lists.js) | The **sidebar Counters / Line Types / Groups renderers** (`renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `countItemsInGroup`, private `quickKeyBadgeHtml`) — extracted per the lines-list recipe. Counter/line-type rows keep drag-to-reorder, search filtering, show-only-on-page filtering, cross-page badge totals (always-feet for line types), swatch/edit openers, and the Quick Key keycap badges; activation still funnels through `App.setActiveCounterType` / `App.setActiveLineType` (the ONE selection path shared with Quick Keys). Registrations re-homed from app.js's registry tail; consumed by quick-keys.js, counter-settings.js, line-type-settings.js, item-details.js and `updateUI` (defensive). Regression: [sidebar-lists.spec.js](sidebar-lists.spec.js) |
-| [features/status-bar.js](features/status-bar.js) | The **status-bar / footer-totals cluster**, extracted 2026-07-30 from app.js's Math & Format Helpers region (where it was always misfiled — it is DOM chrome over state + save-engine getters): the footer totals cache (`computeFooterTotals`/`getFooterTotalsCached`/`invalidateFooterTotals`), the status-bar renderer (`updateStatus` — sync dot/square, mode line, tool hints, count/length totals), the Save Status summary-block data (`getCloudSaveSummary`, consumed by [features/save-status.js](features/save-status.js)), and the hot-path save-status bell (`updateSaveStatusIndicator`; the on-demand modal stays in save-status.js). app.js keeps same-named thin wrappers for its ~30 call sites and the save-engine ctx entries. New publish-only deps: `formatSaveTime`/`formatSaveTimeParts`/`formatAgo`/`getLastSaveIncludedPdf` plus the engine getter passthroughs (`isSaveInProgress`, `isSavePdfInProgress`, `getSaveProgressMessage`, `wasLastCloudSaveAttemptFailed`, `getLastLocalBackupAt`) |
+| [features/status-bar.js](features/status-bar.js) | The **status-bar / footer-totals cluster**, extracted 2026-07-30 from app.js's Math & Format Helpers region (where it was always misfiled — it is DOM chrome over state + save-engine getters): the footer totals cache (`computeFooterTotals`/`getFooterTotalsCached`/`invalidateFooterTotals`), the status-bar renderer (`updateStatus` — sync dot/square, mode line, tool hints, count/length totals, and the `#statusMeasure` Distance chip: renders in-memory `state.lastMeasure` while it belongs to the current page — the Measure result lives here now, not in a toast; Tier-2 #15), the Save Status summary-block data (`getCloudSaveSummary`, consumed by [features/save-status.js](features/save-status.js)), and the hot-path save-status bell (`updateSaveStatusIndicator`; the on-demand modal stays in save-status.js). app.js keeps same-named thin wrappers for its ~30 call sites and the save-engine ctx entries. New publish-only deps: `formatSaveTime`/`formatSaveTimeParts`/`formatAgo`/`getLastSaveIncludedPdf` plus the engine getter passthroughs (`isSaveInProgress`, `isSavePdfInProgress`, `getSaveProgressMessage`, `wasLastCloudSaveAttemptFailed`, `getLastLocalBackupAt`) |
 | [features/canvas-switcher.js](features/canvas-switcher.js) | The **footer canvas switcher renderer** (`renderCanvasSwitcher`: current-name label, `(n/N)` index, the pills, the layers-dropdown rows, show-all peek-button visibility), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps (everything it reads was already on the registry). Registers `App.renderCanvasSwitcher`; the edit pen keeps opening [features/canvas-layers.js](features/canvas-layers.js)'s details modal via `App.openCanvasDetailsModal`. The peek-button visibility path it renders is exercised by [show-all-canvases.spec.js](show-all-canvases.spec.js) |
 | [features/summary-list.js](features/summary-list.js) | The **sidebar Summary section renderer** (`renderSummary`: per-group or flat counter / line-type rollups with multiply-zone-adjusted counts and always-feet lengths), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps. Registers `App.renderSummary`; rows open the count-detail modal in [features/summary-detail.js](features/summary-detail.js) via `App.openSummaryCountDetailModal` ([summary-detail.spec.js](summary-detail.spec.js) covers that modal and renders through the real `updateUI()` path) |
 | [features/turn-in.js](features/turn-in.js) | The **checkout lifecycle UX**, extracted 2026-07-30 from app.js's `[sync]` Turn In section (the one `[sync]` stretch that was real code rather than engine wrappers): `doTurnInAndHandleResult` (result handling over the engine's staged `doTurnIn` — expired short-circuit, already-released refresh, recovery-modal routing), the shared `doCheckoutCurrentProject` action, the header/sidebar edit-status banner click handler, and the Project Settings Check Out / Turn In / Force turn-in buttons. All four functions and every call site were internal to the cluster, so app.js needed no wrappers; the engine keeps the staged release (`App.doTurnIn` passthrough), and the expired-attention flags stay app-side behind the existing accessors (`isCheckoutExpiredAttention`/`setCheckoutExpiredAttention`/`clearCheckoutExpiredAttention`/`isAutoSaveSuspended`/`setLastCheckoutRefreshAt`) |
@@ -218,9 +219,10 @@ modules. Candidates in priority order:
 | [features/rfi-flags.js](features/rfi-flags.js) | **RFI flags** — the CountTooling half of the cross-app RFI loop (PipeTooling `docs/RFI_LOOP_PLAN.md` R2; estimator-twin pipeline Wave 2.2). Convention: a canvas note whose text starts with `RFI:` (case-insensitive, optional space before the colon) is a question for the GC, dropped at the exact ambiguous spot while drawing — human estimators and agent twins share the identical capture gesture, zero CT-side schema. The sidebar **Copy RFI Flags** button (`#copyRfiFlags`, Output cluster next to Copy Summary) collects every such note across ALL pages and ALL canvases into a tab-delimited clipboard list — header `RFI flags\t<project>`, then `p<N> <pageName>[ · <canvas>]\t<question>` rows (the canvas label appears only on multi-canvas pages, where it disambiguates) — that pastes into PipeTooling's RFI queue, the same clipboard seam Copy to /Tooling uses for counts. Empty case alerts instead of copying. Registers `App.collectRfiFlags` / `App.buildRfiFlagsText` / `App.copyRfiFlags`; deps read at call time: `state`, `showToast`, `logUserEvent` (best-effort). Regression: [rfi-flags.spec.js](rfi-flags.spec.js). |
 | [features/auth-magic-link.js](features/auth-magic-link.js) | **Email sign-in fallback**: after two failed password attempts on the SAME email, the Sign In modal reveals an offer block — “Email me a sign-in link” — that sends a magic link via `signInWithOtp` with **`shouldCreateUser: false`** (PipeTooling is the system of record; a typo'd email must never provision a CT-only account) and `emailRedirectTo` `/app/` (allowlisted). Link consumption is the stock `detectSessionInUrl` + `onAuthStateChange` path twin-login's mints already exercise — this file owns only the modal UX: TWO entry points sharing one send path — the always-visible quiet link under the actions (“No password? Email me a sign-in link” — PT-provisioned accounts are born with unusable random passwords, so the link IS their sign-in; it yields whenever the offer box is up, never both at once) and the failure-gated offer box (per-email counter, app.js's submit handler reports via `App.onAuthSignInFailed(email)`; per-email so a typo'd address's failures don't qualify the corrected one) — plus the “Check your email” sent state with the open-on-THIS-device warning and a 60s resend cooldown, and reset on modal close (`App.onAuthMagicLinkReset` from the hideModal ladder — the groups.js precedent) or successful sign-in. OTP errors surface honestly but translated (`friendlyOtpError`: “Signups not allowed for otp” → no-account-ask-your-admin; rate limit and ban get plain words; enumeration-hardening traded away for an invite-only tool). App.* deps: `getSupabase`. Regression: [auth-magic-link.spec.js](auth-magic-link.spec.js) (5 tests, GoTrue endpoints stubbed via routes — always run). |
 | [highlight-labels.spec.js](highlight-labels.spec.js) | Playwright regression for named highlights: the bookmarks panel appears when the tool is armed and lists seeded highlights across pages (unnamed count in the foot); a REAL right-click on a highlight offers "Name highlight…", the modal's Enter/Save writes `h.label`, the label paints ink, the panel re-sorts named-first and the same right-click now reads "Rename highlight…"; a row click jumps to the row's page; the context-menu name row echoes the label; and the Esc ladder (close panel → exit tool) + re-click-reopens contract. |
-| [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale |
-| [scripts/build-filemap.js](scripts/build-filemap.js) | Node script (no deps) that restamps the "Large-file map" table above: each row's Lines cell, the `features/*.js (NN files) \| total` aggregate, and the caption date (only when a count moved, so `--check` is deterministic day to day). Generator owns the numbers; humans own which files are listed and the Status/verdict prose — a hand-added row gets its count kept fresh. `npm run build:filemap`; `--check` in `npm run check` |
-| [scripts/build-macros.js](scripts/build-macros.js) | Node script that renders the Macros (Keyboard Shortcuts) table rows in [app/index.html](app/index.html) between generated markers from the `HOTKEYS` table in [constants.js](constants.js) — the same single source the keydown handler executes, so handler/list/Keyboard-Map can't drift (the V-row bug class). Row icons declared `{btn: id}` are extracted LIVE from that element's SVG (missing element/SVG = hard error). Regenerating changes app/index.html, so run `npm run build:sw` after. `npm run build:macros`; `--check` in `npm run check` |
+| [scripts/build-toc.js](scripts/build-toc.js) | Node script (no deps) that regenerates the line-numbered section index in this file from the `// SECTION:` markers in [app.js](app.js), writing between the BEGIN/END SECTION TOC markers; `npm run build:toc` rewrites in place, `node scripts/build-toc.js --check` exits non-zero when stale. Refuses to run while [app.js](app.js) or this file holds an unresolved git conflict marker (`assertNoConflictMarkers` from [scripts/lib/markers.js](scripts/lib/markers.js) — see the build-sw bullet in PWA/offline for the incident) |
+| [scripts/build-filemap.js](scripts/build-filemap.js) | Node script (no deps) that restamps the "Large-file map" table above: each row's Lines cell, the `features/*.js (NN files) \| total` aggregate, and the caption date (only when a count moved, so `--check` is deterministic day to day). Generator owns the numbers; humans own which files are listed and the Status/verdict prose — a hand-added row gets its count kept fresh. Refuses to run while this file or any counted file holds an unresolved git conflict marker ([scripts/lib/markers.js](scripts/lib/markers.js) guard — markers would both corrupt the splice and inflate the counts). `npm run build:filemap`; `--check` in `npm run check` |
+| [scripts/build-macros.js](scripts/build-macros.js) | Node script that renders the Macros (Keyboard Shortcuts) table rows in [app/index.html](app/index.html) between generated markers from the `HOTKEYS` table in [constants.js](constants.js) — the same single source the keydown handler executes, so handler/list/Keyboard-Map can't drift (the V-row bug class). Row icons declared `{btn: id}` are extracted LIVE from that element's SVG (missing element/SVG = hard error). Regenerating changes app/index.html, so run `npm run build:sw` after. Refuses to run while [app/index.html](app/index.html) or [hotkeys.js](hotkeys.js) holds an unresolved git conflict marker ([scripts/lib/markers.js](scripts/lib/markers.js) guard). `npm run build:macros`; `--check` in `npm run check` |
+| [scripts/lib/markers.js](scripts/lib/markers.js) + [markers.test.js](markers.test.js) | Shared seam for the committed-artifact generators: `spliceMarkedRegion` (BEGIN/END generated-region splice used by build-toc / build-macros) and `findConflictMarkerLine`/`assertNoConflictMarkers` — the "resolve merge conflicts before stamping" guard build-toc / build-filemap / build-macros / build-sw all run before touching a committed file (why: see the build-sw bullet under PWA/offline). [markers.test.js](markers.test.js) pins both with `node:test`; `npm run test:unit` |
 | [hotkeys.spec.js](hotkeys.spec.js) | Playwright regression for hotkeys-as-data — the executable half of the contract (`build:macros --check` gates the rendered half): every non-bespoke `HOTKEYS` entry resolves to a registered runner (`App.__hotkeyRunnerNames`) or a real element, both directions; behavior smoke through the real keydown path (d arms Measure on a scaled page, m resets, j toggles snap); viewer gating riding the table (h no-ops for viewers, d still works); and every runnable key lit on the Keyboard Map end-to-end. `npx playwright test hotkeys.spec.js` |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
@@ -531,52 +533,52 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2628 - Inline rename & polyline edit mode
 - L2742 - Modal primitives (showModal / hideModal)
 - L2773 - Toasts & line color picker
-- L2827 - Airboard cloud sync
-- L2872 - Supabase RPC & presence heartbeat
-- L2912 - User activity / event telemetry
-- L2971 - Supabase auth & dev auth
-- L3115 - [sync] Checkout subscription & permission refresh
-- L3125 - Modals & Handlers
-- L3193 - PDF intake (upload, test PDF, hashing)
-- L3201 - Toolbar tool buttons
-- L3373 - Tool sidebar buttons & legend overlay
-- L3464 - Add Line Type modal
-- L3549 - Line color & sidebar handlers
-- L3758 - Polyline modal & drawing
-- L3789 - Zoom bar & page navigation
-- L3815 - Export canvas JSON
-- L3831 - PDF download helpers
-- L3840 - View-link URL helpers & show-highlights/notes
-- L3912 - Custom icon upload handler
-- L3922 - Export & report dropdown menus
-- L4009 - Sidebar drawer toggles
-- L4020 - Mobile actions burger menu pointer & header logo
-- L4032 - User Activity pointer (format.js + features/user-activity.js)
-- L4044 - My Settings pointer (features/my-settings.js)
-- L4067 - Auth & settings entry buttons
-  - L4112 - Project Settings checkout & Save Status bell
-  - L4204 - [sync] Checkout expired recovery
-  - L4260 - [sync] Turn In
-  - L4370 - Share modal pointer & copy-project openers
-  - L4401 - Settings menu actions
-  - L4422 - Auth sign-in form
-  - L4447 - Save Project modal
-  - L4460 - Checkout expired recovery modal wiring
-  - L4565 - Last-session restore prompt
-  - L4572 - Canvas Repair modal wiring
-- L4759 - Canvas Event Handlers
-- L5205 - Event Binding
-- L5215 - Aim loupe (mobile press-hold precise placement)
-- L5356 - Zoom transform preview & commit
-- L5435 - Canvas mouse, wheel & touch handlers
-- L6143 - Global dropdown dismissal & keyboard hotkeys
-- L6453 - [sync] Manual save to cloud
-- L6463 - [sync] Auto-save
-- L6470 - [sync] Local backup (IndexedDB takeoff state)
-- L6603 - [sync] Checkout keep-alive
-- L6617 - App feature registry
-- L6911 - View-only mode
-- L6917 - Init / boot
+- L2829 - Airboard cloud sync
+- L2874 - Supabase RPC & presence heartbeat
+- L2914 - User activity / event telemetry
+- L2973 - Supabase auth & dev auth
+- L3117 - [sync] Checkout subscription & permission refresh
+- L3127 - Modals & Handlers
+- L3195 - PDF intake (upload, test PDF, hashing)
+- L3203 - Toolbar tool buttons
+- L3375 - Tool sidebar buttons & legend overlay
+- L3466 - Add Line Type modal
+- L3551 - Line color & sidebar handlers
+- L3760 - Polyline modal & drawing
+- L3791 - Zoom bar & page navigation
+- L3817 - Export canvas JSON
+- L3833 - PDF download helpers
+- L3842 - View-link URL helpers & show-highlights/notes
+- L3914 - Custom icon upload handler
+- L3924 - Export & report dropdown menus
+- L4011 - Sidebar drawer toggles
+- L4022 - Mobile actions burger menu pointer & header logo
+- L4034 - User Activity pointer (format.js + features/user-activity.js)
+- L4046 - My Settings pointer (features/my-settings.js)
+- L4069 - Auth & settings entry buttons
+  - L4114 - Project Settings checkout & Save Status bell
+  - L4206 - [sync] Checkout expired recovery
+  - L4262 - [sync] Turn In
+  - L4372 - Share modal pointer & copy-project openers
+  - L4403 - Settings menu actions
+  - L4424 - Auth sign-in form
+  - L4449 - Save Project modal
+  - L4462 - Checkout expired recovery modal wiring
+  - L4567 - Last-session restore prompt
+  - L4574 - Canvas Repair modal wiring
+- L4761 - Canvas Event Handlers
+- L5213 - Event Binding
+- L5223 - Aim loupe (mobile press-hold precise placement)
+- L5364 - Zoom transform preview & commit
+- L5443 - Canvas mouse, wheel & touch handlers
+- L6151 - Global dropdown dismissal & keyboard hotkeys
+- L6444 - [sync] Manual save to cloud
+- L6454 - [sync] Auto-save
+- L6461 - [sync] Local backup (IndexedDB takeoff state)
+- L6594 - [sync] Checkout keep-alive
+- L6608 - App feature registry
+- L6902 - View-only mode
+- L6908 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -735,7 +737,7 @@ Annotated, in rough order:
 | Polyline drawing | `drawingPolyline` or `finishPolyline` |
 | Line selection | `selectedLineId` or `selectedLinePageIdx` |
 | Canvas click handling | `handleCanvasClick` |
-| Measure tool / distance toast | `TOOL.MEASURE` or `measureBtn`; same-zone uses `getEffectiveScaleForLine` |
+| Measure tool / distance chip | `TOOL.MEASURE` or `measureBtn`; result renders in `#statusMeasure` (features/status-bar.js); same-zone uses `getEffectiveScaleForLine` |
 | Zoom / pan | `state.zoom` or `updateContainerTransform` or `showZoomModal` |
 | Zoom gesture perf (no per-frame updateUI) | `syncZoomIndicators` or `commitWheelZoom` |
 | Page-switch bitmap cache | `pdfBitmapCache` or `clearPdfBitmapCache` or `SECTION: PDF render bitmap cache` |
@@ -958,9 +960,10 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 - **Line types curveStyle** — `'straight'` (default) or `'arc'`; arc quick lines
   render as quadratic Beziers and use arc length for totals; persisted in
   save/load and export/import.
-- **Measure tool** (`D`) — two-click distance; toast uses the enclosing Scale
-  Zone's scale when both clicks fall in one zone, else page scale; available in
-  view mode.
+- **Measure tool** (`D`) — two-click distance; the result rides the footer as
+  the `#statusMeasure` chip (in-memory `state.lastMeasure`, shown while you stay
+  on that sheet — no toast) and uses the enclosing Scale Zone's scale when both
+  clicks fall in one zone, else page scale; available in view mode.
 - **Viewer scale — status, set-for-everyone, temp fallback, owner notice** —
   view-link viewers see the page's scale status on the (no longer viewer-hidden)
   Set Scale buttons and the desktop `#sidebarScaleDisplay`, and may run the full
@@ -1348,6 +1351,14 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   stale stamp fails CI — this replaced the old manual bump, which kept being forgotten).
   `PRECACHE_URLS` itself is still hand-maintained: when adding/renaming a shell file, update
   the app/index.html tag **and** `PRECACHE_URLS`, then rerun `build:sw`.
+  **Merge-conflict guard**: before stamping, the script exits non-zero if sw.js or any
+  *text* precached source still holds a column-0 git conflict marker
+  (`<<<<<<< `/`=======`/`>>>>>>> ` — `assertNoConflictMarkers` in
+  [scripts/lib/markers.js](scripts/lib/markers.js), shared with build-toc / build-filemap /
+  build-macros; node-tested in [markers.test.js](markers.test.js)). Why: sw.js conflicts on
+  nearly every merge (both sides restamp it), and twice an orchestrator regenerated while
+  the markers were still in the file — producing a stamped-but-broken sw.js that PASSED
+  `build:sw --check` (the hash matched the broken bytes on disk) and only failed at lint.
   `doGlobalReloadNow` also best-effort clears Cache Storage as
   a backstop. Icons are regenerated by `npm run build:pwa-icons`
   ([scripts/build-pwa-icons.js](scripts/build-pwa-icons.js), Playwright-rendered — no new

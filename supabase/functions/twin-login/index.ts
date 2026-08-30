@@ -3,29 +3,50 @@ import { jsonRes } from '../_shared/json.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 // Digital twin sign-in mint (PipeTooling docs/DIGITAL_TWINS_PLAN.md, Phase E1 — the
-// CountTooling half). A cloud-hosted agent harness POSTs here with a secret header and a
-// twin email; it gets a magic-link action_link and navigates a headless browser to it —
-// a signed-in session on the deployed app, no passwords anywhere. Three hard guards so a
-// leaked TWIN_LOGIN_SECRET can only ever produce a twin session, never a real person's:
-//   1. X-Twin-Login-Secret must match TWIN_LOGIN_SECRET (its own secret; rotating it is
-//      the fleet-wide kill switch).
-//   2. Email must match the estimator fleet pattern twin-estimator-<n>@twins.counttooling.local
-//      (estimator-only program).
-//   3. profiles.is_digital_twin must be true for that account.
+// CountTooling half). A cloud-hosted agent harness POSTs here and gets a magic-link
+// action_link; navigating a headless browser to it yields a signed-in session on the
+// deployed app, no passwords anywhere. Two credential paths (robot-ready train CT-4):
+//   * X-Twin-Token — the PER-TWIN fleet token, verified against twin_credentials
+//     (sha256 hashes mirrored from PipeTooling at issue time). The token IS the
+//     identity: the email must belong to that credential's account. Revoking the
+//     row severs this one twin on this app, independent of PT.
+//   * X-Twin-Login-Secret — the shared fleet secret (legacy/master path; rotating it
+//     is the fleet-wide kill switch).
+// Hard guards on both paths: fleet email pattern (estimator-only program) and
+// profiles.is_digital_twin — a leaked credential can only ever mint a twin session.
 
 const twinCors = {
   ...corsHeaders,
-  'Access-Control-Allow-Headers': corsHeaders['Access-Control-Allow-Headers'] + ', x-twin-login-secret',
+  'Access-Control-Allow-Headers': corsHeaders['Access-Control-Allow-Headers'] + ', x-twin-login-secret, x-twin-token',
 }
 
 const TWIN_EMAIL_RE = /^twin-estimator-\d+@twins\.counttooling\.local$/
 
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: twinCors })
   try {
-    const secret = req.headers.get('X-Twin-Login-Secret')
-    const expected = Deno.env.get('TWIN_LOGIN_SECRET')
-    if (!expected || secret !== expected) return jsonRes(401, { error: 'Unauthorized - invalid or missing twin login secret' })
+    const supabaseUrlPre = Deno.env.get('SUPABASE_URL')!
+    const serviceRoleKeyPre = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!serviceRoleKeyPre) return jsonRes(500, { error: 'SUPABASE_SERVICE_ROLE_KEY not configured' })
+    const preClient = createClient(supabaseUrlPre, serviceRoleKeyPre, { auth: { autoRefreshToken: false, persistSession: false } })
+
+    const twinToken = req.headers.get('X-Twin-Token')?.trim()
+    let credentialUserId: string | null = null
+    if (twinToken) {
+      const hash = await sha256Hex(twinToken)
+      const { data: cred } = await preClient.from('twin_credentials').select('user_id, revoked_at').eq('token_hash', hash).maybeSingle()
+      if (!cred || cred.revoked_at) return jsonRes(401, { error: 'Unknown or revoked twin token' })
+      credentialUserId = cred.user_id as string
+    } else {
+      const secret = req.headers.get('X-Twin-Login-Secret')
+      const expected = Deno.env.get('TWIN_LOGIN_SECRET')
+      if (!expected || secret !== expected) return jsonRes(401, { error: 'Unauthorized - invalid or missing twin credential' })
+    }
 
     const { email, redirectTo, run } = (await req.json()) as { email?: string; redirectTo?: string; run?: string }
     const cleanEmail = (email ?? '').trim().toLowerCase()
@@ -42,6 +63,10 @@ Deno.serve(async (req) => {
     if (listErr) return jsonRes(500, { error: `User lookup failed: ${listErr.message}` })
     const user = listed.users.find((u) => (u.email ?? '').toLowerCase() === cleanEmail)
     if (!user) return jsonRes(404, { error: 'Twin account not found' })
+    // Per-twin path: the token is the identity — it can only mint ITS OWN twin.
+    if (credentialUserId && credentialUserId !== user.id) {
+      return jsonRes(403, { error: 'Twin token does not belong to that account' })
+    }
 
     const { data: profile, error: profErr } = await adminClient
       .from('profiles')

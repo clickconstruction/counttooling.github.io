@@ -122,6 +122,10 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **list_accessible_projects_review** — Drops/recreates `list_accessible_projects` with `review_status`, `review_requested_at`, `reviewed_at` appended, powering the Bid Board's pinned **Ready for review** lane + badges and the Load Project row badges.
 
+**project_review_changes** (2026-08-30, robot-ready train CT-2) — The review loop's missing half: a reviewer can send a bid BACK. Adds status `'changes'` + `projects.review_note`; `set_project_review_status` gains `p_note` (the old 2-arg signature is dropped — PostgREST overload ambiguity) — `'changes'` requires overseer/admin AND a non-blank note; `'ready'`/`'reviewed'`/clear all null the note. `list_accessible_projects` recreated with `review_note` appended. Client: Bid Board's ready-lane cards gain **Request changes…** (note prompt) beside Mark reviewed; the Project Settings review row and card badges render the `changes` state with the note.
+
+**twin_credentials** (2026-08-30, robot-ready train CT-4) — Per-twin credential parity with PipeTooling: `twin_credentials` (user_id, sha256 `token_hash`, `revoked_at`; RLS enabled with no policies — service-role only). Hashes are mirrored from PT at mint time (`manage-user` verbs `set_twin_credential` / `revoke_twin_credential`); `twin-login` now accepts `X-Twin-Token` verified against active rows (the token can only mint ITS OWN twin), with the shared `TWIN_LOGIN_SECRET` kept as the master/fallback path. Revoking a row severs that one twin on this app independently of PT.
+
 ### Migration file naming
 
 Every migration is a single file named `YYYYMMDDHHMMSS_<label>.sql` — a 14-digit timestamp version plus a descriptive label, the format the Supabase CLI expects. The `version` recorded in `supabase_migrations.schema_migrations` is the timestamp, and it matches the filename one-to-one.

@@ -159,6 +159,57 @@ Deno.serve(async (req) => {
         }))
         return jsonRes(200, { roster, count: roster.length })
       }
+      case 'twin_projects': {
+        // Robot-ready train CT-3: PT's get_work_state surfaces the twin's CT takeoff
+        // projects (review status + note included) so a sent-back takeoff is a
+        // resumable fact the agent reads, not a surprise a human relays.
+        const email = String(body.email ?? '').trim().toLowerCase()
+        if (!email) return jsonRes(400, { error: 'email required' })
+        const u = await findByEmail(admin, email)
+        if (!u) return jsonRes(200, { found: false, projects: [] })
+        const { data: prof } = await admin.from('profiles').select('is_digital_twin').eq('user_id', u.id).maybeSingle()
+        if (prof?.is_digital_twin !== true) return jsonRes(400, { error: 'twin_projects is twin-scoped — not a twin account' })
+        const { data: projects, error } = await admin.from('projects')
+          .select('id, name, updated_at, counter_count, line_count, pdf_path, review_status, review_note, review_requested_at, reviewed_at')
+          .eq('user_id', u.id)
+          .order('updated_at', { ascending: false })
+          .limit(20)
+        if (error) return jsonRes(500, { error: `projects read failed: ${error.message}` })
+        return jsonRes(200, {
+          found: true,
+          projects: (projects ?? []).map((p) => ({
+            id: p.id, name: p.name, updated_at: p.updated_at,
+            counter_count: p.counter_count, line_count: p.line_count,
+            has_pdf: !!p.pdf_path,
+            review_status: p.review_status, review_note: p.review_note,
+            review_requested_at: p.review_requested_at, reviewed_at: p.reviewed_at,
+          })),
+        })
+      }
+      case 'set_twin_credential': {
+        // Robot-ready train CT-4: per-twin credential parity. PT issues one token per
+        // twin; its sha256 hash is mirrored here so CT's twin-login can verify the
+        // SAME token locally instead of trusting the shared fleet secret alone.
+        const email = String(body.email ?? '').trim().toLowerCase()
+        const tokenHash = String(body.token_hash ?? '').trim().toLowerCase()
+        if (!email || !/^[0-9a-f]{64}$/.test(tokenHash)) return jsonRes(400, { error: 'email + token_hash (sha256 hex) required' })
+        const u = await findByEmail(admin, email)
+        if (!u) return jsonRes(404, { error: 'no such CT user' })
+        const { data: prof } = await admin.from('profiles').select('is_digital_twin').eq('user_id', u.id).maybeSingle()
+        if (prof?.is_digital_twin !== true) return jsonRes(400, { error: 'credentials are twin-only' })
+        const { error } = await admin.from('twin_credentials').insert({ user_id: u.id, token_hash: tokenHash })
+        if (error && !/duplicate key/.test(error.message)) return jsonRes(500, { error: `credential insert failed: ${error.message}` })
+        console.log(`manage-user set_twin_credential: ${u.id}`)
+        return jsonRes(200, { ok: true, existed: !!error })
+      }
+      case 'revoke_twin_credential': {
+        const tokenHash = String(body.token_hash ?? '').trim().toLowerCase()
+        if (!/^[0-9a-f]{64}$/.test(tokenHash)) return jsonRes(400, { error: 'token_hash (sha256 hex) required' })
+        const { error } = await admin.from('twin_credentials').update({ revoked_at: new Date().toISOString() }).eq('token_hash', tokenHash).is('revoked_at', null)
+        if (error) return jsonRes(500, { error: `revoke failed: ${error.message}` })
+        console.log('manage-user revoke_twin_credential')
+        return jsonRes(200, { ok: true })
+      }
       default:
         return jsonRes(400, { error: `Unknown verb: ${verb}` })
     }

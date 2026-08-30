@@ -539,10 +539,30 @@
     .header .replaced-by-status-bar { display: none !important; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
     .modal-overlay.visible { display: flex; }
+    /* Toast region (JOURNEY-MAP Tier-2 #15). Z-order contract: modals 200-260
+       < menus/panels 300 < toasts 350 < header-more-menu / view-link-dead 400.
+       Toasts are passive corner cards: they paint above every modal (no more
+       invisible toasts behind roomBoxModal) and block nothing —
+       pointer-events:none on the region covers every card. Simultaneous
+       toasts flex-stack instead of painting over each other. */
+    #toastRegion { position: fixed; top: calc(52px + var(--safe-top) + 12px);
+      right: 12px; z-index: 350; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 8px; pointer-events: none;
+      max-width: min(400px, calc(100vw - 24px)); }
+    .toast-card { display: none; background: var(--surface);
+      border: 1px solid var(--border2); border-radius: 8px; padding: 12px 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+    .toast-card.visible { display: block; }
+    /* T2-06 hook: a card that carries a real control opts back into clicks. */
+    .toast-card.toast-interactive { pointer-events: auto; }
+    /* T2-06: the in-toast "Set Scale ⚖" button reads as a link. */
+    .toast-link { background: none; border: none; padding: 0; font: inherit;
+      color: var(--accent); text-decoration: underline; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px; }
     /* Dead/unreachable view-link failure screen (features/view-only.js).
-       z-index 400 sits above .modal-overlay/toasts (200) and every menu (300)
-       so nothing can paint over it; opaque var(--bg) fully hides the empty
-       editor underneath. */
+       z-index 400 sits above modals (200), every menu (300), and the toast
+       region (350) so nothing can paint over it; opaque var(--bg) fully hides
+       the empty editor underneath. */
     .view-link-dead-screen { display: none; position: fixed; inset: 0; z-index: 400;
       background: var(--bg); align-items: center; justify-content: center;
       flex-direction: column; gap: 16px; padding: 24px; text-align: center; }
@@ -679,6 +699,15 @@
     .modal-card .icon-cell svg { width: 24px; height: 24px; }
     .modal-card .icon-cell.icon-cell-upload { border: 2px dashed var(--border2); color: var(--text2); font-size: 1.2rem; }
     .modal-card .icon-cell.icon-cell-upload:hover { background: var(--surface3); color: var(--accent); border-color: var(--accent); }
+    /* One-shot pulse of the selection-ring color on a just-uploaded custom
+       icon (features/custom-icon-upload.js adds .flash-new after scrolling the
+       cell into view). No cleanup needed: uploads rebuild the grid wholesale. */
+    .modal-card .icon-cell.flash-new { animation: icon-cell-flash 1.2s ease-out 1; }
+    @keyframes icon-cell-flash {
+      0% { box-shadow: 0 0 0 0 var(--accent); }
+      40% { box-shadow: 0 0 0 5px var(--accent); }
+      100% { box-shadow: 0 0 0 5px transparent; }
+    }
     .modal-card .icon-grid-drop { grid-template-columns: repeat(5, 1fr); max-height: none; }
     .modal-card .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
     .modal-card .actions button { padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; border: none; font-family: inherit; min-height: 44px; }
@@ -866,6 +895,7 @@
     .save-project-progress li.pending { color: var(--text3); }
     .save-project-progress li.done { color: var(--green); }
     .save-project-progress li.done::before { content: "✓ "; }
+    /* Sole remaining user: #turnInProgressModal (toasts moved to #toastRegion). */
     .modal-card.modal-card-toast { width: fit-content; max-width: none; }
     #airboardToastText { line-height: 1.5; }
     .modal-card-large { max-width: 700px; width: 95%; }
@@ -1280,7 +1310,8 @@
     .copy-summary-option:hover { background: var(--surface2); }
     /* Zoom rail — the giant vertical zoom slider on the right edge (features/zoom-rail.js).
        z-index 300 keeps it interactive above .modal-overlay (200) so it coexists with
-       the Zoom Settings modal on desktop. */
+       the Zoom Settings modal on desktop. The toast region (350) can paint over
+       it for a few seconds but never blocks it (pointer-events: none). */
     .zoom-rail { position: fixed; right: 12px; top: calc(52px + var(--safe-top) + 12px); bottom: calc(70px + var(--safe-bottom)); width: 64px; display: none; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; z-index: 300; box-shadow: 0 4px 16px rgba(0,0,0,0.18); opacity: 1; transition: opacity 0.3s; }
     .zoom-rail.visible { display: flex; }
     .zoom-rail.fade-out { opacity: 0; }

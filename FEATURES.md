@@ -23,11 +23,11 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 
 ## Counting
 
-- **Counters (custom name, color, icon)** — One click per fixture with a symbol that reads on a busy sheet, tallied live as you go.
-- **Custom SVG icon upload + bundled trade icon library** — Your counters can look like the actual fixture (P-trap, floor drain, 45-elbow), so the marked-up plan stays legible to anyone.
+- **Counters (custom name, color, icon)** — One click per fixture with a symbol that reads on a busy sheet, tallied live as you go. The Create tab opens prefilled with the next unused icon's name (on a fresh project, C lands straight on it), and an exact duplicate create is auto-renamed ("Water Closet 2") in a fresh color so it can't silently split a tally.
+- **Custom SVG icon upload + bundled trade icon library** — Your counters can look like the actual fixture (P-trap, floor drain, 45-elbow), so the marked-up plan stays legible to anyone. A search box above the icon grid filters the library by name instead of scrolling ~250 cells.
 - **Groups** — Subtotal related items (one restroom group, one riser) so a dense sheet stays organized and auditable. Per-project and out of the way: the Groups section only appears when a project uses groups (or opts in via Project Settings), so the sidebar stays clean for everyone else.
 - **Counter settings (size, opacity, rings, numbers, outline)** — Marks stay legible at any zoom level and print scale.
-- **Quick Count / Quick Plumbing / Quick Line creators** — Build a properly-named palette item ("2\" PVC Waste") from Size/Type/Material pickers in two clicks instead of typing.
+- **Quick Count / Quick Plumbing / Quick Line creators** — Build a properly-named palette item ("2\" PVC Waste") from Size/Type/Material pickers in two clicks instead of typing — and a new Quick Count counter never duplicates an existing counter's icon+color: the color auto-rotates to a free palette entry (the panel previews the color it will mint). Creating a counter or line type — from any create surface — also arms its drawing tool, so the next plan click places the new item.
 - **Show only counters / line types used (this page or this project)** — Filter the sidebar palettes to what's actually placed — on the sheet you're counting or anywhere in the bid — with an "N hidden by filter" note so nothing looks lost.
 - **Child counts** — Attach "2 × connector per run" to a conduit type or "2 × ground screw per count" to a box, and the fittings tally themselves into the summary and every export — including per-N-ft rules for straps and supports.
 
@@ -37,7 +37,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Chain tool (T)** — One click per fixture: each click drops a counter and draws the connecting run back to the last one automatically — a 10-head sprinkler branch is 10 clicks, not 28.
 - **Arc line types** — Curved runs measure along the sweep, not the chord, so long-radius work isn't undercounted.
 - **Line drops** — Add vertical rise/fall at either end of a run so risers and stacks are in the footage, not forgotten.
-- **Measure tool (D)** — A two-click distance check without adding anything to the takeoff.
+- **Measure tool (D)** — A two-click distance check without adding anything to the takeoff; the distance sits in the footer and stays until you leave the sheet — no overlay to wait out.
 - **Snap to 45° angles (J)** — Lines lock to horizontal, vertical, and 45° — the angles real pipe and conduit actually run — so the takeoff looks as clean as the drawing.
 - **Grid overlay with snapping** — Lines follow a regular module for tidy, aligned tracing.
 - **Room Sizer (V)** — Draw room boxes with ceiling heights and get ft² and ft³ per room — the inputs for airflow, air changes, and equipment sizing.
@@ -71,6 +71,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 ## Output & reporting
 
 - **Live footer totals** — A running `[counts | length]` across all pages and canvases, zones applied, always in view.
+- **Live length while drawing** — The footer coaching hint shows the running feet-inches of the line or polyline you're tracing, updating with the cursor — like pulling a tape, no commit needed.
 - **Summary panel + count detail** — Click any total for a per-page breakdown with thumbnails showing exactly where the items are.
 - **Show Report** — A printable report scoped to this canvas, this page, or the whole project.
 - **Export PDFs** — A marked-up deliverable PDF with adjustable marker/line sizes, the report, and highlights/notes bundled in — ready to send.

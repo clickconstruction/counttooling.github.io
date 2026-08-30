@@ -2602,6 +2602,16 @@
     if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); }
     updateUI();
   }
+  // T2-08: every line-type create surface hands the user the pen, exactly as
+  // counter create (features/counter.js) and the picker's Create tab already do.
+  function armLineToolAfterCreate() {
+    if (!state.pages.length) return;          // palette prep, no plan open — nothing to draw on
+    if (state.drawingPolyline) return;        // never abandon an in-flight polyline trace
+    if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Quick Line'); return; }
+    state.tool = TOOL.LINE;
+    state.quickLineStart = null;
+    collapsePagesSectionForPlacing();
+  }
 
   // quickKeyBadgeHtml + renderCountersList + renderLineTypesList +
   // renderGroupsList + countItemsInGroup (the sidebar Counters / Line Types /
@@ -2780,32 +2790,45 @@
     airboardToastTimer = setTimeout(() => { hideModal('airboardToastModal'); airboardToastTimer = null; }, durationMs ?? 2000);
   }
 
+  // Turn-in progress is a deliberate BLOCKING overlay (save + checkout release
+  // in flight) with its own element — it is a progress state, not a toast, and
+  // no longer shares #airboardToastModal with showToast (Tier-2 #15).
   let turnInProgressActive = false;
   function setTurnInProgress(label) {
     if (!label) {
-      if (turnInProgressActive) hideModal('airboardToastModal');
+      if (turnInProgressActive) hideModal('turnInProgressModal');
       turnInProgressActive = false;
       return;
     }
-    if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
-    const el = document.getElementById('airboardToastText');
+    const el = document.getElementById('turnInProgressText');
     if (el) el.textContent = 'Turn In: ' + label;
-    showModal('airboardToastModal');
+    showModal('turnInProgressModal');
     turnInProgressActive = true;
   }
 
   let setScaleFirstToastTimer = null;
-  const scaleIconSvgToast = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" style="vertical-align:middle;flex-shrink:0;"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>';
+  // The "Set Scale ⚖" words in the card are a real button (static markup in
+  // app/index.html — T2-06); only the tail span changes per call, and the
+  // longer 6s timer leaves time to actually reach the link.
   function showSetScaleFirstToast(toolName) {
     if (setScaleFirstToastTimer) clearTimeout(setScaleFirstToastTimer);
-    const el = document.getElementById('setScaleFirstText');
-    if (el) el.innerHTML = 'Set Scale ' + scaleIconSvgToast + ' first to use ' + toolName + '.';
+    const tail = document.getElementById('setScaleFirstTail');
+    if (tail) tail.textContent = ' first to use ' + toolName + '.';
     showModal('setScaleFirstModal');
     setScaleFirstToastTimer = setTimeout(() => {
       hideModal('setScaleFirstModal');
       setScaleFirstToastTimer = null;
-    }, 3000);
+    }, 6000);
   }
+  // Bound once: hide the toast, then open the Set Scale dialog (same no-plan
+  // guard as the tool context menu's "Set / edit scale…" item; openScaleModal
+  // is registered by features/scale.js — read from App at call time).
+  const setScaleFirstLinkEl = document.getElementById('setScaleFirstLink');
+  if (setScaleFirstLinkEl) setScaleFirstLinkEl.onclick = () => {
+    if (setScaleFirstToastTimer) { clearTimeout(setScaleFirstToastTimer); setScaleFirstToastTimer = null; }
+    hideModal('setScaleFirstModal');
+    if (state.pages.length) App.openScaleModal(); else showToast('Open a plan first.', 2000);
+  };
   let outOfBoundsToastTimer = null;
   function showOutOfBoundsToast() {
     if (outOfBoundsToastTimer) clearTimeout(outOfBoundsToastTimer);
@@ -3243,6 +3266,13 @@
       state.quickLineStart = null;
       renderAnnotations();
     }
+    // T2-08: exactly one line type — nothing to choose, arm it directly.
+    if (state.lineTypes.length === 1) {
+      state.activeLineTypeId = state.lineTypes[0].id;
+      armLineToolAfterCreate();
+      updateUI();
+      return;
+    }
     App.showChooseLineTypeModal();
   };
   document.getElementById('chainBtn').onclick = () => {
@@ -3484,10 +3514,8 @@
     App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
     markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
     hideModal('lineTypeModal');
+    armLineToolAfterCreate();
     updateUI();
   };
 
@@ -4911,7 +4939,13 @@
       const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
       const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
       const formatted = formatDistFeetInches(dist, effScale);
-      showToast('Distance: ' + formatted, 5000);
+      // Footer chip, not a toast (Tier-2 #15): the 5s Distance toast used to
+      // eat the first Scale Zone corner click at the measure→zone hand-off.
+      // In-memory only (like state.localPdfHash) — a per-sheet fact: the chip
+      // renders only while lastMeasure.pageIdx === state.currentPage
+      // (features/status-bar.js), a new measure overwrites it, and a
+      // PDF/project load resets state.
+      state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage };
       state.scalePointA = null;
       state.scalePointB = null;
       state.scaleMode = SCALE_MODES.NONE;
@@ -6252,32 +6286,17 @@
       }
     }
     if (e.key === 'Escape') {
-      // showToast() is itself a modal (#airboardToastModal) and the ladder
-      // below closes modals before it reaches any tool, so a toast on screen
-      // eats the Escape a live gesture was meant to get. The Ghost capture
-      // flow toasts after EVERY step, which would make that near-permanent —
-      // so while a Ghost gesture is IN FLIGHT, clear the toast up front and
-      // let the real ladder run. Deliberately narrow: only the toast (a
-      // genuine modal still wins), and only mid-gesture (an idle-in-Ghost
-      // Escape keeps the two-press rhythm every other tool has). Retire this
-      // with the queued non-blocking-toast work (JOURNEY-MAP Tier-2 #15).
-      if (state.tool === TOOL.GHOST && (state.placingGhost || state.ghostRectStart) && document.getElementById('airboardToastModal')?.classList.contains('visible')) {
-        hideModal('airboardToastModal');
-        if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; }
-      }
+      // Toasts are non-blocking corner cards (Tier-2 #15): they self-dismiss
+      // and never consume Escape, so the ladder below goes straight to real
+      // modals and tools. (The old Ghost mid-gesture pre-clear hack and the
+      // toast rungs died with the modal toasts.)
       if (state.gridOriginPickMode) {
         state.gridOriginPickMode = false;
         showModal('gridSettingsModal');
         updateUI();
         return;
       }
-      if (document.getElementById('setScaleFirstModal').classList.contains('visible')) {
-        hideModal('setScaleFirstModal');
-        if (setScaleFirstToastTimer) { clearTimeout(setScaleFirstToastTimer); setScaleFirstToastTimer = null; }
-      } else if (document.getElementById('outOfBoundsModal').classList.contains('visible')) {
-        hideModal('outOfBoundsModal');
-        if (outOfBoundsToastTimer) { clearTimeout(outOfBoundsToastTimer); outOfBoundsToastTimer = null; }
-      } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
+      if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
         hideModal('chooseLineTypeModal');
       } else if (document.getElementById('scaleModal').classList.contains('visible')) {
         if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
@@ -6290,7 +6309,6 @@
       } else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
       else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
       else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
-      else if (document.getElementById('pipeToolingCopiedModal').classList.contains('visible')) { hideModal('pipeToolingCopiedModal'); }
       else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
@@ -6301,7 +6319,6 @@
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
-      else if (document.getElementById('airboardToastModal').classList.contains('visible')) { hideModal('airboardToastModal'); if (airboardToastTimer) { clearTimeout(airboardToastTimer); airboardToastTimer = null; } }
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.
       else if (document.getElementById('keyboardMapModal').classList.contains('visible')) { hideModal('keyboardMapModal'); }
@@ -6726,6 +6743,8 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  // T2-08 arm-on-create (features/quick-line.js + features/choose-create-line-type.js).
+  App.armLineToolAfterCreate = armLineToolAfterCreate;
   // Chain tool deps (features/chain.js) — publish-only; all defined in app.js.
   App.isPointInPageBounds = isPointInPageBounds;
   App.showOutOfBoundsToast = showOutOfBoundsToast;
@@ -6860,6 +6879,11 @@
   App.getLineLengthSplitForTotals = getLineLengthSplitForTotals;
   App.formatFeet = formatFeet;
   App.formatFeetPx = formatFeetPx;
+  // Live draw readout deps (features/status-bar.js updateStatus): the Measure
+  // feet-inches formatter and the arc-aware line length. getLineLengthPdfPts
+  // stays a window.* report.js global — this only aliases it onto App.
+  App.formatDistFeetInches = formatDistFeetInches;
+  App.getLineLengthPdfPts = getLineLengthPdfPts;
   // Room Sizer deps (features/room-sizer.js).
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;

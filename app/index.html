@@ -477,6 +477,9 @@
           <span id="statusMode">Ready</span>
           <span id="statusCoords">—</span>
           <span id="statusTotals" class="status-totals" style="display:none;"></span>
+          <!-- Measure-tool result chip: renders state.lastMeasure while it
+               belongs to the current page (features/status-bar.js, T2 #15). -->
+          <span id="statusMeasure" class="status-totals" style="display:none;"></span>
           <span id="statusWarmup" class="status-warmup" style="display:none;" title="Rendering every sheet in the background so page jumps are instant"></span>
           <div class="status-bar-actions" id="statusBarActions">
             <span class="status-bar-link status-bar-desktop-only has-icon" id="statusBarQuickKeys" title="Quick Keys — bind counters and line types to the number row">
@@ -609,7 +612,7 @@
             <button class="counter-icon-tab active" data-icon-tab="icon">Icon</button>
             <button class="counter-icon-tab" data-icon-tab="custom">Custom Icons</button>
           </div>
-          <div id="counterIconSearchGroup" class="counter-icon-search-group" style="display:none;">
+          <div id="counterIconSearchGroup" class="counter-icon-search-group">
             <label>Search icon</label>
             <input type="text" id="counterIconSearch" placeholder="Search...">
           </div>
@@ -637,7 +640,7 @@
       </div>
       <div id="counterChoosePanel" class="counter-tab-panel">
         <div id="counterChooseList" class="counter-choose-list"></div>
-        <p id="counterChooseEmpty" class="counter-choose-empty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">Add a counter first using Create Counter.</p>
+        <p id="counterChooseEmpty" class="counter-choose-empty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">No counters yet — use the Create tab above.</p>
         <div class="actions" style="margin-top:16px;">
           <button id="counterChooseCancel">Cancel</button>
         </div>
@@ -734,7 +737,6 @@
       <div class="form-group">
         <label>Line Type</label>
         <select id="polylineLineType"></select>
-        <a href="#" id="polylineNewLineType" style="font-size:0.85rem;color:var(--accent);">Create new line type</a>
       </div>
       <div class="form-group">
         <label>Name</label>
@@ -1196,24 +1198,9 @@
       </div>
     </div>
   </div>
-  <div class="modal-overlay" id="setScaleFirstModal">
-    <div class="modal-card modal-card-toast">
-      <p id="setScaleFirstText" style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></p>
-    </div>
-  </div>
-  <div class="modal-overlay" id="outOfBoundsModal">
-    <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
-    </div>
-  </div>
-  <div class="modal-overlay" id="pipeToolingCopiedModal">
-    <div class="modal-card modal-card-toast">
-      <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
-      <!-- Copy to /Tooling fills this with the by-unit split of what was copied
-           (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
-      <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
-    </div>
-  </div>
+  <!-- The four toast surfaces (#setScaleFirstModal, #outOfBoundsModal,
+       #pipeToolingCopiedModal, #airboardToastModal) live in #toastRegion near
+       the end of this file — non-blocking corner cards, JOURNEY-MAP Tier-2 #15. -->
   <!-- Pre-export scale check for Copy to /Tooling: pages that carry lines but
        have no scale would export pixel lengths; features/output.js fills the
        list and wires the three actions. -->
@@ -1241,11 +1228,6 @@
         <button type="button" id="importCanvasAfterPdfCancel">Cancel</button>
         <button type="button" class="btn-yellow" id="importCanvasAfterPdfChoose">Choose canvas file…</button>
       </div>
-    </div>
-  </div>
-  <div class="modal-overlay" id="airboardToastModal">
-    <div class="modal-card modal-card-toast">
-      <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
     </div>
   </div>
   <div class="modal-overlay" id="macrosModal">
@@ -2548,6 +2530,42 @@
         <button id="deleteCanvasCancel">Cancel</button>
         <button id="deleteCanvasConfirm" class="danger">Delete</button>
       </div>
+    </div>
+  </div>
+  <!-- Turn-in progress: the ONE deliberate blocking overlay (save + checkout
+       release in flight — app.js setTurnInProgress). It used to share
+       #airboardToastModal with showToast; now that toasts are non-blocking it
+       keeps the full-screen .modal-overlay treatment on its own element. -->
+  <div class="modal-overlay" id="turnInProgressModal">
+    <div class="modal-card modal-card-toast">
+      <p id="turnInProgressText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
+    </div>
+  </div>
+  <!-- Toast region (JOURNEY-MAP Tier-2 #15): every toast is a passive corner
+       card in this stacked flex column — z-index 350 (above modals/menus),
+       pointer-events none (blocks nothing; .toast-interactive is the per-card
+       opt-in for cards that carry a real control — T2-06). Ids stay on the
+       element that gets .visible so showModal/hideModal and every spec
+       selector keep working. Distinct simultaneous toasts stack honestly;
+       each keeps its own timer (app.js "SECTION: Toasts"). -->
+  <div id="toastRegion" role="status" aria-live="polite">
+    <!-- Interactive card (T2-06): the "Set Scale ⚖" words are a real button
+         that opens the Set Scale dialog (bound in app.js next to
+         showSetScaleFirstToast); only the tail span is rewritten per call. -->
+    <div class="toast-card toast-interactive" id="setScaleFirstModal">
+      <p id="setScaleFirstText" style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><button type="button" id="setScaleFirstLink" class="toast-link">Set Scale <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" style="vertical-align:middle;flex-shrink:0;"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg></button><span id="setScaleFirstTail"></span></p>
+    </div>
+    <div class="toast-card" id="outOfBoundsModal">
+      <p style="margin:0;font-size:1rem;">Click inside the page to place.</p>
+    </div>
+    <div class="toast-card" id="pipeToolingCopiedModal">
+      <p style="margin:0;font-size:1rem;">Copied to clipboard.</p>
+      <!-- Copy to /Tooling fills this with the by-unit split of what was copied
+           (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
+      <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
+    </div>
+    <div class="toast-card" id="airboardToastModal">
+      <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
     </div>
   </div>
   <div class="canvas-menu" id="canvasMenu">

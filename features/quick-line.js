@@ -123,10 +123,8 @@
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
     App.markProjectDirty();
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
     App.hideModal('chooseLineTypeModal');
+    App.armLineToolAfterCreate();
     App.updateUI();
   };
 

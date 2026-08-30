@@ -1,7 +1,7 @@
 ---
 title: Measuring runs with lines and polylines
 description: Trace pipe, conduit, and other linear runs to get real lengths off the plan — straight lines, multi-segment polylines, arcs, drops, and the Measure tool.
-updated: 2026-08-26
+updated: 2026-08-30
 order: 4
 icon: line
 category: Measuring
@@ -9,7 +9,7 @@ category: Measuring
 
 > **Just need to check a distance?** You don't have to draw anything: at any time, pick the **Measure** [[measure]] tool (or press `D`), click two points, and read the distance — nothing is added to your takeoff. See *Quick one-off distances* at the bottom of this guide.
 
-Once the [scale is set](/guides/setting-the-scale/), CountTooling can turn any line you draw into a real-world length. That's your linear takeoff — pipe, conduit, trim, anything that runs.
+Once the [scale is set](/guides/setting-the-scale/), CountTooling can turn any line you draw into a real-world length. That's your linear takeoff — pipe, conduit, trim, anything that runs. On a sheet with no scale yet, these tools pause and show a "Set Scale first" toast — its **Set Scale** link opens the scale dialog right there.
 
 ![A measured run drawn across the plan; its real length appears in the legend alongside the counts.](/guides/img/plan-takeoff.png)
 
@@ -19,11 +19,11 @@ Every run belongs to a **line type** — a named template with a color and a str
 
 ## Straight lines
 
-The **Line** [[line]] tool is a two-click straight run: click the start, click the end. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.
+The **Line** [[line]] tool is a two-click straight run: click the start, click the end. While you're aiming, the footer bar shows the running length live, so you can trace to a target footage or check a printed dimension before you commit. The length is read off the page scale and added to the total for that line type. Tap the tool again to start a fresh line.
 
 ## Polylines
 
-For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape. Backed into a corner? `Esc` removes the last point (press again to keep unwinding); finish with `Enter` or double-click.
+For a run that bends, use the **Polyline** [[polyline]] tool and click each vertex along the path; finish to close it out. The total length is the sum of every segment, so a service line that weaves across the sheet measures correctly in one shape — and the footer shows the running total as you trace, cursor segment included. Backed into a corner? `Esc` removes the last point (press again to keep unwinding); finish with `Enter` or double-click.
 
 ## Arcs and drops
 
@@ -55,6 +55,6 @@ Both are reading aids, not markup: they never ride into [exports, prints, or rep
 
 ## Quick one-off distances
 
-Just need to check a dimension without adding it to a takeoff? The **Measure** [[measure]] tool gives a distance in two clicks. If those two points fall inside a [scale zone](/guides/scale-zones-and-multiply-zones/), it uses that zone's scale automatically.
+Just need to check a dimension without adding it to a takeoff? The **Measure** [[measure]] tool gives a distance in two clicks — it appears in the footer bar and stays put while you keep working on that sheet. If those two points fall inside a [scale zone](/guides/scale-zones-and-multiply-zones/), it uses that zone's scale automatically.
 
 With counts and runs both on the plan, you're ready to [review and export](/guides/reports-and-exports/).

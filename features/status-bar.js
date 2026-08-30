@@ -72,6 +72,48 @@
     return footerTotalsCache;
   }
 
+  // Live length readout while drawing (Tier-2 #21): the running feet-inches of
+  // the in-progress Quick Line / polyline trace, formatted exactly like the
+  // Measure chip (formatDistFeetInches; 'N px' with no usable scale). Endpoint
+  // snapping mirrors the dashed rubber-band preview byte-for-byte (45° snap
+  // from the start / last vertex), so the number always matches the line on
+  // screen; getLineLengthPdfPts is arc-aware and getEffectiveScaleForLine
+  // honors scale zones — the same calls the Measure toast-turned-chip makes.
+  // Returns '' when no draw is in progress.
+  function liveDrawReadout() {
+    const state = App.state;
+    if (!state.mousePos || !state.pages || !state.pages.length) return '';
+    const TOOL = App.TOOL;
+    const snap = (a, b) => (state.lineTypeSettings?.snapToHorizontalVertical
+      ? App.snapLineToAngle(a.x, a.y, b.x, b.y) : b);
+    let tmp = null, isPoly = false;
+    if (state.tool === TOOL.LINE && state.quickLineStart) {
+      const a = state.quickLineStart;
+      const b = snap(a, state.mousePos);
+      tmp = { x1: a.x, y1: a.y, x2: b.x, y2: b.y, lineTypeId: state.activeLineTypeId };
+    } else if (state.tool === TOOL.POLYLINE && state.drawingPolyline
+        && state.drawingPolyline.points.length >= 1) {
+      const pts = state.drawingPolyline.points;
+      const cursor = snap(pts[pts.length - 1], state.mousePos);
+      tmp = { points: [...pts, cursor], closed: false, lineTypeId: state.drawingPolyline.lineTypeId };
+      isPoly = true;
+    }
+    if (!tmp) return '';
+    const page = state.pages[state.currentPage];
+    const ann = page ? App.getActiveAnnotations(page) : null;
+    const pdfPts = App.getLineLengthPdfPts(tmp, state.currentPage, isPoly);
+    const eff = ann ? App.getEffectiveScaleForLine(ann, tmp, isPoly, state.currentPage)
+      : App.getPageScale(state.currentPage);
+    return App.formatDistFeetInches(pdfPts, eff);
+  }
+  // Worst-case stand-in for the wrap cache: keying the one-line fit verdict on
+  // the live number would re-run the forced layout read every mousemove — the
+  // exact thrash the (text @ width) cache exists to prevent (field feedback
+  // 2026-08-14). The fit is measured with this fixed placeholder instead, so
+  // the verdict is stable while the number grows and a growing readout can
+  // never wrap the bar mid-draw.
+  const HINT_READOUT_PLACEHOLDER = '88888\'-88"';
+
   function updateStatus() {
     const state = App.state;
     const lastLocalBackupAt = App.getLastLocalBackupAt();   // engine-owned (Stage 3)
@@ -159,11 +201,22 @@
         }
         mode = projectSegment + ' - ' + lastSavedSegment;
         let toolHint = '';
+        // Wrap-cache variant of the hint: live length readout replaced by the
+        // fixed worst-case placeholder ('' = no readout, key on toolHint).
+        let toolHintKeyed = '';
         const TOOL = App.TOOL, SCALE_MODES = App.SCALE_MODES;
         if (state.tool === TOOL.MEASURE) toolHint = state.aiming ? 'Hold + drag to aim; release to place' : (state.scaleMode === SCALE_MODES.POINT_A ? 'Tap first point (or hold to aim)' : 'Tap second point (or hold to aim)');
         else if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? 'Click first point' : 'Click second point';
-        else if (state.tool === TOOL.LINE) toolHint = state.quickLineStart ? 'Tap end point' : 'Tap start point';
-        else if (state.tool === TOOL.POLYLINE) toolHint = 'Click to add points';
+        else if (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) {
+          toolHint = state.tool === TOOL.LINE
+            ? (state.quickLineStart ? 'Tap end point' : 'Tap start point')
+            : 'Click to add points';
+          const readout = liveDrawReadout();
+          if (readout) {
+            toolHintKeyed = toolHint + ' — ' + HINT_READOUT_PLACEHOLDER;
+            toolHint += ' — ' + readout;
+          }
+        }
         else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? 'Click second corner' : 'Click first corner';
         else if (state.tool === TOOL.SCALE_ZONE) toolHint = state.scaleZoneStart ? 'Click second corner' : 'Click first corner';
@@ -178,16 +231,20 @@
         // a second row. Measure with the hint in and drop it if the bar
         // wrapped. updateStatus runs per mousemove, so the layout read is
         // cached by (composed text, bar width) — coords/totals live in their
-        // own spans and never invalidate the key.
+        // own spans and never invalidate the key. A live length readout keys
+        // and measures via its worst-case placeholder (toolHintKeyed), never
+        // the growing number — the verdict stays stable per (static text,
+        // width) and the live string is swapped in after the cached verdict.
         if (toolHint && modeEl) {
           const fullMode = mode + ' | ' + toolHint;
+          const keyedMode = mode + ' | ' + (toolHintKeyed || toolHint);
           const barEl = modeEl.parentElement;
           const actionsEl = document.getElementById('statusBarActions');
           if (barEl && actionsEl) {
-            const key = fullMode + '@' + barEl.clientWidth;
+            const key = keyedMode + '@' + barEl.clientWidth;
             if (key !== footerHintKey) {
               footerHintKey = key;
-              modeEl.textContent = fullMode;
+              modeEl.textContent = keyedMode;
               footerHintFits = actionsEl.offsetTop <= modeEl.offsetTop;
             }
             if (footerHintFits) mode = fullMode;
@@ -213,6 +270,20 @@
         totalsEl.title = countStr + ' counters | ' + lenStr + ' of lines'
           + ((t.lengthPx || 0) > 0 ? ' — px lengths are on sheets with no scale' : '');
         totalsEl.style.display = '';
+      }
+    }
+    // Measure-tool result chip (Tier-2 #15): shows state.lastMeasure while it
+    // belongs to the current page — page flips hide it, flipping back shows it
+    // again (a fact about that sheet), a new measure overwrites it.
+    const measureEl = document.getElementById('statusMeasure');
+    if (measureEl) {
+      const lm = state.lastMeasure;
+      if (lm && lm.pageIdx === state.currentPage) {
+        measureEl.textContent = lm.text;
+        measureEl.title = lm.text;
+        measureEl.style.display = '';
+      } else {
+        measureEl.style.display = 'none';
       }
     }
   }

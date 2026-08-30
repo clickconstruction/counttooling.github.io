@@ -102,11 +102,7 @@
     state.activeLineTypeId = newLt.id;
     App.markProjectDirty();
     App.hideModal('chooseLineTypeModal');
-    state.tool = App.TOOL.LINE;
-    state.quickLineStart = null;
-    state.pagesListCollapsed = true;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
+    App.armLineToolAfterCreate();
     App.updateUI();
   };
 

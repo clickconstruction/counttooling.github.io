@@ -190,4 +190,49 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
     await page.waitForFunction(() => !document.getElementById('airboardToastModal').classList.contains('visible'), { timeout: 4000 });
     expect(errors).toEqual([]);
   });
+
+  test('T2-06: the interactive gate-toast card blocks nothing outside itself — a canvas click away from the card still lands', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await boot(page);
+
+    // Scaled page + armed counter, then raise the gate toast directly (the
+    // production card carries .toast-interactive in static markup).
+    await page.evaluate(() => {
+      const s = window.state;
+      s.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
+      s.counters.push({ id: 'c-gate', name: 'Gate Counter', icon: 'M96 96h448v448H96z', color: '#e8c547' });
+      s.activeCounterType = 'c-gate';
+      s.tool = window.App.TOOL.COUNTER;
+      window.App.updateUI();
+      window.App.showSetScaleFirstToast('Quick Line');
+    });
+    await expect(page.locator('#setScaleFirstModal')).toHaveClass(/visible/);
+
+    // The card itself takes pointer events (the opt-in)…
+    const cardHit = await page.evaluate(() => {
+      const r = document.getElementById('setScaleFirstModal').getBoundingClientRect();
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!el?.closest('#setScaleFirstModal');
+    });
+    expect(cardHit).toBe(true);
+
+    // …but a canvas click away from the card reaches the canvas and places
+    // the mark — the per-card opt-in must not re-block the app.
+    const pt = await pointInPage(page, 0.5, 0.6);
+    const hit = await page.evaluate(([x, y]) => {
+      const el = document.elementFromPoint(x, y);
+      return { inWrapper: !!el?.closest('#canvasWrapper'), inToast: !!el?.closest('#toastRegion') };
+    }, [pt.x, pt.y]);
+    expect(hit.inWrapper).toBe(true);
+    expect(hit.inToast).toBe(false);
+    await page.mouse.click(pt.x, pt.y);
+    const placed = await page.evaluate(() =>
+      (window.state.pages[0].canvases[0].annotations.counterMarkers['c-gate'] || []).length);
+    expect(placed).toBe(1);
+
+    await page.evaluate(() => window.App.hideModal('setScaleFirstModal'));
+    expect(errors).toEqual([]);
+  });
 });

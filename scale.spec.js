@@ -721,4 +721,36 @@ test.describe('window.App registry pilot - Scale modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('T2-06: arm-time gate toast link opens the scale modal in normal mode; Escape closes it cleanly', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => errors.push(err.message));
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Arm Quick Line on the unscaled page: the gate toast fires and its
+    // wording keeps the "Set Scale … first to use {tool}." shape.
+    await page.locator('#quickLine').click();
+    await page.waitForSelector('#setScaleFirstModal.visible', { timeout: 5000 });
+    const text = await page.evaluate(() => document.getElementById('setScaleFirstText').textContent);
+    expect(text).toContain('Set Scale');
+    expect(text).toContain('first to use Quick Line.');
+
+    // The link opens the Set Scale dialog in normal page-scale mode.
+    await page.locator('#setScaleFirstLink').click();
+    await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('setScaleFirstModal').classList.contains('visible'))).toBe(false);
+    expect(await page.evaluate(() => window.state.scaleModalApplyTarget)).not.toBe('zone');
+    await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
+
+    // Escape closes it cleanly (one press, no toast on the ladder).
+    await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
+
+    expect(errors).toEqual([]);
+  });
 });

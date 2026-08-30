@@ -555,6 +555,10 @@
     .toast-card.visible { display: block; }
     /* T2-06 hook: a card that carries a real control opts back into clicks. */
     .toast-card.toast-interactive { pointer-events: auto; }
+    /* T2-06: the in-toast "Set Scale ⚖" button reads as a link. */
+    .toast-link { background: none; border: none; padding: 0; font: inherit;
+      color: var(--accent); text-decoration: underline; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px; }
     /* Dead/unreachable view-link failure screen (features/view-only.js).
        z-index 400 sits above modals (200), every menu (300), and the toast
        region (350) so nothing can paint over it; opaque var(--bg) fully hides

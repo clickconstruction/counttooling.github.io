@@ -21,7 +21,7 @@ When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set bef
 
 - **Keep or delete pages** — the **Delete** button drops the page you're previewing; use **‹ Prev / Next ›** to walk the set and cut cover sheets, specs, and other trades' drawings.
 - **Rotate** [[rotate]] — turn a sideways-scanned sheet 90° at a time so it reads correctly. (You can also rotate any page later with `R`; your marks rotate with the page.)
-- **Rename pages** — the name field at the top renames the project or the page you're on ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too.
+- **Rename pages** — the name field at the top renames the project or the page you're on ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too — double-click the sheet's name, or click its number badge.
 - **Save & Open** — commit the trimmed set and start counting; **Download Trimmed PDF** saves the cut-down set as its own file if you want it outside the app.
 
 ## Add pages later (addenda)

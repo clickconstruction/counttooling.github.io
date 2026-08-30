@@ -26,7 +26,8 @@
     session_start: 'Signed in', project_open: 'Opened project', project_save: 'Saved project',
     export_pdf: 'Exported PDF', export_canvas: 'Exported canvas',
     counter_marker_added: 'Placed counter', line_added: 'Drew line',
-    copy_summary: 'Copied summary', unscaled_ft_block: 'Blocked unscaled export'
+    copy_summary: 'Copied summary', unscaled_ft_block: 'Blocked unscaled export',
+    prepare_trim: 'Trimmed a plan set'
   };
   const BREAKDOWN_ROWS = [
     ['Counters placed', 'counters_added'], ['Lines drawn', 'lines_added'],
@@ -121,6 +122,7 @@
       case 'session_start': return n > 1 ? ('Signed in ×' + n) : 'Signed in';
       case 'copy_summary': return n > 1 ? ('Copied summary ×' + n) : 'Copied summary';
       case 'unscaled_ft_block': return n > 1 ? ('Blocked unscaled export ×' + n) : 'Blocked unscaled export';
+      case 'prepare_trim': return n > 1 ? ('Trimmed plan set ×' + n) : 'Trimmed a plan set';
       default: return (EVENT_LABELS[type] || type) + (n > 1 ? (' ×' + n) : '');
     }
   }

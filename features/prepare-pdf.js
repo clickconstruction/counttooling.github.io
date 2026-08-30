@@ -2,7 +2,11 @@
   'use strict';
   const App = (window.App = window.App || {});
   // Prepare PDF modal (page trim/rotate/name + commit-into-app) -- extracted from
-  // app.js via the window.App registry. The PDF upload/file handler, loadTestPdf,
+  // app.js via the window.App registry. T2-15: the default view is a sheet
+  // THUMBNAIL GRID with tap-to-keep/drop + Keep all/none (lazy
+  // IntersectionObserver thumbs through the App.rasterPdf render-service seam,
+  // per-modal cache keyed origIdx:rotation); the single-sheet Prev/Next walk
+  // survives as the per-tile zoom view. The PDF upload/file handler, loadTestPdf,
   // and the shared PDF helpers stay in app.js; the modal's #preparePdf* bindings
   // run at load below. Other flows open it via App.openPreparePdfModal().
   // Shared deps are read from App.* at call time (never captured at load):
@@ -23,6 +27,190 @@
   // state.pdfBuffer + appends new state.pages entries instead of replacing.
   let preparePdfMode = 'project';
   let preparePdfProjectName = 'Untitled';
+  // T2-15: the sheet grid REPLACES the Prev/Next walk as the modal's default
+  // view; the single-sheet preview survives as the per-tile zoom view.
+  // 'grid' | 'sheet' — toggled by updatePreparePdfView().
+  let preparePdfView = 'grid';
+  let preparePdfTotalAtOpen = 0;   // original page count, for the prepare_trim event
+  // Thumbnail pipeline state (summary-detail's generation-token pattern married
+  // to the render-service seam): a per-modal Map cache keyed origIdx:rotation
+  // (rotating a sheet in the zoom view invalidates exactly one entry), a lazy
+  // IntersectionObserver queue, and a single-flight drain loop. All cleared on
+  // close; the gen token invalidates any in-flight loop.
+  let preparePdfThumbCache = new Map();
+  let preparePdfThumbGen = 0;
+  let preparePdfThumbQueue = [];
+  let preparePdfThumbDraining = false;
+  let inFlightThumbTask = null;
+  let preparePdfGridObserver = null;
+  const PREPARE_THUMB_W = 140;
+
+  function updatePreparePdfView() {
+    const gridWrap = document.getElementById('preparePdfGridWrap');
+    const sheetWrap = document.getElementById('preparePdfSheetWrap');
+    if (gridWrap) gridWrap.style.display = preparePdfView === 'grid' ? '' : 'none';
+    if (sheetWrap) sheetWrap.style.display = preparePdfView === 'sheet' ? '' : 'none';
+  }
+  function updatePreparePdfGridStatus() {
+    const el = document.getElementById('preparePdfGridStatus');
+    if (el) el.textContent = 'Keeping ' + preparePdfKeptIndices.length + ' of ' + preparePdfPages.length + ' sheets';
+  }
+  function preparePdfTileLabel(page, origIdx) {
+    const base = 'p' + (origIdx + 1);
+    return page && page.label ? base + ' · ' + page.label : base;
+  }
+  function resetPreparePdfThumbPipeline() {
+    preparePdfThumbGen++;
+    preparePdfThumbQueue = [];
+    if (inFlightThumbTask) { try { inFlightThumbTask.cancel(); } catch (_) {} inFlightThumbTask = null; }
+    if (preparePdfGridObserver) { try { preparePdfGridObserver.disconnect(); } catch (_) {} preparePdfGridObserver = null; }
+  }
+  function renderPreparePdfGrid() {
+    const grid = document.getElementById('preparePdfGrid');
+    if (!grid) return;
+    resetPreparePdfThumbPipeline();   // gen bump cancels any prior drain; the cache survives
+    grid.innerHTML = '';
+    preparePdfGridObserver = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        preparePdfGridObserver.unobserve(en.target);
+        enqueuePreparePdfThumb(Number(en.target.dataset.origIdx));
+      }
+    }, { root: grid });
+    const kept = preparePdfKeptIndices;
+    for (let i = 0; i < preparePdfPages.length; i++) {
+      const page = preparePdfPages[i];
+      const tile = document.createElement('div');
+      tile.className = 'prepare-pdf-tile' + (kept.includes(i) ? '' : ' dropped');
+      tile.dataset.origIdx = String(i);
+      const thumb = document.createElement('div');
+      thumb.className = 'prepare-pdf-tile-thumb';
+      const rot = (page && page.rotation) ?? 0;
+      const cached = preparePdfThumbCache.get(i + ':' + rot);
+      if (cached) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = cached;
+        thumb.appendChild(img);
+      } else {
+        thumb.textContent = String(i + 1);
+      }
+      tile.appendChild(thumb);
+      const label = document.createElement('div');
+      label.className = 'prepare-pdf-tile-label';
+      label.textContent = preparePdfTileLabel(page, i);
+      label.title = (page && page.label) || ('Page ' + (i + 1));
+      tile.appendChild(label);
+      const zoom = document.createElement('button');
+      zoom.type = 'button';
+      zoom.className = 'prepare-pdf-tile-zoom';
+      zoom.title = 'Open this sheet';
+      zoom.setAttribute('aria-label', 'Open this sheet');
+      zoom.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="14" height="14"><path fill="currentColor" d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>';
+      tile.appendChild(zoom);
+      grid.appendChild(tile);
+      if (!cached) preparePdfGridObserver.observe(tile);
+    }
+    updatePreparePdfGridStatus();
+  }
+  function setPreparePdfTileThumb(origIdx, dataUrl) {
+    const grid = document.getElementById('preparePdfGrid');
+    const tile = grid && grid.querySelector('.prepare-pdf-tile[data-orig-idx="' + origIdx + '"]');
+    const thumbEl = tile && tile.querySelector('.prepare-pdf-tile-thumb');
+    if (!thumbEl) return;
+    let img = thumbEl.querySelector('img');
+    if (!img) {
+      thumbEl.textContent = '';
+      img = document.createElement('img');
+      img.alt = '';
+      thumbEl.appendChild(img);
+    }
+    img.src = dataUrl;
+  }
+  function enqueuePreparePdfThumb(origIdx) {
+    if (!Number.isInteger(origIdx)) return;
+    preparePdfThumbQueue.push(origIdx);
+    drainPreparePdfThumbQueue();
+  }
+  async function drainPreparePdfThumbQueue() {
+    if (preparePdfThumbDraining) return;
+    preparePdfThumbDraining = true;
+    const gen = preparePdfThumbGen;
+    try {
+      while (preparePdfThumbQueue.length) {
+        if (gen !== preparePdfThumbGen) return;
+        const origIdx = preparePdfThumbQueue.shift();
+        const page = preparePdfPages[origIdx];
+        if (!page || !page.pdfPage) continue;
+        const rot = page.rotation ?? 0;
+        const key = origIdx + ':' + rot;
+        let dataUrl = preparePdfThumbCache.get(key);
+        if (!dataUrl) {
+          try {
+            const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
+            const scale = PREPARE_THUMB_W / vp.width;
+            const viewport = page.pdfPage.getViewport({ scale, rotation: rot });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(viewport.width));
+            canvas.height = Math.max(1, Math.round(viewport.height));
+            // Off-main-thread when the render worker is eligible; automatic
+            // MAIN fallback is the seam's contract. Prepare pages carry no
+            // annotations yet, so renderAnnotationsToContext is skipped.
+            inFlightThumbTask = App.rasterPdf({ pdfPage: page.pdfPage, scale, rotation: rot, canvasContext: canvas.getContext('2d'), kind: 'thumb' });
+            await inFlightThumbTask.promise;
+            inFlightThumbTask = null;
+            if (gen !== preparePdfThumbGen) return;
+            dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            preparePdfThumbCache.set(key, dataUrl);
+          } catch (_) {
+            // RenderingCancelledException on close is expected; any per-page
+            // failure just leaves the placeholder (summary-detail pattern).
+            inFlightThumbTask = null;
+            continue;
+          }
+        }
+        setPreparePdfTileThumb(origIdx, dataUrl);
+      }
+    } finally {
+      preparePdfThumbDraining = false;
+      // A grid rebuild mid-drain bumps the gen and returns this loop early;
+      // anything enqueued for the NEW gen since then still needs a drain.
+      if (preparePdfThumbQueue.length && preparePdfThumbGen !== gen) drainPreparePdfThumbQueue();
+    }
+  }
+  function setPreparePdfKeptTo(indices) {
+    preparePdfKeptIndices = indices;
+    preparePdfCurrentIdx = Math.min(preparePdfCurrentIdx, Math.max(0, preparePdfKeptIndices.length - 1));
+    const grid = document.getElementById('preparePdfGrid');
+    if (grid) {
+      grid.querySelectorAll('.prepare-pdf-tile').forEach((tile) => {
+        tile.classList.toggle('dropped', !preparePdfKeptIndices.includes(Number(tile.dataset.origIdx)));
+      });
+    }
+    updatePreparePdfGridStatus();
+    updatePreparePdfControls();
+  }
+  function togglePreparePdfTile(origIdx, tile) {
+    const kept = preparePdfKeptIndices;
+    const pos = kept.indexOf(origIdx);
+    if (pos >= 0) kept.splice(pos, 1);
+    else { kept.push(origIdx); kept.sort((a, b) => a - b); }
+    preparePdfCurrentIdx = Math.min(preparePdfCurrentIdx, Math.max(0, kept.length - 1));
+    // Grid taps do NOT touch preparePdfUndoStack — tap-again is the undo; the
+    // stack still serves sheet-view Delete unchanged.
+    tile.classList.toggle('dropped', pos >= 0);
+    updatePreparePdfGridStatus();
+    updatePreparePdfControls();
+  }
+  function openPreparePdfSheetView(origIdx) {
+    const idx = preparePdfKeptIndices.indexOf(origIdx);
+    if (idx < 0) return;   // zoom is hidden on dropped tiles; invariant holds
+    preparePdfCurrentIdx = idx;
+    preparePdfView = 'sheet';
+    updatePreparePdfView();
+    renderPreparePdfPreview();
+    updatePreparePdfControls();
+  }
   function renderPreparePdfPreview() {
     const canvas = document.getElementById('preparePdfCanvas');
     const labelEl = document.getElementById('preparePdfPageLabel');
@@ -118,14 +306,21 @@
     const nameRowEl = document.getElementById('preparePdfNameRow');
     if (preparePdfMode === 'append') {
       if (titleEl) titleEl.textContent = 'Add pages — ' + (App.state.currentProjectName || 'Untitled');
-      if (descEl) descEl.textContent = 'Remove unnecessary pages before adding them to the current project.';
+      if (descEl) descEl.textContent = 'Tap the sheets you don’t need, then add the rest to the project.';
       if (nameRowEl) nameRowEl.style.display = 'none';
     } else {
       if (titleEl) titleEl.textContent = 'Prepare PDF for Cloud';
-      if (descEl) descEl.textContent = 'Name your project and remove unnecessary pages before saving.';
+      if (descEl) descEl.textContent = 'Name your project, then tap the sheets you don’t need — or Keep none and tap the ones you do.';
       if (nameRowEl) nameRowEl.style.display = '';
     }
-    renderPreparePdfPreview();
+    // T2-15: the grid is the default view in BOTH fresh and append modes; the
+    // single-sheet walk is reached per tile via the zoom button.
+    preparePdfTotalAtOpen = preparePdfPages.length;
+    preparePdfView = 'grid';
+    preparePdfThumbCache = new Map();
+    resetPreparePdfThumbPipeline();
+    updatePreparePdfView();
+    renderPreparePdfGrid();
     updatePreparePdfControls();
     App.showModal('preparePdfModal');
     (async function computePageSizes() {
@@ -137,7 +332,10 @@
           const buf = await App.buildTrimmedPdfBuffer(preparePdfBuffer, [i]);
           if (buf) preparePdfPageBytes[i] = buf.byteLength;
         } catch (_) {}
-        if (document.getElementById('preparePdfModal')?.classList.contains('visible')) {
+        // Repaint the size readout only when the sheet view is actually
+        // showing — in grid view this would raster a hidden canvas.
+        if (preparePdfView === 'sheet' &&
+            document.getElementById('preparePdfModal')?.classList.contains('visible')) {
           renderPreparePdfPreview();
         }
       }
@@ -149,10 +347,42 @@
     preparePdfPageBytes = {};
     preparePdfKeptIndices = [];
     preparePdfUndoStack = [];
+    // Cancel the thumb pipeline (gen bump + in-flight cancel + observer
+    // disconnect) and free the per-modal cache / tile dataURLs.
+    resetPreparePdfThumbPipeline();
+    preparePdfThumbCache = new Map();
+    const grid = document.getElementById('preparePdfGrid');
+    if (grid) grid.innerHTML = '';
     App.hideModal('preparePdfModal');
   }
   window.closePreparePdfModal = closePreparePdfModal;
   document.getElementById('preparePdfCancel').onclick = () => closePreparePdfModal();
+  // T2-15: grid bindings — one delegated tile listener (zoom button → sheet
+  // view; anywhere else on the tile → toggle keep/drop) + the bulk buttons +
+  // the sheet view's way back.
+  document.getElementById('preparePdfGrid').onclick = (e) => {
+    const tile = e.target.closest('.prepare-pdf-tile');
+    if (!tile) return;
+    const origIdx = Number(tile.dataset.origIdx);
+    if (e.target.closest('.prepare-pdf-tile-zoom')) { openPreparePdfSheetView(origIdx); return; }
+    togglePreparePdfTile(origIdx, tile);
+  };
+  document.getElementById('preparePdfKeepAll').onclick = () => {
+    setPreparePdfKeptTo(preparePdfPages.map((_, i) => i));
+  };
+  document.getElementById('preparePdfKeepNone').onclick = () => {
+    setPreparePdfKeptTo([]);
+  };
+  document.getElementById('preparePdfBackToGrid').onclick = () => {
+    saveCurrentPageName();
+    preparePdfView = 'grid';
+    updatePreparePdfView();
+    // Re-render re-reads labels renamed via the "> Page Name" tab; a sheet
+    // rotated in the zoom view gets a new cache key, so its tile re-rasters
+    // on next visibility.
+    renderPreparePdfGrid();
+    updatePreparePdfControls();
+  };
   (function() {
     const projectTab = document.getElementById('preparePdfProjectTab');
     const pageTab = document.getElementById('preparePdfPageTab');
@@ -354,9 +584,17 @@
       return { ok: false };
     }
   }
+  // T2-15: prepare_trim telemetry — kept/mode captured BEFORE the commit
+  // (commitPreparePdfToState clears preparePdfKeptIndices on success).
+  function capturePrepareTrimMeta() {
+    const kept = preparePdfKeptIndices.length;
+    return { total: preparePdfTotalAtOpen, kept, dropped: preparePdfTotalAtOpen - kept, mode: preparePdfMode };
+  }
   document.getElementById('preparePdfDone').onclick = async () => {
+    const trimMeta = capturePrepareTrimMeta();
     const r = await commitPreparePdfToState();
     if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
+    App.logUserEvent('prepare_trim', App.state.currentProjectId || null, trimMeta);
     App.hideModal('preparePdfModal');
     App.markProjectDirty();
     App.updateUI();
@@ -381,8 +619,10 @@
     App.downloadPdfBuffer(trimmedBuf, App.sanitizeForFilename(name) + '.pdf');
   };
   document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
+    const trimMeta = capturePrepareTrimMeta();
     const r = await commitPreparePdfToState();
     if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
+    App.logUserEvent('prepare_trim', App.state.currentProjectId || null, trimMeta);
     App.hideModal('preparePdfModal');
     App.markProjectDirty();
     App.updateUI();

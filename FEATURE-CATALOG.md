@@ -37,7 +37,7 @@ plans through an import/processing pipeline before you can touch them.
 *Useful because:* You start the takeoff seconds after receiving the plan set — open the browser,
 drop the PDF, click.
 
-**Prepare PDF — keep/drop, reorder, and rotate pages before starting**
+**Prepare PDF — keep/drop from a sheet grid, and rotate pages before starting**
 *Problem:* Bid sets arrive as 200-sheet combined PDFs where only a dozen sheets matter to your
 trade, and paging past the rest wastes attention all day.
 *Useful because:* You trim the set to exactly your sheets once, and everything after — sidebar,

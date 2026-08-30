@@ -2426,7 +2426,7 @@
     </div>
   </div>
   <div class="modal-overlay" id="preparePdfModal">
-    <div class="modal-card" style="max-width:520px;">
+    <div class="modal-card" style="max-width:min(960px,92vw);">
       <h2 id="preparePdfTitle">Prepare PDF for Cloud</h2>
       <p class="form-group" id="preparePdfDescription" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
       <div class="form-group prepare-pdf-name-row" id="preparePdfNameRow">
@@ -2436,6 +2436,17 @@
         </div>
         <input type="text" id="preparePdfName" placeholder="Untitled" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
+      <div class="form-group" id="preparePdfGridWrap">
+        <div class="prepare-pdf-grid-bar">
+          <span id="preparePdfGridStatus">Keeping 0 of 0 sheets</span>
+          <span class="prepare-pdf-grid-bulk">
+            <button type="button" id="preparePdfKeepAll">Keep all</button>
+            <button type="button" id="preparePdfKeepNone">Keep none</button>
+          </span>
+        </div>
+        <div id="preparePdfGrid" class="prepare-pdf-grid"></div>
+      </div>
+      <div id="preparePdfSheetWrap" style="display:none;">
       <div class="form-group">
         <label id="preparePdfPageLabel">Page 1 of 1</label>
         <div id="preparePdfPreviewWrap" style="height:min(400px,55vh);overflow:hidden;background:var(--surface2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;">
@@ -2444,6 +2455,7 @@
       </div>
       <div class="form-group prepare-pdf-controls">
         <div class="prepare-pdf-nav">
+          <button type="button" id="preparePdfBackToGrid">‹ All sheets</button>
           <button type="button" id="preparePdfPrev">‹ Prev</button>
           <button type="button" id="preparePdfNext">Next ›</button>
         </div>
@@ -2458,6 +2470,7 @@
             Undo
           </button>
         </div>
+      </div>
       </div>
       <div class="actions prepare-pdf-actions">
         <div class="prepare-pdf-actions-left">

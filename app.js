@@ -6763,6 +6763,7 @@
   // a debug/test seam (page-switch-cache.spec.js).
   App.clearPdfBitmapCache = clearPdfBitmapCache;
   App.__pdfBitmapCacheStats = () => pdfTileCache.debugStats();
+  App.rasterPdf = (params) => renderService.raster(params);   // feature-file raster seam (prepare-pdf grid thumbs); worker-eligible, auto MAIN fallback
   App.__renderServiceStats = () => renderService.statsSnapshot();          // debug/spec introspection
   App.__perfSamples = () => ({ summary: perfSummary(), samples: JSON.parse(JSON.stringify(perfSamples)) });
   App.__renderServiceMode = () => renderService.mode();

@@ -241,6 +241,33 @@ Deno.serve(async (req) => {
           notes,
         })
       }
+      case 'set_twin_project_review': {
+        // Audit loop v2 (2026-08-30): PT's audit-finish closes the whole loop in one
+        // human gesture — finishing the PT audit also flips the twin's CT project to
+        // 'reviewed' (or back to 'ready' on reopen) so the review lane never shows a
+        // bid the human already audited. Twin-owned projects only; the reviewer note
+        // records who finished it on the PT side.
+        const projectId = String(body.project_id ?? '').trim()
+        const status = String(body.status ?? '').trim()
+        const note = typeof body.note === 'string' ? body.note.slice(0, 500) : null
+        if (!projectId) return jsonRes(400, { error: 'project_id required' })
+        if (!['reviewed', 'ready', 'changes'].includes(status)) {
+          return jsonRes(400, { error: "status must be 'reviewed', 'ready', or 'changes'" })
+        }
+        const { data: proj, error: projErr } = await admin.from('projects')
+          .select('id, user_id, review_status').eq('id', projectId).maybeSingle()
+        if (projErr) return jsonRes(500, { error: `project read failed: ${projErr.message}` })
+        if (!proj) return jsonRes(404, { error: 'no such project' })
+        const { data: prof } = await admin.from('profiles').select('is_digital_twin').eq('user_id', proj.user_id).maybeSingle()
+        if (prof?.is_digital_twin !== true) return jsonRes(400, { error: 'set_twin_project_review is twin-scoped — project is not twin-owned' })
+        const patch: Record<string, unknown> = { review_status: status }
+        if (status === 'reviewed') patch.reviewed_at = new Date().toISOString()
+        if (note != null) patch.review_note = note
+        const { error } = await admin.from('projects').update(patch).eq('id', projectId)
+        if (error) return jsonRes(500, { error: `review update failed: ${error.message}` })
+        console.log(`manage-user set_twin_project_review: ${projectId} → ${status}`)
+        return jsonRes(200, { ok: true, previous: proj.review_status, status })
+      }
       case 'set_twin_credential': {
         // Robot-ready train CT-4: per-twin credential parity. PT issues one token per
         // twin; its sha256 hash is mirrored here so CT's twin-login can verify the

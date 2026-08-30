@@ -28,12 +28,12 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,115 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,126 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 919 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,760 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,675 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 2,763 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,679 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 710 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 845 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
@@ -60,7 +60,7 @@ modules. Candidates in priority order:
 
 | File | Purpose |
 |------|---------|
-| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines). Includes `#toastRegion` — the four toast surfaces (`#setScaleFirstModal`, `#outOfBoundsModal`, `#pipeToolingCopiedModal`, `#airboardToastModal`) are **non-blocking corner cards** at z-index 350 (above every modal, `pointer-events:none` on the region; `.toast-interactive` is the per-card opt-in for cards that carry a real control), plus `#turnInProgressModal`, turn-in's own deliberate blocking overlay (Tier-2 #15). Regression: [toast-region.spec.js](toast-region.spec.js) |
+| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines). Includes `#toastRegion` — the four toast surfaces (`#setScaleFirstModal`, `#outOfBoundsModal`, `#pipeToolingCopiedModal`, `#airboardToastModal`) are **non-blocking corner cards** at z-index 350 (above every modal, `pointer-events:none` on the region; `.toast-interactive` is the per-card opt-in for cards that carry a real control — `#setScaleFirstModal` uses it: its "Set Scale ⚖" words are a real button `#setScaleFirstLink` opening the Set Scale dialog, Tier-2 #23), plus `#turnInProgressModal`, turn-in's own deliberate blocking overlay (Tier-2 #15). Regression: [toast-region.spec.js](toast-region.spec.js) |
 | [toast-region.spec.js](toast-region.spec.js) | Playwright regression owning the toast-system contract (Tier-2 #15) — a live toast blocks nothing (canvas hit-testing + a real counter click land during the toast), toasts paint above open modals (paint-order proved through the `.toast-interactive` opt-in, since `elementFromPoint` skips `pointer-events:none` nodes), two simultaneous toasts flex-stack without overlap and dismiss on their own timers, the pointer-events contract (region `none`, cards inherit, `.toast-interactive` computes `auto` — the T2-06 hook), and Escape is never consumed by a toast (one press closes the open modal; the toast still self-dismisses). `npx playwright test toast-region.spec.js` |
 | [index.html](index.html) | The **static marketing landing** at `/` — plain HTML sharing `marketing.css`, no app JS, outside the SW scope; forwards old `/?t=`/`?devAuth=1` links to `/app/` |
 | [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~6.5k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings) |
@@ -533,52 +533,52 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L2628 - Inline rename & polyline edit mode
 - L2742 - Modal primitives (showModal / hideModal)
 - L2773 - Toasts & line color picker
-- L2829 - Airboard cloud sync
-- L2874 - Supabase RPC & presence heartbeat
-- L2914 - User activity / event telemetry
-- L2973 - Supabase auth & dev auth
-- L3117 - [sync] Checkout subscription & permission refresh
-- L3127 - Modals & Handlers
-- L3195 - PDF intake (upload, test PDF, hashing)
-- L3203 - Toolbar tool buttons
-- L3375 - Tool sidebar buttons & legend overlay
-- L3466 - Add Line Type modal
-- L3551 - Line color & sidebar handlers
-- L3760 - Polyline modal & drawing
-- L3791 - Zoom bar & page navigation
-- L3817 - Export canvas JSON
-- L3833 - PDF download helpers
-- L3842 - View-link URL helpers & show-highlights/notes
-- L3914 - Custom icon upload handler
-- L3924 - Export & report dropdown menus
-- L4011 - Sidebar drawer toggles
-- L4022 - Mobile actions burger menu pointer & header logo
-- L4034 - User Activity pointer (format.js + features/user-activity.js)
-- L4046 - My Settings pointer (features/my-settings.js)
-- L4069 - Auth & settings entry buttons
-  - L4114 - Project Settings checkout & Save Status bell
-  - L4206 - [sync] Checkout expired recovery
-  - L4262 - [sync] Turn In
-  - L4372 - Share modal pointer & copy-project openers
-  - L4403 - Settings menu actions
-  - L4424 - Auth sign-in form
-  - L4449 - Save Project modal
-  - L4462 - Checkout expired recovery modal wiring
-  - L4567 - Last-session restore prompt
-  - L4574 - Canvas Repair modal wiring
-- L4761 - Canvas Event Handlers
-- L5213 - Event Binding
-- L5223 - Aim loupe (mobile press-hold precise placement)
-- L5364 - Zoom transform preview & commit
-- L5443 - Canvas mouse, wheel & touch handlers
-- L6151 - Global dropdown dismissal & keyboard hotkeys
-- L6444 - [sync] Manual save to cloud
-- L6454 - [sync] Auto-save
-- L6461 - [sync] Local backup (IndexedDB takeoff state)
-- L6594 - [sync] Checkout keep-alive
-- L6608 - App feature registry
-- L6902 - View-only mode
-- L6908 - Init / boot
+- L2840 - Airboard cloud sync
+- L2885 - Supabase RPC & presence heartbeat
+- L2925 - User activity / event telemetry
+- L2984 - Supabase auth & dev auth
+- L3128 - [sync] Checkout subscription & permission refresh
+- L3138 - Modals & Handlers
+- L3206 - PDF intake (upload, test PDF, hashing)
+- L3214 - Toolbar tool buttons
+- L3386 - Tool sidebar buttons & legend overlay
+- L3477 - Add Line Type modal
+- L3562 - Line color & sidebar handlers
+- L3771 - Polyline modal & drawing
+- L3802 - Zoom bar & page navigation
+- L3828 - Export canvas JSON
+- L3844 - PDF download helpers
+- L3853 - View-link URL helpers & show-highlights/notes
+- L3925 - Custom icon upload handler
+- L3935 - Export & report dropdown menus
+- L4022 - Sidebar drawer toggles
+- L4033 - Mobile actions burger menu pointer & header logo
+- L4045 - User Activity pointer (format.js + features/user-activity.js)
+- L4057 - My Settings pointer (features/my-settings.js)
+- L4080 - Auth & settings entry buttons
+  - L4125 - Project Settings checkout & Save Status bell
+  - L4217 - [sync] Checkout expired recovery
+  - L4273 - [sync] Turn In
+  - L4383 - Share modal pointer & copy-project openers
+  - L4414 - Settings menu actions
+  - L4435 - Auth sign-in form
+  - L4460 - Save Project modal
+  - L4473 - Checkout expired recovery modal wiring
+  - L4578 - Last-session restore prompt
+  - L4585 - Canvas Repair modal wiring
+- L4772 - Canvas Event Handlers
+- L5224 - Event Binding
+- L5234 - Aim loupe (mobile press-hold precise placement)
+- L5375 - Zoom transform preview & commit
+- L5454 - Canvas mouse, wheel & touch handlers
+- L6162 - Global dropdown dismissal & keyboard hotkeys
+- L6455 - [sync] Manual save to cloud
+- L6465 - [sync] Auto-save
+- L6472 - [sync] Local backup (IndexedDB takeoff state)
+- L6605 - [sync] Checkout keep-alive
+- L6619 - App feature registry
+- L6913 - View-only mode
+- L6919 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -913,7 +913,9 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   (`state.showScaleRefLine`, the "Show the scale line on the plan" checkbox). Lets the
   user eyeball a preset scale against a known dimension; the safety net for the
   sheet-size correction's best-guess.
-- **Set Scale first toasts** — for Quick Line / Polyline / Measure when no scale.
+- **Set Scale first toasts** — for the gated length tools when no scale; the
+  toast's "Set Scale ⚖" words are a real link (`#setScaleFirstLink`) that opens
+  the Set Scale dialog (`.toast-interactive` card, 6s timer; Tier-2 #23).
 - **Choose Line Type modal** — tabs Choose | Create | Quick; search; `L` opens
   modal, `Shift+L` opens Quick tab. The Create tab's color picker is the shared
   `setupCreateColorPicker` (18 presets + custom `<input type="color">` + Recent).

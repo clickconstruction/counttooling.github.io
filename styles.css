@@ -1237,17 +1237,24 @@
     .user-list-modal .settings-user-delete { width: 68px; flex: none; text-align: center; }
     .user-list-modal .settings-user-header { position: sticky; top: 0; z-index: 1; background: var(--surface); border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 2px 12px 6px; margin-bottom: 6px; }
     .user-list-modal .settings-user-header span { color: var(--text3); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: visible; }
+    .user-list-modal .settings-user-magic-link { flex: none; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--accent); }
+    .user-list-modal .settings-user-magic-link:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
+    .user-list-modal .settings-user-magic-link:disabled { color: var(--text3); cursor: default; background: transparent; }
+    .user-list-modal .settings-user-magic-link svg { width: 18px; height: 18px; display: block; }
+    .user-list-modal .settings-user-header .settings-user-magic-link-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-set-password-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-overseer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
-    /* Manage Users: tighten the three action icons (set-password / transfer / activity) into a
-       button group. The same negative margin is applied to the matching header spacers so the
-       Role/Projects/dates columns stay aligned between the header and the rows. */
+    /* Manage Users: tighten the action icons (magic-link / set-password / transfer / overseer /
+       activity) into a button group. The same negative margin is applied to the matching header
+       spacers so the Role/Projects/dates columns stay aligned between the header and the rows. */
+    #manageUserModal .settings-user-set-password,
     #manageUserModal .settings-user-transfer,
     #manageUserModal .settings-user-overseer,
     #manageUserModal .settings-user-activity,
+    #manageUserModal .settings-user-header .settings-user-set-password-head,
     #manageUserModal .settings-user-header .settings-user-transfer-head,
     #manageUserModal .settings-user-header .settings-user-overseer-head,
     #manageUserModal .settings-user-header .settings-user-activity-head { margin-left: -8px; }

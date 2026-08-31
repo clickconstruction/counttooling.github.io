@@ -197,3 +197,37 @@ test.describe('Email sign-in fallback', () => {
     await expect(page.locator('#authMagicOffer')).toBeHidden();
   });
 });
+
+// The shared sender the admin panel consumes (features/user-admin.js "Email
+// sign-in link" row action) — same stubs, driven through the App registry so
+// it runs without an admin session.
+test.describe('App.sendSignInMagicLink (shared with user-admin)', () => {
+  test('sends the same no-create OTP and returns null on success', async ({ page }) => {
+    const otpCalls = [];
+    await stubAuth(page, otpCalls);
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    const result = await page.evaluate(() => window.App.sendSignInMagicLink(' Wendi@ClickPlumbingSupply.com '));
+    expect(result).toBe(null);
+    expect(otpCalls.length).toBe(1);
+    expect(otpCalls[0].body.email).toBe('wendi@clickplumbingsupply.com');
+    expect(otpCalls[0].body.create_user).toBe(false);
+    expect(decodeURIComponent(otpCalls[0].url)).toContain('/app/');
+  });
+
+  test('returns the translated error string on failure', async ({ page }) => {
+    await stubAuth(page, []);
+    await page.unroute('**/auth/v1/otp**');
+    await page.route('**/auth/v1/otp**', (route) => route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 429, msg: 'Email rate limit exceeded' }),
+    }));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    const result = await page.evaluate(() => window.App.sendSignInMagicLink('wendi@clickplumbingsupply.com'));
+    expect(result).toContain('Email limit reached');
+  });
+});

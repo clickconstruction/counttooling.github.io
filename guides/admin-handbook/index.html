@@ -29,8 +29,8 @@
   "headline": "Admin handbook",
   "description": "Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.",
   "image": "https://counttooling.com/og-image.png",
-  "datePublished": "2026-08-30",
-  "dateModified": "2026-08-30",
+  "datePublished": "2026-08-31",
+  "dateModified": "2026-08-31",
   "author": {
     "@type": "Organization",
     "name": "CountTooling",
@@ -88,14 +88,15 @@
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Admin handbook</span></nav>
     <article class="article">
       <h1>Admin handbook</h1>
-      <p class="article-meta">Last updated Aug 30, 2026</p>
+      <p class="article-meta">Last updated Aug 31, 2026</p>
       <div class="prose">
 <p>CountTooling accounts are admin-provisioned — there&#39;s no self-signup — so admins run the team from inside the app. Everything below lives in <strong>User Settings</strong> and <strong>Project Settings</strong> and appears only for admin accounts.</p>
 <h2>Users</h2>
 <ul>
 <li><strong>Add User</strong> — create an account with email + password and hand the credentials over; new users can sign in immediately.</li>
 <li><strong>Manage User</strong> — the full user table: role, owned-project count, last sign-in, and last active. Per-row actions:<ul>
-<li><strong>Set password</strong> (🔑) — reset any user&#39;s password. This is also the locked-out path: there&#39;s no self-serve &quot;forgot password&quot;, so a user who&#39;s locked out gets a new password from you.</li>
+<li><strong>Email sign-in link</strong> (✉️) — email the user a one-time sign-in link, no password involved. The fastest locked-out rescue: nothing to read over the phone, and their password stays unchanged. The link signs in whichever browser opens it, so tell them to open the email on the device they work from. The button rests for a minute after each send (email rate limit). Users can also get this link themselves — after two failed password tries, the sign-in box offers it.</li>
+<li><strong>Set password</strong> (🔑) — reset any user&#39;s password and hand it over, for when they need a password they know (for example, a shared tablet that stays signed out).</li>
 <li><strong>Transfer projects</strong> (⇄) — move <em>all</em> of a user&#39;s projects to someone else; stored PDFs and inherited view links move with them.</li>
 <li><strong>Overseer toggle</strong> (👁) — grant or remove the read-only <a href="/guides/reviewing-all-bids/">Overseer role</a>: the user sees every bid in the company (the All Bids board) but can never change one. The lit eye and the <em>Overseer</em> role label mark who has it.</li>
 <li><strong>View activity</strong> (♥) — the per-user activity overview.</li>

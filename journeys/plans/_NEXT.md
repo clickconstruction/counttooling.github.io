@@ -37,10 +37,31 @@ lifecycle under contention, real view-link round trip, admin flows). Needs:
 Will present or explicitly delegating. Output: dossier addenda + any new
 findings into the Tier-2/3 queues.
 
+> **STATUS 2026-08-31:** delegated; the account decision resolves to the
+> repo's own dev-auth test-account harness (`?devAuth=1` +
+> `DEV_AUTH_EMAIL`/`DEV_AUTH_PASSWORD` in config.local.js — the same
+> mechanism the cloud-gated specs and the `cleanup-test-accounts` purge
+> already assume; never a real customer identity). **Blocked on exactly
+> one input:** the test-account credential, which lives only in CI
+> secrets — set the two values in a local `config.local.js` to unblock.
+> Walk order when unblocked: J14 view-link round trip first (the viewer
+> side needs no account at all once a link exists — and it's the sales
+> funnel), then J13 share/checkout interiors, then J17 admin flows (needs
+> the test account to be admin; destructive admin actions — force
+> turn-in on real projects, user deletes — stay out of scope on prod).
+
 ## Stage 6 — ⚑ Tier-5 product session (roadmap, not code)
 The 17 verified `gap` rows, intersected with the standing HVAC direction
 (duct-by-size → pounds remains the named #1 product gap). One conversation:
 which gaps become features, which become "no, deliberately."
+
+> **STATUS 2026-08-31:** session document prepared ("The Seventeen Gaps",
+> private artifact — ask Stephen for the link): all 17 rows bucketed with
+> recommendations — 3 build (X1 zone handles, X2 mobile peek, X3 scale
+> re-edit), 2 needing the product call (X6 copy-matches-screen semantics,
+> X4 room-label design), 5 fold-into-passes, 3 already defused by shipped
+> tiers, 4 recommended "no, deliberately" — with duct-by-size framed as
+> the session's one sequencing decision. The conversation itself remains.
 
 ## Standing practice — drift patrol
 After any major feature ships (e.g. HVAC duct), re-run a single-journey walk +

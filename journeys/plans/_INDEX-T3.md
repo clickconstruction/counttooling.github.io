@@ -51,8 +51,8 @@ B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 | B13 reuse-standards naming | claude/t3-b13-reuse-standards-naming | ☑ merged 2026-08-31 |
 | B14 cannot-be-undone honesty | claude/t3-b14-cannot-be-undone-honesty | ☑ merged 2026-08-31 |
 | B15 prepare-pdf batch (rescoped) | claude/t3-b15-prepare-pdf-batch | ☑ merged 2026-08-31 — ⚑ signed-out auto-open of Prepare DEFERRED (changes the signed-out happy path + invalidates the upload fixture in ~90 specs; needs Will's call / its own plan — in-code note at features/pdf-intake.js `openPrepareForFreshUpload`). Shipped: discard confirm, undo jump, "Trim your set" retitle + Save&Open hidden signed-out |
-| B16 cold start drag-drop | | queued |
-| B17 dead-UI removal | | queued |
+| B16 cold start drag-drop | claude/t3-b16-cold-start | ☑ merged 2026-08-31 |
+| B17 dead-UI removal | claude/t3-b17-dead-ui-removal | ☑ merged 2026-08-31 — queue complete; ckpt 5-6 push pending |
 
 Checkpoint pushes after: B3, B6, B9, B12, B15, B17 (row flips + ledger update
 ride each checkpoint commit).

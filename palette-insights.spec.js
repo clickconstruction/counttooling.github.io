@@ -171,6 +171,49 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
     expect(page.__errors).toEqual([]);
   });
 
+  test('one trade name everywhere: button, title, and loaded subtitle say My Standards (B13)', async ({ page }) => {
+    // The J16 naming mismatch: the opener said "Analyze My Usage" while the
+    // modal said "Palette Insights". Both now carry the one trade name.
+    await expect(page.locator('#mySettingsPaletteInsights')).toHaveText('My Standards');
+    await openWithStubs(page);
+    await expect(page.locator('#paletteInsightsModal h2')).toHaveText('My Standards');
+    await expect(page.locator('#paletteInsightsSubtitle')).toHaveText('Your most-used counters and lines · ranked by how many bids use each');
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
+  test('zero RPC rows shows the single empty-state message — no contradicting per-list threshold lines (B13)', async ({ page }) => {
+    await page.evaluate(() => {
+      const App = window.App;
+      App.state.supabaseSession = { user: { id: 'u1' } };
+      App.getSupabase = () => ({ rpc: async () => ({ data: [], error: null }) });
+      App.fetchUserAirboard = async () => ({ counters: [], lineTypes: [] });
+      return App.openPaletteInsightsModal();
+    });
+    await expect(page.locator('#paletteInsightsSubtitle')).toHaveText('No cloud projects yet — save a project and check back.');
+    // J16 finding #7: the brand-new account used to see "No counters at this
+    // threshold." under "No cloud projects yet" — one message, not three.
+    await expect(page.locator('#paletteInsightsModal .pi-empty')).toHaveCount(0);
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
+  test('per-list threshold line still renders when usage rows exist but the filter empties one list', async ({ page }) => {
+    // Counters only: the line-types list is empty because of the data/filter,
+    // not because the account is new — that state keeps its explanatory line.
+    await page.evaluate((rows) => {
+      const App = window.App;
+      App.state.supabaseSession = { user: { id: 'u1' } };
+      App.getSupabase = () => ({ rpc: async () => ({ data: rows.filter((r) => r.kind === 'counter'), error: null }) });
+      App.fetchUserAirboard = async () => ({ counters: [], lineTypes: [] });
+      return App.openPaletteInsightsModal();
+    }, RPC_ROWS);
+    await page.waitForSelector('#paletteInsightsCounters .pi-row');
+    await expect(page.locator('#paletteInsightsLines .pi-empty')).toHaveText('No line types at this threshold.');
+    // @ts-ignore
+    expect(page.__errors).toEqual([]);
+  });
+
   test('threshold choice persists across reopen', async ({ page }) => {
     await openWithStubs(page);
     await page.locator('#paletteInsightsMinSeg button', { hasText: '5+' }).click();

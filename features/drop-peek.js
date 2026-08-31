@@ -19,7 +19,12 @@
  *   stale chip. Drop hit-testing rides the node model (collectDropNodes) —
  *   coincident line ends are ONE node carrying ONE drop, so a chain joint
  *   peeks a single unambiguous value; when a drop node and a counter marker
- *   are both in reach, the nearest wins.
+ *   are both in reach, the nearest wins. Clicking a counter marker ALSO
+ *   toggles the "find this counter" halo (state.emphasizedCounterId — every
+ *   marker of that type gets a dark-cased accent ring, drawn in
+ *   canvas-draw.js): unlike the chip it survives pan/zoom/page flips, and
+ *   clears on background click, same-marker re-click, or Escape (wendi's
+ *   follow-up: pick one type out across a busy sheet).
  *
  * - TOGGLE (#dropSizesBtn, beside #hideMarksBtn): paints a small value chip
  *   beside every drop glyph via env.showDropSizes in canvas-draw.js's
@@ -237,6 +242,36 @@
     else if (chipVisible) hideChip();
   };
 
+  // --- "find this counter" halo --------------------------------------------
+  // Clicking a counter marker also emphasizes EVERY marker of that type with
+  // a halo ring (state.emphasizedCounterId -> env.emphasizedCounterId in
+  // canvas-draw.js), so one type can be scanned across the sheet. Unlike the
+  // chip, the emphasis SURVIVES pan/zoom/page flips (finding markers on other
+  // pages is the point); it clears on a background click, on clicking the
+  // same marker again, when a different type takes it over, or via the
+  // Escape ladder's last rung (app.js). In-memory only, viewer-safe.
+  let lastEmphasisKey = null;   // targetKey of the marker whose click set the emphasis
+
+  function setCounterEmphasis(typeId, key) {
+    const state = App.state;
+    if (state.emphasizedCounterId === typeId && lastEmphasisKey === key) {
+      state.emphasizedCounterId = null;   // same marker again: toggle off
+      lastEmphasisKey = null;
+    } else {
+      state.emphasizedCounterId = typeId;
+      lastEmphasisKey = key;
+    }
+    App.renderAnnotations();
+  }
+
+  function clearCounterEmphasis() {
+    const state = App.state;
+    if (!state.emphasizedCounterId) return;
+    state.emphasizedCounterId = null;
+    lastEmphasisKey = null;
+    App.renderAnnotations();
+  }
+
   App.onDropPeekClick = function (pdf, e) {
     if (!peekAllowed()) return;
     // Pan-release guard: a click whose pointer traveled is not a tap. The
@@ -246,7 +281,9 @@
       if (Math.sqrt(dx * dx + dy * dy) > CLICK_SLOP_PX) return;
     }
     const target = findPeekTargetAt(pdf);
-    if (!target) { hideChip(); return; }
+    if (!target) { hideChip(); clearCounterEmphasis(); return; }
+    if (target.kind === 'marker') setCounterEmphasis(target.typeId, targetKey(target));
+    else clearCounterEmphasis();
     if (pinnedNodeKey === targetKey(target)) { hideChip(); return; }   // same target: toggle off
     showChipForTarget(target, true);
   };

@@ -587,8 +587,30 @@ function createCanvasDraw(deps) {
       const color = def ? def.color : '#e8c547';
       const vb = deps.iconRenderVb(iconPath);
       const center = deps.iconRenderCenter(iconPath);
+      // "Find this counter" emphasis (features/drop-peek.js): a dark-cased
+      // accent halo around EVERY marker of the emphasized type, so one type
+      // can be picked out across a busy sheet. Live overlay only (export envs
+      // never set the flag). The double stroke reads on both the white plan
+      // and dark linework, and is distinct from the type-colored counter
+      // rings (cs.showRings) and the line-selection treatment.
+      const emphasized = env.emphasizedCounterId != null && env.emphasizedCounterId === typeId;
       markers.forEach((m, i) => {
         const p = tc(m);
+        if (emphasized) {
+          const haloR = s * 0.75 + 6;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, haloR, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+          ctx.lineWidth = 5;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, haloR, 0, Math.PI * 2);
+          ctx.strokeStyle = '#e8c547';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.restore();
+        }
         if (cs.showRings) {
           const ringScale = (cs.ringSize || 100) / 100;
           const ringSizePx = s * ringScale;

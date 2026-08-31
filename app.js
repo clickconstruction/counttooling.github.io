@@ -247,6 +247,7 @@
     viewToken: null,
     hideMarks: false,
     showAllCanvases: false,   // in-memory peek: render every canvas layer of the page at once
+    emphasizedCounterId: null,   // in-memory "find this counter" halo: counter-type id whose markers get the ring emphasis (features/drop-peek.js); survives page flips, cleared by Escape / background click
     peekCanvasIdsByPage: {},  // in-memory peek subset: pageIdx -> [canvasId,...] to show besides the active one (absent = all); chosen via right-click on #showAllCanvasesBtn
     canCheckOut: false,
     projectOwnerId: null,
@@ -1851,6 +1852,7 @@
       selection: sel ? { id: state.selectedLineId, isPoly: state.selectedLineIsPoly } : null,
       drawNoteHandles: true,
       showDropSizes: !!state.showDropSizes,   // the "Drop sizes" toggle (features/drop-peek.js); live overlay only
+      emphasizedCounterId: state.emphasizedCounterId || null,   // "find this counter" halo (features/drop-peek.js); live overlay only
       // Notes-ledger pins (features/notes-ledger.js); live overlay only — the
       // map is built once per render, keyed by note object reference.
       notePin: (() => {
@@ -6738,6 +6740,11 @@
       } else if (state.tool === TOOL.NOTE) {
         state.tool = TOOL.NONE;
         updateUI();
+      } else if (state.emphasizedCounterId) {
+        // "Find this counter" halo (features/drop-peek.js) — the last rung:
+        // reached only with no modal open and no tool armed.
+        state.emphasizedCounterId = null;
+        renderAnnotations();
       } else state.tool = TOOL.NONE;
     }
     if (e.key === 'ArrowLeft') {

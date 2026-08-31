@@ -38,6 +38,10 @@
   // IntersectionObserver queue, and a single-flight drain loop. All cleared on
   // close; the gen token invalidates any in-flight loop.
   let preparePdfThumbCache = new Map();
+  // B15: what the modal looked like at open — the Escape/Cancel discard
+  // confirm fires ONLY when the user actually trimmed/renamed/rotated
+  // something (a grid mis-tap used to drop the whole upload silently).
+  let preparePdfOpenSnapshot = null;
   let preparePdfThumbGen = 0;
   let preparePdfThumbQueue = [];
   let preparePdfThumbDraining = false;
@@ -304,15 +308,26 @@
     const titleEl = document.getElementById('preparePdfTitle');
     const descEl = document.getElementById('preparePdfDescription');
     const nameRowEl = document.getElementById('preparePdfNameRow');
+    // B15: trimming is purely local — signed-out sessions get the modal too
+    // (pdf-intake routes them here now), retitled so it never implies a cloud
+    // step, and without the Save & Open cloud action.
+    const cloudSession = App.SUPABASE_ENABLED && !!App.state.supabaseSession?.user;
     if (preparePdfMode === 'append') {
       if (titleEl) titleEl.textContent = 'Add pages — ' + (App.state.currentProjectName || 'Untitled');
       if (descEl) descEl.textContent = 'Tap the sheets you don’t need, then add the rest to the project.';
       if (nameRowEl) nameRowEl.style.display = 'none';
     } else {
-      if (titleEl) titleEl.textContent = 'Prepare PDF for Cloud';
+      if (titleEl) titleEl.textContent = cloudSession ? 'Prepare PDF for Cloud' : 'Trim your set';
       if (descEl) descEl.textContent = 'Name your project, then tap the sheets you don’t need — or Keep none and tap the ones you do.';
       if (nameRowEl) nameRowEl.style.display = '';
     }
+    const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');
+    if (saveAndOpenEl) saveAndOpenEl.style.display = cloudSession ? '' : 'none';
+    preparePdfOpenSnapshot = {
+      name: preparePdfProjectName,
+      labels: preparePdfPages.map((p) => p.label || ''),
+      rotations: preparePdfPages.map((p) => p.rotation ?? 0),
+    };
     // T2-15: the grid is the default view in BOTH fresh and append modes; the
     // single-sheet walk is reached per tile via the zoom button.
     preparePdfTotalAtOpen = preparePdfPages.length;
@@ -341,6 +356,31 @@
       }
     })();
   }
+  // B15: the user-facing close route (Cancel button + the app.js Esc ladder).
+  // Confirms before discarding ONLY when trimming/renames/rotations were made
+  // — an untouched modal still closes instantly (J2). The commit handlers
+  // bypass this via hideModal, so a successful Open never sees the confirm.
+  function preparePdfHasChanges() {
+    const snap = preparePdfOpenSnapshot;
+    if (!snap || !preparePdfPages.length) return false;
+    if (preparePdfKeptIndices.length !== preparePdfPages.length) return true;
+    if (preparePdfPages.some((p, i) => (p.rotation ?? 0) !== snap.rotations[i])) return true;
+    if (preparePdfPages.some((p, i) => (p.label || '') !== snap.labels[i])) return true;
+    if (preparePdfMode !== 'append') {
+      const nameInput = document.getElementById('preparePdfName');
+      const liveName = preparePdfEditMode === 'project'
+        ? ((nameInput?.value || '').trim() || preparePdfDefaultName)
+        : preparePdfProjectName;
+      if (liveName !== snap.name) return true;
+    }
+    return false;
+  }
+  function requestClosePreparePdfModal() {
+    if (preparePdfEditMode === 'page') saveCurrentPageName();
+    if (preparePdfHasChanges() &&
+        !confirm('Discard this upload? Your trimming and names will be lost.')) return;
+    closePreparePdfModal();
+  }
   function closePreparePdfModal() {
     preparePdfPages = [];
     preparePdfBuffer = null;
@@ -355,8 +395,10 @@
     if (grid) grid.innerHTML = '';
     App.hideModal('preparePdfModal');
   }
-  window.closePreparePdfModal = closePreparePdfModal;
-  document.getElementById('preparePdfCancel').onclick = () => closePreparePdfModal();
+  // The window-assigned name is what the app.js Esc ladder calls — it gets
+  // the guarded route so Esc and Cancel behave identically (B15).
+  window.closePreparePdfModal = requestClosePreparePdfModal;
+  document.getElementById('preparePdfCancel').onclick = () => requestClosePreparePdfModal();
   // T2-15: grid bindings — one delegated tile listener (zoom button → sheet
   // view; anywhere else on the tile → toggle keep/drop) + the bulk buttons +
   // the sheet view's way back.
@@ -419,8 +461,10 @@
     const { index } = preparePdfUndoStack.pop();
     preparePdfKeptIndices.push(index);
     preparePdfKeptIndices.sort((a, b) => a - b);
+    // B15 / J2: jump the preview TO the restored sheet — undo used to restore
+    // it off-screen, leaving the walk on whatever sheet replaced it.
     const idxInKept = preparePdfKeptIndices.indexOf(index);
-    if (idxInKept >= 0 && idxInKept <= preparePdfCurrentIdx) preparePdfCurrentIdx = Math.min(preparePdfCurrentIdx + 1, preparePdfKeptIndices.length - 1);
+    preparePdfCurrentIdx = idxInKept >= 0 ? idxInKept : 0;
     renderPreparePdfPreview();
     updatePreparePdfControls();
   };

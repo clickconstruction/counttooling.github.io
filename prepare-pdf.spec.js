@@ -211,8 +211,11 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await page.evaluate(async () => {
-      // The cloud save itself is out of scope here — stub it so the signed-out
-      // spec exercises only the commit + feedback path.
+      // The cloud save itself is out of scope here — stub it so the spec
+      // exercises only the commit + feedback path. B15 hides Save & Open for
+      // signed-out sessions, and real append mode implies a signed-in one, so
+      // stub the session too.
+      window.App.state.supabaseSession = { user: { id: 'u1' } };
       window.App.performSaveProjectToCloud = async () => ({ ok: true });
       const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
       const pdf = await window.App.getPdfDocument(buf.slice(0)).promise;
@@ -346,6 +349,66 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
     await page.waitForTimeout(500);
     expect(errors).toEqual([]);
+  });
+
+  test('B15: signed-out title reads Trim your set and Save & Open is hidden; a session restores the cloud title', async ({ page }) => {
+    await openThreePageGrid(page, 'TrimTitle');
+    // Specs run signed-out: trimming is purely local, the title says so and
+    // the cloud save action is gone.
+    await expect(page.locator('#preparePdfTitle')).toHaveText('Trim your set');
+    await expect(page.locator('#preparePdfSaveAndOpen')).toBeHidden();
+    await page.locator('#preparePdfCancel').click();   // untouched → closes instantly
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
+    // With a session the fresh-upload title keeps its cloud wording.
+    await page.evaluate(async () => {
+      window.App.state.supabaseSession = { user: { id: 'u1' } };
+      const a = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const pdf = await window.App.getPdfDocument(a.slice(0)).promise;
+      window.App.openPreparePdfModal([{ pdfPage: await pdf.getPage(1), label: 'Sheet 1', rotation: 0 }], a, 'CloudTitle');
+    });
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/);
+    await expect(page.locator('#preparePdfTitle')).toHaveText('Prepare PDF for Cloud');
+    await expect(page.locator('#preparePdfSaveAndOpen')).toBeVisible();
+  });
+
+  test('B15: Cancel/Esc confirm the discard ONLY after changes; dismissing keeps the modal', async ({ page }) => {
+    const dialogs = [];
+    await openThreePageGrid(page, 'DiscardGuard');
+    // Untouched: Cancel closes with no dialog (asserted by the empty list —
+    // an unexpected dialog would also auto-dismiss and leave the modal open).
+    await page.locator('#preparePdfCancel').click();
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
+    expect(dialogs).toEqual([]);
+    // Reopen, drop a sheet — now Cancel must ask first. Dismiss keeps it open.
+    await openThreePageGrid(page, 'DiscardGuard');
+    await page.locator('.prepare-pdf-tile[data-orig-idx="1"]').click();
+    await expect(page.locator('#preparePdfGridStatus')).toHaveText('Keeping 2 of 3 sheets');
+    page.once('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
+    await page.locator('#preparePdfCancel').click();
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/);
+    expect(dialogs).toEqual(['Discard this upload? Your trimming and names will be lost.']);
+    // Esc goes through the same guard (window.closePreparePdfModal — the app.js
+    // Esc ladder route); accepting discards.
+    page.once('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
+    expect(dialogs).toHaveLength(2);
+  });
+
+  test('B15: sheet-view Undo jumps the preview to the restored sheet', async ({ page }) => {
+    await openThreePageGrid(page, 'UndoJump');
+    await page.locator('.prepare-pdf-tile[data-orig-idx="0"] .prepare-pdf-tile-zoom').click();
+    await expect(page.locator('#preparePdfSheetWrap')).toBeVisible();
+    // Delete Sheet 1, walk to the last sheet, then Undo: the preview must jump
+    // BACK to the restored sheet (position 1 of 3), not stay where it was.
+    await page.locator('#preparePdfDelete').click();
+    await expect(page.locator('#preparePdfPageLabel')).toContainText('of 2');
+    await page.locator('#preparePdfNext').click();
+    await expect(page.locator('#preparePdfPageLabel')).toContainText('2 of 2');
+    await page.locator('#preparePdfUndo').click();
+    await expect(page.locator('#preparePdfPageLabel')).toContainText('1 of 3');
+    await page.locator('#preparePdfPageTab').click();
+    await expect(page.locator('#preparePdfName')).toHaveValue('Sheet 1');
   });
 
   test('commit logs prepare_trim with total/kept/dropped/mode', async ({ page }) => {

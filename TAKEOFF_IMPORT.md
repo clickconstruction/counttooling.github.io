@@ -11,6 +11,12 @@ and POSTs them; the marks land as a normal, reviewable, twin-owned project.
 (`profiles.is_digital_twin`), always the caller's own project. Idempotent by
 `(owner, name)`: re-import replaces, never duplicates.
 
+**Bid stamp**: pass `external_ref` (≤40 chars, e.g. the PipeTooling bid number `"b409"`)
+and the project carries it as a chip in Load Project / Bid Board, matched by list search,
+and appended to the status-bar project segment (`projects.external_ref`). Field present →
+set on insert and replace; absent → left untouched on re-import. Twin imports should
+always pass their bid number.
+
 **PDF leg** (robot-pdf-intake): pass `pdf_url` (+ optional `pdf_headers`, ≤4, e.g.
 `{"X-Twin-Token": "…"}` for PipeTooling's `plan-fetch?bid=b403` endpoint) and the function
 fetches the plan set server-side, verifies it is a PDF (magic bytes, ≤50 MB — the app's
@@ -33,6 +39,7 @@ a `canvas` land on `Main` (back-compat).
 {
   "name": "ZZ Twin LIVSTE takeoff",
   "note": "counters-first pass from substrate v0.4",
+  "external_ref": "b409",
   "takeoff": {
     "version": 1,
     "counters":  [{ "id": "c-wc12", "name": "WC-12", "icon": "<svg path, optional>", "color": "#e8c547" }],

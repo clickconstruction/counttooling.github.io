@@ -221,6 +221,7 @@
     lastScaleTapTime: 0,
     currentProjectId: null,
     currentProjectName: null,
+    currentProjectExternalRef: null,
     isAdmin: false,
     isOverseer: false,
     isDigitalTwin: false,
@@ -652,6 +653,7 @@
     state.currentPage = 0;
     state.currentProjectId = null;
     state.currentProjectName = null;
+    state.currentProjectExternalRef = null;
     state.pdfBuffer = null;
     state.pdfBufferSize = 0;
     state.pdfStoragePath = null;

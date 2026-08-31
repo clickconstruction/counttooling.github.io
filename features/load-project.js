@@ -135,7 +135,7 @@
     if ((App.state.isAdmin || App.state.isOverseer) && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
     if (searchEl) {
       const q = (searchEl.value || '').trim().toLowerCase();
-      if (q) filtered = filtered.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1; });
+      if (q) filtered = filtered.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1 || (p.external_ref || '').toLowerCase().indexOf(q) !== -1; });
     }
     return filtered;
   }
@@ -173,8 +173,10 @@
     let reviewBadge = '';
     if (proj.review_status === 'ready') reviewBadge = ' <span class="badge" style="background:var(--accent);color:var(--bg);font-size:11px;">Ready for review</span>';
     else if (proj.review_status === 'reviewed') reviewBadge = ' <span class="badge" style="background:var(--surface2);color:var(--green);font-size:11px;">Reviewed ✓</span>';
+    // Bid stamp leads the meta line — it's the strongest identifier, not a status.
+    const refChip = proj.external_ref ? '<span class="bid-stamp" title="Upstream bid ' + esc(proj.external_ref) + '">' + esc(proj.external_ref) + '</span> ' : '';
     const metaParts = [date, sizeStr].filter(Boolean);
-    const meta = esc(metaParts.join(' · ')) + lockBadge + ownerBadge + reviewBadge;
+    const meta = refChip + esc(metaParts.join(' · ')) + lockBadge + ownerBadge + reviewBadge;
     const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 640 640"><path fill="currentColor" d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/></svg>';
     const deleteBtnHtml = proj.is_owner ? '<button type="button" class="load-project-delete" title="Delete from cloud" aria-label="Delete">' + trashSvg + '</button>' : '';
     const copyNewBtnHtml = proj.pdf_path ? '<button type="button" class="load-project-copy-new" title="Open a local copy. Save to cloud from Project Settings when ready.">Copy to new</button>' : '';

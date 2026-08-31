@@ -62,6 +62,10 @@ test.describe('Full-document warm-up', () => {
     await page.locator('#pdfInput').setInputFiles({
       name: 'five-pages.pdf', mimeType: 'application/pdf', buffer: buildMultiPagePdf(5),
     });
+    // B15b: a signed-out 3+ sheet upload opens the trim step — commit through
+    // it (Open) the way a real user does, then the pages land.
+    await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
+    await page.locator('#preparePdfDone').click();
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
 
@@ -123,6 +127,10 @@ test.describe('Full-document warm-up', () => {
     await page.locator('#pdfInput').setInputFiles({
       name: 'five-pages.pdf', mimeType: 'application/pdf', buffer: buildMultiPagePdf(5),
     });
+    // B15b: a signed-out 3+ sheet upload opens the trim step — commit through
+    // it (Open) the way a real user does, then the pages land.
+    await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
+    await page.locator('#preparePdfDone').click();
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
 

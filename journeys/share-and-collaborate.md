@@ -210,8 +210,13 @@ Scoped live walk (dev-auth test account, single account — contention untested)
   has the save stall INDEFINITELY with no error; it resumes only when the tab is
   re-fronted. Reproduced live (save hung >3 min hidden, completed on visibility).
   Closing the browser while backgrounded loses a save the user believed was in
-  flight. Fix candidate: `tick()` falls back to `setTimeout` when
-  `document.hidden` (one line in save-engine.js). The T1-01 local backup limits
-  the damage but the cloud save is the one the user asked for.
+  flight. The T1-01 local backup limits the damage but the cloud save is the
+  one the user asked for. **FIXED (2026-08-31, branch
+  claude/t3-save-stall-hidden-tab):** `tick()` in save-engine.js now races rAF
+  against a plain `setTimeout` (immediate when `document.hidden`, 150 ms
+  fallback otherwise, covering a tab backgrounded mid-save), so every phase
+  makes progress with rAF suppressed; pinned by a save-engine.test.js unit
+  test that stubs rAF to a no-op and asserts the save resolves. rAF audit:
+  `tick()` was the save path's only rAF await.
 - **Not walked** (needs a second account): checkout contention, force turn-in from
   the other side, the waiting-notification, multi-user Share roles.

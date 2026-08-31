@@ -382,3 +382,42 @@ test.describe('T2-13 Manage icons… link on the Create tab', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// ---- Tier-3 B17: dead-UI removal ----
+test.describe('Tier-3 B17 dead-UI removal', () => {
+  test('PLUM quick-add rows are gone and boot stays clean; modal search shows only on Choose', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+
+    // The display:none PLUM rows and their openers are deleted outright —
+    // markup, bindings, and viewerHideIds entries went together (a partial
+    // delete would throw at feature-file load).
+    await expect(page.locator('#plumBtn')).toHaveCount(0);
+    await expect(page.locator('#plumLineBtn')).toHaveCount(0);
+    await expect(page.locator('.sidebar-plum-row')).toHaveCount(0);
+
+    // The counter-modal search filters ONLY the Choose list: visible there,
+    // hidden on the Create and Quick tabs it never filtered.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.evaluate(() => {
+      window.state.counters = [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      window.App.updateUI();
+      document.getElementById('counterBtn').click();
+    });
+    await expect(page.locator('#counterModal')).toHaveClass(/visible/);
+    await page.evaluate(() => window.App.showCounterTab('choose'));
+    await expect(page.locator('#counterModal .counter-modal-search-row')).toBeVisible();
+    await page.evaluate(() => window.App.showCounterTab('create'));
+    await expect(page.locator('#counterModal .counter-modal-search-row')).toBeHidden();
+    await page.evaluate(() => window.App.showCounterTab('quickcount'));
+    await expect(page.locator('#counterModal .counter-modal-search-row')).toBeHidden();
+    await page.evaluate(() => window.App.showCounterTab('choose'));
+    await expect(page.locator('#counterModal .counter-modal-search-row')).toBeVisible();
+
+    expect(errors).toEqual([]);
+  });
+});

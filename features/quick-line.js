@@ -3,13 +3,14 @@
  * as the sixteenth feature-file split under the window.App registry pattern. This
  * is the "Quick" tab body of #chooseLineTypeModal: a size/material picker (backed
  * by the persisted line modifiers) that auto-builds a line-type name and color,
- * opened by the Quick Plumbing "Line" button (#plumLineBtn).
+ * reached via App.showLineTypeTab('quick') (Quick Line chooser, Shift+Q).
  *
  * Loaded as a classic <script src="features/quick-line.js"> AFTER app.js. Its own
  * IIFE: it reaches the cross-cutting state + helpers through the shared window.App
  * registry that app.js populates during its own load, registers
- * populateQuickLineModal back onto App, and binds the #plumLineBtn opener + the
- * #quickLine* handlers at this file's load.
+ * populateQuickLineModal back onto App, and binds the
+ * #quickLine* handlers at this file's load (the dead #plumLineBtn opener was
+ * deleted in Tier-3 B17).
  *
  * Registry handoff: populateQuickLineModal used to be published *from* app.js and
  * is consumed by features/choose-create-line-type.js (showLineTypeTab('quick')).
@@ -17,7 +18,7 @@
  * and choose-create-line-type.js keeps reading it via App.* at call time (load
  * order between the two feature files does not matter: registration at load, the
  * call on user action). The tab-switch itself stays in choose-create-line-type.js
- * (reached here via App.showLineTypeTab('quick') from #plumLineBtn).
+ * (reached here via App.showLineTypeTab('quick')).
  *
  * Scope is the Quick Line modal only. getLineModifiers/saveLineModifiers (the
  * line-modifier persistence, used app-wide) and the separate "Add Line Type"
@@ -60,11 +61,9 @@
     const swatchEl = document.getElementById('quickLineSwatch');
     if (swatchEl) swatchEl.style.background = App.getLineModifiers().defaultColor || App.COLORS[2];
   }
-  document.getElementById('plumLineBtn').onclick = () => {
-    populateQuickLineModal();
-    App.showLineTypeTab('quick');
-    App.showModal('chooseLineTypeModal');
-  };
+  // (Tier-3 B17: the dead #plumLineBtn sidebar opener was deleted with its
+  // .sidebar-plum-row markup and viewerHideIds entry; the Quick tab stays
+  // reachable via App.showLineTypeTab('quick') — Quick Line, Shift+Q.)
   document.getElementById('quickLineSize').onchange = updateQuickLineNamePreview;
   document.getElementById('quickLineMaterial').onchange = updateQuickLineNamePreview;
   function removeLineModifier(kind, selectId) {

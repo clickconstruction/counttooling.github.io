@@ -37,6 +37,11 @@
     if (qcPanel) qcPanel.style.display = tab === 'quickcount' ? '' : 'none';
     if (tab === 'choose') populateCounterChooseList(document.getElementById('counterModalSearchInput')?.value);
     if (tab === 'quickcount') App.populateCounterQuickCountPanel();
+    // B17: the modal search filters ONLY the Choose list — on Create/Quick it
+    // was an inert box (the same papercut the icon-search group already
+    // avoids, see showCounterIconTab).
+    const modalSearchRow = document.querySelector('#counterModal .counter-modal-search-row');
+    if (modalSearchRow) modalSearchRow.style.display = tab === 'choose' ? '' : 'none';
   }
   function showCounterIconTab(tab) {
     document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>

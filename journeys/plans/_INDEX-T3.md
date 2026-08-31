@@ -51,7 +51,7 @@ call: KEEP visible (phones' only route; tablets with keyboards use Quick Keys).
 | B12 import canvas row | claude/t3-b12-import-canvas-row | ☑ merged 2026-08-30, pushed ckpt 4 |
 | B13 reuse-standards naming | claude/t3-b13-reuse-standards-naming | ☑ merged 2026-08-31 |
 | B14 cannot-be-undone honesty | claude/t3-b14-cannot-be-undone-honesty | ☑ merged 2026-08-31 |
-| B15 prepare-pdf batch (rescoped) | claude/t3-b15-prepare-pdf-batch | ☑ merged 2026-08-31 — ⚑ signed-out auto-open of Prepare DEFERRED (changes the signed-out happy path + invalidates the upload fixture in ~90 specs; needs Will's call / its own plan — in-code note at features/pdf-intake.js `openPrepareForFreshUpload`). Shipped: discard confirm, undo jump, "Trim your set" retitle + Save&Open hidden signed-out |
+| B15 prepare-pdf batch (rescoped) | claude/t3-b15-prepare-pdf-batch | ☑ merged 2026-08-31 — shipped: discard confirm, undo jump, "Trim your set" retitle + Save&Open hidden signed-out. The ⚑ signed-out auto-open was RESOLVED 2026-08-31 (delegated call) as **B15b, middle path**: fresh signed-out uploads of 3+ sheets auto-open the trim step; 1-2 sheets go straight in (full parity would modal the make-or-break first upload and invalidate ~90 spec fixtures) |
 | B16 cold start drag-drop | claude/t3-b16-cold-start | ☑ merged 2026-08-31 |
 | B17 dead-UI removal | claude/t3-b17-dead-ui-removal | ☑ merged 2026-08-31 — queue complete; ckpt 5-6 push pending |
 

@@ -310,3 +310,38 @@ test.describe('cold start (Tier-3 B16)', () => {
     expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
   });
 });
+
+// ---- B15b: signed-out 3+ sheet uploads get the trim step (⚑ resolved) ----
+test.describe('signed-out trim step (B15b)', () => {
+  test('a 3-sheet signed-out fresh upload opens Trim your set; committing Open lands the pages', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    // Two files, 3 pages total — over the >=3 gate.
+    await page.locator('#pdfInput').setInputFiles([
+      path.join(__dirname, 'test-2pages.pdf'),
+      path.join(__dirname, 'test-page.pdf'),
+    ]);
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 10000 });
+    await expect(page.locator('#preparePdfTitle')).toHaveText('Trim your set');
+    await expect(page.locator('#preparePdfSaveAndOpen')).toBeHidden();
+    // The pages moved INTO the modal; the session under it is clean.
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+    await expect(page.locator('#preparePdfGridStatus')).toHaveText('Keeping 3 of 3 sheets');
+    await page.locator('#preparePdfDone').click();
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/, { timeout: 10000 });
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('a 2-sheet signed-out upload still goes straight in — no modal on the small cold start', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(2);
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
+  });
+});

@@ -15,7 +15,7 @@ Open the app and click **Upload PDF** in the header — the same upload also liv
 
 ## Trim the set with Prepare PDF
 
-When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start. It opens on a grid of sheet thumbnails — the whole set at a glance:
+When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start. (Signed out it's titled **Trim your set** — trimming is purely local — and opens for sets of three or more sheets; a one- or two-sheet upload goes straight in.) It opens on a grid of sheet thumbnails — the whole set at a glance:
 
 ![The Prepare PDF dialog: ① rotate a sideways page, ② delete the pages you don't need, then ③ Save & Open.](/guides/img/prepare-pdf.png)
 

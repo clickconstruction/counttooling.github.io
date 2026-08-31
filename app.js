@@ -2171,6 +2171,11 @@
     }
     const scaleDisplaySection = document.getElementById('sidebarScaleDisplaySection');
     if (scaleDisplaySection) scaleDisplaySection.style.display = state.pages.length ? '' : 'none';
+    // B16 / J1: the quiet cold-start hint in the empty black canvas. Hidden
+    // the moment pages exist, and for view-link sessions (their PDF hydrates
+    // asynchronously — the hint would flash a false affordance).
+    const canvasEmptyHint = document.getElementById('canvasEmptyHint');
+    if (canvasEmptyHint) canvasEmptyHint.style.display = (state.pages.length || state.isViewer || state.loadedViaViewLink) ? 'none' : '';
     document.getElementById('moveBtn').classList.toggle('active', state.tool === TOOL.NONE);
     document.getElementById('quickLine').classList.toggle('active', state.tool === TOOL.LINE);
     document.getElementById('polylineBtn').classList.toggle('active', state.tool === TOOL.POLYLINE);

@@ -2009,7 +2009,17 @@ function createSaveEngine(ctx) {
       setProgress('Uploading PDF... ' + pct + '%');
       if (typeof onPdfUploadProgress === 'function') { try { onPdfUploadProgress(sent, total); } catch (_) {} }
     };
-    const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+    // Yield before each blocking network phase so the status text can paint.
+    // requestAnimationFrame never fires while the tab is hidden, so awaiting a
+    // frame alone stalls the whole save indefinitely if the user backgrounds
+    // the tab before (or during) a phase — race a plain timeout so tick()
+    // always resolves; rAF still wins when the tab is visible.
+    const tick = () => new Promise(r => {
+      let settled = false;
+      const settle = () => { if (settled) return; settled = true; setTimeout(r, 0); };
+      try { requestAnimationFrame(settle); } catch (_) { /* no rAF: timer path */ }
+      setTimeout(settle, (typeof document !== 'undefined' && document.hidden) ? 0 : 150);
+    });
     const data = {
       version: 1,
       counters: ctx.getState().counters,

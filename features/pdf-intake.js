@@ -267,17 +267,26 @@
       });
       App.showModal('loadAnnotationsModal');
     } else if (startPageIdx === 0) {
-      App.openPreparePdfModal(App.state.pages, App.state.pdfBuffer, App.state.currentProjectName);
-      App.clearPdfBitmapCache();
-      App.state.pages = [];
-      App.state.activeCanvasIdByPage = {};
-      App.state.pdfBuffer = null;
-      App.state.pdfBufferSize = 0;
-      App.state.currentProjectName = 'Untitled';
-      App.state.currentPage = 0;
-      App.updateUI();
-      App.renderPdf();
+      openPrepareForFreshUpload();
     }
+  }
+
+  // The fresh-upload Prepare PDF hand-off: move the just-uploaded pages into
+  // the modal and reset the session state underneath it (Cancel = clean slate,
+  // commit = rebuilds state from the trimmed buffer). Shared by the signed-in
+  // no-cloud-match path above and the signed-out path in handleFreshUpload
+  // (B15 — trimming is purely local, so signed-out uploads trim too).
+  function openPrepareForFreshUpload() {
+    App.openPreparePdfModal(App.state.pages, App.state.pdfBuffer, App.state.currentProjectName);
+    App.clearPdfBitmapCache();
+    App.state.pages = [];
+    App.state.activeCanvasIdByPage = {};
+    App.state.pdfBuffer = null;
+    App.state.pdfBufferSize = 0;
+    App.state.currentProjectName = 'Untitled';
+    App.state.currentPage = 0;
+    App.updateUI();
+    App.renderPdf();
   }
 
   // T1-01 / J4 second half: a signed-out session whose backup lost its PDF
@@ -463,6 +472,15 @@
     if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId && App.SUPABASE_ENABLED && App.getSupabase() && App.state.supabaseSession?.user && uploadHash) {
       await promptLoadAnnotations(uploadHash, startPageIdx);
     }
+    // B15 ⚑ DEFERRED (see _INDEX-T3.md): the J2 proposal also opens Prepare
+    // for signed-out fresh uploads ("Trim your set" — the retitle and the
+    // Save&Open hiding are already live in prepare-pdf.js). Auto-opening here
+    // changes the signed-out happy path (a modal on every fresh upload) and
+    // invalidates the upload fixture in ~90 Playwright specs — that is a
+    // planned rework + fixture migration, not a papercut batch item. When it
+    // lands, call openPrepareForFreshUpload() for the signed-out fresh path,
+    // gated on !App.projectHasAnyCanvasMarkup() so a backup re-apply
+    // (maybeReapplyLocalBackupMarks above) is never trimmed away.
     if (importBothFollowUp && App.state.pages.length > 0) {
       App.showModal('importCanvasAfterPdfModal');
     }

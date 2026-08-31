@@ -48,7 +48,7 @@ B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 | B10 legend & proof | claude/t3-b10-legend-proof | ☑ merged 2026-08-30, pushed ckpt 4 (PR #60 CI vehicle; +regen-baselines workflow) |
 | B11 signed-out save signal | claude/t3-b11-local-save-signal | ☑ merged 2026-08-30, pushed ckpt 4 |
 | B12 import canvas row | claude/t3-b12-import-canvas-row | ☑ merged 2026-08-30, pushed ckpt 4 |
-| B13 reuse-standards naming | | queued |
+| B13 reuse-standards naming | claude/t3-b13-reuse-standards-naming | ☑ merged 2026-08-31 |
 | B14 cannot-be-undone honesty | | queued |
 | B15 prepare-pdf batch (rescoped) | | queued |
 | B16 cold start drag-drop | | queued |

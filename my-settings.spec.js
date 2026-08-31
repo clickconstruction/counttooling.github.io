@@ -25,7 +25,8 @@ test.describe('My Settings (features/my-settings.js)', () => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    page.on('dialog', (d) => d.accept());
+    const dialogMessages = [];
+    page.on('dialog', (d) => { dialogMessages.push(d.message()); d.accept(); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -50,10 +51,13 @@ test.describe('My Settings (features/my-settings.js)', () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('artboard-backup.json');
 
-    // Clear artboard (confirm auto-accepted) empties the palette.
+    // Clear artboard (confirm auto-accepted) empties the palette. B14: with
+    // NO plan open the undo snapshot no-ops (undo-stack.js pages.length
+    // guard), so this state's confirm must not promise undo OR permanence.
     await page.evaluate(() => document.getElementById('mySettingsClearAirboard').click());
     await page.waitForFunction(() => window.state.counters.length === 0 && window.state.lineTypes.length === 0);
     expect(await page.evaluate(() => window.state.activeCounterType)).toBeNull();
+    expect(dialogMessages.pop()).toBe('Empty your counters and line types?');
 
     // The close binding hides a force-shown modal.
     await page.evaluate(() => {
@@ -96,6 +100,35 @@ test.describe('My Settings (features/my-settings.js)', () => {
     expect(applied.customIcons).toContain('Spec Widget');
     expect(applied.bindings).toEqual({ 1: { kind: 'counter', id: 'c9' } });
     expect(applied.seededFlag).toBe(true);
+  });
+
+  test('Clear Artboard with a plan open: honest confirm copy, and undo restores the palette (B14)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    const dialogs = [];
+    page.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters = [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      s.lineTypes = [{ id: 'lt1', name: 'Copper', color: '#4a9eff' }];
+      window.App.updateUI();
+    });
+    await page.evaluate(() => document.getElementById('mySettingsClearAirboard').click());
+    await page.waitForFunction(() => window.state.counters.length === 0 && window.state.lineTypes.length === 0);
+    // The copy replaced "This cannot be undone." — a snapshot IS pushed here.
+    expect(dialogs.pop()).toBe('Empty this project\'s counters and line types? Marks stay but stop counting. Undo brings counters and lines back.');
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => window.state.counters.length === 1 && window.state.lineTypes.length === 1);
+    expect(await page.evaluate(() => window.state.counters[0].name)).toBe('Drain');
+
+    expect(errors).toEqual([]);
   });
 
   test('Load from Cloud re-links placed marks by name and pushes an undo snapshot (stubbed fetch)', async ({ page }) => {

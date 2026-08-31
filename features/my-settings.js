@@ -147,7 +147,16 @@
   };
   document.getElementById('mySettingsClearAirboard').onclick = () => {
     const state = App.state;
-    if (!confirm('Clear all counters and line types? This cannot be undone.')) return;
+    // B14 honesty pass: with a plan open, pushUndoSnapshot() is the very next
+    // line — "cannot be undone" was a lie. Marks stay drawn (their palette
+    // rows go, so tallies stop counting them) and undo restores the palette.
+    // With NO plan open, pushUndoSnapshot no-ops (undo-stack.js guards on
+    // pages.length) and there are no marks — so that copy would be the
+    // opposite lie; say only what's true there.
+    const msg = state.pages.length
+      ? 'Empty this project\'s counters and line types? Marks stay but stop counting. Undo brings counters and lines back.'
+      : 'Empty your counters and line types?';
+    if (!confirm(msg)) return;
     App.pushUndoSnapshot();
     state.counters = [];
     state.lineTypes = [];

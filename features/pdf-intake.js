@@ -471,16 +471,22 @@
     // either offer to switch projects (destructive) or clobber the project name.
     if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId && App.SUPABASE_ENABLED && App.getSupabase() && App.state.supabaseSession?.user && uploadHash) {
       await promptLoadAnnotations(uploadHash, startPageIdx);
+    } else if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId &&
+               !App.state.supabaseSession?.user &&
+               startPageIdx === 0 && App.state.pages.length >= 3 &&
+               !App.projectHasAnyCanvasMarkup()) {
+      // B15b (⚑ resolved 2026-08-31, delegated call): signed-out /
+      // cloud-disabled fresh uploads of 3+ sheets get the trim step — a
+      // combined bid set is otherwise untrimmable without an account (J2),
+      // and trimming is purely local (the modal says "Trim your set"; Save &
+      // Open is hidden). 1-2 sheet uploads go straight in: nothing to trim,
+      // no cloud naming need, and the J1 cold start stays one action. Full
+      // signed-in parity (Prepare on EVERY fresh upload) was deliberately
+      // NOT chosen — it would put a modal on the make-or-break first upload.
+      // Skipped when maybeReapplyLocalBackupMarks above restored marks:
+      // trimming would discard the restored takeoff.
+      openPrepareForFreshUpload();
     }
-    // B15 ⚑ DEFERRED (see _INDEX-T3.md): the J2 proposal also opens Prepare
-    // for signed-out fresh uploads ("Trim your set" — the retitle and the
-    // Save&Open hiding are already live in prepare-pdf.js). Auto-opening here
-    // changes the signed-out happy path (a modal on every fresh upload) and
-    // invalidates the upload fixture in ~90 Playwright specs — that is a
-    // planned rework + fixture migration, not a papercut batch item. When it
-    // lands, call openPrepareForFreshUpload() for the signed-out fresh path,
-    // gated on !App.projectHasAnyCanvasMarkup() so a backup re-apply
-    // (maybeReapplyLocalBackupMarks above) is never trimmed away.
     if (importBothFollowUp && App.state.pages.length > 0) {
       App.showModal('importCanvasAfterPdfModal');
     }

@@ -9,7 +9,8 @@ plan; no separate plans of record (per _NEXT.md Stage 4: mechanical, small PRs).
 
 B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 "keys"/"macros" dialect rename, which travels with B4's naming pass, and
-(b) the coarse-pointer keyboard-links question — ⚑ Will's product call, open.
+(b) the coarse-pointer keyboard-links question — RESOLVED 2026-08-31, delegated
+call: KEEP visible (phones' only route; tablets with keyboards use Quick Keys).
 
 ## Rescope notes (Tier-1/Tier-2 landings since the batches were written)
 

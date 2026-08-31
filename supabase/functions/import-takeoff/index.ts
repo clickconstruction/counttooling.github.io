@@ -25,6 +25,7 @@ type TakeoffPage = {
   index: number
   label?: string
   scale?: { pixelsPerUnit: number; unit: string } | null
+  rotation?: number
   counterMarkers?: Record<string, Pt[]>
   quickLines?: Array<{ x1: number; y1: number; x2: number; y2: number; lineTypeId: string }>
   polylines?: Array<{ points: Pt[]; lineTypeId: string }>
@@ -120,6 +121,11 @@ Deno.serve(async (req) => {
       if (p.scale != null && !(num(p.scale.pixelsPerUnit) && p.scale.pixelsPerUnit > 0)) {
         return bad(`pages[${p.index}].scale.pixelsPerUnit`, 'must be a positive number when scale is given')
       }
+      // Reviewer orientation: rotated source sheets import with the view rotation set
+      // so plans open right-side up. Pure view transform — coordinates stay base-frame.
+      if (p.rotation != null && ![0, 90, 180, 270].includes(p.rotation)) {
+        return bad(`pages[${p.index}].rotation`, 'must be 0, 90, 180, or 270')
+      }
       for (const [cid, marks] of Object.entries(p.counterMarkers ?? {})) {
         if (!counterIds.has(cid)) return bad(`pages[${p.index}].counterMarkers`, `unknown counter id ${cid}`)
         if (!Array.isArray(marks)) return bad(`pages[${p.index}].counterMarkers.${cid}`, 'must be an array of {x,y}')
@@ -210,7 +216,7 @@ Deno.serve(async (req) => {
         label: p?.label,
         canvases,
         scale: p?.scale ?? undefined,
-        rotation: 0,
+        rotation: p?.rotation ?? 0,
         bakeFrame: null,
       }
     })

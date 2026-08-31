@@ -11,6 +11,11 @@ and POSTs them; the marks land as a normal, reviewable, twin-owned project.
 (`profiles.is_digital_twin`), always the caller's own project. Idempotent by
 `(owner, name)`: re-import replaces, never duplicates.
 
+**Reviewer orientation**: pages may carry `rotation` (0 | 90 | 180 | 270) — set it on
+sheets whose content is drawn rotated so the plan opens right-side up for reviewers.
+Pure view transform: all coordinates stay in the rotation-0 base frame. Twin imports
+should always set it from the orientation gate.
+
 **Bid stamp**: pass `external_ref` (≤40 chars, e.g. the PipeTooling bid number `"b409"`)
 and the project carries it as a chip in Load Project / Bid Board, matched by list search,
 and appended to the status-bar project segment (`projects.external_ref`). Field present →
@@ -48,6 +53,7 @@ a `canvas` land on `Main` (back-compat).
       "index": 0,
       "label": "P200",
       "scale": { "pixelsPerUnit": 12.34, "unit": "ft" },
+      "rotation": 90,
       "counterMarkers": { "c-wc12": [{ "x": 120.5, "y": 340.0 }] },
       "quickLines":  [{ "x1": 0, "y1": 0, "x2": 240, "y2": 0, "lineTypeId": "lt-cw" }],
       "polylines":   [{ "points": [{ "x": 0, "y": 0 }, { "x": 10, "y": 20 }], "lineTypeId": "lt-cw" }],

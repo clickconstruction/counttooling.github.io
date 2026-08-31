@@ -80,7 +80,9 @@
       : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud — the PDF was never uploaded">Canvas only</span>';
     const canMarkReviewed = proj.review_status === 'ready' && (App.state.isOverseer || App.state.isAdmin);
     return '<div class="bid-card" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
-      '<div class="bid-card-name">' + esc(proj.name || 'Untitled') + '</div>' +
+      '<div class="bid-card-name">' + esc(proj.name || 'Untitled') +
+        (proj.external_ref ? ' <span class="bid-stamp" title="Upstream bid ' + esc(proj.external_ref) + '">' + esc(proj.external_ref) + '</span>' : '') +
+      '</div>' +
       '<div class="bid-card-owner" title="' + esc(proj.owner_email || '') + '">' + esc(ownerLabel(proj.owner_email)) + '</div>' +
       '<div class="bid-card-meta">' +
         reviewBadgeHtml(proj) +
@@ -101,7 +103,7 @@
     const ownerEl = document.getElementById('bidBoardOwnerFilter');
     let rows = boardRows.slice();
     const q = searchEl && searchEl.value ? searchEl.value.trim().toLowerCase() : '';
-    if (q) rows = rows.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1; });
+    if (q) rows = rows.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1 || (p.external_ref || '').toLowerCase().indexOf(q) !== -1; });
     if (ownerEl && ownerEl.value) rows = rows.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
     return rows;
   }

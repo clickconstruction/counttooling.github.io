@@ -53,6 +53,7 @@
     App.state.pendingCanvasLoad = null;
     App.state.currentProjectId = proj.id;
     App.state.currentProjectName = proj.name || 'Untitled';
+    App.state.currentProjectExternalRef = proj.external_ref || null;
     App.state.pdfHash = opts.reusePdfHash !== undefined ? opts.reusePdfHash : (proj.pdf_hash || null);
     if (opts.reusePdfStoragePath !== undefined) App.state.pdfStoragePath = opts.reusePdfStoragePath;
     App.setLastSaveIncludedPdf(!!proj.pdf_path);
@@ -163,6 +164,7 @@
     App.state.pendingCanvasLoad = null;
     App.state.currentProjectId = null;
     App.state.currentProjectName = forkName || 'Untitled';
+    App.state.currentProjectExternalRef = null;
     App.state.pdfBuffer = pdfArrayBuffer;
     App.state.pdfBufferSize = pdfArrayBuffer.byteLength;
     App.state.pdfHash = await App.sha256Hex(pdfArrayBuffer);

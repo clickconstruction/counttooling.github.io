@@ -256,7 +256,7 @@
     const cachedMeta = await viewCacheGetMeta(viewToken);
     const cachedBlob = cachedMeta ? await viewCacheGet(viewToken, cachedMeta.pdfHash) : null;
     const cachedProjectData = (cachedBlob && cachedMeta && cachedMeta.data && cachedMeta.projectId)
-      ? { projectId: cachedMeta.projectId, name: cachedMeta.name, data: cachedMeta.data, pdfHash: cachedMeta.pdfHash, updatedAt: cachedMeta.updatedAt ?? null }
+      ? { projectId: cachedMeta.projectId, name: cachedMeta.name, data: cachedMeta.data, pdfHash: cachedMeta.pdfHash, updatedAt: cachedMeta.updatedAt ?? null, externalRef: cachedMeta.externalRef ?? null }
       : null;
 
     // Revalidate against the server even on a cache hit, so a viewer isn't pinned to a stale
@@ -292,14 +292,14 @@
       // snapshot if the server returned a fresher copy.
       buf = await cachedBlob.arrayBuffer();
       if (projectData !== cachedProjectData && (projectData.updatedAt ?? null) !== (cachedMeta.updatedAt ?? null)) {
-        viewCachePut(viewToken, cachedBlob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d, updatedAt: projectData.updatedAt ?? null });
+        viewCachePut(viewToken, cachedBlob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d, updatedAt: projectData.updatedAt ?? null, externalRef: projectData.externalRef ?? null });
       }
     } else if (projectData.pdfSignedUrl) {
       const pdfRes = await fetch(projectData.pdfSignedUrl);
       if (!pdfRes.ok) throw new Error('Failed to load PDF');
       buf = await pdfRes.arrayBuffer();
       const blob = new Blob([buf], { type: 'application/pdf' });
-      viewCachePut(viewToken, blob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d, updatedAt: projectData.updatedAt ?? null });
+      viewCachePut(viewToken, blob, projectData.pdfHash || null, { projectId: projectData.projectId, name: projectData.name, data: d, updatedAt: projectData.updatedAt ?? null, externalRef: projectData.externalRef ?? null });
     } else if (cachedBlob) {
       buf = await cachedBlob.arrayBuffer();   // cache fallback with no fresh signed URL
     } else {
@@ -325,6 +325,7 @@
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;
     state.currentProjectName = projectData.name || 'Untitled';
+    state.currentProjectExternalRef = projectData.externalRef || null;
     state.pdfStoragePath = null;
     state.pdfBuffer = null;
     state.pdfBufferSize = 0;

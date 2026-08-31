@@ -81,11 +81,14 @@ Deno.serve(async (req) => {
       return jsonRes(403, { error: 'import-takeoff is the agent door — twin accounts only; people have a canvas.' })
     }
 
-    const body = await req.json().catch(() => null) as { name?: string; note?: string; takeoff?: TakeoffJson; pdf_url?: string; pdf_headers?: Record<string, string> } | null
+    const body = await req.json().catch(() => null) as { name?: string; note?: string; external_ref?: string; takeoff?: TakeoffJson; pdf_url?: string; pdf_headers?: Record<string, string> } | null
     const name = String(body?.name ?? '').trim()
     const t = body?.takeoff
     if (!name) return jsonRes(400, { error: 'name required (the project name; re-import with the same name replaces it)' })
     if (!t || t.version !== 1) return bad('version', 'must be 1')
+    // Optional bid stamp ("b409") — shown as a chip in project lists. Field present →
+    // set on insert AND replace; absent → left untouched on re-import.
+    const externalRef = body?.external_ref !== undefined ? String(body.external_ref ?? '').trim().slice(0, 40) || null : undefined
 
     // PDF leg: fetch first so the page count can validate the takeoff's page indexes.
     const pdfUrl = String(body?.pdf_url ?? '').trim()
@@ -233,6 +236,7 @@ Deno.serve(async (req) => {
       counter_count: markCount,
       line_count: lineCount,
       updated_at: new Date().toISOString(),
+      ...(externalRef !== undefined ? { external_ref: externalRef } : {}),
     }
     let projectId: string
     if (existing?.id) {

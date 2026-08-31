@@ -190,7 +190,8 @@
       if (App.isSaveInProgress() && App.getSaveProgressMessage()) {
         mode = App.getSaveProgressMessage();
       } else {
-        const projectSegment = state.currentProjectName || (state.pages.length ? 'Untitled' : '—');
+        const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : '—'))
+          + (state.currentProjectExternalRef ? ' · ' + state.currentProjectExternalRef : '');
         let lastSavedSegment = '—';
         if (lastLocalBackupAt) {
           // B11 (J12/J15): signed-out, the segment shows the local-save stamp

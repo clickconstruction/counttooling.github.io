@@ -291,6 +291,17 @@ J4 count-fixtures are the daily core**; J3/J6/J7/J11/J13/J15/J16 are telemetry-b
 
 ### Tier 4 — teach: the guide-edit list
 
+> **☑ COMPLETE — audit 2026-08-31.** All 11 edits verified PRESENT in the live
+> guides: every G-row shipped incrementally with the code batch that touched its
+> surface (the "guide edits ride the PRs" standing rule), rather than as a
+> separate pass — G1/G5a rode B3/B4/T2-13, G2 rode T1-04, G4 rode the J9 fix,
+> G6 rode T2-15, G7 rode B9, G8 rode T1-09, G9 rode B6/B7, G10 rode the
+> canvas-layers work, G11 rode PR #64 (which also gave locked-out users the
+> self-serve email sign-in link — better than the row asked). G3's Ctrl+Y alias
+> stays unshipped by design (alias only if the request recurs). The audit's one
+> real find was OUTSIDE this list: B16's drag-and-drop wasn't documented —
+> added to preparing-a-plan-set.md the same day.
+
 18 teach verdicts survived verification (Phase-2a's raw 26 shrank in 2b: several were
 re-homed — e.g. the J12 Esc item is code and moved to B1). Grouped into 11 edits:
 

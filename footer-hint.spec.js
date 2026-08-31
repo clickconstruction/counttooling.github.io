@@ -181,22 +181,26 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
         { x: vp.width * 0.25 * z + pan.x, y: y + 40 * z },
       ];
     });
+    // No wait between the clicks: the double-tap guard is positional, so a fast
+    // second click on a DIFFERENT point must complete the measure (the time-only
+    // guard silently swallowed it — field feedback 2026-08-31).
     await page.mouse.click(box.x + pts[0].x, box.y + pts[0].y);
-    await page.waitForTimeout(450); // measure's double-tap guard
     await page.mouse.click(box.x + pts[1].x, box.y + pts[1].y);
 
-    // The result is a footer chip, not a toast.
+    // The result rides both surfaces: a non-blocking 5s toast (glanceable at the
+    // point of attention) and the persistent footer chip.
     const chip = page.locator('#statusMeasure');
     await expect(chip).toBeVisible();
     const firstText = await chip.textContent();
     expect(firstText).toMatch(/^Distance: /);
-    expect(await page.evaluate(() => document.getElementById('airboardToastModal').classList.contains('visible'))).toBe(false);
-    expect(await page.evaluate(() => document.getElementById('airboardToastText').textContent)).not.toContain('Distance');
+    expect(await page.evaluate(() => document.getElementById('airboardToastModal').classList.contains('visible'))).toBe(true);
+    expect(await page.evaluate(() => document.getElementById('airboardToastText').textContent)).toContain('Distance');
 
-    // Still shown after 6s — it outlives the old 5s toast and stays while you work.
+    // Still shown after 6s — the chip outlives the 5s toast and stays while you work.
     await page.waitForTimeout(6000);
     await expect(chip).toBeVisible();
     expect(await chip.textContent()).toBe(firstText);
+    expect(await page.evaluate(() => document.getElementById('airboardToastModal').classList.contains('visible'))).toBe(false);
 
     // Page flip hides it (a fact about that sheet); flipping back shows it again.
     await page.locator('#nextPage').click();
@@ -207,16 +211,84 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
     await expect(chip).toBeVisible();
     expect(await chip.textContent()).toBe(firstText);
 
-    // A new measure replaces it.
+    // A new measure replaces it (again with no waits between the clicks).
     await page.evaluate(() => { document.getElementById('measureBtn').click(); });
-    await page.waitForTimeout(450);
     await page.mouse.click(box.x + pts[0].x, box.y + pts[0].y);
-    await page.waitForTimeout(450);
     await page.mouse.click(box.x + pts[2].x, box.y + pts[2].y);
     await expect(chip).toBeVisible();
     const secondText = await chip.textContent();
     expect(secondText).toMatch(/^Distance: /);
     expect(secondText).not.toBe(firstText);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('double-tap guard swallows only same-spot taps — Measure and Set Scale', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.setViewportSize({ width: 1600, height: 800 });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // Synchronous dispatch guarantees the taps land well inside the 400ms window.
+    const measured = await page.evaluate(() => {
+      window.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
+      document.getElementById('measureBtn').click();
+      const wrap = document.getElementById('canvasWrapper');
+      const rect = wrap.getBoundingClientRect();
+      const click = (fx, fy) => {
+        const p = window.state.pages[0];
+        const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+        const x = rect.left + vp.width * fx * window.state.zoom + window.state.pan.x;
+        const y = rect.top + vp.height * fy * window.state.zoom + window.state.pan.y;
+        for (const type of ['mousedown', 'mouseup', 'click']) {
+          wrap.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 }));
+        }
+      };
+      click(0.25, 0.5);            // point A
+      click(0.25, 0.5);            // same-spot double-tap: must be swallowed
+      const afterDoubleTap = { scaleMode: window.state.scaleMode, lastMeasure: window.state.lastMeasure || null };
+      click(0.75, 0.5);            // fast but clearly elsewhere: completes A -> B
+      return { afterDoubleTap, lastMeasure: window.state.lastMeasure, tool: window.state.tool };
+    });
+    // The double-tap did NOT complete a zero-length measure; the far click did.
+    expect(measured.afterDoubleTap.scaleMode).toBe(2); // SCALE_MODES.POINT_B — still waiting
+    expect(measured.afterDoubleTap.lastMeasure).toBe(null);
+    expect(measured.lastMeasure.text).toMatch(/^Distance: /);
+    expect(measured.lastMeasure.text).not.toBe('Distance: 0"');
+    expect(measured.tool).toBe(0); // TOOL.NONE — measure completed
+
+    // Same guard on the Set Scale tool: a same-spot double-tap must not open the
+    // scale modal with a zero-length reference line.
+    const scaled = await page.evaluate(() => {
+      document.getElementById('setScale').click();          // opens the Scale modal
+      document.getElementById('scaleSelectOnPdf').click();  // arms TOOL.SCALE / POINT_A
+      const wrap = document.getElementById('canvasWrapper');
+      const rect = wrap.getBoundingClientRect();
+      const click = (fx, fy) => {
+        const p = window.state.pages[0];
+        const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+        const x = rect.left + vp.width * fx * window.state.zoom + window.state.pan.x;
+        const y = rect.top + vp.height * fy * window.state.zoom + window.state.pan.y;
+        for (const type of ['mousedown', 'mouseup', 'click']) {
+          wrap.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 }));
+        }
+      };
+      click(0.25, 0.5);
+      click(0.25, 0.5);
+      const afterDoubleTap = {
+        scaleMode: window.state.scaleMode,
+        modalOpen: document.getElementById('scaleModal').classList.contains('visible'),
+      };
+      click(0.75, 0.5);
+      return { afterDoubleTap, modalOpen: document.getElementById('scaleModal').classList.contains('visible') };
+    });
+    expect(scaled.afterDoubleTap.scaleMode).toBe(2);
+    expect(scaled.afterDoubleTap.modalOpen).toBe(false);
+    expect(scaled.modalOpen).toBe(true);
 
     expect(errors).toEqual([]);
   });

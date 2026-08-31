@@ -40,20 +40,51 @@
     if (input) input.placeholder = 'you@' + viewLinkDomains().split(',')[0].trim();
   })();
 
-  // B6 (J13 J14): Cancel/Escape at the email gate shows a static full-screen
-  // card instead of stranding the viewer in the empty editor. Reuses the
-  // dead-link screen chrome; the button reloads, which restarts the gate.
-  function showViewEmailRequiredScreen() {
+  // The three view-gate outcomes (email required, dead link, network failure)
+  // share the #viewLinkDeadScreen card (app/index.html) — each state picks its
+  // glyph/title/copy/action here. Glyphs are stroke icons on the accent-tinted
+  // circle; ids/.visible semantics are unchanged so specs keep working.
+  const VIEW_GATE_GLYPHS = {
+    email: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+    dead: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 6.5l1-1a4 4 0 0 1 5.66 5.66l-2 2"/><path d="M10.5 17.5l-1 1a4 4 0 0 1-5.66-5.66l2-2"/><line x1="4" y1="4" x2="20" y2="20"/></svg>',
+    retry: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><polyline points="21 3 21 8 16 8"/></svg>',
+  };
+  function showViewGateScreen(spec) {
+    const icon = document.getElementById('viewLinkDeadIcon');
+    if (icon) icon.innerHTML = VIEW_GATE_GLYPHS[spec.glyph] || '';
+    const titleEl = document.getElementById('viewLinkDeadTitle');
+    if (titleEl) titleEl.textContent = spec.title;
     const msg = document.getElementById('viewLinkDeadMessage');
-    if (msg) msg.textContent = 'This plan needs your email — reload to try again.';
+    if (msg) msg.textContent = spec.message;
     const retry = document.getElementById('viewLinkDeadRetry');
     if (retry) {
-      retry.style.display = '';
-      retry.textContent = 'Reload';
-      retry.onclick = () => window.location.reload();
+      retry.style.display = spec.button ? '' : 'none';
+      retry.textContent = spec.button || 'Retry';
+      retry.onclick = spec.onButton || null;
     }
     const screen = document.getElementById('viewLinkDeadScreen');
     if (screen) screen.classList.add('visible');
+  }
+
+  // B6 (J13 J14): Cancel/Escape at the email gate shows the static card
+  // instead of stranding the viewer in the empty editor. The button re-enters
+  // the gate in place (no page reload — the flash of a full boot read as
+  // broken); a failure after the re-entered email still lands on the failure
+  // card, mirroring the app.js boot catch.
+  function showViewEmailRequiredScreen(viewToken) {
+    showViewGateScreen({
+      glyph: 'email',
+      title: 'This plan is shared privately',
+      message: 'Enter your work email to open it. No account needed — it’s how the sender controls who can view.',
+      button: 'Enter your email',
+      onButton: () => {
+        const screen = document.getElementById('viewLinkDeadScreen');
+        if (screen) screen.classList.remove('visible');
+        initViewOnlyMode(viewToken)
+          .then(() => { App.updateUI && App.updateUI(); })
+          .catch((e) => { console.warn('[View link]', e); showViewLinkFailure(e); });
+      },
+    });
   }
 
   // A viewer-set scale applies FOR EVERYONE: it is shared through the
@@ -222,7 +253,7 @@
       // B6 (J13 J14): Cancel/Escape at the gate used to strand the viewer in
       // the empty editor — a wall of tools with nothing behind them. The
       // static card says what's needed and how to try again.
-      if (!email) { showViewEmailRequiredScreen(); return; }
+      if (!email) { showViewEmailRequiredScreen(viewToken); return; }
     }
 
     const domainMsg = viewLinkDomains();
@@ -274,7 +305,7 @@
           const errEl = document.getElementById('viewLinkEmailError');
           if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
           email = await showViewEmailModal(true);
-          if (!email) { showViewEmailRequiredScreen(); return; }
+          if (!email) { showViewEmailRequiredScreen(viewToken); return; }
         } else if (cachedProjectData && !(e && e.viewLinkDead)) {
           projectData = cachedProjectData;   // offline / transient -- use the cached snapshot
           break;
@@ -359,19 +390,18 @@
   // is retryable — the whole boot IS the retry loop, so Retry just reloads.
   function showViewLinkFailure(err) {
     const dead = !!(err && err.viewLinkDead);
-    const msg = document.getElementById('viewLinkDeadMessage');
-    if (msg) {
-      msg.textContent = dead
-        ? 'This plan link isn’t active anymore. Ask the person who sent it for a new one.'
-        : 'Couldn’t load this plan. Check your connection and try again.';
-    }
-    const retry = document.getElementById('viewLinkDeadRetry');
-    if (retry) {
-      retry.style.display = dead ? 'none' : '';
-      retry.onclick = () => window.location.reload();
-    }
-    const screen = document.getElementById('viewLinkDeadScreen');
-    if (screen) screen.classList.add('visible');
+    showViewGateScreen(dead ? {
+      glyph: 'dead',
+      title: 'This link isn’t active anymore',
+      message: 'Ask the person who sent this plan for a new link.',
+      button: null,
+    } : {
+      glyph: 'retry',
+      title: 'Couldn’t load this plan',
+      message: 'Check your connection and try again.',
+      button: 'Retry',
+      onButton: () => window.location.reload(),
+    });
     // Signed-in sessions only (logUserEvent no-ops otherwise) — the anonymous
     // GC emits nothing; server-side dead-token logging is a follow-up.
     App.logUserEvent && App.logUserEvent('view_link_dead', null, { reason: dead ? 'inactive' : 'network' });

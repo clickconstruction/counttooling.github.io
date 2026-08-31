@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,472 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,488 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 2,947 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 861 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 997 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,824 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,814 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 2,832 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,831 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 717 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 845 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 611 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (69 files) | 16,657 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (69 files) | 16,687 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -205,7 +205,7 @@ modules. Candidates in priority order:
 | [features/quick-keys.js](features/quick-keys.js) | **Quick Keys** — binds the number row (`1`–`9`, `0`) to counters and line types so the user switches what they're placing with a keystroke instead of a trip to the sidebar. Owns the bindings modal (`#quickKeysModal`: ten slot rows, each a keycap + colour swatch + `<select>` of the project's counters/line types + a clear button, plus the `#quickKeysSearch` filter — a name-substring search that refilters all ten dropdowns per keystroke; it lives OUTSIDE `#quickKeysList` so re-renders never steal its focus, a slot's bound item always stays listed/selected even when it doesn't match, the box hides in the empty state, and the filter resets on every open) and its two openers: the desktop status-bar link (`#statusBarQuickKeys`, keypad icon + `keys` left of `macros`; hidden below 769px and re-shown **by ID** in the desktop media query — the house pattern; `.has-icon` deliberately sets no `display` so it can't out-cascade the mobile hide) and the Project Settings row (`#settingsQuickKeys`, the mobile path — the settings modal is reachable everywhere via the sidebar logo). Registers `App.openQuickKeysModal` / `App.triggerQuickKey(slot)` / `App.getQuickKeyLabels()` / `App.QUICK_KEY_SLOTS`. **ONE SELECTION PATH**: a number key does not activate anything itself — it calls `App.setActiveCounterType` / `App.setActiveLineType`, the same functions the sidebar rows call (extracted in app.js for exactly this), so toggle-off semantics, the tool switch, and the pages-section collapse can't drift between the two entry points. Data: `state.numberKeyBindings`, slot → `{kind:'counter'\|'lineType', id}` — per-project (ids are `uid()`-scoped), riding save/load, export/import, and the IDB takeoff backup. Bindings ALSO ride the cloud Artboard (`user_airboard.number_key_bindings`, migration 20260724180000): `seedQuickKeysFromArtboard(raw, {replace})` fills-if-empty on sign-in auto-restore and replaces on the explicit My Settings → Load; `applyProjectQuickKeys(incoming)` is the single funnel for all three project intakes (cloud load / PDF-intake restore / canvas-JSON import) — a payload with bindings replaces and clears the artboard-lineage flag, one without keeps a seeded layout but drops a previous project's; `resetLocalSessionState` wipes unconditionally (it doubles as sign-out hygiene). Artboard export includes bindings; Clear artboard clears them. A binding whose target was deleted resolves stale: it toasts rather than silently no-op'ing, and the id is **retained** so re-creating or re-importing that item revives the slot. Two new publish-only deps (`setActiveCounterType`/`setActiveLineType`); viewer-gated inside `triggerQuickKey`. **Sidebar badges**: bound rows show a keycap badge (`.quick-key-slot-badge`, accent digit on a dark chip echoing the Keyboard Map's lit keys) — `quickKeyBadgeHtml(kind, id)` in app.js's list renderers reads the feature-registered reverse lookup `App.getQuickKeySlotFor(kind, id)` deferred, and the modal's bind/clear handlers refresh both lists live, so the bindings teach themselves during normal work. Regression: [quick-keys.spec.js](quick-keys.spec.js) |
 | [quick-keys.spec.js](quick-keys.spec.js) | Playwright regression for Quick Keys (8 tests) — binding through the real status-bar → modal → `<select>` path and asserting `state.numberKeyBindings`; the number row then switching counter/line type with the right tool and toggling off on a second press; **an equivalence test** that a number key and `App.setActiveCounterType` leave byte-identical state (the guard on the one-selection-path claim); the keystrokes it must NOT steal (unbound digits, digits typed into an input, `Ctrl`+digit); a stale binding toasting via `#airboardToastText` while retaining its id and rendering a "deleted" marker; clear-slot; bindings surviving the canvas-JSON import; the Keyboard Map lighting bound digits with their names (`1 — Floor Drain`) while unbound ones stay grey; and the search filter (dropdowns filter live, a bound non-matching item survives selected, typing keeps focus, binding through a filtered list works, and reopening resets the filter). Note: keydown is dispatched on `<body>`, not `document` — the handler's input guard calls `.matches`, which `document` doesn't have. `npx playwright test quick-keys.spec.js` |
 | [features/keyboard-map.js](features/keyboard-map.js) | The **Keyboard Map** — the visual companion to the Macros / Keyboard Shortcuts list. **Two hosts** picked by CSS at the 769px breakpoint: desktop renders it INLINE at the top of the Macros modal (`#macrosKeyboardInline`, built once at feature load since the source table is static markup and this script is last in the body); mobile hides that and the "See Keyboard" button (`#macrosSeeKeyboard`) opens the standalone `#keyboardMapModal` (rendered on each open). A "host" is any element wrapping a `.kb-board` + `.kb-caption`, and every function here takes one, so neither path is special-cased; both are built regardless of viewport so crossing the breakpoint needs no rebuild. Registers `App.openKeyboardMapModal` + `App.renderKeyboardMapInline`. Renders a 65%-ANSI keyboard silhouette (5 rows, each 15 width units over a 60-column grid so the 1.25/1.5/1.75/2.25-unit keys land on exact boundaries); keys carrying a shortcut light accent-yellow, modifiers (Shift/Ctrl/Cmd/Alt) get the softer outlined variant, everything else stays the grey silhouette. Hovering (mouse only — a touch "hover" would fire and vanish), tapping, or focusing a lit key names its action in `#keyboardMapCaption`. **The lit keys are DERIVED from the Macros table, not hand-declared**: `collectMacroKeys()` walks `#macrosModal .macros-table`, reading each row's `<kbd>` cells for the keys and the last cell for the action, so adding a shortcut row lights its key automatically and the two surfaces cannot drift (rows with no `<kbd>` — the section headers, the `<th>` row, the em-dash Scale Zone row — drop out on their own). `normalizeKeyToken` maps the table's glyphs/words (`←`, `Cmd`, `Esc`, `Space`, …) onto the board's key ids; single characters normalize to uppercase. A **zero-new-dep** split (only `App.showModal`/`App.hideModal`). Registers `App.openKeyboardMapModal`; the opener + close bindings are element-bound at load. The Escape branch in app.js checks this modal **before** `macrosModal` so one Escape closes the board and leaves the list up. Regression: [keyboard-map.spec.js](keyboard-map.spec.js) |
-| [features/view-only.js](features/view-only.js) | The **view-link session**: the email-gated `initViewOnlyMode(viewToken)` boot (fetch via the `get-view-project` Edge Function, offline view-cache fallback, page/annotation hydration, viewer `state` flags), the viewer-scale sharing layer (`shareViewerScale` → the `set-view-scale` Edge Function, with the per-token `view:scale:<token>` localStorage temp fallback via `noteViewerTempScale`/`applyViewerTempScales`), the full-screen failure surface `showViewLinkFailure` (`#viewLinkDeadScreen`; also reused as the B6 email-required card when the viewer cancels the email gate — "This plan needs your email — reload to try again" + a Reload button, never the empty editor), and the owner-side `maybeShowViewerScaleNotice` must-clear notice. Viewer pages get plan-name labels (`projectData.name`, not "document.pdf" — B6/J12 J14); the email-gate placeholder and rejection copy are wired to `VIEW_LINK_ALLOWED_DOMAINS` (fallback clickplumbing.com). Registers `App.initViewOnlyMode` (awaited by app.js boot), `App.shareViewerScale` (consumed by app.js AND features/scale.js, guarded), `App.noteViewerTempScale`, `App.applyViewerTempScales` (a `viewer-scale.spec.js` test seam), `App.maybeShowViewerScaleNotice`, `App.cancelViewLinkEmailPrompt` (lets app.js's global Escape handler cancel the email prompt). Regression: [view-only.spec.js](view-only.spec.js) + [viewer-scale.spec.js](viewer-scale.spec.js) + [rotation-share-roundtrip.spec.js](rotation-share-roundtrip.spec.js). |
+| [features/view-only.js](features/view-only.js) | The **view-link session**: the email-gated `initViewOnlyMode(viewToken)` boot (fetch via the `get-view-project` Edge Function, offline view-cache fallback, page/annotation hydration, viewer `state` flags), the viewer-scale sharing layer (`shareViewerScale` → the `set-view-scale` Edge Function, with the per-token `view:scale:<token>` localStorage temp fallback via `noteViewerTempScale`/`applyViewerTempScales`), the full-screen gate/failure surface (`#viewLinkDeadScreen` — one branded card, filled per state by the private `showViewGateScreen`: the B6 email-required state when the viewer cancels the email gate ("This plan is shared privately" + an Enter-your-email button that re-enters `initViewOnlyMode` in place, no page reload), and the `showViewLinkFailure` dead-link (no button) / network-failure (Retry = reload) states — never the empty editor), and the owner-side `maybeShowViewerScaleNotice` must-clear notice. Viewer pages get plan-name labels (`projectData.name`, not "document.pdf" — B6/J12 J14); the email-gate placeholder and rejection copy are wired to `VIEW_LINK_ALLOWED_DOMAINS` (fallback clickplumbing.com). Registers `App.initViewOnlyMode` (awaited by app.js boot), `App.shareViewerScale` (consumed by app.js AND features/scale.js, guarded), `App.noteViewerTempScale`, `App.applyViewerTempScales` (a `viewer-scale.spec.js` test seam), `App.maybeShowViewerScaleNotice`, `App.cancelViewLinkEmailPrompt` (lets app.js's global Escape handler cancel the email prompt). Regression: [view-only.spec.js](view-only.spec.js) + [viewer-scale.spec.js](viewer-scale.spec.js) + [rotation-share-roundtrip.spec.js](rotation-share-roundtrip.spec.js). |
 | [features/pdf-intake.js](features/pdf-intake.js) | The **PDF upload pipeline**: the `#pdfInput` change handler (size caps, multi-file merge, append mode via Prepare PDF, pending-canvas-load hash matching, the load-annotations prompt, first-upload Prepare handoff), `loadTestPdf` (localhost-only), and `titleFromPdfFilename`. **Tier-3 B2**: a corrupt/unreadable file toasts on BOTH intake paths — `handleFreshUpload` used to die as a silent unhandled rejection (its catch now rolls back this upload's pages/buffer and names the file), and `handleAppendPages` traded its native alert for the same toast. Owns the `pendingImportCanvasAfterPdf` / `pendingAddAdditionalPages` flags; registers `App.loadTestPdf`, `App.titleFromPdfFilename`, `App.setPendingAddAdditionalPages`, `App.resetPdfIntakeFlags`. Bidirectional with features/prepare-pdf.js (`App.openPreparePdfModal`) and features/load-project.js (`App.hydrateProjectFromCloudRow`). Regression: [pdf-upload.spec.js](pdf-upload.spec.js) + [add-pdf-pages-canvas-jump.spec.js](add-pdf-pages-canvas-jump.spec.js) (no name-matched spec). |
 | [features/save-project.js](features/save-project.js) | The **Save Project modal**: open/prefill with the PDF-size probe ladder (buffer → IDB `pdfCacheGet` → storage `.info`), the Include-PDF toggle pair, and the Save action with the three-tier checkout-expiry preflight (`probeCheckoutLock`) and the stale-cloud-PDF confirm, delegating to `performSaveProjectToCloud`. Registers **nothing** — the zone-modals pattern; every handler moved with its DOM element. Coverage rides [upload-then-save.spec.js](upload-then-save.spec.js) (dev-auth-gated) and [indexeddb-backup.spec.js](indexeddb-backup.spec.js) (no name-matched spec; the expiry preflight is untested). |
 | [features/line-color.js](features/line-color.js) | The **shared color-selection service** (registry split #36): `showLineColorModal(currentColor, onApply)` (callback stashed on `state.pendingLineColorApply`), `pushRecentColor` (custom-only recents via the pure `nextRecentColors`, localStorage-persisted), and `setupCreateColorPicker(opts)` (the Presets / custom / Recent picker embedded in the three create surfaces). Consumed by features/item-details.js, counter.js, choose-create-line-type.js, quick-line.js, and app.js — a shared dependency of four feature files, so it must not be merged into any one of them. Reads `COLORS` / `nextRecentColors` as bare constants.js globals (unlike the other feature files). Regression: [create-color-picker.spec.js](create-color-picker.spec.js) (no name-matched spec). |
@@ -527,68 +527,68 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L92 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L136 - ICONS array lives in icons.js (see icon-data note above).
 - L186 - State
-- L371 - [sync] Sync recovery & client recycle
-- L452 - [sync] Global force reload
-- L536 - [sync] Save Status log & envelope
-- L539 - [sync] Field-error telemetry
-- L598 - [sync] Dirty tracking & local session reset
-- L604 - Undo/redo stacks
-- L745 - [sync] Checkout probe, hashing & PDF cache
-- L807 - Math & Format Helpers
-- L1236 - Coordinate Helpers
-- L1244 - PDF render bitmap cache
-- L1298 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1309 - PDF Rendering
-- L2080 - UI Render Functions
-- L2722 - Inline rename & polyline edit mode
-- L2836 - Modal primitives (showModal / hideModal)
-- L2867 - Toasts & line color picker
-- L2935 - Airboard cloud sync
-- L2980 - Supabase RPC & presence heartbeat
-- L3020 - User activity / event telemetry
-- L3079 - Supabase auth & dev auth
-- L3265 - [sync] Checkout subscription & permission refresh
-- L3275 - Modals & Handlers
-- L3343 - PDF intake (upload, test PDF, hashing)
-- L3351 - Toolbar tool buttons
-- L3551 - Tool sidebar buttons & legend overlay
-- L3642 - Add Line Type modal
-- L3725 - Line color & sidebar handlers
-- L3934 - Polyline modal & drawing
-- L3977 - Zoom bar & page navigation
-- L4003 - Export canvas JSON
-- L4019 - PDF download helpers
-- L4028 - View-link URL helpers & show-highlights/notes
-- L4100 - Custom icon upload handler
-- L4110 - Export & report dropdown menus
-- L4197 - Sidebar drawer toggles
-- L4228 - Mobile actions burger menu pointer & header logo
-- L4240 - User Activity pointer (format.js + features/user-activity.js)
-- L4252 - My Settings pointer (features/my-settings.js)
-- L4277 - Auth & settings entry buttons
-  - L4336 - Project Settings checkout & Save Status bell
-  - L4428 - [sync] Checkout expired recovery
-  - L4484 - [sync] Turn In
-  - L4593 - Share modal pointer & copy-project openers
-  - L4624 - Settings menu actions
-  - L4645 - Auth sign-in form
-  - L4670 - Save Project modal
-  - L4683 - Checkout expired recovery modal wiring
-  - L4788 - Last-session restore prompt
-  - L4795 - Canvas Repair modal wiring
-- L4982 - Canvas Event Handlers
-- L5434 - Event Binding
-- L5444 - Aim loupe (mobile press-hold precise placement)
-- L5594 - Zoom transform preview & commit
-- L5673 - Canvas mouse, wheel & touch handlers
-- L6425 - Global dropdown dismissal & keyboard hotkeys
-- L6772 - [sync] Manual save to cloud
-- L6782 - [sync] Auto-save
-- L6789 - [sync] Local backup (IndexedDB takeoff state)
-- L6922 - [sync] Checkout keep-alive
-- L6936 - App feature registry
-- L7251 - View-only mode
-- L7257 - Init / boot
+- L372 - [sync] Sync recovery & client recycle
+- L453 - [sync] Global force reload
+- L537 - [sync] Save Status log & envelope
+- L540 - [sync] Field-error telemetry
+- L599 - [sync] Dirty tracking & local session reset
+- L605 - Undo/redo stacks
+- L746 - [sync] Checkout probe, hashing & PDF cache
+- L808 - Math & Format Helpers
+- L1237 - Coordinate Helpers
+- L1245 - PDF render bitmap cache
+- L1299 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1310 - PDF Rendering
+- L2081 - UI Render Functions
+- L2723 - Inline rename & polyline edit mode
+- L2837 - Modal primitives (showModal / hideModal)
+- L2868 - Toasts & line color picker
+- L2936 - Airboard cloud sync
+- L2981 - Supabase RPC & presence heartbeat
+- L3021 - User activity / event telemetry
+- L3080 - Supabase auth & dev auth
+- L3266 - [sync] Checkout subscription & permission refresh
+- L3276 - Modals & Handlers
+- L3344 - PDF intake (upload, test PDF, hashing)
+- L3352 - Toolbar tool buttons
+- L3552 - Tool sidebar buttons & legend overlay
+- L3643 - Add Line Type modal
+- L3726 - Line color & sidebar handlers
+- L3935 - Polyline modal & drawing
+- L3978 - Zoom bar & page navigation
+- L4004 - Export canvas JSON
+- L4020 - PDF download helpers
+- L4029 - View-link URL helpers & show-highlights/notes
+- L4101 - Custom icon upload handler
+- L4111 - Export & report dropdown menus
+- L4198 - Sidebar drawer toggles
+- L4229 - Mobile actions burger menu pointer & header logo
+- L4241 - User Activity pointer (format.js + features/user-activity.js)
+- L4253 - My Settings pointer (features/my-settings.js)
+- L4278 - Auth & settings entry buttons
+  - L4337 - Project Settings checkout & Save Status bell
+  - L4429 - [sync] Checkout expired recovery
+  - L4485 - [sync] Turn In
+  - L4594 - Share modal pointer & copy-project openers
+  - L4625 - Settings menu actions
+  - L4646 - Auth sign-in form
+  - L4671 - Save Project modal
+  - L4684 - Checkout expired recovery modal wiring
+  - L4789 - Last-session restore prompt
+  - L4796 - Canvas Repair modal wiring
+- L4983 - Canvas Event Handlers
+- L5450 - Event Binding
+- L5460 - Aim loupe (mobile press-hold precise placement)
+- L5610 - Zoom transform preview & commit
+- L5689 - Canvas mouse, wheel & touch handlers
+- L6441 - Global dropdown dismissal & keyboard hotkeys
+- L6788 - [sync] Manual save to cloud
+- L6798 - [sync] Auto-save
+- L6805 - [sync] Local backup (IndexedDB takeoff state)
+- L6938 - [sync] Checkout keep-alive
+- L6952 - App feature registry
+- L7267 - View-only mode
+- L7273 - Init / boot
 
 <!-- END SECTION TOC -->
 

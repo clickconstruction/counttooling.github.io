@@ -188,4 +188,11 @@
 
   App.onAuthSignInFailed = onAuthSignInFailed;
   App.onAuthMagicLinkReset = reset;
+  // Shared sender for the admin panel (features/user-admin.js "Email sign-in
+  // link" row action): same send + wording as the modal fallback. Returns a
+  // translated error string, or null on success.
+  App.sendSignInMagicLink = async function (email) {
+    const error = await sendLink(normEmail(email), null);
+    return error ? friendlyOtpError(error) : null;
+  };
 })();

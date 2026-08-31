@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(user-admin): per-row "Email sign-in link" — the locked-out rescue without a phone call (2026-08-31)
+
+Manage Users rows gain a ✉ button (first in the icon group, before Set
+password): it emails that user the same no-create one-time magic link the
+sign-in modal's fallback sends, via the new shared `App.sendSignInMagicLink`
+registered by features/auth-magic-link.js (same `shouldCreateUser: false` +
+`/app/` redirect + `friendlyOtpError` wording). Toast feedback; the button
+stays disabled through GoTrue's 60s per-email rate-limit window. Set
+password stays for the hand-them-a-password cases. Mirrors PipeTooling's
+office-side "Send email to sign in" (Active Accounts), so both apps now have
+admin-initiated passwordless rescue. Guide: admin-handbook (Set-password
+bullet rewritten — it's no longer "the" locked-out path). Spec:
+auth-magic-link.spec.js gains 2 registry-driven tests for the shared sender.
+
+---
+
 ## fix(render-worker): awaited destroy — re-adoption no longer falls the session back to main
 
 Production telemetry (`user_activity.render_worker_fallback`, recorded since

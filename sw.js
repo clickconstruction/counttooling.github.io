@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '2ba4fd98134d';
+const CACHE_VERSION = '3d42b3527b6b';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -167,7 +167,7 @@ const PRECACHE_SHA256 = {
   '/app/': 'e1a8bb2d7576ada4952c9116eaf51e7eaa8d014864b6c35c719cb4a97537a25f',
   '/app/index.html': 'e1a8bb2d7576ada4952c9116eaf51e7eaa8d014864b6c35c719cb4a97537a25f',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': 'f1ff511110f5c0d212898dc26bd5bc7a8bad2432e22a20a7646f8b528010ccad',
+  '/styles.css': '134bffb9c4359483b4cc01d680abe2e9dca7834b4e5c4faaf433187c04155bc6',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
   '/icons-custom.js': 'f764721b21760d0138c3f4f5bd67427201e5f7e85a76e72501fb2c3a3852390e',
@@ -217,7 +217,7 @@ const PRECACHE_SHA256 = {
   '/features/status-bar.js': 'c3cfdf97a368197e93a81a0e6fdadc01bf45c2383ebf708f56507610a6397ff3',
   '/features/turn-in.js': '72210800834f658a0878d70fe1664d0675a3868aada9d655ed4cab13a76bf0d4',
   '/features/manage-projects.js': 'c010b8f2b84ba5715ca33a6e907baf3de488fad439b9651d966d795674fe257c',
-  '/features/user-admin.js': 'e4065ca14f9a9188f92373587d2afebf58b2ae89ad059729ebed31557e042a15',
+  '/features/user-admin.js': '3857cff271dbb61e78c2c76bd2dee626d6327058243725c911c03736bdb5371a',
   '/features/load-project.js': 'c54c8fbbd7edba08c47c299e17c3ce8a3732ddc646da31760bef7de390c35b00',
   '/features/bid-board.js': '8e6ae06772016783310b7126135d8a60e5855a2331043b1ab6a5714db5a5b7c9',
   '/features/review-flow.js': '7fe62b8120ac3ea327db6851365a4b17ef19e60fa8bf5646ccc3970d142f2405',
@@ -258,7 +258,7 @@ const PRECACHE_SHA256 = {
   '/features/hotkey-peek.js': '6f8453b22b2a5ee1b84d5760c00b47dc45f94a435ff59f7d9c991b88b6f30820',
   '/features/child-counts.js': 'fd265b35eaa72e8dfa01a931a38ede166427a0d9ec6340b33a68272781d5f8ac',
   '/features/twin-badge.js': '2b3f7def0ce1691fd9468af9a01aab67a74eb17dd764130bdc00d5464bce010b',
-  '/features/auth-magic-link.js': 'df40b1f2627d8c77a7feae7f02f66a4434da36cd877b64bd41443d5730dc334f',
+  '/features/auth-magic-link.js': '900d106a478f652c23210c28526db5c4a0929619b3fa54aef00647521d38f964',
   '/report.js': '97ca529dbd4ddee55129ecf2206debb3534f744f24e3e5ff6af292c720cbf3ba',
   '/vendor/pdf.min-3.11.174.js': '5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946',
   '/vendor/pdf.worker.min-3.11.174.js': 'feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b',

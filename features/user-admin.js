@@ -42,6 +42,10 @@
   const TRANSFER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 9l-4-4v3H8v2h9v3l4-4zM3 15l4 4v-3h9v-2H7v-3l-4 4z"/></svg>';
   const KEY_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12.65 10A5.99 5.99 0 0 0 7 6a6 6 0 0 0 0 12 5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
   const OVERSEER_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 5c-5.5 0-9.9 3.6-11.7 7 1.8 3.4 6.2 7 11.7 7s9.9-3.6 11.7-7C21.9 8.6 17.5 5 12 5zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>';
+  const MAIL_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4.24l-8 5-8-5V6l8 5 8-5v2.24z"/></svg>';
+  // Matches GoTrue's per-email magic-link rate limit (see MAGIC_LINK cooldown
+  // in features/auth-magic-link.js) — a second send inside it would just fail.
+  const MAGIC_LINK_COOLDOWN_MS = 60000;
   const projectCountNote = (u) => (u && u.project_count != null) ? ('Owns ' + u.project_count + ' project' + (u.project_count === 1 ? '' : 's') + '.') : '';
 
   // One admin-headers builder for the six fetch sites in this file (the
@@ -161,6 +165,7 @@
       const esc = (s) => App.escapeHtml(s);
       const currentId = session.user?.id;
       const headerHtml = userListHeaderHtml(
+        '<span class="settings-user-magic-link-head"></span>' +
         '<span class="settings-user-set-password-head"></span>' +
         '<span class="settings-user-transfer-head"></span>' +
         '<span class="settings-user-overseer-head"></span>' +
@@ -175,6 +180,7 @@
           '<button type="button" class="settings-user-dates settings-user-dates-btn" title="View activity"' + userDataAttrs(u) + '>' +
             userDatesInnerHtml(u) +
           '</button>' +
+          '<button type="button" class="settings-user-magic-link" aria-label="Email sign-in link" title="Email a one-time sign-in link (no password needed)"' + userDataAttrs(u) + '>' + MAIL_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-set-password" aria-label="Set password" title="Set password"' + userDataAttrs(u) + '>' + KEY_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-transfer" aria-label="Transfer projects" title="Transfer projects"' + userDataAttrs(u) + '>' + TRANSFER_ICON_SVG + '</button>' +
           '<button type="button" class="settings-user-overseer' + (u.is_overseer ? ' active' : '') + '" aria-pressed="' + (u.is_overseer ? 'true' : 'false') + '" aria-label="' + (u.is_overseer ? 'Remove overseer' : 'Make overseer') + '" title="' + (u.is_overseer ? 'Remove overseer (sees every project, read-only)' : 'Make overseer (sees every project, read-only)') + '" data-overseer="' + (u.is_overseer ? '1' : '0') + '"' + userDataAttrs(u) + '>' + OVERSEER_ICON_SVG + '</button>' +
@@ -188,6 +194,18 @@
       });
       listEl.querySelectorAll('.settings-user-set-password').forEach((btn) => {
         btn.onclick = () => openSetPasswordModal(btn.dataset.userId, btn.dataset.email);
+      });
+      listEl.querySelectorAll('.settings-user-magic-link').forEach((btn) => {
+        btn.onclick = async () => {
+          const email = btn.dataset.email;
+          if (!email) { App.showToast('This account has no email.', 3500); return; }
+          btn.disabled = true;
+          const errMsg = await App.sendSignInMagicLink(email);
+          if (errMsg) { btn.disabled = false; App.showToast(errMsg, 4000); return; }
+          App.showToast('Sign-in link emailed to ' + email + '. It signs in whichever browser opens it.', 4500);
+          // Held disabled through GoTrue's rate-limit window, then usable again.
+          setTimeout(() => { btn.disabled = false; }, MAGIC_LINK_COOLDOWN_MS);
+        };
       });
       listEl.querySelectorAll('.settings-user-transfer').forEach((btn) => {
         btn.onclick = () => openTransferModal(btn.dataset.userId, btn.dataset.email);

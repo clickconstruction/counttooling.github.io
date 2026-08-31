@@ -1,7 +1,7 @@
 ---
 title: Admin handbook
 description: Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates — the admin surfaces inside the app.
-updated: 2026-08-30
+updated: 2026-08-31
 order: 11
 icon: share
 category: For admins
@@ -13,7 +13,8 @@ CountTooling accounts are admin-provisioned — there's no self-signup — so ad
 
 - **Add User** — create an account with email + password and hand the credentials over; new users can sign in immediately.
 - **Manage User** — the full user table: role, owned-project count, last sign-in, and last active. Per-row actions:
-  - **Set password** (🔑) — reset any user's password. This is also the locked-out path: there's no self-serve "forgot password", so a user who's locked out gets a new password from you.
+  - **Email sign-in link** (✉️) — email the user a one-time sign-in link, no password involved. The fastest locked-out rescue: nothing to read over the phone, and their password stays unchanged. The link signs in whichever browser opens it, so tell them to open the email on the device they work from. The button rests for a minute after each send (email rate limit). Users can also get this link themselves — after two failed password tries, the sign-in box offers it.
+  - **Set password** (🔑) — reset any user's password and hand it over, for when they need a password they know (for example, a shared tablet that stays signed out).
   - **Transfer projects** (⇄) — move *all* of a user's projects to someone else; stored PDFs and inherited view links move with them.
   - **Overseer toggle** (👁) — grant or remove the read-only [Overseer role](/guides/reviewing-all-bids/): the user sees every bid in the company (the All Bids board) but can never change one. The lit eye and the *Overseer* role label mark who has it.
   - **View activity** (♥) — the per-user activity overview.

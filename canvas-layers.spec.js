@@ -105,6 +105,9 @@ test.describe('Canvas layers (features/canvas-layers.js)', () => {
     });
     await page.waitForSelector('#deleteCanvasConfirmModal.visible');
     await expect(page.locator('#deleteCanvasName')).toHaveText('Renamed via Escape');
+    // B14 honesty: performDeleteCanvas pushes an undo snapshot, so the
+    // confirm must not claim the delete "cannot be undone".
+    await expect(page.locator('#deleteCanvasMessage')).toHaveText('This canvas and its annotations will be removed. Undo brings it back.');
     await page.evaluate(() => document.getElementById('deleteCanvasConfirm').click());
     const afterDelete = await page.evaluate(() => {
       const s = window.state;

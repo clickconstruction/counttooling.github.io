@@ -57,10 +57,12 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     expect(await page.evaluate(() => typeof window.App.showClearPageModal)).toBe('function');
 
-    // Open via the sidebar button; the message names the active canvas.
+    // Open via the sidebar button; the message names the active layer — the
+    // qualifier is load-bearing (B14): Clear Page empties ONE layer, in trade
+    // words, not "current canvas".
     await page.evaluate(() => document.getElementById('clearPage').click());
     await page.waitForSelector('#clearPageConfirmModal.visible', { timeout: 5000 });
-    await expect(page.locator('#clearPageConfirmMessage')).toContainText('Main');
+    await expect(page.locator('#clearPageConfirmMessage')).toHaveText('Remove all marks from this page\'s Main layer?');
 
     // Cancel leaves the markers alone.
     await page.evaluate(() => document.getElementById('clearPageCancel').click());

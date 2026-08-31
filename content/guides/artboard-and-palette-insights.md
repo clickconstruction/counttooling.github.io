@@ -1,13 +1,13 @@
 ---
-title: Your palette, every bid — Artboard and Palette Insights
+title: Your palette, every bid — Artboard and My Standards
 description: Save your counters, line types, modifiers, Quick Keys, and custom icons to your account, and mine your own project history for the palette you actually use.
-updated: 2026-08-10
+updated: 2026-08-31
 order: 6.8
 icon: keys
 category: Working faster
 ---
 
-The setup at the start of a bid — counters, line types, colors, icons, key bindings — is the same setup as last bid. The **Artboard** makes it a saved asset instead of a chore, and **Palette Insights** tells you what that asset should contain.
+The setup at the start of a bid — counters, line types, colors, icons, key bindings — is the same setup as last bid. The **Artboard** makes it a saved asset instead of a chore, and **My Standards** tells you what that asset should contain.
 
 ## The Artboard: your palette in the cloud
 
@@ -20,9 +20,9 @@ In **User Settings**:
 
 Because the artboard stores your counters and line types *with their identities*, your Quick Key bindings keep working bid after bid — press `1` and it's the same floor drain it was last month.
 
-## Palette Insights: what do you actually use?
+## My Standards: what do you actually use?
 
-Your real standards live implicitly in your old projects. **Palette Insights** (in User Settings) reads across all your projects and shows which counters and line types you actually used, and in how many projects:
+Your real standards live implicitly in your old projects. **My Standards** (in User Settings, under Artboard) reads across all your projects and shows which counters and line types you actually used, and in how many projects:
 
 - A **minimum-projects filter** hides the one-offs so the list shows your true standards.
 - **Add** puts any item straight onto your current palette (and into the open project); **Add all frequently used** builds the whole standard set in one click.
@@ -31,7 +31,7 @@ Your real standards live implicitly in your old projects. **Palette Insights** (
 ## A rhythm that works
 
 1. Do a few bids; let your palette evolve.
-2. Open Palette Insights, add the frequently-used set, prune what's stale.
+2. Open My Standards, add the frequently-used set, prune what's stale.
 3. **Save Artboard.**
 4. Every new bid: sign in, and your standards — icons, names, colors, key bindings — are already there.
 

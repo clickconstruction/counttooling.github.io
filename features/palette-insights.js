@@ -2,11 +2,14 @@
   'use strict';
   const App = (window.App = window.App || {});
   /*
-   * features/palette-insights.js - the "Palette insights" modal: a
-   * cross-project analysis of the user's counters and line types (via the
-   * user_palette_usage RPC, which aggregates server-side so the client never
-   * downloads whole project JSONB blobs), with one-click ADDITIVE adds to the
-   * cloud Artboard. Opened from My Settings -> Artboard -> Analyze My Usage.
+   * features/palette-insights.js - the "My Standards" modal (Tier-3 B13
+   * unified the old "Analyze My Usage" button / "Palette Insights" title
+   * under the one trade name): a cross-project analysis of the user's
+   * counters and line types (via the user_palette_usage RPC, which
+   * aggregates server-side so the client never downloads whole project
+   * JSONB blobs), with one-click ADDITIVE adds to the cloud Artboard.
+   * Opened from My Settings -> Artboard -> My Standards. Internal ids/file
+   * names keep the paletteInsights* stem — the rename is user-facing only.
    *
    * Identity is name-based (case-insensitive): counter/line-type ids are
    * uid()-scoped per project, so "already on your Artboard" and the add-dedupe
@@ -210,16 +213,19 @@
       String(a.name).localeCompare(String(b.name));
     const counters = shown.filter((r) => r.kind === 'counter').sort(rank);
     const lines = shown.filter((r) => r.kind !== 'counter').sort(rank);
-    if (!counters.length) countersEl.innerHTML = '<p class="pi-empty">No counters at this threshold.</p>';
+    // With zero RPC rows the subtitle already says "No cloud projects yet…" —
+    // the per-list threshold lines would contradict it (J16 finding #7), so
+    // they render only when there IS usage data and the filter hid a list.
+    if (!counters.length && insightRows.length) countersEl.innerHTML = '<p class="pi-empty">No counters at this threshold.</p>';
     counters.forEach((it) => countersEl.appendChild(rowEl(it)));
-    if (!lines.length) linesEl.innerHTML = '<p class="pi-empty">No line types at this threshold.</p>';
+    if (!lines.length && insightRows.length) linesEl.innerHTML = '<p class="pi-empty">No line types at this threshold.</p>';
     lines.forEach((it) => linesEl.appendChild(rowEl(it)));
   }
 
   async function openPaletteInsightsModal() {
     const user = App.state.supabaseSession?.user;
     if (!App.SUPABASE_ENABLED || !user || !App.getSupabase()) {
-      App.showToast('Sign in to analyze your palette usage.', 4000);
+      App.showToast('Sign in to see your most-used counters and lines.', 4000);
       return;
     }
     const subtitleEl = document.getElementById('paletteInsightsSubtitle');
@@ -238,7 +244,7 @@
       onArtboard.counter = new Set(((ab && ab.counters) || []).map((c) => nameKey(c.name)));
       onArtboard.lineType = new Set(((ab && ab.lineTypes) || []).map((lt) => nameKey(lt.name)));
       subtitleEl.textContent = insightRows.length
-        ? 'Across your cloud projects · ranked by how many bids use each item'
+        ? 'Your most-used counters and lines · ranked by how many bids use each'
         : 'No cloud projects yet — save a project and check back.';
       renderRows();
     } catch (e) {

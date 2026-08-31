@@ -2516,12 +2516,20 @@
       </div>
     </div>
   </div>
-  <!-- Dead/unreachable view-link failure screen (features/view-only.js
-       showViewLinkFailure). Deliberately NOT a .modal-overlay: not dismissable,
-       opaque, nothing behind it worth revealing. -->
+  <!-- View-link gate/failure screen (features/view-only.js showViewGateScreen):
+       one branded card shared by the email-required, dead-link, and
+       network-failure states — the feature file fills the glyph/title/copy and
+       wires the button per state. Deliberately NOT a .modal-overlay: not
+       dismissable, opaque, nothing behind it worth revealing. This is often an
+       outside viewer's first sight of the product, hence the wordmark. -->
   <div id="viewLinkDeadScreen" class="view-link-dead-screen">
-    <p id="viewLinkDeadMessage"></p>
-    <button type="button" id="viewLinkDeadRetry" class="btn-yellow">Retry</button>
+    <div class="view-link-dead-card">
+      <div class="view-link-dead-brand">CountTooling</div>
+      <div class="view-link-dead-icon" id="viewLinkDeadIcon" aria-hidden="true"></div>
+      <p class="view-link-dead-title" id="viewLinkDeadTitle"></p>
+      <p id="viewLinkDeadMessage"></p>
+      <button type="button" id="viewLinkDeadRetry" class="btn-yellow">Retry</button>
+    </div>
   </div>
   <div class="modal-overlay" id="addCanvasModal">
     <div class="modal-card">

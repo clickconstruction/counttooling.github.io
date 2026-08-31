@@ -7,10 +7,22 @@ export function getAllowedDomains(): string[] {
   return raw.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
 }
 
+// Standing exception: dev + agent-fleet accounts live on douglasmining.com and
+// must always pass the gate. Deliberately a SEPARATE list from
+// getAllowedDomains() so the exempt domain never appears in user-facing copy
+// (the "Access restricted to ..." rejection, the email-gate placeholder, the
+// Share modal) — those all render only the allowed list. Overridable via the
+// VIEW_LINK_EXEMPT_DOMAINS function secret (comma-separated).
+export function getExemptDomains(): string[] {
+  const raw = Deno.env.get('VIEW_LINK_EXEMPT_DOMAINS') || 'douglasmining.com'
+  return raw.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
+}
+
 export function emailDomainAllowed(email: string, allowedDomains: string[]): boolean {
   const addr = String(email).trim().toLowerCase()
   const at = addr.lastIndexOf('@')
   if (at < 0) return false
   const domain = addr.slice(at + 1)
-  return allowedDomains.some((d) => domain === d || domain.endsWith('.' + d))
+  return [...allowedDomains, ...getExemptDomains()]
+    .some((d) => domain === d || domain.endsWith('.' + d))
 }

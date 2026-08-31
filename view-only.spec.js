@@ -264,7 +264,7 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
-  test('cancel at the email gate: static email-required card, editor never exposed, Reload restarts the gate', async ({ page }) => {
+  test('cancel at the email gate: branded card, editor never exposed, button re-enters the gate without a reload', async ({ page }) => {
     const errors = [];
     collectErrors(page, errors);
     await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
@@ -275,10 +275,14 @@ test.describe('View-only mode (view-link boot)', () => {
 
     // B6 (J13 J14): Cancel shows the static card, never the empty editor.
     await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 5000 });
+    await expect(page.locator('#viewLinkDeadTitle')).toHaveText('This plan is shared privately');
     await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
-      'This plan needs your email — reload to try again.');
+      'Enter your work email to open it. No account needed — it’s how the sender controls who can view.');
     await expect(page.locator('#viewLinkDeadRetry')).toBeVisible();
-    await expect(page.locator('#viewLinkDeadRetry')).toHaveText('Reload');
+    await expect(page.locator('#viewLinkDeadRetry')).toHaveText('Enter your email');
+    // The card is branded — an outsider's first sight of the product.
+    await expect(page.locator('.view-link-dead-brand')).toHaveText('CountTooling');
+    expect(await page.locator('#viewLinkDeadIcon svg').count()).toBe(1);
     const after = await page.evaluate(() => ({
       pages: window.App.state.pages.length,
       hasPdf: document.body.classList.contains('has-pdf'),
@@ -290,9 +294,16 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(after.isViewer).toBe(false);
     expect(after.promptVisible).toBe(false);
 
-    // Reload restarts the gate (the boot IS the retry loop).
+    // The button re-opens the email prompt IN PLACE — no page reload (the
+    // window-scoped probe survives) — and the completed gate loads the plan.
+    await page.evaluate(() => { window.__noReloadProbe = 1; });
     await page.locator('#viewLinkDeadRetry').click();
     await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
+    expect(await page.evaluate(() => window.__noReloadProbe)).toBe(1);
+    expect(await page.evaluate(() => document.getElementById('viewLinkDeadScreen').classList.contains('visible'))).toBe(false);
+    await page.locator('#viewLinkEmailInput').fill('crew@clickplumbing.com');
+    await page.locator('#viewLinkEmailSubmit').click();
+    await expectViewerLoaded(page);
     expect(realErrors(errors)).toEqual([]);
   });
 
@@ -341,8 +352,9 @@ test.describe('View-only mode (view-link boot)', () => {
     await submitEmail(page, 'crew@clickplumbing.com');
 
     await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkDeadTitle')).toHaveText('This link isn’t active anymore');
     await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
-      'This plan link isn’t active anymore. Ask the person who sent it for a new one.');
+      'Ask the person who sent this plan for a new link.');
     await expect(page.locator('#viewLinkDeadRetry')).toBeHidden();
 
     const after = await page.evaluate((token) => ({
@@ -369,9 +381,11 @@ test.describe('View-only mode (view-link boot)', () => {
     await submitEmail(page, 'crew@clickplumbing.com');
 
     await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkDeadTitle')).toHaveText('Couldn’t load this plan');
     await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
-      'Couldn’t load this plan. Check your connection and try again.');
+      'Check your connection and try again.');
     await expect(page.locator('#viewLinkDeadRetry')).toBeVisible();
+    await expect(page.locator('#viewLinkDeadRetry')).toHaveText('Retry');
 
     // The server comes back; Retry reloads the page — the boot IS the retry
     // loop. The email was never persisted (fetch failed), so the gate re-asks.
@@ -400,8 +414,9 @@ test.describe('View-only mode (view-link boot)', () => {
     await page.goto('/app/?t=' + TOKEN);
 
     await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkDeadTitle')).toHaveText('This link isn’t active anymore');
     await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
-      'This plan link isn’t active anymore. Ask the person who sent it for a new one.');
+      'Ask the person who sent this plan for a new link.');
     await expect(page.locator('#viewLinkDeadRetry')).toBeHidden();
     const after = await page.evaluate(() => ({
       hasPdf: document.body.classList.contains('has-pdf'),

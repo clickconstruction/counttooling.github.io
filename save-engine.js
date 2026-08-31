@@ -1629,7 +1629,7 @@ function createSaveEngine(ctx) {
         projectId: ctx.getState().currentProjectId,
         projectName: ctx.getState().currentProjectName,
         pageCount: pages.length,
-        pagesWithScale: pages.filter(p => p.scale && p.scale.feet > 0).length,
+        pagesWithScale: pages.filter(p => p.scale && p.scale.pixelsPerUnit > 0).length,
         // Per-page rotation diagnostics — root-causes "pages rotated under the canvas":
         // page.rotation, the PDF's intrinsic /Rotate, the current frame dims, and whether a
         // bake-frame mismatch was detected on load (verifyPageBakeFrame).

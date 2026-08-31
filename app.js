@@ -219,6 +219,7 @@
     rectPress: null, rectDragging: false, justFinishedRectDrag: false,
     vertexDragStart: null, vertexDragMoved: false,
     lastScaleTapTime: 0,
+    lastScaleTapPt: null,
     currentProjectId: null,
     currentProjectName: null,
     currentProjectExternalRef: null,
@@ -5114,6 +5115,17 @@
     markProjectDirty();
   }
 
+  // Double-tap guard shared by Measure + Set Scale: a mobile double-tap fires two
+  // fast taps at essentially the same spot, which would silently complete a
+  // zero-length measure/scale. Swallow only that — fast AND within ~24 CSS px of
+  // the previous tap. A fast second click on a clearly different point is a
+  // legitimate point B (time-only swallowing ate it with no feedback).
+  function isScaleDoubleTap(now, pdf) {
+    if (now - state.lastScaleTapTime >= 400) return false;
+    if (!state.lastScaleTapPt) return false;
+    return ptDist(pdf, state.lastScaleTapPt) * state.zoom < 24;
+  }
+
   // Commit one Measure point (point A, then point B -> distance toast). Shared by
   // the desktop click path and the mobile loupe-release path. opts.fromAim bypasses
   // the 400ms double-tap guard (a deliberate press-and-hold easily exceeds 400ms).
@@ -5121,8 +5133,9 @@
     opts = opts || {};
     if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
     const now = Date.now();
-    if (!opts.fromAim && now - state.lastScaleTapTime < 400) return;
+    if (!opts.fromAim && isScaleDoubleTap(now, pdf)) return;
     state.lastScaleTapTime = now;
+    state.lastScaleTapPt = pdf;
     if (state.scaleMode === SCALE_MODES.POINT_A) {
       state.scalePointA = pdf;
       state.scaleMode = SCALE_MODES.POINT_B;
@@ -5134,13 +5147,15 @@
       const measLine = { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y };
       const effScale = ann ? getEffectiveScaleForLine(ann, measLine, false, state.currentPage) : getPageScale(state.currentPage);
       const formatted = formatDistFeetInches(dist, effScale);
-      // Footer chip, not a toast (Tier-2 #15): the 5s Distance toast used to
-      // eat the first Scale Zone corner click at the measure→zone hand-off.
-      // In-memory only (like state.localPdfHash) — a per-sheet fact: the chip
-      // renders only while lastMeasure.pageIdx === state.currentPage
-      // (features/status-bar.js), a new measure overwrites it, and a
-      // PDF/project load resets state.
+      // Result surfaces twice: a 5s toast at the point of attention (safe again
+      // now that toasts are non-blocking corner cards — the old full-screen
+      // Distance toast ate the first Scale Zone corner click, Tier-2 #15), plus
+      // the persistent footer chip. lastMeasure is in-memory only (like
+      // state.localPdfHash) — a per-sheet fact: the chip renders only while
+      // lastMeasure.pageIdx === state.currentPage (features/status-bar.js), a
+      // new measure overwrites it, and a PDF/project load resets state.
       state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage };
+      showToast('Distance: ' + formatted, 5000);
       state.scalePointA = null;
       state.scalePointB = null;
       state.scaleMode = SCALE_MODES.NONE;
@@ -5181,8 +5196,9 @@
     if (state.tool === TOOL.SCALE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const now = Date.now();
-      if (!pdfOverride && now - state.lastScaleTapTime < 400) return;   // bypass double-tap guard on aim
+      if (!pdfOverride && isScaleDoubleTap(now, pdf)) return;   // bypass double-tap guard on aim
       state.lastScaleTapTime = now;
+      state.lastScaleTapPt = pdf;
       if (state.scaleMode === SCALE_MODES.POINT_A) { state.scalePointA = pdf; state.scaleMode = SCALE_MODES.POINT_B; }
       else if (state.scaleMode === SCALE_MODES.POINT_B) {
         state.scalePointB = pdf;

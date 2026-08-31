@@ -897,7 +897,10 @@ test('performSaveProjectToCloud: no-PDF update path completes and stamps state',
 test('envelope: schema, per-tab session id, timing block, and project summary', () => {
   const state = saveTestState({
     currentProjectName: 'Proj',
-    pages: [{ canvases: [{ annotations: { counterMarkers: { c1: [{}, {}] }, multiplyZones: [{}] } }], scale: { feet: 10 }, rotation: 0 }],
+    pages: [
+      { canvases: [{ annotations: { counterMarkers: { c1: [{}, {}] }, multiplyZones: [{}] } }], scale: { pixelsPerUnit: 10, unit: 'ft' }, rotation: 0 },
+      { canvases: [{ annotations: {} }], scale: null, rotation: 0 },
+    ],
     counters: [{ id: 'c1' }], groups: [],
   });
   const { ctx } = makeCtx({ getState: () => state });
@@ -911,6 +914,9 @@ test('envelope: schema, per-tab session id, timing block, and project summary', 
   assert.strictEqual(env.project.projectName, 'Proj');
   assert.strictEqual(env.project.counters, 2);
   assert.strictEqual(env.project.multiplyZones, 1);
+  // Real scale shape is { pixelsPerUnit, unit } — the envelope must count it
+  // (a scale.feet check made this 0 for every project, misleading triage).
+  assert.strictEqual(env.project.pagesWithScale, 1);
   assert.strictEqual(env.events.length, 1);
 });
 

@@ -507,6 +507,30 @@
     await handleFreshUpload(e, Array.from(files), importBothFollowUp);
   };
 
+  // B16 / J1: cold-start drag-and-drop. Dragging a PDF onto the app used to
+  // trigger the browser default — navigate away and REPLACE the app. Any
+  // file drag is now prevented window-wide, and dropped PDFs feed the same
+  // #pdfInput dispatcher as Upload PDF (flags, size caps, append semantics —
+  // all identical). Non-file drags (sidebar reorder rows set text data, not
+  // Files) are untouched.
+  const dragHasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  window.addEventListener('dragover', (e) => { if (dragHasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', (e) => {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();   // never let a stray drop replace the app
+    if (App.state.isViewer) return;
+    if (document.querySelector('.modal-overlay.visible')) return;   // a drop mid-dialog would start a second intake
+    const pdfs = Array.from(e.dataTransfer.files || []).filter(
+      (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '')
+    );
+    if (!pdfs.length) { App.showToast('Drop a PDF plan to open it.', 3000); return; }
+    const dt = new DataTransfer();
+    pdfs.forEach((f) => dt.items.add(f));
+    const input = document.getElementById('pdfInput');
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change'));
+  });
+
   App.loadTestPdf = loadTestPdf;
   App.titleFromPdfFilename = titleFromPdfFilename;
   App.setPendingAddAdditionalPages = (v) => { pendingAddAdditionalPages = !!v; };

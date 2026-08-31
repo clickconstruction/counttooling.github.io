@@ -247,3 +247,66 @@ test.describe('append never renames the open project', () => {
     expect(after.name).toBe('Riverside Clinic Plumbing');
   });
 });
+
+// ---- Tier-3 B16: cold start — drag-and-drop + the empty-canvas hint (J1) ----
+test.describe('cold start (Tier-3 B16)', () => {
+  test('empty canvas shows the quiet hint; it hides once a plan loads', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('#canvasEmptyHint')).toBeVisible();
+    await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await expect(page.locator('#canvasEmptyHint')).toBeHidden();
+  });
+
+  test('dropping a PDF anywhere on the app loads it through the normal intake', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const file = new File([buf], 'dropped-plan.pdf', { type: 'application/pdf' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    // Same intake as Upload PDF: the project is named after the file.
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('dropped-plan');
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('a non-PDF drop is refused with a toast — and never navigates the app away', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    const prevented = await page.evaluate(() => {
+      const file = new File(['not a pdf'], 'notes.txt', { type: 'text/plain' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const ev = new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true });
+      window.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    });
+    expect(prevented).toBe(true);   // the browser default (navigate to the file) is blocked
+    await expect(page.locator('#airboardToastText')).toHaveText('Drop a PDF plan to open it.');
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+  });
+
+  test('a drop while a dialog is open is ignored (no second intake mid-flow)', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      window.App.showModal('settingsModal');
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const dt = new DataTransfer();
+      dt.items.add(new File([buf], 'dropped-plan.pdf', { type: 'application/pdf' }));
+      window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+  });
+});

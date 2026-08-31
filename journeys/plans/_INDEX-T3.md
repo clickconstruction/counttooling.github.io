@@ -49,8 +49,8 @@ B18 is NOT in the queue: shipped 2026-08-17 except (a) the status-bar
 | B11 signed-out save signal | claude/t3-b11-local-save-signal | ☑ merged 2026-08-30, pushed ckpt 4 |
 | B12 import canvas row | claude/t3-b12-import-canvas-row | ☑ merged 2026-08-30, pushed ckpt 4 |
 | B13 reuse-standards naming | claude/t3-b13-reuse-standards-naming | ☑ merged 2026-08-31 |
-| B14 cannot-be-undone honesty | | queued |
-| B15 prepare-pdf batch (rescoped) | | queued |
+| B14 cannot-be-undone honesty | claude/t3-b14-cannot-be-undone-honesty | ☑ merged 2026-08-31 |
+| B15 prepare-pdf batch (rescoped) | claude/t3-b15-prepare-pdf-batch | ☑ merged 2026-08-31 — ⚑ signed-out auto-open of Prepare DEFERRED (changes the signed-out happy path + invalidates the upload fixture in ~90 specs; needs Will's call / its own plan — in-code note at features/pdf-intake.js `openPrepareForFreshUpload`). Shipped: discard confirm, undo jump, "Trim your set" retitle + Save&Open hidden signed-out |
 | B16 cold start drag-drop | | queued |
 | B17 dead-UI removal | | queued |
 

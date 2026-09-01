@@ -894,6 +894,29 @@ test('performSaveProjectToCloud: no-PDF update path completes and stamps state',
   assert.strictEqual(engine.wasLastCloudSaveAttemptFailed(), false);
 });
 
+test('performSaveProjectToCloud: resolves with requestAnimationFrame suppressed (hidden tab)', async () => {
+  // Hidden-tab regression pin: rAF never fires while document.hidden, and the
+  // save path awaits tick() before every network phase — with rAF alone a
+  // backgrounded tab stalled the save indefinitely (Stage-5 walk, 2026-08-31).
+  // tick() must resolve via its timer fallback in both hidden flavors: the
+  // flag set at call time, and rAF silently dead with the flag unset (tab
+  // backgrounded mid-save; the stub document has no hidden property).
+  globalThis.requestAnimationFrame = () => 0; // never invokes the callback
+  try {
+    for (const hidden of [true, false]) {
+      if (hidden) globalThis.document.hidden = true; else delete globalThis.document.hidden;
+      const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+      const state = saveTestState({ currentProjectName: 'Old' });
+      const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+      const res = await createSaveEngine(ctx).performSaveProjectToCloud({ name: 'Hidden Save', includePdf: false });
+      assert.strictEqual(res.ok, true, 'save must resolve with rAF suppressed (hidden=' + hidden + ')');
+      assert.strictEqual(sub.updates.length, 1);
+    }
+  } finally {
+    delete globalThis.document.hidden;
+  }
+});
+
 test('envelope: schema, per-tab session id, timing block, and project summary', () => {
   const state = saveTestState({
     currentProjectName: 'Proj',

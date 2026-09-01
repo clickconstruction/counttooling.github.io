@@ -374,6 +374,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   re-upload can hash-verify the re-apply),
   `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
   `state.showAllCanvases` (the desktop show-all-layers peek toggle),
+  `state.emphasizedCounterId` (the "find this counter" halo — counter-type id
+  whose markers ring on the live overlay; toggled by clicking a marker,
+  features/drop-peek.js),
   `state.peekCanvasIdsByPage` (the peek's optional per-page layer subset —
   pageIdx → canvas-id array chosen via right-click on `#showAllCanvasesBtn`;
   active layer always implied, empty array = active only, absent = all).

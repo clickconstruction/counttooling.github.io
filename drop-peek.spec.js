@@ -174,6 +174,76 @@ test.describe('Drop-size peek + Drop sizes toggle', () => {
     expect(errors).toEqual([]);
   });
 
+  test('"find this counter" halo: marker click rings the whole type, survives page flips, clears on background/same-marker/Escape', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await loadPdf(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      // 'M0 0' icons paint nothing, so the pixel probe below sees ONLY the halo.
+      s.counters.push({ id: 'c-halo-1', name: 'Floor Drain', icon: 'M0 0', color: '#e85447' });
+      s.counters.push({ id: 'c-halo-2', name: 'Cleanout', icon: 'M0 0', color: '#4a9eff' });
+      const canvas = window.App.ensureActiveCanvas(s.pages[0]);
+      canvas.annotations.counterMarkers['c-halo-1'] = [
+        { x: 120, y: 300, id: 'h1' },
+        { x: 320, y: 300, id: 'h2' },
+      ];
+      canvas.annotations.counterMarkers['c-halo-2'] = [{ x: 220, y: 400, id: 'h3' }];
+      window.App.updateUI();
+      window.App.renderAnnotations();
+    });
+    const emphasized = () => page.evaluate(() => window.state.emphasizedCounterId);
+    // Alpha on the annotation canvas at (pdf + dx buffer px, pdf) — lands on
+    // the halo band (radius counterSize * 0.75 + 6 ≈ 22.5 for the default 22).
+    const alphaAt = (pdf, dx) => page.evaluate(({ p, dx }) => {
+      const c = document.getElementById('annCanvas');
+      const bc = window.App.toCanvas(p);
+      return c.getContext('2d').getImageData(Math.round(bc.x + dx), Math.round(bc.y), 1, 1).data[3];
+    }, { p: pdf, dx });
+
+    const m1 = await screenPointForPdf(page, { x: 120, y: 300 });
+    const m3 = await screenPointForPdf(page, { x: 220, y: 400 });
+    const empty = await screenPointForPdf(page, { x: 450, y: 480 });
+
+    // No halo before any click.
+    expect(await alphaAt({ x: 320, y: 300 }, 22)).toBe(0);
+
+    // Clicking one marker rings EVERY marker of that type (probe the OTHER one).
+    await page.mouse.click(m1.x, m1.y);
+    expect(await emphasized()).toBe('c-halo-1');
+    expect(await alphaAt({ x: 320, y: 300 }, 22)).toBeGreaterThan(0);
+
+    // Page flips don't clear it — finding the type on other sheets is the point.
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => window.state.currentPage === 1);
+    expect(await emphasized()).toBe('c-halo-1');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => window.state.currentPage === 0);
+
+    // Another type's marker takes the emphasis over; re-clicking it toggles off.
+    await page.mouse.click(m3.x, m3.y);
+    expect(await emphasized()).toBe('c-halo-2');
+    await page.mouse.click(m3.x, m3.y);
+    expect(await emphasized()).toBe(null);
+
+    // Background click clears.
+    await page.mouse.click(m1.x, m1.y);
+    expect(await emphasized()).toBe('c-halo-1');
+    await page.mouse.click(empty.x, empty.y);
+    expect(await emphasized()).toBe(null);
+
+    // Escape (the ladder's last rung — no modal, no tool) clears.
+    await page.mouse.click(m1.x, m1.y);
+    expect(await emphasized()).toBe('c-halo-1');
+    await page.keyboard.press('Escape');
+    expect(await emphasized()).toBe(null);
+    expect(await alphaAt({ x: 320, y: 300 }, 22)).toBe(0);
+
+    expect(errors).toEqual([]);
+  });
+
   test('peek stays out of the way: no chip while a draw tool is armed or marks are hidden', async ({ page }) => {
     await loadPdf(page);
     await seedDrops(page);

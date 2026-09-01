@@ -200,6 +200,10 @@
     const saved = document.getElementById('forceTurnInNoticeSaved');
     const warn = document.getElementById('forceTurnInNoticeWarn');
     if (!saved || !warn) return false;
+    // Already showing: report handled so the engine never stacks a toast on
+    // top, and the user is never re-nagged mid-acknowledgement.
+    const overlay = document.getElementById('forceTurnInNoticeModal');
+    if (overlay && overlay.classList.contains('visible')) return true;
     saved.style.display = hadDirty ? 'none' : '';
     warn.style.display = hadDirty ? 'flex' : 'none';
     App.showModal('forceTurnInNoticeModal');

@@ -828,6 +828,7 @@ function createSaveEngine(ctx) {
     if (!supabase || !state.currentProjectId || !state.supabaseSession?.user) return;
     const prevCanCheckOut = state.canCheckOut;
     const prevCheckedOutEmail = state.checkedOutEmail;
+    const prevCheckedOutAt = state.checkedOutAt;
     const prevWasCheckedOut = state.checkedOutBy === state.supabaseSession?.user?.id;
     let projects = null;
     let error = null;
@@ -911,23 +912,57 @@ function createSaveEngine(ctx) {
     state.checkedOutBy = proj.checked_out_by || null;
     state.checkedOutAt = proj.checked_out_at || null;
     state.checkedOutEmail = proj.checked_out_email || null;
+    // An EXPIRED lock is still attributed to its last holder by the RPC
+    // (checked_out_by = me, can_edit = false, can_check_out = true). Keeping
+    // that stale self-attribution in state re-armed prevWasCheckedOut on
+    // EVERY subsequent refresh — the was-checked-out edge below fired on
+    // every tab return, forever (field report 2026-09-01: the turn-in notice
+    // "keeps coming back"). Normalize to the claimable truth the UI already
+    // shows ("Check out to Edit"), so the edge fires once per real demotion.
+    const selfStaleLock = prevWasCheckedOut && !proj.can_edit &&
+      proj.checked_out_by === state.supabaseSession?.user?.id;
+    if (selfStaleLock) {
+      state.checkedOutBy = null;
+      state.checkedOutAt = null;
+      state.checkedOutEmail = null;
+    }
     state.loadedViaViewLink = false;
     state.isViewer = !proj.can_edit;
     state.canCheckOut = proj.can_check_out || false;
     ctx.updateUI();
     ctx.updateStatus();
     if (prevWasCheckedOut && state.isViewer) {
-      pushSaveEvent('force_turn_in', hadDirty ? 'Force turn-in with unsaved edits' : 'Force turn-in');
-      // Stage-5 J17 finding: a transient toast is too weak for silently losing
-      // edit mode — the app-side hook opens the force-turn-in notice modal.
-      // Toasts remain the fallback when the hook is absent (or reports
-      // unhandled, e.g. the feature file failed to register).
-      const noticed = !!(ctx.notifyForceTurnedIn && ctx.notifyForceTurnedIn({ hadDirty }));
-      if (!noticed) {
-        if (hadDirty) {
-          ctx.showToast('Project was turned in by another user. Unsaved edits may have been lost - check Save status (bell).', 6000);
-        } else {
-          ctx.showToast('Project was turned in. You can check out to edit again.');
+      // Classify the demotion before claiming anyone forced it. Two shapes:
+      //  - EXPIRY: the lock is still self-attributed (selfStaleLock), or our
+      //    last-known checkout stamp had aged past the inactivity window when
+      //    someone else claimed it. Only admins can break a LIVE lock, so a
+      //    stale stamp means expiry, not a force. Route to the existing
+      //    one-shot expiry machinery (attention flag, capped silent
+      //    auto-recheckout, one-shot toast) instead of the turn-in notice —
+      //    the notice's "an admin turned this project in" would be false.
+      //  - GENUINE FORCE: a live lock externally cleared/taken → the notice
+      //    modal (Stage-5 J17), once per demotion.
+      const prevStampMs = prevCheckedOutAt ? new Date(prevCheckedOutAt).getTime() : NaN;
+      const prevLockStale = Number.isFinite(prevStampMs) &&
+        (ctx.serverNowMs() - prevStampMs) >= CHECKOUT_INACTIVITY_MS;
+      if (selfStaleLock || prevLockStale) {
+        pushSaveEvent('checkout_expired_on_refresh',
+          hadDirty ? 'Checkout expired (seen at permissions refresh) with unsaved edits'
+                   : 'Checkout expired (seen at permissions refresh)');
+        handleBackgroundCheckoutExpired('permissions_refresh').catch(() => {});
+      } else {
+        pushSaveEvent('force_turn_in', hadDirty ? 'Force turn-in with unsaved edits' : 'Force turn-in');
+        // Stage-5 J17 finding: a transient toast is too weak for silently
+        // losing edit mode — the app-side hook opens the force-turn-in notice
+        // modal. Toasts remain the fallback when the hook is absent (or
+        // reports unhandled, e.g. the feature file failed to register).
+        const noticed = !!(ctx.notifyForceTurnedIn && ctx.notifyForceTurnedIn({ hadDirty }));
+        if (!noticed) {
+          if (hadDirty) {
+            ctx.showToast('Project was turned in by another user. Unsaved edits may have been lost - check Save status (bell).', 6000);
+          } else {
+            ctx.showToast('Project was turned in. You can check out to edit again.');
+          }
         }
       }
     } else if (!prevCanCheckOut && state.canCheckOut) {

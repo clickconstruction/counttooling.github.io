@@ -585,6 +585,74 @@ test('refreshProjectPermissions: notifyForceTurnedIn hook gets hadDirty and supp
   assert.deepStrictEqual(dirty.calls.toasts, [], 'modal handled the dirty variant too');
 });
 
+test('refreshProjectPermissions: an expired self-attributed lock is expiry, not a force — and cannot re-fire', async () => {
+  // The RPC keeps checked_out_by = me on an EXPIRED lock while can_edit goes
+  // false (field report 2026-09-01: the turn-in notice "keeps coming back").
+  const staleAt = new Date(Date.now() - CHECKOUT_INACTIVITY_MS - 60000).toISOString();
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: 'u1', checked_out_at: staleAt, checked_out_email: 'me@x.com' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: staleAt, canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx, calls } = makeCtx({
+    getState: () => state,
+    getSupabase: () => supabase,
+    notifyForceTurnedIn: (info) => { notices.push(info); return true; },
+  });
+  const engine = createSaveEngine(ctx);
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [], 'expiry must not claim an admin force');
+  assert.ok(logKinds(engine).includes('checkout_expired_on_refresh'));
+  assert.ok(logKinds(engine).includes('checkout_expired'), 'routed to the expiry machinery');
+  assert.strictEqual(state.checkedOutBy, null, 'stale self-attribution normalized');
+  assert.strictEqual(state.isViewer, true);
+  // Second refresh with the same row: the was-checked-out edge is disarmed.
+  const expiredEvents = () => logKinds(engine).filter((k) => k === 'checkout_expired_on_refresh').length;
+  const before = expiredEvents();
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.strictEqual(expiredEvents(), before, 'no re-fire on the next refresh');
+  assert.deepStrictEqual(notices, []);
+});
+
+test('refreshProjectPermissions: a stale lock taken by someone else is still expiry, not a force', async () => {
+  const staleAt = new Date(Date.now() - CHECKOUT_INACTIVITY_MS - 60000).toISOString();
+  const row = { id: 'p1', can_edit: false, can_check_out: false, checked_out_by: 'u2', checked_out_at: new Date().toISOString(), checked_out_email: 'other@x.com' };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: staleAt, canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({
+    getState: () => state,
+    getSupabase: () => supabase,
+    notifyForceTurnedIn: (info) => { notices.push(info); return true; },
+  });
+  const engine = createSaveEngine(ctx);
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [], 'expired-then-claimed is not an admin force');
+  assert.ok(logKinds(engine).includes('checkout_expired_on_refresh'));
+  assert.strictEqual(state.checkedOutEmail, 'other@x.com', 'the new holder is shown');
+});
+
+test('refreshProjectPermissions: a live lock externally cleared IS a force — notice fires', async () => {
+  const freshAt = new Date(Date.now() - 60000).toISOString();
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: freshAt, canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({
+    getState: () => state,
+    getSupabase: () => supabase,
+    notifyForceTurnedIn: (info) => { notices.push(info); return true; },
+  });
+  const engine = createSaveEngine(ctx);
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [{ hadDirty: false }]);
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.ok(!logKinds(engine).includes('checkout_expired_on_refresh'));
+});
+
 // --- Stage 5: checkout expired recovery -------------------------------------
 
 test('computeCheckoutExpiryAgeMs: no candidates -> 0; stale checkout dates the expiry', () => {

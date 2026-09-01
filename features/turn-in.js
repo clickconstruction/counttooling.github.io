@@ -191,6 +191,38 @@
     }
   };
 
+  // Force turn-in notice (Stage-5 J17 finding): the modal the demoted editor
+  // sees instead of a transient toast. The engine reaches it via
+  // ctx.notifyForceTurnedIn → App.openForceTurnInNoticeModal; truthy return
+  // means handled (the engine then skips its toast fallback).
+  function openForceTurnInNoticeModal(info) {
+    const hadDirty = !!(info && info.hadDirty);
+    const saved = document.getElementById('forceTurnInNoticeSaved');
+    const warn = document.getElementById('forceTurnInNoticeWarn');
+    if (!saved || !warn) return false;
+    saved.style.display = hadDirty ? 'none' : '';
+    warn.style.display = hadDirty ? 'flex' : 'none';
+    App.showModal('forceTurnInNoticeModal');
+    return true;
+  }
+  document.getElementById('forceTurnInNoticeKeepViewing').onclick = () => {
+    App.hideModal('forceTurnInNoticeModal');
+  };
+  document.getElementById('forceTurnInNoticeCheckout').onclick = async () => {
+    const btn = document.getElementById('forceTurnInNoticeCheckout');
+    btn.disabled = true;
+    btn.textContent = 'Checking out...';
+    try {
+      await doCheckoutCurrentProject({ debugTrigger: 'force_turnin_notice_checkout' });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Check out to edit';
+      App.hideModal('forceTurnInNoticeModal');
+      App.updateUI();
+    }
+  };
+
   App.tryTurnIn = tryTurnIn;
   App.doTurnInAndHandleResult = doTurnInAndHandleResult;
+  App.openForceTurnInNoticeModal = openForceTurnInNoticeModal;
 })();

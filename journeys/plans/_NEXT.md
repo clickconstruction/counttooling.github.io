@@ -84,8 +84,11 @@ findings into the Tier-2/3 queues.
 > and Manage Projects, and the per-project **force turn-in — executed once
 > against the walk's own test project: works, confirm-gated, demotes the
 > other session live in ~3 s**. New findings: (5) stumble — the forced-out
-> editor gets NO notice (no modal/toast, banner-only; expiry by contrast
-> has a recovery modal; open question: dirty edits at force-out); (6) the
+> editor's only notice was a transient toast (the walk initially recorded
+> "none"; corrected on code review) — **FIXED 2026-08-31** (branch
+> claude/force-turnin-notice-modal): a notice modal with saved /
+> unsaved-edits variants, approved via mock-up review; the dirty-edits
+> question resolved (engine already flushes before demotion); (6) the
 > dossier predates two admin surfaces — per-row "Email a one-time sign-in
 > link" and "Make/Remove overseer" (+ Overseer and twinUser roles in the
 > table); (7) papercut — activity-log timezone wording differs between

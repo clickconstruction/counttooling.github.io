@@ -559,6 +559,32 @@ test('refreshProjectPermissions: force turn-in with dirty edits flushes once and
   assert.match(calls.toasts[0], /turned in by another user/);
 });
 
+test('refreshProjectPermissions: notifyForceTurnedIn hook gets hadDirty and suppresses the toast fallback', async () => {
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const notices = [];
+  const run = async (dirty) => {
+    const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false, isViewer: false, pages: [] };
+    const { ctx, calls } = makeCtx({
+      getState: () => state,
+      getSupabase: () => supabase,
+      notifyForceTurnedIn: (info) => { notices.push(info); return true; },
+    });
+    const engine = createSaveEngine(ctx);
+    engine.setAutoSaveDirty(dirty);
+    await engine.refreshProjectPermissions();
+    await new Promise((r) => setTimeout(r, 20));
+    return { calls, engine };
+  };
+  const clean = await run(false);
+  assert.deepStrictEqual(notices, [{ hadDirty: false }]);
+  assert.deepStrictEqual(clean.calls.toasts, [], 'modal handled it — no toast');
+  assert.ok(logKinds(clean.engine).includes('force_turn_in'));
+  const dirty = await run(true);
+  assert.deepStrictEqual(notices[1], { hadDirty: true });
+  assert.deepStrictEqual(dirty.calls.toasts, [], 'modal handled the dirty variant too');
+});
+
 // --- Stage 5: checkout expired recovery -------------------------------------
 
 test('computeCheckoutExpiryAgeMs: no candidates -> 0; stale checkout dates the expiry', () => {

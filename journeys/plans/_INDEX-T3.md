@@ -59,10 +59,13 @@ Checkpoint pushes after: B3, B6, B9, B12, B15, B17 (row flips + ledger update
 ride each checkpoint commit). All six checkpoints confirmed on origin/main
 2026-08-31 — the queue is fully pushed.
 
-Post-queue housekeeping (2026-08-31): six merged `claude/*` topic branches
-identified for deletion from origin (t3-b10-legend-proof,
-t3-save-stall-hidden-tab, app-review-35640a, app-review-setup-b21aa0,
-festive-yonath-09d032, stoic-engelbart-e11137); `claude/admin-send-signin-link`
-and `claude/boot-skew-recovery` are unmerged in-flight fixes and stay. The
-merged `feat/notes-ledger` / `feat/notes-rfi-loop` / `feat/robot-pdf-intake`
-are outside the claude/* housekeeping rule — Will's call.
+Post-queue housekeeping (2026-08-31): the six merged `claude/*` topic branches
+DELETED from origin (t3-b10-legend-proof, t3-save-stall-hidden-tab,
+app-review-35640a, app-review-setup-b21aa0, festive-yonath-09d032,
+stoic-engelbart-e11137); `claude/admin-send-signin-link` and
+`claude/boot-skew-recovery` are unmerged in-flight fixes and stay. The merged
+`feat/notes-ledger` / `feat/notes-rfi-loop` / `feat/robot-pdf-intake` were
+audited the same day (each tip an ancestor of main, 0 unique commits, landed
+via the merge/notes-ledger-to-main integration, no open PRs reference them)
+and are recommended for deletion too — still present on origin as of this
+note.

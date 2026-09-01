@@ -414,7 +414,7 @@ start with your standards, including your Quick Key layout. Loading mid-bid is s
 marks re-link to the loaded counters and lines by name (unmatched ones keep counting under a
 visible "Unknown" row), and undo brings the old palette and counts back.
 
-**Palette Insights**
+**My Standards**
 *Problem:* Your real standards live implicitly across old projects, and nobody remembers exactly
 what they were.
 *Useful because:* One view shows which counters and line types you actually use across all your

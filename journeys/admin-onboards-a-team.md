@@ -177,3 +177,12 @@ Adversarial re-drive by an independent verifier, same recipe (zero-dep static se
 **Verdict changes:** none of the six findings killed or downgraded — every one reproduced or verified at source. One proposal rejected: the **hide** (delete the dead header cluster) is not the pure removal it claims — those hidden buttons are the app's click-dispatch hubs (`#manageUsersBtn` onclick in features/user-admin.js:385 is the real create-user opener; `#saveProjectBtn` onclick in features/save-project.js:11 is the real save, dispatched from app.js:3936 and features/turn-in.js:109; `#authBtn` onclick app.js:3735 is the auth opener dispatched from the gear, my-settings, and app.js:6412). Deleting them as scoped breaks sign-in, save, and add-user. It is a legitimate code-refactor idea (rehome handlers, then delete), but it has zero user-visible effect and does not belong in a journey dossier as a UX action.
 
 **What the walker missed:** nothing material. Two nits: the status-bar link is 12.8px, not ~11px (corrected in row #4), and the dossier's own Entry points list already documents the dispatch-chain wiring that makes the hide proposal unsafe — the walker recorded the evidence but didn't connect it to the proposal.
+
+## Stage-5 walk note (2026-08-31)
+
+The dev-auth test account is **not admin**, so J17's admin interiors remain
+unwalked (correctly so — destructive admin actions were out of scope on prod
+regardless). One ops finding from the non-admin side: the test account holds
+**113 projects of CI spec debris** ("IndexedDB Test …" rows) — the
+`cleanup-test-accounts` weekly purge is not keeping up or not scheduled; check
+the pg_cron job in the Supabase dashboard.

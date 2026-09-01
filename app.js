@@ -2173,6 +2173,11 @@
     }
     const scaleDisplaySection = document.getElementById('sidebarScaleDisplaySection');
     if (scaleDisplaySection) scaleDisplaySection.style.display = state.pages.length ? '' : 'none';
+    // B16 / J1: the quiet cold-start hint in the empty black canvas. Hidden
+    // the moment pages exist, and for view-link sessions (their PDF hydrates
+    // asynchronously — the hint would flash a false affordance).
+    const canvasEmptyHint = document.getElementById('canvasEmptyHint');
+    if (canvasEmptyHint) canvasEmptyHint.style.display = (state.pages.length || state.isViewer || state.loadedViaViewLink) ? 'none' : '';
     document.getElementById('moveBtn').classList.toggle('active', state.tool === TOOL.NONE);
     document.getElementById('quickLine').classList.toggle('active', state.tool === TOOL.LINE);
     document.getElementById('polylineBtn').classList.toggle('active', state.tool === TOOL.POLYLINE);
@@ -2304,7 +2309,7 @@
     // page's scale status on them and may set a temporary, local-only scale
     // (never saved - markProjectDirty/performAutoSave are viewer-inert) so the
     // Measure tool reads real units. See noteViewerTempScale.
-    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'dropBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'ghostBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'plumBtn', 'plumLineBtn', 'roomBtn', 'roomBtnSidebar'];
+    const viewerHideIds = ['counterBtn', 'quickLine', 'polylineBtn', 'chainBtn', 'dropBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'deleteZoneBtn', 'ghostBtn', 'noteBtn', 'legendBtn', 'legendBtnSidebar', 'undoBtn', 'redoBtn', 'counterBtnSidebar', 'quickLineSidebar', 'polylineBtnSidebar', 'highlightBtnSidebar', 'multiplyZoneBtnSidebar', 'scaleZoneBtnSidebar', 'deleteZoneBtnSidebar', 'noteBtnSidebar', 'doneEditing', 'doneEditingSidebar', 'clearPage', 'clearPageSidebar', 'exportBtn', 'exportBtnSidebar', 'importBtn', 'importBtnSidebar', 'saveProjectBtn', 'saveProjectBtnSidebar', 'addCounter', 'addLineType', 'addGroup', 'groupsSection', 'headerActiveCounter', 'headerActiveLineType', 'lineTypeSnapToHVHeaderBtn', 'roomBtn', 'roomBtnSidebar'];
     viewerHideIds.forEach(function(id) {
       const el = document.getElementById(id);
       if (!el) return;

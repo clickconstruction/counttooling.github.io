@@ -247,3 +247,101 @@ test.describe('append never renames the open project', () => {
     expect(after.name).toBe('Riverside Clinic Plumbing');
   });
 });
+
+// ---- Tier-3 B16: cold start — drag-and-drop + the empty-canvas hint (J1) ----
+test.describe('cold start (Tier-3 B16)', () => {
+  test('empty canvas shows the quiet hint; it hides once a plan loads', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('#canvasEmptyHint')).toBeVisible();
+    await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await expect(page.locator('#canvasEmptyHint')).toBeHidden();
+  });
+
+  test('dropping a PDF anywhere on the app loads it through the normal intake', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const file = new File([buf], 'dropped-plan.pdf', { type: 'application/pdf' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    // Same intake as Upload PDF: the project is named after the file.
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('dropped-plan');
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('a non-PDF drop is refused with a toast — and never navigates the app away', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    const prevented = await page.evaluate(() => {
+      const file = new File(['not a pdf'], 'notes.txt', { type: 'text/plain' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const ev = new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true });
+      window.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    });
+    expect(prevented).toBe(true);   // the browser default (navigate to the file) is blocked
+    await expect(page.locator('#airboardToastText')).toHaveText('Drop a PDF plan to open it.');
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+  });
+
+  test('a drop while a dialog is open is ignored (no second intake mid-flow)', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      window.App.showModal('settingsModal');
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const dt = new DataTransfer();
+      dt.items.add(new File([buf], 'dropped-plan.pdf', { type: 'application/pdf' }));
+      window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+  });
+});
+
+// ---- B15b: signed-out 3+ sheet uploads get the trim step (⚑ resolved) ----
+test.describe('signed-out trim step (B15b)', () => {
+  test('a 3-sheet signed-out fresh upload opens Trim your set; committing Open lands the pages', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    // Two files, 3 pages total — over the >=3 gate.
+    await page.locator('#pdfInput').setInputFiles([
+      path.join(__dirname, 'test-2pages.pdf'),
+      path.join(__dirname, 'test-page.pdf'),
+    ]);
+    await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 10000 });
+    await expect(page.locator('#preparePdfTitle')).toHaveText('Trim your set');
+    await expect(page.locator('#preparePdfSaveAndOpen')).toBeHidden();
+    // The pages moved INTO the modal; the session under it is clean.
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+    await expect(page.locator('#preparePdfGridStatus')).toHaveText('Keeping 3 of 3 sheets');
+    await page.locator('#preparePdfDone').click();
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/, { timeout: 10000 });
+    await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('a 2-sheet signed-out upload still goes straight in — no modal on the small cold start', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(2);
+    await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
+  });
+});

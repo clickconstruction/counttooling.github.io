@@ -196,3 +196,22 @@ Things the walker missed or under-stated (none rise to a new finding):
 - Proposal caveat recorded inline: making Cancel on the email gate *re-offer the gate unconditionally* would create an uncancelable loop; the proposal's static-screen variant is the safe form.
 - Finding #4 is slightly stronger than written: even a viewer who *does* sign in from the view-link session can never get a link (`canExportViewLink` requires `!loadedViaViewLink`), so the toast's instruction is impossible to satisfy, not merely unhelpful.
 - The walker's restraint held up: no manufactured findings detected; the three keeps are genuinely good flows as reproduced, and the one self-failed spirit test (dead Share button → teach) is the correct call.
+
+## Stage-5 cloud-interior walk addendum (2026-08-31)
+
+Scoped live walk (dev-auth test account, single account — contention untested):
+
+- **Save & Open → cloud project + auto-checkout → Turn In releases the lock**
+  (`checkedOutBy` cleared, `canCheckOut` true) — the single-editor lifecycle works;
+  the Project Settings **Bid review** row is present.
+- **NEW stumble/blocker-grade — hidden-tab save stall**: `performSaveProjectToCloud`
+  awaits `tick()` = `requestAnimationFrame`, and rAF never fires in a hidden tab —
+  a user who clicks Save & Open (or any manual save) and immediately switches tabs
+  has the save stall INDEFINITELY with no error; it resumes only when the tab is
+  re-fronted. Reproduced live (save hung >3 min hidden, completed on visibility).
+  Closing the browser while backgrounded loses a save the user believed was in
+  flight. Fix candidate: `tick()` falls back to `setTimeout` when
+  `document.hidden` (one line in save-engine.js). The T1-01 local backup limits
+  the damage but the cloud save is the one the user asked for.
+- **Not walked** (needs a second account): checkout contention, force turn-in from
+  the other side, the waiting-notification, multi-user Share roles.

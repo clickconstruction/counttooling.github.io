@@ -1,7 +1,7 @@
 ---
 title: Preparing a plan set
 description: Get a bid set ready to count — upload PDFs, trim to just your sheets, rotate and rename pages, and add addendum sheets without losing work.
-updated: 2026-08-30
+updated: 2026-08-31
 order: 1.5
 icon: move
 category: Getting started
@@ -11,11 +11,11 @@ Bid sets arrive as one big combined PDF where only some sheets matter to your tr
 
 ## Upload the PDF
 
-Open the app and click **Upload PDF** in the header — the same upload also lives behind the cloud button [[upload]] and in the sidebar. (Before a plan is loaded, the cloud button skips its export menu and opens the file picker directly — any plausible first click lands on upload.) Pick your plan PDF (up to 50 MB); you can select more than one PDF at once and they merge into a single set, in order. Each page becomes a sheet you can mark up.
+Open the app and click **Upload PDF** in the header — the same upload also lives behind the cloud button [[upload]] and in the sidebar. (Before a plan is loaded, the cloud button skips its export menu and opens the file picker directly — any plausible first click lands on upload.) Or skip the picker entirely: **drag the PDF from your file manager and drop it anywhere on the app** — the empty canvas says so, and a dropped plan opens exactly like an uploaded one. Pick your plan PDF (up to 50 MB); you can select more than one PDF at once (or drop several) and they merge into a single set, in order. Each page becomes a sheet you can mark up.
 
 ## Trim the set with Prepare PDF
 
-When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start. It opens on a grid of sheet thumbnails — the whole set at a glance:
+When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set before you start. (Signed out it's titled **Trim your set** — trimming is purely local — and opens for sets of three or more sheets; a one- or two-sheet upload goes straight in.) It opens on a grid of sheet thumbnails — the whole set at a glance:
 
 ![The Prepare PDF dialog: ① rotate a sideways page, ② delete the pages you don't need, then ③ Save & Open.](/guides/img/prepare-pdf.png)
 

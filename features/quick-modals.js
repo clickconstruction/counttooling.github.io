@@ -4,17 +4,15 @@
   // Quick Count panel (the Counter modal's modifier-driven quick-create tab)
   // -- extracted from app.js via the window.App registry. Registers
   // App.populateCounterQuickCountPanel (counter.js's showCounterTab('quickcount')
-  // calls it). The legacy #plumModal surface was removed 2026-07-30: nothing
-  // opened it (#plumBtn below routes here instead); the shared modifier store
-  // (getPlumbingModifiers) keeps its historical name.
+  // calls it). The legacy #plumModal surface was removed 2026-07-30, and the
+  // dead #plumBtn sidebar opener followed in Tier-3 B17; the shared modifier
+  // store (getPlumbingModifiers) keeps its historical name.
   // Shared deps are read from App.* at call time (never captured at load), so
   // load order beyond "after app.js" does not matter.
 
-  // Legacy quick-add button: routes to the Counter modal's Quick Count tab.
-  document.getElementById('plumBtn').onclick = () => {
-    document.getElementById('counterBtn').click();
-    App.showCounterTab('quickcount');
-  };
+  // (Tier-3 B17: the dead #plumBtn sidebar opener was deleted with its
+  // .sidebar-plum-row markup and viewerHideIds entry — the row shipped
+  // display:none, so nothing user-reachable routed through it.)
 
   function removePlumbingModifier(kind, qcSelectId) {
     const qcEl = document.getElementById(qcSelectId);

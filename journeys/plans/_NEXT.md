@@ -37,10 +37,39 @@ lifecycle under contention, real view-link round trip, admin flows). Needs:
 Will present or explicitly delegating. Output: dossier addenda + any new
 findings into the Tier-2/3 queues.
 
+> **STATUS 2026-08-31:** delegated; the account decision resolves to the
+> repo's own dev-auth test-account harness (`?devAuth=1` +
+> `DEV_AUTH_EMAIL`/`DEV_AUTH_PASSWORD` in config.local.js — the same
+> mechanism the cloud-gated specs and the `cleanup-test-accounts` purge
+> already assume; never a real customer identity).
+>
+> **WALKED 2026-08-31 (scoped)** — credential supplied, J14 walked
+> end-to-end (mint → gate → live viewer → scale share-back → access log →
+> revoke → branded dead card: ALL VERIFIED on prod) and J13's
+> single-account lifecycle (save → auto-checkout → turn-in) verified.
+> Addenda in share-with-an-outsider.md / share-and-collaborate.md /
+> admin-onboards-a-team.md. New findings: (1) **hidden-tab save stall** —
+> save-engine's rAF-based `tick()` never fires in a hidden tab, stalling
+> manual saves indefinitely with no error (stumble/blocker-grade; 1-line
+> fix candidate); (2) the access log is still a native `alert()` (X8
+> sweep); (3) `cleanup-test-accounts` isn't keeping up (113 CI-debris
+> projects on the test account — ops check the pg_cron job); (4)
+> viewer `#hideMarksBtn` visibility-matrix check-later. **Still open**:
+> J13 contention + multi-user roles (needs a second account), J17 admin
+> interiors (test account isn't admin).
+
 ## Stage 6 — ⚑ Tier-5 product session (roadmap, not code)
 The 17 verified `gap` rows, intersected with the standing HVAC direction
 (duct-by-size → pounds remains the named #1 product gap). One conversation:
 which gaps become features, which become "no, deliberately."
+
+> **STATUS 2026-08-31:** session document prepared ("The Seventeen Gaps",
+> private artifact — ask Stephen for the link): all 17 rows bucketed with
+> recommendations — 3 build (X1 zone handles, X2 mobile peek, X3 scale
+> re-edit), 2 needing the product call (X6 copy-matches-screen semantics,
+> X4 room-label design), 5 fold-into-passes, 3 already defused by shipped
+> tiers, 4 recommended "no, deliberately" — with duct-by-size framed as
+> the session's one sequencing decision. The conversation itself remains.
 
 ## Standing practice — drift patrol
 After any major feature ships (e.g. HVAC duct), re-run a single-journey walk +

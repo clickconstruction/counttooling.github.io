@@ -196,3 +196,27 @@ Things the walker missed (all strengthen, none contradict):
 - `window.VIEW_LINK_ALLOWED_DOMAINS` (view-only.js:193) already exists as a config hook for the rejection message — finding 3's fix is wiring two static strings to it, not building config.
 - app.js:2378-79 auto-hides the Export dropdown when it has no visible rows — so the "drop Export Canvas/Both for viewers" hide removes the whole dropdown from view sessions with a single gating change.
 - The Room Sizer no-scale guard (app.js:3103) runs before any viewer check, which is *why* the toast fires in a session that can never honor it — the proposed viewer-hide fixes both symptoms at once.
+
+## Stage-5 cloud-interior walk addendum (2026-08-31)
+
+Scoped live walk on production with the dev-auth test account (`test@clickplumbing.com`)
+— never a customer identity. Full J14 round trip verified end-to-end:
+
+- **Mint → open → log → revoke, all green.** Create view link from the Share dialog;
+  recipient email gate (Continue) → live viewer with plan-name page labels (B6 fix
+  confirmed — no "document.pdf"); viewer chrome correctly trimmed (edit tools, save,
+  Save Status bell hidden; "Viewing only" banner shown); the access log records the
+  gate entry (email + timestamp, verified via `get_view_link_access_log`); Revoke →
+  the branded "This link isn't active anymore" card (PR #66), never the empty editor,
+  and revocation beats the device's earlier access.
+- **Viewer scale share-back verified server-side**: a viewer-set page scale landed in
+  the project row with the `viewerSet { email, at }` stamp via `set-view-scale`.
+- **NEW papercut — access log is a native `alert()`** (features/share-links.js:142):
+  the one surface on the sharing path still outside the T2-04 toast/modal system.
+  Queue with the X8 alert sweep.
+- **NEW check-later**: `#hideMarksBtn` computed `display:none` for the viewer at an
+  ~800px-wide viewport — possibly intended consolidation; verify the visibility
+  matrix across widths before calling it a bug.
+- **Not walked**: nothing left in J14's viewer path; the sending-side telemetry
+  question (107 links / 56 accesses) is NOT a logging bug — the log records opens
+  correctly, so under-conversion is real recipient behavior.

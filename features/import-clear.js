@@ -100,7 +100,9 @@
     const canvas = page ? App.getActiveCanvas(page) : null;
     const name = canvas?.name || 'Main';
     const msg = document.getElementById('clearPageConfirmMessage');
-    if (msg) msg.textContent = 'Clear current canvas (' + name + ')?';
+    // B14: the layer qualifier is load-bearing — "Clear Page" only empties the
+    // ACTIVE layer, and trade language beats "canvas" (J9).
+    if (msg) msg.textContent = 'Remove all marks from this page\'s ' + name + ' layer?';
     App.showModal('clearPageConfirmModal');
   }
   document.getElementById('clearPage').onclick = () => showClearPageModal();

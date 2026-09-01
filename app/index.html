@@ -314,9 +314,6 @@
             <button id="addCounter" class="sidebar-btn-inline" title="Add counter">+ Add</button>
             <span class="collapse-icon" id="countersCollapseIcon" title="Click to collapse">▼</span>
           </div>
-          <div class="sidebar-plum-row">
-            <button id="plumBtn" class="sidebar-btn-inline" title="Quick add counter">PLUM</button>
-          </div>
           <div class="sidebar-search-row">
             <input type="text" id="counterSearchInput" placeholder="Search counters..." class="sidebar-search-input">
             <button type="button" class="sidebar-search-filter-btn" id="counterShowOnlyOnPageInlineBtn" aria-pressed="false" title="Show only counters on current page"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M96 128C83.1 128 71.4 135.8 66.4 147.8C61.4 159.8 64.2 173.5 73.4 182.6L256 365.3L256 480C256 488.5 259.4 496.6 265.4 502.6L329.4 566.6C338.6 575.8 352.3 578.5 364.3 573.5C376.3 568.5 384 556.9 384 544L384 365.3L566.6 182.7C575.8 173.5 578.5 159.8 573.5 147.8C568.5 135.8 556.9 128 544 128L96 128z"/></svg></button>
@@ -328,9 +325,6 @@
             <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types</h3>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
             <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span>
-          </div>
-          <div class="sidebar-plum-row">
-            <button id="plumLineBtn" class="sidebar-btn-inline" title="Quick add line type">PLUM</button>
           </div>
           <div class="sidebar-search-row">
             <input type="text" id="lineTypeSearchInput" placeholder="Search line types..." class="sidebar-search-input">
@@ -421,6 +415,7 @@
           </div>
           <canvas id="aimLoupe" class="aim-loupe" aria-hidden="true"></canvas>
         </div>
+        <div id="canvasEmptyHint" class="canvas-empty-hint"><span>Drop a plan here — or <strong>Upload PDF</strong></span></div>
         <div class="page-zoom-row">
           <div class="page-nav">
             <button id="prevMarkedPage" class="page-nav-marked-btn" title="Previous marked page">‹‹</button>
@@ -1956,7 +1951,7 @@
             <button type="button" class="settings-menu-btn" id="mySettingsSaveAirboard">Save Artboard</button>
             <button type="button" class="settings-menu-btn" id="mySettingsLoadAirboard">Load from Cloud</button>
             <button type="button" class="settings-menu-btn" id="mySettingsExportAirboard">Export Artboard</button>
-            <button type="button" class="settings-menu-btn" id="mySettingsPaletteInsights">Analyze My Usage</button>
+            <button type="button" class="settings-menu-btn" id="mySettingsPaletteInsights">My Standards</button>
             <button type="button" class="settings-menu-btn danger" id="mySettingsClearAirboard">Clear Artboard</button>
           </div>
           <p id="mySettingsAirboardStatus" class="form-group" style="margin:8px 0 0 0;font-size:0.85rem;color:var(--text3);"></p>
@@ -1970,7 +1965,7 @@
   <div class="modal-overlay" id="paletteInsightsModal">
     <div class="modal-card" style="max-width:520px;">
       <div class="modal-card-header">
-        <h2>Palette Insights</h2>
+        <h2>My Standards</h2>
         <button type="button" id="paletteInsightsAddAll" class="plum-header-add-btn">Add all frequently used</button>
       </div>
       <p id="paletteInsightsSubtitle" class="form-group" style="margin:0 0 8px 0;color:var(--text3);font-size:0.85rem;"></p>
@@ -2565,7 +2560,7 @@
   <div class="modal-overlay" id="deleteCanvasConfirmModal">
     <div class="modal-card">
       <h2>Delete <span id="deleteCanvasName"></span>?</h2>
-      <p id="deleteCanvasMessage" style="margin:0 0 24px 0;color:var(--text2);">This canvas and its annotations will be removed. This cannot be undone.</p>
+      <p id="deleteCanvasMessage" style="margin:0 0 24px 0;color:var(--text2);">This canvas and its annotations will be removed. Undo brings it back.</p>
       <div class="actions">
         <button id="deleteCanvasCancel">Cancel</button>
         <button id="deleteCanvasConfirm" class="danger">Delete</button>

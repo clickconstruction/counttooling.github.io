@@ -168,7 +168,7 @@ check-out/turn-in, like a set of keys — one sentence to explain, safe enough f
 
 ## Standards that compound
 
-**Your history builds your palette.** Open Palette Insights and click "Analyze My Usage":
+**Your history builds your palette.** Open **My Standards** (User Settings → Artboard):
 seconds later, a ranked list of your real standards — "Water Closet — 11 projects · 431
 placed [+ Add]". One click and it's on today's bid, with a toast confirming it also
 joined your saved Artboard. *Claim:* your best-earned standards come out of your own

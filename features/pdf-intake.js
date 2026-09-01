@@ -267,17 +267,26 @@
       });
       App.showModal('loadAnnotationsModal');
     } else if (startPageIdx === 0) {
-      App.openPreparePdfModal(App.state.pages, App.state.pdfBuffer, App.state.currentProjectName);
-      App.clearPdfBitmapCache();
-      App.state.pages = [];
-      App.state.activeCanvasIdByPage = {};
-      App.state.pdfBuffer = null;
-      App.state.pdfBufferSize = 0;
-      App.state.currentProjectName = 'Untitled';
-      App.state.currentPage = 0;
-      App.updateUI();
-      App.renderPdf();
+      openPrepareForFreshUpload();
     }
+  }
+
+  // The fresh-upload Prepare PDF hand-off: move the just-uploaded pages into
+  // the modal and reset the session state underneath it (Cancel = clean slate,
+  // commit = rebuilds state from the trimmed buffer). Shared by the signed-in
+  // no-cloud-match path above and the signed-out path in handleFreshUpload
+  // (B15 — trimming is purely local, so signed-out uploads trim too).
+  function openPrepareForFreshUpload() {
+    App.openPreparePdfModal(App.state.pages, App.state.pdfBuffer, App.state.currentProjectName);
+    App.clearPdfBitmapCache();
+    App.state.pages = [];
+    App.state.activeCanvasIdByPage = {};
+    App.state.pdfBuffer = null;
+    App.state.pdfBufferSize = 0;
+    App.state.currentProjectName = 'Untitled';
+    App.state.currentPage = 0;
+    App.updateUI();
+    App.renderPdf();
   }
 
   // T1-01 / J4 second half: a signed-out session whose backup lost its PDF
@@ -462,6 +471,21 @@
     // either offer to switch projects (destructive) or clobber the project name.
     if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId && App.SUPABASE_ENABLED && App.getSupabase() && App.state.supabaseSession?.user && uploadHash) {
       await promptLoadAnnotations(uploadHash, startPageIdx);
+    } else if (!importBothFollowUp && !App.state.pendingCanvasLoad && !App.state.currentProjectId &&
+               !App.state.supabaseSession?.user &&
+               startPageIdx === 0 && App.state.pages.length >= 3 &&
+               !App.projectHasAnyCanvasMarkup()) {
+      // B15b (⚑ resolved 2026-08-31, delegated call): signed-out /
+      // cloud-disabled fresh uploads of 3+ sheets get the trim step — a
+      // combined bid set is otherwise untrimmable without an account (J2),
+      // and trimming is purely local (the modal says "Trim your set"; Save &
+      // Open is hidden). 1-2 sheet uploads go straight in: nothing to trim,
+      // no cloud naming need, and the J1 cold start stays one action. Full
+      // signed-in parity (Prepare on EVERY fresh upload) was deliberately
+      // NOT chosen — it would put a modal on the make-or-break first upload.
+      // Skipped when maybeReapplyLocalBackupMarks above restored marks:
+      // trimming would discard the restored takeoff.
+      openPrepareForFreshUpload();
     }
     if (importBothFollowUp && App.state.pages.length > 0) {
       App.showModal('importCanvasAfterPdfModal');
@@ -488,6 +512,30 @@
     pendingImportCanvasAfterPdf = false;
     await handleFreshUpload(e, Array.from(files), importBothFollowUp);
   };
+
+  // B16 / J1: cold-start drag-and-drop. Dragging a PDF onto the app used to
+  // trigger the browser default — navigate away and REPLACE the app. Any
+  // file drag is now prevented window-wide, and dropped PDFs feed the same
+  // #pdfInput dispatcher as Upload PDF (flags, size caps, append semantics —
+  // all identical). Non-file drags (sidebar reorder rows set text data, not
+  // Files) are untouched.
+  const dragHasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  window.addEventListener('dragover', (e) => { if (dragHasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', (e) => {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();   // never let a stray drop replace the app
+    if (App.state.isViewer) return;
+    if (document.querySelector('.modal-overlay.visible')) return;   // a drop mid-dialog would start a second intake
+    const pdfs = Array.from(e.dataTransfer.files || []).filter(
+      (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '')
+    );
+    if (!pdfs.length) { App.showToast('Drop a PDF plan to open it.', 3000); return; }
+    const dt = new DataTransfer();
+    pdfs.forEach((f) => dt.items.add(f));
+    const input = document.getElementById('pdfInput');
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change'));
+  });
 
   App.loadTestPdf = loadTestPdf;
   App.titleFromPdfFilename = titleFromPdfFilename;

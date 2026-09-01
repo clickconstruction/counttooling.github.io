@@ -593,7 +593,7 @@ test('refreshProjectPermissions: an expired self-attributed lock is expiry, not 
   const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: staleAt, canCheckOut: false, isViewer: false, pages: [] };
   const notices = [];
-  const { ctx, calls } = makeCtx({
+  const { ctx } = makeCtx({
     getState: () => state,
     getSupabase: () => supabase,
     notifyForceTurnedIn: (info) => { notices.push(info); return true; },

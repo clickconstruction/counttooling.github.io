@@ -694,7 +694,13 @@
     .save-status-event-detail { margin: 6px 0 2px; padding: 6px 8px; font-size: 0.75rem; font-family: 'DM Mono', monospace; color: var(--text2); white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow-y: auto; background: var(--surface3); border-radius: 4px; }
     #lineColorModal { z-index: 260; }
     #groupModal { z-index: 210; }
-    .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; }
+    /* Desktop-safe default (field report, 2026-09-01): a Dock-shortened MacBook
+       viewport clipped tall cards at BOTH ends — flex-centering pushes the header
+       above the top edge and the actions below the bottom, all unreachable. The
+       85vh+scroll safety used to be mobile-only; every card now gets the clamp.
+       Cards that scroll an internal region instead (pinned tab chrome or a
+       flex-managed list) override this with their own max-height + overflow. */
+    .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; max-height: min(85vh, calc(100vh - 64px)); overflow-y: auto; }
     .modal-card h2 { margin-bottom: 16px; font-size: 1.1rem; }
     .modal-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .modal-card-header h2 { margin: 0; }
@@ -947,9 +953,8 @@
     @media (min-width: 769px) {
       /* Desktop has the room, so pin the board inline at the top of the shortcut
          list and retire the button. The card becomes a flex column with a viewport
-         cap so the TABLE scrolls underneath a fixed keyboard — modal cards only get
-         a max-height on mobile, so without this the taller card would run off the
-         bottom of the screen with no way to reach the rest of the list. */
+         cap so the TABLE scrolls underneath a fixed keyboard — the generic
+         .modal-card clamp would whole-card-scroll the keyboard away with the list. */
       .macros-see-keyboard { display: none; }
       .kb-inline { display: block; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
       .macros-modal-card { max-width: 660px; max-height: 88vh; display: flex; flex-direction: column; }
@@ -1224,11 +1229,31 @@
     #counterModal .modal-card { display: flex; flex-direction: column; max-height: min(85vh, calc(100vh - 64px)); overflow: hidden; }
     #counterModal .modal-card > :not(.counter-tab-panel) { flex: 0 0 auto; }
     #counterModal .counter-tab-panel { overflow-y: auto; min-height: 0; }
-    /* Same disease for the counter/line-type details modal (field report,
-       2026-09-01: a Dock-shortened MacBook viewport clipped BOTH ends of the
-       edit-counter card, Delete/Close unreachable). Whole-card scroll is
-       enough here — the card has no pinned tab chrome. */
-    #counterLineTypeDetailsModal .modal-card { max-height: min(85vh, calc(100vh - 64px)); overflow-y: auto; }
+    /* Desktop flex clamp for list-dominant cards (field-report audit, 2026-09-01):
+       where one big scroll region dominates the card (user/project/activity lists,
+       palette insights, canvas repair, prepare-PDF), whole-card scroll would nest a
+       second scrollbar inside the first. Instead the card is a flex column: chrome
+       pins, the .modal-flex-scroll region yields (its own vh cap stays the ceiling)
+       and keeps the only scrollbar. Desktop-only — mobile keeps whole-card scroll. */
+    @media (min-width: 769px) {
+      .modal-card.modal-card-flex { display: flex; flex-direction: column; overflow: hidden; }
+      .modal-card-flex > :not(.modal-flex-scroll) { flex: 0 0 auto; }
+      .modal-card-flex > .modal-flex-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+      /* Prepare PDF: the yielding region is a WRAPPER whose inner grid (grid mode)
+         or page preview (sheet mode) is the thing that scrolls/shrinks, so the
+         bulk-actions bar and prev/next controls stay pinned inside it. */
+      #preparePdfGridWrap.modal-flex-scroll, #preparePdfSheetWrap.modal-flex-scroll { overflow: hidden; display: flex; flex-direction: column; }
+      #preparePdfGridWrap .prepare-pdf-grid-bar { flex: 0 0 auto; }
+      #preparePdfGridWrap .prepare-pdf-grid { flex: 0 1 auto; min-height: 0; }
+      #preparePdfSheetWrap > .form-group:not(.prepare-pdf-controls) { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+      #preparePdfSheetWrap > .prepare-pdf-controls { flex: 0 0 auto; }
+      /* Inline height min(400px,55vh) becomes the flex basis; overflow:hidden lets
+         it shrink below that when the card is short. */
+      #preparePdfPreviewWrap { flex: 0 1 auto; min-height: 0; }
+    }
+    /* The counter/line-type details modal (the field-report card that surfaced
+       this disease) needs no rule of its own anymore: the generic .modal-card
+       clamp above is the same whole-card scroll it shipped with. */
     .scale-presets-list { max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .scale-presets-list button { width: 100%; padding: 10px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.95rem; cursor: pointer; }
     .scale-presets-list button:hover { background: var(--surface3); }

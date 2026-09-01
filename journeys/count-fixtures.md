@@ -209,7 +209,14 @@ Diane from estimator Wendi, with screenshots; prod, macOS + Dock):
    Same disease as the Tier-1 Set Scale clip; fixed the T1 way
    (`max-height: min(85vh, calc(100vh - 64px))` + whole-card scroll, branch
    claude/details-modal-clip). Follow-up worth queueing: audit which OTHER
-   tall modals still lack a desktop height clamp.
+   tall modals still lack a desktop height clamp. (Audit DONE 2026-09-01: all
+   72 overlays measured at 1280x700. `.modal-card` itself now carries the
+   clamp + whole-card scroll — the per-details rule became redundant — and
+   the eight list-dominant cards that would have double-scrolled (user/
+   project/activity lists, palette insights, canvas repair, prepare-PDF)
+   got a desktop-only `modal-card-flex`/`modal-flex-scroll` pinned-chrome
+   variant instead; small capped lists inside a scrolling card, e.g. Share
+   Project, stay on the accepted details-modal nested-scroll precedent.)
 2. **T2-05 name prefill read as "random names" (design feedback, softened).**
    "Hose Bib" / "Water Cooler" prefills confused a user whose names are her
    own fixture codes ("that's not a hose bib"). Kept the one-keystroke create,

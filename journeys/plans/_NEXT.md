@@ -75,6 +75,23 @@ findings into the Tier-2/3 queues.
 > (queued with the X8 sweep), J17 admin interiors + force turn-in
 > (needs an admin account; destructive admin actions stay out of scope on
 > prod), 30-min expiry under contention (time-gated).
+>
+> **WALKED 2026-08-31 (third pass, admin credential) — Stage 5 COMPLETE.**
+> J17 admin interiors walked read-only + open-and-cancel (addendum in
+> admin-onboards-a-team.md): all four User Settings openers, the Manage
+> Users table + its three destructive dialogs (opened, cancelled), both
+> activity modals (501 events), All Users, the 425-row admin Load Project
+> and Manage Projects, and the per-project **force turn-in — executed once
+> against the walk's own test project: works, confirm-gated, demotes the
+> other session live in ~3 s**. New findings: (5) stumble — the forced-out
+> editor gets NO notice (no modal/toast, banner-only; expiry by contrast
+> has a recovery modal; open question: dirty edits at force-out); (6) the
+> dossier predates two admin surfaces — per-row "Email a one-time sign-in
+> link" and "Make/Remove overseer" (+ Overseer and twinUser roles in the
+> table); (7) papercut — activity-log timezone wording differs between
+> Events and Summary views (B4-style dialect). Nothing on the Stage-5 list
+> remains unwalked except the 30-min expiry-under-contention (time-gated;
+> machinery covered by unit/spec).
 
 ## Stage 6 — ⚑ Tier-5 product session (roadmap, not code)
 The 17 verified `gap` rows, intersected with the standing HVAC direction

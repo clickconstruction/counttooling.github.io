@@ -186,3 +186,55 @@ regardless). One ops finding from the non-admin side: the test account holds
 **113 projects of CI spec debris** ("IndexedDB Test …" rows) — the
 `cleanup-test-accounts` weekly purge is not keeping up or not scheduled; check
 the pg_cron job in the Supabase dashboard.
+
+## Stage-5 admin-interior walk (2026-08-31, admin credential)
+
+Live walk of everything behind the wall, signed in as the admin dev/bot
+account (`robert@douglasmining.com` via the dev-auth harness — the
+douglasmining.com dev domain, never a customer identity). Scope discipline:
+**read-only + open-and-cancel**; the ONLY state change executed was one force
+turn-in against the walk's own test project. Add User submit, set-password
+submit, transfer submit, delete submit, magic-link send, overseer toggle, and
+Global force reload were deliberately NOT exercised on prod.
+
+**Verified working (composition matches the code-derived Entry points list):**
+
+- **User Settings** shows all four admin openers (My Activity / Add User /
+  Manage User / All Users) + Sign Out; opened from the status-bar email link.
+- **Manage Users table**: 13 users — email, role, project count, created,
+  last-active, per-row actions. `test@`'s count (132) matches the debris query
+  exactly. Row dialogs open correctly targeted and cancel cleanly:
+  Set Password ("Set a new password for: <email>"; its dismiss is **Close**,
+  not Cancel), Transfer Projects ("Owns 132 projects" + target select),
+  Delete User (delete-projects vs reassign radio + target select).
+- **NEW surfaces the dossier predates** (entry points above need rows):
+  per-row **"Email a one-time sign-in link (no password needed)"** (the
+  admin-send-signin-link work) and **"Make overseer (sees every project,
+  read-only)" / "Remove overseer"** — with matching new ROLES in the role
+  column: two Overseer users and a twinUser row (`twin-estimator-1@…`)
+  alongside User/Admin.
+- **userProjectsModal** (row "View projects"): renders all 132 of test@'s
+  projects with last-edited stamps.
+- **userActivityModal all-users mode** (heart button): 501 event rows render;
+  Events/Summary toggle works. Nit for the naming pass: Events header says
+  "Event times are US Central (Chicago)", Summary says "Days are in CST not
+  UTC" — same fact, two dialects.
+- **All Users modal**: read-only roster (User/Role/Projects/Last sign-in/
+  Last active).
+- **Admin Load Project**: 425 rows — every project in the system — with
+  ownership (All/Mine/Shared), role, and owner-email filters, live "Locked
+  by <email>" chips, and the admin-only "Who has access" expandable per row.
+- **Manage Projects modal**: all 425 projects, per-row owner · date · size ·
+  counts + Delete, honest copy ("Deletion removes the project and its stored
+  PDF"). Not exercised.
+- **Force turn-in (admin), the J13 leftover**: on the loaded test project
+  (locked by test2), Project Settings → "Force turn-in (admin)" is visible,
+  confirm-gated, and works — the lock cleared and the other session was
+  demoted to viewer in ~3 s via the realtime flip, edit tools revoked.
+  **NEW stumble-grade finding: the forced-out editor gets NO notice** — no
+  modal, no toast; the header banner just swaps to "[Check out to Edit]". A
+  user mid-edit silently loses their tools with zero explanation (contrast:
+  checkout EXPIRY gets a dedicated recovery modal). Open question: dirty
+  unsaved edits at the moment of force-out — what happens to them?
+- **Global force reload**: `#advancedGlobalForceReload` present in Advanced
+  (presence verified only — never clicked on prod).

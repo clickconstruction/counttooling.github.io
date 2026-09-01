@@ -220,3 +220,41 @@ Scoped live walk (dev-auth test account, single account — contention untested)
   `tick()` was the save path's only rAF await.
 - **Not walked** (needs a second account): checkout contention, force turn-in from
   the other side, the waiting-notification, multi-user Share roles.
+
+## Stage-5 contention walk (2026-08-31, second account)
+
+Two-account live walk against the prod backend (dev-auth harness, two local
+origins: `test@clickplumbing.com` + a freshly minted `test2@clickplumbing.com`
+— never a customer identity). The previously "not walked" contention list is
+now walked except the two items noted at the end:
+
+- **Share roles honored.** Owner adds test2 via the Share modal user dropdown
+  (role select viewer/editor; per-row role select + remove button after add).
+  As **viewer**: project appears in Load Project with "Shared" + "Locked by
+  <email>" chips *before* opening; opens read-only, `canCheckOut` false, NO
+  checkout affordance anywhere at any width — the role, not the lock, gates it.
+  Set Scale stays visible (the intended viewer scale share-back). Role flipped
+  to **editor** via the row select applies server-side immediately.
+- **Contention + hand-off, both directions, live.** Editor-role second user on
+  a locked project sees "<email> is editing" and no checkout. Owner's Turn In
+  flips the other session in ~3 s via the realtime subscription — the banner
+  swaps to a live "[Check out to Edit]" button. Checkout re-locks: the other
+  session drops to viewer, edit tools (e.g. #counterBtn) appear/disappear with
+  the lock, `checkedOutEmail` propagates both ways. The **waiting-notification
+  is the passive banner→button swap — no toast fires**; a user staring at the
+  canvas gets no proactive signal (papercut-grade at most; the banner is in the
+  header at desktop widths).
+- **Same-account stale-lock takeover works.** A lock held by a dead session of
+  the *same* user is reclaimable: the fresh session opens as viewer-of-own-lock
+  with `canCheckOut` true, and "Check out to Edit" succeeds — good recovery
+  behavior after a crashed tab.
+- **Mobile matrix (≤768px).** `#headerEditStatusBanner` (which carries BOTH the
+  "<email> is editing" line and the "[Check out to Edit]" button) is hidden by
+  the mobile media rule — intended consolidation into the sidebar drawer:
+  `#sidebarCheckoutBanner` mirrors both states. The burger drawer carries
+  neither. Papercut: at phone width there is no who's-editing / checkout signal
+  visible without opening the sidebar.
+- **Still not walked**: force turn-in from the other side (admin-only — belongs
+  to the J17 admin walk), and 30-minute expiry under contention (time-gated;
+  the expiry machinery itself is covered by save-engine unit tests + the
+  recovery-modal specs).

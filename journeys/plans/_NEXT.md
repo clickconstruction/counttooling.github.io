@@ -57,6 +57,24 @@ findings into the Tier-2/3 queues.
 > viewer `#hideMarksBtn` visibility-matrix check-later. **Still open**:
 > J13 contention + multi-user roles (needs a second account), J17 admin
 > interiors (test account isn't admin).
+>
+> **WALKED 2026-08-31 (second pass, two accounts)** — `test2@clickplumbing.com`
+> minted; J13 contention walked end-to-end (Share roles honored, lock
+> hand-off live both directions in ~3 s, same-account stale-lock takeover,
+> mobile matrix → sidebarCheckoutBanner consolidation: ALL VERIFIED against
+> prod backend; addendum in share-and-collaborate.md). Finding resolutions:
+> (1) hidden-tab save stall FIXED (claude/t3-save-stall-hidden-tab, merged);
+> (3) cleanup-test-accounts **verdict revised — purge appears healthy**: the
+> test account's oldest project row is 2026-08-30 and zero rows are week-old,
+> so the 113 (now 132) debris rows are all fresh churn from the Aug 29–31
+> execution burst, not backlog — re-check ~Sep 7; if the Aug 30–31 rows
+> persist then, the pg_cron job is genuinely dead (side nit: specs
+> double-create identically-named rows); (4) viewer `#hideMarksBtn`
+> RESOLVED not-a-bug (matrix walked 375–1400 px; addendum in
+> share-with-an-outsider.md). Still open: (2) access-log native `alert()`
+> (queued with the X8 sweep), J17 admin interiors + force turn-in
+> (needs an admin account; destructive admin actions stay out of scope on
+> prod), 30-min expiry under contention (time-gated).
 
 ## Stage 6 — ⚑ Tier-5 product session (roadmap, not code)
 The 17 verified `gap` rows, intersected with the standing HVAC direction

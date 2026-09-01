@@ -220,3 +220,17 @@ Scoped live walk on production with the dev-auth test account (`test@clickplumbi
 - **Not walked**: nothing left in J14's viewer path; the sending-side telemetry
   question (107 links / 56 accesses) is NOT a logging bug — the log records opens
   correctly, so under-conversion is real recipient behavior.
+
+## Check-later resolved: viewer `#hideMarksBtn` visibility matrix (2026-08-31)
+
+**NOT a bug — intended consolidation.** Live view-link viewer session walked
+across 375/700/768/769/800/900/1000/1400 px: the eye is visible at ≥769px and
+hidden at ≤768px, where `#headerBurger` appears and its first item ("Hide
+marks"/"Show marks", eye icon) mirrors the button — verified working at 768px
+with the per-link persistence key (`view:hideMarks:<token>`=1) written. No
+dead zone at any width. The JS `header-collapsed` overflow mode (the other
+path that hides `.consolidated-mobile`) never fires for the viewer's trimmed
+header, and its drawer carries the same item anyway. The original ~800px
+`display:none` sighting was almost certainly an `innerWidth` that had dipped
+to ≤768 CSS px (window chrome / scrollbar accounting) — the media boundary,
+not a distinct bug.

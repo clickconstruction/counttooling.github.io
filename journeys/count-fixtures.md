@@ -196,3 +196,28 @@ Adversarial pass, independent of both walks. Method: same recipe (throwaway node
 **Score: 12 CONFIRMED, 1 DOWNGRADED (finding 3 stumble→papercut), 0 KILLED.** All 13 proposals pass an independent spirit test — the two teach entries correctly refuse to add UI, and the two keeps are accurate. Nothing manufactured found; the dossier under-claims if anything (finding 1's mechanism is a two-part gap — prompt gating AND no mark re-application at PDF open — which the restore-prompt rework must address together).
 
 **Missed by the walker (minor):** the app boots and counts cleanly even when the vendor supabase-js file fails to load (accidentally exercised by the round-1 cloud guard) — decent offline resilience, worth a line in the offline guide, not a finding.
+
+## Field feedback — estimator screenshots (2026-09-01)
+
+First real-user feedback on the shipped Tier-2 counter-modal work (relayed by
+Diane from estimator Wendi, with screenshots; prod, macOS + Dock):
+
+1. **Details modal clipped on a Dock-shortened viewport (bug, FIXED).** The
+   edit-counter details card (`#counterLineTypeDetailsModal`) clipped at BOTH
+   ends — Delete/Close under the Dock, header off-screen — because the desktop
+   `.modal-card` has no max-height (the 85vh+scroll safety was mobile-only).
+   Same disease as the Tier-1 Set Scale clip; fixed the T1 way
+   (`max-height: min(85vh, calc(100vh - 64px))` + whole-card scroll, branch
+   claude/details-modal-clip). Follow-up worth queueing: audit which OTHER
+   tall modals still lack a desktop height clamp.
+2. **T2-05 name prefill read as "random names" (design feedback, softened).**
+   "Hose Bib" / "Water Cooler" prefills confused a user whose names are her
+   own fixture codes ("that's not a hose bib"). Kept the one-keystroke create,
+   but the prefilled name is now auto-selected whenever the Create tab
+   surfaces — first keystroke replaces it (branch
+   claude/create-tab-field-feedback; approved by Diane 2026-09-01).
+3. **Zero-match icon search blanked the grid (papercut, FIXED).** She typed
+   her fixture code into the icon search; no matches → the grid vanished with
+   no message ("hiding the ability to change the icon" — she self-blamed, the
+   UI contributed). Now a grid-spanning empty state names the query and says
+   to clear the search. Both fixes pinned in counter.spec.js.

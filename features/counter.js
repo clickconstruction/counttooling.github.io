@@ -163,6 +163,19 @@
     return { name: suffixed, color: nextUnusedCounterColor(counters, palette, color) };
   }
 
+  // Field report (2026-09-01): the T2-05 name prefill ("Hose Bib", "Water
+  // Cooler") read as the app naming counters at random — an estimator's names
+  // are her own fixture codes. Keep the one-keystroke create but select the
+  // prefilled text whenever the Create tab is surfaced, so the first
+  // keystroke replaces it instead of appending.
+  function focusCreateName() {
+    const nameInput = document.getElementById('counterName');
+    requestAnimationFrame(() => setTimeout(() => {
+      if (!nameInput.offsetParent) return; // Create panel not visible
+      nameInput.focus();
+      nameInput.select();
+    }, 0));
+  }
   document.getElementById('counterBtn').onclick = () => {
     const state = App.state;
     const modalSearchInput = document.getElementById('counterModalSearchInput');
@@ -171,6 +184,7 @@
     if (state.counters.length === 0) {
       // Fresh project: land on Create, prefilled — exactly like + Add.
       showCounterTab('create');
+      focusCreateName();
     } else {
       showCounterTab('choose');
       populateCounterChooseList();
@@ -179,7 +193,10 @@
     App.showModal('counterModal');
   };
   // counterBtn's right-click handler lives in features/tool-context-menu.js.
-  document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => showCounterTab(t.dataset.tab));
+  document.querySelectorAll('#counterModal .counter-tab').forEach(t => t.onclick = () => {
+    showCounterTab(t.dataset.tab);
+    if (t.dataset.tab === 'create') focusCreateName();
+  });
   const counterModalSearchInput = document.getElementById('counterModalSearchInput');
   if (counterModalSearchInput) {
     counterModalSearchInput.oninput = counterModalSearchInput.onkeyup = () => populateCounterChooseList(counterModalSearchInput.value);
@@ -200,6 +217,7 @@
     showCounterTab('create');
     prepCreatePanel();
     App.showModal('counterModal');
+    focusCreateName();
   };
   document.querySelectorAll('#counterCreatePanel .counter-icon-tab').forEach(t =>
     t.onclick = () => showCounterIconTab(t.dataset.iconTab));
@@ -210,6 +228,14 @@
     const icons = App.getOrderedIcons();
     const filtered = q ? icons.filter(ic => ic.terms.some(t => t.includes(q))) : icons;
     const hadCustomSelected = customGrid.querySelector('.icon-cell.selected');
+    // Field report (2026-09-01): an estimator typed her fixture code into this
+    // search, got zero matches, and the grid silently vanished — "it hid the
+    // ability to change the icon". Zero matches keeps the grid area with an
+    // honest empty state instead.
+    if (q && filtered.length === 0) {
+      grid.innerHTML = '<p class="icon-grid-empty">No icons match &ldquo;' + App.escapeHtml(q) + '&rdquo; &mdash; clear the search to see every icon.</p>';
+      return;
+    }
     grid.innerHTML = App.iconGridCellsHtml(filtered, App.iconVbFor, (ic, i) => i === 0 && !hadCustomSelected);
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));

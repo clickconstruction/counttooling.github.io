@@ -737,6 +737,7 @@
     .add-canvas-mode-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border2); }
     .add-canvas-mode-btn.selected { background: var(--accent); color: var(--bg); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .modal-card .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; max-height: 200px; overflow-y: auto; margin-top: 8px; }
+    .modal-card .icon-grid .icon-grid-empty { grid-column: 1 / -1; margin: 8px 0; color: var(--text2); font-size: 0.85rem; }
     .modal-card .icon-cell { width: 36px; height: 36px; padding: 4px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; }
     .modal-card .icon-cell:hover { background: var(--surface3); }
     .modal-card .icon-cell.selected { background: var(--surface3); border-color: var(--accent); }

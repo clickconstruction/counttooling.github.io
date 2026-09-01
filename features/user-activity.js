@@ -124,7 +124,7 @@
     const headers = { 'Authorization': 'Bearer ' + session.access_token, 'apikey': App.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
     if (subEl) {
       subEl.textContent = state.userActivityViewMode === 'summary'
-        ? 'Per-user event counts (rolling windows) and last sign-in. Days are in CST not UTC.'
+        ? 'Per-user event counts (rolling windows) and last sign-in. Days are US Central (Chicago).'
         : 'Latest events across all users (newest first). Event times are US Central (Chicago).';
     }
     if (state.userActivityViewMode === 'summary') {

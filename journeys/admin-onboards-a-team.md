@@ -231,10 +231,20 @@ Global force reload were deliberately NOT exercised on prod.
   (locked by test2), Project Settings → "Force turn-in (admin)" is visible,
   confirm-gated, and works — the lock cleared and the other session was
   demoted to viewer in ~3 s via the realtime flip, edit tools revoked.
-  **NEW stumble-grade finding: the forced-out editor gets NO notice** — no
-  modal, no toast; the header banner just swaps to "[Check out to Edit]". A
-  user mid-edit silently loses their tools with zero explanation (contrast:
-  checkout EXPIRY gets a dedicated recovery modal). Open question: dirty
-  unsaved edits at the moment of force-out — what happens to them?
+  **Stumble-grade finding (corrected + FIXED same day)**: the walk first
+  recorded "no notice at all" for the forced-out editor; code review showed a
+  transient toast did exist (the walk probe missed its 3 s window) — but a
+  toast is too weak for silently losing edit mode. **FIXED 2026-08-31
+  (branch claude/force-turnin-notice-modal)**: the demoted editor now gets
+  the force-turn-in notice modal (mock-up reviewed and approved by Will —
+  "Keep viewing" as the primary, "Check out to edit" secondary; saved /
+  unsaved-edits variants), opened by the engine via `ctx.notifyForceTurnedIn`
+  → `App.openForceTurnInNoticeModal` (features/turn-in.js), toast fallback
+  retained, Esc-ladder rung added, save-engine.test.js pins the hook.
+  Verified live on prod: two force cycles → modal both times, Keep viewing /
+  Check out to edit / Esc all exercised. The dirty-edits question also
+  resolved in code review: the engine already flushes unsaved edits before
+  demotion when it can (`force_turn_in_flush_*` events), and the modal's
+  warning variant covers the can't-flush case.
 - **Global force reload**: `#advancedGlobalForceReload` present in Advanced
   (presence verified only — never clicked on prod).

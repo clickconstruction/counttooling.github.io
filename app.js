@@ -492,6 +492,10 @@
     updateSettingsCheckoutSection: () => updateSettingsCheckoutSection(),
     clearCheckoutExpiredAttention: () => clearCheckoutExpiredAttention(),
     setCheckoutExpiredAttention: () => { checkoutExpiredNeedsAttention = true; suspendAutoSaveUntilCheckout = true; },
+    // Force turn-in notice modal (features/turn-in.js) — deferred App.* lookup
+    // per the registry load-order rule; truthy return = handled (engine skips
+    // its toast fallback).
+    notifyForceTurnedIn: (info) => !!(window.App && window.App.openForceTurnInNoticeModal && window.App.openForceTurnInNoticeModal(info)),
     suspendAutoSave: () => { suspendAutoSaveUntilCheckout = true; },
     isAuthError: (e) => isAuthError(e),
     // T1-01 clobber guard: deferred App.* lookup (features/restore-last-session.js
@@ -6676,6 +6680,7 @@
       }
       else if (document.getElementById('addCanvasModal').classList.contains('visible')) { hideModal('addCanvasModal'); }
       else if (document.getElementById('deleteCanvasConfirmModal').classList.contains('visible')) { hideModal('deleteCanvasConfirmModal'); }
+      else if (document.getElementById('forceTurnInNoticeModal').classList.contains('visible')) { hideModal('forceTurnInNoticeModal'); }
       else if (document.getElementById('canvasDetailsModal').classList.contains('visible')) {
         // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
         document.getElementById('canvasDetailsClose').click();

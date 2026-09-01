@@ -918,10 +918,17 @@ function createSaveEngine(ctx) {
     ctx.updateStatus();
     if (prevWasCheckedOut && state.isViewer) {
       pushSaveEvent('force_turn_in', hadDirty ? 'Force turn-in with unsaved edits' : 'Force turn-in');
-      if (hadDirty) {
-        ctx.showToast('Project was turned in by another user. Unsaved edits may have been lost - check Save status (bell).', 6000);
-      } else {
-        ctx.showToast('Project was turned in. You can check out to edit again.');
+      // Stage-5 J17 finding: a transient toast is too weak for silently losing
+      // edit mode — the app-side hook opens the force-turn-in notice modal.
+      // Toasts remain the fallback when the hook is absent (or reports
+      // unhandled, e.g. the feature file failed to register).
+      const noticed = !!(ctx.notifyForceTurnedIn && ctx.notifyForceTurnedIn({ hadDirty }));
+      if (!noticed) {
+        if (hadDirty) {
+          ctx.showToast('Project was turned in by another user. Unsaved edits may have been lost - check Save status (bell).', 6000);
+        } else {
+          ctx.showToast('Project was turned in. You can check out to edit again.');
+        }
       }
     } else if (!prevCanCheckOut && state.canCheckOut) {
       if (prevCheckedOutEmail) {

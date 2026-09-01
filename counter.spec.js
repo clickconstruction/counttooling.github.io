@@ -322,6 +322,47 @@ test.describe('T2-05 counter-modal create ergonomics', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // Field feedback 2026-09-01: a zero-match search used to blank the grid
+  // with no explanation ("it hid the ability to change the icon"). Now an
+  // empty state names the query, and clearing the search restores the grid.
+  test('zero-match icon search shows an empty state, not a vanished grid', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.locator('#counterIconSearch').fill('SS-8');
+    const empty = page.locator('#counterIconGrid .icon-grid-empty');
+    await expect(empty).toBeVisible();
+    await expect(empty).toContainText('No icons match');
+    await expect(empty).toContainText('ss-8');
+    await page.locator('#counterIconSearch').fill('');
+    expect(await page.locator('#counterIconGrid .icon-cell').count()).toBeGreaterThan(0);
+
+    expect(errors).toEqual([]);
+  });
+
+  // Field feedback 2026-09-01: the T2-05 name prefill read as "random names"
+  // to an estimator whose names are her own fixture codes. The prefill is now
+  // selected whenever the Create tab surfaces, so the first keystroke
+  // replaces it.
+  test('Create-tab name prefill is selected so typing replaces it', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.waitForFunction(() => {
+      const inp = /** @type {HTMLInputElement} */ (document.getElementById('counterName'));
+      return document.activeElement === inp && inp.value.length > 0 &&
+        inp.selectionStart === 0 && inp.selectionEnd === inp.value.length;
+    });
+    await page.keyboard.type('SS-8');
+    await expect(page.locator('#counterName')).toHaveValue('SS-8');
+
+    expect(errors).toEqual([]);
+  });
 });
 
 // T2-13 — the Manage Icons opener re-homed from Settings → Advanced to a

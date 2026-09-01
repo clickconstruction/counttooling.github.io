@@ -246,5 +246,23 @@ Global force reload were deliberately NOT exercised on prod.
   resolved in code review: the engine already flushes unsaved edits before
   demotion when it can (`force_turn_in_flush_*` events), and the modal's
   warning variant covers the can't-flush case.
+
+  **Field follow-up (2026-09-01, FIXED same day)**: an estimator reported the
+  notice modal re-appearing "every few minutes" on a long-lived tab she kept
+  open while working elsewhere. Root cause was a pre-existing misdiagnosis
+  the modal amplified: `list_accessible_projects` keeps an EXPIRED lock
+  attributed to its last holder (`checked_out_by = me`, `can_edit = false`),
+  so the client's was-checked-out edge re-armed on EVERY permissions refresh
+  — and once demoted to viewer, the visibility probe (which owns expiry)
+  never ran, leaving the naked branch to nag on every tab return, claiming
+  "an admin turned this project in" for what was her own 30-minute expiry
+  (after the silent auto-recheckout cap was exhausted). Fix (branch
+  claude/force-turnin-expiry-reclass): the demotion branch now CLASSIFIES —
+  expiry-shaped demotions (self-stale attribution, or a stale stamp when
+  someone else claimed the lock) route to the existing one-shot expiry
+  machinery and normalize the stale self-attribution so the edge fires once;
+  only a LIVE lock externally cleared/taken (which only an admin can do)
+  gets the notice modal, and the opener refuses to stack over itself.
+  Three save-engine.test.js cases pin the classification.
 - **Global force reload**: `#advancedGlobalForceReload` present in Advanced
   (presence verified only — never clicked on prod).

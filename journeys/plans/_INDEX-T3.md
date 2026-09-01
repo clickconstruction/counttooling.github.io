@@ -67,5 +67,6 @@ stoic-engelbart-e11137); `claude/admin-send-signin-link` and
 `feat/notes-ledger` / `feat/notes-rfi-loop` / `feat/robot-pdf-intake` were
 audited the same day (each tip an ancestor of main, 0 unique commits, landed
 via the merge/notes-ledger-to-main integration, no open PRs reference them)
-and are recommended for deletion too — still present on origin as of this
-note.
+and DELETED from origin as well. Remaining branches are all live: main, the
+two unmerged in-flight fixes above, and the six unmerged `feat/*` PipeTooling
+lanes.

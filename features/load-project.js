@@ -483,7 +483,7 @@
               openCanvasOnlyNeedsPdfModal({ reason: 'pdf_missing' });
               return;
           }
-          await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
+          await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup, proj.name);
           state.pdfStoragePath = proj.pdf_path;
           state.pdfBuffer = null;
           state.pdfBufferSize = 0;

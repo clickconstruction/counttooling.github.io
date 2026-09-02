@@ -110,16 +110,21 @@
     }
     return (buf && buf.byteLength > 0) ? buf : null;
   }
-  async function buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup) {
+  async function buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup, planName) {
     const bufPdf = buf.slice(0);
     const bufStorage = buf.slice(0);
     const pdf = await App.getPdfDocument(bufPdf).promise;
     App.clearPdfBitmapCache();
     App.state.pages = [];
     const numPages = pdf.numPages;
+    // Default page labels carry the plan name, not a hardcoded "document.pdf"
+    // (same root cause as B6's view-only.js / restore-last-session.js fix).
+    // Saved labels — including owner renames — override these below via
+    // applyPageAnnotationsFromData / applyTakeoffBackupToState.
+    const defaultName = planName || 'Untitled';
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? ('document.pdf — p' + (i + 1)) : 'document.pdf';
+      const label = numPages > 1 ? (defaultName + ' — p' + (i + 1)) : defaultName;
       const canvasId = App.uid();
       App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
       App.state.activeCanvasIdByPage[i] = canvasId;
@@ -216,7 +221,7 @@
         App.showToast('Cannot copy: PDF is missing from storage. Open the project and upload a PDF if needed.', 5000);
         return;
       }
-      const bufStorage = await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup);
+      const bufStorage = await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup, proj.name);
       const nameTrim = (forkName || '').trim() || 'Untitled';
       await applyLocalForkAfterPdfLoad(nameTrim, bufStorage);
     } catch (e) {

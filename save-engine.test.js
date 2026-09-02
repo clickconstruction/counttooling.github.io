@@ -274,7 +274,7 @@ test('backup writer: serializes the takeoff under the local key and stamps succe
   const state = {
     isViewer: false, currentProjectId: null, pdfBuffer: null, pdfHash: null,
     currentProjectName: null, supabaseSession: null,
-    pages: [{ canvases: [{ id: 'c', name: 'Main', annotations: { counterMarkers: { x: [{}] } } }], scale: null, rotation: 0 }],
+    pages: [{ label: 'P-101 Underground', canvases: [{ id: 'c', name: 'Main', annotations: { counterMarkers: { x: [{}] } } }], scale: null, rotation: 0 }],
     counters: [{ id: 'x' }], lineTypes: [], groups: [],
     counterSettings: {}, lineTypeSettings: {}, exportSettings: {}, recentLineColors: [],
     iconNames: {}, iconOrder: null, legendSettings: {}, multiplyZoneSettings: {},
@@ -289,6 +289,7 @@ test('backup writer: serializes the takeoff under the local key and stamps succe
   assert.strictEqual(projectId, 'local');
   assert.strictEqual(data.counters[0].id, 'x');
   assert.strictEqual(data.pageCanvases.length, 1);
+  assert.deepStrictEqual(data.pageLabels, ['P-101 Underground']);
   assert.ok(engine.getLastLocalBackupAt());
   assert.strictEqual(engine.getLastLocalBackupOk(), true);
   engine.resetLocalBackupState();

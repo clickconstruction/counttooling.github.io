@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '27fb049fa753';
+const CACHE_VERSION = 'b83e8cf97f21';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -185,9 +185,9 @@ const PRECACHE_SHA256 = {
   '/idb.js': '9049553ce54d58b56dc33d8e166721ba26602cfd65b82098a6a51c59956c75da',
   '/format.js': 'c8958ee9c4f87c854deebc128f2db5b7e1c25b33dfe5d2f68334ac947b844ea5',
   '/save-utils.js': '3ba2623bcd4981c6289555e2172805a9592ba4c789ea180fc7623f6aa27c9c25',
-  '/annotation-model.js': 'd1796a650a5cce82e6e1650d54954cb8fb900c1b7e9e6e54bedd1972b90d24e3',
+  '/annotation-model.js': 'c3996361af78d83441cafa9c1c95f9b5fb8d5113e51b072ce39cc53ce3734406',
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
-  '/save-engine.js': '99787873de8ba854aa47d7316247e977f2bf28261ceacb5443e8c0f317759e46',
+  '/save-engine.js': 'ec223e7f3e2573ad6253548e7099a007e5057430ee89093e7eba6fcccffc44ef',
   '/pdf-tile-cache.js': 'cd2631a09682e5b5216e805f4d44c5a75c5bbc01fbbb6237d2bf62bf021e5ade',
   '/app.js': '15fbbc6f1f75f286f67cf50423e316ac7ba87af34853aee06cddf36a1e8abadd',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
@@ -218,10 +218,10 @@ const PRECACHE_SHA256 = {
   '/features/turn-in.js': '8d67fcc5ef4c27065d575067b5e3646530947aa6e0f0026869c1617106e9ddab',
   '/features/manage-projects.js': 'c010b8f2b84ba5715ca33a6e907baf3de488fad439b9651d966d795674fe257c',
   '/features/user-admin.js': '3857cff271dbb61e78c2c76bd2dee626d6327058243725c911c03736bdb5371a',
-  '/features/load-project.js': '8574c29c0362f7a45d1a5ee671a1040e4e532d0e191782cf0aa1d28186c7e696',
+  '/features/load-project.js': 'c873aae73ea262704a8f3bafec74233c70bb0e9a0c149e2cfad32ce427c1517f',
   '/features/bid-board.js': '8e91d2640ef8e9e050232ee962daa03054f1f8712198eee97114c17caa4da143',
   '/features/review-flow.js': '7fe62b8120ac3ea327db6851365a4b17ef19e60fa8bf5646ccc3970d142f2405',
-  '/features/copy-project.js': '56e6d3bbd705e0006e1269775ea81bc44ee717eec9121f887dc1a7f1ae95cb56',
+  '/features/copy-project.js': '380a2619f0fadebd6249366b411ec690db86bbeb659bc79f80483e3ac4ae0ba6',
   '/features/prepare-pdf.js': 'fa59aad964c2c0282cd1e85f38aca90a099ae38905376fe023c59d38cc39f76d',
   '/features/quick-modals.js': '057e4a027008b42bf810ef0d983b8e2474f6355884fc8ab48f20122f4a383097',
   '/features/pdf-bundle.js': '9f08fe5a316ff8c82561c4655c6b2d4d4858268bb3ee2807fe6e61df0cc8351e',

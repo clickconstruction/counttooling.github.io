@@ -366,6 +366,7 @@ function createSaveEngine(ctx) {
       pageCanvases: state.pages.map(p => p.canvases),
       activeCanvasIdByPage: state.activeCanvasIdByPage || {},
       numberKeyBindings: state.numberKeyBindings || {},
+      pageLabels: state.pages.map(p => p.label),
       pageScales: state.pages.map(p => p.scale),
       pageRotations: state.pages.map(p => p.rotation ?? 0),
       pageBakeFrames: state.pages.map(p => ctx.computePageBakeFrame(p))

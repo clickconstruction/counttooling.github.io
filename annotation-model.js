@@ -206,6 +206,7 @@ function createAnnotationModel(ctx) {
         ...data,
         pages: data.pageCanvases.map((canvases, i) => ({
           index: i,
+          label: data.pageLabels?.[i],
           canvases,
           scale: data.pageScales?.[i],
           rotation: (data.pageRotations?.[i] ?? 0),
@@ -270,6 +271,7 @@ function createAnnotationModel(ctx) {
     }
     if (backup.pageScales) backup.pageScales.forEach((s, i) => { if (ctx.getState().pages[i]) ctx.getState().pages[i].scale = s; });
     if (backup.pageRotations) backup.pageRotations.forEach((r, i) => { if (ctx.getState().pages[i]) ctx.getState().pages[i].rotation = r ?? 0; });
+    if (backup.pageLabels) backup.pageLabels.forEach((l, i) => { if (typeof l === 'string' && l && ctx.getState().pages[i]) ctx.getState().pages[i].label = l; });
     if (backup.pageBakeFrames) backup.pageBakeFrames.forEach((bf, i) => { if (ctx.getState().pages[i]) verifyPageBakeFrame(ctx.getState().pages[i], bf); });
     if (backup.legendSettings) ctx.getState().legendSettings = { ...ctx.getState().legendSettings, ...backup.legendSettings };
     if (backup.multiplyZoneSettings) ctx.getState().multiplyZoneSettings = { ...ctx.getState().multiplyZoneSettings, ...backup.multiplyZoneSettings };
@@ -344,6 +346,9 @@ function createAnnotationModel(ctx) {
       page.canvases = [{ id: ctx.uid(), name: 'Main', annotations: ann }];
       delete page.annotations;
     }
+    // The saved sheet name (pages-list / Prepare PDF rename) must win over the
+    // default label callers pre-seed at page construction — like scale/rotation.
+    if (typeof p.label === 'string' && p.label) page.label = p.label;
     page.scale = p.scale !== undefined ? p.scale : (scaleFallback ?? null);
     page.rotation = p.rotation ?? 0;
     verifyPageBakeFrame(page, p.bakeFrame);

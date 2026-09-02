@@ -110,10 +110,12 @@ test('backupDataToProjFormat converts pageCanvases arrays to the pages[] shape',
   const m = createAnnotationModel(makeCtx({}).ctx);
   const backup = {
     counters: [], pageCanvases: [[{ id: 'c', annotations: {} }]],
+    pageLabels: ['P-101'],
     pageScales: [{ feet: 10 }], pageRotations: [90], pageBakeFrames: [{ w: 1, h: 2 }],
   };
   const proj = m.backupDataToProjFormat(backup);
   assert.strictEqual(proj.pages.length, 1);
+  assert.strictEqual(proj.pages[0].label, 'P-101');
   assert.deepStrictEqual(proj.pages[0].scale, { feet: 10 });
   assert.strictEqual(proj.pages[0].rotation, 90);
   // already-proj-shaped data passes through untouched
@@ -123,19 +125,21 @@ test('backupDataToProjFormat converts pageCanvases arrays to the pages[] shape',
 
 test('applyPageAnnotationsFromData: canvases shape normalizes fields; legacy shape wraps', () => {
   const m = createAnnotationModel(makeCtx({}).ctx);
-  const page = {};
+  const page = { label: 'default.pdf — p1' };
   m.applyPageAnnotationsFromData(page, {
     canvases: [{ annotations: { counterMarkers: { x: [{}] }, polylines: 'bogus' } }],
-    scale: { feet: 5 }, rotation: 180,
+    label: 'P-101 Underground', scale: { feet: 5 }, rotation: 180,
   });
   assert.strictEqual(page.canvases[0].name, 'Main');
   assert.deepStrictEqual(page.canvases[0].annotations.polylines, []);   // bogus -> []
   assert.strictEqual(page.canvases[0].annotations.counterMarkers.x.length, 1);
+  assert.strictEqual(page.label, 'P-101 Underground');   // saved rename wins
   assert.strictEqual(page.rotation, 180);
 
-  const legacyPage = {};
+  const legacyPage = { label: 'plan.pdf' };
   m.applyPageAnnotationsFromData(legacyPage, { annotations: { notes: [{ text: 'n' }] } }, { feet: 3 });
   assert.strictEqual(legacyPage.canvases[0].annotations.notes.length, 1);
+  assert.strictEqual(legacyPage.label, 'plan.pdf');       // no saved label -> preset kept
   assert.deepStrictEqual(legacyPage.scale, { feet: 3 });                // scaleFallback
 });
 
@@ -161,11 +165,13 @@ test('applyTakeoffBackupToState restores canvases, scales, and settings onto sta
     groups: [{ id: 'g' }],
     customIconPaths: [{ value: 'p' }],
     pageCanvases: [[{ id: 'c1', annotations: {} }]],
+    pageLabels: ['P-201 First Floor'],
     pageScales: [{ feet: 8 }],
     pageRotations: [90],
     legendSettings: { b: 2 },
   });
   assert.strictEqual(state.counters[0].id, 'x');
+  assert.strictEqual(state.pages[0].label, 'P-201 First Floor');
   assert.strictEqual(calls.groupColors, 1);
   assert.deepStrictEqual(calls.savedIcons[0], [{ value: 'p' }]);
   assert.strictEqual(state.pages[0].canvases[0].id, 'c1');

@@ -1851,13 +1851,13 @@
     </div>
   </div>
   <div class="modal-overlay" id="canvasRepairModal">
-    <div class="modal-card modal-card-large">
+    <div class="modal-card modal-card-large modal-card-flex">
       <div class="modal-card-header">
         <h2>Canvas Repair</h2>
         <button type="button" class="modal-close-btn" id="canvasRepairModalClose" aria-label="Close">×</button>
       </div>
       <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Reassign annotations to PDF pages and fix rotation when the canvas is on the wrong page or rotated incorrectly.</p>
-      <div class="form-group" style="max-height:50vh;overflow-y:auto;">
+      <div class="form-group modal-flex-scroll" style="max-height:50vh;overflow-y:auto;">
         <table class="canvas-repair-table" id="canvasRepairTable">
           <thead>
             <tr><th>PDF Page</th><th>Annotations from</th><th>Rotation</th></tr>
@@ -1963,7 +1963,7 @@
     </div>
   </div>
   <div class="modal-overlay" id="paletteInsightsModal">
-    <div class="modal-card" style="max-width:520px;">
+    <div class="modal-card modal-card-flex" style="max-width:520px;">
       <div class="modal-card-header">
         <h2>My Standards</h2>
         <button type="button" id="paletteInsightsAddAll" class="plum-header-add-btn">Add all frequently used</button>
@@ -1974,7 +1974,7 @@
         <div id="paletteInsightsMinSeg" class="pi-seg"></div>
         <span id="paletteInsightsHidden" class="pi-hidden"></span>
       </div>
-      <div id="paletteInsightsBody" style="max-height:52vh;overflow-y:auto;">
+      <div id="paletteInsightsBody" class="modal-flex-scroll" style="max-height:52vh;overflow-y:auto;">
         <label>Counters</label>
         <div id="paletteInsightsCounters"></div>
         <label style="display:block;margin-top:12px;">Line Types</label>
@@ -2059,13 +2059,13 @@
     </div>
   </div>
   <div class="modal-overlay" id="manageUserModal">
-    <div class="modal-card modal-card-large user-list-modal">
+    <div class="modal-card modal-card-large user-list-modal modal-card-flex">
       <div class="manage-users-modal-header">
         <h2>Manage Users</h2>
         <button type="button" id="manageUserModalAllActivityBtn" class="manage-users-header-activity-btn" aria-label="View activity for all users"></button>
       </div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Passwords, transfers, activity, and deletes &mdash; per user.</p>
-      <div id="manageUserList" class="settings-users-list" style="max-height:64vh;"></div>
+      <div id="manageUserList" class="settings-users-list modal-flex-scroll" style="max-height:64vh;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="manageUserModalClose">Close</button>
       </div>
@@ -2150,17 +2150,17 @@
     </div>
   </div>
   <div class="modal-overlay" id="allUsersModal">
-    <div class="modal-card modal-card-large user-list-modal">
+    <div class="modal-card modal-card-large user-list-modal modal-card-flex">
       <h2>All Users</h2>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">All users in the system.</p>
-      <div id="allUsersList" class="settings-users-list" style="max-height:60vh;"></div>
+      <div id="allUsersList" class="settings-users-list modal-flex-scroll" style="max-height:60vh;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="allUsersModalClose">Close</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="userActivityModal">
-    <div class="modal-card modal-card-large">
+    <div class="modal-card modal-card-large modal-card-flex">
       <div class="user-activity-modal-header">
         <h2 id="userActivityModalTitle">Activity log</h2>
         <div id="userActivityModalViewToggle" class="user-activity-view-toggle user-activity-view-toggle-hidden" role="group" aria-label="View mode">
@@ -2185,27 +2185,27 @@
         </div>
         <p id="userActivityUserListHint" class="form-group" style="display:none;margin:8px 0 0;font-size:0.8rem;color:var(--text3);"></p>
       </div>
-      <div id="userActivityList" class="settings-users-list" style="max-height:55vh;overflow-y:auto;font-size:0.85rem;"></div>
+      <div id="userActivityList" class="settings-users-list modal-flex-scroll" style="max-height:55vh;overflow-y:auto;font-size:0.85rem;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="userActivityModalClose">Close</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="userActivityOverviewModal">
-    <div class="modal-card modal-card-large">
+    <div class="modal-card modal-card-large modal-card-flex">
       <h2>Activity overview</h2>
       <p id="uaoSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
-      <div id="uaoBody" style="max-height:64vh;overflow-y:auto;"></div>
+      <div id="uaoBody" class="modal-flex-scroll" style="max-height:64vh;overflow-y:auto;"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="uaoClose">Close</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="manageProjectsModal">
-    <div class="modal-card modal-card-large">
+    <div class="modal-card modal-card-large modal-card-flex">
       <h2>Manage Projects</h2>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">View and delete projects. Deletion removes the project and its stored PDF.</p>
-      <div id="manageProjectsList" class="settings-users-list"></div>
+      <div id="manageProjectsList" class="settings-users-list modal-flex-scroll"></div>
       <div class="actions" style="margin-top:16px;">
         <button type="button" id="manageProjectsModalClose">Close</button>
       </div>
@@ -2439,7 +2439,7 @@
     </div>
   </div>
   <div class="modal-overlay" id="preparePdfModal">
-    <div class="modal-card" style="max-width:min(960px,92vw);">
+    <div class="modal-card modal-card-flex" style="max-width:min(960px,92vw);">
       <h2 id="preparePdfTitle">Prepare PDF for Cloud</h2>
       <p class="form-group" id="preparePdfDescription" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
       <div class="form-group prepare-pdf-name-row" id="preparePdfNameRow">
@@ -2449,7 +2449,7 @@
         </div>
         <input type="text" id="preparePdfName" placeholder="Untitled" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
-      <div class="form-group" id="preparePdfGridWrap">
+      <div class="form-group modal-flex-scroll" id="preparePdfGridWrap">
         <div class="prepare-pdf-grid-bar">
           <span id="preparePdfGridStatus">Keeping 0 of 0 sheets</span>
           <span class="prepare-pdf-grid-bulk">
@@ -2459,7 +2459,7 @@
         </div>
         <div id="preparePdfGrid" class="prepare-pdf-grid"></div>
       </div>
-      <div id="preparePdfSheetWrap" style="display:none;">
+      <div id="preparePdfSheetWrap" class="modal-flex-scroll" style="display:none;">
       <div class="form-group">
         <label id="preparePdfPageLabel">Page 1 of 1</label>
         <div id="preparePdfPreviewWrap" style="height:min(400px,55vh);overflow:hidden;background:var(--surface2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;">

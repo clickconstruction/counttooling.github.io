@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'b83e8cf97f21';
+const CACHE_VERSION = 'd09023bbde9b';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -188,7 +188,7 @@ const PRECACHE_SHA256 = {
   '/annotation-model.js': 'c3996361af78d83441cafa9c1c95f9b5fb8d5113e51b072ce39cc53ce3734406',
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': 'ec223e7f3e2573ad6253548e7099a007e5057430ee89093e7eba6fcccffc44ef',
-  '/pdf-tile-cache.js': 'cd2631a09682e5b5216e805f4d44c5a75c5bbc01fbbb6237d2bf62bf021e5ade',
+  '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
   '/app.js': '15fbbc6f1f75f286f67cf50423e316ac7ba87af34853aee06cddf36a1e8abadd',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'a345c3342210e8510999108f0ae9f106688f665af9ef4e167beaa9ea24d670a9',

@@ -2032,6 +2032,9 @@
       counterSize: (cs.size || 22) * scale * markerScale,
       counterOutline: (cs.outlineSize != null ? cs.outlineSize : 0) * scale * markerScale,
       counterNumberSize: (cs.numberSize || 10) * scale * markerScale,
+      // Duct strokes (ductStrokePx bands) are screen-constant on the live
+      // overlay (env default 1); exports scale them with the raster like lineWidth.
+      ductStrokeScale: scale * lineScale,
       fontFamily: 'sans-serif',
       selection: null,
       drawNoteHandles: false,

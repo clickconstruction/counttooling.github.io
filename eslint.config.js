@@ -34,8 +34,15 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./line-metrics.js')),
       Object.keys(require('./canvas-draw.js')),
       Object.keys(require('./render-service.js')),
+      Object.keys(require('./duct-model.js')),
     )
     .map((k) => [k, 'readonly']),
+);
+
+// duct-model.js: the pure duct math/model module. canvas-draw.js (persisted
+// duct-run painter) and the duct feature files read its exports by bare name.
+const ductModelGlobals = Object.fromEntries(
+  Object.keys(require('./duct-model.js')).map((k) => [k, 'readonly']),
 );
 
 // idb.js / format.js only reach for the store-name / cap / TZ constants by bare
@@ -165,7 +172,7 @@ module.exports = [
   // canvas-draw.js: the annotation draw core (createCanvasDraw(deps));
   // loaded after geometry.js + icons.js, reads both by bare name; everything
   // state-coupled arrives via deps.
-  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals }),
+  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals }),
   // render-service.js: the raster seam (createRenderService(deps)) — browser
   // globals only (Worker, OffscreenCanvas, navigator); the rest arrives via deps.
   browserModule(['render-service.js']),
@@ -205,6 +212,10 @@ module.exports = [
     buildReportHtml: 'readonly',
     ...Object.fromEntries(Object.keys(require('./idb.js')).map((k) => [k, 'readonly'])),
     ...constantsGlobals,
+    // duct feature files (features/duct-tool.js, features/duct-size-popover.js)
+    // read the pure duct math/model + the airside color map by bare name.
+    ...ductModelGlobals,
+    DUCT_AIRSIDE_COLORS: 'readonly',
   }),
   {
     // sw.js — the PWA service worker; its own ServiceWorkerGlobalScope (self,

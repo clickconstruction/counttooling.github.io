@@ -112,6 +112,12 @@
         <button id="polylineBtn" class="sidebar-triggers" title="Polyline (right-click for Line Type settings)" aria-label="Polyline">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
         </button>
+        <!-- Duct tool (DUCT-PLAN unit D2): PREVIEW-FLAGGED — features/duct-tool.js
+             shows this only when localStorage 'clickcount-duct-preview' is set
+             (App.enableDuctPreview()); D5 removes the flag and ships it live. -->
+        <button id="ductBtn" class="sidebar-triggers" style="display:none;" title="Duct run (preview)" aria-label="Duct">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M48 224h224v192H48zM288 256h160v128H288zM464 284h128v72H464z"/></svg>
+        </button>
         <button id="highlightBtn" class="sidebar-triggers" title="Highlight" aria-label="Highlight">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M347 379L505.4 163.9L476.1 134.6L261 293L347 379zM160 384L160 384L160 312.3C160 297 167.2 282.7 179.5 273.7L452.6 72.4C460 66.9 469 64 478.2 64C489.6 64 500.5 68.5 508.6 76.6L563.4 131.4C571.5 139.5 576 150.4 576 161.9C576 171.1 573.1 180.1 567.6 187.5L366.4 460.5C357.4 472.8 343 480 327.8 480L256.1 480L230.7 505.4C218.2 517.9 197.9 517.9 185.4 505.4L134.7 454.7C122.2 442.2 122.2 421.9 134.7 409.4L160 384zM39 530.3L90.7 478.6L161.3 549.2L141.6 568.9C137.1 573.4 131 575.9 124.6 575.9L56 576C42.7 576 32 565.3 32 552L32 547.3C32 540.9 34.5 534.8 39 530.3z"/></svg>
         </button>
@@ -457,6 +463,12 @@
           <button id="finishPolyline">Finish</button>
           <button id="closePolygon">Close Polygon</button>
         </div>
+        <!-- Duct trace finish bar (features/duct-tool.js toggles .visible;
+             Enter / double-click are the keyboard/mouse twins). -->
+        <div class="polyline-finish-bar" id="ductFinishBar">
+          <button id="finishDuctRunBtn">Finish Duct Run</button>
+          <button id="ductSizeStepBtn" title="Step the duct size (S)">Size… (S)</button>
+        </div>
         <div id="syncPausedBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
           <span class="sync-paused-banner-msg">Cloud sync paused - your work is saved locally. Reconnecting...</span>
           <button type="button" id="syncPausedBannerRetry" class="sync-paused-banner-retry">Retry now</button>
@@ -757,6 +769,51 @@
       <div class="actions">
         <button id="polylineCancel">Cancel</button>
         <button id="polylineStart">Start Drawing</button>
+      </div>
+    </div>
+  </div>
+  <!-- New Duct Run (DUCT-PLAN unit D2, preview-flagged): the create step sets
+       ONLY starting size, pressure class, and liner — airside defaults to
+       supply (the chip UI is D4's), everything else changes mid-trace via the
+       S popover. Name is auto-suggested like T2-12's nextPolylineName. -->
+  <div class="modal-overlay" id="ductCreateModal">
+    <div class="modal-card">
+      <h2>New Duct Run</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="ductCreateName" placeholder="e.g. RTU-1 supply main">
+      </div>
+      <div class="form-group">
+        <label>Starting size (inches)</label>
+        <div class="duct-shape-toggle" id="ductCreateShapeToggle">
+          <button type="button" data-shape="rect" class="active">Rect</button>
+          <button type="button" data-shape="round">Round</button>
+        </div>
+        <div class="duct-size-inputs" id="ductCreateRectInputs">
+          <input type="number" id="ductCreateW" min="2" step="1" value="24" aria-label="Width (inches)">
+          <span>×</span>
+          <input type="number" id="ductCreateH" min="2" step="1" value="12" aria-label="Depth (inches)">
+        </div>
+        <div class="duct-size-inputs" id="ductCreateRoundInputs" style="display:none;">
+          <span>Ø</span>
+          <input type="number" id="ductCreateD" min="4" step="1" value="12" aria-label="Diameter (inches)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Pressure class (in. w.g.)</label>
+        <select id="ductCreatePressure"></select>
+      </div>
+      <div class="form-group">
+        <label>Insulation</label>
+        <select id="ductCreateLiner">
+          <option value="">None</option>
+          <option value="liner">Liner</option>
+          <option value="wrap">Wrap</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button id="ductCreateCancel">Cancel</button>
+        <button id="ductCreateStart">Start Tracing</button>
       </div>
     </div>
   </div>
@@ -2705,6 +2762,20 @@
     </div>
     <div class="chain-panel-foot" id="dropPanelFoot"></div>
   </div>
+  <!-- Duct step-size popover (features/duct-size-popover.js, DUCT unit D2):
+       opened by S / the cursor size chip / the finish-bar Size button while a
+       duct trace is in progress. #ductSizeSections is the EXTENSION SEAM —
+       the popover module renders its registered sections into it in order
+       (D2 ships step-grid + custom entry; D6 appends the ductulator
+       suggestion row, D8 the rise/drop + dual-size rows, D9 the depth line —
+       via App.registerDuctPopoverSection, contract in the module header). -->
+  <div class="duct-size-popover" id="ductSizePopover" style="display:none;" role="dialog" aria-label="Duct size">
+    <div class="duct-size-popover-head">
+      <span id="ductSizeCurrent"></span>
+      <button type="button" id="ductSizePopoverClose" class="chain-panel-close" title="Close (Esc)" aria-label="Close">×</button>
+    </div>
+    <div id="ductSizeSections"></div>
+  </div>
   <!-- Highlight bookmarks panel: shown while TOOL.HIGHLIGHT is active. Rows
        are BUILT by features/highlight-labels.js from every page's highlights
        (merged across canvas layers); a row click jumps to its page, ✎ names /
@@ -2819,6 +2890,8 @@
   <script src="/features/keyboard-map.js"></script>
   <script src="/features/chain.js"></script>
   <script src="/features/drop-mode.js"></script>
+  <script src="/features/duct-tool.js"></script>
+  <script src="/features/duct-size-popover.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>

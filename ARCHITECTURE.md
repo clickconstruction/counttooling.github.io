@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,505 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,550 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,000 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
-| [canvas-draw.js](canvas-draw.js) | 1,019 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 2,853 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,866 | All CSS, token-organized. Leave. |
+| [canvas-draw.js](canvas-draw.js) | 1,092 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
+| [app/index.html](app/index.html) | 2,926 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,887 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 717 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
-| [annotation-model.js](annotation-model.js) | 850 | Done — extracted canvas/annotation data model + node tests. |
+| [annotation-model.js](annotation-model.js) | 865 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 611 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (69 files) | 16,928 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (71 files) | 17,640 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -89,7 +89,9 @@ modules. Candidates in priority order:
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
 | [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
-| [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend`, and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
+| [duct-model.js](duct-model.js) | Pure duct-takeoff math + data model (DUCT-PLAN.md unit D1) in the geometry.js mold — the run/size/fitting factories + validators (`makeDuctRun`, `makeRectSize`/`makeRoundSize`, `makeDuctFitting`, `formatDuctSize`, `runSegmentSpans`), the SMACNA-style gauge schedule by pressure class (`DUCT_GAUGE_TABLE`, `selectGauge`), pounds math (`ductWeightPerFoot`, `segmentPounds`, `fittingPounds`, `runStraightItems`, `tallyStraightBySize`, `rollupDuct`/`rollupRunsToSchedule`), insulation sq ft, the equal-friction ductulator (+velocity cap, round↔rect equivalents, `suggestRoundAndRect`), the neck-size table, and (D2) the `ductStrokePx` stroke-width band table the drawing tool paints with (bands on the governing dimension: ≤8"→3px, ≤14"→4, ≤20"→5, ≤28"→6, ≤40"→8, ≤60"→10, else 12). Classic `<script src>` loaded before [canvas-draw.js](canvas-draw.js) (which reads it by bare name); zero DOM/`state` deps; guarded CommonJS footer for [duct-model.test.js](duct-model.test.js) |
+| [duct-model.test.js](duct-model.test.js) | Node `node:test` unit tests for [duct-model.js](duct-model.js) — factories/validators, gauge-table boundaries, the DUCT-PLAN worked lb/ft numbers, rollup composition (counted vs factor fittings, seam & waste, liner/wrap sq ft), ductulator anchor points + velocity binding, rect-equivalent picks, neck-size boundaries, and the D2 stroke-band mapping; run with `npm run test:unit` |
+| [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → ductRuns (D2: stroke stepped by `ductStrokePx`, per-segment size chips, `DUCT_AIRSIDE_COLORS`) → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend`, and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
 | [render-service.js](render-service.js) | **The raster seam** (option 4) — exports `createRenderService(deps)`; every pdf.js raster (renderPdf's full-page pass, the idle bitmap prefetcher, the crop tile) flows through `renderService.raster({pdfPage, scale, rotation, offsetX, offsetY, canvasContext, kind})`, which returns the pdf.js RenderTask shape (`{promise, cancel}`, `RenderingCancelledException` on cancel) so callers' cancel/pending machinery is untouched. Two backends: MAIN (pdfPage.render, always available) and WORKER ([render-worker.js](render-worker.js)) — chosen automatically. Document adoption is LAZY and site-free: the first worker-eligible raster reads the doc bytes back via `pdfPage._transport.getData()` (a private field of the version-pinned pdf.js 3.11.174 — guarded; any shape change just disables the worker) and ships them to the worker; new documents re-adopt by transport identity with generation guards. Gates: Worker+OffscreenCanvas support, the `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory×doc-size cap; ANY worker failure falls back to main for the session, logs `render_worker_fallback` to the Save Status log, and fires the optional `deps.onFallback(reason)` — app.js mirrors it into the admin activity feed via `logUserEvent`, so a silently-degraded session is admin-visible without a user-exported log. Debug/spec hooks on App: `__renderServiceStats` (incl. a per-request kind+page log — the spec-side replacement for wrapping `pdfPage.render`), `__renderServiceMode`, `__renderWorkerState`, `__setRasterTestDelay`. Guarded CommonJS footer for [render-service.test.js](render-service.test.js) |
 | [render-service.test.js](render-service.test.js) | Node `node:test` unit tests for the seam's main backend + contract (5 tests): param forwarding into `getViewport`/`render`, stats/log accounting, cancel parity (`RenderingCancelledException`, inner-task cancel), cancel-during-test-delay never starts the raster, per-kind test-delay filtering, and non-cancel error propagation; run with `npm run test:unit` |
 | [render-worker.js](render-worker.js) | **The dedicated pdf.js render worker** — its own pdf.js instance (same-origin importScripts of the vendored lib; an explicit nested `GlobalWorkerOptions.workerPort` bypasses pdf.js's no-`window`⇒Node fake-worker detection, which needs `document` and dies in worker scope) over its own copy of the document bytes; rasters pages (with crop offsets for the tile) into OffscreenCanvas and posts back transferable ImageBitmaps. `getDocument` gets three worker-scope shims for pdf.js defaults that lazily reach for `document`: a duck-typed **OffscreenCanvas canvasFactory** (aux canvases for tiling patterns / transparency groups / soft masks — routine on hatched CAD sheets; without it the first such raster threw "createElement of undefined" and wedged the session into main fallback), a **no-op filterFactory**, and an **`ownerDocument: {fonts: self.fonts}` shim** so FontLoader installs embedded fonts into the worker's own FontFaceSet (without it every glyph rasters as a black box; engines lacking `self.fonts` get `disableFontFace` glyph-outline drawing instead), and an explicit **`useWorkerFetch: true`** (with `cMapUrl`/`standardFontDataUrl` set but useWorkerFetch unset, pdf.js computes the default by touching `document.baseURI` — ReferenceError at doc load in worker scope). Generation-guarded load/render/cancel/dispose protocol (header comment); load/dispose are **serialized through an internal promise chain with the previous document's `destroy()` awaited** before the next `getDocument` — pdf.js caches one PDFWorker per `workerPort` and a `getDocument` racing an unawaited destroy throws "PDFWorker.fromPort - the worker is being destroyed", which used to fail every re-adoption (project switch / re-upload / page append) into permanent session fallback (production `render_worker_fallback` "doc-load: …" telemetry). NOT a `<script>` tag — constructed as `new Worker('/render-worker.js')` by the service; precached in sw.js for offline |
@@ -218,6 +220,9 @@ modules. Candidates in priority order:
 | [recent-drops.js](recent-drops.js) | The recent line-DROP list core, sibling of [recent-colors.js](recent-colors.js): `RECENT_DROPS_MAX` (5), pure `nextRecentDrops(list, value, unit)` (newest-first, deduped on value+unit, non-positive ignored), and `formatDropLabel(value, unit)`. One device-local store (localStorage `recentDrops`) behind BOTH drop speed surfaces — the Line Properties Recent chips and the Drop tool palette — so they can never offer different size vocabularies. Guarded CommonJS footer; tested in [constants.test.js](constants.test.js). |
 | [features/drop-mode.js](features/drop-mode.js) | The **Drop tool** (`TOOL.DROP`, hotkey B): pick a size once, then one click per line end adds that vertical drop — the modal round trip per riser is gone. While armed, every line end renders as a labeled target ring (`drawDropNodesOverlay`, called from `renderAnnotations`); clicks route `handleCanvasClick` → `App.commitDropClick(pdf)` → the pure node model in [annotation-model.js](annotation-model.js) (`collectDropNodes` / `applyDropToNode`), which collapses coincident line ends into ONE node and writes a node's drop to exactly one end — the chain-joint double-count guard. Same size again clears (click-to-toggle); each click is one undo step; snapshot only when a dry-run probe says something will change. The `#dropPanel` palette reuses the Chain-panel idiom (draggable, `dropPanelPos`, closable without leaving the tool, Esc ladder) and lists `state.recentDrops` + a custom value/unit entry committing through `App.pushRecentDrop`. Regression: [drop-mode.spec.js](drop-mode.spec.js). |
 | [drop-mode.spec.js](drop-mode.spec.js) | Playwright regression for the Drop tool + the recent-drops surfaces: arm/palette/custom-size flow, one-drop-per-shared-joint, toggle-clear, per-click undo, the Esc ladder, the context-menu "Drop N ft here" repeat row (nearest-end targeting via `ctxTarget.pdf`), the Line Properties Recent chips reading the same store, decimal + ft-in entry storing exactly what the field shows, and the no-op-close-stays-clean contract (not dirty, no undo slot burned). |
+| [features/duct-tool.js](features/duct-tool.js) | The **Duct drawing tool** (`TOOL.DUCT`, DUCT-PLAN.md unit D2) — PREVIEW-FLAGGED: `#ductBtn` shows only while localStorage `clickcount-duct-preview` is set (`App.enableDuctPreview()` is the spec/QA switch; D5 removes the flag). The polyline pattern with SIZE SEGMENTS: the button (scale-gated) opens `#ductCreateModal` (starting size Rect/Round, pressure class, liner — airside stored as `'supply'`, its chip UI is D4), Start creates `state.drawingDuct` (draft: vertices + duct-model `segments` + `sizeSteps`); clicks stage vertices (45° snap + bounds, the commitPolylinePoint recipe, per-vertex page-scoped undo snapshots); `App.applyDuctSizeStep` (a popover pick) ends the current segment at the LAST placed vertex, starts the next at the new size, and records `{vertexIdx, from, to}` on `sizeSteps` (D3's transition-fitting input); Enter / double-click / the `#ductFinishBar` commit via duct-model `makeDuctRun` onto `annotations.ductRuns` (drawn by canvas-draw.js — stroke width steps by `ductStrokePx`, per-segment size chips — so runs re-render on reload and honor hideMarks for free). Esc is the staged ladder (`App.handleDuctEscape`: popover → one vertex → draft+exit); `App.drawDuctOverlay` paints the live dashed trace + the cursor size chip (its rect is the tap target that opens the popover); `App.ductLiveReadout` feeds the footer "24×12 · 38'-6\" · 267 lb · run 1,196 lb" via the T2-09 seam (features/status-bar.js). Viewer sessions never see the button and any draft is cleared. Regression: [duct-tool.spec.js](duct-tool.spec.js). |
+| [features/duct-size-popover.js](features/duct-size-popover.js) | The **Duct step-size popover** (`#ductSizePopover`, DUCT unit D2 — D6/D8/D9 extend it): a small anchored (fixed, `App.placeFixedMenu`-clamped) surface opened by `S` / the cursor size chip / the finish-bar Size button while tracing. Renders registered SECTIONS in `order` into `#ductSizeSections` — the extension seam `App.registerDuctPopoverSection({id, order, render(container, ctx)})` (ctx: `currentSize`, `draft`, `applySize`, `close`, `requestRender`; `render` returning false skips the section; same-id registration replaces). D2 ships `step-grid` @10 (`ductStepDownCandidates`: rect reduces the larger side by 2/4/6" + both sides by 2/4", evens kept, floor 4"; round steps 2/4/6" down) and `custom-size` @20 (Rect\|Round toggle + W×H / Ø entry); suggested slots: D6 ductulator suggestion @5, D8 rise/drop + dual sizes @30, D9 depth line @40. Picks route through `App.applyDuctSizeStep` — the popover never touches the draft. Regression: [duct-tool.spec.js](duct-tool.spec.js). |
+| [duct-tool.spec.js](duct-tool.spec.js) | Playwright regression for the Duct tool (D2): the preview flag gates `#ductBtn` (hidden by default, `App.enableDuctPreview()` shows it); create→trace→S-step→commit stores a run with 2+ segments whose per-segment lengths/lb match the seeded scale (duct-model math re-run in-spec); the staged Esc ladder (popover → vertex pops → exit); the live footer readout content; committed runs re-render after reload (annotations re-applied through the load path paint ink); hideMarks blanks the overlay with the run data untouched; viewer sessions hide the button and disarm the tool. |
 | [features/drop-peek.js](features/drop-peek.js) | **Drop-size + counter-name disclosure** (wendi's view-mode requests): with the Move tool, hovering/tapping a drop marker OR a counter marker shows a DOM peek chip (`#dropPeekChip` — line-type name + the drop in its stored unit, or the counter's name + "#N · M on this page" matching the index painted on the marker); a click PINS it, and any pointerdown / wheel / keydown dismisses it (covers pan, zoom, page nav, rotate, undo). Drop hit-tests ride `App.collectDropNodes` (coincident ends = ONE node = one value), counter hits scan `counterMarkers`, nearest target wins; both mirror renderAnnotations' active-vs-merged source pick and are gated to `TOOL.NONE` + `!hideMarks` — so it works for viewers (the handleCanvasClick viewer gate admits NONE). Clicking a counter marker also toggles the **"find this counter" halo** (`state.emphasizedCounterId` → `env.emphasizedCounterId`, drawn in canvas-draw.js as a dark-cased accent ring around EVERY marker of that type; live overlay only): unlike the chip it survives pan/zoom/page flips, clears on background click / same-marker re-click / a different type taking over / the Escape ladder's last rung (app.js). Also owns the **"Drop sizes" toggle** `#dropSizesBtn` (beside `#hideMarksBtn`; mirrored as a burger-drawer row on mobile): flips `state.showDropSizes`, which renderAnnotations passes as `env.showDropSizes` so canvas-draw paints a value chip beside every drop glyph — live overlay only, exports untouched. Button shows only when the project has drops (`App.projectHasAnyDrops`). Persisted per device: `view:dropSizes:<token>` (restored by features/view-only.js) or `clickcount-show-drop-sizes`. app.js hooks: `App.onDropPeekHover` (mousemove tail), `App.onDropPeekClick` (TOOL.NONE click branch), `App.updateDropSizesButton` (updateUI). Regression: [drop-peek.spec.js](drop-peek.spec.js). |
 | [drop-peek.spec.js](drop-peek.spec.js) | Playwright regression for the peek chip: a REAL hover over a drop marker shows it (name + value in the drop's own unit, one value at a chain joint) and hover-away hides it; a hover over a counter marker names its counter + "#N · M on this page"; click pins; pointerdown / wheel / keydown each dismiss; the `#dropSizesBtn` toggle appears only once the project has drops, flips state + aria-pressed, persists per device, and survives a reload; no peek while a draw tool is armed or Hide marks is on. |
 | [hide-marks.spec.js](hide-marks.spec.js) | Playwright regression for the Hide-marks eye toggle: pixel-level overlay blank/restore, icon swap + aria state, data preserved, hidden state persisting across page nav — plus the **inertness coverage** (T2-03): with marks hidden, a REAL drag at a hidden note/legend moves nothing (the gesture pans the sheet), right-click opens no per-mark menu (`ctxTarget` stays null), dblclick opens no note editor, and the cursor never shows `move`; with marks shown the same drag/right-click/hover work as before (controls). |
@@ -539,56 +544,56 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1250 - PDF render bitmap cache
 - L1304 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1315 - PDF Rendering
-- L2087 - UI Render Functions
-- L2734 - Inline rename & polyline edit mode
-- L2848 - Modal primitives (showModal / hideModal)
-- L2879 - Toasts & line color picker
-- L2947 - Airboard cloud sync
-- L2992 - Supabase RPC & presence heartbeat
-- L3032 - User activity / event telemetry
-- L3091 - Supabase auth & dev auth
-- L3277 - [sync] Checkout subscription & permission refresh
-- L3287 - Modals & Handlers
-- L3355 - PDF intake (upload, test PDF, hashing)
-- L3363 - Toolbar tool buttons
-- L3563 - Tool sidebar buttons & legend overlay
-- L3654 - Add Line Type modal
-- L3737 - Line color & sidebar handlers
-- L3946 - Polyline modal & drawing
-- L3989 - Zoom bar & page navigation
-- L4015 - Export canvas JSON
-- L4031 - PDF download helpers
-- L4040 - View-link URL helpers & show-highlights/notes
-- L4112 - Custom icon upload handler
-- L4122 - Export & report dropdown menus
-- L4209 - Sidebar drawer toggles
-- L4240 - Mobile actions burger menu pointer & header logo
-- L4252 - User Activity pointer (format.js + features/user-activity.js)
-- L4264 - My Settings pointer (features/my-settings.js)
-- L4289 - Auth & settings entry buttons
-  - L4348 - Project Settings checkout & Save Status bell
-  - L4440 - [sync] Checkout expired recovery
-  - L4496 - [sync] Turn In
-  - L4605 - Share modal pointer & copy-project openers
-  - L4636 - Settings menu actions
-  - L4657 - Auth sign-in form
-  - L4682 - Save Project modal
-  - L4695 - Checkout expired recovery modal wiring
-  - L4800 - Last-session restore prompt
-  - L4807 - Canvas Repair modal wiring
-- L4994 - Canvas Event Handlers
-- L5461 - Event Binding
-- L5471 - Aim loupe (mobile press-hold precise placement)
-- L5621 - Zoom transform preview & commit
-- L5700 - Canvas mouse, wheel & touch handlers
-- L6452 - Global dropdown dismissal & keyboard hotkeys
-- L6805 - [sync] Manual save to cloud
-- L6815 - [sync] Auto-save
-- L6822 - [sync] Local backup (IndexedDB takeoff state)
-- L6955 - [sync] Checkout keep-alive
-- L6969 - App feature registry
-- L7284 - View-only mode
-- L7290 - Init / boot
+- L2095 - UI Render Functions
+- L2746 - Inline rename & polyline edit mode
+- L2860 - Modal primitives (showModal / hideModal)
+- L2891 - Toasts & line color picker
+- L2959 - Airboard cloud sync
+- L3004 - Supabase RPC & presence heartbeat
+- L3044 - User activity / event telemetry
+- L3103 - Supabase auth & dev auth
+- L3289 - [sync] Checkout subscription & permission refresh
+- L3299 - Modals & Handlers
+- L3367 - PDF intake (upload, test PDF, hashing)
+- L3375 - Toolbar tool buttons
+- L3575 - Tool sidebar buttons & legend overlay
+- L3666 - Add Line Type modal
+- L3749 - Line color & sidebar handlers
+- L3958 - Polyline modal & drawing
+- L4001 - Zoom bar & page navigation
+- L4027 - Export canvas JSON
+- L4043 - PDF download helpers
+- L4052 - View-link URL helpers & show-highlights/notes
+- L4124 - Custom icon upload handler
+- L4134 - Export & report dropdown menus
+- L4221 - Sidebar drawer toggles
+- L4252 - Mobile actions burger menu pointer & header logo
+- L4264 - User Activity pointer (format.js + features/user-activity.js)
+- L4276 - My Settings pointer (features/my-settings.js)
+- L4301 - Auth & settings entry buttons
+  - L4360 - Project Settings checkout & Save Status bell
+  - L4452 - [sync] Checkout expired recovery
+  - L4508 - [sync] Turn In
+  - L4617 - Share modal pointer & copy-project openers
+  - L4648 - Settings menu actions
+  - L4669 - Auth sign-in form
+  - L4694 - Save Project modal
+  - L4707 - Checkout expired recovery modal wiring
+  - L4812 - Last-session restore prompt
+  - L4819 - Canvas Repair modal wiring
+- L5006 - Canvas Event Handlers
+- L5484 - Event Binding
+- L5494 - Aim loupe (mobile press-hold precise placement)
+- L5646 - Zoom transform preview & commit
+- L5725 - Canvas mouse, wheel & touch handlers
+- L6477 - Global dropdown dismissal & keyboard hotkeys
+- L6850 - [sync] Manual save to cloud
+- L6860 - [sync] Auto-save
+- L6867 - [sync] Local backup (IndexedDB takeoff state)
+- L7000 - [sync] Checkout keep-alive
+- L7014 - App feature registry
+- L7329 - View-only mode
+- L7335 - Init / boot
 
 <!-- END SECTION TOC -->
 

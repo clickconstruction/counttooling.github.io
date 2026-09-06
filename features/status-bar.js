@@ -113,6 +113,10 @@
   // the verdict is stable while the number grows and a growing readout can
   // never wrap the bar mid-draw.
   const HINT_READOUT_PLACEHOLDER = '88888\'-88"';
+  // Duct readout worst case (size · length · segment lb · run lb) — same
+  // fixed-placeholder rule as above so the wrap verdict stays stable while
+  // the live numbers grow (DUCT unit D2 rides the T2-09 seam).
+  const DUCT_READOUT_PLACEHOLDER = '88×88 · 8888\'-88" · 8,888 lb · run 88,888 lb';
 
   function updateStatus() {
     const state = App.state;
@@ -231,6 +235,16 @@
           const readout = liveDrawReadout();
           if (readout) {
             toolHintKeyed = toolHint + ' — ' + HINT_READOUT_PLACEHOLDER;
+            toolHint += ' — ' + readout;
+          }
+        }
+        else if (state.tool === TOOL.DUCT) {
+          // Duct trace (features/duct-tool.js): the live length + pounds
+          // readout — "24×12 · 38'-6" · 267 lb · run 1,196 lb".
+          toolHint = press + ' to trace duct · S = size';
+          const readout = App.ductLiveReadout ? App.ductLiveReadout() : '';
+          if (readout) {
+            toolHintKeyed = toolHint + ' — ' + DUCT_READOUT_PLACEHOLDER;
             toolHint += ' — ' + readout;
           }
         }

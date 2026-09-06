@@ -138,7 +138,12 @@
               const sb = App.getSupabase ? App.getSupabase() : null;
               if (!sb) return;
               const { data: log } = await sb.rpc('get_view_link_access_log', { p_view_link_id: id });
-              const lines = (log || []).map(function(r) { return (r.email || '') + ' — ' + (r.accessed_at ? new Date(r.accessed_at).toLocaleString() : ''); });
+              const lines = (log || []).map(function(r) {
+                // Viewer grants (2026-09-06): a sub vouched for by PipeTooling logs a name + source.
+                const who = r.viewer_name ? (r.viewer_name + (r.email && r.email.indexOf('(via ') < 0 ? ' <' + r.email + '>' : '')) : (r.email || '');
+                const via = r.source === 'pipetooling-sub-portal' ? ' · via PipeTooling portal' : '';
+                return who + via + ' — ' + (r.accessed_at ? new Date(r.accessed_at).toLocaleString() : '');
+              });
               alert('Access log:\n\n' + (lines.length ? lines.join('\n') : 'No access yet'));
             };
             div.querySelector('.share-view-link-revoke').onclick = async function() {

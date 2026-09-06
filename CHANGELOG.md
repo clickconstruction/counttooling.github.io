@@ -13,6 +13,34 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(view-links): viewer grants — a sub opens plans from their PipeTooling portal with no email gate (2026-09-06)
+
+View links open with no account, but the email gate refused anyone outside the company
+domain — so a subcontractor's Gmail hit "use your work email". PipeTooling already knows
+who the sub is (their portal link is the credential it trusts), so its sub-portal function
+now mints a short-lived **viewer grant** and appends it to the plans link as `&g=`:
+`base64url(claims).base64url(HMAC-SHA256)` over a secret both projects hold
+(`PT_VIEW_GRANT_SECRET` here, `COUNTTOOLING_VIEW_GRANT_SECRET` there), claims
+`{ t, name, email?, person?, via, iat, exp }`, bound to one token, good for a day.
+
+- `supabase/functions/_shared/viewGrant.mjs` — the kernel (`mintViewGrant` /
+  `verifyViewGrant` / `parseViewGrant`): plain ESM + Web Crypto, so the file Deno runs is
+  the file Node tests (`view-grant.test.js`: round-trip, token binding, expiry, tamper,
+  wrong secret, unknown source, malformed never throws).
+- `get-view-project` — a request with `grant` is verified and skips the domain gate; the
+  access-log row carries `viewer_name` + `source` (migration `20260906000000_view_link_access_log_viewer`,
+  with a fallback to the old row shape if the function lands first). An invalid grant answers
+  `403 grant_invalid`. Requests without a grant are byte-for-byte the old path.
+- `features/view-only.js` — reads `g`, skips the email modal, sends the grant, and on
+  `grant_invalid` drops to the gate with the server's message. Granted viewers are not
+  remembered as an allowed email (the portal re-mints on every open).
+- `features/share-links.js` — the access log reads "Behar Kraja · via PipeTooling portal".
+- Docs: SUPABASE_SETUP (secret + migration), FEATURES, ARCHITECTURE. Spec:
+  `view-only.spec.js` gains the grant boot and the fallback.
+- Roads not taken: widening the domain allow-list (opens every link), a per-link
+  "anyone with the link" switch (the bid's link also goes to GCs), registering sub emails
+  (a bridge call per sub, and they still type), PipeTooling serving the PDF (loses the marks).
+
 ## feat(user-admin): per-row "Email sign-in link" — the locked-out rescue without a phone call (2026-08-31)
 
 Manage Users rows gain a ✉ button (first in the icon group, before Set

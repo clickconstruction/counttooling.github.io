@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'd09023bbde9b';
+const CACHE_VERSION = '2d1a22b9f6cf';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -191,7 +191,7 @@ const PRECACHE_SHA256 = {
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
   '/app.js': '15fbbc6f1f75f286f67cf50423e316ac7ba87af34853aee06cddf36a1e8abadd',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
-  '/features/view-only.js': 'a345c3342210e8510999108f0ae9f106688f665af9ef4e167beaa9ea24d670a9',
+  '/features/view-only.js': 'c649e68099ede5af867ac46e0e77f7238ab701ac0c59b34969ae46a2fc37db14',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
   '/features/pdf-intake.js': 'c4a7729c6c505d481e568c485c204977fdfb1b6e36910b6ba864ec410a8eeba6',
   '/features/line-color.js': '2fd4c7594f1a3686fd9323b7bc4d97f5b9c151b32475d5a4428062a075378ecb',
@@ -229,7 +229,7 @@ const PRECACHE_SHA256 = {
   '/features/output.js': '3cd123e2f0c044ada45c273d1b8c826500ca4d25e380245d19d3cc2a3692c30c',
   '/features/rfi-flags.js': '40681e1143dc5bc64374c4e6a0bf9e2f30c246f8c4c34d81bc5635e38ce64949',
   '/features/notes-ledger.js': '4ec3842847eb36b1ed1e13128247c8421cda7af05a302fef6942a4de72bfe719',
-  '/features/share-links.js': 'a23b4721f10e4eccf5517f60aadf54573ab180593b239f50ab294046c632a978',
+  '/features/share-links.js': 'a9d0a7546b38fff5c7b0aa17adf583bd3edc20e3e71939d3c233ec24651ff2b5',
   '/features/import-clear.js': '0a42ed82c8a671fadf0e02d43abb51e75cc4963bf2ccb222ba6a6d4cab2e9e24',
   '/features/zone-modals.js': '48943280aa220ba4206c9d7a6abafdbcd989643c60203af0c071460fdf09dcae',
   '/features/restore-last-session.js': '20460f5143bbd9eb053bb663990db5fc10561130cf2aab14538ce19e767c1e20',

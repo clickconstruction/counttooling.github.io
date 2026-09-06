@@ -151,6 +151,11 @@ const DUCT_FITTING_COLORS = {
   tap: '#a47fff', boot: '#a47fff',
 };
 
+// The legend's duct-row swatch (DUCT unit D5): a neutral sheet-metal gray —
+// legend duct rows are PER SIZE, and one size can span supply/return/exhaust,
+// so no single airside color would be honest.
+const DUCT_LEGEND_SWATCH = '#8a919c';
+
 function createCanvasDraw(deps) {
   // Room Sizer boxes, shared by the live overlay and the export path (the two
   // callers differ only in their PDF->canvas mapper and label scale factor).
@@ -944,7 +949,47 @@ function createCanvasDraw(deps) {
         if (any) roomRows.push({ name: rm.name || 'Room', color: rm.color || '#47c88e', volStr: Math.round(vol) + ' ft³' });
       });
     }
-    return { counterRows, lineRows, roomRows, hasRows: counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0 };
+    // Duct rows (DUCT unit D5, legendSettings.showDuct default ON — the
+    // showRooms recipe: only projects that trace duct have ductRuns, so
+    // legacy legends are unchanged): per-size "24×12  86' · 597 lb" lines
+    // over this page's runs (duct-model tallyStraightBySize, feet via
+    // deps.getLineRealWorldLengthFeet — the duct-sidebar glue) plus the
+    // all-duct total. Sizes may span airsides, so rows carry one neutral
+    // sheet-metal swatch instead of a trade color. Guarded on the duct-model
+    // globals + the dep so the node canvas-draw tests (which stub neither)
+    // and any duct-free annotation payload stay untouched.
+    const ductRows = [];
+    if (state.legendSettings?.showDuct !== false && (ann.ductRuns || []).length
+      && typeof runStraightItems === 'function' && typeof deps.getLineRealWorldLengthFeet === 'function') {
+      const pi = pageIdx >= 0 ? pageIdx : 0;
+      const distFt = (a, b) => deps.getLineRealWorldLengthFeet({ points: [a, b] }, pi, true, ann) || 0;
+      const items = [];
+      (ann.ductRuns || []).forEach(run => { items.push(...runStraightItems(run, distFt)); });
+      // One class per row's gauge pick: tally per pressure class, then merge
+      // (the duct-schedule composition rule, kept tiny here).
+      const byClass = new Map();
+      let cursor = 0;
+      (ann.ductRuns || []).forEach(run => {
+        const n = runStraightItems(run, distFt).length;
+        const pc = run.pressureClass != null ? String(run.pressureClass) : '1';
+        if (!byClass.has(pc)) byClass.set(pc, []);
+        byClass.get(pc).push(...items.slice(cursor, cursor + n));
+        cursor += n;
+      });
+      let allFt = 0, allLb = 0;
+      byClass.forEach((classItems, pc) => {
+        tallyStraightBySize(classItems, pc).rows.forEach(r => {
+          ductRows.push({ name: r.sizeKey, color: DUCT_LEGEND_SWATCH, lenStr: Math.round(r.lengthFt).toLocaleString() + "' · " + Math.round(r.pounds).toLocaleString() + ' lb' });
+          allFt += r.lengthFt;
+          allLb += r.pounds;
+        });
+      });
+      if (ductRows.length) {
+        ductRows.sort((a, b) => a.name.localeCompare(b.name));
+        ductRows.push({ name: 'All duct', color: DUCT_LEGEND_SWATCH, lenStr: Math.round(allFt).toLocaleString() + "' · " + Math.round(allLb).toLocaleString() + ' lb' });
+      }
+    }
+    return { counterRows, lineRows, roomRows, ductRows, hasRows: counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0 || ductRows.length > 0 };
   }
 
   // hitTest mirror of the empty-legend gate (B10 / J8): an empty legend is not
@@ -967,7 +1012,7 @@ function createCanvasDraw(deps) {
     const leg = ann.legend;
     const legendScale = state.legendSettings?.legendScale ?? 1;
     const effectiveScale = scale * legendScale;
-    const { counterRows, lineRows, roomRows, hasRows } = computeLegendRows(ann, pageIdx);
+    const { counterRows, lineRows, roomRows, ductRows, hasRows } = computeLegendRows(ann, pageIdx);
     // B10 (J8): a zero-mark sheet used to grow a mystery white "No items" box
     // top-right (the overlay defaults on). An empty legend paints nothing at
     // all now; hitTest mirrors the gate via legendHasRows.
@@ -986,12 +1031,16 @@ function createCanvasDraw(deps) {
       const w = ctx.measureText((r.name || '') + ' ' + r.volStr).width;
       if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
     });
+    ductRows.forEach(r => {
+      const w = ctx.measureText((r.name || '') + ' ' + r.lenStr).width;
+      if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
+    });
     // The header participates in the auto-width fit at its own (smaller) font.
     ctx.font = (8 * effectiveScale) + 'px sans-serif';
     const headerWidthCanvas = ctx.measureText(LEGEND_HEADER_TEXT).width;
     const ROW_H_PDF = 14;
     const PAD_PDF = 6;
-    const totalRows = counterRows.length + lineRows.length + roomRows.length;
+    const totalRows = counterRows.length + lineRows.length + roomRows.length + ductRows.length;
     const idealHeightPdf = legendScale * (2 * PAD_PDF + LEGEND_HEADER_H_PDF + totalRows * ROW_H_PDF);
     const idealWidthPdf = Math.max(
       legendScale * (24 + 6 + 6) + maxTextWidthCanvas / scale,
@@ -1107,6 +1156,17 @@ function createCanvasDraw(deps) {
       ctx.fillRect(tl.x + PAD + (LEFT_COL - SWATCH) / 2, rowY + (ROW_H - SWATCH) / 2, SWATCH, SWATCH);
       ctx.fillStyle = '#000';
       ctx.fillText((r.name || '') + ' ' + r.volStr, NAME_START, rowY);
+      rowY += ROW_H;
+    });
+    // Duct rows (D5): the line-row look with the neutral sheet-metal swatch —
+    // per-size "24×12 86' · 597 lb" lines, then the "All duct" total.
+    ductRows.forEach(r => {
+      ctx.fillStyle = r.color;
+      const SWATCH_H = 3 * effectiveScale;
+      const swatchY = rowY + 1 + (ROW_H - SWATCH_H) / 4;
+      ctx.fillRect(tl.x + PAD + (LEFT_COL - 20 * effectiveScale) / 2, swatchY, 20 * effectiveScale, SWATCH_H);
+      ctx.fillStyle = '#000';
+      ctx.fillText((r.name || '') + ' ' + r.lenStr, NAME_START, rowY);
       rowY += ROW_H;
     });
     ctx.restore();

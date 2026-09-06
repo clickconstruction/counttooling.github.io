@@ -181,11 +181,18 @@
   // so BOTH copy surfaces (Copy to /Tooling and Copy Summary) run the same
   // check. On a hit it stashes { …, doCopy } and opens the modal; on a clean
   // walk it copies straight away (zero added steps on the happy path).
-  async function runGatedCopy(getAnnFn, pageIndices, doCopy, surface, mode) {
+  // D5: `collectFlagged` (optional, default = the line walk) lets another copy
+  // surface bring its own unscaled-page collector — the Duct Schedule copy
+  // (features/duct-schedule.js) flags pages with unscaled DUCT runs instead,
+  // since its numbers ride duct geometry, not line types. The collector is
+  // stashed with the pending/resume state so Export-anyway and the
+  // "Copy again" resume re-walk the SAME rule. Published as App.runGatedCopy.
+  async function runGatedCopy(getAnnFn, pageIndices, doCopy, surface, mode, collectFlagged) {
     resumeToolingExport = null;   // a fresh copy attempt supersedes any pending Copy-again resume
-    const flagged = collectUnscaledLinePages(getAnnFn, pageIndices);
+    const collect = collectFlagged || collectUnscaledLinePages;
+    const flagged = collect(getAnnFn, pageIndices);
     if (flagged.length) {
-      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, surface, mode };
+      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, surface, mode, collectFlagged: collect };
       App.logUserEvent('unscaled_ft_block', App.state.currentProjectId || null,
         { surface, flaggedPages: flagged.length });
       const listEl = document.getElementById('toolingScaleCheckList');
@@ -254,9 +261,12 @@
       if (!resume || resume.projectId !== App.state.currentProjectId) return;
       // The click is the user gesture: the gate re-walks synchronously and the
       // clipboard write inside the stashed doCopy stays permitted.
-      await runGatedCopy(resume.getAnnFn, resume.pageIndices, resume.doCopy, resume.surface, resume.mode);
+      await runGatedCopy(resume.getAnnFn, resume.pageIndices, resume.doCopy, resume.surface, resume.mode, resume.collectFlagged);
     };
   }
+  // The gate is the shared machinery — Copy Schedule (features/duct-schedule.js)
+  // runs through it with its own collector (registry pattern).
+  App.runGatedCopy = runGatedCopy;
 
   const forPipeToolingBtn = document.getElementById('forPipeTooling');
   const forPipeToolingMenu = document.getElementById('forPipeToolingMenu');

@@ -1579,6 +1579,31 @@ body.hotkey-peek .hk-badge { display: block; }
 .duct-all-total { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; padding: 6px 8px 2px; border-top: 1px solid var(--border); color: var(--accent); font-weight: 600; font-size: 0.85rem; }
 .duct-all-total .duct-all-total-num { font-family: 'DM Mono', monospace; }
 
+/* Duct Schedule modal (features/duct-schedule.js, DUCT unit D5): the
+   bid-pounds rollup — straight-duct table, the fittings Counted|Factor
+   segment (reusing .duct-shape-toggle), insulation/seam rollup rows, and the
+   accent Bid weight line. DM Mono for every number column, the sidebar's
+   convention. */
+.duct-schedule-card { min-width: 440px; max-width: 560px; max-height: 82vh; overflow-y: auto; }
+@media (max-width: 520px) { .duct-schedule-card { min-width: 0; width: 94vw; } }
+.duct-schedule-scope { margin-bottom: 0; }
+.duct-schedule-section-label { color: var(--text3); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 6px; }
+.duct-schedule-section-label:first-child { margin-top: 0; }
+.duct-schedule-fittings-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.duct-schedule-fittings-head .duct-shape-toggle { margin-bottom: 0; }
+.duct-schedule-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.duct-schedule-table th { text-align: left; color: var(--text3); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; padding: 3px 6px; border-bottom: 1px solid var(--border); }
+.duct-schedule-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.duct-schedule-table td.mono { font-family: 'DM Mono', monospace; }
+.duct-schedule-table td.num, .duct-schedule-table th:last-child { text-align: right; }
+.duct-schedule-table .duct-schedule-total-row td { color: var(--text); font-weight: 600; border-bottom: none; }
+.duct-schedule-rollup { margin-top: 8px; }
+.duct-schedule-rollup td:last-child { text-align: right; }
+.duct-schedule-bid-row td { color: var(--accent); font-weight: 700; font-size: 0.95rem; border-top: 1px solid var(--border2); border-bottom: none; padding-top: 8px; }
+.duct-schedule-pct { width: 52px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.82rem; padding: 2px 4px; margin: 0 3px; }
+.duct-schedule-empty { color: var(--text2); font-size: 0.85rem; margin: 8px 0 12px; }
+.duct-schedule-empty-cell { color: var(--text3); font-size: 0.78rem; }
+
 /* System groups (DUCT unit D4, DUCT-PLAN §2): the equipment tag + capacity
    line ("RTU-1 · 600 CFM") and the plenum-return note in a group's sidebar
    header, plus the group-modal hint copy. */

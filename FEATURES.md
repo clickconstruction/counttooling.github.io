@@ -41,6 +41,9 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Snap to 45° angles (J)** — Lines lock to horizontal, vertical, and 45° — the angles real pipe and conduit actually run — so the takeoff looks as clean as the drawing.
 - **Grid overlay with snapping** — Lines follow a regular module for tidy, aligned tracing.
 - **Room Sizer (V)** — Draw room boxes with ceiling heights and get ft² and ft³ per room — the inputs for airflow, air changes, and equipment sizing.
+- **Duct tool** — Trace a duct run as one continuous line with size step-downs (`S` mid-trace); stroke width steps with the size, airside (Supply/Return/Exhaust) colors the run, and the SMACNA-style gauge table picks the metal automatically.
+- **Auto duct fittings** — Corners log elbows, size steps log transitions, a run started on a run logs a tap — counted from the geometry, always reclassifiable or deletable from a right-click.
+- **Duct Schedule with Bid weight** — Straight duct by size (LF → lb), fittings counted at lb-eq each (or a one-tap Factor % for quick bids), liner/wrap sq ft, seam & waste as its own labeled % line, and one Bid weight number; Copy Schedule pastes the table anywhere, and the schedule rides the report, Export PDFs, and the legend.
 - **Always-feet totals** — Every tally, summary, and export sums in decimal feet regardless of the sheet's scale unit, so numbers agree across mixed plan sets.
 
 ## Annotating & viewing

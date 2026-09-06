@@ -200,6 +200,16 @@ a plan is slow, error-prone spreadsheet work.
 L-shaped rooms sum from multiple boxes — feeding airflow, air-change, and equipment-sizing math
 directly.
 
+**Duct takeoff — runs with size segments, auto fittings, and a Bid weight**
+*Problem:* Sheet-metal bids are priced by the pound, and every takeoff tool stops at linear feet —
+the gauge tables, fitting counts, and waste factors live in a side spreadsheet that drifts from
+the drawing.
+*Useful because:* One continuous trace carries its size step-downs (`S` mid-trace), the SMACNA-style
+schedule picks the gauge, corners/steps/taps count themselves as fittings (reclassify or delete any
+of them from a right-click), and the Duct Schedule rolls it all — straight lb by size, fittings
+counted or as a Factor %, liner/wrap sq ft, seam & waste — into one Bid weight. Copy Schedule
+pastes the table into pricing; the report, Export PDFs, and the legend carry the same numbers.
+
 **Always-feet totals**
 *Problem:* Plan sets mix scale units (inches, feet, metric), and summing mixed units is a classic
 silent takeoff error.

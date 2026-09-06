@@ -276,6 +276,7 @@ function createAnnotationModel(ctx) {
     if (backup.pageLabels) backup.pageLabels.forEach((l, i) => { if (typeof l === 'string' && l && ctx.getState().pages[i]) ctx.getState().pages[i].label = l; });
     if (backup.pageBakeFrames) backup.pageBakeFrames.forEach((bf, i) => { if (ctx.getState().pages[i]) verifyPageBakeFrame(ctx.getState().pages[i], bf); });
     if (backup.legendSettings) ctx.getState().legendSettings = { ...ctx.getState().legendSettings, ...backup.legendSettings };
+    if (backup.ductSettings) ctx.getState().ductSettings = { ...ctx.getState().ductSettings, ...backup.ductSettings };
     if (backup.multiplyZoneSettings) ctx.getState().multiplyZoneSettings = { ...ctx.getState().multiplyZoneSettings, ...backup.multiplyZoneSettings };
     if (backup.scaleZoneSettings) ctx.getState().scaleZoneSettings = { ...ctx.getState().scaleZoneSettings, ...backup.scaleZoneSettings };
     if (backup.showGridOverlay != null) ctx.getState().showGridOverlay = !!backup.showGridOverlay;
@@ -305,6 +306,7 @@ function createAnnotationModel(ctx) {
     if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
+    if (d.ductSettings) state.ductSettings = { ...state.ductSettings, ...d.ductSettings };
     if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
     if (d.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...d.scaleZoneSettings };
     if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;

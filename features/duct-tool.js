@@ -210,6 +210,10 @@
       run.sizeSteps = draft.sizeSteps;   // D3's transition-fitting input
       if (!canvas.annotations.ductRuns) canvas.annotations.ductRuns = [];
       canvas.annotations.ductRuns.push(run);
+      // D3: the commit is the inference moment — re-walk the canvas's runs
+      // into auto fittings (corner/step/tap), reconciled against manual
+      // overrides (features/duct-fittings.js).
+      App.reinferDuctFittings && App.reinferDuctFittings(state.currentPage);
     }
     state.drawingDuct = null;
     state.tool = App.TOOL.NONE;

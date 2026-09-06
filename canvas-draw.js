@@ -135,6 +135,18 @@ function lineStyleToDash(style) {
 // trace preview in features/duct-tool.js (read by bare name).
 const DUCT_AIRSIDE_COLORS = { supply: '#2e86de', return: '#8e6fd8', exhaust: '#8a8a2f' };
 
+// Duct fitting marker colors by type (DUCT-PLAN unit D3, the mockup
+// vocabulary): elbows amber (styles.css --yellow #e8b84a), transitions green
+// (--green #47c88e), taps purple (--purple #a47fff). The reclassify-only
+// types borrow their family's color: boot rides the tap/branch purple,
+// offset the elbow amber. Literal hexes because canvas contexts can't read
+// CSS custom properties; keep in sync with the styles.css tokens.
+const DUCT_FITTING_COLORS = {
+  elbow90: '#e8b84a', elbow45: '#e8b84a', offset: '#e8b84a',
+  transition: '#47c88e',
+  tap: '#a47fff', boot: '#a47fff',
+};
+
 function createCanvasDraw(deps) {
   // Room Sizer boxes, shared by the live overlay and the export path (the two
   // callers differ only in their PDF->canvas mapper and label scale factor).
@@ -486,6 +498,69 @@ function createCanvasDraw(deps) {
         ctx.textBaseline = 'alphabetic';
       });
     });
+    // Duct fitting markers (DUCT-PLAN unit D3): the self-counted fittings at
+    // their anchors, in the mockup vocabulary — elbow = diamond outline
+    // (amber, elbow45 drawn smaller), transition = double chevrons pointing
+    // downstream (green), tap = ring + dot (purple); the reclassify-only
+    // types get boot = square + dot, offset = double slash. Sized off the
+    // duct stroke band (modest against the run), over a soft white backing
+    // disc so a marker reads on a heavy stroke. Suppressed delete-tombstones
+    // paint nothing. Lives in the core so live overlay and exports agree; the
+    // live overlay's hideMarks early-return hides fittings with everything
+    // else (T2-03), and hitTest skips them the same way.
+    if (ann.ductFittings && ann.ductFittings.length) {
+      const strokeScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+      const runs = ann.ductRuns || [];
+      ann.ductFittings.forEach(f => {
+        if (f.suppressed) return;
+        const anchor = ductFittingAnchor(f, runs);
+        if (!anchor) return;
+        const p = tc(anchor);
+        const s = (4 + ductStrokePx(f.size) * 0.6) * strokeScale;   // ~5.8–11.2px
+        const lw = 1.6 * strokeScale;
+        const color = DUCT_FITTING_COLORS[f.type] || DUCT_FITTING_COLORS.elbow90;
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, s + 2 * strokeScale, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lw;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        if (f.type === 'elbow90' || f.type === 'elbow45') {
+          const r = f.type === 'elbow45' ? s * 0.8 : s;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y - r); ctx.lineTo(p.x + r, p.y);
+          ctx.lineTo(p.x, p.y + r); ctx.lineTo(p.x - r, p.y);
+          ctx.closePath(); ctx.stroke();
+        } else if (f.type === 'transition') {
+          const dir = ductFittingOutDirection(f, runs);
+          ctx.translate(p.x, p.y);
+          if (dir) ctx.rotate(Math.atan2(dir.y, dir.x));
+          [-0.55, 0.15].forEach(off => {
+            ctx.beginPath();
+            ctx.moveTo((off - 0.25) * s, -0.7 * s);
+            ctx.lineTo((off + 0.45) * s, 0);
+            ctx.lineTo((off - 0.25) * s, 0.7 * s);
+            ctx.stroke();
+          });
+        } else if (f.type === 'tap') {
+          ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.85, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.3, 0, Math.PI * 2); ctx.fill();
+        } else if (f.type === 'boot') {
+          ctx.strokeRect(p.x - s * 0.7, p.y - s * 0.7, s * 1.4, s * 1.4);
+          ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.28, 0, Math.PI * 2); ctx.fill();
+        } else {   // offset: two parallel slashes
+          [-0.4, 0.4].forEach(off => {
+            ctx.beginPath();
+            ctx.moveTo(p.x + off * s - s * 0.45, p.y + s * 0.6);
+            ctx.lineTo(p.x + off * s + s * 0.45, p.y - s * 0.6);
+            ctx.stroke();
+          });
+        }
+        ctx.restore();
+      });
+    }
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);

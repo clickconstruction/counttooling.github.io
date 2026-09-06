@@ -1792,6 +1792,9 @@ body.hotkey-peek .hk-badge { display: block; }
 .tool-context-menu { position: fixed; z-index: 250; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 4px; min-width: 190px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
 .tool-context-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--text); font-size: 0.9rem; border-radius: 5px; cursor: pointer; }
 .tool-context-menu button:hover, .tool-context-menu button:focus { background: var(--surface3); outline: none; }
+/* Heading row for target-bound menus (#ductFittingMenu, DUCT unit D3): the
+   right-clicked fitting's type · size (· auto) or the run's name · sizes. */
+.tool-context-menu .tool-context-menu-heading { padding: 6px 12px 4px; font-size: 0.78rem; font-weight: 600; color: var(--text2); border-bottom: 1px solid var(--border2); margin-bottom: 4px; white-space: nowrap; }
 .macros-context-tip { margin-top: 10px; font-size: 0.8rem; color: var(--text3); }
 
 /* --- Bid Board (overseer "all bids" browser; features/bid-board.js).

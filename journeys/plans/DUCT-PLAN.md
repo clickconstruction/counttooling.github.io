@@ -1,12 +1,14 @@
 # Duct takeoff — plan of record (draft for the Stage-6 session)
 
 > Status 2026-09-06: model settled through three mockup rounds + an
-> estimator walkthrough (canvas: "Duct Takeoff" artifact — six artboards).
-> Will's framing decisions so far: **design-build is the primary mode**
-> (most jobs design the duct while bidding; plan-and-spec copying is
-> secondary), and the seven walkthrough gaps below are IN, each refined
-> through the "best we can do / fits the whole" ratchet. Build order and
-> the go decision belong to the Stage-6 Tier-5 session.
+> estimator walkthrough (canvas: "Duct Takeoff" artifact — six artboards),
+> then a master-HVAC walkthrough (below). Will's framing decisions so far:
+> **design-build is the primary mode** (most jobs design the duct while
+> bidding; plan-and-spec copying is secondary); the seven estimator gaps
+> are IN, each refined through the "best we can do / fits the whole"
+> ratchet; the master checks land as the **Bid Check** (Will's call:
+> checkbox flow, tickable while bidding or just before export). Build
+> order and the go decision belong to the Stage-6 Tier-5 session.
 
 ## The model (v2 core, mode-agnostic)
 
@@ -81,6 +83,53 @@
    per-room override). Rooms pre-fill device CFMs; Room Sizer is the
    design-build front door.
 
+## The master walkthrough — the physics layer
+
+A master contractor checks a different thing than an estimator: not
+"is the count right" but "will the system work." Three layers, each
+riding data the plan already collects:
+
+- **Quantity checks** (estimator, §§1–7 above): counts, LF, pounds.
+- **Capacity checks** (§2/§3): room served vs target, system designed
+  vs unit capacity.
+- **Physics checks** (new, master-level):
+  - **Static path** — critical path (longest run + fitting equivalent
+    lengths, both already measured/counted) vs the unit's available
+    external static: "0.34" of 0.8" ✓". The master's "will it blow?"
+  - **Plenum depth** — duct depth + insulation vs deck-to-ceiling
+    space (deck height + Room Sizer heights already captured).
+  - **Return path** — a Room box with supply drops in a plenum-return
+    system needs a transfer grille or a ⚠ (extends §3's badge).
+  - **Round-first suggestions** — the size chip offers spiral AND rect
+    ("10"Ø or 12×8"); flex drops warn past the max-flex length.
+  - **Neck sizes from CFM** — drops prefill the device (150 CFM →
+    2×2 lay-in, 8"Ø neck) so the exported layout is submittal-grade.
+  - **Equipment-first entry** (flow note) — Room Sizer area totals
+    suggest system count/capacity (~ft²/ton by building type) BEFORE
+    devices are placed, seeding the system groups with real numbers.
+  - *(Optional)* per-system OA/exhaust net-balance line.
+
+## The Bid Check (Will's call, 2026-09-06)
+
+The physics + judgment checks live in one **Bid Check panel** — the
+fourth pillar: quantity → capacity → physics → **sign-off**.
+
+- **Two row kinds.** AUTO rows show a computed verdict with its number
+  ("Static path 0.34" of 0.8" ✓", "Room 204 under-served ⚠") and are
+  never tickable — the app knows. MANUAL rows are judgment calls the
+  app cannot know ("Fire dampers at rated walls", "OA meets code",
+  "Curb & power coordinated", "Controls/stat locations set") and get
+  a checkbox; ticks persist per project so the master can work the
+  list DURING the bid, not only at the end.
+- **Surfaced at the existing gate moment.** Copy to /Tooling and
+  Export PDFs carry a small badge ("2 ⚠ · 3 unchecked"); tapping it
+  opens the panel. ADVISORY, never blocking — "Export anyway" stays,
+  exactly like the T1-05 unscaled-lines gate. The panel is also
+  reachable any time from the sidebar.
+- **Trade-skinnable** like the rest of the smart-run pattern: the
+  electrical skin's auto rows become "≤360° between pull points ✓",
+  "panel phases balanced", "voltage drop ≤3%".
+
 ## Deliberately out (keep the spirit)
 
 - **Auto-tracing runs** (vectorizing linework) — fragile in the way
@@ -99,8 +148,11 @@
    (+velocity cap §5), room-type CFM defaults (§7), air-balance
    badges (§3).
 3. **Polish:** vertical entries + defaults (§4), VD-per-tap (§6),
-   true-width ghost.
-4. **Plan-and-spec layer:** callout reading (needs one new primitive:
+   true-width ghost, round-first dual suggestions, neck-size prefill.
+4. **Bid Check:** the panel + gate badge; auto rows arrive as their
+   underlying computations land (balance first, static path and
+   plenum depth later); manual rows are cheap and can ship early.
+5. **Plan-and-spec layer:** callout reading (needs one new primitive:
    query the PDF text layer near a point).
 
 Worked example numbers used across the mockups (for future specs):

@@ -217,6 +217,19 @@
         sysHtml = '<span class="group-system-tag">' + esc(g.equipmentTag)
           + (g.capacityCfm ? ' · ' + Number(g.capacityCfm).toLocaleString() + ' CFM' : '') + '</span>'
           + (g.plenumReturn ? '<span class="group-plenum-note">plenum return</span>' : '');
+        // DUCT unit D7 (DUCT-PLAN §3): the capacity line on system headers —
+        // "600 designed / 600 capacity ✓" (⚠ when the attached device CFM
+        // exceeds the unit). designed = duct-model's ductSystemDesignedCfm
+        // via App.getDuctSystemDesignedCfm (features/duct-suggest.js — the D6
+        // accumulation from each root's equipment end). Deferred App.* read;
+        // groups without a capacity render exactly as before.
+        if (g.capacityCfm > 0 && App.getDuctSystemDesignedCfm) {
+          const designed = App.getDuctSystemDesignedCfm(g.id) || 0;
+          const over = designed > g.capacityCfm;
+          sysHtml += '<span class="group-capacity-line' + (over ? ' over' : '') + '">'
+            + Math.round(designed).toLocaleString() + ' designed / '
+            + Number(g.capacityCfm).toLocaleString() + ' capacity ' + (over ? '⚠' : '✓') + '</span>';
+        }
       }
       div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {

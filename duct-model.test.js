@@ -895,3 +895,162 @@ test('ductDraftRemainingCfm: no CFM data → null (the clean-absence rule)', () 
   assert.strictEqual(dm.ductDraftRemainingCfm({ runs: [], draft, devices: [dev(50, 5, 0)] }), null);
   assert.strictEqual(dm.ductDraftRemainingCfm({ runs: [], draft: null, devices: [dev(50, 5, 100)] }), null);
 });
+
+// --- 3d. Room CFM defaults + air balance (unit D7) ---------------------------
+
+test('ROOM_TYPE_CFM_PER_SQFT: the documented rates (§7)', () => {
+  assert.strictEqual(dm.ROOM_TYPE_CFM_PER_SQFT.office.cfmPerSqFt, 1.0);
+  assert.strictEqual(dm.ROOM_TYPE_CFM_PER_SQFT.conference.cfmPerSqFt, 1.5);
+  assert.strictEqual(dm.ROOM_TYPE_CFM_PER_SQFT.break.cfmPerSqFt, 1.5);
+  assert.strictEqual(dm.ROOM_TYPE_CFM_PER_SQFT.storage.cfmPerSqFt, 0.5);
+  assert.strictEqual(dm.ROOM_TYPE_CFM_PER_SQFT.custom.cfmPerSqFt, null);
+});
+
+test('roomTargetCfm: area × rate, rounded; override wins; clean absence', () => {
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'office' }, 450), 450);
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'conference' }, 300), 450);
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'storage' }, 301), 151);   // rounded
+  // Override wins over the derived number.
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'office', targetCfmOverride: 600 }, 450), 600);
+  // Custom has no rate — the override IS the target; without one, no target.
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'custom', targetCfmOverride: 275 }, 450), 275);
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'custom' }, 450), null);
+  // No type, no override, unknown type, no area → null (zero behavior change).
+  assert.strictEqual(dm.roomTargetCfm({}, 450), null);
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'ballroom' }, 450), null);
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'office' }, 0), null);
+  assert.strictEqual(dm.roomTargetCfm(null, 450), null);
+  // A zero/negative override never sticks; the derived rate still applies.
+  assert.strictEqual(dm.roomTargetCfm({ roomType: 'office', targetCfmOverride: 0 }, 450), 450);
+});
+
+test('pointInRoomBox: inside/edges/outside, unordered corners', () => {
+  const box = { x1: 100, y1: 50, x2: 200, y2: 150 };
+  assert.ok(dm.pointInRoomBox({ x: 150, y: 100 }, box));
+  assert.ok(dm.pointInRoomBox({ x: 100, y: 50 }, box));    // corner counts
+  assert.ok(dm.pointInRoomBox({ x: 200, y: 150 }, box));
+  assert.ok(!dm.pointInRoomBox({ x: 99, y: 100 }, box));
+  assert.ok(!dm.pointInRoomBox({ x: 150, y: 151 }, box));
+  // A box drawn right-to-left / bottom-to-top stores swapped corners.
+  const swapped = { x1: 200, y1: 150, x2: 100, y2: 50 };
+  assert.ok(dm.pointInRoomBox({ x: 150, y: 100 }, swapped));
+  assert.ok(!dm.pointInRoomBox({ x: 250, y: 100 }, swapped));
+  assert.ok(!dm.pointInRoomBox(null, box));
+  assert.ok(!dm.pointInRoomBox({ x: 150, y: 100 }, null));
+});
+
+test('roomServedCfm: point-in-rect sums, page scoping, overlap counted once', () => {
+  const boxes = [
+    { x1: 0, y1: 0, x2: 100, y2: 100, pageIdx: 0 },
+    { x1: 50, y1: 0, x2: 150, y2: 100, pageIdx: 0 },   // overlaps the first
+    { x1: 0, y1: 0, x2: 100, y2: 100, pageIdx: 2 },    // the room's page-3 box
+  ];
+  const d = (x, y, cfm, pageIdx) => ({ x, y, cfm, pageIdx });
+  assert.strictEqual(dm.roomServedCfm(boxes, [
+    d(25, 25, 150, 0),    // inside box 1
+    d(75, 25, 200, 0),    // inside BOTH page-0 boxes — counts once
+    d(125, 25, 100, 0),   // inside box 2 only
+    d(500, 500, 999, 0),  // outside everything
+    d(25, 25, 50, 1),     // right spot, WRONG page — excluded
+    d(25, 25, 75, 2),     // the page-3 box serves it
+    d(25, 25, 0, 0),      // zero CFM — not a device
+  ]), 525);
+  assert.strictEqual(dm.roomServedCfm([], [d(25, 25, 150, 0)]), 0);
+  assert.strictEqual(dm.roomServedCfm(boxes, []), 0);
+});
+
+test('roomAirBalance: the ~10% tolerance gates the ⚠', () => {
+  assert.strictEqual(dm.DUCT_BALANCE_TOLERANCE, 0.10);
+  // Exactly served, over-served, and inside-tolerance shortfalls: no flag.
+  assert.deepStrictEqual(dm.roomAirBalance(450, 450), { targetCfm: 450, servedCfm: 450, under: false });
+  assert.strictEqual(dm.roomAirBalance(450, 600).under, false);
+  assert.strictEqual(dm.roomAirBalance(450, 410).under, false);   // 8.9% short
+  assert.strictEqual(dm.roomAirBalance(450, 405).under, false);   // exactly 10%
+  // Beyond the tolerance: flagged.
+  assert.strictEqual(dm.roomAirBalance(450, 300).under, true);
+  assert.strictEqual(dm.roomAirBalance(450, 404).under, true);
+  assert.deepStrictEqual(dm.roomAirBalance(450, 0), { targetCfm: 450, servedCfm: 0, under: true });
+  // No target → no balance row (clean absence).
+  assert.strictEqual(dm.roomAirBalance(null, 300), null);
+  assert.strictEqual(dm.roomAirBalance(0, 300), null);
+});
+
+test('ductSystemDesignedCfm: root trees keyed by system, subtrees included, other systems excluded', () => {
+  const trunkA = netRun('trunkA', [{ x: 0, y: 0 }, { x: 400, y: 0 }], { systemGroupId: 'rtu1' });
+  const branchA = netRun('branchA', [{ x: 300, y: 5 }, { x: 300, y: 200 }]);   // taps trunkA (no own system)
+  const trunkB = netRun('trunkB', [{ x: 0, y: 600 }, { x: 400, y: 600 }], { systemGroupId: 'rtu2' });
+  const devices = [
+    dev(100, 5, 100),    // on trunkA
+    dev(300, 150, 150),  // on branchA — rtu1's tree through the tap
+    dev(200, 605, 500),  // on trunkB — rtu2's air
+    dev(200, 300, 999),  // attached to nothing — excluded
+  ];
+  const runs = [trunkA, branchA, trunkB];
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs, devices, systemGroupId: 'rtu1' }), 250);
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs, devices, systemGroupId: 'rtu2' }), 500);
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs, devices, systemGroupId: 'rtu3' }), 0);
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs: [], devices, systemGroupId: 'rtu1' }), 0);
+});
+
+test('ductSystemDesignedCfm: equipmentPos orients the root — the total is end-independent', () => {
+  // A return main traced from the far grille TOWARD the unit: the equipment
+  // sits at the LAST vertex. The designed total must not depend on trace
+  // direction — equipmentPos rides through to the accumulation (D6 follow-up).
+  const main = netRun('main', [{ x: 0, y: 0 }, { x: 400, y: 0 }], { systemGroupId: 'rtu1', airside: 'return' });
+  const devices = [dev(100, 5, 100), dev(350, 5, 200)];
+  const base = dm.ductSystemDesignedCfm({ runs: [main], devices, systemGroupId: 'rtu1' });
+  const flipped = dm.ductSystemDesignedCfm({ runs: [main], devices, systemGroupId: 'rtu1', equipmentPos: { x: 400, y: 0 } });
+  assert.strictEqual(base, 300);
+  assert.strictEqual(flipped, 300);
+});
+
+test('ductEquipmentPosForGroup: the documented matching ladder', () => {
+  const grp = { id: 'g1', equipmentTag: 'RTU-1', capacityCfm: 2000 };
+  const mk = (x, y, counterName, cfm, groupId) => ({ x, y, counterName, cfm: cfm || null, groupId: groupId || null });
+  // 1. tag-named AND group-assigned beats a loose tag-named marker.
+  assert.deepStrictEqual(dm.ductEquipmentPosForGroup(grp, [
+    mk(10, 10, 'RTU-1', null, null),
+    mk(50, 50, 'rtu-1', null, 'g1'),
+  ]), { x: 50, y: 50 });
+  // 2. a UNIQUE tag-named marker wins even unassigned (case-insensitive).
+  assert.deepStrictEqual(dm.ductEquipmentPosForGroup(grp, [
+    mk(10, 10, 'rtu-1 ', null, null),
+    mk(90, 90, 'Diffuser', 150, 'g1'),
+  ]), { x: 10, y: 10 });
+  // Two loose tag-named markers: ambiguous — falls to rule 3.
+  assert.strictEqual(dm.ductEquipmentPosForGroup(grp, [
+    mk(10, 10, 'RTU-1', null, null),
+    mk(20, 20, 'RTU-1', null, null),
+    mk(90, 90, 'Diffuser', 150, 'g1'),
+  ]), null);
+  // 3. exactly one group-assigned NON-CFM marker is the equipment.
+  assert.deepStrictEqual(dm.ductEquipmentPosForGroup({ id: 'g2', equipmentTag: 'AHU-2' }, [
+    mk(30, 40, 'Rooftop unit', null, 'g2'),
+    mk(90, 90, 'Diffuser', 150, 'g2'),
+  ]), { x: 30, y: 40 });
+  // Two non-CFM markers in the group: ambiguous → null.
+  assert.strictEqual(dm.ductEquipmentPosForGroup({ id: 'g2', equipmentTag: 'AHU-2' }, [
+    mk(30, 40, 'Rooftop unit', null, 'g2'),
+    mk(60, 40, 'Thermostat', null, 'g2'),
+  ]), null);
+  assert.strictEqual(dm.ductEquipmentPosForGroup(grp, []), null);
+  assert.strictEqual(dm.ductEquipmentPosForGroup(null, [mk(1, 1, 'RTU-1')]), null);
+});
+
+test('suggestSystemsForCfm: the ~2,000 CFM/system rule of thumb', () => {
+  assert.strictEqual(dm.DUCT_SYSTEM_RULE_OF_THUMB.cfmPerTon, 400);
+  assert.strictEqual(dm.DUCT_SYSTEM_RULE_OF_THUMB.maxTonsPerSystem, 5);
+  // The worked line: 2,400 CFM → about 2 systems at 1,200 CFM.
+  assert.deepStrictEqual(dm.suggestSystemsForCfm(2400), { systems: 2, cfmEach: 1200, tons: 6 });
+  assert.deepStrictEqual(dm.suggestSystemsForCfm(2000), { systems: 1, cfmEach: 2000, tons: 5 });
+  assert.strictEqual(dm.suggestSystemsForCfm(6000).systems, 3);
+  assert.strictEqual(dm.suggestSystemsForCfm(6000).cfmEach, 2000);
+  // Uneven split rounds each system UP to the next 50 so the sum covers.
+  const s = dm.suggestSystemsForCfm(2510);
+  assert.strictEqual(s.systems, 2);
+  assert.strictEqual(s.cfmEach, 1300);
+  assert.ok(s.systems * s.cfmEach >= 2510);
+  assert.strictEqual(dm.suggestSystemsForCfm(0), null);
+  assert.strictEqual(dm.suggestSystemsForCfm(-5), null);
+  assert.strictEqual(dm.suggestSystemsForCfm(NaN), null);
+});

@@ -1623,6 +1623,16 @@ body.hotkey-peek .hk-badge { display: block; }
 .group-plenum-note { display: block; font-size: 0.68rem; color: var(--text3); font-style: italic; margin-top: 1px; }
 .group-modal-hint { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
 
+/* Air balance (DUCT unit D7, DUCT-PLAN §3): the system capacity line under a
+   group header ("600 designed / 600 capacity ✓"), the room needs/served badge
+   on the Rooms rows, and the equipment-first quiet line on the duct create
+   modal. The accent color fires only when a ⚠ is actually flagged. */
+.group-capacity-line { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); margin-top: 1px; }
+.group-capacity-line.over { color: var(--accent); }
+.room-balance-row { padding: 0 6px 2px 26px; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); }
+.room-balance-row.under { color: var(--accent); }
+.duct-equip-first { margin: 0 0 12px; font-size: 0.8rem; color: var(--text2); line-height: 1.4; }
+
 /* Highlight bookmarks panel (features/highlight-labels.js) — reuses the
    .chain-panel shell (position/drag/head/foot); rows below are its own. */
 .highlight-list { padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; max-height: 300px; }

@@ -37,6 +37,14 @@ Most duct jobs are **design-build** — there's no engineered duct to copy, just
 
 Devices belong to a run when the trace (or a branch's tap) lands within snap distance of them, and to a **system** through that run's group — so with two RTUs on the sheet, each system accumulates only its own air. When the **velocity cap** governs instead of friction (default 1,200 fpm), the suggestion says so: *"velocity-limited."* Both knobs — friction rate and max velocity — live at the bottom of the Duct Schedule and stick with the project.
 
+### Room targets and the air balance
+
+Where do the CFMs come from before any device is placed? From the rooms. [Room Sizer](/guides/hvac-takeoff/) boxes already know each room's floor area — give the room a **type** on its edit dialog (Office 1.0 CFM/ft², Conference and Break 1.5, Storage 0.5, or Custom) and it gets a **target CFM** of area × rate, with a per-room CFM override that always wins. Rooms without a type change nothing.
+
+Once a room has a target, its sidebar row keeps score: *"needs 450 · served 300 ⚠"* — served is the CFM of the devices actually sitting inside the room's boxes, and the ⚠ only appears when the room is short by more than about 10%. Drop in the missing diffuser and the flag clears. System groups get the same treatment one level up: a group with a unit capacity shows *"600 designed / 600 capacity ✓"* on its header — designed is the device air its duct actually carries — and flips to ⚠ the moment the trees out-draw the unit.
+
+And before any duct is traced at all, the New Duct Run dialog reads the room targets and offers the **equipment-first** rule of thumb: *"Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (edit in Groups)"* (~400 CFM per ton, ~5 tons per light-commercial rooftop unit). It's one quiet line, it never creates anything, and it disappears as soon as a system group carries a real capacity. Naming an equipment counter after a group's tag (place an "RTU-1" counter for the RTU-1 system) also anchors the system's unit on the sheet, so return mains accumulate correctly no matter which end you traced them from.
+
 ## Fittings count themselves
 
 You never click "add elbow." The geometry already says where the fittings are, so the app counts them from the trace:

@@ -59,6 +59,12 @@ test.describe('window.App registry pilot - Export PDFs modal', () => {
     const cardCount = await page.locator('#specificPagesGrid .specific-page-card').count();
     expect(cardCount).toBe(2);
 
+    // The button's background transitions, so BOTH style snapshots below can
+    // race the recalc under parallel load (disabled read caught pre-transition
+    // yellow twice in full-suite runs). The assertions are about end-state
+    // colors, not easing — kill the transition for this test.
+    await page.addStyleTag({ content: '#specificPagesDownload { transition: none !important; }' });
+
     // 4. BULK SELECT: exclude all -> Download disabled; mark all -> enabled.
     await page.locator('#specificPagesAllExclude').click();
     expect(await page.locator('#specificPagesDownload').isDisabled()).toBe(true);

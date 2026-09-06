@@ -130,6 +130,29 @@ fourth pillar: quantity → capacity → physics → **sign-off**.
   electrical skin's auto rows become "≤360° between pull points ✓",
   "panel phases balanced", "voltage drop ≤3%".
 
+### Worked row: "Fits the roof" (Will, 2026-09-06)
+
+The named first checkbox: **"Fits the roof — deepest duct + insulation
+clears the plenum."** Ships as a MANUAL row day one; upgrades to AUTO
+when deck height (project default, §4) + Room Sizer ceiling heights +
+the run's size/liner give the app all three numbers — then shows its
+work ("24×12 + 2" wrap = 26" · plenum 30" ✓", or names the offending
+segment). Three escalating moments:
+1. **While drawing (polish):** the S popover adds a quiet depth line
+   ("26" deep · plenum 24" ⚠") at the exact moment the too-deep size
+   is picked. Informative, never interrupts the trace.
+2. **Anytime:** the Bid Check panel in the sidebar, tickable mid-bid.
+3. **At export (the gate):** Copy to /Tooling / Export PDFs pressed
+   with duct present and the row unresolved → interactive corner
+   toast "Bid Check: Fits the roof? — Review · Export anyway"
+   (T2-06's gate-link on T2-04's interactive-toast machinery; Review
+   opens the panel at the row). Resolved rows = silent exports; the
+   toast can never become click-through noise.
+Rationale for gating at export, not earlier: the deepest duct may be
+the last trunk traced, so the question isn't answerable until the
+layout is substantially done — and the export click is the one moment
+that reliably means "I believe I'm finished."
+
 ## Deliberately out (keep the spirit)
 
 - **Auto-tracing runs** (vectorizing linework) — fragile in the way

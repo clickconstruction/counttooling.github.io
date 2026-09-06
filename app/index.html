@@ -112,10 +112,11 @@
         <button id="polylineBtn" class="sidebar-triggers" title="Polyline (right-click for Line Type settings)" aria-label="Polyline">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M416 224C398.3 224 384 209.7 384 192C384 174.3 398.3 160 416 160L576 160C593.7 160 608 174.3 608 192L608 352C608 369.7 593.7 384 576 384C558.3 384 544 369.7 544 352L544 269.3L374.6 438.7C362.1 451.2 341.8 451.2 329.3 438.7L224 333.3L86.6 470.6C74.1 483.1 53.8 483.1 41.3 470.6C28.8 458.1 28.8 437.8 41.3 425.3L201.3 265.3C213.8 252.8 234.1 252.8 246.6 265.3L352 370.7L498.7 224L416 224z"/></svg>
         </button>
-        <!-- Duct tool (DUCT-PLAN unit D2): PREVIEW-FLAGGED — features/duct-tool.js
-             shows this only when localStorage 'clickcount-duct-preview' is set
-             (App.enableDuctPreview()); D5 removes the flag and ships it live. -->
-        <button id="ductBtn" class="sidebar-triggers" style="display:none;" title="Duct run (preview)" aria-label="Duct">
+        <!-- Duct tool (DUCT-PLAN units D2–D5, LIVE since D5 — no preview flag):
+             rides the same scrollable tool strip as every trigger (B9's mobile
+             burger-clearance padding rides the strip, not per button);
+             features/duct-tool.js hides it only for viewer sessions. -->
+        <button id="ductBtn" class="sidebar-triggers" title="Duct run" aria-label="Duct">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M48 224h224v192H48zM288 256h160v128H288zM464 284h128v72H464z"/></svg>
         </button>
         <button id="highlightBtn" class="sidebar-triggers" title="Highlight" aria-label="Highlight">
@@ -369,6 +370,10 @@
         <div class="sidebar-section" id="ductSection" style="display:none;">
           <div class="sidebar-section-header-row">
             <h3 id="ductSectionTitle" class="section-settings" title="Click to collapse">Duct <span class="collapse-icon" id="ductCollapseIcon">▼</span></h3>
+            <!-- D5: the Duct Schedule opener — the bid-pounds rollup modal
+                 (features/duct-schedule.js). Lives on the section header so it
+                 appears exactly when duct exists (the section's own rule). -->
+            <button id="ductScheduleBtn" class="sidebar-btn-inline" title="Duct Schedule — pounds for the bid">Schedule</button>
           </div>
           <div id="ductList"></div>
         </div>
@@ -782,7 +787,7 @@
       </div>
     </div>
   </div>
-  <!-- New Duct Run (DUCT-PLAN unit D2, preview-flagged): the create step sets
+  <!-- New Duct Run (DUCT-PLAN unit D2): the create step sets
        ONLY starting size, pressure class, and liner — airside defaults to
        supply (the chip UI is D4's), everything else changes mid-trace via the
        S popover. Name is auto-suggested like T2-12's nextPolylineName. -->
@@ -834,6 +839,30 @@
       <div class="actions">
         <button id="ductCreateCancel">Cancel</button>
         <button id="ductCreateStart">Start Tracing</button>
+      </div>
+    </div>
+  </div>
+  <!-- Duct Schedule (DUCT-PLAN "The schedule prices like a bid", unit D5 —
+       features/duct-schedule.js): straight duct by size (LF → lb), the
+       fittings section with its Counted | Factor % toggle, insulation sq ft,
+       seam & waste as its own labeled % line, one Bid weight number. The
+       scope segment (This sheet / Every sheet — the house dialect) hides at
+       1 page, like the copy scope choosers in features/output.js. The body
+       tables are rendered by the feature; the % inputs write
+       state.ductSettings (per project, in save/load + export/import). -->
+  <div class="modal-overlay" id="ductScheduleModal">
+    <div class="modal-card duct-schedule-card">
+      <div class="modal-card-header">
+        <h2>Duct Schedule</h2>
+        <div class="duct-shape-toggle duct-schedule-scope" id="ductScheduleScope" style="display:none;">
+          <button type="button" data-scope="page">This sheet</button>
+          <button type="button" data-scope="project" class="active">Every sheet</button>
+        </div>
+      </div>
+      <div id="ductScheduleBody"></div>
+      <div class="actions">
+        <button id="ductScheduleCopy" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
+        <button id="ductScheduleClose">Done</button>
       </div>
     </div>
   </div>
@@ -1048,6 +1077,13 @@
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="legendShowRooms" checked hidden>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span title="Show per-size duct LF · lb rows and the all-duct total in the legend">Show duct rows</span>
+        <button type="button" class="toggle-switch" id="legendShowDuctBtn" aria-pressed="true" title="Show duct rows">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="legendShowDuct" checked hidden>
       </div>
       <div class="actions">
         <button id="legendSettingsClose">Done</button>
@@ -2936,6 +2972,7 @@
   <script src="/features/duct-size-popover.js"></script>
   <script src="/features/duct-fittings.js"></script>
   <script src="/features/duct-sidebar.js"></script>
+  <script src="/features/duct-schedule.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>

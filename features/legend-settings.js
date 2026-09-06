@@ -45,6 +45,10 @@
     const legendShowRoomsBtn = document.getElementById('legendShowRoomsBtn');
     legendShowRoomsCb.checked = ls.showRooms !== false;   // default on; only projects using the Room Sizer have rows
     legendShowRoomsBtn.setAttribute('aria-pressed', legendShowRoomsCb.checked);
+    const legendShowDuctCb = document.getElementById('legendShowDuct');
+    const legendShowDuctBtn = document.getElementById('legendShowDuctBtn');
+    legendShowDuctCb.checked = ls.showDuct !== false;   // default on; only projects that trace duct have rows (D5)
+    legendShowDuctBtn.setAttribute('aria-pressed', legendShowDuctCb.checked);
     App.showModal('legendSettingsModal');
   }
 
@@ -114,6 +118,19 @@
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showRooms = document.getElementById('legendShowRooms').checked;
+    App.renderAnnotations();
+  };
+  document.getElementById('legendShowDuctBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('legendShowDuct');
+    cb.checked = !cb.checked;
+    document.getElementById('legendShowDuctBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('legendShowDuct').onchange = () => {
+    const state = App.state;
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.showDuct = document.getElementById('legendShowDuct').checked;
     App.renderAnnotations();
   };
   document.getElementById('legendTextOpacity').oninput = () => {

@@ -1,8 +1,8 @@
 /*
  * features/duct-tool.js — the Duct drawing tool (TOOL.DUCT), DUCT-PLAN.md
- * unit D2. PREVIEW-FLAGGED: the header #ductBtn renders only while
- * localStorage 'clickcount-duct-preview' is set (App.enableDuctPreview() sets
- * it — the spec/QA switch); D5 removes the flag and ships the button live.
+ * unit D2; LIVE since unit D5 (the shippable-core checkpoint): #ductBtn always
+ * renders for non-viewer sessions — the D2–D4 preview flag (localStorage
+ * 'clickcount-duct-preview' / App.enableDuctPreview()) is GONE.
  *
  * The tool is the POLYLINE PATTERN WITH SEGMENTS: arming (via the button →
  * #ductCreateModal — starting size, pressure class, liner, and (D4) the
@@ -41,7 +41,6 @@
   'use strict';
   const App = (window.App = window.App || {});
 
-  const PREVIEW_FLAG_KEY = 'clickcount-duct-preview';
   let wired = false;
   let createShape = 'rect';
   // Airside chip selection (D4) — reset to 'supply' on every modal open so a
@@ -50,14 +49,6 @@
   // The cursor size chip's last-drawn rect in annotation-canvas BUFFER px —
   // the click hit-target that opens the popover (and the popover's anchor).
   let cursorChipRect = null;
-
-  function isDuctPreviewEnabled() {
-    try { return !!localStorage.getItem(PREVIEW_FLAG_KEY); } catch (_) { return false; }
-  }
-  function enableDuctPreview() {
-    try { localStorage.setItem(PREVIEW_FLAG_KEY, '1'); } catch (_) { /* storage blocked — session-only via updateUI is impossible, button stays hidden */ }
-    App.updateUI && App.updateUI();
-  }
 
   function isDuctDrawing() { return !!App.state.drawingDuct; }
   function currentDuctSize() {
@@ -229,6 +220,24 @@
       // into auto fittings (corner/step/tap), reconciled against manual
       // overrides (features/duct-fittings.js).
       App.reinferDuctFittings && App.reinferDuctFittings(state.currentPage);
+      // D5 telemetry: one duct_run event per committed run (allowlisted by the
+      // 20260906120000_log_user_event_duct_run migration). Metadata mirrors
+      // the schedule's units: segment count, straight LF + lb of THIS run
+      // (duct-model math over the app's scale glue), airside, and how many
+      // fittings the inference walk anchored to it.
+      try {
+        const ann = canvas.annotations;
+        const distFt = (a, b) => App.getLineRealWorldLengthFeet({ points: [a, b] }, state.currentPage, true, ann) || 0;
+        const tally = tallyStraightBySize(runStraightItems(run, distFt), run.pressureClass);
+        const fittings = (ann.ductFittings || []).filter((f) => f.runId === run.id && !f.suppressed).length;
+        App.logUserEvent('duct_run', state.currentProjectId || null, {
+          segments: run.segments.length,
+          totalFt: Math.round(tally.totalLengthFt),
+          totalLb: Math.round(tally.totalPounds),
+          airside: run.airside,
+          fittings: fittings,
+        });
+      } catch (_) { /* telemetry only — never blocks the commit */ }
     }
     state.drawingDuct = null;
     state.tool = App.TOOL.NONE;
@@ -423,7 +432,8 @@
     wire();
     const btn = document.getElementById('ductBtn');
     if (btn) {
-      btn.style.display = isDuctPreviewEnabled() && !state.isViewer ? '' : 'none';
+      // LIVE since D5: only viewer sessions hide the button (no preview flag).
+      btn.style.display = state.isViewer ? 'none' : '';
       btn.classList.toggle('active', state.tool === App.TOOL.DUCT);
     }
     if (state.isViewer && state.drawingDuct) clearDuctDraft();
@@ -455,8 +465,6 @@
     document.getElementById('ductSizeStepBtn').onclick = () => App.toggleDuctSizePopover && App.toggleDuctSizePopover();
   }
 
-  App.enableDuctPreview = enableDuctPreview;
-  App.isDuctPreviewEnabled = isDuctPreviewEnabled;
   App.isDuctDrawing = isDuctDrawing;
   App.getCurrentDuctSize = currentDuctSize;
   App.commitDuctClick = commitDuctClick;

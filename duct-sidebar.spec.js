@@ -29,7 +29,7 @@ const lbPerFtRound = (d, ga) => (Math.PI * d / 12) * SHEET[ga];
 const fmtLb = (lb) => Math.round(lb).toLocaleString('en-US');
 const fmtFt = (ft) => Math.round(ft).toLocaleString('en-US') + "'";
 
-test.describe('Duct sidebar (D4, preview flag)', () => {
+test.describe('Duct sidebar (D4)', () => {
   /** @type {string[]} */
   let errors;
 
@@ -54,7 +54,6 @@ test.describe('Duct sidebar (D4, preview flag)', () => {
 
   // Arm through the real create modal (airside optional).
   async function armDuct(page, airside) {
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
     if (airside) await page.locator('#ductCreateAirside button[data-airside="' + airside + '"]').click();
@@ -96,7 +95,6 @@ test.describe('Duct sidebar (D4, preview flag)', () => {
   });
 
   test('grouped rows, per-size totals, fittings line, airside headers, All-duct total', async ({ page }) => {
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
     // Trunk (supply): straight 24×12 for 1032 pts (86'), size-stepped to
     // 20×12 for another 1032 pts — one auto transition, no elbows.
     await seedRun(page, {
@@ -156,7 +154,6 @@ test.describe('Duct sidebar (D4, preview flag)', () => {
       supply: '#2e86de', return: '#e85447', exhaust: '#47c88e',
     });
 
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateAirside button[data-airside="supply"]')).toHaveClass(/active/);
     await page.locator('#ductCreateAirside button[data-airside="return"]').click();
@@ -203,7 +200,6 @@ test.describe('Duct sidebar (D4, preview flag)', () => {
   });
 
   test('system group: modal fields, sidebar header tag, run inheritance, export→import round-trip', async ({ page }) => {
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
 
     // Create a system group through the REAL modal.
     await page.evaluate(() => { window.App.openGroupModal(null); });
@@ -273,7 +269,6 @@ test.describe('Duct sidebar (D4, preview flag)', () => {
   });
 
   test('run-row click selects (jump + glow state) and toggles off; collapse chevron works', async ({ page }) => {
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
     await seedRun(page, {
       id: 'run-sel', name: 'Selectable', airside: 'supply', pressureClass: '1',
       vertices: [{ x: 100, y: 100 }, { x: 700, y: 100 }],

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Tests: auto duct fittings (DUCT-PLAN.md unit D3, preview-flagged).
+ * Tests: auto duct fittings (DUCT-PLAN.md unit D3; live since D5).
  *
  * - Inference at commit: an L-shaped run logs one auto elbow90 at the corner
  *   (marker ink in the amber fitting color); an S-stepped run logs a
@@ -20,7 +20,7 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
-test.describe('Duct auto fittings (D3, preview flag)', () => {
+test.describe('Duct auto fittings (D3)', () => {
   /** @type {string[]} */
   let errors;
 
@@ -43,7 +43,6 @@ test.describe('Duct auto fittings (D3, preview flag)', () => {
 
   // Arm a supply run through the real create modal (duct-tool.spec recipe).
   async function armDuct(page, w = 24, h = 12) {
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
     await expect(page.locator('#ductBtn')).toBeVisible();
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);

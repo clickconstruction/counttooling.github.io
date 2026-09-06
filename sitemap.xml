@@ -131,6 +131,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/duct-takeoff-by-the-pound/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/electrical-takeoff/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

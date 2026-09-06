@@ -355,7 +355,10 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   toggle — features/drop-peek.js), `view:scale:<token>` (the viewer's temporary local
   page scales — the offline fallback when the shared `set-view-scale` write
   fails; a page-index → scale map, server scale wins on restore).
-- Per-project, in save/load: `maxZoom`, `groups`, `groupsEnabled` (the Groups
+- Per-project, in save/load: `maxZoom`, `groups`, `ductSettings` (the Duct
+  Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
+  the Counted|Factor `fittingMode`; defaults in app.js state init, restored by
+  every intake like `legendSettings`), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is
   true OR the project has groups; latched true on first group create; restored
   by BOTH shared hydrate paths and the copy/load/import intakes), `rooms` (Room Sizer palette —

@@ -1,9 +1,9 @@
 // @ts-check
 /**
- * Tests: the Duct drawing tool (DUCT-PLAN.md unit D2, preview-flagged).
+ * Tests: the Duct drawing tool (DUCT-PLAN.md unit D2; LIVE since D5).
  *
- * - The preview flag gates the header button: hidden by default, shown by
- *   App.enableDuctPreview() (localStorage 'clickcount-duct-preview').
+ * - The header button is LIVE (D5 removed the preview flag): visible with no
+ *   flag, no localStorage key, no App.enableDuctPreview shim left behind.
  * - Arm → trace → S-step → commit stores a run with 2+ segments on
  *   annotations.ductRuns whose per-segment lengths and pounds match the
  *   seeded scale (independent lb/ft math in the spec: perimeter/12 × 24-ga
@@ -26,7 +26,7 @@ const SHEET_24GA = 1.156; // lb/sqft — duct-model SHEET_WEIGHT_LB_PER_SQFT[24]
 const lbPerFtRect = (w, h) => (2 * (w + h) / 12) * SHEET_24GA;
 const dist = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
 
-test.describe('Duct tool (D2, preview flag)', () => {
+test.describe('Duct tool (D2, live since D5)', () => {
   /** @type {string[]} */
   let errors;
 
@@ -51,7 +51,6 @@ test.describe('Duct tool (D2, preview flag)', () => {
 
   // Arm a 24×12 supply run through the real create modal.
   async function armDuct(page) {
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
     await expect(page.locator('#ductBtn')).toBeVisible();
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
@@ -72,13 +71,12 @@ test.describe('Duct tool (D2, preview flag)', () => {
     committed: (window.App.ensureActiveCanvas(window.state.pages[window.state.currentPage]).annotations.ductRuns || []).length,
   }));
 
-  test('preview flag gates the header button', async ({ page }) => {
-    await expect(page.locator('#ductBtn')).toBeHidden();
-    expect(await page.evaluate(() => localStorage.getItem('clickcount-duct-preview'))).toBeNull();
-
-    await page.evaluate(() => { window.App.enableDuctPreview(); });
+  test('the button is LIVE — visible with no preview flag, and the shim is gone (D5)', async ({ page }) => {
     await expect(page.locator('#ductBtn')).toBeVisible();
-    expect(await page.evaluate(() => localStorage.getItem('clickcount-duct-preview'))).toBe('1');
+    // No flag in storage, and the old preview shim no longer exists.
+    expect(await page.evaluate(() => localStorage.getItem('clickcount-duct-preview'))).toBeNull();
+    expect(await page.evaluate(() => typeof window.App.enableDuctPreview)).toBe('undefined');
+    expect(await page.evaluate(() => typeof window.App.isDuctPreviewEnabled)).toBe('undefined');
 
     expect(errors).toEqual([]);
   });

@@ -119,6 +119,16 @@
       : [];
   }
 
+  // Duct Schedule (features/duct-schedule.js registers this on window.App
+  // after this file loads; resolved at call time, optional — the rooms
+  // precedent, DUCT unit D5). Returns null when the scope holds no duct runs,
+  // so duct-free reports are byte-identical to before.
+  function getDuctSchedule(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getDuctScheduleForReport === 'function')
+      ? window.App.getDuctScheduleForReport({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : null;
+  }
+
   // Child counts (features/child-counts.js registers this on window.App after
   // this file loads; resolved at call time, optional). Shape:
   // byGroup[gid][kind][parentId] -> [{ name, qty, per, ftInterval, total,
@@ -256,7 +266,8 @@
     html += '<section>';
     html += '<h2 class="page-header">Summary</h2>';
     const roomTotals = getRoomTotals(pageIndices, getAnn);
-    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0;
+    const ductSchedule = getDuctSchedule(pageIndices, getAnn);
+    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule;
     let anyPxSummaryRow = false;
     if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
@@ -328,6 +339,36 @@
       if (roomTotals.some(t => t.missingScale)) {
         html += '<p class="report-group-totals">* Some boxes are on pages without a scale and are excluded from the totals.</p>';
       }
+    }
+    // Duct Schedule (DUCT unit D5): the bid-pounds rollup — straight duct by
+    // size, fittings (counted rows or the factor line, following the modal's
+    // per-project Counted|Factor pick), insulation sq ft, seam & waste, and
+    // the Bid weight line. Only rendered when the scope holds duct runs.
+    if (ductSchedule) {
+      const ds = ductSchedule;
+      const fmtLbR = (lb) => Math.round(lb).toLocaleString();
+      const fmtFtR = (ft) => Math.round(ft).toLocaleString() + "'";
+      const FIT_LABELS = { elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition', tap: 'Tap', boot: 'Boot', offset: 'Offset' };
+      html += '<h3 class="section-header">Duct Schedule</h3>';
+      html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
+      ds.straightRows.forEach(r => {
+        const lf = r.joints == null ? fmtFtR(r.lengthFt) : fmtFtR(r.lengthFt) + ' · ' + r.joints + (r.joints === 1 ? ' joint' : ' joints') + " @ 10'";
+        html += '<tr><td>' + escapeHtml(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : '—') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+      });
+      html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFtR(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLbR(ds.straightTotalLb) + '</strong></td></tr>';
+      if (ds.fittingMode === 'counted') {
+        ds.fittingRows.forEach(r => {
+          html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + r.sizeKey) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+        });
+        html += '<tr><td><strong>Fittings total</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.fittingsCountedLb) + '</strong></td></tr>';
+      } else {
+        html += '<tr><td>Fittings — factor ' + ds.fittingFactorPct + '% of straight</td><td></td><td></td><td></td><td>' + fmtLbR(ds.fittingFactorLb) + '</td></tr>';
+      }
+      if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + Math.round(ds.linerSqFt).toLocaleString() + ' sq ft</td></tr>';
+      if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
+      html += '<tr><td>Seam &amp; waste (+' + ds.seamWastePct + '%)</td><td></td><td></td><td></td><td>' + fmtLbR(ds.seamWasteLb) + '</td></tr>';
+      html += '<tr><td><strong>Bid weight</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.bidWeightLb) + ' lb</strong></td></tr>';
+      html += '</table>';
     }
     if (!hasSummary) {
       html += '<p class="section-header">No items to summarize.</p>';

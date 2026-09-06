@@ -208,8 +208,10 @@
     legendSettings: { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false },
     // Duct Schedule knobs (DUCT unit D5) — per project, riding save/load +
     // export/import like legendSettings: the schedule's editable seam-&-waste
-    // and fitting-factor % lines plus the Counted|Factor mode pick.
-    ductSettings: { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted' },
+    // and fitting-factor % lines plus the Counted|Factor mode pick. D6 adds
+    // the design-build ductulator knobs: equal-friction rate (in/100ft) and
+    // the velocity cap (fpm) behind the size-chip/S-popover suggestions.
+    ductSettings: { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 },
     multiplyZoneSettings: { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' },
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
@@ -677,7 +679,7 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.rooms = [];
-    state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted' };
+    state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 };
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
     // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key

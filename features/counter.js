@@ -113,6 +113,10 @@
     let prefillIdx = icons.findIndex(ic => !usedNames.has(App.getIconName(ic.value).trim().toLowerCase()));
     if (prefillIdx < 0) prefillIdx = 0;
     document.getElementById('counterName').value = App.getIconName(icons[prefillIdx].value);
+    // D6: the optional CFM (air devices only) always opens empty — a stale
+    // value from the previous create must never silently ride a new counter.
+    const cfmEl = document.getElementById('counterCfm');
+    if (cfmEl) cfmEl.value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
@@ -257,6 +261,10 @@
     const { name, color } = resolveCounterTwin(rawName, icon, rawColor, state.counters, App.COLORS);
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color };
+    // D6: optional CFM — set only when a positive number was entered, so a
+    // non-air counter's shape is unchanged (and old exports stay byte-alike).
+    const cfmVal = parseFloat(document.getElementById('counterCfm')?.value);
+    if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
     state.counters.push(newCounter);
     App.pushRecentColor(color);
     state.activeCounterType = newCounter.id;

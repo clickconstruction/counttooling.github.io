@@ -81,6 +81,10 @@
     if (!Number.isFinite(ds.seamWastePct) || ds.seamWastePct < 0) ds.seamWastePct = 15;
     if (!Number.isFinite(ds.fittingFactorPct) || ds.fittingFactorPct < 0) ds.fittingFactorPct = 40;
     if (ds.fittingMode !== 'factor') ds.fittingMode = 'counted';
+    // D6 design-build knobs — the ductulator suggestion's friction rate and
+    // velocity cap (DUCT-PLAN §5). Pre-D6 saves get the defaults here.
+    if (!Number.isFinite(ds.frictionInPer100ft) || ds.frictionInPer100ft <= 0) ds.frictionInPer100ft = 0.08;
+    if (!Number.isFinite(ds.maxVelocityFpm) || ds.maxVelocityFpm <= 0) ds.maxVelocityFpm = 1200;
     return ds;
   }
 
@@ -283,9 +287,23 @@
     seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.scope === scheduleScope));
   }
 
+  // D6: the design-build ductulator knobs (friction rate + velocity cap) live
+  // on THIS modal — it is already the home of every editable duct percentage
+  // and opens without arming a tool, where the create modal sits inside the
+  // arm-a-trace flow and should stay minimal (the documented "least chrome"
+  // call). Values sync on open; `change` commits (the % inputs' idiom).
+  function syncDesignRow() {
+    const ds = getDuctSettings();
+    const friction = document.getElementById('ductFrictionRate');
+    const velocity = document.getElementById('ductMaxVelocity');
+    if (friction) friction.value = ds.frictionInPer100ft;
+    if (velocity) velocity.value = ds.maxVelocityFpm;
+  }
+
   function openDuctScheduleModal() {
     scheduleScope = 'project';   // a schedule prices the whole bid by default
     syncScopeSegment();
+    syncDesignRow();
     renderScheduleBody();
     App.showModal('ductScheduleModal');
   }
@@ -386,6 +404,20 @@
     syncScopeSegment();
     renderScheduleBody();
   });
+  const frictionInput = document.getElementById('ductFrictionRate');
+  if (frictionInput) frictionInput.addEventListener('change', () => {
+    const v = parseFloat(frictionInput.value);
+    getDuctSettings().frictionInPer100ft = Number.isFinite(v) && v > 0 ? v : 0.08;
+    syncDesignRow();
+    App.markProjectDirty();
+  });
+  const velocityInput = document.getElementById('ductMaxVelocity');
+  if (velocityInput) velocityInput.addEventListener('change', () => {
+    const v = parseFloat(velocityInput.value);
+    getDuctSettings().maxVelocityFpm = Number.isFinite(v) && v > 0 ? v : 1200;
+    syncDesignRow();
+    App.markProjectDirty();
+  });
   const copyBtn = document.getElementById('ductScheduleCopy');
   if (copyBtn) copyBtn.onclick = async () => {
     // The same pre-copy scale gate as Copy to /Tooling / Copy Summary
@@ -397,6 +429,7 @@
   };
 
   App.openDuctScheduleModal = openDuctScheduleModal;
+  App.getDuctSettings = getDuctSettings;   // D6: duct-suggest.js reads the design knobs
   App.computeDuctSchedule = computeDuctSchedule;
   App.getDuctScheduleForReport = getDuctScheduleForReport;
   App.buildDuctScheduleText = buildDuctScheduleText;   // spec seam

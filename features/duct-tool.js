@@ -369,7 +369,33 @@
       const pc = App.toCanvas(cursor);
       // Offset scales with the overlay's font scale so the chip clears the
       // cursor at any zoom/DPR.
-      chip(formatDuctSize(cur) + ' ▾', pc.x + 24 + 14 * fontScale, pc.y - 10 - 8 * fontScale, true);
+      const chipX = pc.x + 24 + 14 * fontScale;
+      const chipY = pc.y - 10 - 8 * fontScale;
+      chip(formatDuctSize(cur) + ' ▾', chipX, chipY, true);
+      // D6: the design-build suggestion line rides UNDER the size chip when
+      // the system has CFM data ("450 CFM downstream · suggests 12×10 @
+      // 0.08″/100′ — S accepts"; features/duct-suggest.js — informs only, S /
+      // the popover accepts). Drawn at a smaller size so the chip stays the
+      // headline; defensive read per the registry boundary rule.
+      const sug = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion();
+      if (sug) {
+        const sFont = 8.5 * fontScale;
+        ctx.font = '600 ' + sFont + 'px DM Sans';
+        const tw = ctx.measureText(sug.chipText).width;
+        const pad = 4;
+        const sy = chipY + (10 * fontScale) / 2 + pad * 2 + sFont / 2 + 3;
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(chipX - tw / 2 - pad, sy - sFont / 2 - pad, tw + pad * 2, sFont + pad * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(chipX - tw / 2 - pad, sy - sFont / 2 - pad, tw + pad * 2, sFont + pad * 2);
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(sug.chipText, chipX, sy);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
     }
     ctx.restore();
   }

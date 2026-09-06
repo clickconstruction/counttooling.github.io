@@ -659,6 +659,252 @@ function tallyDuctFittingCounts(fittings) {
     || (a.sizeKey < b.sizeKey ? -1 : a.sizeKey > b.sizeKey ? 1 : 0));
 }
 
+// --- 3c. Design-build accumulation (unit D6) ---------------------------------
+//
+// DUCT-PLAN "Design-build (primary)": air devices carry CFM; while the main is
+// traced the size chip suggests the ductulator answer for the remaining
+// downstream CFM. The pure logic here is three layers:
+//
+//   ATTACHMENT — a device (a placed counter marker whose counter type has a
+//   CFM) belongs to the run whose polyline passes NEAREST its position, when
+//   that distance is within the tap-snap tolerance (DUCT_TAP_SNAP_PDF — the
+//   same constant D3's tap inference uses, so "the flex lands here" means the
+//   same thing for a branch run and for a diffuser). Devices beyond snap of
+//   every run are UNATTACHED. A device's system is derived from its attachment
+//   (DUCT-PLAN §2 "devices inherit from the run that taps them"): the attached
+//   run's systemGroupId; an unattached device falls back to the marker's own
+//   group assignment, else no system.
+//
+//   NETWORK — runs connect by D3's tap rule: a run whose FIRST vertex lands
+//   within tap-snap of another run's polyline is that parent's CHILD, joined
+//   at the tap arclength. Runs with no parent are roots. Each run is oriented
+//   from its EQUIPMENT END outward: a child's equipment end is always vertex 0
+//   (the tap — air enters there); a root's equipment end is vertex 0 unless an
+//   equipment position is given and the run's LAST vertex is nearer to it
+//   (a return main traced from the far grille toward the unit).
+//
+//   ACCUMULATION — the CFM crossing a point on a run is the total CFM of
+//   devices served BEYOND that point, away from the equipment: devices
+//   attached further along the run, plus the whole subtree of every child
+//   tapped beyond it. AIRSIDE: on supply, air flows equipment → devices; on
+//   return it flows devices → equipment — the direction reverses but the
+//   cross-section magnitude is identical (the duct at P carries exactly the
+//   air of the far-side devices, outbound or inbound), so ONE traversal
+//   serves both airsides and the equipment end sets the orientation.
+//
+// All positions/arclengths are raw vertex coordinates (PDF-space in the app).
+// Cycle-safe (two runs tap-snapping each other cannot loop the walk).
+
+/** Nearest point on a polyline: { dist, s } — s = arclength from vertex 0 to
+ * the nearest point. { dist: Infinity, s: 0 } for fewer than 2 vertices. */
+function ductNearestOnPolyline(p, verts) {
+  let best = { dist: Infinity, s: 0 };
+  let acc = 0;
+  for (let i = 0; i < (verts?.length || 0) - 1; i++) {
+    const a = verts[i], b = verts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+    const d = Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    const segLen = Math.sqrt(len2);
+    if (d < best.dist) best = { dist: d, s: acc + t * segLen };
+    acc += segLen;
+  }
+  return best;
+}
+
+/** Total polyline arclength of a run's vertices. */
+function ductPolylineLength(verts) {
+  let acc = 0;
+  for (let i = 0; i < (verts?.length || 0) - 1; i++) acc += Math.hypot(verts[i + 1].x - verts[i].x, verts[i + 1].y - verts[i].y);
+  return acc;
+}
+
+/**
+ * The attachment rule. devices = [{ x, y, cfm, … }]; runs = duct runs.
+ * Returns { attached: [{ device, runId, s, dist }], unattached: [device] }.
+ * Nearest run within opts.snapDist (default DUCT_TAP_SNAP_PDF) wins; s is the
+ * arclength (from vertex 0) of the nearest point on that run.
+ */
+function attachDuctDevices(devices, runs, opts) {
+  const snap = opts?.snapDist > 0 ? opts.snapDist : DUCT_TAP_SNAP_PDF;
+  const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const attached = [], unattached = [];
+  (devices || []).forEach(dev => {
+    if (!dev || !Number.isFinite(dev.x) || !Number.isFinite(dev.y)) return;
+    let best = null;
+    list.forEach(run => {
+      const hit = ductNearestOnPolyline(dev, run.vertices);
+      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { device: dev, runId: run.id, s: hit.s, dist: hit.dist };
+    });
+    if (best) attached.push(best);
+    else unattached.push(dev);
+  });
+  return { attached: attached, unattached: unattached };
+}
+
+/**
+ * Tap links between runs (D3's tap rule, reused for the network walk): a run
+ * whose FIRST vertex lands within snap of another run's polyline is that
+ * parent's child. Returns [{ childId, parentId, s }] — s = arclength along
+ * the PARENT of the tap point. Nearest parent wins.
+ */
+function ductChildLinks(runs, opts) {
+  const snap = opts?.snapDist > 0 ? opts.snapDist : DUCT_TAP_SNAP_PDF;
+  const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const out = [];
+  list.forEach(child => {
+    const start = child.vertices[0];
+    let best = null;
+    list.forEach(parent => {
+      if (parent === child || parent.id === child.id) return;
+      const hit = ductNearestOnPolyline(start, parent.vertices);
+      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { childId: child.id, parentId: parent.id, s: hit.s, dist: hit.dist };
+    });
+    if (best) out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
+  });
+  return out;
+}
+
+/**
+ * A device's system, derived from attachment (DUCT-PLAN §2): the nearest-run-
+ * within-snap's systemGroupId; else the device's own groupId; else null.
+ */
+function ductDeviceSystemId(device, runs, opts) {
+  const { attached } = attachDuctDevices([device], runs, opts);
+  if (attached.length) {
+    const run = (runs || []).find(r => r && r.id === attached[0].runId);
+    return run?.systemGroupId || null;
+  }
+  return device?.groupId || null;
+}
+
+// Is vertex 0 the equipment end of this run? Children: always (air enters at
+// the tap). Roots: yes unless equipmentPos sits nearer the LAST vertex.
+function ductEquipmentEndIsStart(run, isChild, equipmentPos) {
+  if (isChild || !equipmentPos) return true;
+  const verts = run.vertices || [];
+  if (verts.length < 2) return true;
+  const d0 = Math.hypot(equipmentPos.x - verts[0].x, equipmentPos.y - verts[0].y);
+  const d1 = Math.hypot(equipmentPos.x - verts[verts.length - 1].x, equipmentPos.y - verts[verts.length - 1].y);
+  return d0 <= d1;
+}
+
+/**
+ * Downstream CFM at a point on a run (the accumulation query).
+ *
+ * opts: { runs, devices, runId, s, equipmentPos?, snapDist? }
+ *   - runId + s name the query point: s = arclength from the run's VERTEX 0
+ *     (orientation is resolved internally from the equipment end).
+ *   - devices as in attachDuctDevices (only cfm > 0 entries count).
+ *
+ * Returns the total CFM of devices served beyond that point away from the
+ * equipment — attached further along this run (inclusive of the point, eps
+ * 1e-6) plus the full subtree of children tapped beyond it. Unattached
+ * devices are excluded. Returns null when the run is unknown.
+ */
+function ductDownstreamCfm(opts) {
+  const o = opts || {};
+  const runs = (o.runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const run = runs.find(r => r.id === o.runId);
+  if (!run) return null;
+  const EPS = 1e-6;
+  const links = ductChildLinks(runs, o);
+  const parentOf = new Map(links.map(l => [l.childId, l]));
+  const childrenOf = new Map();
+  links.forEach(l => {
+    if (!childrenOf.has(l.parentId)) childrenOf.set(l.parentId, []);
+    childrenOf.get(l.parentId).push(l);
+  });
+  const { attached } = attachDuctDevices((o.devices || []).filter(d => d && d.cfm > 0), runs, o);
+  const devsOn = new Map();
+  attached.forEach(a => {
+    if (!devsOn.has(a.runId)) devsOn.set(a.runId, []);
+    devsOn.get(a.runId).push(a);
+  });
+  // Oriented arclength: distance from the equipment end.
+  const fromEquip = (r, sRaw) => {
+    const isChild = parentOf.has(r.id);
+    return ductEquipmentEndIsStart(r, isChild, o.equipmentPos) ? sRaw : ductPolylineLength(r.vertices) - sRaw;
+  };
+  const subtree = (rid, visited) => {
+    if (visited.has(rid)) return 0;
+    visited.add(rid);
+    let sum = 0;
+    (devsOn.get(rid) || []).forEach(a => { sum += a.device.cfm; });
+    (childrenOf.get(rid) || []).forEach(l => { sum += subtree(l.childId, visited); });
+    return sum;
+  };
+  const qs = fromEquip(run, Number.isFinite(o.s) ? o.s : 0);
+  let total = 0;
+  (devsOn.get(run.id) || []).forEach(a => { if (fromEquip(run, a.s) >= qs - EPS) total += a.device.cfm; });
+  const visited = new Set([run.id]);
+  (childrenOf.get(run.id) || []).forEach(l => {
+    if (fromEquip(run, l.s) >= qs - EPS) total += subtree(l.childId, visited);
+  });
+  return total;
+}
+
+/**
+ * Remaining downstream CFM for an IN-PROGRESS trace (the live suggestion's
+ * number — DUCT-PLAN "every tap subtracts its air … the remaining downstream
+ * CFM"). The draft is assumed to be heading toward everything its system has
+ * not served yet:
+ *
+ *   remaining = Σ cfm of the system's devices
+ *             − Σ cfm of devices already SERVED (attached to a committed run
+ *               of the same system, or passed by the draft — attached to the
+ *               draft polyline strictly BEHIND its tip).
+ *
+ * A device the tip has just reached (its nearest point IS the tip) is still
+ * downstream — the segment being sized carries its air; it flips to served
+ * once the trace moves past it.
+ *
+ * System scope: a device is IN scope when its derived system (attachment
+ * against committed runs + the draft, else its own groupId) matches the
+ * draft's systemGroupId, or when it has no system at all (the unassigned
+ * pool is assumed to belong to whatever is being traced — D7's balance
+ * badges are the multi-system correction surface).
+ *
+ * opts: { runs (committed), draft ({ vertices, segments?, systemGroupId? }),
+ *         devices, snapDist? }
+ * Returns { cfm, totalCfm, servedCfm } or null when no in-scope device has
+ * CFM (the clean-absence rule — no data, no suggestion).
+ */
+function ductDraftRemainingCfm(opts) {
+  const o = opts || {};
+  const draft = o.draft;
+  if (!draft) return null;
+  const EPS = 1e-6;
+  const draftRun = { id: '__draft__', systemGroupId: draft.systemGroupId || null, vertices: draft.vertices || [], segments: draft.segments || [] };
+  const committed = (o.runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const all = draftRun.vertices.length >= 2 ? committed.concat([draftRun]) : committed;
+  const devices = (o.devices || []).filter(d => d && d.cfm > 0);
+  const { attached, unattached } = attachDuctDevices(devices, all, o);
+  const sys = draftRun.systemGroupId;
+  const runById = new Map(all.map(r => [r.id, r]));
+  const tipLen = ductPolylineLength(draftRun.vertices);
+  let totalCfm = 0, servedCfm = 0;
+  attached.forEach(a => {
+    const run = runById.get(a.runId);
+    const devSys = run.id === '__draft__' ? sys : (run.systemGroupId || null);
+    if (devSys !== sys) return;   // another system's device — out of scope
+    totalCfm += a.device.cfm;
+    if (run.id === '__draft__') {
+      if (a.s < tipLen - EPS) servedCfm += a.device.cfm;   // passed by the trace
+    } else {
+      servedCfm += a.device.cfm;   // a committed run of this system serves it
+    }
+  });
+  unattached.forEach(d => {
+    const devSys = d.groupId || null;
+    if (devSys !== null && devSys !== sys) return;   // assigned elsewhere
+    totalCfm += d.cfm;   // unserved — assumed downstream of this trace
+  });
+  if (!(totalCfm > 0)) return null;
+  return { cfm: totalCfm - servedCfm, totalCfm: totalCfm, servedCfm: servedCfm };
+}
+
 // --- 4. Insulation -----------------------------------------------------------
 
 /** Insulation sq ft per LF of duct: perimeter(in)/12. */
@@ -888,6 +1134,9 @@ if (typeof module !== 'undefined' && module.exports) {
     ductBendAngleDeg, largerDuctSize, ductSizeAtVertex, ductDistToPolyline,
     inferAutoDuctFittings, ductFittingAnchorKey, ductFittingAnchor,
     ductFittingOutDirection, reconcileDuctFittings, tallyDuctFittingCounts,
+    // design-build accumulation (D6)
+    ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
+    ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,
     // gauge
     SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES,
     ductGoverningDimIn, selectGauge,

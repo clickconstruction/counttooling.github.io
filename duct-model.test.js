@@ -768,3 +768,130 @@ test('tallyDuctFittingCounts: groups by type + sizeKey in type order', () => {
     { type: 'tap', sizeKey: '20×12', count: 1 },
   ]);
 });
+
+// --- 3c. Design-build accumulation (unit D6) ---------------------------------
+
+// A straight-line run helper: id, vertices, one segment at 24×12 unless given.
+const netRun = (id, verts, extra) => dm.makeDuctRun({
+  id, vertices: verts,
+  segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }],
+  ...extra,
+});
+const dev = (x, y, cfm, groupId) => ({ x, y, cfm, groupId: groupId || null });
+
+test('ductNearestOnPolyline: distance + arclength of the nearest point', () => {
+  const verts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];
+  let hit = dm.ductNearestOnPolyline({ x: 50, y: 10 }, verts);
+  close(hit.dist, 10);
+  close(hit.s, 50);
+  hit = dm.ductNearestOnPolyline({ x: 110, y: 60 }, verts);
+  close(hit.dist, 10);
+  close(hit.s, 160);   // 100 along the first leg + 60 down the second
+  assert.strictEqual(dm.ductNearestOnPolyline({ x: 0, y: 0 }, [{ x: 0, y: 0 }]).dist, Infinity);
+  close(dm.ductPolylineLength(verts), 200);
+});
+
+test('attachDuctDevices: nearest run within snap wins; far devices unattached', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
+  const branch = netRun('branch', [{ x: 200, y: 4 }, { x: 200, y: 150 }]);
+  const near = dev(100, 8, 150);            // 8 from trunk — attaches there
+  const nearer = dev(196, 100, 300);        // 4 from branch, ~100 from trunk
+  const far = dev(100, 50, 200);            // 50 from everything — unattached
+  const res = dm.attachDuctDevices([near, nearer, far], [trunk, branch]);
+  assert.strictEqual(res.attached.length, 2);
+  assert.strictEqual(res.attached[0].runId, 'trunk');
+  close(res.attached[0].s, 100);
+  assert.strictEqual(res.attached[1].runId, 'branch');
+  assert.deepStrictEqual(res.unattached, [far]);
+  // A wider snap picks the far device up too.
+  const wide = dm.attachDuctDevices([far], [trunk, branch], { snapDist: 60 });
+  assert.strictEqual(wide.attached.length, 1);
+});
+
+test('ductChildLinks: a run starting on another run links to that parent at the tap arclength', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
+  const branch = netRun('branch', [{ x: 120, y: 6 }, { x: 120, y: 150 }]);
+  const loose = netRun('loose', [{ x: 0, y: 500 }, { x: 100, y: 500 }]);
+  const links = dm.ductChildLinks([trunk, branch, loose]);
+  assert.strictEqual(links.length, 1);
+  assert.strictEqual(links[0].childId, 'branch');
+  assert.strictEqual(links[0].parentId, 'trunk');
+  close(links[0].s, 120);
+});
+
+test('ductDeviceSystemId: attachment-derived, marker-group fallback, else null', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }], { systemGroupId: 'sysA' });
+  assert.strictEqual(dm.ductDeviceSystemId(dev(100, 5, 150), [trunk]), 'sysA');
+  assert.strictEqual(dm.ductDeviceSystemId(dev(100, 90, 150, 'sysB'), [trunk]), 'sysB');
+  assert.strictEqual(dm.ductDeviceSystemId(dev(100, 90, 150), [trunk]), null);
+});
+
+test('ductDownstreamCfm: branching network — devices beyond the point + tapped subtrees', () => {
+  // trunk 0→400; branch taps at x=300 and carries one 150-CFM device;
+  // two devices sit directly on the trunk at x=100 and x=350.
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+  const branch = netRun('branch', [{ x: 300, y: 5 }, { x: 300, y: 200 }]);
+  const devices = [dev(100, 5, 100), dev(350, 5, 200), dev(300, 150, 150)];
+  const q = (s) => dm.ductDownstreamCfm({ runs: [trunk, branch], devices, runId: 'trunk', s });
+  assert.strictEqual(q(0), 450);      // everything is downstream of the unit
+  assert.strictEqual(q(150), 350);    // past the first diffuser
+  assert.strictEqual(q(320), 200);    // past the tap — the branch's air left
+  assert.strictEqual(q(380), 0);      // past the last device
+  // At the branch itself the subtree is its own device.
+  assert.strictEqual(dm.ductDownstreamCfm({ runs: [trunk, branch], devices, runId: 'branch', s: 0 }), 150);
+  assert.strictEqual(dm.ductDownstreamCfm({ runs: [trunk, branch], devices, runId: 'nope', s: 0 }), null);
+});
+
+test('ductDownstreamCfm: unattached devices are excluded', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+  const devices = [dev(100, 5, 100), dev(100, 300, 999)];   // second is 300 away
+  assert.strictEqual(dm.ductDownstreamCfm({ runs: [trunk], devices, runId: 'trunk', s: 0 }), 100);
+});
+
+test('ductDownstreamCfm: equipment position flips the orientation (return traced from the far end)', () => {
+  // Same geometry; the equipment (RTU) sits at the run's LAST vertex, so the
+  // far-from-equipment side is toward vertex 0. Supply vs return share the
+  // magnitude — only the equipment end matters.
+  const main = netRun('main', [{ x: 0, y: 0 }, { x: 400, y: 0 }], { airside: 'return' });
+  const devices = [dev(100, 5, 100), dev(350, 5, 200)];
+  const q = (s, equipmentPos) => dm.ductDownstreamCfm({ runs: [main], devices, runId: 'main', s, equipmentPos });
+  // Equipment at the start (default): downstream shrinks toward the end.
+  assert.strictEqual(q(200), 200);
+  // Equipment at the end: the SAME raw s now has only the x=100 grille beyond it.
+  assert.strictEqual(q(200, { x: 400, y: 0 }), 100);
+  assert.strictEqual(q(400, { x: 400, y: 0 }), 300);   // at the unit: everything
+});
+
+test('ductDraftRemainingCfm: total minus passed/served; tip-adjacent devices still count', () => {
+  const devices = [dev(100, 5, 100), dev(250, 5, 150), dev(400, 60, 200)];
+  const draft = { systemGroupId: null, vertices: [{ x: 0, y: 0 }, { x: 250, y: 0 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }] };
+  const r = dm.ductDraftRemainingCfm({ runs: [], draft, devices });
+  // The x=100 device was passed; the x=250 one is AT the tip (still ahead);
+  // the far one is unattached — assumed downstream.
+  assert.strictEqual(r.totalCfm, 450);
+  assert.strictEqual(r.servedCfm, 100);
+  assert.strictEqual(r.cfm, 350);
+});
+
+test('ductDraftRemainingCfm: committed same-system runs serve their devices; other systems excluded', () => {
+  const done = netRun('done', [{ x: 0, y: 300 }, { x: 300, y: 300 }], { systemGroupId: null });
+  const otherSys = netRun('other', [{ x: 0, y: 600 }, { x: 300, y: 600 }], { systemGroupId: 'rtu2' });
+  const devices = [
+    dev(150, 305, 100),          // on the committed run — served
+    dev(150, 605, 500),          // on the OTHER system's run — out of scope
+    dev(150, 100, 250),          // loose — still to serve
+    dev(150, 120, 300, 'rtu2'),  // loose but assigned to rtu2 — out of scope
+  ];
+  const draft = { systemGroupId: null, vertices: [{ x: 0, y: 0 }, { x: 50, y: 0 }], segments: [] };
+  const r = dm.ductDraftRemainingCfm({ runs: [done, otherSys], draft, devices });
+  assert.strictEqual(r.totalCfm, 350);
+  assert.strictEqual(r.servedCfm, 100);
+  assert.strictEqual(r.cfm, 250);
+});
+
+test('ductDraftRemainingCfm: no CFM data → null (the clean-absence rule)', () => {
+  const draft = { systemGroupId: null, vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }], segments: [] };
+  assert.strictEqual(dm.ductDraftRemainingCfm({ runs: [], draft, devices: [] }), null);
+  assert.strictEqual(dm.ductDraftRemainingCfm({ runs: [], draft, devices: [dev(50, 5, 0)] }), null);
+  assert.strictEqual(dm.ductDraftRemainingCfm({ runs: [], draft: null, devices: [dev(50, 5, 100)] }), null);
+});

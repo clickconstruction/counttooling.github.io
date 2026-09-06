@@ -393,6 +393,9 @@
         Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
         (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
         (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
+        // DUCT unit D4: duct runs reference groups as their SYSTEM — clear
+        // the inherited id so a deleted group leaves no dangling reference.
+        (ann.ductRuns || []).forEach(run => { if ((run.systemGroupId || null) === groupId) run.systemGroupId = null; });
       });
     });
     App.markProjectDirty();

@@ -5,8 +5,8 @@
  * it — the spec/QA switch); D5 removes the flag and ships the button live.
  *
  * The tool is the POLYLINE PATTERN WITH SEGMENTS: arming (via the button →
- * #ductCreateModal, which per DUCT-PLAN sets ONLY starting size, pressure
- * class, and liner — airside defaults 'supply'; the chip UI is D4's) creates
+ * #ductCreateModal — starting size, pressure class, liner, and (D4) the
+ * Supply/Return/Exhaust airside chip, default Supply) creates
  * `state.drawingDuct`, a pre-commit draft exactly like state.drawingPolyline:
  *   { id, name, airside, pressureClass, linerType, linerThicknessIn,
  *     vertices: [{x,y}…],                    // PDF-space, like polyline.points
@@ -44,6 +44,9 @@
   const PREVIEW_FLAG_KEY = 'clickcount-duct-preview';
   let wired = false;
   let createShape = 'rect';
+  // Airside chip selection (D4) — reset to 'supply' on every modal open so a
+  // new run never silently inherits the previous run's airside.
+  let createAirside = 'supply';
   // The cursor size chip's last-drawn rect in annotation-canvas BUFFER px —
   // the click hit-target that opens the popover (and the popover's anchor).
   let cursorChipRect = null;
@@ -81,11 +84,19 @@
     document.getElementById('ductCreateRoundInputs').style.display = createShape === 'round' ? '' : 'none';
   }
 
+  function syncCreateAirside() {
+    const toggle = document.getElementById('ductCreateAirside');
+    if (!toggle) return;
+    toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.airside === createAirside));
+  }
+
   function openDuctCreateModal() {
     document.getElementById('ductCreateName').value = nextDuctRunName();
     const sel = document.getElementById('ductCreatePressure');
     sel.innerHTML = DUCT_PRESSURE_CLASSES.map((pc) => '<option value="' + pc + '"' + (pc === '1' ? ' selected' : '') + '>' + pc + '"</option>').join('');
+    createAirside = 'supply';
     syncCreateShape();
+    syncCreateAirside();
     App.showModal('ductCreateModal');
   }
 
@@ -106,10 +117,13 @@
     state.drawingDuct = {
       id: App.uid(),
       name: document.getElementById('ductCreateName').value.trim() || nextDuctRunName(),
-      airside: 'supply',   // stored now; the Supply/Return/Exhaust chip is D4
+      airside: createAirside,   // D4 Supply/Return/Exhaust chip (default Supply)
       pressureClass: document.getElementById('ductCreatePressure').value || '1',
       linerType: document.getElementById('ductCreateLiner').value || null,
       linerThicknessIn: 0,
+      // D4 (DUCT-PLAN §2): a run drawn while a system group is active inherits
+      // it — the same state.activeGroupId convention T2-12 gave polylines.
+      systemGroupId: state.activeGroupId || null,
       vertices: [],
       segments: [{ startVertexIdx: 0, size: size }],
       sizeSteps: [],
@@ -204,6 +218,7 @@
         pressureClass: draft.pressureClass,
         linerType: draft.linerType,
         linerThicknessIn: draft.linerThicknessIn,
+        systemGroupId: draft.systemGroupId,
         vertices: draft.vertices,
         segments: draft.segments,
       });
@@ -429,6 +444,12 @@
       if (!b) return;
       createShape = b.dataset.shape;
       syncCreateShape();
+    });
+    document.getElementById('ductCreateAirside').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-airside]');
+      if (!b) return;
+      createAirside = b.dataset.airside;
+      syncCreateAirside();
     });
     document.getElementById('finishDuctRunBtn').onclick = () => finishDuctRun();
     document.getElementById('ductSizeStepBtn').onclick = () => App.toggleDuctSizePopover && App.toggleDuctSizePopover();

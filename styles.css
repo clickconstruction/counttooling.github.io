@@ -1565,6 +1565,27 @@ body.hotkey-peek .hk-badge { display: block; }
 .duct-custom-apply { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent); font-family: inherit; font-size: 0.78rem; font-weight: 600; padding: 6px 10px; cursor: pointer; }
 .duct-custom-apply:hover { border-color: var(--accent); }
 
+/* Duct sidebar section (features/duct-sidebar.js, DUCT unit D4): airside
+   headers → run rows (swatch · name · LF·lb badge) → per-size segment rows →
+   fittings line → the accent All-duct total. Mirrors the Lines section's
+   grouped-row rhythm; the run row reuses .sidebar-item for selection/hover. */
+.duct-airside-header { display: flex; align-items: center; gap: 6px; color: var(--text3); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 8px 0 2px; }
+.duct-airside-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.duct-run-wrap { margin-bottom: 2px; }
+.duct-run-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.duct-run-row .duct-run-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.duct-seg-row { margin-left: 22px; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text2); padding: 1px 0; }
+.duct-fittings-line { margin-left: 22px; font-size: 0.72rem; color: var(--text3); padding: 2px 0 4px; }
+.duct-all-total { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; padding: 6px 8px 2px; border-top: 1px solid var(--border); color: var(--accent); font-weight: 600; font-size: 0.85rem; }
+.duct-all-total .duct-all-total-num { font-family: 'DM Mono', monospace; }
+
+/* System groups (DUCT unit D4, DUCT-PLAN §2): the equipment tag + capacity
+   line ("RTU-1 · 600 CFM") and the plenum-return note in a group's sidebar
+   header, plus the group-modal hint copy. */
+.group-system-tag { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); margin-top: 1px; }
+.group-plenum-note { display: block; font-size: 0.68rem; color: var(--text3); font-style: italic; margin-top: 1px; }
+.group-modal-hint { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
+
 /* Highlight bookmarks panel (features/highlight-labels.js) — reuses the
    .chain-panel shell (position/drag/head/foot); rows below are its own. */
 .highlight-list { padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; max-height: 300px; }

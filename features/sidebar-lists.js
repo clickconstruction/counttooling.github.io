@@ -208,7 +208,17 @@
       const count = countItemsInGroup(g.id);
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeGroupId === g.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      // DUCT unit D4 (DUCT-PLAN §2): a group with an equipment tag is a
+      // SYSTEM — its header carries "RTU-1 · 600 CFM" (capacity optional) and
+      // a small "plenum return" note when that per-system toggle is on (§1).
+      // Plain groups render exactly as before.
+      let sysHtml = '';
+      if (g.equipmentTag) {
+        sysHtml = '<span class="group-system-tag">' + esc(g.equipmentTag)
+          + (g.capacityCfm ? ' · ' + Number(g.capacityCfm).toLocaleString() + ' CFM' : '') + '</span>'
+          + (g.plenumReturn ? '<span class="group-plenum-note">plenum return</span>' : '');
+      }
+      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (showEdit) {
         div.onclick = (e) => {
           if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) {

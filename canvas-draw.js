@@ -44,6 +44,8 @@
 //                     preserved)
 //   selection         { id, isPoly } | null — live-only glow (2x width +
 //                     shadowBlur) on the selected quick line / polyline
+//   selectedDuctRunId live-only (D4 sidebar): duct-run id | null — glow
+//                     (1.5x stroke + shadowBlur) on the selected duct run
 //   drawNoteHandles   live-only note resize/rotate handle squares
 //   notePin           live-only (features/notes-ledger.js): (note) -> pin
 //                     info { num, color, resolved, r } | null. Non-null draws
@@ -128,12 +130,14 @@ function lineStyleToDash(style) {
   return [];
 }
 
-// Duct run colors by airside (DUCT-PLAN §1 trade colors: supply blue, return
-// purple-ish, exhaust olive). D2 places the seam; D4's trade-color pass edits
-// VALUES here (and may swap in a settings-driven map) without touching draw
-// code. Pure data — shared by the persisted-run painter below and the live
-// trace preview in features/duct-tool.js (read by bare name).
-const DUCT_AIRSIDE_COLORS = { supply: '#2e86de', return: '#8e6fd8', exhaust: '#8a8a2f' };
+// Duct run colors by airside (DUCT-PLAN §1 trade colors, the D4 pass):
+// supply keeps D2's blue; return is the --red family (#e85447) and exhaust
+// the --green family (#47c88e) — the styles.css tokens, restated as literals
+// because canvas ink can't read CSS vars. THE one place the airside→color
+// mapping lives: the persisted-run painter below, the live trace preview in
+// features/duct-tool.js, and the D4 sidebar swatches (features/duct-sidebar.js)
+// all read this map by bare name.
+const DUCT_AIRSIDE_COLORS = { supply: '#2e86de', return: '#e85447', exhaust: '#47c88e' };
 
 // Duct fitting marker colors by type (DUCT-PLAN unit D3, the mockup
 // vocabulary): elbows amber (styles.css --yellow #e8b84a), transitions green
@@ -445,18 +449,23 @@ function createCanvasDraw(deps) {
       if (verts.length < 2) return;
       const color = DUCT_AIRSIDE_COLORS[run.airside] || DUCT_AIRSIDE_COLORS.supply;
       const strokeScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+      // D4 sidebar selection: live-only glow, the quick-line/polyline idiom
+      // (shadowBlur + widened stroke). The export env never sets the id.
+      const isSelected = !!(env.selectedDuctRunId && env.selectedDuctRunId === run.id);
       const chips = [];
       runSegmentSpans(run).forEach(span => {
         ctx.strokeStyle = color;
-        ctx.lineWidth = ductStrokePx(span.size) * strokeScale;
+        ctx.lineWidth = ductStrokePx(span.size) * strokeScale * (isSelected ? 1.5 : 1);
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.globalAlpha = lo;
+        if (isSelected) { ctx.shadowBlur = 8; ctx.shadowColor = color; }
         ctx.beginPath();
         const s0 = tc(verts[span.fromIdx]);
         ctx.moveTo(s0.x, s0.y);
         for (let i = span.fromIdx + 1; i <= span.toIdx; i++) { const p = tc(verts[i]); ctx.lineTo(p.x, p.y); }
         ctx.stroke();
+        if (isSelected) { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
         ctx.globalAlpha = 1;
         // Segment midpoint (by vertex path length) for the size tag chip.
         let total = 0;

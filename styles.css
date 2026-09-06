@@ -1544,6 +1544,27 @@ body.hotkey-peek .hk-badge { display: block; }
 .drop-custom-row button { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent); font-family: inherit; font-size: 0.78rem; font-weight: 600; padding: 5px 10px; cursor: pointer; flex-shrink: 0; }
 .drop-custom-row button:hover { border-color: var(--accent); }
 
+/* Duct tool (DUCT-PLAN unit D2, preview-flagged). The step-size popover is a
+   small ANCHORED surface (positioned by features/duct-size-popover.js near the
+   cursor size chip / last vertex), not a modal — tracing continues around it. */
+.duct-size-popover { position: fixed; width: 236px; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; z-index: 320; box-shadow: 0 8px 24px rgba(0,0,0,0.45); overflow: hidden; }
+.duct-size-popover-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+.duct-size-popover-head #ductSizeCurrent { color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.85rem; text-transform: none; letter-spacing: 0; flex: 1; }
+.duct-popover-section { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.duct-popover-section:last-child { border-bottom: none; }
+.duct-popover-section-label { color: var(--text3); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.duct-step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.duct-step-chip { padding: 5px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.82rem; cursor: pointer; text-align: center; }
+.duct-step-chip:hover { border-color: var(--accent); }
+.duct-shape-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.duct-shape-toggle button { background: var(--surface2); border: none; color: var(--text2); font-family: inherit; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; cursor: pointer; }
+.duct-shape-toggle button.active { background: var(--accent); color: #17171a; }
+.duct-size-inputs { display: flex; align-items: center; gap: 6px; }
+.duct-size-inputs input { width: 64px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.9rem; padding: 6px 8px; }
+.duct-size-inputs span { color: var(--text2); }
+.duct-custom-apply { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent); font-family: inherit; font-size: 0.78rem; font-weight: 600; padding: 6px 10px; cursor: pointer; }
+.duct-custom-apply:hover { border-color: var(--accent); }
+
 /* Highlight bookmarks panel (features/highlight-labels.js) — reuses the
    .chain-panel shell (position/drag/head/foot); rows below are its own. */
 .highlight-list { padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; max-height: 300px; }

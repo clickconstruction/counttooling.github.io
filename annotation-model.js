@@ -116,7 +116,7 @@ function applyDropToNode(ann, node, value, unit, dryRun) {
 }
 
 function createAnnotationModel(ctx) {
-  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], legend: null }; }
+  function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], ductRuns: [], ductFittings: [], legend: null }; }
 
   function getPageCanvases(page) { return page?.canvases ?? []; }
   // pageIdxHint (optional): the page's index when the caller already knows it —
@@ -153,6 +153,8 @@ function createAnnotationModel(ctx) {
       (ann.scaleZones || []).forEach(z => { (out.scaleZones = out.scaleZones || []).push(z); });
       (ann.roomBoxes || []).forEach(b => { (out.roomBoxes = out.roomBoxes || []).push(b); });
       (ann.ghosts || []).forEach(g => { (out.ghosts = out.ghosts || []).push(g); });
+      (ann.ductRuns || []).forEach(r => { (out.ductRuns = out.ductRuns || []).push(r); });
+      (ann.ductFittings || []).forEach(f => { (out.ductFittings = out.ductFittings || []).push(f); });
     });
     return out;
   }
@@ -192,7 +194,7 @@ function createAnnotationModel(ctx) {
   function pageHasAnyAnnotations(p) {
     return getPageCanvases(p).some(c => {
       const ann = c.annotations || makeAnnotations();
-      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length) || (ann.roomBoxes?.length);
+      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length) || (ann.roomBoxes?.length) || (ann.ductRuns?.length);
     });
   }
   function projectHasAnyCanvasMarkup() {
@@ -325,6 +327,8 @@ function createAnnotationModel(ctx) {
           scaleZones: Array.isArray(c.annotations.scaleZones) ? c.annotations.scaleZones : [],
           roomBoxes: Array.isArray(c.annotations.roomBoxes) ? c.annotations.roomBoxes : [],
           ghosts: Array.isArray(c.annotations.ghosts) ? c.annotations.ghosts : [],
+          ductRuns: Array.isArray(c.annotations.ductRuns) ? c.annotations.ductRuns : [],
+          ductFittings: Array.isArray(c.annotations.ductFittings) ? c.annotations.ductFittings : [],
           legend: c.annotations.legend && typeof c.annotations.legend === 'object' ? c.annotations.legend : null
         } : makeAnnotations()
       }));
@@ -341,6 +345,8 @@ function createAnnotationModel(ctx) {
         scaleZones: Array.isArray(a.scaleZones) ? a.scaleZones : [],
         roomBoxes: Array.isArray(a.roomBoxes) ? a.roomBoxes : [],
         ghosts: Array.isArray(a.ghosts) ? a.ghosts : [],
+        ductRuns: Array.isArray(a.ductRuns) ? a.ductRuns : [],
+        ductFittings: Array.isArray(a.ductFittings) ? a.ductFittings : [],
         legend: a.legend && typeof a.legend === 'object' ? a.legend : null
       };
       page.canvases = [{ id: ctx.uid(), name: 'Main', annotations: ann }];
@@ -660,6 +666,15 @@ function createAnnotationModel(ctx) {
     (ann.notes || []).forEach(n => {
       const p = r({ x: n.x, y: n.y });
       n.x = p.x; n.y = p.y;
+    });
+    // Duct runs: vertices are plain PDF-space points; segments/sizeSteps ride
+    // vertex INDICES, so rotation never touches them. Fittings anchored by
+    // vertexIdx rotate implicitly with their run; free-placed ones by position.
+    (ann.ductRuns || []).forEach(run => {
+      if (run.vertices) run.vertices = run.vertices.map(pt => r(pt));
+    });
+    (ann.ductFittings || []).forEach(f => {
+      if (f.position) f.position = r(f.position);
     });
     // A ghost's src is annotation-shaped (counterMarkers / quickLines /
     // polylines in absolute PDF-space), so it rotates through this same

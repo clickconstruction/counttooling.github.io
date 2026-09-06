@@ -594,6 +594,33 @@ function suggestRoundAndRect(cfm, opts) {
   return { round: round, rect: rect, binding: round.binding };
 }
 
+// --- 5b. Stroke-width mapping (D2 drawing tool) ------------------------------
+//
+// DATA TABLE — canvas stroke width for a duct run, stepped by the size's
+// governing dimension (larger rect side / round diameter, inches). This is the
+// D2 "stroke width steps with the size" mapping: SYMBOLIC bands (a bigger duct
+// reads bolder at a glance), not true-to-scale width (that's D8's true-width
+// ghost). Values are screen px on the live overlay (same constant-screen-weight
+// convention as line strokes; the export env multiplies by its raster scale).
+// Rows are { maxDimIn, px }: first row whose maxDimIn >= dim wins.
+const DUCT_STROKE_BANDS = [
+  { maxDimIn: 8, px: 3 },
+  { maxDimIn: 14, px: 4 },
+  { maxDimIn: 20, px: 5 },
+  { maxDimIn: 28, px: 6 },
+  { maxDimIn: 40, px: 8 },
+  { maxDimIn: 60, px: 10 },
+  { maxDimIn: Infinity, px: 12 },
+];
+
+/** Stroke width (px) for a duct size; 3 (the smallest band) for bad sizes. */
+function ductStrokePx(size) {
+  const dim = ductGoverningDimIn(size);
+  if (!(dim > 0)) return DUCT_STROKE_BANDS[0].px;
+  for (const row of DUCT_STROKE_BANDS) { if (dim <= row.maxDimIn) return row.px; }
+  return DUCT_STROKE_BANDS[DUCT_STROKE_BANDS.length - 1].px;
+}
+
 // --- 6. Neck-size table ------------------------------------------------------
 //
 // DATA TABLE — rules of thumb, CFM → diffuser/neck suggestion (DUCT-PLAN
@@ -642,6 +669,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DUCT_FRICTION_FIT, frictionRateForRound, frictionRoundDiameterIn,
     roundAreaSqFt, roundVelocityFpm, velocityLimitedDiameterIn,
     suggestRoundDiameter, rectEquivalentDiameterIn, suggestRectForRound, suggestRoundAndRect,
+    // drawing (D2)
+    DUCT_STROKE_BANDS, ductStrokePx,
     // necks
     NECK_SIZE_TABLE, suggestNeckSize,
   };

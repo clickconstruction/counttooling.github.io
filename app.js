@@ -1322,7 +1322,7 @@
     scaleGatePage = state.currentPage;
     const gated = { [TOOL.LINE]: 'Quick Line', [TOOL.POLYLINE]: 'Polyline',
       [TOOL.MEASURE]: 'Measure', [TOOL.SCALE_ZONE]: 'Scale Zone', [TOOL.ROOM]: 'Room Sizer',
-      [TOOL.CHAIN]: 'Chain' };
+      [TOOL.CHAIN]: 'Chain', [TOOL.DUCT]: 'Duct' };
     const toolName = gated[state.tool];
     if (!toolName || !state.pages.length || getPageScale(state.currentPage)) return;
     // Same reset as the Move button (the #moveBtn onclick): drop to Move + clear starts.
@@ -1982,6 +1982,11 @@
       }
       ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
+    // Duct trace preview (features/duct-tool.js, DUCT unit D2): the in-progress
+    // run's segments at their stepped stroke widths + rubber band + the cursor
+    // size chip. Sits after the hideMarks early-return above, so a hidden
+    // overlay paints no duct either.
+    if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, lineOpacity: lo });
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
       pts.forEach((pt, i) => {
@@ -2205,6 +2210,9 @@
     if (dropBtnEl) dropBtnEl.classList.toggle('active', state.tool === TOOL.DROP);
     // Same pattern for the Drop tool's size palette (features/drop-mode.js).
     App.onDropToolSync && App.onDropToolSync();
+    // Duct tool (preview flag, features/duct-tool.js): the feature owns its
+    // button's visibility (flag + viewer gating), active state, and finish bar.
+    App.onDuctToolSync && App.onDuctToolSync();
     App.onHighlightToolSync && App.onHighlightToolSync();
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
@@ -2303,6 +2311,7 @@
       state.chainStart = null;
       state.drawingPolyline = null;
       state.editingPolyline = null;
+      if (App.clearDuctDraft) App.clearDuctDraft();
     }
     document.getElementById('polylineFinishBar').classList.toggle('visible', !!state.drawingPolyline);
     const undoBtn = document.getElementById('undoBtn');
@@ -5251,6 +5260,13 @@
       // Drop tool: a click on a line end sets the palette's drop size there
       // (same size again clears — click-to-toggle). Logic in features/drop-mode.js.
       App.commitDropClick && App.commitDropClick(pdf);
+    } else if (state.tool === TOOL.DUCT) {
+      // Duct tool (preview flag, DUCT unit D2): vertex-by-vertex trace with
+      // size segments; a click on the cursor size chip opens the step popover
+      // instead. Logic in features/duct-tool.js.
+      App.commitDuctClick && App.commitDuctClick(pdf, e);
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.HIGHLIGHT) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const page = state.pages[state.currentPage];
@@ -5413,6 +5429,10 @@
       finishPolyline(false);
       return;
     }
+    if (state.tool === TOOL.DUCT) {
+      // Duct: double-click finishes the run (polyline conventions).
+      if (App.finishDuctRun && App.finishDuctRun()) return;
+    }
     if (state.tool === TOOL.NONE || state.tool === TOOL.NOTE) {
       const pt = canvasPointFromEvent(e);
       const pdf = canvasToPdf(pt.x, pt.y);
@@ -5506,6 +5526,8 @@
         return true;
       case TOOL.POLYLINE:
         return !!state.drawingPolyline;
+      case TOOL.DUCT:
+        return !!(App.isDuctDrawing && App.isDuctDrawing());
       default:
         return false;
     }
@@ -5882,7 +5904,7 @@
       annotationModel.translateGhost(state.placingGhost, pdf.x - state.placingGhostLast.x, pdf.y - state.placingGhostLast.y);
       state.placingGhostLast = { x: pdf.x, y: pdf.y };
       renderAnnotations();
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost))) {
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost)) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing())) {
       renderAnnotations();
     }
     const t = hitTest(pdf);
@@ -6206,7 +6228,7 @@
         state.pan = { x: state.touchPanStart.panX + (c.x - state.touchPanStart.x), y: state.touchPanStart.panY + (c.y - state.touchPanStart.y) };
         updateContainerTransform();
       } else if (moved && state.longPressTimer && state.longPressStart) {
-        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
+        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing()) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
         if (ptDist(state.longPressStart, c) > tapCancelThreshold) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
       }
     }
@@ -6504,6 +6526,7 @@
       state.chainStart = null;
       state.pendingNote = null; state.editingNote = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
+      if (App.clearDuctDraft) App.clearDuctDraft();   // M abandons a duct trace like a polyline one
       updateUI();
     },
     toggleSnap: () => {
@@ -6569,6 +6592,14 @@
       // or run a named closure action from HOTKEY_RUNNERS. Viewer gating rides
       // the entry (m/d/r/j/s stay viewer-usable — S so viewers can set a temp
       // scale to measure with).
+      // Duct trace owns S while a run is being drawn (DUCT unit D2): the
+      // step-size popover outranks the Set Scale hotkey for exactly that
+      // stretch — arming Duct is already scale-gated, so nothing is lost.
+      if (k === 's' && state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing()) {
+        App.toggleDuctSizePopover && App.toggleDuctSizePopover();
+        e.preventDefault();
+        return;
+      }
       const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
       if (hk && (hk.viewerAllowed || !state.isViewer)) {
         // B10 (J18): R under the open Count-by-Page modal would rotate the
@@ -6685,6 +6716,7 @@
         // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
         document.getElementById('canvasDetailsClose').click();
       }
+      else if (document.getElementById('ductCreateModal')?.classList.contains('visible')) { hideModal('ductCreateModal'); }
       else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
       else if (state.drawingPolyline) {
         // Staged like Quick Line/Ghost: each Escape unwinds one clicked vertex;
@@ -6692,6 +6724,13 @@
         // than the last click. (JOURNEY-MAP Tier-2 #22)
         if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
         else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
+      }
+      else if (state.tool === TOOL.DUCT) {
+        // Duct ladder (DUCT unit D2, staged per the T2-02 polyline pattern):
+        // close the S popover -> pop the last vertex -> clear the draft and
+        // exit to Move. All stages live in features/duct-tool.js; a false
+        // return means nothing was left to unwind.
+        if (!(App.handleDuctEscape && App.handleDuctEscape())) { state.tool = TOOL.NONE; updateUI(); }
       }
       else if (state.tool === TOOL.LINE) {
         if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
@@ -6792,6 +6831,9 @@
       }
     }
     if (e.key === 'Enter' && state.drawingPolyline && state.drawingPolyline.points.length >= 2) finishPolyline(false);
+    // Duct: Enter finishes the run (polyline conventions; features/duct-tool.js
+    // ignores drafts with fewer than 2 vertices).
+    if (e.key === 'Enter' && state.tool === TOOL.DUCT && App.finishDuctRun) App.finishDuctRun();
     if (e.key === 'Enter' && state.tool === TOOL.EDIT_POLY) exitEditMode(true);
     // Chain: Enter ends the current run like the first Escape (tool stays
     // active — the next click starts a fresh chain); with no run in progress

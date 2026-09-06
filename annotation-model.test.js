@@ -34,8 +34,10 @@ test('makeAnnotations returns the canonical empty shape', () => {
   const m = createAnnotationModel(makeCtx({}).ctx);
   const a = m.makeAnnotations();
   assert.deepStrictEqual(Object.keys(a).sort(),
-    ['counterMarkers', 'ghosts', 'highlights', 'legend', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'roomBoxes', 'scaleZones']);
+    ['counterMarkers', 'ductFittings', 'ductRuns', 'ghosts', 'highlights', 'legend', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'roomBoxes', 'scaleZones']);
   assert.deepStrictEqual(a.counterMarkers, {});
+  assert.deepStrictEqual(a.ductRuns, []);
+  assert.deepStrictEqual(a.ductFittings, []);
   assert.strictEqual(a.legend, null);
 });
 
@@ -877,4 +879,56 @@ test('collectDropNodes tolerance groups near-coincident ends and ignores degener
   const nodes = collectDropNodes(ann);
   assert.strictEqual(nodes.length, 3);
   assert.strictEqual(nodes.find(n => n.x === 100 && n.y === 100).refs.length, 2);
+});
+
+// --- Duct runs on the annotation model (DUCT-PLAN unit D2) -------------------
+
+test('mergeAnnotations concatenates ductRuns and ductFittings across canvases', () => {
+  const m = createAnnotationModel(makeCtx({}).ctx);
+  const a = m.makeAnnotations(); a.ductRuns.push({ id: 'r1', vertices: [], segments: [] });
+  const b = m.makeAnnotations(); b.ductRuns.push({ id: 'r2', vertices: [], segments: [] }); b.ductFittings.push({ id: 'f1' });
+  const out = m.mergeAnnotations(a, b);
+  assert.deepStrictEqual(out.ductRuns.map((r) => r.id), ['r1', 'r2']);
+  assert.deepStrictEqual(out.ductFittings.map((f) => f.id), ['f1']);
+});
+
+test('applyPageAnnotationsFromData keeps ductRuns/ductFittings arrays, drops junk', () => {
+  const m = createAnnotationModel(makeCtx({ pages: [] }).ctx);
+  const page = {};
+  const run = { id: 'r1', vertices: [{ x: 1, y: 2 }], segments: [{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }] };
+  m.applyPageAnnotationsFromData(page, { canvases: [{ id: 'c1', annotations: { ductRuns: [run], ductFittings: 'junk' } }] });
+  assert.deepStrictEqual(page.canvases[0].annotations.ductRuns, [run]);
+  assert.deepStrictEqual(page.canvases[0].annotations.ductFittings, []);
+  const legacy = {};
+  m.applyPageAnnotationsFromData(legacy, { annotations: { ductRuns: [run] } });
+  assert.deepStrictEqual(legacy.canvases[0].annotations.ductRuns, [run]);
+});
+
+test('pageHasAnyAnnotations counts a page with only duct runs as marked', () => {
+  const m = createAnnotationModel(makeCtx({}).ctx);
+  const ann = m.makeAnnotations();
+  ann.ductRuns.push({ id: 'r1', vertices: [{ x: 0, y: 0 }, { x: 5, y: 0 }], segments: [{ startVertexIdx: 0, size: { kind: 'round', d: 12 } }] });
+  const page = { canvases: [{ id: 'c1', annotations: ann }] };
+  assert.ok(m.pageHasAnyAnnotations(page));
+});
+
+test('rotateAnnotations rotates duct run vertices and free fitting positions; indices untouched', () => {
+  const state = { pages: [] };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const ann = m.makeAnnotations();
+  ann.ductRuns.push({ id: 'r1', vertices: [{ x: 10, y: 20 }, { x: 30, y: 20 }], segments: [{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }], sizeSteps: [] });
+  ann.ductFittings.push({ id: 'f1', runId: 'r1', vertexIdx: 1, position: null, type: 'elbow90', size: { kind: 'rect', w: 24, h: 12 }, auto: true });
+  ann.ductFittings.push({ id: 'f2', runId: 'r1', vertexIdx: null, position: { x: 10, y: 20 }, type: 'tap', size: { kind: 'round', d: 8 }, auto: false });
+  const page = { canvases: [{ id: 'c1', annotations: ann }] };
+  // rotatePoint90CW with page width w=100, height h=50.
+  const { rotatePoint90CW: rot90 } = require('./geometry.js');
+  m.rotateAnnotations(page, 100, 50);
+  const run = page.canvases[0].annotations.ductRuns[0];
+  const expected = rot90({ x: 10, y: 20 }, 100, 50);
+  assert.deepStrictEqual(run.vertices[0], expected);
+  assert.strictEqual(run.segments[0].startVertexIdx, 0);
+  const [f1, f2] = page.canvases[0].annotations.ductFittings;
+  assert.strictEqual(f1.position, null);
+  assert.strictEqual(f1.vertexIdx, 1);
+  assert.deepStrictEqual(f2.position, expected);
 });

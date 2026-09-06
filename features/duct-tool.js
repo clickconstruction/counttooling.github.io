@@ -1,0 +1,446 @@
+/*
+ * features/duct-tool.js — the Duct drawing tool (TOOL.DUCT), DUCT-PLAN.md
+ * unit D2. PREVIEW-FLAGGED: the header #ductBtn renders only while
+ * localStorage 'clickcount-duct-preview' is set (App.enableDuctPreview() sets
+ * it — the spec/QA switch); D5 removes the flag and ships the button live.
+ *
+ * The tool is the POLYLINE PATTERN WITH SEGMENTS: arming (via the button →
+ * #ductCreateModal, which per DUCT-PLAN sets ONLY starting size, pressure
+ * class, and liner — airside defaults 'supply'; the chip UI is D4's) creates
+ * `state.drawingDuct`, a pre-commit draft exactly like state.drawingPolyline:
+ *   { id, name, airside, pressureClass, linerType, linerThicknessIn,
+ *     vertices: [{x,y}…],                    // PDF-space, like polyline.points
+ *     segments: [{ startVertexIdx, size }],  // duct-model.js run shape
+ *     sizeSteps: [{ vertexIdx, from, to }] } // D3 turns these into transitions
+ * Clicks stage vertices (45° snap + bounds, the commitPolylinePoint recipe);
+ * `S` / tapping the cursor size chip / the finish-bar Size button open the
+ * step popover (features/duct-size-popover.js — that file owns the surface,
+ * THIS file owns what a pick means: applyDuctSizeStep ends the current
+ * segment at the LAST placed vertex and starts the next at the new size,
+ * recording the step on sizeSteps). Enter / double-click / the finish bar
+ * commit the draft through duct-model's makeDuctRun onto the active canvas's
+ * annotations.ductRuns (drawn by canvas-draw.js, so runs re-render on reload
+ * and ride save/load/undo untouched). Esc is the staged T2-02 ladder: close
+ * the popover → pop one vertex → clear the draft and exit to Move.
+ *
+ * app.js integration points: TOOL.DUCT branch in handleCanvasClick →
+ * App.commitDuctClick; renderAnnotations → App.drawDuctOverlay (after the
+ * hideMarks early-return, so hidden marks hide the trace too); updateUI →
+ * App.onDuctToolSync; keydown → App.toggleDuctSizePopover (S while drawing),
+ * App.finishDuctRun (Enter), App.handleDuctEscape (Esc rung);
+ * HOTKEY_RUNNERS.moveReset / the viewer reset → App.clearDuctDraft.
+ * features/status-bar.js reads App.ductLiveReadout() for the live
+ * "24×12 · 38'-6" · 267 lb · run 1,196 lb" footer readout (T2-09 seam).
+ *
+ * Pure duct math (sizes, gauges, pounds, ductStrokePx stroke bands) comes
+ * from duct-model.js globals; DUCT_AIRSIDE_COLORS from canvas-draw.js.
+ * Boundary rule: read shared deps from App.* at call time, never captured at
+ * load. See ARCHITECTURE.md "Feature files / window.App registry".
+ */
+(function () {
+  'use strict';
+  const App = (window.App = window.App || {});
+
+  const PREVIEW_FLAG_KEY = 'clickcount-duct-preview';
+  let wired = false;
+  let createShape = 'rect';
+  // The cursor size chip's last-drawn rect in annotation-canvas BUFFER px —
+  // the click hit-target that opens the popover (and the popover's anchor).
+  let cursorChipRect = null;
+
+  function isDuctPreviewEnabled() {
+    try { return !!localStorage.getItem(PREVIEW_FLAG_KEY); } catch (_) { return false; }
+  }
+  function enableDuctPreview() {
+    try { localStorage.setItem(PREVIEW_FLAG_KEY, '1'); } catch (_) { /* storage blocked — session-only via updateUI is impossible, button stays hidden */ }
+    App.updateUI && App.updateUI();
+  }
+
+  function isDuctDrawing() { return !!App.state.drawingDuct; }
+  function currentDuctSize() {
+    const d = App.state.drawingDuct;
+    if (!d || !d.segments.length) return null;
+    return d.segments[d.segments.length - 1].size;
+  }
+
+  // Auto-name like T2-12's nextPolylineName: project-wide run count + 1.
+  function nextDuctRunName() {
+    const state = App.state;
+    let n = 0;
+    for (const p of state.pages || []) for (const c of App.getPageCanvases(p)) n += (c.annotations?.ductRuns?.length || 0);
+    return 'Duct run ' + (n + 1);
+  }
+
+  // --- create modal ---------------------------------------------------------
+
+  function syncCreateShape() {
+    const toggle = document.getElementById('ductCreateShapeToggle');
+    if (!toggle) return;
+    toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.shape === createShape));
+    document.getElementById('ductCreateRectInputs').style.display = createShape === 'rect' ? '' : 'none';
+    document.getElementById('ductCreateRoundInputs').style.display = createShape === 'round' ? '' : 'none';
+  }
+
+  function openDuctCreateModal() {
+    document.getElementById('ductCreateName').value = nextDuctRunName();
+    const sel = document.getElementById('ductCreatePressure');
+    sel.innerHTML = DUCT_PRESSURE_CLASSES.map((pc) => '<option value="' + pc + '"' + (pc === '1' ? ' selected' : '') + '>' + pc + '"</option>').join('');
+    syncCreateShape();
+    App.showModal('ductCreateModal');
+  }
+
+  function readCreateSize() {
+    if (createShape === 'round') {
+      const d = parseFloat(document.getElementById('ductCreateD').value);
+      return d > 0 ? makeRoundSize(d) : null;
+    }
+    const w = parseFloat(document.getElementById('ductCreateW').value);
+    const h = parseFloat(document.getElementById('ductCreateH').value);
+    return w > 0 && h > 0 ? makeRectSize(w, h) : null;
+  }
+
+  function startDuctTrace() {
+    const state = App.state;
+    const size = readCreateSize();
+    if (!size) { App.showToast('Enter a starting size'); return; }
+    state.drawingDuct = {
+      id: App.uid(),
+      name: document.getElementById('ductCreateName').value.trim() || nextDuctRunName(),
+      airside: 'supply',   // stored now; the Supply/Return/Exhaust chip is D4
+      pressureClass: document.getElementById('ductCreatePressure').value || '1',
+      linerType: document.getElementById('ductCreateLiner').value || null,
+      linerThicknessIn: 0,
+      vertices: [],
+      segments: [{ startVertexIdx: 0, size: size }],
+      sizeSteps: [],
+    };
+    state.tool = App.TOOL.DUCT;
+    App.hideModal('ductCreateModal');
+    App.collapsePagesSectionForPlacing();
+    App.updateUI();
+  }
+
+  // --- arming ---------------------------------------------------------------
+
+  function onDuctBtnClick() {
+    const state = App.state;
+    if (!App.getPageScale(state.currentPage)) { App.showSetScaleFirstToast('Duct'); return; }
+    // T2-12: an in-flight draft is resumed, never replaced — re-press mid-draw
+    // just re-arms the tool; Finish/Esc/M remain the ways to start fresh.
+    if (state.drawingDuct) { state.tool = App.TOOL.DUCT; App.updateUI(); return; }
+    openDuctCreateModal();
+  }
+
+  // --- tracing --------------------------------------------------------------
+
+  // One trace click. A click landing on the cursor size chip opens the step
+  // popover instead of staging a vertex (the chip is the touch path to S).
+  function commitDuctClick(pdf) {
+    const state = App.state;
+    const draft = state.drawingDuct;
+    if (!draft) return;
+    if (cursorChipRect && App.toCanvas) {
+      const p = App.toCanvas(pdf);
+      const r = cursorChipRect;
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+        App.toggleDuctSizePopover && App.toggleDuctSizePopover();
+        return;
+      }
+    }
+    // Same snap-to-previous-axis + bounds recipe as commitPolylinePoint.
+    let pt = pdf;
+    if (draft.vertices.length >= 1 && state.lineTypeSettings.snapToHorizontalVertical) {
+      const prev = draft.vertices[draft.vertices.length - 1];
+      pt = App.snapLineToAngle(prev.x, prev.y, pdf.x, pdf.y);
+      if (!App.isPointInPageBounds(pt)) pt = App.clampPointToPageBounds(pt);
+    } else {
+      if (!App.isPointInPageBounds(pdf)) { App.showOutOfBoundsToast(); return; }
+    }
+    App.pushUndoSnapshotCurrentPage();
+    draft.vertices.push(pt);
+    App.markProjectDirty();
+  }
+
+  // A popover pick: end the current segment at the LAST placed vertex, start
+  // the next at the new size, and record the step (D3's transition input).
+  // With no vertex placed yet (or a second pick at the same vertex) the
+  // boundary already exists — the size is REPLACED, not stacked, so the
+  // duct-model "startVertexIdx strictly ascending" invariant holds.
+  function applyDuctSizeStep(newSize) {
+    const draft = App.state.drawingDuct;
+    if (!draft || !isDuctSize(newSize)) return;
+    const from = currentDuctSize();
+    if (from && formatDuctSize(from) === formatDuctSize(newSize)) return;   // no-op pick
+    const last = draft.segments[draft.segments.length - 1];
+    const lastVertexIdx = draft.vertices.length - 1;
+    if (draft.vertices.length === 0 || last.startVertexIdx === lastVertexIdx) {
+      last.size = cloneDuctSize(newSize);
+      const step = draft.sizeSteps.find((s) => s.vertexIdx === last.startVertexIdx);
+      if (step) step.to = cloneDuctSize(newSize);
+    } else {
+      draft.segments.push({ startVertexIdx: lastVertexIdx, size: cloneDuctSize(newSize) });
+      draft.sizeSteps.push({ vertexIdx: lastVertexIdx, from: cloneDuctSize(from), to: cloneDuctSize(newSize) });
+    }
+    App.renderAnnotations();
+    App.updateUI();
+  }
+
+  // --- commit ---------------------------------------------------------------
+
+  // Returns true when a run was committed (the dblclick caller uses it to
+  // swallow the gesture). <2 vertices = nothing to commit (polyline rule).
+  function finishDuctRun() {
+    const state = App.state;
+    const draft = state.drawingDuct;
+    if (!draft || draft.vertices.length < 2) return false;
+    App.pushUndoSnapshot();
+    const page = state.pages[state.currentPage];
+    const canvas = page && App.ensureActiveCanvas(page);
+    if (canvas) {
+      const run = makeDuctRun({
+        id: draft.id,
+        name: draft.name,
+        airside: draft.airside,
+        pressureClass: draft.pressureClass,
+        linerType: draft.linerType,
+        linerThicknessIn: draft.linerThicknessIn,
+        vertices: draft.vertices,
+        segments: draft.segments,
+      });
+      run.sizeSteps = draft.sizeSteps;   // D3's transition-fitting input
+      if (!canvas.annotations.ductRuns) canvas.annotations.ductRuns = [];
+      canvas.annotations.ductRuns.push(run);
+    }
+    state.drawingDuct = null;
+    state.tool = App.TOOL.NONE;
+    App.closeDuctSizePopover && App.closeDuctSizePopover();
+    App.markProjectDirty();
+    App.updateUI();
+    App.renderAnnotations();
+    return true;
+  }
+
+  function clearDuctDraft() {
+    App.state.drawingDuct = null;
+    cursorChipRect = null;
+    App.closeDuctSizePopover && App.closeDuctSizePopover();
+  }
+
+  // Esc ladder rung (staged per T2-02): popover → one vertex → draft+exit.
+  // Returns true when a stage was consumed; false = nothing duct-side left
+  // (app.js then exits to Move itself — reached only when the tool is armed
+  // with no draft, e.g. right after a commit left the tool active).
+  function handleDuctEscape() {
+    const state = App.state;
+    if (App.isDuctPopoverOpen && App.isDuctPopoverOpen()) { App.closeDuctSizePopover(); return true; }
+    const draft = state.drawingDuct;
+    if (!draft) return false;
+    if (draft.vertices.length > 0) {
+      draft.vertices.pop();
+      const n = draft.vertices.length;
+      // Prune segment boundaries (and their recorded steps) that no longer
+      // have a vertex to sit on; the starting segment always survives.
+      while (draft.segments.length > 1 && draft.segments[draft.segments.length - 1].startVertexIdx >= n) {
+        const dropped = draft.segments.pop();
+        draft.sizeSteps = draft.sizeSteps.filter((s) => s.vertexIdx !== dropped.startVertexIdx);
+      }
+      App.renderAnnotations();
+      App.updateUI();
+    } else {
+      clearDuctDraft();
+      state.tool = App.TOOL.NONE;
+      App.updateUI();
+      App.renderAnnotations();
+    }
+    return true;
+  }
+
+  // --- live overlay ---------------------------------------------------------
+
+  // Segment spans over the draft, INCLUDING the rubber-band cursor point.
+  function draftSpansWithCursor(cursorPdf) {
+    const draft = App.state.drawingDuct;
+    if (!draft) return { verts: [], spans: [] };
+    const verts = cursorPdf ? [...draft.vertices, cursorPdf] : [...draft.vertices];
+    const spans = runSegmentSpans({ vertices: verts, segments: draft.segments });
+    return { verts, spans };
+  }
+
+  function snappedCursor() {
+    const state = App.state;
+    const draft = state.drawingDuct;
+    if (!draft || !state.mousePos) return null;
+    if (draft.vertices.length >= 1 && state.lineTypeSettings?.snapToHorizontalVertical) {
+      const prev = draft.vertices[draft.vertices.length - 1];
+      return App.snapLineToAngle(prev.x, prev.y, state.mousePos.x, state.mousePos.y);
+    }
+    return state.mousePos;
+  }
+
+  // Called from renderAnnotations AFTER the hideMarks early-return: the
+  // in-progress trace at stepped stroke widths (dashed = not yet committed),
+  // per-segment size chips, and the cursor size chip (tap target for the
+  // popover). env = { fontScale, lineOpacity } from the live overlay.
+  function drawDuctOverlay(ctx, env) {
+    const state = App.state;
+    const draft = state.drawingDuct;
+    cursorChipRect = null;
+    if (!draft || state.tool !== App.TOOL.DUCT) return;
+    const color = DUCT_AIRSIDE_COLORS[draft.airside] || DUCT_AIRSIDE_COLORS.supply;
+    const cursor = snappedCursor();
+    const { verts, spans } = draftSpansWithCursor(cursor);
+    const fontScale = env?.fontScale || 1;
+    const lo = env?.lineOpacity != null ? env.lineOpacity : 1;
+    ctx.save();
+    spans.forEach((span) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = ductStrokePx(span.size);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = lo;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      const p0 = App.toCanvas(verts[span.fromIdx]);
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = span.fromIdx + 1; i <= span.toIdx; i++) { const p = App.toCanvas(verts[i]); ctx.lineTo(p.x, p.y); }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    // Per-segment size chips at the segment midpoints (committed-look labels
+    // arrive via canvas-draw at commit; these track the live trace).
+    const chip = (label, cx, cy, remember) => {
+      const fontSize = 10 * fontScale;
+      ctx.font = '600 ' + fontSize + 'px DM Sans';
+      const tw = ctx.measureText(label).width;
+      const pad = 4;
+      const x = cx - tw / 2 - pad, y = cy - fontSize / 2 - pad;
+      const w = tw + pad * 2, h = fontSize + pad * 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, cx, cy);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      if (remember) cursorChipRect = { x, y, w, h };
+    };
+    spans.forEach((span) => {
+      const a = App.toCanvas(verts[span.fromIdx]);
+      const b = App.toCanvas(verts[span.toIdx]);
+      chip(formatDuctSize(span.size), (a.x + b.x) / 2, (a.y + b.y) / 2, false);
+    });
+    // Cursor size chip: rides just past the cursor; a click/tap on it opens
+    // the step popover (commitDuctClick checks cursorChipRect first).
+    const cur = currentDuctSize();
+    if (cur && cursor) {
+      const pc = App.toCanvas(cursor);
+      // Offset scales with the overlay's font scale so the chip clears the
+      // cursor at any zoom/DPR.
+      chip(formatDuctSize(cur) + ' ▾', pc.x + 24 + 14 * fontScale, pc.y - 10 - 8 * fontScale, true);
+    }
+    ctx.restore();
+  }
+
+  // Popover anchor for features/duct-size-popover.js: the cursor chip's rect
+  // converted to CLIENT coords (null when it hasn't been drawn — the popover
+  // then anchors to the canvas center).
+  function getDuctChipClientAnchor() {
+    const c = document.getElementById('annCanvas');
+    if (!c || !cursorChipRect || !c.width) return null;
+    const rect = c.getBoundingClientRect();
+    return {
+      x: rect.left + (cursorChipRect.x + cursorChipRect.w / 2) * (rect.width / c.width),
+      y: rect.top + (cursorChipRect.y + cursorChipRect.h) * (rect.height / c.height),
+    };
+  }
+
+  // --- live readout (T2-09 seam; consumed by features/status-bar.js) --------
+
+  function feetBetween(a, b, ann, pageIdx) {
+    return App.getLineRealWorldLengthFeet({ points: [a, b] }, pageIdx, true, ann) || 0;
+  }
+
+  // "24×12 · 38'-6" · 267 lb · run 1,196 lb" — current segment size, its
+  // running length (duct-model lb math over the app's scale glue), and the
+  // whole run's pounds including the rubber band. '' when not tracing.
+  function ductLiveReadout() {
+    const state = App.state;
+    const draft = state.drawingDuct;
+    if (!draft || state.tool !== App.TOOL.DUCT || !draft.vertices.length) return '';
+    const cursor = snappedCursor();
+    const { verts, spans } = draftSpansWithCursor(cursor);
+    if (!spans.length) return '';
+    const page = state.pages[state.currentPage];
+    const ann = page ? App.getActiveAnnotations(page) : null;
+    const pageIdx = state.currentPage;
+    const cur = spans[spans.length - 1];
+    // Current segment: feet-inches label via the same pdf-pts + effective-scale
+    // calls the Measure chip makes.
+    const segPts = verts.slice(cur.fromIdx, cur.toIdx + 1);
+    const pdfPts = App.getLineLengthPdfPts({ points: segPts, closed: false }, pageIdx, true);
+    const eff = ann ? App.getEffectiveScaleForLine(ann, { points: segPts }, true, pageIdx) : App.getPageScale(pageIdx);
+    const lenLabel = App.formatDistFeetInches(pdfPts, eff);
+    const distFt = (a, b) => feetBetween(a, b, ann, pageIdx);
+    const items = runStraightItems({ vertices: verts, segments: draft.segments, linerType: draft.linerType }, distFt);
+    let segLb = 0, runLb = 0;
+    items.forEach((it, i) => {
+      const lb = segmentPounds(it.size, selectGauge(draft.pressureClass, it.size), it.lengthFt) || 0;
+      runLb += lb;
+      if (i === items.length - 1) segLb = lb;
+    });
+    return formatDuctSize(cur.size) + ' · ' + lenLabel + ' · ' + Math.round(segLb).toLocaleString()
+      + ' lb · run ' + Math.round(runLb).toLocaleString() + ' lb';
+  }
+
+  // --- core→feature sync (updateUI calls this every pass) -------------------
+
+  function onDuctToolSync() {
+    const state = App.state;
+    wire();
+    const btn = document.getElementById('ductBtn');
+    if (btn) {
+      btn.style.display = isDuctPreviewEnabled() && !state.isViewer ? '' : 'none';
+      btn.classList.toggle('active', state.tool === App.TOOL.DUCT);
+    }
+    if (state.isViewer && state.drawingDuct) clearDuctDraft();
+    const bar = document.getElementById('ductFinishBar');
+    if (bar) bar.classList.toggle('visible', !!state.drawingDuct);
+    if (state.tool !== App.TOOL.DUCT && App.isDuctPopoverOpen && App.isDuctPopoverOpen()) App.closeDuctSizePopover();
+  }
+
+  function wire() {
+    if (wired) return;
+    wired = true;
+    const btn = document.getElementById('ductBtn');
+    if (btn) btn.onclick = onDuctBtnClick;
+    document.getElementById('ductCreateCancel').onclick = () => App.hideModal('ductCreateModal');
+    document.getElementById('ductCreateStart').onclick = startDuctTrace;
+    document.getElementById('ductCreateShapeToggle').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-shape]');
+      if (!b) return;
+      createShape = b.dataset.shape;
+      syncCreateShape();
+    });
+    document.getElementById('finishDuctRunBtn').onclick = () => finishDuctRun();
+    document.getElementById('ductSizeStepBtn').onclick = () => App.toggleDuctSizePopover && App.toggleDuctSizePopover();
+  }
+
+  App.enableDuctPreview = enableDuctPreview;
+  App.isDuctPreviewEnabled = isDuctPreviewEnabled;
+  App.isDuctDrawing = isDuctDrawing;
+  App.getCurrentDuctSize = currentDuctSize;
+  App.commitDuctClick = commitDuctClick;
+  App.applyDuctSizeStep = applyDuctSizeStep;
+  App.finishDuctRun = finishDuctRun;
+  App.handleDuctEscape = handleDuctEscape;
+  App.clearDuctDraft = clearDuctDraft;
+  App.drawDuctOverlay = drawDuctOverlay;
+  App.getDuctChipClientAnchor = getDuctChipClientAnchor;
+  App.ductLiveReadout = ductLiveReadout;
+  App.onDuctToolSync = onDuctToolSync;
+})();

@@ -540,3 +540,22 @@ test('suggestNeckSize: past the table → largest row flagged overCapacity; bad 
   assert.strictEqual(dm.suggestNeckSize(-10), null);
   assert.strictEqual(dm.suggestNeckSize(NaN), null);
 });
+
+// --- 5b. Stroke-width mapping (D2) -------------------------------------------
+
+test('ductStrokePx: band boundaries on the governing dimension', () => {
+  assert.strictEqual(dm.ductStrokePx(dm.makeRoundSize(6)), 3);     // ≤8
+  assert.strictEqual(dm.ductStrokePx(dm.makeRoundSize(8)), 3);
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(12, 8)), 4);  // ≤14 (larger side keys)
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(8, 12)), 4);  // orientation-agnostic
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(16, 10)), 5); // ≤20
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(24, 12)), 6); // ≤28
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(36, 12)), 8); // ≤40
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(54, 20)), 10); // ≤60
+  assert.strictEqual(dm.ductStrokePx(dm.makeRectSize(84, 24)), 12); // else
+});
+
+test('ductStrokePx: bad sizes fall back to the smallest band', () => {
+  assert.strictEqual(dm.ductStrokePx(null), 3);
+  assert.strictEqual(dm.ductStrokePx({ kind: 'rect', w: -1, h: 4 }), 3);
+});

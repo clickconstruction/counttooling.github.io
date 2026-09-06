@@ -128,6 +128,13 @@ function lineStyleToDash(style) {
   return [];
 }
 
+// Duct run colors by airside (DUCT-PLAN §1 trade colors: supply blue, return
+// purple-ish, exhaust olive). D2 places the seam; D4's trade-color pass edits
+// VALUES here (and may swap in a settings-driven map) without touching draw
+// code. Pure data — shared by the persisted-run painter below and the live
+// trace preview in features/duct-tool.js (read by bare name).
+const DUCT_AIRSIDE_COLORS = { supply: '#2e86de', return: '#8e6fd8', exhaust: '#8a8a2f' };
+
 function createCanvasDraw(deps) {
   // Room Sizer boxes, shared by the live overlay and the export path (the two
   // callers differ only in their PDF->canvas mapper and label scale factor).
@@ -412,6 +419,72 @@ function createCanvasDraw(deps) {
         const label = deps.formatDistFeetInchesFromReal(realLen, effScale);
         drawLengthLabel(label, mid, segAngle);
       }
+    });
+    // Duct runs (DUCT-PLAN unit D2). One continuous trace whose stroke width
+    // STEPS with each size segment (ductStrokePx band table in duct-model.js,
+    // scaled by env.ductStrokeScale — 1 on the live overlay, raster scale on
+    // export), with a size tag chip at each segment's midpoint (the length-
+    // label idiom: white backing, chip text in the run color). Colors key off
+    // airside so D4's trade-color pass is a value edit here, not a rewrite.
+    // duct-model.js globals (runSegmentSpans/formatDuctSize/ductStrokePx) are
+    // read by bare name — it loads before this file.
+    (ann.ductRuns || []).forEach(run => {
+      const verts = run.vertices || [];
+      if (verts.length < 2) return;
+      const color = DUCT_AIRSIDE_COLORS[run.airside] || DUCT_AIRSIDE_COLORS.supply;
+      const strokeScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+      const chips = [];
+      runSegmentSpans(run).forEach(span => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = ductStrokePx(span.size) * strokeScale;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = lo;
+        ctx.beginPath();
+        const s0 = tc(verts[span.fromIdx]);
+        ctx.moveTo(s0.x, s0.y);
+        for (let i = span.fromIdx + 1; i <= span.toIdx; i++) { const p = tc(verts[i]); ctx.lineTo(p.x, p.y); }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // Segment midpoint (by vertex path length) for the size tag chip.
+        let total = 0;
+        for (let i = span.fromIdx; i < span.toIdx; i++) total += ptDist(verts[i], verts[i + 1]);
+        let acc = 0, midPdf = verts[span.fromIdx], angle = 0;
+        for (let i = span.fromIdx; i < span.toIdx; i++) {
+          const segLen = ptDist(verts[i], verts[i + 1]);
+          if (acc + segLen >= total / 2) {
+            const t = segLen > 0 ? (total / 2 - acc) / segLen : 0;
+            midPdf = { x: verts[i].x + t * (verts[i + 1].x - verts[i].x), y: verts[i].y + t * (verts[i + 1].y - verts[i].y) };
+            angle = Math.atan2(verts[i + 1].y - verts[i].y, verts[i + 1].x - verts[i].x);
+            break;
+          }
+          acc += segLen;
+        }
+        chips.push({ label: formatDuctSize(span.size), midPdf, angle });
+      });
+      // Chips paint after every stroke of the run so a wide next segment can
+      // never cover the previous segment's tag.
+      chips.forEach(chip => {
+        const fontSize = 10 * env.fontScale;
+        ctx.font = '600 ' + fontSize + 'px ' + env.fontFamily;
+        const tw = ctx.measureText(chip.label).width;
+        const pad = env.labelPad;
+        const mid = tc(chip.midPdf);
+        let angle = chip.angle;
+        if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+        ctx.save();
+        ctx.translate(mid.x, mid.y);
+        ctx.rotate(angle);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(-tw / 2 - pad, -fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(chip.label, 0, 0);
+        ctx.restore();
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      });
     });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
@@ -1015,5 +1088,5 @@ function createCanvasDraw(deps) {
 // Dual-env export so canvas-draw.test.js can require() the module under
 // `node --test`; inert in the browser (classic script).
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash };
+  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS };
 }

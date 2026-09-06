@@ -426,4 +426,59 @@ test.describe('View-only mode (view-link boot)', () => {
     expect(after.pages).toBe(0);
     expect(realErrors(errors)).toEqual([]);
   });
+
+  test('viewer grant (&g=): no email gate, the grant rides in the request, viewer loads (2026-09-06)', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    const GRANT = 'eyJ0IjoidCJ9.c2ln';
+    const bodies = [];
+    await page.route('**/functions/v1/get-view-project', async (route) => {
+      if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: CORS }); return; }
+      const req = route.request().postDataJSON() || {};
+      bodies.push(req);
+      const ok = req.grant === GRANT && req.token === TOKEN && !('email' in req);
+      await route.fulfill({
+        status: ok ? 200 : 403,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify(ok ? projectPayload() : { error: 'grant_invalid', message: 'bad' }),
+      });
+    });
+    await page.goto('/app/?t=' + TOKEN + '&g=' + GRANT);
+    await expectViewerLoaded(page);
+    // The email gate never showed, the grant went over the wire, and a granted
+    // viewer is not remembered as an allowed email.
+    const state = await page.evaluate((tok) => ({
+      modalVisible: document.getElementById('viewLinkEmailModal').classList.contains('visible'),
+      allowed: localStorage.getItem('view:allowed:' + tok),
+      isViewer: window.App.state.isViewer,
+    }), TOKEN);
+    expect(state.modalVisible).toBe(false);
+    expect(state.allowed).toBeNull();
+    expect(state.isViewer).toBe(true);
+    expect(bodies.length).toBeGreaterThanOrEqual(1);
+    expect(bodies[0]).toEqual({ token: TOKEN, grant: GRANT });
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('viewer grant refused (grant_invalid): falls back to the email gate with the server message, then loads', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    const GRANT = 'eyJ0IjoidCJ9.c3RhbGU';
+    await page.route('**/functions/v1/get-view-project', async (route) => {
+      if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: CORS }); return; }
+      const req = route.request().postDataJSON() || {};
+      if (req.grant) {
+        await route.fulfill({ status: 403, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'grant_invalid', reason: 'expired', message: 'This plans link needs a fresh open from your portal — or enter your email to view.' }) });
+        return;
+      }
+      await route.fulfill({ status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(projectPayload()) });
+    });
+    await page.goto('/app/?t=' + TOKEN + '&g=' + GRANT);
+    await page.waitForSelector('#viewLinkEmailModal.visible', { timeout: 10000 });
+    await expect(page.locator('#viewLinkEmailError')).toHaveText(/fresh open from your portal/);
+    await page.locator('#viewLinkEmailInput').fill('crew@clickplumbing.com');
+    await page.locator('#viewLinkEmailSubmit').click();
+    await expectViewerLoaded(page);
+    expect(realErrors(errors)).toEqual([]);
+  });
 });

@@ -211,6 +211,13 @@
     } = App;
     const allowedEmail = localStorage.getItem('view:allowed:' + viewToken);
     let email = allowedEmail ? allowedEmail.trim() : '';
+    // Viewer grant (2026-09-06): `&g=` on the link means PipeTooling vouched for
+    // this viewer (a sub opening plans from their portal). Skip the email gate
+    // and send the grant; if the server refuses it (stale, wrong link, secret
+    // rotated) drop to the gate exactly as before.
+    let grant = '';
+    try { grant = (new URLSearchParams(window.location.search || '').get('g') || '').trim(); } catch (_) {}
+    if (grant && !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(grant)) grant = '';
 
     function showViewEmailModal(keepError) {
       return new Promise((resolve) => {
@@ -248,7 +255,7 @@
       });
     }
 
-    if (!email) {
+    if (!email && !grant) {
       await showViewEmailModal();
       // B6 (J13 J14): Cancel/Escape at the gate used to strand the viewer in
       // the empty editor — a wall of tools with nothing behind them. The
@@ -262,10 +269,16 @@
       const res = await fetch(SUPABASE_URL + '/functions/v1/get-view-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: viewToken, email: useEmail })
+        body: JSON.stringify(grant ? { token: viewToken, grant } : { token: viewToken, email: useEmail })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.error === 'grant_invalid') {
+          // The grant is spent or does not fit this link: forget it and let the
+          // email gate take over (the gate shows the server's message).
+          const err = { grantInvalid: true, message: data.message || 'This plans link needs a fresh open from your portal — or enter your email to view.' };
+          throw err;
+        }
         if (data.error === 'domain_restricted') {
           const err = { domainRestricted: true, message: data.message || 'Access restricted to ' + domainMsg };
           throw err;
@@ -298,10 +311,18 @@
     while (true) {
       try {
         projectData = await fetchViewProject(email);
-        localStorage.setItem('view:allowed:' + viewToken, email);
+        // A granted viewer is not remembered as an allowed email; the grant is
+        // re-minted by the portal on every open.
+        if (!grant) localStorage.setItem('view:allowed:' + viewToken, email);
         break;
       } catch (e) {
-        if (e && e.domainRestricted) {
+        if (e && e.grantInvalid) {
+          grant = '';
+          const errEl = document.getElementById('viewLinkEmailError');
+          if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+          email = await showViewEmailModal(true);
+          if (!email) { showViewEmailRequiredScreen(viewToken); return; }
+        } else if (e && e.domainRestricted) {
           const errEl = document.getElementById('viewLinkEmailError');
           if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
           email = await showViewEmailModal(true);

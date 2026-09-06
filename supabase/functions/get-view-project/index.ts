@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getAllowedDomains, emailDomainAllowed } from '../_shared/viewLink.ts'
+import { verifyViewGrant } from '../_shared/viewGrant.mjs'
 
 
 Deno.serve(async (req) => {
@@ -10,7 +11,8 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}))
     const token = body?.token
-    const email = typeof body?.email === 'string' ? body.email.trim() : ''
+    let email = typeof body?.email === 'string' ? body.email.trim() : ''
+    const grantRaw = typeof body?.grant === 'string' ? body.grant.trim() : ''
 
     if (!token) {
       return new Response(
@@ -19,23 +21,42 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (!email) {
-      return new Response(
-        JSON.stringify({ error: 'email_required', message: 'Enter your email to view' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // Viewer grant (2026-09-06): PipeTooling vouches for a subcontractor opening plans
+    // from their portal — a signed, short-lived, token-bound assertion in place of the
+    // email gate (../_shared/viewGrant.mjs). A bad grant answers grant_invalid so the
+    // client falls back to the gate; a request WITHOUT a grant is unchanged below.
+    let grantViewer: { name: string; email: string | null; source: string } | null = null
+    if (grantRaw) {
+      const v = await verifyViewGrant({ grant: grantRaw, secret: Deno.env.get('PT_VIEW_GRANT_SECRET') || '', token: String(token) })
+      if (!v.ok) {
+        return new Response(
+          JSON.stringify({ error: 'grant_invalid', reason: v.reason, message: 'This plans link needs a fresh open from your portal — or enter your email to view.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      grantViewer = { name: v.claims.name, email: v.claims.email, source: v.claims.via }
+      email = v.claims.email || ''
     }
 
-    const allowedDomains = getAllowedDomains()
-    if (!emailDomainAllowed(email, allowedDomains)) {
-      const domainList = allowedDomains.join(', ')
-      return new Response(
-        JSON.stringify({
-          error: 'domain_restricted',
-          message: `Access restricted to ${domainList}. Please use your work email.`,
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    if (!grantViewer) {
+      if (!email) {
+        return new Response(
+          JSON.stringify({ error: 'email_required', message: 'Enter your email to view' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const allowedDomains = getAllowedDomains()
+      if (!emailDomainAllowed(email, allowedDomains)) {
+        const domainList = allowedDomains.join(', ')
+        return new Response(
+          JSON.stringify({
+            error: 'domain_restricted',
+            message: `Access restricted to ${domainList}. Please use your work email.`,
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     const adminClient = createClient(
@@ -83,12 +104,20 @@ Deno.serve(async (req) => {
       )
     }
 
-    await adminClient.from('view_link_access_log').insert({
+    // The log row names the viewer: the gate's email, or the grant's name + source.
+    // `email` is NOT NULL on the table, so a grant without one writes a labelled
+    // placeholder. If the viewer columns are not there yet (function deployed before
+    // the migration), fall back to the old row shape so the visit is never lost.
+    const logRow = {
       view_link_id: link.id,
       token,
       project_id: link.project_id,
-      email,
-    })
+      email: email || (grantViewer ? `${grantViewer.name} (via ${grantViewer.source})` : ''),
+    }
+    const { error: logErr } = await adminClient
+      .from('view_link_access_log')
+      .insert(grantViewer ? { ...logRow, viewer_name: grantViewer.name, source: grantViewer.source } : logRow)
+    if (logErr && grantViewer) await adminClient.from('view_link_access_log').insert(logRow)
 
     const { data: signed, error: urlErr } = await adminClient.storage
       .from('pdfs')

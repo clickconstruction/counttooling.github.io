@@ -1087,6 +1087,18 @@
         if (ptDist(pos, markers[i]) <= r) return { type: 'marker', typeId, index: i };
       }
     }
+    // Duct fitting markers (D3): small targets, so they outrank the duct
+    // runs/lines below (the counter-marker rule) — they exist to be
+    // right-clicked for the reclassify/delete menu. Suppressed delete-
+    // tombstones paint nothing, so they must not catch the mouse either;
+    // like everything here, this sits after the hideMarks early return.
+    const ductFits = ann.ductFittings || [];
+    for (let i = 0; i < ductFits.length; i++) {
+      const f = ductFits[i];
+      if (f.suppressed) continue;
+      const a = ductFittingAnchor(f, ann.ductRuns || []);
+      if (a && ptDist(pos, a) <= r) return { type: 'ductFitting', index: i };
+    }
     const lineCandidates = [];
     for (let i = 0; i < (ann.quickLines || []).length; i++) {
       const q = ann.quickLines[i];
@@ -1108,6 +1120,16 @@
         minD = Math.min(minD, distToSegment(pos, pts[pts.length - 1], pts[0]));
       }
       if (minD <= r) lineCandidates.push({ type: 'polyline', index: i, dist: minD });
+    }
+    // Committed duct runs join the line-hit contest (D3: basic select for the
+    // run context menu — full run-editing UX is out of D3's scope).
+    for (let i = 0; i < (ann.ductRuns || []).length; i++) {
+      const verts = ann.ductRuns[i].vertices || [];
+      let minD = Infinity;
+      for (let j = 0; j < verts.length - 1; j++) {
+        minD = Math.min(minD, distToSegment(pos, verts[j], verts[j + 1]));
+      }
+      if (minD <= r) lineCandidates.push({ type: 'ductRun', index: i, dist: minD });
     }
     if (lineCandidates.length > 0) {
       const best = lineCandidates.reduce((a, b) => a.dist <= b.dist ? a : b);
@@ -5475,6 +5497,15 @@
     // mark that happens to sit under a ghost still works everywhere else.
     if (App.tryOpenGhostMenuAt && App.tryOpenGhostMenuAt(pdf, e.clientX, e.clientY)) return;
     state.ctxTarget = hitTest(pdf);
+    // Duct fittings and runs get their own menu (features/duct-fittings.js,
+    // D3) — the shared mark menu's rows are all built around counter/line
+    // targets, and the fitting menu is a dynamic reclassify list.
+    if (state.ctxTarget && (state.ctxTarget.type === 'ductFitting' || state.ctxTarget.type === 'ductRun')) {
+      const ductTarget = state.ctxTarget;
+      state.ctxTarget = null;
+      App.tryOpenDuctContextMenu && App.tryOpenDuctContextMenu(ductTarget, e.clientX, e.clientY);
+      return;
+    }
     // The right-click's PDF-space point rides along so point-aware rows (the
     // repeat-drop row picks the line end nearest the click) know where on the
     // mark the user aimed. Cleared with ctxTarget everywhere.

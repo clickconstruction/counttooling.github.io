@@ -2702,6 +2702,10 @@
   <!-- Tool context menu: the right-click mini menu for tool buttons; items
        are built by features/tool-context-menu.js -->
   <div id="toolContextMenu" class="tool-context-menu" role="menu" aria-label="Tool options" hidden></div>
+  <!-- Duct fitting/run context menu (features/duct-fittings.js, DUCT unit D3):
+       heading + reclassify/delete rows built per right-clicked target; the
+       tool-context-menu dismissal pattern (capture-phase Esc, outside click) -->
+  <div id="ductFittingMenu" class="tool-context-menu" role="menu" aria-label="Duct fitting options" hidden></div>
 
   <div class="zoom-rail" id="zoomRail" hidden>
     <button type="button" id="zoomRailPlus" class="zoom-rail-btn" title="Zoom in" aria-label="Zoom in">+</button>
@@ -2892,6 +2896,7 @@
   <script src="/features/drop-mode.js"></script>
   <script src="/features/duct-tool.js"></script>
   <script src="/features/duct-size-popover.js"></script>
+  <script src="/features/duct-fittings.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>

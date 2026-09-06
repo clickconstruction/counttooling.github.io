@@ -54,6 +54,9 @@ const DUCT_AIRSIDES = ['supply', 'return', 'exhaust'];
 /** Valid fitting types (DUCT-PLAN: corner/step/tap inference + reclassify menu). */
 const DUCT_FITTING_TYPES = ['elbow90', 'elbow45', 'transition', 'tap', 'boot', 'offset'];
 
+/** Which inference rule anchored an auto fitting (D3). */
+const DUCT_FITTING_ORIGINS = ['bend', 'step', 'tap'];
+
 // Same id shape the app's uid() produces (app.js: Math.random().toString(36)
 // .slice(2, 10)). Factories accept opts.id so app code passes ctx.uid();
 // the fallback keeps the module usable standalone (tests, node tooling).
@@ -119,6 +122,15 @@ function makeDuctFitting(opts) {
     type: DUCT_FITTING_TYPES.includes(o.type) ? o.type : 'elbow90',
     size: isDuctSize(o.size) ? cloneDuctSize(o.size) : null,
     auto: !!o.auto,
+    // D3 — which inference rule anchored this fitting ('bend' | 'step' |
+    // 'tap'; null for a hypothetical hand-placed one). Reclassifying keeps
+    // the origin, so the reconciliation walk can still match the override to
+    // the geometry that would re-infer at the same anchor.
+    origin: DUCT_FITTING_ORIGINS.includes(o.origin) ? o.origin : null,
+    // D3 — delete tombstone: a deleted fitting is kept as {auto:false,
+    // suppressed:true} so re-inference cannot resurrect it. Suppressed
+    // fittings are skipped by paint, hitTest, and the count tallies.
+    suppressed: !!o.suppressed,
   };
 }
 
@@ -432,6 +444,221 @@ function rollupRunsToSchedule(runs, fittings, opts) {
   return rollupDuct({ ...o, straightItems: items, fittings: fittings });
 }
 
+// --- 3b. Fitting inference (unit D3) -----------------------------------------
+//
+// Fittings COUNT THEMSELVES from run geometry (DUCT-PLAN "Fittings count
+// themselves from geometry, always overridable" — the SMACNA-gauge-auto-pick
+// philosophy). The walk is pure and deterministic, so re-running it after any
+// edit converges (idempotent). Three rules:
+//
+//   bend — every INTERIOR vertex whose direction change is ≥30° logs an
+//          elbow: ≥60° = elbow90, 30–60° = elbow45. Size = the INCOMING
+//          segment's size at that vertex (the duct being bent). Shallower
+//          bends are drafting wiggle, not fittings.
+//   step — every segment boundary logs a transition (equivalently: every
+//          committed sizeSteps entry — a boundary exists iff a step was
+//          recorded). Size = the LARGER of the two sides (governing dim,
+//          then perimeter — the metal is cut from the big end).
+//   tap  — a run whose FIRST vertex lands within tapSnapDist of another
+//          run's polyline logs a tap ON THE PARENT run (nearest parent
+//          wins), position-anchored at the child's first vertex; size = the
+//          child's STARTING size (the branch collar).
+//
+// RECONCILIATION (the auto/manual contract, reconcileDuctFittings):
+//   - auto fittings are RE-DERIVED on every walk. Each carries an anchor key
+//     (runId + origin + vertexIdx/position), and a re-derived fitting keeps
+//     the id of the auto fitting it replaces — stable identity across edits.
+//   - non-auto fittings (reclassified via the marker menu, or delete
+//     tombstones with suppressed:true) are PRESERVED BY ANCHOR: they survive
+//     verbatim, and an inferred auto at the same anchor is dropped — the
+//     human's call outranks the walk. They are pruned only when their anchor
+//     no longer resolves (run deleted / vertexIdx gone).
+//   - deleting a fitting flips it to a suppressed tombstone ({auto:false,
+//     suppressed:true}) instead of splicing, so the walk cannot resurrect
+//     it; tombstones are invisible to paint/hitTest/counts.
+
+/** Inference thresholds (degrees) + the tap snap distance (PDF-space pts —
+ * ~12 units = the hitTest radius at zoom 1; a data constant, deliberately
+ * zoom-independent so re-inference is deterministic). */
+const DUCT_ELBOW_MIN_DEG = 30;
+const DUCT_ELBOW90_MIN_DEG = 60;
+const DUCT_TAP_SNAP_PDF = 12;
+
+/** Direction change (degrees, 0 = straight through) at vertex b of a→b→c. */
+function ductBendAngleDeg(a, b, c) {
+  const v1x = b.x - a.x, v1y = b.y - a.y, v2x = c.x - b.x, v2y = c.y - b.y;
+  const m1 = Math.hypot(v1x, v1y), m2 = Math.hypot(v2x, v2y);
+  if (!m1 || !m2) return 0;
+  const cos = Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / (m1 * m2)));
+  return Math.acos(cos) * 180 / Math.PI;
+}
+
+/** The larger of two duct sizes: governing dim, then perimeter; ties → a. */
+function largerDuctSize(a, b) {
+  if (!isDuctSize(a)) return isDuctSize(b) ? b : null;
+  if (!isDuctSize(b)) return a;
+  const da = ductGoverningDimIn(a), db = ductGoverningDimIn(b);
+  if (db > da) return b;
+  if (da > db) return a;
+  return ductPerimeterIn(b) > ductPerimeterIn(a) ? b : a;
+}
+
+/** The size of the segment ARRIVING at a vertex (segments[0] for vertex 0). */
+function ductSizeAtVertex(run, vertexIdx) {
+  const spans = runSegmentSpans(run);
+  for (const span of spans) { if (vertexIdx <= span.toIdx) return span.size; }
+  return spans.length ? spans[spans.length - 1].size : null;
+}
+
+// Point-to-segment distance, local so the module stays dependency-free.
+function ductDistToSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** Min distance from a point to a run's polyline (Infinity for <2 vertices). */
+function ductDistToPolyline(pt, verts) {
+  let min = Infinity;
+  for (let i = 0; i < (verts?.length || 0) - 1; i++) {
+    min = Math.min(min, ductDistToSegment(pt, verts[i], verts[i + 1]));
+  }
+  return min;
+}
+
+/**
+ * The pure inference walk: all AUTO fittings the geometry implies for one
+ * annotation universe's runs (a canvas). Returns plain records WITHOUT ids —
+ * reconcileDuctFittings assigns/preserves those. opts.tapSnapDist overrides
+ * the tap tolerance (default DUCT_TAP_SNAP_PDF).
+ */
+function inferAutoDuctFittings(runs, opts) {
+  const tapSnap = opts?.tapSnapDist > 0 ? opts.tapSnapDist : DUCT_TAP_SNAP_PDF;
+  const out = [];
+  const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2 && (r.segments?.length || 0) >= 1);
+  list.forEach(run => {
+    const verts = run.vertices;
+    // bends: interior vertices only (endpoints can't be elbows).
+    for (let v = 1; v < verts.length - 1; v++) {
+      const ang = ductBendAngleDeg(verts[v - 1], verts[v], verts[v + 1]);
+      if (ang < DUCT_ELBOW_MIN_DEG - 1e-9) continue;
+      out.push({
+        runId: run.id, vertexIdx: v, origin: 'bend',
+        type: ang >= DUCT_ELBOW90_MIN_DEG - 1e-9 ? 'elbow90' : 'elbow45',
+        size: ductSizeAtVertex(run, v), auto: true,
+      });
+    }
+    // steps: every segment boundary is a transition.
+    for (let i = 1; i < run.segments.length; i++) {
+      const from = run.segments[i - 1].size, to = run.segments[i].size;
+      const size = largerDuctSize(from, to);
+      if (!size) continue;
+      out.push({ runId: run.id, vertexIdx: run.segments[i].startVertexIdx, origin: 'step', type: 'transition', size: size, auto: true });
+    }
+  });
+  // taps: child's first vertex on a parent's polyline → tap ON THE PARENT.
+  list.forEach(child => {
+    const start = child.vertices[0];
+    let parent = null, best = Infinity;
+    list.forEach(other => {
+      if (other === child || other.id === child.id) return;
+      const d = ductDistToPolyline(start, other.vertices);
+      if (d <= tapSnap && d < best) { best = d; parent = other; }
+    });
+    if (!parent) return;
+    out.push({
+      runId: parent.id, position: { x: start.x, y: start.y }, origin: 'tap',
+      type: 'tap', size: child.segments[0].size, auto: true,
+    });
+  });
+  return out;
+}
+
+/** Stable anchor identity for reconciliation: runId + origin + anchor. */
+function ductFittingAnchorKey(f) {
+  const anchor = f.vertexIdx != null ? 'v' + f.vertexIdx
+    : f.position ? 'p' + f.position.x.toFixed(3) + ',' + f.position.y.toFixed(3) : 'none';
+  return (f.runId || '') + '|' + (f.origin || 'manual') + '|' + anchor;
+}
+
+/** Resolve a fitting's PDF-space anchor point against its run, or null when
+ * the anchor no longer exists (run deleted / vertexIdx out of range).
+ * vertexIdx wins when both are present (geometry-derived redraws). */
+function ductFittingAnchor(f, runs) {
+  if (!f) return null;
+  if (f.vertexIdx != null) {
+    const run = (runs || []).find(r => r && r.id === f.runId);
+    const v = run?.vertices?.[f.vertexIdx];
+    return v ? { x: v.x, y: v.y } : null;
+  }
+  if (f.position) {
+    if (f.runId && !(runs || []).some(r => r && r.id === f.runId)) return null;   // parent gone → tap gone
+    return { x: f.position.x, y: f.position.y };
+  }
+  return null;
+}
+
+/** Outgoing unit direction at a fitting's anchor (for oriented glyphs like
+ * the transition chevrons); null for position-anchored/unresolvable ones. */
+function ductFittingOutDirection(f, runs) {
+  if (!f || f.vertexIdx == null) return null;
+  const run = (runs || []).find(r => r && r.id === f.runId);
+  const verts = run?.vertices || [];
+  const v = f.vertexIdx;
+  const a = verts[v], b = verts[v + 1] || null;
+  const from = b ? a : verts[v - 1], to = b || a;
+  if (!from || !to) return null;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const m = Math.hypot(dx, dy);
+  return m > 0 ? { x: dx / m, y: dy / m } : null;
+}
+
+/**
+ * Reconcile a canvas's fitting list against a fresh inference walk.
+ * `existing` = the current ductFittings, `inferred` = inferAutoDuctFittings'
+ * output, `runs` = the canvas's ductRuns (anchor pruning). Returns the NEW
+ * list (never mutates inputs): non-auto fittings with live anchors survive
+ * verbatim (and suppress a same-anchor inferred auto); autos are re-derived,
+ * keeping their prior id when the anchor matches. Idempotent: reconciling
+ * the result against the same walk returns a deep-equal list.
+ */
+function reconcileDuctFittings(existing, inferred, runs) {
+  const out = [];
+  const byKey = new Map();
+  (existing || []).forEach(f => { if (f) byKey.set(ductFittingAnchorKey(f), f); });
+  (existing || []).forEach(f => {
+    if (!f || f.auto) return;
+    if (ductFittingAnchor(f, runs)) out.push(f);   // manual/tombstone survives while its anchor does
+  });
+  (inferred || []).forEach(inf => {
+    const prior = byKey.get(ductFittingAnchorKey(inf));
+    if (prior && !prior.auto) return;   // the human's override outranks the walk
+    out.push(makeDuctFitting({ ...inf, id: prior ? prior.id : inf.id, auto: true }));
+  });
+  return out;
+}
+
+/**
+ * Minimal counts surface for D4/D5: tally fittings by type + size key.
+ * Skips suppressed tombstones. Returns rows [{ type, sizeKey, count }] in
+ * DUCT_FITTING_TYPES order, then by sizeKey.
+ */
+function tallyDuctFittingCounts(fittings) {
+  const byKey = new Map();
+  (fittings || []).forEach(f => {
+    if (!f || f.suppressed || !DUCT_FITTING_TYPES.includes(f.type)) return;
+    const sizeKey = formatDuctSize(f.size);
+    const key = f.type + '|' + sizeKey;
+    const row = byKey.get(key) || { type: f.type, sizeKey: sizeKey, count: 0 };
+    row.count++;
+    byKey.set(key, row);
+  });
+  return [...byKey.values()].sort((a, b) =>
+    (DUCT_FITTING_TYPES.indexOf(a.type) - DUCT_FITTING_TYPES.indexOf(b.type))
+    || (a.sizeKey < b.sizeKey ? -1 : a.sizeKey > b.sizeKey ? 1 : 0));
+}
+
 // --- 4. Insulation -----------------------------------------------------------
 
 /** Insulation sq ft per LF of duct: perimeter(in)/12. */
@@ -653,9 +880,14 @@ function suggestNeckSize(cfm) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // model
-    DUCT_AIRSIDES, DUCT_FITTING_TYPES,
+    DUCT_AIRSIDES, DUCT_FITTING_TYPES, DUCT_FITTING_ORIGINS,
     makeRectSize, makeRoundSize, isDuctSize, cloneDuctSize, formatDuctSize,
     makeDuctRun, makeDuctFitting, validateDuctRun, validateDuctFitting,
+    // fitting inference (D3)
+    DUCT_ELBOW_MIN_DEG, DUCT_ELBOW90_MIN_DEG, DUCT_TAP_SNAP_PDF,
+    ductBendAngleDeg, largerDuctSize, ductSizeAtVertex, ductDistToPolyline,
+    inferAutoDuctFittings, ductFittingAnchorKey, ductFittingAnchor,
+    ductFittingOutDirection, reconcileDuctFittings, tallyDuctFittingCounts,
     // gauge
     SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES,
     ductGoverningDimIn, selectGauge,

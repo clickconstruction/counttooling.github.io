@@ -559,3 +559,212 @@ test('ductStrokePx: bad sizes fall back to the smallest band', () => {
   assert.strictEqual(dm.ductStrokePx(null), 3);
   assert.strictEqual(dm.ductStrokePx({ kind: 'rect', w: -1, h: 4 }), 3);
 });
+
+// --- 3b. Fitting inference (D3) ----------------------------------------------
+
+// A run factory for the walk tests: straight sizes unless segments given.
+const run = (id, vertices, segments) => dm.makeDuctRun({
+  id, vertices,
+  segments: segments || [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }],
+});
+
+test('ductBendAngleDeg: direction change at the middle vertex', () => {
+  const a = { x: 0, y: 0 }, b = { x: 10, y: 0 };
+  close(dm.ductBendAngleDeg(a, b, { x: 20, y: 0 }), 0);
+  close(dm.ductBendAngleDeg(a, b, { x: 20, y: 10 }), 45, 1e-9);
+  close(dm.ductBendAngleDeg(a, b, { x: 10, y: 10 }), 90);
+  close(dm.ductBendAngleDeg(a, b, { x: 0, y: 0.001 }), 180, 0.01);
+  // degenerate zero-length leg → 0 (never a fitting)
+  close(dm.ductBendAngleDeg(a, a, { x: 20, y: 10 }), 0);
+});
+
+test('largerDuctSize: governing dim, then perimeter, ties → first', () => {
+  const a = dm.makeRectSize(24, 12), b = dm.makeRectSize(22, 12);
+  assert.strictEqual(dm.largerDuctSize(a, b), a);
+  assert.strictEqual(dm.largerDuctSize(b, a), a);
+  // same governing dim (24): 24×12 perim 72 < 24×20 perim 88
+  const c = dm.makeRectSize(24, 20);
+  assert.strictEqual(dm.largerDuctSize(a, c), c);
+  // exact tie keeps the first argument
+  const a2 = dm.makeRectSize(24, 12);
+  assert.strictEqual(dm.largerDuctSize(a, a2), a);
+  assert.strictEqual(dm.largerDuctSize(null, b), b);
+  assert.strictEqual(dm.largerDuctSize(a, null), a);
+});
+
+test('ductSizeAtVertex: the incoming segment size, boundary included', () => {
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }, { x: 300, y: 0 }], [
+    { startVertexIdx: 0, size: dm.makeRectSize(24, 12) },
+    { startVertexIdx: 2, size: dm.makeRectSize(20, 12) },
+  ]);
+  assert.deepStrictEqual(dm.ductSizeAtVertex(r, 0), { kind: 'rect', w: 24, h: 12 });
+  assert.deepStrictEqual(dm.ductSizeAtVertex(r, 1), { kind: 'rect', w: 24, h: 12 });
+  // the boundary vertex belongs to the ARRIVING segment (the duct being bent)
+  assert.deepStrictEqual(dm.ductSizeAtVertex(r, 2), { kind: 'rect', w: 24, h: 12 });
+  assert.deepStrictEqual(dm.ductSizeAtVertex(r, 3), { kind: 'rect', w: 20, h: 12 });
+});
+
+test('inferAutoDuctFittings: L-shaped run logs exactly one elbow90', () => {
+  const fits = dm.inferAutoDuctFittings([run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }])]);
+  assert.strictEqual(fits.length, 1);
+  assert.deepStrictEqual(fits[0], {
+    runId: 'r1', vertexIdx: 1, origin: 'bend', type: 'elbow90',
+    size: { kind: 'rect', w: 24, h: 12 }, auto: true,
+  });
+});
+
+test('inferAutoDuctFittings: elbow thresholds — <30° nothing, 30–60° elbow45, ≥60° elbow90', () => {
+  const bent = (deg) => {
+    const rad = deg * Math.PI / 180;
+    return run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100 + 100 * Math.cos(rad), y: 100 * Math.sin(rad) }]);
+  };
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(20)]).length, 0);
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(29.9)]).length, 0);
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(30)])[0].type, 'elbow45');
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(45)])[0].type, 'elbow45');
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(59.9)])[0].type, 'elbow45');
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(60)])[0].type, 'elbow90');
+  assert.strictEqual(dm.inferAutoDuctFittings([bent(90)])[0].type, 'elbow90');
+});
+
+test('inferAutoDuctFittings: size steps log transitions at the larger side', () => {
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }], [
+    { startVertexIdx: 0, size: dm.makeRectSize(24, 12) },
+    { startVertexIdx: 1, size: dm.makeRectSize(20, 12) },
+  ]);
+  const fits = dm.inferAutoDuctFittings([r]);
+  assert.strictEqual(fits.length, 1);
+  assert.deepStrictEqual(fits[0], {
+    runId: 'r1', vertexIdx: 1, origin: 'step', type: 'transition',
+    size: { kind: 'rect', w: 24, h: 12 }, auto: true,
+  });
+});
+
+test('inferAutoDuctFittings: a corner AND a step at one vertex log both fittings', () => {
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], [
+    { startVertexIdx: 0, size: dm.makeRectSize(24, 12) },
+    { startVertexIdx: 1, size: dm.makeRectSize(20, 12) },
+  ]);
+  const fits = dm.inferAutoDuctFittings([r]);
+  assert.strictEqual(fits.length, 2);
+  const elbow = fits.find(f => f.origin === 'bend'), step = fits.find(f => f.origin === 'step');
+  assert.strictEqual(elbow.type, 'elbow90');
+  // the elbow is cut from the ARRIVING duct
+  assert.deepStrictEqual(elbow.size, { kind: 'rect', w: 24, h: 12 });
+  assert.strictEqual(step.type, 'transition');
+});
+
+test('inferAutoDuctFittings: run-on-run logs a tap on the PARENT at the child start size', () => {
+  const parent = run('p', [{ x: 0, y: 0 }, { x: 200, y: 0 }]);
+  const child = run('c', [{ x: 100, y: 5 }, { x: 100, y: 100 }],
+    [{ startVertexIdx: 0, size: dm.makeRoundSize(10) }]);
+  const fits = dm.inferAutoDuctFittings([parent, child]);
+  assert.strictEqual(fits.length, 1);
+  assert.deepStrictEqual(fits[0], {
+    runId: 'p', position: { x: 100, y: 5 }, origin: 'tap', type: 'tap',
+    size: { kind: 'round', d: 10 }, auto: true,
+  });
+  // outside the snap distance → no tap
+  const far = run('c2', [{ x: 100, y: 40 }, { x: 100, y: 140 }]);
+  assert.strictEqual(dm.inferAutoDuctFittings([parent, far]).length, 0);
+  // custom tolerance widens the snap
+  assert.strictEqual(dm.inferAutoDuctFittings([parent, far], { tapSnapDist: 50 }).length, 1);
+  // nearest parent wins: both parents sit within the child's snap distance
+  // (5 vs 11 units) but far enough apart (16) not to tap each other.
+  const parent2 = run('p2', [{ x: 0, y: 16 }, { x: 200, y: 16 }]);
+  const both = dm.inferAutoDuctFittings([parent, parent2, child]);
+  const taps = both.filter(f => f.type === 'tap');
+  assert.strictEqual(taps.length, 1);
+  assert.strictEqual(taps[0].runId, 'p');   // 5 units away beats 11
+});
+
+test('inferAutoDuctFittings: a run never taps itself; degenerate runs are skipped', () => {
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }]);
+  assert.strictEqual(dm.inferAutoDuctFittings([r]).length, 0);
+  assert.strictEqual(dm.inferAutoDuctFittings([run('r2', [{ x: 0, y: 0 }])]).length, 0);
+  assert.strictEqual(dm.inferAutoDuctFittings(null).length, 0);
+});
+
+test('ductFittingAnchor: vertexIdx through the run, position free, pruned when gone', () => {
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]);
+  const byVertex = dm.makeDuctFitting({ runId: 'r1', vertexIdx: 1, size: dm.makeRectSize(24, 12) });
+  assert.deepStrictEqual(dm.ductFittingAnchor(byVertex, [r]), { x: 100, y: 0 });
+  assert.strictEqual(dm.ductFittingAnchor(byVertex, []), null);                       // run gone
+  const past = dm.makeDuctFitting({ runId: 'r1', vertexIdx: 9, size: dm.makeRectSize(24, 12) });
+  assert.strictEqual(dm.ductFittingAnchor(past, [r]), null);                          // vertex gone
+  const tap = dm.makeDuctFitting({ runId: 'r1', position: { x: 50, y: 1 }, type: 'tap', size: dm.makeRoundSize(8) });
+  assert.deepStrictEqual(dm.ductFittingAnchor(tap, [r]), { x: 50, y: 1 });
+  assert.strictEqual(dm.ductFittingAnchor(tap, []), null);                            // parent gone → tap gone
+});
+
+test('ductFittingOutDirection: outgoing leg, incoming at the last vertex', () => {
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]);
+  const mid = dm.makeDuctFitting({ runId: 'r1', vertexIdx: 1, size: dm.makeRectSize(24, 12) });
+  assert.deepStrictEqual(dm.ductFittingOutDirection(mid, [r]), { x: 0, y: 1 });
+  const last = dm.makeDuctFitting({ runId: 'r1', vertexIdx: 2, size: dm.makeRectSize(24, 12) });
+  assert.deepStrictEqual(dm.ductFittingOutDirection(last, [r]), { x: 0, y: 1 });
+  const tap = dm.makeDuctFitting({ runId: 'r1', position: { x: 50, y: 1 }, size: dm.makeRoundSize(8) });
+  assert.strictEqual(dm.ductFittingOutDirection(tap, [r]), null);
+});
+
+test('reconcileDuctFittings: idempotent, id-stable, and type-updating for autos', () => {
+  const runs = [run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }])];
+  const inferred = dm.inferAutoDuctFittings(runs);
+  const first = dm.reconcileDuctFittings([], inferred, runs);
+  assert.strictEqual(first.length, 1);
+  assert.ok(first[0].id);
+  assert.strictEqual(first[0].auto, true);
+  // re-walking with unchanged geometry keeps the id and content
+  const second = dm.reconcileDuctFittings(first, dm.inferAutoDuctFittings(runs), runs);
+  assert.deepStrictEqual(second, first);
+  assert.strictEqual(second[0].id, first[0].id);
+  // geometry re-derives the auto's type in place (same anchor, same id)
+  const asIf45 = dm.reconcileDuctFittings(
+    [dm.makeDuctFitting({ ...first[0], type: 'elbow45' })], dm.inferAutoDuctFittings(runs), runs);
+  assert.strictEqual(asIf45[0].type, 'elbow90');
+  assert.strictEqual(asIf45[0].id, first[0].id);
+});
+
+test('reconcileDuctFittings: a reclassified (non-auto) fitting suppresses its inferred twin and survives', () => {
+  const runs = [run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }])];
+  const inferred = dm.inferAutoDuctFittings(runs);
+  const auto = dm.reconcileDuctFittings([], inferred, runs)[0];
+  const manual = { ...auto, type: 'boot', auto: false };
+  const next = dm.reconcileDuctFittings([manual], dm.inferAutoDuctFittings(runs), runs);
+  assert.strictEqual(next.length, 1);
+  assert.strictEqual(next[0], manual);   // survives verbatim (same reference)
+  assert.strictEqual(next[0].type, 'boot');
+  assert.strictEqual(next[0].auto, false);
+});
+
+test('reconcileDuctFittings: suppressed tombstones block resurrection; counts skip them', () => {
+  const runs = [run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }])];
+  const auto = dm.reconcileDuctFittings([], dm.inferAutoDuctFittings(runs), runs)[0];
+  const tombstone = { ...auto, auto: false, suppressed: true };
+  const next = dm.reconcileDuctFittings([tombstone], dm.inferAutoDuctFittings(runs), runs);
+  assert.strictEqual(next.length, 1);
+  assert.strictEqual(next[0].suppressed, true);
+  assert.deepStrictEqual(dm.tallyDuctFittingCounts(next), []);
+});
+
+test('reconcileDuctFittings: fittings of a deleted run are pruned (manual included)', () => {
+  const runs = [run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }])];
+  const kept = dm.reconcileDuctFittings([], dm.inferAutoDuctFittings(runs), runs);
+  const manual = { ...kept[0], type: 'offset', auto: false };
+  const afterDelete = dm.reconcileDuctFittings([manual], dm.inferAutoDuctFittings([]), []);
+  assert.deepStrictEqual(afterDelete, []);
+});
+
+test('tallyDuctFittingCounts: groups by type + sizeKey in type order', () => {
+  const s24 = dm.makeRectSize(24, 12), s20 = dm.makeRectSize(20, 12);
+  const mk = (type, size) => dm.makeDuctFitting({ runId: 'r', vertexIdx: 0, type, size });
+  const rows = dm.tallyDuctFittingCounts([
+    mk('tap', s20), mk('elbow90', s24), mk('elbow90', s24), mk('transition', s24), mk('elbow90', s20),
+  ]);
+  assert.deepStrictEqual(rows, [
+    { type: 'elbow90', sizeKey: '20×12', count: 1 },
+    { type: 'elbow90', sizeKey: '24×12', count: 2 },
+    { type: 'transition', sizeKey: '24×12', count: 1 },
+    { type: 'tap', sizeKey: '20×12', count: 1 },
+  ]);
+});

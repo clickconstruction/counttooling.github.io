@@ -35,6 +35,15 @@
   let pendingGroupAssignTarget = null;
   let openedGroupModalFromAssign = false;
 
+  // DUCT unit D4 (DUCT-PLAN §2): the plenum-return row only shows once an
+  // equipment tag is entered — plenum return is a per-SYSTEM call, and a
+  // group without a tag is a plain group.
+  function syncPlenumRowVisibility() {
+    const row = document.getElementById('groupModalPlenumRow');
+    const tagEl = document.getElementById('groupModalEquipTag');
+    if (row && tagEl) row.style.display = tagEl.value.trim() ? '' : 'none';
+  }
+
   function openGroupModal(g) {
     const state = App.state;
     pendingGroupEdit = g;
@@ -44,6 +53,11 @@
     const deleteBtn = document.getElementById('groupModalDelete');
     titleEl.textContent = g ? 'Edit Group' : 'Add Group';
     nameEl.value = g ? (g.name || '') : '';
+    // System fields (D4): tag + capacity CFM + plenum-return toggle.
+    document.getElementById('groupModalEquipTag').value = g ? (g.equipmentTag || '') : '';
+    document.getElementById('groupModalCapacityCfm').value = g && g.capacityCfm != null ? g.capacityCfm : '';
+    document.getElementById('groupModalPlenumBtn').setAttribute('aria-pressed', String(!!(g && g.plenumReturn)));
+    syncPlenumRowVisibility();
     const groups = state.groups || [];
     const defaultColor = g ? (g.color || App.COLORS[0]) : (App.COLORS[groups.length % App.COLORS.length]);
     colorRow.innerHTML = App.COLORS.map((c, i) => '<span class="color-swatch' + (c === defaultColor ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
@@ -146,6 +160,23 @@
       App.renderAnnotations();
     }
   };
+  // D4 system fields, read at Done. A group with no tag stays exactly
+  // { id, name, color } — the fields are DELETED, not nulled, so existing
+  // projects' group objects are byte-identical (zero behavior change).
+  function applySystemFieldsTo(grp) {
+    const equipTag = document.getElementById('groupModalEquipTag').value.trim();
+    const cfmRaw = parseFloat(document.getElementById('groupModalCapacityCfm').value);
+    if (equipTag) {
+      grp.equipmentTag = equipTag;
+      grp.capacityCfm = Number.isFinite(cfmRaw) && cfmRaw > 0 ? cfmRaw : null;
+      grp.plenumReturn = document.getElementById('groupModalPlenumBtn').getAttribute('aria-pressed') === 'true';
+    } else {
+      delete grp.equipmentTag;
+      delete grp.capacityCfm;
+      delete grp.plenumReturn;
+    }
+  }
+
   document.getElementById('groupModalDone').onclick = () => {
     const state = App.state;
     const name = document.getElementById('groupModalName').value.trim() || 'Group';
@@ -155,10 +186,12 @@
       App.pushUndoSnapshot();
       pendingGroupEdit.name = name;
       pendingGroupEdit.color = color;
+      applySystemFieldsTo(pendingGroupEdit);
       App.markProjectDirty();
     } else {
       App.pushUndoSnapshot();
       const newGroup = { id: App.uid(), name, color };
+      applySystemFieldsTo(newGroup);
       if (!state.groups) state.groups = [];
       state.groups.push(newGroup);
       // Latch the per-project Groups gate on: without this, deleting the last
@@ -172,6 +205,13 @@
     App.hideModal('groupModal');
     App.updateUI();
     App.renderAnnotations();
+  };
+
+  // D4 system-field wiring (static DOM, bound once at load like the rest).
+  document.getElementById('groupModalEquipTag').addEventListener('input', syncPlenumRowVisibility);
+  document.getElementById('groupModalPlenumBtn').onclick = () => {
+    const btn = document.getElementById('groupModalPlenumBtn');
+    btn.setAttribute('aria-pressed', String(btn.getAttribute('aria-pressed') !== 'true'));
   };
 
   document.getElementById('groupAssignAddGroup').onclick = () => {

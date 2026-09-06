@@ -362,6 +362,16 @@
             <input type="checkbox" id="showGroupColorsCheckbox" hidden>
           </div>
         </div>
+        <!-- Duct section (features/duct-sidebar.js, DUCT unit D4): runs grouped
+             by airside → per-run size-segment rows + fittings line → All-duct
+             total. Hidden until the first run exists (the Rooms pattern), so
+             non-duct takeoffs never see it. -->
+        <div class="sidebar-section" id="ductSection" style="display:none;">
+          <div class="sidebar-section-header-row">
+            <h3 id="ductSectionTitle" class="section-settings" title="Click to collapse">Duct <span class="collapse-icon" id="ductCollapseIcon">▼</span></h3>
+          </div>
+          <div id="ductList"></div>
+        </div>
         <div class="sidebar-section" id="roomsSection" style="display:none;">
           <div class="sidebar-section-header-row">
             <h3 id="roomsSectionTitle" class="section-settings" title="Click to collapse">Rooms <span class="collapse-icon" id="roomsCollapseIcon">▼</span></h3>
@@ -782,6 +792,16 @@
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="ductCreateName" placeholder="e.g. RTU-1 supply main">
+      </div>
+      <!-- Airside chip (DUCT-PLAN §1, unit D4): a property of the run — sets
+           the trade color and the sidebar grouping. Default Supply. -->
+      <div class="form-group">
+        <label>Airside</label>
+        <div class="duct-shape-toggle" id="ductCreateAirside">
+          <button type="button" data-airside="supply" class="active">Supply</button>
+          <button type="button" data-airside="return">Return</button>
+          <button type="button" data-airside="exhaust">Exhaust</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Starting size (inches)</label>
@@ -1773,6 +1793,24 @@
       <div class="form-group">
         <label>Color</label>
         <div id="groupModalColorRow" class="color-row"></div>
+      </div>
+      <!-- System fields (DUCT-PLAN §2, unit D4): optional equipment tag +
+           capacity make the group a SYSTEM ("RTU-1 · 600 CFM"). Empty = plain
+           group, zero behavior change. Plenum-return (§1) only shows once a
+           tag is set — it is a per-system call. -->
+      <div class="form-group">
+        <label>Equipment tag <span class="group-modal-hint">(optional — makes this a system)</span></label>
+        <div class="duct-size-inputs">
+          <input type="text" id="groupModalEquipTag" placeholder="e.g. RTU-1" style="width:110px;">
+          <input type="number" id="groupModalCapacityCfm" min="0" step="50" placeholder="CFM" aria-label="Capacity (CFM)" style="width:80px;">
+          <span>CFM</span>
+        </div>
+      </div>
+      <div class="form-group" id="groupModalPlenumRow" style="display:none;">
+        <span style="color:var(--text2);">Plenum return</span>
+        <button type="button" class="toggle-switch" id="groupModalPlenumBtn" aria-pressed="false" title="Plenum return — no ducted return; return grilles + boots only">
+          <span class="toggle-switch-knob"></span>
+        </button>
       </div>
       <div class="actions">
         <button id="groupModalDelete" class="danger" style="display:none;">Delete</button>
@@ -2897,6 +2935,7 @@
   <script src="/features/duct-tool.js"></script>
   <script src="/features/duct-size-popover.js"></script>
   <script src="/features/duct-fittings.js"></script>
+  <script src="/features/duct-sidebar.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>

@@ -55,6 +55,8 @@ test.describe('Duct tool (D2, preview flag)', () => {
     await expect(page.locator('#ductBtn')).toBeVisible();
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    // D4: the airside chip rides the create modal and defaults Supply.
+    await expect(page.locator('#ductCreateAirside button[data-airside="supply"]')).toHaveClass(/active/);
     await page.locator('#ductCreateW').fill('24');
     await page.locator('#ductCreateH').fill('12');
     await page.locator('#ductCreateStart').click();

@@ -905,6 +905,165 @@ function ductDraftRemainingCfm(opts) {
   return { cfm: totalCfm - servedCfm, totalCfm: totalCfm, servedCfm: servedCfm };
 }
 
+// --- 3d. Room CFM defaults + air balance (unit D7) ---------------------------
+//
+// DUCT-PLAN §7: "CFM defaults hang on Room Sizer room types" — an editable
+// data table of CFM-per-square-foot rules of thumb, a derived per-room target
+// (area × rate, per-room override wins), and the §3 balance queries: how much
+// air a room NEEDS vs how much its placed devices SERVE, and how much air a
+// system has DESIGNED vs its unit's capacity. Everything here is pure; the
+// app glue (features/room-sizer.js, sidebar-lists.js, duct-suggest.js) feeds
+// it boxes/devices/runs and paints badges.
+
+// DATA TABLE — room-type CFM per square foot (light-commercial rules of
+// thumb; edit here — no code changes). 'custom' carries no rate: the room's
+// target comes only from its per-room override.
+const ROOM_TYPE_CFM_PER_SQFT = {
+  office: { label: 'Office', cfmPerSqFt: 1.0 },
+  conference: { label: 'Conference', cfmPerSqFt: 1.5 },
+  break: { label: 'Break', cfmPerSqFt: 1.5 },
+  storage: { label: 'Storage', cfmPerSqFt: 0.5 },
+  custom: { label: 'Custom', cfmPerSqFt: null },
+};
+
+/**
+ * A room's target CFM: the per-room override wins when set (> 0); else the
+ * room type's rate × floor area (rounded to whole CFM); else null — a room
+ * with no type and no override has NO target (zero behavior change, §7).
+ * room = { roomType?, targetCfmOverride? } (the state.rooms palette entry).
+ */
+function roomTargetCfm(room, areaSqFt) {
+  if (!room) return null;
+  if (Number.isFinite(room.targetCfmOverride) && room.targetCfmOverride > 0) return room.targetCfmOverride;
+  const t = room.roomType ? ROOM_TYPE_CFM_PER_SQFT[room.roomType] : null;
+  if (t && t.cfmPerSqFt > 0 && areaSqFt > 0) return Math.round(areaSqFt * t.cfmPerSqFt);
+  return null;
+}
+
+/** Point-in-rect over the roomBox shape ({x1,y1,x2,y2}, corners unordered —
+ * a box drawn right-to-left stores x1 > x2). Edges count as inside. */
+function pointInRoomBox(pt, box) {
+  if (!pt || !box || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return false;
+  const xMin = Math.min(box.x1, box.x2), xMax = Math.max(box.x1, box.x2);
+  const yMin = Math.min(box.y1, box.y2), yMax = Math.max(box.y1, box.y2);
+  return pt.x >= xMin && pt.x <= xMax && pt.y >= yMin && pt.y <= yMax;
+}
+
+/**
+ * Served CFM for one room: the sum of device CFMs whose markers lie inside
+ * at least one of the room's boxes ON THE SAME PAGE (multi-page rooms follow
+ * the existing rooms scoping — boxes and devices both carry pageIdx; entries
+ * without one compare as undefined === undefined, i.e. single-universe).
+ * A device inside two overlapping boxes of the room counts ONCE.
+ * boxes = [{ x1, y1, x2, y2, pageIdx? }], devices = [{ x, y, cfm, pageIdx? }].
+ */
+function roomServedCfm(boxes, devices) {
+  let sum = 0;
+  (devices || []).forEach(d => {
+    if (!d || !(d.cfm > 0)) return;
+    const inside = (boxes || []).some(b => b && b.pageIdx === d.pageIdx && pointInRoomBox(d, b));
+    if (inside) sum += d.cfm;
+  });
+  return sum;
+}
+
+/** Balance tolerance (§3): a room is flagged under-served only when served
+ * falls more than this fraction below its target — "served 435 of 450" is
+ * balanced noise, not a ⚠. */
+const DUCT_BALANCE_TOLERANCE = 0.10;
+
+/** { targetCfm, servedCfm, under } — under = short beyond the tolerance.
+ * null when the room has no target (no badge, the clean-absence rule). */
+function roomAirBalance(targetCfm, servedCfm) {
+  if (!(targetCfm > 0)) return null;
+  const served = servedCfm > 0 ? servedCfm : 0;
+  return { targetCfm: targetCfm, servedCfm: served, under: served < targetCfm * (1 - DUCT_BALANCE_TOLERANCE) };
+}
+
+/**
+ * A system's DESIGNED CFM — the total device air its duct trees carry (the
+ * capacity line's left number, §3) — via the D6 accumulation: for every ROOT
+ * run of the system (a run no other run taps), query ductDownstreamCfm at the
+ * root's EQUIPMENT END, so the whole tree (devices on the root + every tapped
+ * subtree) is beyond the query point. equipmentPos (the group's equipment-tag
+ * marker, resolved by ductEquipmentPosForGroup) rides through to the
+ * accumulation so root-run orientation is correct regardless of which end the
+ * run was traced from. Trees are keyed by their ROOT's systemGroupId — a
+ * child inherits its tree's system through the tap (DUCT-PLAN §2).
+ *
+ * opts: { runs, devices, systemGroupId, equipmentPos?, snapDist? }
+ */
+function ductSystemDesignedCfm(opts) {
+  const o = opts || {};
+  const sys = o.systemGroupId || null;
+  const runs = (o.runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const hasParent = new Set(ductChildLinks(runs, o).map(l => l.childId));
+  let total = 0;
+  runs.forEach(root => {
+    if (hasParent.has(root.id)) return;
+    if ((root.systemGroupId || null) !== sys) return;
+    const sEquip = ductEquipmentEndIsStart(root, false, o.equipmentPos) ? 0 : ductPolylineLength(root.vertices);
+    total += ductDownstreamCfm({
+      runs: runs, devices: o.devices, runId: root.id, s: sEquip,
+      equipmentPos: o.equipmentPos, snapDist: o.snapDist,
+    }) || 0;
+  });
+  return total;
+}
+
+/**
+ * THE EQUIPMENT-MARKER MATCHING RULE (D6's documented follow-up, wired here):
+ * resolve a system group's equipment position from the placed counter
+ * markers, in priority order —
+ *   1. a marker whose counter-type NAME equals the group's equipmentTag
+ *      (case-insensitive, trimmed) AND which is assigned to the group;
+ *   2. if the tag-named type has EXACTLY ONE placed marker, that marker
+ *      (unique — "RTU-1" placed once is unambiguous even unassigned);
+ *   3. exactly one group-assigned marker of an equipment-looking type — a
+ *      counter WITHOUT a CFM (air devices carry cfm; the unit does not);
+ *   4. else null — orientation falls back to vertex 0 (trace order).
+ * markers = [{ x, y, counterName, cfm?, groupId? }] (one page's markers —
+ * PDF-space positions only mean anything against that page's runs).
+ */
+function ductEquipmentPosForGroup(group, markers) {
+  if (!group) return null;
+  const list = (markers || []).filter(m => m && Number.isFinite(m.x) && Number.isFinite(m.y));
+  const tag = (group.equipmentTag || '').trim().toLowerCase();
+  if (tag) {
+    const named = list.filter(m => (m.counterName || '').trim().toLowerCase() === tag);
+    const assigned = named.find(m => (m.groupId || null) === group.id);
+    if (assigned) return { x: assigned.x, y: assigned.y };
+    if (named.length === 1) return { x: named[0].x, y: named[0].y };
+  }
+  const equipLooking = list.filter(m => (m.groupId || null) === group.id && !(m.cfm > 0));
+  if (equipLooking.length === 1) return { x: equipLooking[0].x, y: equipLooking[0].y };
+  return null;
+}
+
+// DATA TABLE — the equipment-first rule of thumb (DUCT-PLAN master
+// walkthrough, "Equipment-first entry"): ~400 CFM per ton of cooling, ~5 tons
+// per light-commercial RTU → a practical ~2,000 CFM cap per system. Documented
+// constants, edit here.
+const DUCT_SYSTEM_RULE_OF_THUMB = {
+  cfmPerTon: 400,
+  maxTonsPerSystem: 5,   // → maxCfmPerSystem = cfmPerTon × maxTonsPerSystem = 2,000
+};
+
+/**
+ * Equipment-first system suggestion for a rooms-total CFM: how many systems
+ * the rule of thumb wants and the CFM each would carry (split evenly, rounded
+ * UP to the next 50 CFM so the sum always covers the total). Informative
+ * only — nothing is auto-created. Returns { systems, cfmEach, tons } or null
+ * for non-positive input. 2,400 CFM → 2 systems at 1,200 (the worked line).
+ */
+function suggestSystemsForCfm(totalCfm) {
+  if (!(totalCfm > 0)) return null;
+  const capCfm = DUCT_SYSTEM_RULE_OF_THUMB.cfmPerTon * DUCT_SYSTEM_RULE_OF_THUMB.maxTonsPerSystem;
+  const systems = Math.max(1, Math.ceil(totalCfm / capCfm));
+  const cfmEach = Math.ceil(totalCfm / systems / 50) * 50;
+  return { systems: systems, cfmEach: cfmEach, tons: totalCfm / DUCT_SYSTEM_RULE_OF_THUMB.cfmPerTon };
+}
+
 // --- 4. Insulation -----------------------------------------------------------
 
 /** Insulation sq ft per LF of duct: perimeter(in)/12. */
@@ -1137,6 +1296,10 @@ if (typeof module !== 'undefined' && module.exports) {
     // design-build accumulation (D6)
     ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,
+    // room CFM defaults + air balance (D7)
+    ROOM_TYPE_CFM_PER_SQFT, DUCT_BALANCE_TOLERANCE, DUCT_SYSTEM_RULE_OF_THUMB,
+    roomTargetCfm, pointInRoomBox, roomServedCfm, roomAirBalance,
+    ductSystemDesignedCfm, ductEquipmentPosForGroup, suggestSystemsForCfm,
     // gauge
     SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES,
     ductGoverningDimIn, selectGauge,

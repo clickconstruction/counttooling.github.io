@@ -18,6 +18,22 @@
  * reported in FEET (roomBoxDimsFeet, geometry.js) per the sum-in-feet
  * invariant. `recentRoomHeights` persists in localStorage (max 5).
  *
+ * DUCT unit D7 (DUCT-PLAN §7/§3): rooms may additionally carry `roomType`
+ * (a ROOM_TYPE_CFM_PER_SQFT key, set on the Edit Room dialog) and
+ * `targetCfmOverride` (a CFM number; override wins over area × rate). Both
+ * are DELETED when unset — a typeless room's object is byte-identical to
+ * pre-D7 (the D4 groups system-field recipe), and rooms serialize wholesale
+ * on every existing path so the fields ride save/load/export/import free.
+ * getRoomAirBalance() derives the needs/served rows (duct-model's
+ * roomTargetCfm/roomServedCfm over App.collectDuctDevices' markers) and the
+ * Rooms sidebar rows grow a "needs 450 · served 300 ⚠" badge (⚠ only when
+ * under-served beyond duct-model's DUCT_BALANCE_TOLERANCE).
+ * DELIBERATELY OUT OF SCOPE (D7): the legend's room rows do NOT carry the ⚠ —
+ * canvas-draw's computeLegendRows is per-page and pure over its deps seam,
+ * while a room's target derives from its PROJECT-wide floor area, so the
+ * badge would need a new cross-page dep on the draw core (and re-baselining
+ * risk) for one glyph; the sidebar badge is the §3 surface for now.
+ *
  * Loaded as a classic <script src="/features/room-sizer.js"> AFTER app.js.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
@@ -299,7 +315,81 @@
     App.updateUI();
   };
 
+  // ---- Room air balance (DUCT unit D7) --------------------------------------
+
+  // Guard: duct-model.js loads before app.js in the shell, but stay defensive
+  // (the feature must not throw if the pure module is ever absent).
+  function balanceReady() {
+    return typeof roomTargetCfm === 'function' && typeof roomServedCfm === 'function';
+  }
+
+  /**
+   * Per-room needs/served rows for every room WITH a target CFM (roomType
+   * rate × total floor area, per-room override wins). served = the CFM
+   * devices (App.collectDuctDevices — placed markers of CFM counter types)
+   * whose markers lie inside the room's boxes, page-scoped like every rooms
+   * total. Rooms without a target return no row (clean absence — zero
+   * behavior change for typeless rooms).
+   * Returns [{ id, name, targetCfm, servedCfm, under }].
+   */
+  function getRoomAirBalance() {
+    if (!balanceReady() || !App.collectDuctDevices) return [];
+    const rooms = App.state.rooms || [];
+    if (!rooms.some(r => r.roomType || r.targetCfmOverride > 0)) return [];
+    const devicesByPage = new Map();
+    const devicesFor = (pi) => {
+      if (!devicesByPage.has(pi)) {
+        devicesByPage.set(pi, App.collectDuctDevices(pi).map(d => ({ ...d, pageIdx: pi })));
+      }
+      return devicesByPage.get(pi);
+    };
+    const out = [];
+    getRoomVolumeTotals().forEach(t => {
+      if (!t.id) return;
+      const room = rooms.find(r => r.id === t.id);
+      const target = roomTargetCfm(room, t.areaSqFt);
+      if (!(target > 0)) return;
+      const boxes = t.boxes.map(e => ({ x1: e.box.x1, y1: e.box.y1, x2: e.box.x2, y2: e.box.y2, pageIdx: e.pageIdx }));
+      const devices = [...new Set(boxes.map(b => b.pageIdx))].flatMap(devicesFor);
+      const served = roomServedCfm(boxes, devices);
+      const bal = roomAirBalance(target, served);
+      if (bal) out.push({ id: t.id, name: t.name, targetCfm: bal.targetCfm, servedCfm: bal.servedCfm, under: bal.under });
+    });
+    return out;
+  }
+
   // ---- Room edit modal (rename / recolor / delete) --------------------------
+
+  // D7: the room-type dropdown, built from duct-model's editable
+  // ROOM_TYPE_CFM_PER_SQFT data table (a table edit flows straight through).
+  function renderRoomTypeOptions(selected) {
+    const sel = document.getElementById('roomEditType');
+    if (!sel) return;
+    let html = '<option value="">None</option>';
+    if (balanceReady()) {
+      Object.entries(ROOM_TYPE_CFM_PER_SQFT).forEach(([key, t]) => {
+        html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>'
+          + escapeHtmlText(t.label) + (t.cfmPerSqFt > 0 ? ' — ' + t.cfmPerSqFt + ' CFM/ft²' : '') + '</option>';
+      });
+    }
+    sel.innerHTML = html;
+    sel.value = selected && balanceReady() && ROOM_TYPE_CFM_PER_SQFT[selected] ? selected : '';
+  }
+
+  // The Target CFM input shows only once a type is chosen; empty means "use
+  // the derived area × rate", surfaced as the placeholder (Custom has no
+  // rate — the input is the number).
+  function syncRoomEditTargetRow() {
+    const group = document.getElementById('roomEditTargetGroup');
+    const input = document.getElementById('roomEditTargetCfm');
+    if (!group || !input) return;
+    const type = document.getElementById('roomEditType').value;
+    group.style.display = type ? '' : 'none';
+    if (!type || !balanceReady() || !editingRoom) return;
+    const area = getRoomVolumeTotals().find(t => t.id === editingRoom.id)?.areaSqFt || 0;
+    const derived = roomTargetCfm({ roomType: type }, area);
+    input.placeholder = derived > 0 ? derived + ' (from ' + Math.round(area) + ' ft²)' : 'CFM';
+  }
 
   function openRoomEditModal(roomId) {
     const room = (App.state.rooms || []).find(r => r.id === roomId);
@@ -307,6 +397,10 @@
     editingRoom = room;
     document.getElementById('roomEditName').value = room.name || '';
     document.getElementById('roomEditSwatch').style.background = room.color || '#47c88e';
+    renderRoomTypeOptions(room.roomType || '');
+    const cfmEl = document.getElementById('roomEditTargetCfm');
+    if (cfmEl) cfmEl.value = room.targetCfmOverride > 0 ? room.targetCfmOverride : '';
+    syncRoomEditTargetRow();
     App.showModal('roomEditModal');
   }
   document.getElementById('roomEditSwatch').onclick = () => {
@@ -321,6 +415,9 @@
     delete document.getElementById('roomEditSwatch').dataset.pickedColor;
     App.hideModal('roomEditModal');
   };
+  // D7: re-derive the placeholder / row visibility as the type changes
+  // (static DOM, bound once at load like the rest of this modal).
+  document.getElementById('roomEditType').addEventListener('change', syncRoomEditTargetRow);
   document.getElementById('roomEditSave').onclick = () => {
     if (!editingRoom) { App.hideModal('roomEditModal'); return; }
     const name = document.getElementById('roomEditName').value.trim();
@@ -328,6 +425,18 @@
     App.pushUndoSnapshot();
     if (name) editingRoom.name = name;
     if (picked) editingRoom.color = picked;
+    // D7 CFM fields, read at Save. Unset fields are DELETED, not nulled, so a
+    // typeless room stays byte-identical to pre-D7 (the D4 groups recipe).
+    const type = document.getElementById('roomEditType').value;
+    const cfmRaw = parseFloat(document.getElementById('roomEditTargetCfm').value);
+    if (type) {
+      editingRoom.roomType = type;
+      if (Number.isFinite(cfmRaw) && cfmRaw > 0) editingRoom.targetCfmOverride = cfmRaw;
+      else delete editingRoom.targetCfmOverride;
+    } else {
+      delete editingRoom.roomType;
+      delete editingRoom.targetCfmOverride;
+    }
     editingRoom = null;
     delete document.getElementById('roomEditSwatch').dataset.pickedColor;
     App.markProjectDirty();
@@ -382,6 +491,8 @@
     const list = document.getElementById('roomsList');
     list.style.display = collapsed ? 'none' : '';
     if (collapsed) return;
+    // D7 air-balance badges: one lookup for the whole render pass.
+    const balanceById = new Map(getRoomAirBalance().map(b => [b.id, b]));
     list.innerHTML = totals.map((t, ti) => {
       const totalLine = t.missingScale
         ? fmtArea(t.areaSqFt) + ' · ' + fmtVol(t.volumeCuFt) + ' (some boxes have no scale)'
@@ -397,12 +508,22 @@
           + (state.isViewer ? '' : '<button type="button" class="room-box-delete" aria-label="Delete box">✕</button>')
           + '</div>';
       }).join('');
+      // D7 (DUCT-PLAN §3): the air-balance badge — "needs 450 · served 300 ⚠"
+      // — only on rooms with a target CFM; ⚠ only when under-served beyond
+      // the ~10% tolerance (duct-model roomAirBalance).
+      const bal = t.id ? balanceById.get(t.id) : null;
+      const balanceRow = bal
+        ? '<div class="room-balance-row' + (bal.under ? ' under' : '') + '">needs '
+          + Math.round(bal.targetCfm).toLocaleString() + ' · served '
+          + Math.round(bal.servedCfm).toLocaleString() + (bal.under ? ' ⚠' : '') + '</div>'
+        : '';
       return '<div class="room-row-wrap">'
         + '<div class="room-row" data-ti="' + ti + '"' + (t.id ? ' title="Click to edit room"' : '') + '>'
         + '<span class="room-swatch" style="background:' + t.color + '"></span>'
         + '<span class="room-row-name">' + escapeHtmlText(t.name) + '</span>'
         + '<span class="room-row-total">' + totalLine + '</span>'
         + '</div>'
+        + balanceRow
         + boxRows
         + '</div>';
     }).join('');
@@ -446,4 +567,5 @@
   App.openRoomBoxModalForEdit = openRoomBoxModalForEdit;
   App.renderRoomsList = renderRoomsList;
   App.getRoomVolumeTotals = getRoomVolumeTotals;
+  App.getRoomAirBalance = getRoomAirBalance;   // D7: duct-tool's equipment-first line + the spec seam
 })();

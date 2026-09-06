@@ -801,6 +801,12 @@
   <div class="modal-overlay" id="ductCreateModal">
     <div class="modal-card">
       <h2>New Duct Run</h2>
+      <!-- D7 equipment-first suggestion (DUCT-PLAN master walkthrough): one
+           quiet line, shown only when rooms carry target CFMs and NO system
+           group has a capacity yet — "Rooms total ~2,400 CFM — about
+           2 systems at 1,200 CFM (edit in Groups)". Informative only;
+           features/duct-tool.js fills it on modal open. -->
+      <p id="ductCreateEquipFirst" class="duct-equip-first" style="display:none;"></p>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="ductCreateName" placeholder="e.g. RTU-1 supply main">
@@ -1672,6 +1678,19 @@
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="roomEditName" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <!-- DUCT unit D7 (DUCT-PLAN §7): room-type CFM defaults. Options are
+           built from duct-model's ROOM_TYPE_CFM_PER_SQFT data table by
+           features/room-sizer.js; Target CFM is the per-room override
+           (override wins; the derived area × rate shows as the placeholder).
+           A room saved without a type keeps its exact old shape. -->
+      <div class="form-group">
+        <label>Room type (CFM defaults)</label>
+        <select id="roomEditType" style="width:100%;"></select>
+      </div>
+      <div class="form-group" id="roomEditTargetGroup" style="display:none;">
+        <label>Target CFM</label>
+        <input type="number" id="roomEditTargetCfm" min="0" step="10" inputmode="numeric" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="actions">
         <button id="roomEditDelete" class="danger" style="margin-right:auto;">Delete</button>

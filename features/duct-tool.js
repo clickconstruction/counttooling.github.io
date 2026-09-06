@@ -81,6 +81,30 @@
     toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.airside === createAirside));
   }
 
+  // D7 equipment-first suggestion (DUCT-PLAN master walkthrough): when rooms
+  // carry target CFMs but NO system group has a capacity yet, one quiet line
+  // seeds the system thinking — "Rooms total ~2,400 CFM — about 2 systems at
+  // 1,200 CFM (edit in Groups)". Rule of thumb from duct-model's
+  // DUCT_SYSTEM_RULE_OF_THUMB (~400 CFM/ton, ~5 tons per light-commercial
+  // RTU → ~2,000 CFM per system). Informative only — nothing auto-creates.
+  function syncEquipFirstLine() {
+    const line = document.getElementById('ductCreateEquipFirst');
+    if (!line) return;
+    let txt = '';
+    if (typeof suggestSystemsForCfm === 'function' && App.getRoomAirBalance
+      && !(App.state.groups || []).some((g) => g.capacityCfm > 0)) {
+      const total = App.getRoomAirBalance().reduce((sum, r) => sum + r.targetCfm, 0);
+      const s = suggestSystemsForCfm(total);
+      if (s) {
+        txt = 'Rooms total ~' + Math.round(total).toLocaleString() + ' CFM — about '
+          + s.systems + ' system' + (s.systems === 1 ? '' : 's') + ' at '
+          + s.cfmEach.toLocaleString() + ' CFM (edit in Groups)';
+      }
+    }
+    line.textContent = txt;
+    line.style.display = txt ? '' : 'none';
+  }
+
   function openDuctCreateModal() {
     document.getElementById('ductCreateName').value = nextDuctRunName();
     const sel = document.getElementById('ductCreatePressure');
@@ -88,6 +112,7 @@
     createAirside = 'supply';
     syncCreateShape();
     syncCreateAirside();
+    syncEquipFirstLine();
     App.showModal('ductCreateModal');
   }
 

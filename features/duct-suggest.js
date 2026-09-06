@@ -30,6 +30,17 @@
  * for the chip line, and the spec seam), plus the popover section registered
  * at order 5 via the D2 seam (features/duct-size-popover.js).
  *
+ * D7 additions (the balance glue this file owns because it owns the device
+ * collection): App.collectDuctDevices(pageIdx) (the CFM-marker collector,
+ * now shared with room-sizer's balance rows), App.getDuctSystemEquipmentPos
+ * (pageIdx-scoped resolution of a system group's equipment marker — the
+ * documented matching ladder in duct-model's ductEquipmentPosForGroup: tag
+ * name ↔ counter name, then the group's single non-CFM marker), and
+ * App.getDuctSystemDesignedCfm(groupId) (the capacity line's "designed"
+ * number: duct-model's ductSystemDesignedCfm per page — the D6 accumulation
+ * from each system root's equipment end, with equipmentPos passed through so
+ * root-run orientation is right regardless of trace direction).
+ *
  * Boundary rule: read shared deps from App.* at call time; pure duct math by
  * bare duct-model.js globals. See ARCHITECTURE.md "Feature files / window.App
  * registry".
@@ -55,6 +66,65 @@
       });
     });
     return out;
+  }
+
+  // --- D7 balance glue ------------------------------------------------------
+
+  // EVERY placed marker on a page (any counter type, CFM or not) with the
+  // fields duct-model's equipment-matching ladder reads: position, the
+  // counter-type name, its CFM (null when the type has none — that absence is
+  // rule 3's "equipment-looking" signal), and the marker's group.
+  function collectPageMarkers(pageIdx) {
+    const state = App.state;
+    const page = state.pages[pageIdx];
+    if (!page) return [];
+    const ann = App.getMergedAnnotationsForPage(page);
+    const byId = new Map((state.counters || []).map((c) => [c.id, c]));
+    const out = [];
+    Object.entries(ann?.counterMarkers || {}).forEach(([typeId, markers]) => {
+      const c = byId.get(typeId);
+      if (!c) return;
+      (markers || []).forEach((m) => {
+        if (m && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+          out.push({ x: m.x, y: m.y, counterName: c.name || '', cfm: c.cfm > 0 ? c.cfm : null, groupId: m.group || null });
+        }
+      });
+    });
+    return out;
+  }
+
+  /** The system group's equipment-marker position on one page (PDF-space), or
+   * null — duct-model's documented ladder over that page's placed markers. */
+  function getDuctSystemEquipmentPos(groupId, pageIdx) {
+    const group = (App.state.groups || []).find((g) => g.id === groupId);
+    if (!group) return null;
+    return ductEquipmentPosForGroup(group, collectPageMarkers(pageIdx));
+  }
+
+  /**
+   * The system's DESIGNED CFM across the project (the §3 capacity line's left
+   * number): per page, the D6 accumulation over the ACTIVE canvas's runs (the
+   * duct-sidebar/schedule convention) and the MERGED devices, from each
+   * system root's equipment end — equipmentPos resolved per page and passed
+   * through so a return main traced from the far grille orients correctly.
+   */
+  function getDuctSystemDesignedCfm(groupId) {
+    const state = App.state;
+    let total = 0;
+    (state.pages || []).forEach((p, pi) => {
+      const ann = App.getActiveAnnotations(p, pi);
+      const runs = ann?.ductRuns || [];
+      if (!runs.length) return;
+      const devices = collectDuctDevices(pi);
+      if (!devices.length) return;
+      total += ductSystemDesignedCfm({
+        runs: runs,
+        devices: devices,
+        systemGroupId: groupId,
+        equipmentPos: getDuctSystemEquipmentPos(groupId, pi),
+      }) || 0;
+    });
+    return total;
   }
 
   /**
@@ -135,4 +205,10 @@
   });
 
   App.getDuctDraftSuggestion = getDuctDraftSuggestion;
+  // D7 balance glue: shared device collection + the system designed/equipment
+  // queries (consumed by room-sizer's balance rows and sidebar-lists' system
+  // capacity line; equipmentPos wiring is D6's documented follow-up).
+  App.collectDuctDevices = collectDuctDevices;
+  App.getDuctSystemEquipmentPos = getDuctSystemEquipmentPos;
+  App.getDuctSystemDesignedCfm = getDuctSystemDesignedCfm;
 })();

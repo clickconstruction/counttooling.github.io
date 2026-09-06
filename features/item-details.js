@@ -85,6 +85,25 @@
     }
     const iconGroup = document.getElementById('counterLineTypeDetailsIconGroup');
     if (iconGroup) iconGroup.style.display = kind === 'counter' ? '' : 'none';
+    // D6: the per-counter CFM (air devices only; empty = not an air device).
+    // Blur commits like the name field; a cleared/invalid value deletes the
+    // field so a non-air counter keeps its pre-D6 shape.
+    const cfmGroup = document.getElementById('counterLineTypeDetailsCfmGroup');
+    const cfmEl = document.getElementById('counterLineTypeDetailsCfm');
+    if (cfmGroup) cfmGroup.style.display = kind === 'counter' ? '' : 'none';
+    if (cfmEl && kind === 'counter') {
+      cfmEl.value = Number.isFinite(item.cfm) && item.cfm > 0 ? item.cfm : '';
+      cfmEl.onblur = () => {
+        const v = parseFloat(cfmEl.value);
+        const next = Number.isFinite(v) && v > 0 ? v : null;
+        if ((next == null && item.cfm == null) || next === item.cfm) return;
+        App.pushUndoSnapshotCurrentPage();
+        if (next == null) delete item.cfm;
+        else item.cfm = next;
+        App.markProjectDirty();
+        App.updateUI();
+      };
+    }
     if (kind === 'counter' && iconGroup) {
       const grid = document.getElementById('counterLineTypeDetailsIconGrid');
       const customGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');

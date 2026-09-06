@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,594 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,596 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,003 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,236 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,007 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,936 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,032 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 1,948 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 719 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 867 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 652 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (74 files) | 18,585 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (75 files) | 18,809 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -89,7 +89,7 @@ modules. Candidates in priority order:
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
 | [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
-| [duct-model.js](duct-model.js) | Pure duct-takeoff math + data model (DUCT-PLAN.md unit D1) in the geometry.js mold — the run/size/fitting factories + validators (`makeDuctRun`, `makeRectSize`/`makeRoundSize`, `makeDuctFitting`, `formatDuctSize`, `runSegmentSpans`), the SMACNA-style gauge schedule by pressure class (`DUCT_GAUGE_TABLE`, `selectGauge`), pounds math (`ductWeightPerFoot`, `segmentPounds`, `fittingPounds`, `runStraightItems`, `tallyStraightBySize`, `rollupDuct`/`rollupRunsToSchedule`), insulation sq ft, the equal-friction ductulator (+velocity cap, round↔rect equivalents, `suggestRoundAndRect`), the neck-size table, and (D2) the `ductStrokePx` stroke-width band table the drawing tool paints with (bands on the governing dimension: ≤8"→3px, ≤14"→4, ≤20"→5, ≤28"→6, ≤40"→8, ≤60"→10, else 12), and (D3) the **fitting inference walk** — `inferAutoDuctFittings` (interior-vertex bends ≥30° → elbow45, ≥60° → elbow90, sized to the arriving segment; segment boundaries → transition at the larger side; a run whose first vertex lands within `DUCT_TAP_SNAP_PDF` (12 pdf-pts, deliberately zoom-independent) of another run → tap ON THE PARENT at the child's starting size) + `reconcileDuctFittings` (idempotent auto/manual contract documented atop §3b: autos re-derived with anchor-stable ids, non-auto overrides and suppressed delete-tombstones preserved by anchor, orphans of deleted runs pruned) + `ductFittingAnchor`/`ductFittingOutDirection`/`tallyDuctFittingCounts`. Classic `<script src>` loaded before [canvas-draw.js](canvas-draw.js) (which reads it by bare name); zero DOM/`state` deps; guarded CommonJS footer for [duct-model.test.js](duct-model.test.js) |
+| [duct-model.js](duct-model.js) | Pure duct-takeoff math + data model (DUCT-PLAN.md unit D1) in the geometry.js mold — the run/size/fitting factories + validators (`makeDuctRun`, `makeRectSize`/`makeRoundSize`, `makeDuctFitting`, `formatDuctSize`, `runSegmentSpans`), the SMACNA-style gauge schedule by pressure class (`DUCT_GAUGE_TABLE`, `selectGauge`), pounds math (`ductWeightPerFoot`, `segmentPounds`, `fittingPounds`, `runStraightItems`, `tallyStraightBySize`, `rollupDuct`/`rollupRunsToSchedule`), insulation sq ft, the equal-friction ductulator (+velocity cap, round↔rect equivalents, `suggestRoundAndRect`), the neck-size table, and (D2) the `ductStrokePx` stroke-width band table the drawing tool paints with (bands on the governing dimension: ≤8"→3px, ≤14"→4, ≤20"→5, ≤28"→6, ≤40"→8, ≤60"→10, else 12), and (D3) the **fitting inference walk** — `inferAutoDuctFittings` (interior-vertex bends ≥30° → elbow45, ≥60° → elbow90, sized to the arriving segment; segment boundaries → transition at the larger side; a run whose first vertex lands within `DUCT_TAP_SNAP_PDF` (12 pdf-pts, deliberately zoom-independent) of another run → tap ON THE PARENT at the child's starting size) + `reconcileDuctFittings` (idempotent auto/manual contract documented atop §3b: autos re-derived with anchor-stable ids, non-auto overrides and suppressed delete-tombstones preserved by anchor, orphans of deleted runs pruned) + `ductFittingAnchor`/`ductFittingOutDirection`/`tallyDuctFittingCounts`. Classic `<script src>` loaded before [canvas-draw.js](canvas-draw.js) (which reads it by bare name); zero DOM/`state` deps; guarded CommonJS footer for [duct-model.test.js](duct-model.test.js). D6 adds §3c **design-build accumulation**: `ductNearestOnPolyline`/`ductPolylineLength`, the device ATTACHMENT rule `attachDuctDevices` (nearest run within `DUCT_TAP_SNAP_PDF`), the tap-rule network `ductChildLinks`, attachment-derived system inheritance `ductDeviceSystemId`, the oriented downstream query `ductDownstreamCfm` (equipment end = vertex nearest `equipmentPos` for roots, always vertex 0 for tapped children; supply/return share the cross-section magnitude — the traversal doc atop §3c), and the live-trace `ductDraftRemainingCfm` (total system CFM − served; tip-adjacent devices still downstream) |
 | [duct-model.test.js](duct-model.test.js) | Node `node:test` unit tests for [duct-model.js](duct-model.js) — factories/validators, gauge-table boundaries, the DUCT-PLAN worked lb/ft numbers, rollup composition (counted vs factor fittings, seam & waste, liner/wrap sq ft), ductulator anchor points + velocity binding, rect-equivalent picks, neck-size boundaries, the D2 stroke-band mapping, and the D3 inference walk (bend-angle thresholds, larger-side transitions, tap snap/nearest-parent, anchor resolution/pruning, reconcile idempotency + override/tombstone survival, count tallies); run with `npm run test:unit` |
 | [canvas-draw.js](canvas-draw.js) | **The unified annotation draw core** — exports `createCanvasDraw(deps)` (the save-engine seam recipe) plus the pure `drawDropMarker` / `hexToRgb` / `lineStyleToDash` (read by app.js by bare name). Classic `<script src>` loaded after [geometry.js](geometry.js) + [icons.js](icons.js) (reads `roomBoxDimsFeet`/`formatFeetInchesFromVal`/`ptDist`/the bezier helpers/`getMultiplyZoneForPoint`/`formatFeet`/`RING_PATH`/`CIRCLE_PATH` by bare name) and before [app.js](app.js), which instantiates it once with live-value accessor arrows (`getState`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `formatDistFeetInchesFromReal`, `getGroupColor`, `wrapNoteText`, `getNoteRotationRad`, `iconRenderVb/Center`, `getPageScale`, `getLineLengthFeetForTotals`, and — D5 — `getLineRealWorldLengthFeet` for the legend's duct rows). The factory owns: `drawAnnotationsCore(ctx, ann, env)` — the ONE painter for every persisted mark kind (quickLines → polylines → ductRuns (D2: stroke stepped by `ductStrokePx`, per-segment size chips, `DUCT_AIRSIDE_COLORS`) → ductFittings (D3: type-keyed `DUCT_FITTING_COLORS` markers — elbow diamond / transition chevrons / tap ring+dot / boot square / offset slashes — over a white backing disc, suppressed tombstones skipped) → highlights → multiplyZones → scaleZones → roomBoxes → notes → counterMarkers), where `env` is the **divergence register** between the live overlay and the export path (transform, line width, font scale, label pad, dot radius, counter sizes, font family, selection glow, note handles — itemized in the file header); plus `drawRoomBoxesToContext`, `drawLegend` (whose `computeLegendRows` adds, behind `legendSettings.showDuct` default ON — D5 — per-size duct "24×12 86' · 597 lb" rows + an All-duct total over the page's runs, swatched in the neutral `DUCT_LEGEND_SWATCH` gray since one size can span airsides; guarded on the duct-model globals + the dep so duct-free payloads and the node tests are untouched), and `drawGrid`. app.js's `renderAnnotations` (live: zoom·DPR env + selection + handles) and `renderAnnotationsToContext` (export: scale env, frozen 5-arg signature consumed by export-pdfs/output/pdf-bundle/summary-detail) are now thin env-builders over the core — a new mark kind is drawn **once**. Deliberately preserved quirks are commented in place (export labels use `sans-serif` vs live `DM Sans`; counter index numbers are `DM Sans` in both; zone chrome does not scale on export). Guarded CommonJS footer so [canvas-draw.test.js](canvas-draw.test.js) can `require()` it |
 | [render-service.js](render-service.js) | **The raster seam** (option 4) — exports `createRenderService(deps)`; every pdf.js raster (renderPdf's full-page pass, the idle bitmap prefetcher, the crop tile) flows through `renderService.raster({pdfPage, scale, rotation, offsetX, offsetY, canvasContext, kind})`, which returns the pdf.js RenderTask shape (`{promise, cancel}`, `RenderingCancelledException` on cancel) so callers' cancel/pending machinery is untouched. Two backends: MAIN (pdfPage.render, always available) and WORKER ([render-worker.js](render-worker.js)) — chosen automatically. Document adoption is LAZY and site-free: the first worker-eligible raster reads the doc bytes back via `pdfPage._transport.getData()` (a private field of the version-pinned pdf.js 3.11.174 — guarded; any shape change just disables the worker) and ships them to the worker; new documents re-adopt by transport identity with generation guards. Gates: Worker+OffscreenCanvas support, the `window.DISABLE_RENDER_WORKER` config escape hatch, a deviceMemory×doc-size cap; ANY worker failure falls back to main for the session, logs `render_worker_fallback` to the Save Status log, and fires the optional `deps.onFallback(reason)` — app.js mirrors it into the admin activity feed via `logUserEvent`, so a silently-degraded session is admin-visible without a user-exported log. Debug/spec hooks on App: `__renderServiceStats` (incl. a per-request kind+page log — the spec-side replacement for wrapping `pdfPage.render`), `__renderServiceMode`, `__renderWorkerState`, `__setRasterTestDelay`. Guarded CommonJS footer for [render-service.test.js](render-service.test.js) |
@@ -225,6 +225,8 @@ modules. Candidates in priority order:
 | [features/duct-fittings.js](features/duct-fittings.js) | **Auto duct fittings** (DUCT-PLAN.md unit D3): the glue over duct-model.js's pure inference walk. `App.reinferDuctFittings(pageIdx?)` re-walks the page's active canvas at every commit/edit (called by finishDuctRun and Delete-run) and reconciles onto `annotations.ductFittings` — autos re-derived with stable ids, reclassified fittings (`auto:false`) and delete tombstones (`suppressed:true`, invisible to paint/hitTest/counts, so the walk can't resurrect a deletion) preserved by anchor. `App.tryOpenDuctContextMenu` (routed from app.js `handleContextMenu` for hitTest's `ductFitting`/`ductRun` targets) builds the `#ductFittingMenu` popover: fitting → heading (type · size · auto) + reclassify list (90°/45°/transition/tap/boot/offset) + Delete fitting; run → name · sizes heading + Delete run. Dismissal is the tool-context-menu.js pattern — listeners only while open, capture-phase Escape with `stopImmediatePropagation` (one Esc closes only the menu). `App.getDuctFittingCounts(pageIdx?)` is the D4/D5 counts seam (type+size rows). Regression: [duct-fittings.spec.js](duct-fittings.spec.js). |
 | [features/duct-sidebar.js](features/duct-sidebar.js) | The **Duct sidebar section** (`#ductSection`, DUCT-PLAN.md unit D4) — between Groups and Rooms, INVISIBLE until the first duct run exists (the Rooms rule). `App.renderDuctList` (updateUI's defensive seam) renders every page's ACTIVE-canvas runs grouped by **airside** (headers only when >1 airside exists; swatch colors from `DUCT_AIRSIDE_COLORS`): per-run header row (name + DM-Mono `LF' · lb` badge via duct-model `runStraightItems`/`tallyStraightBySize` over the app's effective-scale glue) → per-size segment rows ("24×12 24 ga — 86' · 597") → a fittings line ("2 elbows · 1 transition" — `tallyDuctFittingCounts` over the fittings anchored to that run's id; `App.getDuctFittingCounts` remains D5's page/project seam) → the accent **All-duct total**. Row click = the lines-list selection behavior (`state.selectedDuctRunId`/`selectedDuctRunPageIdx` → `env.selectedDuctRunId` → canvas-draw's live-only glow; jump + fitZoom; re-click deselects); the header chevron collapses via `state.ductListCollapsed` (in-memory, the roomsListCollapsed pattern). The counter/line-type **usage-filter scopes deliberately don't apply**: like Lines/Rooms this lists placed instances, so there's no "unused" row to hide. Regression: [duct-sidebar.spec.js](duct-sidebar.spec.js). |
 | [features/duct-schedule.js](features/duct-schedule.js) | The **Duct Schedule** (DUCT-PLAN.md unit D5, “The schedule prices like a bid”) — `#ductScheduleModal`, opened by the Duct section header's `#ductScheduleBtn`. `App.computeDuctSchedule({pageIndices?, getAnnotations?})` rolls the scope's ACTIVE-canvas runs + committed fittings (tombstones skipped) into: per-size straight rows (size | auto gauge | LF | lb/ft | lb; round rows add the joint count — spiral in 10' sticks, `ceil(LF/10)`), the fittings section with its **Counted | Factor %** segment (both numbers always computed; factor default 40%, editable), liner/wrap sq ft, the **seam & waste** % line (default +15, editable), and one **Bid weight**. Mixed pressure classes roll up per class and merge (duct-model's composition rule). The knobs persist per project as `state.ductSettings` {seamWastePct, fittingFactorPct, fittingMode} (defaults in app.js state init; rides every save/load/export/import path like legendSettings). Scope is the house dialect — a This sheet / Every sheet segment, hidden at 1 page (the output.js single-scope rule), reset to Every sheet on open. **Copy Schedule** writes the tab-separated table through the shared T1-05 gate (`App.runGatedCopy` with a duct-specific unscaled-page collector) and logs `copy_summary` {surface:'duct-schedule'}. `App.getDuctScheduleForReport` is the report seam — report.js resolves it at call time (the rooms precedent), landing the schedule as a Summary table in Show Report / Export PDFs / pdf-bundle. Regression: [duct-schedule.spec.js](duct-schedule.spec.js). |
+| [features/duct-suggest.js](features/duct-suggest.js) | The **design-build ductulator suggestion** (DUCT-PLAN.md unit D6, "Design-build layer 1") — live information, never automation. `App.getDuctDraftSuggestion()` computes, for the in-progress duct trace, the remaining downstream CFM (duct-model's `ductDraftRemainingCfm`: the system's total device CFM minus what's served — devices attached to a committed same-system run, or passed by the draft polyline behind its tip; devices = placed counter markers whose counter carries the D6 `cfm` field, read from the page's MERGED annotations, runs from the ACTIVE canvas, placed vertices only so the number moves on clicks not hovers) and runs it through `suggestRoundAndRect` at the per-project design knobs `state.ductSettings.frictionInPer100ft`/`maxVelocityFpm` (the settings row on the Duct Schedule modal — duct-schedule.js owns/clamps them via the now-registered `App.getDuctSettings`). The offered size follows the draft's shape (rect→rect equivalent, round→round) and NAMES the binding constraint when the velocity cap governs ("velocity-limited", DUCT-PLAN §5). Two surfaces: duct-tool.js's overlay draws the chip line ("450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S accepts") under the cursor size chip via a defensive `App.getDuctDraftSuggestion` read, and the S-popover section registered at **order 5** through the D2 seam (`App.registerDuctPopoverSection`) renders the pre-highlighted suggested size FIRST — one tap applies it through the normal `applyDuctSizeStep` path (step recorded; never auto-applied; `return false` with no CFM data = clean absence). Regression: [duct-suggest.spec.js](duct-suggest.spec.js) |
+| [duct-suggest.spec.js](duct-suggest.spec.js) | Playwright regression for D6: a CFM counter created through the real Create tab feeds the live suggestion (350 CFM at arm, 200 after the trace passes the first diffuser), the S popover's first section applies the suggested size + records the step, a no-CFM project shows no suggestion line and no section (clean absence), a low velocity cap yields "velocity-limited", the friction/velocity knobs on the Duct Schedule modal write `ductSettings` (garbage snaps back to defaults), and counter `cfm` + both knobs ride the real export→import round trip (details-modal edit/clear included) |
 | [duct-tool.spec.js](duct-tool.spec.js) | Playwright regression for the Duct tool (D2, live since D5): `#ductBtn` is visible with NO preview flag (no localStorage key, the `enableDuctPreview` shim gone); create→trace→S-step→commit stores a run with 2+ segments whose per-segment lengths/lb match the seeded scale (duct-model math re-run in-spec); the staged Esc ladder (popover → vertex pops → exit); the live footer readout content; committed runs re-render after reload (annotations re-applied through the load path paint ink); hideMarks blanks the overlay with the run data untouched; viewer sessions hide the button and disarm the tool. |
 | [duct-fittings.spec.js](duct-fittings.spec.js) | Playwright regression for auto duct fittings (D3): an L-run logs one auto elbow90 (amber marker ink); an S-stepped run logs a transition at the larger side; run-on-run logs a tap on the PARENT at the child's starting size; shallow (<30°) bends log nothing while 45° logs elbow45; the `#ductFittingMenu` reclassify flips type + `auto:false` and survives re-inference; Delete tombstones (no resurrection) and Delete run dissolves the run's fittings; hideMarks hides markers AND their hitTest; Escape closes only the menu (capture phase, a modal underneath stays up); `App.getDuctFittingCounts` rows. |
 | [duct-sidebar.spec.js](duct-sidebar.spec.js) | Playwright regression for the Duct sidebar + organization (D4): `#ductSection` hidden until the first committed run; grouped rows/totals against seeded runs re-deriving the DUCT-PLAN worked lb/ft numbers in-spec (per-size segment rows, per-run badge, D3 fittings line, All-duct total, airside headers only when airsides mix); the create-modal airside chip (defaults Supply, resets on re-open, stamps `run.airside`, return strokes probe red on the overlay, `DUCT_AIRSIDE_COLORS` mapping pinned); system groups (modal equipment/capacity/plenum fields — plenum row gated on the tag — the Groups-header "RTU-1 · 600 CFM" + plenum note, run `systemGroupId` inheritance from `state.activeGroupId`, and a REAL export→`#importInput` round-trip after reload); run-row select/deselect + section collapse. |
@@ -538,68 +540,68 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L92 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L136 - ICONS array lives in icons.js (see icon-data note above).
 - L186 - State
-- L377 - [sync] Sync recovery & client recycle
-- L458 - [sync] Global force reload
-- L546 - [sync] Save Status log & envelope
-- L549 - [sync] Field-error telemetry
-- L608 - [sync] Dirty tracking & local session reset
-- L614 - Undo/redo stacks
-- L756 - [sync] Checkout probe, hashing & PDF cache
-- L818 - Math & Format Helpers
-- L1269 - Coordinate Helpers
-- L1277 - PDF render bitmap cache
-- L1331 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1342 - PDF Rendering
-- L2126 - UI Render Functions
-- L2780 - Inline rename & polyline edit mode
-- L2894 - Modal primitives (showModal / hideModal)
-- L2925 - Toasts & line color picker
-- L2993 - Airboard cloud sync
-- L3038 - Supabase RPC & presence heartbeat
-- L3078 - User activity / event telemetry
-- L3137 - Supabase auth & dev auth
-- L3323 - [sync] Checkout subscription & permission refresh
-- L3333 - Modals & Handlers
-- L3401 - PDF intake (upload, test PDF, hashing)
-- L3409 - Toolbar tool buttons
-- L3609 - Tool sidebar buttons & legend overlay
-- L3700 - Add Line Type modal
-- L3783 - Line color & sidebar handlers
-- L3992 - Polyline modal & drawing
-- L4035 - Zoom bar & page navigation
-- L4061 - Export canvas JSON
-- L4077 - PDF download helpers
-- L4086 - View-link URL helpers & show-highlights/notes
-- L4158 - Custom icon upload handler
-- L4168 - Export & report dropdown menus
-- L4255 - Sidebar drawer toggles
-- L4286 - Mobile actions burger menu pointer & header logo
-- L4298 - User Activity pointer (format.js + features/user-activity.js)
-- L4310 - My Settings pointer (features/my-settings.js)
-- L4335 - Auth & settings entry buttons
-  - L4394 - Project Settings checkout & Save Status bell
-  - L4486 - [sync] Checkout expired recovery
-  - L4542 - [sync] Turn In
-  - L4651 - Share modal pointer & copy-project openers
-  - L4682 - Settings menu actions
-  - L4703 - Auth sign-in form
-  - L4728 - Save Project modal
-  - L4741 - Checkout expired recovery modal wiring
-  - L4846 - Last-session restore prompt
-  - L4853 - Canvas Repair modal wiring
-- L5040 - Canvas Event Handlers
-- L5527 - Event Binding
-- L5537 - Aim loupe (mobile press-hold precise placement)
-- L5689 - Zoom transform preview & commit
-- L5768 - Canvas mouse, wheel & touch handlers
-- L6520 - Global dropdown dismissal & keyboard hotkeys
-- L6894 - [sync] Manual save to cloud
-- L6904 - [sync] Auto-save
-- L6911 - [sync] Local backup (IndexedDB takeoff state)
-- L7044 - [sync] Checkout keep-alive
-- L7058 - App feature registry
-- L7373 - View-only mode
-- L7379 - Init / boot
+- L379 - [sync] Sync recovery & client recycle
+- L460 - [sync] Global force reload
+- L548 - [sync] Save Status log & envelope
+- L551 - [sync] Field-error telemetry
+- L610 - [sync] Dirty tracking & local session reset
+- L616 - Undo/redo stacks
+- L758 - [sync] Checkout probe, hashing & PDF cache
+- L820 - Math & Format Helpers
+- L1271 - Coordinate Helpers
+- L1279 - PDF render bitmap cache
+- L1333 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1344 - PDF Rendering
+- L2128 - UI Render Functions
+- L2782 - Inline rename & polyline edit mode
+- L2896 - Modal primitives (showModal / hideModal)
+- L2927 - Toasts & line color picker
+- L2995 - Airboard cloud sync
+- L3040 - Supabase RPC & presence heartbeat
+- L3080 - User activity / event telemetry
+- L3139 - Supabase auth & dev auth
+- L3325 - [sync] Checkout subscription & permission refresh
+- L3335 - Modals & Handlers
+- L3403 - PDF intake (upload, test PDF, hashing)
+- L3411 - Toolbar tool buttons
+- L3611 - Tool sidebar buttons & legend overlay
+- L3702 - Add Line Type modal
+- L3785 - Line color & sidebar handlers
+- L3994 - Polyline modal & drawing
+- L4037 - Zoom bar & page navigation
+- L4063 - Export canvas JSON
+- L4079 - PDF download helpers
+- L4088 - View-link URL helpers & show-highlights/notes
+- L4160 - Custom icon upload handler
+- L4170 - Export & report dropdown menus
+- L4257 - Sidebar drawer toggles
+- L4288 - Mobile actions burger menu pointer & header logo
+- L4300 - User Activity pointer (format.js + features/user-activity.js)
+- L4312 - My Settings pointer (features/my-settings.js)
+- L4337 - Auth & settings entry buttons
+  - L4396 - Project Settings checkout & Save Status bell
+  - L4488 - [sync] Checkout expired recovery
+  - L4544 - [sync] Turn In
+  - L4653 - Share modal pointer & copy-project openers
+  - L4684 - Settings menu actions
+  - L4705 - Auth sign-in form
+  - L4730 - Save Project modal
+  - L4743 - Checkout expired recovery modal wiring
+  - L4848 - Last-session restore prompt
+  - L4855 - Canvas Repair modal wiring
+- L5042 - Canvas Event Handlers
+- L5529 - Event Binding
+- L5539 - Aim loupe (mobile press-hold precise placement)
+- L5691 - Zoom transform preview & commit
+- L5770 - Canvas mouse, wheel & touch handlers
+- L6522 - Global dropdown dismissal & keyboard hotkeys
+- L6896 - [sync] Manual save to cloud
+- L6906 - [sync] Auto-save
+- L6913 - [sync] Local backup (IndexedDB takeoff state)
+- L7046 - [sync] Checkout keep-alive
+- L7060 - App feature registry
+- L7375 - View-only mode
+- L7381 - Init / boot
 
 <!-- END SECTION TOC -->
 

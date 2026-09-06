@@ -357,7 +357,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   fails; a page-index → scale map, server scale wins on restore).
 - Per-project, in save/load: `maxZoom`, `groups`, `ductSettings` (the Duct
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
-  the Counted|Factor `fittingMode`; defaults in app.js state init, restored by
+  the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
+  `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the
+  schedule modal's Suggestions row; defaults in app.js state init, restored by
   every intake like `legendSettings`), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is
   true OR the project has groups; latched true on first group create; restored

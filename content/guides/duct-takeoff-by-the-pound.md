@@ -26,6 +26,17 @@ Real trunks step down as air leaves them. Mid-trace, press **`S`** (or tap the s
 
 `Enter`, a double-click, or the **Finish Duct Run** bar commits the run. `Esc` steps backward first — it closes the popover, then removes the last corner, then abandons the trace.
 
+## Design-build: the plan sizes itself
+
+Most duct jobs are **design-build** — there's no engineered duct to copy, just an architectural background and a load. CountTooling turns the takeoff into the design pass:
+
+1. **Give your air devices a CFM.** The counter Create tab (and each counter's settings) carries an optional **CFM** field — 150 on the lay-in diffuser, 300 on the big register. Leave it empty on anything that isn't an air device; nothing changes for those.
+2. **Place the diffusers first**, straight off the reflected ceiling plan.
+3. **Trace the main.** While you trace, the size chip grows a second line: *"450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S accepts."* Every device the trace passes hands off its air, and the suggestion shrinks with the remaining CFM — the classic ductulator answer (equal friction, 0.08″/100 ft by default) computed live at the cursor.
+4. **Accept with a tap.** Press `S`: the suggested size sits at the top of the step popover, pre-highlighted; one tap steps the run down to it. Suggestions only ever *inform* — the size never changes unless you take it.
+
+Devices belong to a run when the trace (or a branch's tap) lands within snap distance of them, and to a **system** through that run's group — so with two RTUs on the sheet, each system accumulates only its own air. When the **velocity cap** governs instead of friction (default 1,200 fpm), the suggestion says so: *"velocity-limited."* Both knobs — friction rate and max velocity — live at the bottom of the Duct Schedule and stick with the project.
+
 ## Fittings count themselves
 
 You never click "add elbow." The geometry already says where the fittings are, so the app counts them from the trace:

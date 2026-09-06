@@ -1604,6 +1604,18 @@ body.hotkey-peek .hk-badge { display: block; }
 .duct-schedule-empty { color: var(--text2); font-size: 0.85rem; margin: 8px 0 12px; }
 .duct-schedule-empty-cell { color: var(--text3); font-size: 0.78rem; }
 
+/* D6 design-build: the ductulator-suggestion knobs row on the schedule modal
+   (friction rate + velocity cap), the S-popover Suggested section's accent
+   chip, and the small optional-field sublabel on the counter CFM inputs. */
+.duct-schedule-design-row { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+.duct-schedule-design-row label { color: var(--text2); font-size: 0.78rem; }
+.duct-schedule-num { width: 64px; }
+.duct-suggest-chip { width: 100%; padding: 7px 8px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-align: center; }
+.duct-suggest-chip:hover { background: var(--accent); color: #17171a; }
+.duct-suggest-from { display: block; margin-top: 4px; font-family: inherit; font-size: 0.7rem; font-weight: 400; color: var(--text2); }
+.duct-suggest-chip:hover .duct-suggest-from { color: #17171a; }
+.form-sublabel { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
+
 /* System groups (DUCT unit D4, DUCT-PLAN §2): the equipment tag + capacity
    line ("RTU-1 · 600 CFM") and the plenum-return note in a group's sidebar
    header, plus the group-modal hint copy. */

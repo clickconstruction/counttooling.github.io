@@ -640,6 +640,13 @@
           <label>Name</label>
           <input type="text" id="counterName" placeholder="e.g. Water Closet">
         </div>
+        <!-- DUCT unit D6: optional CFM on a counter — air devices only. Empty
+             = not an air device (zero behavior change); placed markers inherit
+             it for the design-build duct suggestions. -->
+        <div class="form-group">
+          <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
+          <input type="number" id="counterCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;">
+        </div>
         <div class="form-group">
           <div class="counter-icon-tabs">
             <button class="counter-icon-tab active" data-icon-tab="icon">Icon</button>
@@ -860,6 +867,17 @@
         </div>
       </div>
       <div id="ductScheduleBody"></div>
+      <!-- D6: the design-build ductulator knobs behind the size-chip / S-popover
+           suggestions (state.ductSettings.frictionInPer100ft / maxVelocityFpm —
+           per project like the % lines above; synced/wired by
+           features/duct-schedule.js). Housed here, not on the create modal:
+           this modal already owns every editable duct setting, while the
+           create modal sits inside the arm-a-trace flow (least chrome). -->
+      <div class="duct-schedule-design-row">
+        <span class="duct-schedule-section-label">Suggestions</span>
+        <label>Friction <input type="number" id="ductFrictionRate" class="duct-schedule-pct duct-schedule-num" min="0.01" max="1" step="0.01" aria-label="Friction rate, inches per 100 feet">″/100′</label>
+        <label>Max velocity <input type="number" id="ductMaxVelocity" class="duct-schedule-pct duct-schedule-num" min="100" max="5000" step="50" aria-label="Maximum velocity, feet per minute"> fpm</label>
+      </div>
       <div class="actions">
         <button id="ductScheduleCopy" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
         <button id="ductScheduleClose">Done</button>
@@ -1772,6 +1790,12 @@
           <label id="counterLineTypeDetailsCustomIconsLabel" style="display:block;margin-top:12px;cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
           <div class="icon-grid" id="counterLineTypeDetailsIconGridCustom"></div>
         </div>
+      </div>
+      <!-- DUCT unit D6: the per-counter CFM (counters only; hidden for line
+           types). Same optional-field semantics as the Create tab. -->
+      <div class="form-group" id="counterLineTypeDetailsCfmGroup" style="display:none;">
+        <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
+        <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
@@ -2973,6 +2997,7 @@
   <script src="/features/duct-fittings.js"></script>
   <script src="/features/duct-sidebar.js"></script>
   <script src="/features/duct-schedule.js"></script>
+  <script src="/features/duct-suggest.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>

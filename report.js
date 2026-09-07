@@ -451,6 +451,50 @@
   // view-link footer and blank lines are skipped; child rows (indented) count
   // as ea. Buckets are never summed together. Both ends of the bridge report
   // the same numbers, so an estimator can reconcile copy against import.
+  // TakeoffTooling handoff — payload v2 for its `#import=` route. The same
+  // aggregation as the /Tooling text, stated as facts instead of name
+  // conventions: a `unit` per row (ea / ft / px — the T1-05 buckets never
+  // mix), the group by name, pages, and child counts NESTED under their own
+  // parent (the text export merges same-named children per group; here each
+  // parent keeps its own). Zero-length line types are omitted. The plans
+  // link is attached by the caller (features/output.js) — minting it is
+  // async and cloud-gated. Pure over state; no DOM.
+  function getTakeoffToolingPayload(options) {
+    if (!window.state || !state.pages || !state.pages.length) return null;
+    const opts = options || {};
+    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
+    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
+    const groups = state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
+    const childTotals = getChildTotals(pageIndices, getAnn);
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const items = [];
+    orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName).forEach(gid => {
+      const group = getGroupName(gid) || null;
+      const counters = counterSummaryByGroup[gid] || {};
+      const lineTypes = lineTypeSummaryByGroup[gid] || {};
+      const groupChildren = childTotals.byGroup?.[gid] || {};
+      const childrenOf = (kind, id) => (groupChildren[kind]?.[id] || [])
+        .filter(cr => cr.total > 0)
+        .map(cr => ({ description: cr.name, quantity: round2(cr.total), unit: 'ea' }));
+      (state.counters || []).forEach(c => {
+        const r = counters[c.id];
+        if (!r) return;
+        items.push({ description: c.name, quantity: round2(r.total), unit: 'ea', pages: r.pages.join(', '), group, children: childrenOf('counter', c.id) });
+      });
+      (state.lineTypes || []).forEach(lt => {
+        const r = lineTypes[lt.id];
+        if (!r) return;
+        const children = childrenOf('lineType', lt.id);
+        if (r.lengthFt > 0) items.push({ description: lt.name, quantity: round2(r.lengthFt), unit: 'ft', pages: r.pagesFt.join(', '), group, children });
+        // per-ft children are computed on scaled runs only (T1-05), so they ride the ft row
+        if (r.lengthPx > 0) items.push({ description: lt.name, quantity: Math.round(r.lengthPx), unit: 'px', pages: r.pagesPx.join(', '), group, children: r.lengthFt > 0 ? [] : children });
+      });
+    });
+    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '' }, items };
+  }
+
   function summarizeToolingExport(text) {
     const out = { ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } };
     if (!text) return out;
@@ -638,6 +682,7 @@
     window.buildReportHtml = buildReportHtml;
     window.printReport = printReport;
     window.getPipeToolingSummary = getPipeToolingSummary;
+    window.getTakeoffToolingPayload = getTakeoffToolingPayload;
     window.getPipeToolingHasData = getPipeToolingHasData;
     window.summarizeToolingExport = summarizeToolingExport;
     window.formatToolingExportSummary = formatToolingExportSummary;

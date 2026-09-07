@@ -43,6 +43,7 @@ Two different files: the sidebar **Export PDFs** button makes the marked-up deli
 ## Send it to where it gets priced
 
 - **Copy to PipeTooling** — copies the takeoff as tab-delimited counts, ready to paste straight into a bid. When you're **signed in and the project is saved to the cloud**, it also appends a **view link** back to the source takeoff, so a bid can point at the plan it came from. Otherwise the counts still copy and a note explains what's missing — sign in, or save the project, to get the link (a view-only session can never create one). Before copying, the app double-checks your scales: if any exported page has lines but no scale, a dialog lists those pages and offers to jump you straight to Set Scale — or you can export anyway, knowing those lengths are in pixels. Pages without marks are never flagged.
+- **Open in TakeoffTooling** — for electrical work, hands the takeoff to TakeoffTooling (assemblies, labor units, supplier pricing) in one click. Every row arrives with its unit — counts, feet, or unscaled pixels — its group, its pages, and its child counts nested underneath, plus the project name and the plans link when you're signed in, so nothing is retyped or guessed there. The same scale check runs first.
 - **Copy Summary (email/text)** — a plain-text summary for dropping into an email or message. It runs the same scale check before copying.
 
 ### Pages without a scale

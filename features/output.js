@@ -134,6 +134,46 @@
     }
   }
 
+  // --- Open in TakeoffTooling (the electrical estimator's next door) ---
+  // Hands the takeoff to TakeoffTooling as its `#import=` payload v2
+  // (getTakeoffToolingPayload: units, groups, pages, children, project name)
+  // plus the plans link, so nothing is retyped or re-inferred there. The
+  // tab is opened synchronously inside the click (popup blockers), and its
+  // URL lands once the cloud-gated view link has resolved. Runs behind the
+  // same pre-copy scale gate as Copy to /Tooling — px rows do travel (flagged
+  // there too), but the estimator is asked first.
+  const TAKEOFF_TOOLING_ORIGIN = 'https://takeofftooling.com/';
+  function encodeHandoffPayload(obj) {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  }
+  async function doOpenTakeoffTooling(getAnnFn, pageIndices, mode) {
+    const state = App.state;
+    const opts = {};
+    if (getAnnFn) opts.getAnnotations = getAnnFn;
+    if (pageIndices != null) opts.pageIndices = pageIndices;
+    const payload = typeof window.getTakeoffToolingPayload === 'function' ? window.getTakeoffToolingPayload(opts) : null;
+    if (!payload || !payload.items.length) {
+      App.showToast('Nothing to hand off. Add counters or line types first.');
+      return;
+    }
+    const win = window.open('', '_blank');
+    let plansUrl = '';
+    if (canExportViewLink()) {
+      try {
+        plansUrl = (exportViewLinkUrl && exportViewLinkProjectId === state.currentProjectId) ? exportViewLinkUrl : await App.getOrCreateViewLinkUrl();
+        exportViewLinkUrl = plansUrl;
+        exportViewLinkProjectId = state.currentProjectId;
+      } catch (_) { plansUrl = ''; }
+    }
+    if (plansUrl) payload.project.plansUrl = plansUrl;
+    const url = TAKEOFF_TOOLING_ORIGIN + '#import=' + encodeHandoffPayload(payload);
+    if (win) win.location.href = url;
+    else window.open(url, '_blank');
+    App.logUserEvent('copy_summary', state.currentProjectId || null, { surface: 'takeoff-tooling', mode: mode || 'visible', items: payload.items.length, plansLink: !!plansUrl });
+    const n = payload.items.length;
+    App.showToast(`Opened TakeoffTooling with ${n} row${n === 1 ? '' : 's'}${plansUrl ? ' and the plans link' : ''}.`);
+  }
+
   // --- Pre-copy scale check (#toolingScaleCheckModal), both copy surfaces ---
   // Copying with unscaled lines exports pixel lengths (as separate `px of`
   // rows since T1-05). Before the copy — Copy to /Tooling AND Copy Summary —
@@ -305,6 +345,7 @@
         closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
       } else {
         closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
+        closeScopeMenu(forTakeoffToolingMenu, forTakeoffToolingDropdown);
         prefetchExportViewLink();
         forPipeToolingMenu.style.left = '-9999px';
         // 'auto' (not '') — the stylesheet's `right:0` otherwise pins the
@@ -334,6 +375,46 @@
     };
   });
 
+  const forTakeoffToolingBtn = document.getElementById('forTakeoffTooling');
+  const forTakeoffToolingMenu = document.getElementById('forTakeoffToolingMenu');
+  const forTakeoffToolingDropdown = document.getElementById('forTakeoffToolingDropdown');
+  if (forTakeoffToolingBtn && forTakeoffToolingMenu) {
+    forTakeoffToolingBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (isSingleScope()) {
+        closeScopeMenu(forTakeoffToolingMenu, forTakeoffToolingDropdown);
+        runGatedCopy(null, [App.state.currentPage], doOpenTakeoffTooling, 'takeoff-tooling', 'this-canvas');
+        return;
+      }
+      if (forTakeoffToolingMenu.classList.contains('visible')) {
+        closeScopeMenu(forTakeoffToolingMenu, forTakeoffToolingDropdown);
+      } else {
+        closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
+        closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
+        prefetchExportViewLink();
+        forTakeoffToolingMenu.style.left = '-9999px';
+        forTakeoffToolingMenu.style.right = 'auto';
+        forTakeoffToolingMenu.classList.add('visible');
+        const btnRect = forTakeoffToolingBtn.getBoundingClientRect();
+        forTakeoffToolingMenu.style.position = 'fixed';
+        forTakeoffToolingMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        App.placeFixedMenu(forTakeoffToolingMenu, btnRect.left, btnRect.top - forTakeoffToolingMenu.offsetHeight - 4);
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (isMobile && forTakeoffToolingMenu.parentElement !== document.body) document.body.appendChild(forTakeoffToolingMenu);
+      }
+    };
+  }
+  document.querySelectorAll('.takeoff-tooling-option').forEach(opt => {
+    opt.onclick = async (e) => {
+      e.stopPropagation();
+      const mode = opt.dataset.mode;
+      closeScopeMenu(forTakeoffToolingMenu, forTakeoffToolingDropdown);
+      if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doOpenTakeoffTooling, 'takeoff-tooling', mode);
+      else if (mode === 'visible') await runGatedCopy(null, null, doOpenTakeoffTooling, 'takeoff-tooling', mode);
+      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doOpenTakeoffTooling, 'takeoff-tooling', mode);
+    };
+  });
+
   if (copySummaryTextBtn && copySummaryTextMenu) {
     copySummaryTextBtn.onclick = (e) => {
       e.stopPropagation();
@@ -346,6 +427,7 @@
         closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
       } else {
         closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
+        closeScopeMenu(forTakeoffToolingMenu, forTakeoffToolingDropdown);
         copySummaryTextMenu.style.left = '-9999px';
         // Same `right:auto` anchor as the /Tooling drop-up (J11 friction #8).
         copySummaryTextMenu.style.right = 'auto';
@@ -612,6 +694,7 @@
     downloadPdfBuffer(buf, sanitizeForFilename(App.state.currentProjectName) + '.pdf');
     App.logUserEvent('export_pdf', App.state.currentProjectId, { source: 'project-pdf' });
   }
+  App.doOpenTakeoffTooling = doOpenTakeoffTooling;
   App.sanitizeForFilename = sanitizeForFilename;
   App.downloadPdfBuffer = downloadPdfBuffer;
   App.downloadProjectPdf = downloadProjectPdf;

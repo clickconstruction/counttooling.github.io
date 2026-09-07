@@ -2603,6 +2603,8 @@
     const hasReportData = hasCountsOrLines || hasRooms;
     const ptBtn = document.getElementById('forPipeToolingDropdown');
     if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
+    const ttBtn = document.getElementById('forTakeoffToolingDropdown');
+    if (ttBtn) ttBtn.style.display = hasCountsOrLines ? '' : 'none';
     const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
     if (copySummaryBtn) copySummaryBtn.style.display = hasReportData ? '' : 'none';
     const showReportDropdown = document.getElementById('showReportDropdown');
@@ -6555,6 +6557,12 @@
     if (ptm && !e.target.closest('#forPipeToolingDropdown') && !e.target.closest('.show-report-menu')) {
       ptm.classList.remove('visible');
       if (ptd && ptm.parentElement !== ptd) ptd.appendChild(ptm);
+    }
+    const ttm = document.getElementById('forTakeoffToolingMenu');
+    const ttd = document.getElementById('forTakeoffToolingDropdown');
+    if (ttm && !e.target.closest('#forTakeoffToolingDropdown') && !e.target.closest('.show-report-menu')) {
+      ttm.classList.remove('visible');
+      if (ttd && ttm.parentElement !== ttd) ttd.appendChild(ttm);
     }
     const csm = document.getElementById('copySummaryTextMenu');
     const csd = document.getElementById('copySummaryTextDropdown');

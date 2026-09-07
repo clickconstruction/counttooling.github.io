@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(output): Open in TakeoffTooling — the electrical hand-off as facts, not a name convention (2026-09-07)
+
+TakeoffTooling is where an electrical takeoff gets exploded into assemblies, labored from the
+MC book and priced; until now it received CountTooling's counts as the /Tooling clipboard text
+and inferred everything from the names (its importer predated the T1-05 units, the indented
+child counts and the `[Group]` prefixes, and kept two rows in nine). The new sidebar action
+opens TakeoffTooling with its structured `#import=` payload v2 instead.
+
+- `report.js` `getTakeoffToolingPayload(options)`: the `collectSummaries` + child-count walk,
+  emitted as `{ description, quantity, unit: ea|ft|px, pages, group, children }` items with the
+  project name. Children nest under their own parent; a line type with both scaled and unscaled
+  runs emits an `ft` row and a `px` row.
+- `features/output.js` `doOpenTakeoffTooling` + the `#forTakeoffToolingDropdown` scope menu
+  (this sheet / every sheet / everything), behind the same pre-copy scale gate as Copy to
+  /Tooling; opens the tab inside the click and attaches the view link as `project.plansUrl`
+  once it resolves. Shown with the /Tooling button; closes and is closed by the sibling menus.
+- Contract fixture: `takeoff-handoff.fixture.txt` (the /Tooling text for a seeded project) is
+  asserted here and in TakeoffTooling's import tests, so a third app can no longer fall behind
+  the export silently.
+- Docs: FEATURES, ARCHITECTURE (Output + search hints), the reports-and-exports guide.
+- Roads not taken: sending the text and letting TakeoffTooling keep inferring (the failure
+  mode this fixes); a shared vocabulary file (comes with the electrical Trade profile).
+
+---
+
 ## feat(view-links): viewer grants — a sub opens plans from their PipeTooling portal with no email gate (2026-09-06)
 
 View links open with no account, but the email gate refused anyone outside the company

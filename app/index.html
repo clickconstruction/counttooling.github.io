@@ -2088,46 +2088,56 @@
         </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
-        <div class="settings-menu-links-row">
-          <span class="settings-menu-link" id="settingsQuickKeys">quick keys</span>
-          <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
-          <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the sample plan">tour</span>
-          <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
+        <!-- This project: the per-project rows. Electrical, First-Class S1/S2 added
+             Trade (the Quick creator's vocabulary and the export's stamp) and the
+             vertical-by-default figures the Chain tool writes at every device. One
+             labelled section, short hints (the long form rides in title=), rows that
+             stack their control under the label on a phone. -->
+        <div class="settings-project-section" id="settingsProjectSection">
+          <div class="settings-project-label">This project</div>
+          <div class="settings-project-row settings-project-row-stack" id="settingsTradeRow" title="Which vocabulary the Quick creator speaks, and what the hand-off calls this takeoff. Click the pressed trade to clear it.">
+            <div class="settings-project-row-text">
+              <div>Trade</div>
+              <div class="settings-project-row-hint">Quick creator vocabulary and the hand-off's stamp.</div>
+            </div>
+            <div class="settings-project-row-control">
+              <div class="filter-scope-segment" id="settingsTradeSegment" role="group" aria-label="Project trade">
+                <button type="button" data-trade="plumbing" aria-pressed="false">Plumbing</button>
+                <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
+                <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
+              </div>
+            </div>
+          </div>
+          <div class="settings-project-row settings-project-row-stack" id="settingsCeilingRow" title="With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.">
+            <div class="settings-project-row-text">
+              <div>Ceiling height</div>
+              <div class="settings-project-row-hint">Chain adds ceiling − mount + make-up as each run's drop.</div>
+            </div>
+            <div class="settings-project-row-control">
+              <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" aria-label="Ceiling height (feet)">
+              <label class="make-up-label">make-up <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" aria-label="Make-up (feet)"></label>
+            </div>
+          </div>
+          <div class="settings-project-row" id="settingsUseGroupsRow" title="Off hides the Groups section and the Assign-to-Group menus. On automatically while this project has groups.">
+            <div class="settings-project-row-text">
+              <div>Use groups</div>
+              <div class="settings-project-row-hint">Groups section and Assign-to-Group menus.</div>
+            </div>
+            <button type="button" class="toggle-switch" id="settingsUseGroupsBtn" aria-pressed="false" title="Show the Groups section and Assign-to-Group menus in this project">
+              <span class="toggle-switch-knob"></span>
+            </button>
+          </div>
         </div>
-        <div class="form-group" id="settingsUseGroupsRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid var(--border);margin-top:6px;">
-          <div style="min-width:0;">
-            <div>Use groups in this project</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Off hides the Groups section and the Assign-to-Group menus. On automatically while this project has groups.</div>
+        <!-- App-level footer: the links and Advanced, after the project's own rows. -->
+        <div class="settings-footer">
+          <div class="settings-menu-links-row">
+            <span class="settings-menu-link" id="settingsQuickKeys">quick keys</span>
+            <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
+            <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the sample plan">tour</span>
+            <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
           </div>
-          <button type="button" class="toggle-switch" id="settingsUseGroupsBtn" aria-pressed="false" title="Show the Groups section and Assign-to-Group menus in this project">
-            <span class="toggle-switch-knob"></span>
-          </button>
+          <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
         </div>
-        <!-- Electrical, First-Class S1/S2: the project's trade (explicit, per
-             project — the Quick creator's vocabulary and the export's stamp) and
-             the vertical-by-default figures the Chain tool writes at every device. -->
-        <div class="form-group" id="settingsTradeRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid var(--border);margin-top:6px;">
-          <div style="min-width:0;">
-            <div>Trade</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Which vocabulary the Quick creator speaks, and what the handoff calls this takeoff.</div>
-          </div>
-          <div class="filter-scope-segment" id="settingsTradeSegment" role="group" aria-label="Project trade">
-            <button type="button" data-trade="plumbing" aria-pressed="false">Plumbing</button>
-            <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
-            <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
-          </div>
-        </div>
-        <div class="form-group" id="settingsCeilingRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
-          <div style="min-width:0;">
-            <div>Ceiling height</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" style="width:96px;" aria-label="Ceiling height (feet)">
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
-          </div>
-        </div>
-        <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
       </div>
     </div>
   </div>

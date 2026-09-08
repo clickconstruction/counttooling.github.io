@@ -280,7 +280,7 @@
       #canvasSwitcher { border-left: none; }
       .canvas-layers-btn { width: 44px; height: 44px; }
       .polyline-finish-bar button { min-height: 44px; }
-      .modal-overlay.visible .modal-card { max-height: 85vh; overflow-y: auto; }
+      .modal-overlay.visible .modal-card { max-height: 85vh; max-height: 85dvh; overflow-y: auto; }
       .modal-overlay.visible .modal-card.modal-card-fullscreen { max-height: 90vh; height: 90vh; overflow: hidden; }
       #manageUsersBtnSidebar, #exportBtnSidebar, #importBtnSidebar, #saveProjectBtnSidebar, #loadProjectBtnSidebar, #authBtnSidebar { display: none !important; }
       .page-zoom-row { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; scrollbar-width: none; -ms-overflow-style: none; }
@@ -566,7 +566,10 @@
     .status-bar .status-indicator-group { display: inline-flex; align-items: center; gap: 4px; }
     .status-bar .status-indicator-label { white-space: nowrap; }
     .header .replaced-by-status-bar { display: none !important; }
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
+    /* Safe centring: the card carries margin:auto and the overlay scrolls, so a card
+       taller than the viewport (small window, browser zoom, a tall settings sheet)
+       keeps its top reachable instead of being centred off-screen by align-items. */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; overflow-y: auto; padding: 12px 0; box-sizing: border-box; overscroll-behavior: contain; }
     .modal-overlay.visible { display: flex; }
     /* Toast region (JOURNEY-MAP Tier-2 #15). Z-order contract: modals 200-260
        < menus/panels 300 < toasts 350 < header-more-menu / view-link-dead 400.
@@ -702,7 +705,7 @@
        85vh+scroll safety used to be mobile-only; every card now gets the clamp.
        Cards that scroll an internal region instead (pinned tab chrome or a
        flex-managed list) override this with their own max-height + overflow. */
-    .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; max-height: min(85vh, calc(100vh - 64px)); overflow-y: auto; }
+    .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; margin: auto; max-height: min(85vh, calc(100vh - 64px)); max-height: min(85dvh, calc(100dvh - 48px)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .modal-card h2 { margin-bottom: 16px; font-size: 1.1rem; }
     .modal-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .modal-card-header h2 { margin: 0; }
@@ -799,7 +802,28 @@
     .settings-menu-link:hover { text-decoration: underline; }
     .settings-menu-link.settings-menu-link-danger { color: var(--red); }
     .settings-menu-link.settings-menu-link-danger:hover { color: var(--red); }
-    .settings-menu-links-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
+    .settings-menu-links-row { display: flex; align-items: center; justify-content: center; gap: 2px 4px; flex-wrap: wrap; padding: 4px 0; }
+    .settings-menu-links-row .settings-menu-link { padding: 8px 10px; font-size: 0.95rem; }
+    /* Project Settings — the per-project rows (Trade, Ceiling height, Use groups) as one
+       labelled section between the cloud actions and the app-level footer links. Rows
+       marked -stack wrap their control under the label on a phone. */
+    .settings-project-section { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; display: flex; flex-direction: column; }
+    .settings-project-label { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); padding: 4px 2px 2px; }
+    .settings-project-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 2px; }
+    .settings-project-row-text { min-width: 0; flex: 1 1 160px; }
+    .settings-project-row-hint { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+    .settings-project-row-control { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .settings-project-row-control .make-up-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text2); white-space: nowrap; }
+    .settings-project-row-control input[type="text"] { width: 96px; }
+    .settings-project-row-control input#settingsMakeUp { width: 56px; }
+    .settings-footer { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; display: flex; flex-direction: column; gap: 8px; }
+    @media (max-width: 768px) {
+      .settings-project-row-stack { flex-wrap: wrap; }
+      .settings-project-row-stack .settings-project-row-control { width: 100%; }
+      .settings-project-row-stack .filter-scope-segment { width: 100%; }
+      .settings-project-row-stack .filter-scope-segment button { flex: 1; padding: 10px 6px; font-size: 0.85rem; min-height: 44px; }
+      .settings-project-row-control input[type="text"] { min-height: 44px; }
+    }
     .share-project-remove-btn:hover { background: rgba(232,84,71,0.2); }
     .settings-advanced-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; margin-top: 12px; margin-bottom: 4px; font-size: 0.75rem; text-transform: uppercase; color: var(--text3); cursor: pointer; user-select: none; }
     .settings-advanced-header:hover { color: var(--text2); }

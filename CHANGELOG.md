@@ -13,6 +13,30 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(settings): Project Settings reachable on small viewports; the project rows as one section (2026-09-08)
+
+Reported from a phone-sized window right after the electrical build: the settings sheet had
+grown (Trade, Ceiling height + make-up, the tour link) past the viewport, and its top — Save
+Project to Cloud — sat off-screen with no way to reach it. A flex-centred card taller than its
+container overflows equally above and below, and the part above the viewport is unreachable.
+
+- **Safe centring for every modal.** `.modal-card` carries `margin: auto` and `.modal-overlay`
+  scrolls (`overflow-y: auto`), so a card taller than the viewport starts at the top and the
+  overlay scrolls instead of centring it off-screen. Card max-height also uses `dvh` (with the
+  `vh` fallback) so mobile browser chrome does not eat the bottom; `overscroll-behavior:
+  contain` keeps the page from scrolling under it.
+- **One "This project" section.** Trade, Ceiling height + make-up and Use groups move out of
+  the inline-styled `.form-group` rows into a labelled section between the cloud actions and
+  the footer; the app-level links (quick keys · keyboard shortcuts · tour) and Advanced come
+  last. Hints are one short line each; the long form rides in `title=`.
+- **Phone layout.** Rows marked `-stack` wrap their control under the label at ≤768px: the
+  trade segment goes full width with 44px targets, the ceiling inputs grow to 44px tall.
+- `settings-modal.spec.js` (4): the card fits and scrolls at 375×812 and 820×560, the last row
+  is reachable, the rows work at phone width and stack; with the card's max-height forced off
+  the overlay still scrolls and the header is reachable; the row order.
+
+---
+
 ## fix(tutorial): the empty-canvas tour link survives a mixed shell (2026-09-08)
 
 First report after the tutorial shipped: "take the five-minute tour" was not clickable. The

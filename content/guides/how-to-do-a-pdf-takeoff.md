@@ -1,13 +1,15 @@
 ---
 title: How to do a takeoff from a PDF
 description: Step-by-step — upload a plan PDF, set the scale, count fixtures, measure runs, and export a report, all in your browser with CountTooling.
-updated: 2026-07-31
+updated: 2026-09-08
 order: 1
 icon: measure
 category: Getting started
 ---
 
 A takeoff is just a structured count and measurement of what's on a drawing. With CountTooling you do it straight on the PDF — no printing, no exporting to another tool first. Here's the whole workflow.
+
+**Prefer to learn by doing?** Open the app with nothing loaded and click **take the five-minute tour** under the canvas (or Project Settings → tour). It walks you through a small electrical takeoff on the sample plan, step by step, checking each step against what you actually did — and every step has a *Do it for me* button if you would rather watch.
 
 ![A finished takeoff in CountTooling — counters on every fixture, a measured waste line, and a live legend tallying the counts and lengths.](/guides/img/plan-takeoff.png)
 

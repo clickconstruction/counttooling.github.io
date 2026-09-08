@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,779 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,780 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,015 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,310 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,226 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 1,993 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,245 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,016 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 728 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 875 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 823 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (79 files) | 20,382 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (80 files) | 20,704 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -230,6 +230,8 @@ modules. Candidates in priority order:
 | [features/bid-check.js](features/bid-check.js) | **Bid Check** (S5): the sidebar section (`#bidCheckSection`, collapsed by default — `state.bidCheckCollapsed`, in-memory — with the open-item count on `#bidCheckBadge`) where the app says what it knows and asks what it cannot. `getBidCheck({ pageIndices?, getAnnotations? })` → `{ auto, manual, open, defaults }`: the auto rows from `bidCheckAutoRows` over `collectFillCases` (distinct raceway + conductor combinations on scaled runs), the Circuit schedule (`hotGauges`, `farthestFt`, `loadAmps`), the panel cross-check and the untagged / off-run device counts — electrical projects only; the manual rows for the trade with their ticks. Ticks + the voltage-drop defaults persist in `state.bidCheck` (`{ manual: { id: true }, loadAmps?, volts? }`, every save/load/export/import path like ductSettings; telemetry `bid_check_row_state`). Consumed (guarded) by report.js (the Bid Check section, the email block, the payload's `checks`). `showBidCheckAdvisory(surface)` — the `#bidCheckAdvisoryModal` toast after Copy / Open in TakeoffTooling (features/output.js `runGatedCopy`) and Export PDFs, only when an auto row is at ⚠, never a block; Review expands the section. `renderBidCheck` is called from `updateUI`. Deps: `state`, `getActiveAnnotations`, `getLineLengthSplitForTotals`, `getCircuitSchedule`, `markProjectDirty`, `logUserEvent`, `showModal`, `hideModal`, `escapeHtml`. |
 | [features/tag-reader.js](features/tag-reader.js) | **Read the tags** (S6): the PDF's text layer at placement time. `pageTextItems(pageIdx)` — pdf.js `getTextContent` on the page's own proxy, each item's four transformed corners run through the page's scale-1 viewport (`convertToViewportPoint`) into the annotation coordinate space, cached per session by proxy; `[]` while loading (the load re-renders when it lands). **Tag-aware placement:** with the Counter tool on an electrical project (or any tagged counter), `drawTagOverlay` paints the "Plan says B → Type B" chip beside the cursor and rings the tag it read; `tagSwapCounterId(pt)` makes the click land on the tag's counter (app.js's COUNTER branch); `tagCreateFromHint()` (Enter) creates "Type X" with the tag and the letter icon when no counter carries it. **Palette from the schedule:** `TOOL.SCHEDULE` (armed by the Create tab's "Read a schedule from the sheet…" link; a rect tool via `RECT_TOOL_START_KEY` / `state.scheduleBoxStart`) → `proposeCountersFromBox(box)` → `#schedulePaletteModal` lists tag + description rows (existing tags unticked) → counters named "EM — Emergency wall pack" with `tag`. Also `renderTagField` (the details modal's Fixture tag) and `renderTagReaderUI` (the link's visibility). Honest about scans: no text layer, no suggestion, no change. Telemetry `tag_suggestion_accepted` (route click / enter-create / schedule). Deps: `state`, `TOOL`, `toCanvas`, `getOrderedIcons`, `getEffectiveCustomIcons`, `pushUndoSnapshot(CurrentPage)`, `markProjectDirty`, `updateUI`, `renderAnnotations`, `showModal`, `hideModal`, `showToast`, `logUserEvent`, `escapeHtml`, `COLORS`, `uid`. |
 | [tag-reader.spec.js](tag-reader.spec.js) | Playwright regression for S6 — a text-layer PDF built in-page with the vendored pdf-lib: items land in app space; the hint names the nearest tag and its counter; the click lands on the tag's counter, not the active one, and places normally away from tags; Enter creates "Type X"; the schedule box proposes A / B (existing, unticked) / EM (new) and creates it; the details modal writes the tag; a plumbing project reads nothing and hides the link. |
+| [features/tutorial.js](features/tutorial.js) | The **interactive walkthrough** (2026-09-08): learn the app by doing a small electrical takeoff on `samples/sample-plan.pdf`, one coach-marked step at a time. `STEPS` = `{ id, title, body, kind: 'do'\|'read', target (selector list), check(), action? }`; `#tourOverlay` spotlights the target with a box-shadow cutout (`#tourSpot`, pointer-events none — the real control stays clickable) and places `#tourCard` beside it (below when there is no room; bottom-right while a modal is open; centered with no target); `check()` reads the REAL state and a doing-step auto-advances a beat after it passes; every doing-step offers **Do it for me**, which performs the same change through the same App.* entry points a click would (the sample plan through `#pdfInput`, `setProjectTrade`, a counter with `mountHeightIn`, three marks, a 3/4" EMT type with conductors, the ceiling, `commitChainPoint` ×3, an LP-1/7 group assigned to the run, `bidCheckCollapsed = false`). Entry points: the empty-canvas hint's link (`#canvasEmptyHintTour`, hidden once `clickcount-tour-done` is set), Project Settings → `#settingsTour`, `?tour=1`; refuses to start over a cloud project. Telemetry `tour_step`. Registers `startTutorial`, `stopTutorial`, `isTutorialActive`, `onTutorialTick` (updateUI + a 400 ms interval), `tutorialStepId`, `tutorialGoTo`. |
+| [tutorial.spec.js](tutorial.spec.js) | Playwright regression for the walkthrough — the empty-canvas link and `?tour=1` start it; the do-it-for-me path walks all 13 steps and ends with a real takeoff (9.5 ft drops on the chained runs, wire rows in the payload, the LP-1 circuit); a real upload satisfies step 1; Back / Skip step / Leave behave; Finish sets `clickcount-tour-done`; a cloud project refuses. |
 | [bid-check.spec.js](bid-check.spec.js) | Playwright regression for S5 — the four auto rows with their work (fill 43.8% → 3/4" 25%; voltage drop 4.4% → #10 2.8%; 1 on plan vs 42; 1 device on no circuit), the collapsed section with its badge, manual ticks persisting and counting down, the editable voltage-drop defaults, the report / email / payload; plumbing gets the three trade-neutral rows and no advisory; an electrical gated copy runs AND shows the advisory, whose Review expands the section. |
 | [circuits.spec.js](circuits.spec.js) | Playwright regression for S4 — the schedule's devices, conduit / homerun / wire feet and farthest device from the panel mark (then from the homerun end when the mark is gone), the cross-check, the sidebar tag + footer, the report / email / payload; the group modal, the counter's Panel fields and both Homerun toggles write and delete the fields; Chain inherits the circuit; plumbing hides the rows. |
 | [conductors.spec.js](conductors.spec.js) | Playwright regression for S3 — the engine, the sidebar Summary, Copy Summary, the TakeoffTooling payload and the email text agree on wire by gauge (a per-line override included), the MC cable row and the counter's Cat6 cable, with the unscaled run excluded and flagged; the details-modal editor parses / refuses the shorthand, switches raceway to MC (size disabled, cable hint) and toggles tick marks; Line Properties writes and clears the per-run override; a plumbing project hides the block while an electrical item still shows its facts. |
@@ -568,55 +570,55 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1415 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1426 - PDF Rendering
 - L2219 - UI Render Functions
-- L2877 - Inline rename & polyline edit mode
-- L2991 - Modal primitives (showModal / hideModal)
-- L3022 - Toasts & line color picker
-- L3090 - Airboard cloud sync
-- L3135 - Supabase RPC & presence heartbeat
-- L3175 - User activity / event telemetry
-- L3234 - Supabase auth & dev auth
-- L3420 - [sync] Checkout subscription & permission refresh
-- L3430 - Modals & Handlers
-- L3498 - PDF intake (upload, test PDF, hashing)
-- L3506 - Toolbar tool buttons
-- L3706 - Tool sidebar buttons & legend overlay
-- L3797 - Add Line Type modal
-- L3922 - Line color & sidebar handlers
-- L4131 - Polyline modal & drawing
-- L4174 - Zoom bar & page navigation
-- L4200 - Export canvas JSON
-- L4216 - PDF download helpers
-- L4225 - View-link URL helpers & show-highlights/notes
-- L4297 - Custom icon upload handler
-- L4307 - Export & report dropdown menus
-- L4394 - Sidebar drawer toggles
-- L4425 - Mobile actions burger menu pointer & header logo
-- L4437 - User Activity pointer (format.js + features/user-activity.js)
-- L4449 - My Settings pointer (features/my-settings.js)
-- L4474 - Auth & settings entry buttons
-  - L4534 - Project Settings checkout & Save Status bell
-  - L4626 - [sync] Checkout expired recovery
-  - L4682 - [sync] Turn In
-  - L4791 - Share modal pointer & copy-project openers
-  - L4822 - Settings menu actions
-  - L4843 - Auth sign-in form
-  - L4868 - Save Project modal
-  - L4881 - Checkout expired recovery modal wiring
-  - L4986 - Last-session restore prompt
-  - L4993 - Canvas Repair modal wiring
-- L5180 - Canvas Event Handlers
-- L5682 - Event Binding
-- L5692 - Aim loupe (mobile press-hold precise placement)
-- L5844 - Zoom transform preview & commit
-- L5923 - Canvas mouse, wheel & touch handlers
-- L6677 - Global dropdown dismissal & keyboard hotkeys
-- L7059 - [sync] Manual save to cloud
-- L7069 - [sync] Auto-save
-- L7076 - [sync] Local backup (IndexedDB takeoff state)
-- L7209 - [sync] Checkout keep-alive
-- L7223 - App feature registry
-- L7558 - View-only mode
-- L7564 - Init / boot
+- L2878 - Inline rename & polyline edit mode
+- L2992 - Modal primitives (showModal / hideModal)
+- L3023 - Toasts & line color picker
+- L3091 - Airboard cloud sync
+- L3136 - Supabase RPC & presence heartbeat
+- L3176 - User activity / event telemetry
+- L3235 - Supabase auth & dev auth
+- L3421 - [sync] Checkout subscription & permission refresh
+- L3431 - Modals & Handlers
+- L3499 - PDF intake (upload, test PDF, hashing)
+- L3507 - Toolbar tool buttons
+- L3707 - Tool sidebar buttons & legend overlay
+- L3798 - Add Line Type modal
+- L3923 - Line color & sidebar handlers
+- L4132 - Polyline modal & drawing
+- L4175 - Zoom bar & page navigation
+- L4201 - Export canvas JSON
+- L4217 - PDF download helpers
+- L4226 - View-link URL helpers & show-highlights/notes
+- L4298 - Custom icon upload handler
+- L4308 - Export & report dropdown menus
+- L4395 - Sidebar drawer toggles
+- L4426 - Mobile actions burger menu pointer & header logo
+- L4438 - User Activity pointer (format.js + features/user-activity.js)
+- L4450 - My Settings pointer (features/my-settings.js)
+- L4475 - Auth & settings entry buttons
+  - L4535 - Project Settings checkout & Save Status bell
+  - L4627 - [sync] Checkout expired recovery
+  - L4683 - [sync] Turn In
+  - L4792 - Share modal pointer & copy-project openers
+  - L4823 - Settings menu actions
+  - L4844 - Auth sign-in form
+  - L4869 - Save Project modal
+  - L4882 - Checkout expired recovery modal wiring
+  - L4987 - Last-session restore prompt
+  - L4994 - Canvas Repair modal wiring
+- L5181 - Canvas Event Handlers
+- L5683 - Event Binding
+- L5693 - Aim loupe (mobile press-hold precise placement)
+- L5845 - Zoom transform preview & commit
+- L5924 - Canvas mouse, wheel & touch handlers
+- L6678 - Global dropdown dismissal & keyboard hotkeys
+- L7060 - [sync] Manual save to cloud
+- L7070 - [sync] Auto-save
+- L7077 - [sync] Local backup (IndexedDB takeoff state)
+- L7210 - [sync] Checkout keep-alive
+- L7224 - App feature registry
+- L7559 - View-only mode
+- L7565 - Init / boot
 
 <!-- END SECTION TOC -->
 

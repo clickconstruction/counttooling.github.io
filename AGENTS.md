@@ -343,7 +343,8 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 `paletteInsightsMinProjects` (the Palette Insights min-projects threshold),
 `loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
 Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`; since S1 also `profiles[trade]` — the electrical / HVAC Quick profiles, each `sizes`/`types`/`materials`/`iconByType`/`mountByType`/`defaultColor` — and `defaultTrade`, the device's default for new projects; the whole blob rides `user_airboard.plumbing_modifiers`),
-`lineModifiers`, `specificPagesIncludeReport`, `clickcount-last-project`,
+`lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` (the walkthrough was finished on this device — hides the empty-canvas offer),
+`clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `chainPanelPos` (the dragged Chain palette position, per device;
 ignored when it no longer fits the viewport), `dropPanelPos` (same, for the

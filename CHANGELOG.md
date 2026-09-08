@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(agent-door): takeoff.json v2 — groups, child counts, drops, zones, trade (2026-09-07)
+
+The agent door (`import-takeoff`) spoke half the app's language: every mark landed with
+`group: null`, and there was no way to express child-count rules, the verticals at line
+ends, typical-floor multiply zones, detail scale zones, or which trade the takeoff was.
+A twin could place a receptacle and trace a homerun but not say which circuit either
+belonged to. Engineering item E3 of the Electrical Fleet plan.
+
+- `takeoff.version: 2` adds `trade`, `groups[]`, mark/line `group`, palette `childCounts`,
+  line `startDrop`/`endDrop` (feet → the Drop tool's own shape), page `multiplyZones` /
+  `scaleZones` (stamped on every canvas of the page — the zone lookup is per canvas).
+  v1 stays strict and refuses v2 fields by name. Response adds `group_count`,
+  `zone_count`, `child_rules`, `trade`. Contract: [TAKEOFF_IMPORT.md](TAKEOFF_IMPORT.md).
+- `state.trade` (`'plumbing' | 'electrical' | 'hvac' | null`) rides the three save-engine
+  data builders, cloud load, canvas-JSON import and the Open in TakeoffTooling payload
+  (`project.trade`) — the default-destination hint the hallway plan asked for.
+- `takeoff-eval.js`: `tally` returns `groups` (per-group counts + feet) and `children`
+  (rule totals: per count × marks, per run × runs, per ft × ceil(feet/interval) per scaled
+  run — px runs excluded); drops ride the feet bucket; `diffTakeoffs` returns `children`
+  and `groups` rows with the same verdicts. Tests in takeoff-eval.test.js.
+- Roads not taken: applying multiply zones inside the eval (marks are scored as physically
+  placed, the reviewer's view); inferring a trade from palette names (the door states it
+  or leaves it null).
+
+---
+
 ## feat(output): Open in TakeoffTooling — the electrical hand-off as facts, not a name convention (2026-09-07)
 
 TakeoffTooling is where an electrical takeoff gets exploded into assemblies, labored from the

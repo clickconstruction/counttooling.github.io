@@ -91,3 +91,50 @@ decimal feet per line-type name, px reported separately when unscaled).
 
 Provenance: `data.agentImport {imported_at, source, note}`; the project is owned by the
 twin account, which every surface already badges 🤖.
+
+## takeoff.json v2 — groups, child counts, drops, zones, trade (2026-09-07)
+
+`version: 2` accepts everything v1 does plus the fields an electrical takeoff needs and a
+plumbing one uses (the Electrical Fleet plan, engineering item E3). v1 stays strict: a v1
+payload carrying any v2 field is rejected by name — send `version: 2`.
+
+```json
+{
+  "name": "ZZ Twin b409 electrical",
+  "external_ref": "b409",
+  "takeoff": {
+    "version": 2,
+    "trade": "electrical",
+    "groups":    [{ "id": "g-lp1-7", "name": "LP-1 / 7", "color": "#4a9eff" }],
+    "counters":  [{ "id": "c-dup", "name": "Duplex Receptacle",
+                    "childCounts": [{ "name": "4\" Square Box", "qty": 1, "per": "count" }] }],
+    "lineTypes": [{ "id": "lt-emt", "name": "1/2\" EMT",
+                    "childCounts": [{ "name": "Coupling", "qty": 1, "per": "ft", "ftInterval": 10 },
+                                    { "name": "Connector", "qty": 2, "per": "run" }] }],
+    "pages": [{
+      "index": 0, "scale": { "pixelsPerUnit": 12.34, "unit": "ft" },
+      "counterMarkers": { "c-dup": [{ "x": 120.5, "y": 340.0, "group": "g-lp1-7" }] },
+      "quickLines":  [{ "x1": 0, "y1": 0, "x2": 240, "y2": 0, "lineTypeId": "lt-emt",
+                        "group": "g-lp1-7", "startDrop": 9.5, "endDrop": 0 }],
+      "multiplyZones": [{ "x1": 0, "y1": 0, "x2": 600, "y2": 400, "multiplier": 3 }],
+      "scaleZones":    [{ "x1": 700, "y1": 0, "x2": 900, "y2": 200, "scale": { "pixelsPerUnit": 24.68, "unit": "ft" } }]
+    }]
+  }
+}
+```
+
+| Field | Meaning | Lands as |
+|---|---|---|
+| `trade` | `plumbing` \| `electrical` \| `hvac` | `data.trade` → `state.trade`; rides Open in TakeoffTooling as `project.trade` |
+| `groups[]` | circuits, panels, areas — `{ id, name, color? }` (max 200; palette color assigned when omitted) | `data.groups`, `groupsEnabled: true` when any |
+| mark / line `group` | one of `groups[].id` | `group` on the mark or line (the app's own field — Summary, report, Copy to /Tooling, the payload all group by it) |
+| line `startDrop` / `endDrop` | feet of vertical at that end (a receptacle at 18" under a 10' ceiling: 9.5 with make-up) | `startDrop`/`endDrop` + `…Unit: 'ft'` — exactly what the Drop tool writes; counted in the totals |
+| palette `childCounts[]` | `{ name, qty, per: 'count'\|'run'\|'ft', ftInterval? }` | `childCounts` on the counter / line type (features/child-counts.js: per count × marks, per run × runs, per ft × ceil(feet/interval) per scaled run) |
+| page `multiplyZones[]` | `{ x1, y1, x2, y2, multiplier ≥ 1 }` base-frame rectangle | stamped on EVERY canvas of that page (the zone lookup is per canvas) |
+| page `scaleZones[]` | `{ x1, y1, x2, y2, scale: { pixelsPerUnit, unit } }` | same |
+
+Response adds `group_count`, `zone_count`, `child_rules`, `trade`. Scoring: `takeoff-eval.js`
+`tally` now returns `groups` (per-group counts and feet) and `children` (rule totals), and
+`diffTakeoffs` returns `children` and `groups` rows beside `counts` and `feet` — a takeoff
+that counts right but puts a device on the wrong circuit is caught in `groups`, and a
+forgotten drop shows in `feet`.

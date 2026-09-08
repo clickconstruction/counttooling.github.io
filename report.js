@@ -139,6 +139,17 @@
       : { byGroup: {} };
   }
 
+  // Conductors (features/conductors.js registers this on window.App after this
+  // file loads; resolved at call time, optional — S3). Shape:
+  // byGroup[gid] -> { wire: [{ name, feet, excludedPxRuns }], cable: [{ name,
+  // feet, source, parentId, parentName, excludedPxRuns }] }. Wire rolls up
+  // ACROSS line types per group; both are derived rows in feet, never px.
+  function getConductorTotals(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getConductorTotals === 'function')
+      ? window.App.getConductorTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : { byGroup: {} };
+  }
+
   function childRuleLabel(r) {
     return r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per);
   }
@@ -175,6 +186,7 @@
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
     const childTotals = getChildTotals(pageIndices, getAnn);
+    const conductorTotals = getConductorTotals(pageIndices, getAnn);
 
     let totalCounters = 0;
     let totalLineRuns = 0;
@@ -318,6 +330,15 @@
             (groupChildren.lineType?.[lt.id] || []).forEach(cr => { html += childRow(cr, r.pages); if (cr.excludedPxRuns) anyChildPxExcluded = true; });
           }
         });
+        // S3 derived rows: cable per line type / counter, then wire by gauge
+        // rolled up across the group's runs. Feet only — px runs are flagged.
+        const derived = conductorTotals.byGroup?.[gid];
+        if (derived && (derived.cable.length || derived.wire.length)) {
+          const derivedRow = (label, r) =>
+            '<tr><td style="padding-left:36px;color:#535353;">⚡ ' + escapeHtml(r.name) + ' <span style="color:#999;">(' + label + (r.excludedPxRuns ? ' *' : '') + ')</span></td><td>' + r.feet.toFixed(2) + ' ft</td><td></td></tr>';
+          derived.cable.forEach(r => { html += derivedRow(r.source === 'counter' ? 'cable · ' + escapeHtml(r.parentName) : 'cable', r); if (r.excludedPxRuns) anyChildPxExcluded = true; });
+          derived.wire.forEach(r => { html += derivedRow('wire', r); if (r.excludedPxRuns) anyChildPxExcluded = true; });
+        }
         html += '</table>';
         if (anyChildPxExcluded) {
           html += '<p class="report-group-totals">* per-ft child counts exclude runs on pages without a scale.</p>';
@@ -388,6 +409,7 @@
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const childTotals = getChildTotals(pageIndices, getAnn);
+    const conductorTotals = getConductorTotals(pageIndices, getAnn);
     const lines = [];
     // Same Untagged-last, alphabetical order as the HTML report and the email
     // summary (previously unsorted object-key order — the one surface that
@@ -441,6 +463,13 @@
           emitChildrenOf('lineType', lt.id);
         }
       });
+      // S3 derived rows: `ft of <cable>` / `ft of <gauge insul>` — the same
+      // prefix convention importers already read as feet.
+      const derived = conductorTotals.byGroup?.[gid];
+      if (derived) {
+        derived.cable.filter(r => r.feet > 0).forEach(r => lines.push([prefix + 'ft of ' + r.name, r.feet.toFixed(2), ''].join('\t')));
+        derived.wire.filter(r => r.feet > 0).forEach(r => lines.push([prefix + 'ft of ' + r.name, r.feet.toFixed(2), ''].join('\t')));
+      }
     });
     return lines.join('\n');
   }
@@ -468,6 +497,7 @@
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const childTotals = getChildTotals(pageIndices, getAnn);
+    const conductorTotals = getConductorTotals(pageIndices, getAnn);
     const round2 = (n) => Math.round(n * 100) / 100;
     const items = [];
     orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName).forEach(gid => {
@@ -491,6 +521,14 @@
         // per-ft children are computed on scaled runs only (T1-05), so they ride the ft row
         if (r.lengthPx > 0) items.push({ description: lt.name, quantity: Math.round(r.lengthPx), unit: 'px', pages: r.pagesPx.join(', '), group, children: r.lengthFt > 0 ? [] : children });
       });
+      // S3 derived rows: wire by gauge and cable, stated as facts —
+      // `derived: 'wire' | 'cable'` so the importer knows not to explode
+      // conductors for them, `type: 'wire'` for TakeoffTooling's book.
+      const derived = conductorTotals.byGroup?.[gid];
+      if (derived) {
+        derived.cable.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, children: [], type: 'wire', derived: 'cable' }));
+        derived.wire.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, children: [], type: 'wire', derived: 'wire' }));
+      }
     });
     return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '', ...(state.trade ? { trade: state.trade } : {}) }, items };
   }
@@ -576,6 +614,7 @@
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const childTotals = getChildTotals(pageIndices, getAnn);
+    const conductorTotals = getConductorTotals(pageIndices, getAnn);
     const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
     const lines = [];
     if (orderedGroupIds.length > 0) {
@@ -624,6 +663,12 @@
             childBullets('lineType', lt.id);
           }
         });
+        // S3 derived bullets: cable and wire, feet, from the group's runs
+        const derived = conductorTotals.byGroup?.[gid];
+        if (derived) {
+          derived.cable.forEach(r => lines.push('• ' + r.feet.toFixed(2) + ' ft of ' + r.name + ' (cable' + (r.source === 'counter' ? ', ' + r.parentName : '') + (r.excludedPxRuns ? ' — some runs have no scale' : '') + ')'));
+          derived.wire.forEach(r => lines.push('• ' + r.feet.toFixed(2) + ' ft of ' + r.name + ' (wire' + (r.excludedPxRuns ? ' — some runs have no scale' : '') + ')'));
+        }
         lines.push('');
       });
     }

@@ -534,3 +534,34 @@ test("no canvas style is assigned a CSS var() — canvas can't resolve them", ()
     assert.ok(!/(?:strokeStyle|fillStyle|shadowColor)\s*=\s*['"`]var\(/.test(src), file + " assigns a canvas style from 'var(' — use the literal hex of the CSS token instead");
   }
 });
+
+// Electrical, First-Class S3: conductor tick marks ride the line type.
+test('conductor ticks: one hash per conductor at the run midpoint, ground dashed; off per line type', () => {
+  Object.assign(globalThis, require('./conductor-model.js'));
+  const state = makeState({
+    lineTypes: [
+      { id: 'lt-emt', name: '3/4" EMT', raceway: { kind: 'EMT', size: '3/4"' }, conductors: [{ n: 3, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }] },
+      { id: 'lt-off', name: 'quiet', conductors: [{ n: 2, gauge: '#12', insul: 'THHN', role: 'hot' }], tickMarks: false },
+      { id: 'lt-plain', name: 'plain' },
+    ],
+  });
+  const draw = createCanvasDraw(makeDeps(state));
+  const run = (lineTypeId, extra) => {
+    const ctx = makeCtx();
+    draw.drawAnnotationsCore(ctx, Object.assign(emptyAnn(), { quickLines: [Object.assign({ x1: 0, y1: 0, x2: 100, y2: 0, color: '#8a4bb0', id: 'q', lineTypeId }, extra || {})] }), makeEnv());
+    return ctx;
+  };
+  const plain = run('lt-plain');
+  const emt = run('lt-emt');
+  // 4 conductors → 4 extra stroke() calls, one dashed for the ground
+  assert.strictEqual(callsOf(emt, 'stroke').length - callsOf(plain, 'stroke').length, 4);
+  assert.ok(callsOf(emt, 'setLineDash').some(c => Array.isArray(c[1]) && c[1].length === 2), 'ground tick is dashed');
+  // the ticks straddle the midpoint (x ≈ 50)
+  const xs = callsOf(emt, 'moveTo').slice(1).map(c => c[1]);
+  assert.ok(xs.every(x => x > 30 && x < 70), 'ticks near the midpoint: ' + JSON.stringify(xs));
+  // tickMarks: false silences a type that has conductors
+  assert.strictEqual(callsOf(run('lt-off'), 'stroke').length, callsOf(plain, 'stroke').length);
+  // a per-line override wins: 9 hots + 1 ground = 10 ticks
+  const over = run('lt-emt', { conductors: [{ n: 9, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }] });
+  assert.strictEqual(callsOf(over, 'stroke').length - callsOf(plain, 'stroke').length, 10);
+});

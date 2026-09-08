@@ -32,6 +32,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./format.js')),
       Object.keys(require('./icon-render.js')),
       Object.keys(require('./line-metrics.js')),
+      Object.keys(require('./conductor-model.js')),
       Object.keys(require('./canvas-draw.js')),
       Object.keys(require('./render-service.js')),
       Object.keys(require('./duct-model.js')),
@@ -43,6 +44,11 @@ const moduleGlobals = Object.fromEntries(
 // duct-run painter) and the duct feature files read its exports by bare name.
 const ductModelGlobals = Object.fromEntries(
   Object.keys(require('./duct-model.js')).map((k) => [k, 'readonly']),
+);
+// conductor-model.js: the pure raceway / conductor model (S3). canvas-draw.js
+// (tick marks) reads its exports by bare name; features read window.ConductorModel.
+const conductorModelGlobals = Object.fromEntries(
+  Object.keys(require('./conductor-model.js')).map((k) => [k, 'readonly']),
 );
 
 // idb.js / format.js only reach for the store-name / cap / TZ constants by bare
@@ -158,7 +164,7 @@ module.exports = [
   js.configs.recommended,
   // Definition modules: classic scripts whose top-level declarations exist
   // solely to be consumed cross-file by the index.html IIFE / report.js.
-  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'duct-model.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
+  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'duct-model.js', 'conductor-model.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
   // idb.js / format.js: classic <script>s loaded after constants.js, so they
   // reference constants (store names / caps, USER_ACTIVITY_TZ) by bare name.
   // Constants-only globals — NOT their own exports (no-redeclare).
@@ -172,7 +178,7 @@ module.exports = [
   // canvas-draw.js: the annotation draw core (createCanvasDraw(deps));
   // loaded after geometry.js + icons.js, reads both by bare name; everything
   // state-coupled arrives via deps.
-  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals }),
+  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...conductorModelGlobals }),
   // render-service.js: the raster seam (createRenderService(deps)) — browser
   // globals only (Worker, OffscreenCanvas, navigator); the rest arrives via deps.
   browserModule(['render-service.js']),

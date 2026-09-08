@@ -97,3 +97,26 @@ test('v1 data (no groups, no rules) still tallies with empty groups/children', (
   assert.deepStrictEqual(Object.keys(t.groups), ['']);
   assert.strictEqual(diffTakeoffs(d, d).summary.group_matches, 1);
 });
+
+// S3 conductors: wire by gauge / cable rows in tally and diff.
+test('tally + diff: conductors on line types yield wire rows; MC yields cable; cablePerCount counters yield cable', () => {
+  const { tally, diffTakeoffs } = require('./takeoff-eval.js');
+  const conductors = [{ n: 3, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }];
+  const mk = (feet, override) => ({
+    counters: [{ id: 'c1', name: 'Data drop', cablePerCount: { ft: 150, name: 'Cat6' } }],
+    lineTypes: [{ id: 'emt', name: '3/4" EMT', raceway: { kind: 'EMT', size: '3/4"' }, conductors }, { id: 'mc', name: 'MC', raceway: { kind: 'MC' }, conductors: [{ n: 2, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }] }],
+    pages: [{ scale: { pixelsPerUnit: 10, unit: 'ft' }, canvases: [{ annotations: {
+      counterMarkers: { c1: [{ x: 1, y: 1 }, { x: 2, y: 2 }] },
+      quickLines: [{ x1: 0, y1: 0, x2: feet * 10, y2: 0, lineTypeId: 'emt', ...(override ? { conductors: override } : {}) }, { x1: 0, y1: 0, x2: 200, y2: 0, lineTypeId: 'mc' }],
+    } }] }],
+  });
+  const t = tally(mk(100));
+  assert.strictEqual(t.wire['#12 thhn'].feet, 300);
+  assert.strictEqual(t.wire['#12 thhn green'].feet, 100);
+  assert.strictEqual(t.cable['mc 12/2 w/g'].feet, 20);
+  assert.strictEqual(t.cable['cat6'].feet, 300);
+  const d = diffTakeoffs(mk(100, [{ n: 9, gauge: '#12', insul: 'THHN', role: 'hot' }]), mk(100));
+  const w = d.wire.find((r) => r.name === '#12 THHN');
+  assert.deepStrictEqual([w.candidate_ft, w.reference_ft, w.verdict], [900, 300, 'over']);
+  assert.strictEqual(d.summary.cable_matches, 2);
+});

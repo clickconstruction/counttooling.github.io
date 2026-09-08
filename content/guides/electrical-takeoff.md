@@ -22,10 +22,11 @@ Make a counter per device type — receptacles, switches, fixtures by type, data
 
 ## Measure conduit and cable runs
 
-Trace runs with **Line** [[line]] and **Polyline** [[polyline]] against the page scale. Four details matter for electrical:
+Trace runs with **Line** [[line]] and **Polyline** [[polyline]] against the page scale. Five details matter for electrical:
 
 - **Vertical by default.** Set the **Ceiling height** once in Project Settings (a [Room Sizer](/guides/measuring-room-volumes/) room overrides it where you have drawn one). Then chain devices with the **Chain** tool: every tap places the device, draws the run back to the previous one, and writes the vertical — ceiling minus the device's mount height plus a foot of make-up — as an ordinary [drop](/guides/measuring-runs-lines-and-polylines/) on that run. Six receptacles under a 10' ceiling is 57 ft of conduit nobody typed; the footer tells you the drop each tap is about to add, and every drop stays editable per run.
 - **[Drops](/guides/measuring-runs-lines-and-polylines/)** by hand still add vertical footage anywhere else a run turns up a wall or rises between floors — the footage plan-view takeoffs systematically miss.
+- **Conductors on the run.** Open a line type's details and give it a **raceway** (3/4" EMT, 1" PVC, MC…) and its **conductors** in the shorthand you already write — `3 #12 THHN + 1 #12 G`. From then on every run of that type tallies its conduit feet as before *and* its wire by gauge, rolled up across the whole bid ("#12 THHN 472 ft, #12 THHN green 157 ft"); an MC or NM type tallies one cable row ("MC 12/2 w/G") instead, because the conductors are inside. One run carrying more (a shared homerun) gets its own list in Line Properties. The sheet draws one tick per conductor across the run, the way the E-drawing does — the neutral longer, the ground dashed. Low voltage: give a data-drop counter **cable per count** (150 ft of Cat6) and every placement adds it.
 - **Snap to 45°** (`J`) keeps traced runs on the horizontal, vertical, and 45° paths conduit actually takes.
 - **Line types per run type** — homeruns, branch, feeders, low-voltage — so the totals break down the way you price them.
 
@@ -38,6 +39,6 @@ A high-rise with ten identical floors: count one, wrap it in a [multiply zone](/
 - The **legend** [[legend]] keeps live totals on-sheet; [Show Report](/guides/reports-and-exports/) gives the full breakdown by type and page.
 - **Export PDFs** produces the marked-up deliverable with the report attached.
 - **Copy Summary** puts a clean text tally in an email; totals are always decimal feet regardless of each sheet's scale unit.
-- **Open in TakeoffTooling** hands the devices, runs and drops to the electrical pricing app, where each device explodes into its box, ring, plate and connectors and picks up labor from your book — CountTooling stops at what the drawing knows.
+- **Open in TakeoffTooling** hands the devices, runs, drops, wire and cable to the electrical pricing app, where each device explodes into its box, ring, plate and connectors and every row picks up labor and price from your book, waste included — CountTooling stops at what the drawing knows.
 
 New to the tool? Start with [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/) — the workflow is the same for every trade.

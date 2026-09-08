@@ -164,6 +164,7 @@
     // Child counts editor (features/child-counts.js) — defensive cross-feature
     // call at open time, per the registry boundary rule.
     App.renderChildCountsSection && App.renderChildCountsSection(kind, item);
+    App.renderConductorsSection && App.renderConductorsSection(kind, item);
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
@@ -304,6 +305,7 @@
     endDropUnitEl.value = line.endDropUnit || defaultDropUnit;
     swatchEl.style.background = color;
     editVerticesGroup.style.display = it.type === 'poly' ? '' : 'none';
+    App.renderLineConductorOverride && App.renderLineConductorOverride(line, lt);
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
       App.pushUndoSnapshotCurrentPage();

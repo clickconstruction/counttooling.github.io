@@ -1474,6 +1474,13 @@ body.hotkey-peek .hk-badge { display: block; }
 .child-count-remove { background: none; border: none; color: var(--text3); font-size: 1rem; font-weight: 600; cursor: pointer; padding: 0 2px; line-height: 1; }
 .child-count-remove:hover { color: var(--red); }
 .child-count-empty { color: var(--text3); font-size: 0.78rem; padding: 2px 0 4px; }
+.field-invalid { border-color: var(--red) !important; }
+/* S3 derived rows (wire by gauge, cable): the child-row idiom with a wire tag */
+.summary-derived-item { display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 22px; font-size: 0.78rem; color: var(--text2); }
+.summary-derived-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-derived-item .derived-tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
+.summary-derived-item .derived-total { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.summary-derived-heading { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding: 6px 8px 0 22px; }
 .child-count-add { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .child-count-add-spacer { flex: 1; }
 .child-count-add input, .child-count-add select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; color: var(--text); font-family: inherit; font-size: 0.8rem; }

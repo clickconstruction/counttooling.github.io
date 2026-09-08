@@ -88,7 +88,9 @@
     formatters; after constants.js), [icon-render.js](icon-render.js) (icon
     geometry/render-rule helpers; after icons.js),
     [line-metrics.js](line-metrics.js) (line length/scale math; after
-    geometry.js), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    geometry.js), [conductor-model.js](conductor-model.js) (the pure raceway /
+    conductor model — spec parsing, wire and cable rows, tick layout; after
+    line-metrics.js; exposed as `window.ConductorModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +
@@ -252,6 +254,11 @@
 - Do not remove or rename the `window.*` globals consumed by report.js.
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
+- Electrical fields ride existing objects, never new ones: a line type's `raceway`
+  / `conductors` / `tickMarks`, a line's own `conductors`, a counter's
+  `mountHeightIn` / `cablePerCount` (palettes serialize wholesale; a line's
+  override rides the annotation). Wire and cable are DERIVED at tally time
+  (features/conductors.js) — never marks, never stored totals.
 - Keep the app functional with Supabase disabled.
 - When adding a new persisted setting or per-project field, include it in
   export/import and save/load.

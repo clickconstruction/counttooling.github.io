@@ -159,6 +159,15 @@
       : { panels: [], crossCheck: [] };
   }
   const fmtFt = (n) => (typeof n === 'number' ? n.toFixed(2) + ' ft' : '—');
+  // Bid Check (features/bid-check.js registers this on window.App after this
+  // file loads; resolved at call time, optional — S5). Shape: { auto: [{ id,
+  // label, verdict, detail }], manual: [{ id, label, done }], open: { auto,
+  // manual, total } }.
+  function getBidCheck(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getBidCheck === 'function')
+      ? window.App.getBidCheck({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : { auto: [], manual: [], open: { auto: 0, manual: 0, total: 0 } };
+  }
 
   function childRuleLabel(r) {
     return r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per);
@@ -289,7 +298,7 @@
     html += '<h2 class="page-header">Summary</h2>';
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     const ductSchedule = getDuctSchedule(pageIndices, getAnn);
-    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule || getCircuitSchedule(pageIndices, getAnn).panels.length > 0;
+    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule || getCircuitSchedule(pageIndices, getAnn).panels.length > 0 || getBidCheck(pageIndices, getAnn).auto.length > 0;
     let anyPxSummaryRow = false;
     if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
@@ -375,6 +384,21 @@
         });
         html += '</table>';
       });
+    }
+    // S5 Bid Check: the auto verdicts with their work, then the manual ticks.
+    const bidCheck = getBidCheck(pageIndices, getAnn);
+    if (bidCheck.auto.length || bidCheck.manual.some(r => r.done)) {
+      html += '<h3 class="section-header">Bid Check</h3>';
+      html += '<p class="report-group-totals">' + escapeHtml(bidCheck.open.total + ' open item' + (bidCheck.open.total === 1 ? '' : 's') + ' · ' + bidCheck.open.auto + ' from the checks, ' + bidCheck.open.manual + ' unticked') + '</p>';
+      html += '<table class="report-table"><tr><th>Check</th><th>Verdict</th><th>Detail</th></tr>';
+      bidCheck.auto.forEach(r => {
+        const mark = r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : '—';
+        html += '<tr><td>' + escapeHtml(r.label) + ' <span style="color:#999;">(auto)</span></td><td>' + mark + '</td><td style="color:#535353;">' + escapeHtml(r.detail) + '</td></tr>';
+      });
+      bidCheck.manual.forEach(r => {
+        html += '<tr><td>' + escapeHtml(r.label) + '</td><td>' + (r.done ? '☑' : '☐') + '</td><td></td></tr>';
+      });
+      html += '</table>';
     }
     if (roomTotals.length > 0) {
       html += '<h3 class="section-header">Room Volumes</h3>';
@@ -563,7 +587,10 @@
     const schedule = getCircuitSchedule(pageIndices, getAnn);
     const circuits = schedule.panels.flatMap(p => p.circuits.map(c => ({ group: c.group, panel: c.panel || null, circuit: c.circuit || null, load_amps: c.loadAmps, devices: c.deviceCount, conduit_ft: c.conduitFt, homerun_ft: c.homerunFt, wire_ft: c.wireFt, farthest_ft: c.farthestFt })));
     const panels = schedule.crossCheck.map(c => ({ panel: c.panel, circuits_on_plan: c.onPlan, poles: c.scheduled, verdict: c.verdict }));
-    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '', ...(state.trade ? { trade: state.trade } : {}) }, items, ...(circuits.length ? { circuits, panels } : {}) };
+    // S5: the open Bid Check items ride as notes for the twin's report and TakeoffTooling's review lane.
+    const bc = getBidCheck(pageIndices, getAnn);
+    const checks = bc.auto.filter(r => r.verdict !== 'na').map(r => ({ id: r.id, verdict: r.verdict, detail: r.detail })).concat(bc.manual.map(r => ({ id: r.id, verdict: r.done ? 'done' : 'open', detail: r.label })));
+    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '', ...(state.trade ? { trade: state.trade } : {}) }, items, ...(circuits.length ? { circuits, panels } : {}), ...(bc.auto.length ? { checks } : {}) };
   }
 
   function summarizeToolingExport(text) {
@@ -716,6 +743,14 @@
           lines.push('• ' + (c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group + ': ' + c.deviceCount + ' device' + (c.deviceCount === 1 ? '' : 's') + ', ' + fmtFt(c.conduitFt) + ' conduit' + (c.homerunFt ? ', ' + fmtFt(c.homerunFt) + ' homerun' : '') + (c.wireFt ? ', ' + fmtFt(c.wireFt) + ' wire' : '') + (c.farthestFt != null ? ', farthest device ' + c.farthestFt.toFixed(0) + ' ft' : ''));
         });
       });
+      lines.push('');
+    }
+    const bidCheck = getBidCheck(pageIndices, getAnn);
+    if (bidCheck.auto.length) {
+      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
+      lines.push('--- Bid Check (' + bidCheck.open.total + ' open) ---');
+      bidCheck.auto.forEach(r => lines.push((r.verdict === 'ok' ? '✓ ' : r.verdict === 'warn' ? '⚠ ' : '— ') + r.label + ': ' + r.detail));
+      bidCheck.manual.forEach(r => lines.push((r.done ? '☑ ' : '☐ ') + r.label));
       lines.push('');
     }
     const roomTotals = getRoomTotals(pageIndices, getAnn);

@@ -1480,6 +1480,22 @@ body.hotkey-peek .hk-badge { display: block; }
 .summary-derived-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .summary-derived-item .derived-tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
 .summary-derived-item .derived-total { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bid-check-badge { margin-left: 4px; }
+.bid-check-badge.warn { background: rgba(232,197,71,0.18); color: var(--accent); }
+.bid-check-row { display: flex; gap: 8px; align-items: flex-start; padding: 5px 8px; font-size: 0.8rem; border-bottom: 1px dashed var(--border); }
+.bid-check-row:last-of-type { border-bottom: none; }
+.bid-check-mark { width: 16px; flex-shrink: 0; text-align: center; color: var(--text3); }
+.bid-check-row.ok .bid-check-mark { color: var(--green); }
+.bid-check-row.warn .bid-check-mark { color: var(--accent); }
+.bid-check-body { min-width: 0; flex: 1; }
+.bid-check-label { color: var(--text); }
+.bid-check-kind { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; }
+.bid-check-detail { color: var(--text2); font-size: 0.74rem; margin-top: 2px; line-height: 1.35; }
+.bid-check-box { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; border: 1px solid var(--border2, var(--border)); border-radius: 3px; background: var(--surface2); cursor: pointer; padding: 0; }
+.bid-check-box[aria-checked="true"] { background: var(--green); border-color: var(--green); }
+.bid-check-row.done .bid-check-label { color: var(--text3); text-decoration: line-through; }
+.bid-check-defaults { font-size: 0.74rem; color: var(--text2); padding: 8px 8px 4px; line-height: 1.6; }
+.bid-check-defaults input { width: 52px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font: inherit; padding: 1px 4px; }
 .panel-check-rows { margin: 4px 0 6px; }
 .panel-check-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 8px; font-size: 0.75rem; color: var(--text2); }
 .panel-check-row .meta { white-space: nowrap; font-variant-numeric: tabular-nums; }

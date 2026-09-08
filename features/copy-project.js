@@ -139,6 +139,7 @@
       App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
       App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
       App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+      App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
       App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
       if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
       if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;

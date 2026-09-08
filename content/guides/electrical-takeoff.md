@@ -34,6 +34,10 @@ Trace runs with **Line** [[line]] and **Polyline** [[polyline]] against the page
 
 A high-rise with ten identical floors: count one, wrap it in a [multiply zone](/guides/scale-zones-and-multiply-zones/) [[multiply-zone]] set to ×10, and every device count and conduit length inside multiplies in the totals — the marks stay clean, the math is automatic.
 
+## Bid Check before you send it
+
+The **Bid Check** section in the sidebar (collapsed until you open it; the badge counts what is open) is the app saying what it knows and asking what it cannot. With conductors on your line types and circuits on your groups, it computes the checks you used to do beside the app: **conduit fill** against the table limit, with the size that passes when one does not; **voltage drop** to the farthest device on each circuit, with the gauge that passes ("LP-1/7 · 112 ft · 12 A · #12 4.4% ⚠ → #10 2.8% ✓" is more copper on every circuit like it); **circuits on plan against the panel schedule**; and **every device on a circuit and reached by a run**. Below them are the judgment calls only you can make — addenda reviewed, fire alarm at rated corridors, lighting controls, temporary power — as ticks that persist with the bid. Export or hand off with items still open and a note tells you so; it never stops you.
+
 ## Deliver the numbers
 
 - The **legend** [[legend]] keeps live totals on-sheet; [Show Report](/guides/reports-and-exports/) gives the full breakdown by type and page.

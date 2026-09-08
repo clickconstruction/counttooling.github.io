@@ -92,7 +92,9 @@
     conductor model — spec parsing, wire and cable rows, tick layout; after
     line-metrics.js; exposed as `window.ConductorModel`), [circuit-model.js](circuit-model.js)
     (the pure circuit model — tag, run graph, farthest device, panel
-    cross-check; `window.CircuitModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    cross-check; `window.CircuitModel`), [bid-check-model.js](bid-check-model.js) (the
+    pure Bid Check rule table — NEC fill / voltage-drop arithmetic, the manual
+    rows; `window.BidCheckModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +
@@ -365,7 +367,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   toggle — features/drop-peek.js), `view:scale:<token>` (the viewer's temporary local
   page scales — the offline fallback when the shared `set-view-scale` write
   fails; a page-index → scale map, server scale wins on restore).
-- Per-project, in save/load: `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `maxZoom`, `groups`, `ductSettings` (the Duct
+- Per-project, in save/load: `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored), `maxZoom`, `groups`, `ductSettings` (the Duct
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the

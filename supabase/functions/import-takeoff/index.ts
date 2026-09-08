@@ -48,6 +48,7 @@ type TakeoffJson = {
   trade?: 'plumbing' | 'electrical' | 'hvac'
   ceilingHeightFt?: number   // v2 (S2): the project's ceiling — with a counter mountHeightIn, the app's Chain tool writes the vertical
   makeUpFt?: number          // v2 (S2): make-up added to every default vertical (the app defaults to 1)
+  bidCheck?: { manual?: Record<string, boolean>; loadAmps?: number; volts?: number }   // v2 (S5): manual ticks + the voltage-drop defaults
   groups?: Array<{ id: string; name: string; color?: string; panel?: string; circuit?: string; loadAmps?: number }>   // S4: panel + circuit make the group a circuit
   counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string }; panelName?: string; poles?: number }>
   lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[]; raceway?: Raceway; conductors?: Conductor[]; tickMarks?: boolean; homerun?: boolean }>
@@ -300,6 +301,20 @@ Deno.serve(async (req) => {
       if ('error' in r) return r
       return { ok: r.ok.length ? r.ok : null }
     }
+    // S5 (v2, additive): Bid Check manual ticks + the voltage-drop defaults.
+    let bidCheck: { manual: Record<string, boolean>; loadAmps?: number; volts?: number } | null = null
+    if (t.bidCheck != null) {
+      if (!v2) return bad('bidCheck', 'is a version-2 field — send version: 2')
+      if (typeof t.bidCheck !== 'object') return bad('bidCheck', 'must be an object')
+      const manual: Record<string, boolean> = {}
+      for (const [k, v] of Object.entries(t.bidCheck.manual ?? {})) {
+        if (!/^[a-z0-9-]{1,40}$/.test(k)) return bad('bidCheck.manual', `bad row id ${k}`)
+        if (v === true) manual[k] = true
+      }
+      bidCheck = { manual }
+      if (t.bidCheck.loadAmps != null) { const n = Number(t.bidCheck.loadAmps); if (!num(n) || n <= 0 || n > 6000) return bad('bidCheck.loadAmps', 'must be amps between 0 and 6000'); bidCheck.loadAmps = n }
+      if (t.bidCheck.volts != null) { const n = Number(t.bidCheck.volts); if (!num(n) || n <= 0 || n > 1000) return bad('bidCheck.volts', 'must be volts between 0 and 1000'); bidCheck.volts = n }
+    }
     const childRulesByCounter = new Map<string, ChildRule[]>()
     for (const c of t.counters) {
       if (c.childCounts == null) continue
@@ -486,6 +501,7 @@ Deno.serve(async (req) => {
       ...(trade ? { trade } : {}),
       ...(ceilingHeightFt != null ? { ceilingHeightFt } : {}),
       ...(makeUpFt != null ? { makeUpFt } : {}),
+      ...(bidCheck ? { bidCheck } : {}),
       pages,
       activeCanvasIdByPage: {},
       numberKeyBindings: {},

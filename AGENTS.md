@@ -94,7 +94,8 @@
     (the pure circuit model — tag, run graph, farthest device, panel
     cross-check; `window.CircuitModel`), [bid-check-model.js](bid-check-model.js) (the
     pure Bid Check rule table — NEC fill / voltage-drop arithmetic, the manual
-    rows; `window.BidCheckModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    rows; `window.BidCheckModel`), [tag-model.js](tag-model.js) (the pure text-layer
+    reading model — tag tokens, nearest tag, schedule rows; `window.TagModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +
@@ -260,7 +261,7 @@
   be added there and to save/load + export/import.
 - Electrical fields ride existing objects, never new ones: a line type's `raceway`
   / `conductors` / `tickMarks` / `homerun`, a line's own `conductors` / `homerun`, a
-  counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a group's
+  counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a counter's `tag`, a group's
   `panel` / `circuit` / `loadAmps` (palettes serialize wholesale; a line's
   override rides the annotation). Wire and cable are DERIVED at tally time
   (features/conductors.js) — never marks, never stored totals.
@@ -456,6 +457,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
 **Single source: `HOTKEYS` in constants.js** — the keydown handler executes it
 and `npm run build:macros` renders the Macros table from it (Keyboard Map
 derives from that table). Add/change a hotkey THERE, never in the table markup.
+
+Tool enum note: `TOOL.SCHEDULE` (S6, the schedule-box rect tool) has no hotkey — it
+is armed from the Counter modal's Create tab.
 
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P

@@ -166,6 +166,7 @@
     App.renderChildCountsSection && App.renderChildCountsSection(kind, item);
     App.renderConductorsSection && App.renderConductorsSection(kind, item);
     App.renderPanelSection && App.renderPanelSection(kind, item);   // S4 panel / homerun
+    App.renderTagField && App.renderTagField(kind, item);   // S6 fixture tag
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();

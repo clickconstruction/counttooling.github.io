@@ -248,6 +248,7 @@
       return;
     }
     await doCopy(getAnnFn, pageIndices, mode);
+    App.showBidCheckAdvisory && App.showBidCheckAdvisory(surface);   // S5: advisory, never a block
   }
 
   const toolingScaleCheckCancel = document.getElementById('toolingScaleCheckCancel');

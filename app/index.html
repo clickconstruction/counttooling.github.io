@@ -42,6 +42,7 @@
   <script src="/line-metrics.js"></script>
   <script src="/conductor-model.js"></script>
   <script src="/circuit-model.js"></script>
+  <script src="/bid-check-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/canvas-draw.js"></script>
   <script src="/render-service.js"></script>
@@ -378,6 +379,16 @@
             <button id="ductScheduleBtn" class="sidebar-btn-inline" title="Duct Schedule — pounds for the bid">Schedule</button>
           </div>
           <div id="ductList"></div>
+        </div>
+        <!-- Electrical, First-Class S5 (features/bid-check.js): the app says
+             what it knows (auto rows with their work shown) and asks what it
+             cannot (manual ticks, per project). Collapsed by default; the
+             header badge counts open items. -->
+        <div class="sidebar-section" id="bidCheckSection" style="display:none;">
+          <div class="sidebar-section-header-row">
+            <h3 id="bidCheckSectionTitle" class="section-settings" title="Click to expand or collapse">Bid Check <span class="badge bid-check-badge" id="bidCheckBadge">0</span> <span class="collapse-icon" id="bidCheckCollapseIcon">▶</span></h3>
+          </div>
+          <div id="bidCheckList" style="display:none;"></div>
         </div>
         <div class="sidebar-section" id="roomsSection" style="display:none;">
           <div class="sidebar-section-header-row">
@@ -2926,6 +2937,11 @@
          detour, the next scale apply offers a one-tap resume — "Copy again" is
          a real button (bound in features/output.js) that re-runs the stashed
          copy inside the click gesture. -->
+    <!-- S5: the Bid Check advisory after Copy / Open in TakeoffTooling /
+         Export PDFs — never a block, the estimator decides. -->
+    <div class="toast-card toast-interactive" id="bidCheckAdvisoryModal">
+      <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span id="bidCheckAdvisoryText">Bid Check has open items.</span><button type="button" id="bidCheckAdvisoryReview" class="toast-link">Review</button></p>
+    </div>
     <div class="toast-card toast-interactive" id="copyAgainModal">
       <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span>Scale set —</span><button type="button" id="copyAgainLink" class="toast-link">Copy again</button><span>to finish the copy.</span></p>
     </div>
@@ -3155,6 +3171,7 @@
   <script src="/features/child-counts.js"></script>
   <script src="/features/conductors.js"></script>
   <script src="/features/circuits.js"></script>
+  <script src="/features/bid-check.js"></script>
   <script src="/features/twin-badge.js"></script>
   <script src="/features/auth-magic-link.js"></script>
   <script src="/report.js"></script>

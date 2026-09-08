@@ -142,9 +142,11 @@
     App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
     App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
     App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+    App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
       App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
       App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
       App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+    App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
       if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
       if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
       if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
@@ -235,6 +237,7 @@
     App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
     App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
     App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+    App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
     if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
     if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
     if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };

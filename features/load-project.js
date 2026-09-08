@@ -459,6 +459,7 @@
               state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
               state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;   // S2 vertical-by-default
               state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+              state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
               if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
@@ -510,6 +511,7 @@
         state.trade = typeof canvasData.trade === 'string' && canvasData.trade ? canvasData.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
         state.ceilingHeightFt = typeof canvasData.ceilingHeightFt === 'number' && canvasData.ceilingHeightFt > 0 ? canvasData.ceilingHeightFt : null;   // S2 vertical-by-default
         state.makeUpFt = typeof canvasData.makeUpFt === 'number' && canvasData.makeUpFt >= 0 ? canvasData.makeUpFt : null;
+        state.bidCheck = (canvasData.bidCheck && typeof canvasData.bidCheck === 'object') ? { ...canvasData.bidCheck, manual: { ...(canvasData.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
         if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
         if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
         if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);

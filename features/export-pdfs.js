@@ -271,6 +271,7 @@
         const baseName = App.sanitizeForFilename(state.currentProjectName);
         doc.save('takeoff-specific-pages_' + baseName + '.pdf');
         App.logUserEvent('export_pdf', state.currentProjectId, { source: 'specific-pages' });
+        App.showBidCheckAdvisory && App.showBidCheckAdvisory('export-pdfs');   // S5: advisory, never a block
       }
     } catch (err) {
       console.error(err);

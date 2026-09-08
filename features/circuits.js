@@ -61,7 +61,7 @@
 
     // per group accumulators
     const acc = {};
-    groups.forEach((g) => { acc[g.id] = { devices: {}, devicePts: [], runs: [], homerunEnds: [], conduitFt: 0, homerunFt: 0, pxRuns: 0 }; });
+    groups.forEach((g) => { acc[g.id] = { devices: {}, devicePts: [], runs: [], homerunEnds: [], conduitFt: 0, homerunFt: 0, pxRuns: 0, hotGauges: new Set() }; });
     // panel marks anywhere on the plan, by panel name
     const panelPts = {};
     const off = (pt, pi) => ({ x: pt.x + pi * PAGE_OFFSET, y: pt.y });
@@ -93,6 +93,9 @@
         const pa = off(pts[0], pi), pb = off(pts[pts.length - 1], pi);
         const hr = isHomerun(item, lt);
         if (hr) { a.homerunFt += split.feet; a.homerunEnds.push(pb, pa); } else a.conduitFt += split.feet;
+        // the circuit's conductor gauges (S5 voltage drop takes the smallest hot)
+        const conductors = window.ConductorModel ? window.ConductorModel.conductorsForLine(item, lt) : null;
+        (conductors || []).forEach((c) => { if (c.role !== 'ground') a.hotGauges.add(c.gauge); });
         a.runs.push({ a: pa, b: pb, feet: split.feet, id: item.id });
       };
       (ann.quickLines || []).forEach((q) => addRun(q, false));
@@ -115,6 +118,7 @@
         devices, deviceCount: round2(devices.reduce((s, d) => s + d.count, 0)),
         conduitFt: round2(a.conduitFt), homerunFt: round2(a.homerunFt), wireFt: round2(wire.reduce((s, r) => s + r.feet, 0)),
         farthestFt: far.feet, farthestFrom: far.from, devicesOffRuns: far.devicesOffRuns, pxRuns: a.pxRuns,
+        hotGauges: [...a.hotGauges],
       });
     });
     const numeric = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });

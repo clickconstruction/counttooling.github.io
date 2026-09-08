@@ -266,7 +266,7 @@
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
-    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
+    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
@@ -759,6 +759,7 @@
     state.trade = null;
     state.ceilingHeightFt = null;
     state.makeUpFt = null;
+    state.bidCheck = { manual: {} };
     state.rooms = [];
     state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 };
     state.maxZoom = null;
@@ -2395,6 +2396,7 @@
     // Duct sidebar section (features/duct-sidebar.js, DUCT unit D4); same
     // deferred seam — the section stays hidden until the first run exists.
     if (App.renderDuctList) App.renderDuctList();
+    if (App.renderBidCheck) App.renderBidCheck();   // S5 Bid Check section
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
     if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
     const legendBtnEl = document.getElementById('legendBtn');
@@ -4192,7 +4194,7 @@
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -7444,7 +7446,8 @@
   App.parseRealWorldLength = parseRealWorldLength;
   App.parseMountHeightIn = parseMountHeightIn;
   App.ConductorModel = (typeof window !== 'undefined' && window.ConductorModel) || null;
-  App.CircuitModel = (typeof window !== 'undefined' && window.CircuitModel) || null;   // S4 pure circuit model (circuit-model.js)   // S3 pure raceway / conductor model (conductor-model.js)
+  App.CircuitModel = (typeof window !== 'undefined' && window.CircuitModel) || null;
+  App.BidCheckModel = (typeof window !== 'undefined' && window.BidCheckModel) || null;   // S5 pure rule table (bid-check-model.js)   // S4 pure circuit model (circuit-model.js)   // S3 pure raceway / conductor model (conductor-model.js)
   App.formatMountHeightIn = formatMountHeightIn;
   App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;

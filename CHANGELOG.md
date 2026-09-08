@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(electrical): S5 — Bid Check: the app says what it knows and asks what it cannot (2026-09-08)
+
+Slice 5 of Electrical, First-Class — the panel the duct plan specified, built electrical-first
+(duct's rows drop into the same table later).
+
+- **A Bid Check section in the sidebar** (`features/bid-check.js`), collapsed by default with the
+  open-item count on its header. **Auto rows** are rule functions over the app's own tallies and
+  show their work: conduit fill against Chapter 9 Table 1 ("1/2" EMT · 10 #12 THHN · 43.8% ⚠ →
+  3/4" EMT 25% ✓"), voltage drop to the farthest device (2·K·I·L/CM with the circuit's smallest
+  hot gauge, its load or the project default, the gauge that passes named), circuits on plan vs
+  the panel schedule, and every device on a circuit and reached by a run. **Manual rows** are the
+  judgment calls (scope vs drawings, addenda, scale verified; for electrical: fire alarm at rated
+  corridors, lighting controls, equipment connections, temporary power, pull points), ticked per
+  project. Every project sees the trade-neutral rows; electrical projects see the rest.
+- **Pure rule table** `bid-check-model.js` (NEC tables + `conduitFill` / `voltageDrop` /
+  `bidCheckAutoRows` / `bidCheckOpenCount`), node-tested against the report's appendix figures.
+- **Persisted**: `state.bidCheck` (`manual` ticks + `loadAmps` / `volts` defaults, editable inline)
+  rides every save/load/export/import path; telemetry `bid_check_row_state`.
+- **Advisory at the gate**: after Copy to /Tooling, Open in TakeoffTooling and Export PDFs, an
+  interactive toast names the open items with a Review link — never a block. The report gains a
+  Bid Check section, the email a block, the payload `checks`. Agent door (v2): `bidCheck`.
+- Circuit schedule rows now carry `hotGauges` (S4) so the voltage-drop row can pick the gauge.
+
 ## feat(electrical): S4 — circuits: a group with a panel tag, the homerun arrow, the circuit schedule (2026-09-08)
 
 Slice 4 of Electrical, First-Class. A **group gains one optional tag** — panel and circuit

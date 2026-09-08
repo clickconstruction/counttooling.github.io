@@ -125,4 +125,21 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.evaluate(() => window.App.startTutorial())).toBe(false);
     expect(await stepId(page)).toBe(null);
   });
+
+  test('the empty-canvas link works even when the stylesheet is a deploy behind (mixed shell)', async ({ page }) => {
+    // After a deploy a returning tab renders network-first HTML against the previous
+    // version's cache-first CSS until the new service worker takes over. The link must
+    // not depend on its stylesheet rule to receive the click: serve the current CSS with
+    // the `.canvas-empty-hint-tour a` rule stripped and click it for real.
+    const fs = require('fs');
+    const css = fs.readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8').replace(/\.canvas-empty-hint-tour a \{[^}]*\}/, '');
+    expect(css.includes('.canvas-empty-hint-tour a')).toBe(false);
+    await page.route('**/styles.css', (route) => route.fulfill({ body: css, contentType: 'text/css' }));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => { try { localStorage.removeItem('clickcount-tour-done'); } catch (_) {} });
+    const box = await page.locator('#canvasEmptyHintTour').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await waitForStep(page, 'welcome');
+  });
 });

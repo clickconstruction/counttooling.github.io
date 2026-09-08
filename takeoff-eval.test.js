@@ -60,3 +60,40 @@ test('ids differing across projects still join by name', () => {
   const d = diffTakeoffs(cand, ref);
   assert.equal(d.counts[0].verdict, 'match');
 });
+
+test('v2: groups, drops and child-count rules tally and diff', () => {
+  const data = (marksGroup, drop) => ({
+    counters: [{ id: 'c1', name: 'Duplex Receptacle', childCounts: [{ name: '4" Square Box', qty: 1, per: 'count' }] }],
+    lineTypes: [{ id: 'lt1', name: '1/2" EMT', childCounts: [{ name: 'Coupling', qty: 1, per: 'ft', ftInterval: 10 }, { name: 'Connector', qty: 2, per: 'run' }] }],
+    groups: [{ id: 'g1', name: 'LP-1 / 7' }, { id: 'g2', name: 'LP-1 / 9' }],
+    pages: [{ scale: { pixelsPerUnit: 12, unit: 'ft' }, canvases: [{ annotations: {
+      counterMarkers: { c1: [{ x: 0, y: 0, group: 'g1' }, { x: 1, y: 1, group: marksGroup }] },
+      quickLines: [{ x1: 0, y1: 0, x2: 120, y2: 0, lineTypeId: 'lt1', group: 'g1', startDrop: drop, endDrop: 0 }],
+      polylines: [],
+    } }] }],
+  });
+  const ref = tally(data('g1', 9.5));
+  assert.strictEqual(ref.counts['duplex receptacle'].count, 2);
+  assert.strictEqual(Math.round(ref.feet['1/2" emt'].feet * 100) / 100, 19.5, '10 ft traced + 9.5 ft drop');
+  assert.strictEqual(ref.groups['lp-1 / 7'].counts['duplex receptacle'].count, 2);
+  assert.deepStrictEqual(Object.fromEntries(Object.entries(ref.children).map(([k, v]) => [k, v.total])), { '4" square box': 2, coupling: 2, connector: 2 }, 'ceil(19.5/10)=2 couplings, 2 connectors per run, box per count');
+  // candidate wired one receptacle to the wrong circuit and forgot the drop
+  const diff = diffTakeoffs(data('g2', 0), data('g1', 9.5));
+  assert.strictEqual(diff.counts[0].verdict, 'match', 'total count still right');
+  const g7 = diff.groups.find((g) => g.name === 'LP-1 / 7');
+  const g9 = diff.groups.find((g) => g.name === 'LP-1 / 9');
+  assert.strictEqual(g7.counts[0].verdict, 'under');
+  assert.strictEqual(g9.verdict, 'extra');
+  assert.strictEqual(diff.feet[0].verdict, 'under', 'the missing drop shows in feet');
+  assert.strictEqual(diff.children.find((c) => c.name === 'Coupling').verdict, 'under', '10 ft → 1 coupling vs 19.5 ft → 2');
+  assert.strictEqual(diff.summary.group_rows, 2);
+});
+
+test('v1 data (no groups, no rules) still tallies with empty groups/children', () => {
+  const d = { counters: [{ id: 'c', name: 'WC' }], lineTypes: [], pages: [{ canvases: [{ annotations: { counterMarkers: { c: [{ x: 0, y: 0 }] }, quickLines: [], polylines: [] } }] }] };
+  const t = tally(d);
+  assert.strictEqual(t.counts.wc.count, 1);
+  assert.deepStrictEqual(t.children, {});
+  assert.deepStrictEqual(Object.keys(t.groups), ['']);
+  assert.strictEqual(diffTakeoffs(d, d).summary.group_matches, 1);
+});

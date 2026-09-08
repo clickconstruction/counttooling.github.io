@@ -456,6 +456,7 @@
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
               state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
               state.groupsEnabled = !!d.groupsEnabled;
+              state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null (agent door v2 stamps it)
               if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
               if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
               if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);

@@ -492,7 +492,7 @@
         if (r.lengthPx > 0) items.push({ description: lt.name, quantity: Math.round(r.lengthPx), unit: 'px', pages: r.pagesPx.join(', '), group, children: r.lengthFt > 0 ? [] : children });
       });
     });
-    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '' }, items };
+    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '', ...(state.trade ? { trade: state.trade } : {}) }, items };
   }
 
   function summarizeToolingExport(text) {

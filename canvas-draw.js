@@ -311,6 +311,39 @@ function createCanvasDraw(deps) {
       ctx.stroke();
     };
 
+    // S3 tick marks: one hash per conductor across the run at `midPdf`,
+    // slanted 60° off the tangent in the drafting convention — hots plain,
+    // the neutral half again as long, the ground dashed. Drawn here once, so
+    // the live overlay and every export carry them; per line type (`tickMarks`
+    // defaults on when conductors are set), never an env flag.
+    const drawConductorTicks = (line, lt, midPdf, tangentPdf, color) => {
+      if (typeof tickLayout !== 'function' || typeof conductorsForLine !== 'function') return;
+      if (!lt || lt.tickMarks === false) return;
+      const conductors = conductorsForLine(line, lt);
+      if (!conductors) return;
+      const ticks = tickLayout(conductors);
+      if (!ticks.length) return;
+      const len = Math.hypot(tangentPdf.x, tangentPdf.y) || 1;
+      const ux = tangentPdf.x / len, uy = tangentPdf.y / len;
+      // 60° slant: rotate the perpendicular 30° toward the run direction
+      const cos30 = Math.cos(Math.PI / 6), sin30 = Math.sin(Math.PI / 6);
+      const px = -uy * cos30 + ux * sin30, py = ux * cos30 + uy * sin30;
+      const base = (lts.parallelEndsSize ?? 10) * 1.1;
+      const gap = base * 0.5;
+      const start = -((ticks.length - 1) * gap) / 2;
+      ctx.save();
+      ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, lw * 0.75); ctx.globalAlpha = lo;
+      ticks.forEach((t, i) => {
+        const cx = midPdf.x + ux * (start + i * gap), cy = midPdf.y + uy * (start + i * gap);
+        const half = (base * t.len) / 2;
+        const p1 = tc({ x: cx - px * half, y: cy - py * half });
+        const p2 = tc({ x: cx + px * half, y: cy + py * half });
+        ctx.setLineDash(t.dashed ? [3, 2] : []);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      ctx.restore();
+    };
     (ann.quickLines || []).forEach(q => {
       const aPdf = { x: q.x1, y: q.y1 }, bPdf = { x: q.x2, y: q.y2 };
       const a = tc(aPdf), b = tc(bPdf);
@@ -331,6 +364,7 @@ function createCanvasDraw(deps) {
         const midPdf = isCurved && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
         drawGroupDot(midPdf, q.group);
       }
+      drawConductorTicks(q, lt, { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 }, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y }, q.color || '#4a9eff');
       const drawDrop = (p) => drawDropMarker(ctx, p, env.dropSize, q.color || '#4a9eff', env.dropStyle);
       if ((q.startDrop || 0) > 0) drawDrop(a);
       if ((q.endDrop || 0) > 0) drawDrop(b);
@@ -385,6 +419,14 @@ function createCanvasDraw(deps) {
       if (state.showGroupColors && (poly.group || null)) {
         const idx = Math.floor(pts.length / 2);
         drawGroupDot(pts[idx] || pts[0], poly.group);
+      }
+      {
+        // ticks on the longest segment — the one with room for them
+        let best = 0, bestLen = -1;
+        for (let i = 0; i < pts.length - 1; i++) { const l = ptDist(pts[i], pts[i + 1]); if (l > bestLen) { bestLen = l; best = i; } }
+        const pa = pts[best], pb = pts[best + 1];
+        const plt = (state.lineTypes || []).find(l => l.id === poly.lineTypeId);
+        drawConductorTicks(poly, plt, { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 }, { x: pb.x - pa.x, y: pb.y - pa.y }, poly.color || '#4a9eff');
       }
       const drawDrop = (p) => drawDropMarker(ctx, p, env.dropSize, poly.color || '#4a9eff', env.dropStyle);
       if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[0]));

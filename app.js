@@ -7443,6 +7443,7 @@
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.parseMountHeightIn = parseMountHeightIn;
+  App.ConductorModel = (typeof window !== 'undefined' && window.ConductorModel) || null;   // S3 pure raceway / conductor model (conductor-model.js)
   App.formatMountHeightIn = formatMountHeightIn;
   App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;

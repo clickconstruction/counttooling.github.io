@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(electrical): S3 — conductors on the run: wire by gauge, cable, tick marks (2026-09-08)
+
+Slice 3 of Electrical, First-Class. A run stops being a plumbing line with an electrical
+name: a line type carries a **raceway** (kind + size) and a **conductor list**, and every
+surface that tallies lines now produces three kinds of row instead of one.
+
+- **Model** (`conductor-model.js`, pure, node-tested): `parseConductorSpec` reads the trade's
+  shorthand (`3 #12 THHN + 1 #12 G`) into `[{ n, gauge, insul, role }]`; `wireRowsFor` rolls
+  hots + neutrals of a gauge into one row and keeps the ground its own ("#12 THHN green");
+  `cableNameFor` names MC / AC / NM runs ("MC 12/2 w/G") — cable raceways emit ONE cable row
+  and NO wire rows, because the conductors are inside; `tickLayout` orders the hash marks.
+- **Engine** (`features/conductors.js`): `getConductorTotals` walks the runs once — wire =
+  `split.feet × n` per gauge rolled up ACROSS line types per group; cable per MC type; a
+  counter's `cablePerCount { ft, name }` adds count × ft (150 ft of Cat6 per data drop);
+  px runs excluded and flagged, the T1-05 rule. A single run may carry its own `conductors`
+  (one shared homerun, three circuits' worth) — `conductorsForLine` prefers it.
+- **Surfaces**: the Summary section (⚡ derived rows), the sidebar Summary
+  (`.summary-derived-item`), Copy Summary (`ft of #12 THHN` — importers already read `ft of`),
+  the TakeoffTooling payload (`derived: 'wire' | 'cable'`, `type: 'wire'` so its book prices
+  them and its explode never adds conductors twice), the email text, and `takeoff-eval`
+  (`wire` / `cable` buckets in `tally`, rows + summary counts in `diffTakeoffs`).
+- **On the sheet**: `drawConductorTicks` in the draw core — one 60°-slanted hash per
+  conductor at the run's midpoint (polylines: the longest segment), the neutral half again
+  as long, the ground dashed; per line type (`tickMarks` defaults on with conductors), drawn
+  once so the live overlay and every export carry them. Pixel baselines untouched (the
+  fixture has no conductors); `canvas-draw.test.js` counts the strokes.
+- **Editors**: the details modal's Raceway & conductors block (kind / size, the shorthand
+  field with a parsed hint and a refusal on junk, the ticks toggle) and Cable per count on
+  counters — shown for electrical projects or any item already carrying the fields; Line
+  Properties gains the per-run override with the inherited list as its placeholder.
+- **Agent door (v2, additive)**: `lineTypes[].raceway` / `conductors` / `tickMarks`, line
+  `conductors`, `counters[].cablePerCount`, all validated. Contract: TAKEOFF_IMPORT.md.
+- Deliberately out (decision ⚑3 revisited): no waste factor here — CountTooling emits true
+  conductor feet; waste is a pricing assumption and lives in TakeoffTooling's book.
+
 ## feat(electrical): S1 + S2 — the Trade switch, the electrical symbol set, mount heights and vertical by default (2026-09-08)
 
 The first two slices of Electrical, First-Class (the design brief "Electrical, What

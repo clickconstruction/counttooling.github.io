@@ -27,14 +27,18 @@ type Pt = { x: number; y: number }
 // / per-N-ft rules that tally boxes, couplings and straps), pages may carry multiply
 // and scale zones, and the takeoff may name its trade. v1 payloads are unchanged.
 type ChildRule = { name: string; qty: number; per: 'count' | 'run' | 'ft'; ftInterval?: number }
+// S3 conductors: a line type's raceway + conductor list (wire tallies by gauge from every
+// run; MC / AC / NM tally as cable), a line's own list, a counter's cable per placement.
+type Conductor = { n: number; gauge: string; insul: string; role: 'hot' | 'neutral' | 'ground' }
+type Raceway = { kind: string; size?: string }
 type TakeoffPage = {
   index: number
   label?: string
   scale?: { pixelsPerUnit: number; unit: string } | null
   rotation?: number
   counterMarkers?: Record<string, Array<Pt & { group?: string }>>
-  quickLines?: Array<{ x1: number; y1: number; x2: number; y2: number; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number }>
-  polylines?: Array<{ points: Pt[]; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number }>
+  quickLines?: Array<{ x1: number; y1: number; x2: number; y2: number; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number; conductors?: Conductor[] }>
+  polylines?: Array<{ points: Pt[]; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number; conductors?: Conductor[] }>
   notes?: Array<{ x: number; y: number; text: string; detail?: string }>
   multiplyZones?: Array<{ x1: number; y1: number; x2: number; y2: number; multiplier: number }>
   scaleZones?: Array<{ x1: number; y1: number; x2: number; y2: number; scale: { pixelsPerUnit: number; unit: string } }>
@@ -45,8 +49,8 @@ type TakeoffJson = {
   ceilingHeightFt?: number   // v2 (S2): the project's ceiling — with a counter mountHeightIn, the app's Chain tool writes the vertical
   makeUpFt?: number          // v2 (S2): make-up added to every default vertical (the app defaults to 1)
   groups?: Array<{ id: string; name: string; color?: string }>
-  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number }>
-  lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[] }>
+  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string } }>
+  lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[]; raceway?: Raceway; conductors?: Conductor[]; tickMarks?: boolean }>
   pages: TakeoffPage[]
 }
 const TRADES = ['plumbing', 'electrical', 'hvac']
@@ -70,6 +74,32 @@ function validChildRules(rules: unknown, where: string): { ok: ChildRule[] } | {
     out.push(rule)
   }
   return { ok: out }
+}
+
+const RACEWAY_KINDS = ['EMT', 'IMC', 'RMC', 'PVC', 'ENT', 'FMC', 'LFMC', 'MC', 'AC', 'NM', 'Tray', 'Open']
+function validConductors(list: unknown, where: string): { ok: Conductor[] } | { error: Response } {
+  if (list == null) return { ok: [] }
+  if (!Array.isArray(list) || list.length > 40) return { error: bad(where, 'conductors must be an array of up to 40 entries') }
+  const out: Conductor[] = []
+  for (const c of list as Record<string, unknown>[]) {
+    const n = Number(c?.n)
+    const gauge = String(c?.gauge ?? '').trim().slice(0, 16)
+    const insul = String(c?.insul ?? 'THHN').trim().toUpperCase().slice(0, 12) || 'THHN'
+    const role = String(c?.role ?? 'hot')
+    if (!num(n) || n <= 0 || n > 200 || !Number.isInteger(n)) return { error: bad(where, 'each conductor needs a positive integer n') }
+    if (!/^(#\d+|\d+\/0|\d+ kcmil)$/.test(gauge)) return { error: bad(where, "conductor gauge must read like '#12', '1/0' or '250 kcmil'") }
+    if (!['hot', 'neutral', 'ground'].includes(role)) return { error: bad(where, "conductor role must be 'hot', 'neutral' or 'ground'") }
+    out.push({ n, gauge, insul, role: role as Conductor['role'] })
+  }
+  return { ok: out }
+}
+function validRaceway(raw: unknown, where: string): { ok: Raceway | null } | { error: Response } {
+  if (raw == null) return { ok: null }
+  const r = raw as Record<string, unknown>
+  const kind = String(r?.kind ?? '').trim()
+  if (!RACEWAY_KINDS.includes(kind)) return { error: bad(where, `raceway.kind must be one of ${RACEWAY_KINDS.join(', ')}`) }
+  const size = r?.size == null ? '' : String(r.size).trim().slice(0, 12)
+  return { ok: size ? { kind, size } : { kind } }
 }
 
 function bad(field: string, why: string): Response {
@@ -208,6 +238,41 @@ Deno.serve(async (req) => {
       if (!num(n) || n < 0 || n > 50) return bad('makeUpFt', 'must be feet between 0 and 50')
       makeUpFt = Math.round(n * 100) / 100
     }
+    // S3 (v2, additive): conductors on line types / lines, raceway, tick marks, cable per count.
+    const racewayByLineType = new Map<string, Raceway>()
+    const conductorsByLineType = new Map<string, Conductor[]>()
+    const ticksOffByLineType = new Set<string>()
+    for (const lt of t.lineTypes) {
+      if (lt.raceway != null) {
+        if (!v2) return bad('lineTypes.raceway', 'is a version-2 field — send version: 2')
+        const r = validRaceway(lt.raceway, `lineTypes[${lt.id}].raceway`)
+        if ('error' in r) return r.error
+        if (r.ok) racewayByLineType.set(lt.id, r.ok)
+      }
+      if (lt.conductors != null) {
+        if (!v2) return bad('lineTypes.conductors', 'is a version-2 field — send version: 2')
+        const r = validConductors(lt.conductors, `lineTypes[${lt.id}].conductors`)
+        if ('error' in r) return r.error
+        if (r.ok.length) conductorsByLineType.set(lt.id, r.ok)
+      }
+      if (lt.tickMarks === false) ticksOffByLineType.add(lt.id)
+    }
+    const cableByCounter = new Map<string, { ft: number; name: string }>()
+    for (const c of t.counters) {
+      if (c.cablePerCount == null) continue
+      if (!v2) return bad('counters.cablePerCount', 'is a version-2 field — send version: 2')
+      const ft = Number(c.cablePerCount.ft)
+      if (!num(ft) || ft <= 0 || ft > 10000) return bad(`counters[${c.id}].cablePerCount`, 'needs ft between 0 and 10000')
+      cableByCounter.set(c.id, { ft: Math.round(ft * 100) / 100, name: String(c.cablePerCount.name ?? 'Cable').trim().slice(0, 60) || 'Cable' })
+    }
+    const lineConductors = new WeakMap<object, Conductor[]>()   // validated per-line overrides, by source object
+    const lineConductorsOf = (raw: unknown, where: string): { ok: Conductor[] | null } | { error: Response } => {
+      if (raw == null) return { ok: null }
+      if (!v2) return { error: bad(where, 'conductors is a version-2 field — send version: 2') }
+      const r = validConductors(raw, where)
+      if ('error' in r) return r
+      return { ok: r.ok.length ? r.ok : null }
+    }
     const childRulesByCounter = new Map<string, ChildRule[]>()
     for (const c of t.counters) {
       if (c.childCounts == null) continue
@@ -256,6 +321,9 @@ Deno.serve(async (req) => {
           const d = dropOf(q[k], `pages[${p.index}].quickLines.${k}`)
           if ('error' in d) return d.error
         }
+        const lc = lineConductorsOf(q.conductors, `pages[${p.index}].quickLines.conductors`)
+        if ('error' in lc) return lc.error
+        if (lc.ok) lineConductors.set(q as object, lc.ok)
         lineCount++
       }
       for (const pl of p.polylines ?? []) {
@@ -268,6 +336,9 @@ Deno.serve(async (req) => {
           const d = dropOf(pl[k], `pages[${p.index}].polylines.${k}`)
           if ('error' in d) return d.error
         }
+        const lc = lineConductorsOf(pl.conductors, `pages[${p.index}].polylines.conductors`)
+        if ('error' in lc) return lc.error
+        if (lc.ok) lineConductors.set(pl as object, lc.ok)
         lineCount++
       }
       if (p.multiplyZones != null || p.scaleZones != null) {
@@ -339,12 +410,12 @@ Deno.serve(async (req) => {
         ...(l.startDrop != null && l.startDrop > 0 ? { startDrop: l.startDrop, startDropUnit: 'ft' } : {}),
         ...(l.endDrop != null && l.endDrop > 0 ? { endDrop: l.endDrop, endDropUnit: 'ft' } : {}),
       })
+      const conductorsOf = (l: object) => (lineConductors.has(l) ? { conductors: lineConductors.get(l) } : {})
       for (const q of p?.quickLines ?? []) {
-        const { group, startDrop: _s, endDrop: _e, ...rest } = q
-        annFor(canvasOf.get(`l:${q.lineTypeId}`)!).quickLines.push({ ...rest, id: `q_${uid()}`, color: null, group: group ?? null, ...drops(q) })
+        annFor(canvasOf.get(`l:${q.lineTypeId}`)!).quickLines.push({ x1: q.x1, y1: q.y1, x2: q.x2, y2: q.y2, lineTypeId: q.lineTypeId, id: `q_${uid()}`, color: null, group: q.group ?? null, ...drops(q), ...conductorsOf(q) })
       }
       for (const pl of p?.polylines ?? []) {
-        annFor(canvasOf.get(`l:${pl.lineTypeId}`)!).polylines.push({ points: pl.points, lineTypeId: pl.lineTypeId, id: `pl_${uid()}`, color: null, group: pl.group ?? null, ...drops(pl) })
+        annFor(canvasOf.get(`l:${pl.lineTypeId}`)!).polylines.push({ points: pl.points, lineTypeId: pl.lineTypeId, id: `pl_${uid()}`, color: null, group: pl.group ?? null, ...drops(pl), ...conductorsOf(pl) })
       }
       for (const [cid, marks] of Object.entries(p?.counterMarkers ?? {})) {
         const ann = annFor(canvasOf.get(`c:${cid}`)!)
@@ -380,8 +451,8 @@ Deno.serve(async (req) => {
     })
     const data = {
       version: 1,
-      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}) })),
-      lineTypes: t.lineTypes.map((lt) => ({ id: lt.id, name: lt.name, color: lt.color ?? '#4a9eff', curveStyle: 'straight', ...(childRulesByLineType.has(lt.id) ? { childCounts: childRulesByLineType.get(lt.id) } : {}) })),
+      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}), ...(cableByCounter.has(c.id) ? { cablePerCount: cableByCounter.get(c.id) } : {}) })),
+      lineTypes: t.lineTypes.map((lt) => ({ id: lt.id, name: lt.name, color: lt.color ?? '#4a9eff', curveStyle: 'straight', ...(childRulesByLineType.has(lt.id) ? { childCounts: childRulesByLineType.get(lt.id) } : {}), ...(racewayByLineType.has(lt.id) ? { raceway: racewayByLineType.get(lt.id) } : {}), ...(conductorsByLineType.has(lt.id) ? { conductors: conductorsByLineType.get(lt.id) } : {}), ...(ticksOffByLineType.has(lt.id) ? { tickMarks: false } : {}) })),
       iconNames: {}, iconOrder: null, customIconPaths: [],
       groups: groupsOut, groupsEnabled: groupsOut.length > 0, rooms: [],
       ...(trade ? { trade } : {}),

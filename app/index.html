@@ -40,6 +40,7 @@
   <script src="/icon-render.js"></script>
   <script src="/geometry.js"></script>
   <script src="/line-metrics.js"></script>
+  <script src="/conductor-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/canvas-draw.js"></script>
   <script src="/render-service.js"></script>
@@ -1798,6 +1799,12 @@
           <button type="button" id="linePropertiesClearEndDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear end drop">Clear</button>
         </div>
       </div>
+      <!-- S3: this run's own conductor list (overrides the line type's). -->
+      <div class="form-group" id="linePropertiesConductorsGroup" style="display:none;">
+        <label>Conductors <span class="form-sublabel">(this run only)</span></label>
+        <input type="text" id="linePropertiesConductors" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div id="linePropertiesConductorsHint" class="child-count-empty"></div>
+      </div>
       <div class="form-group" id="linePropertiesEditVerticesGroup" style="display:none;">
         <button type="button" id="linePropertiesEditVertices" class="settings-menu-btn">Edit vertices</button>
       </div>
@@ -1871,6 +1878,29 @@
       <div class="form-group">
         <label>On pages</label>
         <div id="counterLineTypeDetailsPages" class="counter-line-type-pages-list"></div>
+      </div>
+      <!-- Electrical, First-Class S3 (features/conductors.js): raceway +
+           conductors on a line type (shown for electrical projects, or when the
+           item already carries them); cable per count on a counter. -->
+      <div class="form-group" id="racewayGroup" style="display:none;">
+        <label>Raceway &amp; conductors</label>
+        <div class="child-count-add">
+          <select id="racewayKind" aria-label="Raceway kind" style="flex:1;min-width:120px;"></select>
+          <select id="racewaySize" aria-label="Raceway size" style="width:auto;"></select>
+        </div>
+        <div class="child-count-add">
+          <input type="text" id="conductorsSpec" placeholder="3 #12 THHN + 1 #12 G" aria-label="Conductors" autocomplete="off" style="flex:1;min-width:160px;font-family:inherit;">
+          <button type="button" class="toggle-switch" id="lineTypeTickMarksBtn" aria-pressed="true" title="Draw one tick per conductor across the run (neutral longer, ground dashed)"><span class="toggle-switch-knob"></span></button>
+          <span style="font-size:0.75rem;color:var(--text3);">ticks</span>
+        </div>
+        <div id="conductorsSpecHint" class="child-count-empty"></div>
+      </div>
+      <div class="form-group" id="cablePerCountGroup" style="display:none;">
+        <label>Cable per count <span class="form-sublabel">(low voltage: each placement adds this much cable)</span></label>
+        <div class="child-count-add">
+          <input type="number" id="cablePerCountFt" min="0" step="5" placeholder="150" aria-label="Feet per count" style="width:90px;"> <span style="font-size:0.8rem;color:var(--text2);">ft of</span>
+          <input type="text" id="cablePerCountName" placeholder="Cat6" aria-label="Cable name" autocomplete="off" style="flex:1;min-width:100px;">
+        </div>
       </div>
       <!-- Child counts: rows built by features/child-counts.js on modal open -->
       <div class="form-group" id="childCountsGroup">
@@ -3086,6 +3116,7 @@
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>
   <script src="/features/child-counts.js"></script>
+  <script src="/features/conductors.js"></script>
   <script src="/features/twin-badge.js"></script>
   <script src="/features/auth-magic-link.js"></script>
   <script src="/report.js"></script>

@@ -76,7 +76,7 @@
         const existing = it.item_id != null ? ltById.get(it.item_id) : null;
         if (existing) Object.assign(existing, { name: it.name, color: it.color || existing.color || '#4a9eff', curveStyle: it.curve_style || existing.curveStyle || 'straight' });
         else {
-          const added = { id: it.item_id || ('pi-' + nameKey(it.name)), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight' };
+          const added = { id: it.item_id || ('pi-' + nameKey(it.name)), name: it.name, color: it.color || '#4a9eff', curveStyle: it.curve_style || 'straight', ...(it.raceway ? { raceway: it.raceway } : {}), ...(Array.isArray(it.conductors) && it.conductors.length ? { conductors: it.conductors } : {}) };
           lineTypes.push(added);
           ltById.set(added.id, added);
         }

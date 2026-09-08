@@ -50,9 +50,27 @@
    * Group key '' is the untagged bucket. Multiply zones are NOT applied (marks are counted as
    * placed), matching the reviewer's "physically placed" view; child totals follow the same rule.
    */
+  // Conductors (v2 / S3): a line type's `conductors` [{n,gauge,insul,role}] and
+  // `raceway.kind`; a line's own `conductors` override. Wire = feet × n per gauge
+  // (hots+neutrals one row, ground its own), cable = one row per MC/AC/NM type,
+  // counter `cablePerCount` = marks × ft. Scaled runs only, like the app.
+  const CABLE_KINDS = new Set(['MC', 'AC', 'NM']);
+  const wireName = (c) => c.gauge + ' ' + (c.insul || 'THHN') + (c.role === 'ground' ? ' green' : '');
+  function cableName(kind, list) {
+    const current = (list || []).filter((c) => c.role !== 'ground');
+    const gauge = String((current[0] || (list || [])[0] || {}).gauge || '').replace(/^#/, '');
+    const n = current.reduce((s, c) => s + (Number(c.n) || 0), 0);
+    return String(kind).toUpperCase() + (list && list.length ? ' ' + gauge + '/' + n + ((list || []).some((c) => c.role === 'ground') ? ' w/G' : '') : '');
+  }
+
   function tally(data) {
     const counterName = new Map((data?.counters ?? []).map((c) => [c.id, c.name]));
     const lineName = new Map((data?.lineTypes ?? []).map((lt) => [lt.id, lt.name]));
+    const lineTypeById = new Map((data?.lineTypes ?? []).map((lt) => [lt.id, lt]));
+    const counterById = new Map((data?.counters ?? []).map((c) => [c.id, c]));
+    const wire = {};
+    const cable = {};
+    const addDerived = (bucket, name, feet) => { const k = keyOf(name); bucket[k] = bucket[k] || { name, feet: 0 }; bucket[k].feet += feet; };
     const groupName = new Map((data?.groups ?? []).map((g) => [g.id, g.name]));
     const counts = {};
     const feet = {};
@@ -97,8 +115,21 @@
           else { feet[k].px += px; g.feet[k].px += px; if (dropFt) { feet[k].feet += dropFt; g.feet[k].feet += dropFt; } (runsByLineType[ltId] = runsByLineType[ltId] || []).push(0); }
         };
         const dropsOf = (l) => (Number(l?.startDrop) || 0) + (Number(l?.endDrop) || 0);
-        for (const q of ann.quickLines ?? []) addLen(q.lineTypeId, dist(q.x1, q.y1, q.x2, q.y2), q.group, dropsOf(q));
-        for (const pl of ann.polylines ?? []) addLen(pl.lineTypeId, polyLen(pl.points ?? []), pl.group, dropsOf(pl));
+        const addConductors = (l, px) => {
+          if (!ppu) return;
+          const lt = lineTypeById.get(l.lineTypeId);
+          const list = Array.isArray(l.conductors) && l.conductors.length ? l.conductors : (lt && Array.isArray(lt.conductors) && lt.conductors.length ? lt.conductors : null);
+          const kind = lt && lt.raceway && lt.raceway.kind;
+          const feet = px / ppu + dropsOf(l);
+          if (kind && CABLE_KINDS.has(String(kind).toUpperCase())) { addDerived(cable, cableName(kind, list || []), feet); return; }
+          for (const c of list || []) addDerived(wire, wireName(c), feet * (Number(c.n) || 0));
+        };
+        for (const q of ann.quickLines ?? []) { const px = dist(q.x1, q.y1, q.x2, q.y2); addLen(q.lineTypeId, px, q.group, dropsOf(q)); addConductors(q, px); }
+        for (const pl of ann.polylines ?? []) { const px = polyLen(pl.points ?? []); addLen(pl.lineTypeId, px, pl.group, dropsOf(pl)); addConductors(pl, px); }
+        for (const [cid, marks] of Object.entries(ann.counterMarkers ?? {})) {
+          const c = counterById.get(cid);
+          if (c && c.cablePerCount && c.cablePerCount.ft > 0) addDerived(cable, c.cablePerCount.name || 'Cable', (Array.isArray(marks) ? marks.length : 0) * c.cablePerCount.ft);
+        }
       }
     }
     // children: palette rules over the tallied marks/runs (same-named rules merge, as the export does)
@@ -106,7 +137,7 @@
     const addChild = (name, total) => { const k = keyOf(name); children[k] = children[k] || { name, total: 0 }; children[k].total += total; };
     for (const c of data?.counters ?? []) for (const ch of childTotalsFor(c.childCounts, marksByCounter[c.id] || 0, [])) addChild(ch.name, ch.total);
     for (const lt of data?.lineTypes ?? []) for (const ch of childTotalsFor(lt.childCounts, 0, runsByLineType[lt.id] || [])) addChild(ch.name, ch.total);
-    return { counts, feet, groups, children };
+    return { counts, feet, groups, children, wire, cable };
   }
 
   /** Diff candidate vs reference. Every key from either side appears; deltas are
@@ -172,12 +203,26 @@
         verdict: rows.every((r) => r.verdict === 'match') && Math.abs(fa - fb) <= feetTolerance ? 'match' : !gb ? 'extra' : !ga ? 'missing' : 'differs',
       });
     }
+    // wire + cable (S3 conductors): feet rows with the same ± tolerance as line feet
+    const derivedRows = (ka, kb) => {
+      const rows = [];
+      for (const k of new Set([...Object.keys(ka), ...Object.keys(kb)])) {
+        const fa = ka[k]?.feet ?? 0, fb = kb[k]?.feet ?? 0;
+        rows.push({ name: (ka[k] ?? kb[k]).name, candidate_ft: Math.round(fa * 100) / 100, reference_ft: Math.round(fb * 100) / 100, delta_ft: Math.round((fa - fb) * 100) / 100,
+          verdict: Math.abs(fa - fb) <= feetTolerance ? 'match' : fb === 0 ? 'extra' : fa === 0 ? 'missing' : fa > fb ? 'over' : 'under' });
+      }
+      return rows.sort((x, y) => x.name.localeCompare(y.name));
+    };
+    const wireRows = derivedRows(a.wire || {}, b.wire || {});
+    const cableRows = derivedRows(a.cable || {}, b.cable || {});
     const countMatches = countRows.filter((r) => r.verdict === 'match').length;
     return {
       counts: countRows.sort((x, y) => x.name.localeCompare(y.name)),
       feet: feetRows.sort((x, y) => x.name.localeCompare(y.name)),
       children: childRows.sort((x, y) => x.name.localeCompare(y.name)),
       groups: groupRows.sort((x, y) => x.name.localeCompare(y.name)),
+      wire: wireRows,
+      cable: cableRows,
       summary: {
         count_rows: countRows.length,
         count_matches: countMatches,
@@ -188,6 +233,10 @@
         child_matches: childRows.filter((r) => r.verdict === 'match').length,
         group_rows: groupRows.length,
         group_matches: groupRows.filter((r) => r.verdict === 'match').length,
+        wire_rows: wireRows.length,
+        wire_matches: wireRows.filter((r) => r.verdict === 'match').length,
+        cable_rows: cableRows.length,
+        cable_matches: cableRows.filter((r) => r.verdict === 'match').length,
       },
     };
   }

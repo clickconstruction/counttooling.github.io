@@ -133,6 +133,11 @@ payload carrying any v2 field is rejected by name — send `version: 2`.
 | page `multiplyZones[]` | `{ x1, y1, x2, y2, multiplier ≥ 1 }` base-frame rectangle | stamped on EVERY canvas of that page (the zone lookup is per canvas) |
 | page `scaleZones[]` | `{ x1, y1, x2, y2, scale: { pixelsPerUnit, unit } }` | same |
 | palette `mountHeightIn` (counters) | inches above finished floor, 0–480 (18 receptacle, 44 GFCI, 48 switch, 78 panel); omit for ceiling devices | `mountHeightIn` on the counter — the Quick creator's and details modal's field; the Chain tool reads it for the default vertical (S2) |
+| palette `raceway` (line types) | `{ kind, size? }` — kind one of EMT, IMC, RMC, PVC, ENT, FMC, LFMC, MC, AC, NM, Tray, Open; size like `3/4"` | `raceway` on the line type. MC / AC / NM are CABLE: the run tallies one cable row ("MC 12/2 w/G") and no wire rows |
+| palette `conductors` (line types) | `[{ n, gauge, insul?, role? }]` — gauge `#12`, `1/0` or `250 kcmil`; insul defaults THHN; role `hot` (default) \| `neutral` \| `ground` | `conductors` on the line type: every scaled run yields wire rows per gauge (feet × n; hots + neutrals one row, ground its own "… green" row), rolled up across line types per group — Summary, report, Copy to /Tooling, the payload (`derived: 'wire'`, `type: 'wire'`) and `takeoff-eval` `wire` |
+| line `conductors` | same shape, on one quick line / polyline | overrides the line type for that run (a shared homerun carrying three circuits) |
+| palette `tickMarks` (line types) | `false` to silence the on-sheet hash marks a conductor list draws | `tickMarks: false` |
+| palette `cablePerCount` (counters) | `{ ft, name? }` — 150 ft of Cat6 per data drop | `cablePerCount` on the counter: every placement adds `ft` to a cable row named `name` |
 | `ceilingHeightFt`, `makeUpFt` | the project's ceiling (feet, > 0) and the make-up the app adds to every default vertical (feet, ≥ 0; the app assumes 1 when absent) | `state.ceilingHeightFt` / `state.makeUpFt` (Project Settings). Stored only — the door never derives drops from them; send `startDrop` / `endDrop` yourself |
 
 Response adds `group_count`, `zone_count`, `child_rules`, `trade`. Scoring: `takeoff-eval.js`

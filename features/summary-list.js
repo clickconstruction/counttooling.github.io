@@ -31,11 +31,30 @@
     });
   }
 
+  // S3 (features/conductors.js): the derived wire / cable rows for a group,
+  // after its line types — cable first (per parent), then wire by gauge.
+  function appendDerivedRows(el, gid, conductorTotals) {
+    const d = conductorTotals?.byGroup?.[gid];
+    if (!d || (!d.cable.length && !d.wire.length)) return;
+    const esc = App.escapeHtml;
+    const row = (tag, r) => {
+      const div = document.createElement('div');
+      div.className = 'summary-derived-item';
+      div.innerHTML = '<span class="name">' + esc(r.name) + '</span><span class="derived-tag">' + tag + (r.excludedPxRuns ? ' *' : '') + '</span><span class="derived-total">' + App.formatFeetPx(r.feet, 0) + '</span>';
+      if (r.excludedPxRuns) div.title = r.excludedPxRuns + ' run(s) without a scale are excluded';
+      else if (r.source === 'counter') div.title = 'per count on ' + r.parentName;
+      el.appendChild(div);
+    };
+    d.cable.forEach((r) => row('cable', r));
+    d.wire.forEach((r) => row('wire', r));
+  }
+
   function renderSummary() {
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
     const esc = App.escapeHtml;
     const childTotals = App.getChildCountTotals ? App.getChildCountTotals() : null;
+    const conductorTotals = App.getConductorTotals ? App.getConductorTotals() : null;
     const groups = App.state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
@@ -116,6 +135,7 @@
           appendChildRows(el, 'lineType', lt.id, gid, childTotals);
         }
       });
+      appendDerivedRows(el, gid, conductorTotals);
     };
     if (hasAnyGroups && orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
@@ -175,6 +195,7 @@
           appendChildRows(el, 'lineType', lt.id, 'null', childTotals);
         }
       });
+      appendDerivedRows(el, 'null', conductorTotals);
     }
   }
 

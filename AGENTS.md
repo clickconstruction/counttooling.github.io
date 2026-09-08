@@ -329,7 +329,7 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 `counterSearch`, `lineTypeSearch`, `linesSearch`, `linesTypeExpanded`,
 `paletteInsightsMinProjects` (the Palette Insights min-projects threshold),
 `loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
-Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`),
+Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`; since S1 also `profiles[trade]` — the electrical / HVAC Quick profiles, each `sizes`/`types`/`materials`/`iconByType`/`mountByType`/`defaultColor` — and `defaultTrade`, the device's default for new projects; the whole blob rides `user_airboard.plumbing_modifiers`),
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `chainPanelPos` (the dragged Chain palette position, per device;
@@ -355,7 +355,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   toggle — features/drop-peek.js), `view:scale:<token>` (the viewer's temporary local
   page scales — the offline fallback when the shared `set-view-scale` write
   fails; a page-index → scale map, server scale wins on restore).
-- Per-project, in save/load: `maxZoom`, `groups`, `ductSettings` (the Duct
+- Per-project, in save/load: `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `maxZoom`, `groups`, `ductSettings` (the Duct
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the

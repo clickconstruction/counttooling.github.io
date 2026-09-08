@@ -104,6 +104,24 @@
         App.updateUI();
       };
     }
+    // S1: the per-counter mount height (inches AFF; blank = at the ceiling /
+    // no default vertical). Blur commits; blank or unparseable deletes it.
+    const mountGroup = document.getElementById('counterLineTypeDetailsMountGroup');
+    const mountEl = document.getElementById('counterLineTypeDetailsMount');
+    if (mountGroup) mountGroup.style.display = kind === 'counter' ? '' : 'none';
+    if (mountEl && kind === 'counter') {
+      mountEl.value = typeof item.mountHeightIn === 'number' ? App.formatMountHeightIn(item.mountHeightIn) : '';
+      mountEl.onblur = () => {
+        const next = App.parseMountHeightIn(mountEl.value);
+        if ((next == null && item.mountHeightIn == null) || next === item.mountHeightIn) { mountEl.value = next == null ? '' : App.formatMountHeightIn(next); return; }
+        App.pushUndoSnapshotCurrentPage();
+        if (next == null) delete item.mountHeightIn;
+        else item.mountHeightIn = next;
+        mountEl.value = next == null ? '' : App.formatMountHeightIn(next);
+        App.markProjectDirty();
+        App.updateUI();
+      };
+    }
     if (kind === 'counter' && iconGroup) {
       const grid = document.getElementById('counterLineTypeDetailsIconGrid');
       const customGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
@@ -114,7 +132,7 @@
       const allIcons = [...icons, ...effectiveCustom];
       const currentIcon = item.icon && allIcons.some(ic => ic.value === item.icon) ? item.icon : (icons[0]?.value || '');
       grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic) => ic.value === currentIcon);
-      customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom, currentIcon);
+      customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom, currentIcon, App.getQuickTrade ? App.getQuickTrade() : undefined);
       const applyIcon = (path) => {
         App.pushUndoSnapshotCurrentPage();
         item.icon = path;

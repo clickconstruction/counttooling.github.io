@@ -79,7 +79,7 @@
       const customGrid = document.getElementById('counterIconGridCustom');
       const detailsCustomGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
       const effectiveCustom = App.getEffectiveCustomIcons();
-      const customCells = App.customIconCellsHtml(effectiveCustom);
+      const customCells = App.customIconCellsHtml(effectiveCustom, undefined, App.getQuickTrade ? App.getQuickTrade() : undefined);
       if (customGrid) {
         refreshCustomGrid(customGrid, '#counterIconGrid', customCells, (c) => {
           const path = c.dataset.path;
@@ -105,7 +105,7 @@
       if (detailsCustomGrid) {
         const item = App.getCounterLineTypeDetailsItem ? App.getCounterLineTypeDetailsItem() : null;
         const currentIcon = item?.icon || '';
-        refreshCustomGrid(detailsCustomGrid, '#counterLineTypeDetailsIconGrid', App.customIconCellsHtml(effectiveCustom, currentIcon), (c) => {
+        refreshCustomGrid(detailsCustomGrid, '#counterLineTypeDetailsIconGrid', App.customIconCellsHtml(effectiveCustom, currentIcon, App.getQuickTrade ? App.getQuickTrade() : undefined), (c) => {
           if (item) {
             App.pushUndoSnapshot();
             item.icon = c.dataset.path;

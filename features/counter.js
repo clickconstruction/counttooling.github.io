@@ -117,12 +117,14 @@
     // value from the previous create must never silently ride a new counter.
     const cfmEl = document.getElementById('counterCfm');
     if (cfmEl) cfmEl.value = '';
+    const mountEl = document.getElementById('counterMountHeight');
+    if (mountEl) mountEl.value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
     grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === prefillIdx);
     const effectiveCustom = App.getEffectiveCustomIcons();
-    customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom);
+    customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom, undefined, App.getQuickTrade ? App.getQuickTrade() : undefined);
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
@@ -265,6 +267,10 @@
     // non-air counter's shape is unchanged (and old exports stay byte-alike).
     const cfmVal = parseFloat(document.getElementById('counterCfm')?.value);
     if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
+    // S1: optional mount height (inches AFF) — same set-only rule; the Chain
+    // tool reads it for the default vertical (S2).
+    const mountIn = App.parseMountHeightIn(document.getElementById('counterMountHeight')?.value);
+    if (mountIn != null) newCounter.mountHeightIn = mountIn;
     state.counters.push(newCounter);
     App.pushRecentColor(color);
     state.activeCounterType = newCounter.id;

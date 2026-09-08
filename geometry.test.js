@@ -517,3 +517,29 @@ test('sheetMatchingCorrection: within-tolerance match and no-match', () => {
   assert.strictEqual(none, null);
   assert.strictEqual(g.sheetMatchingCorrection(w, h, 0), null); // degenerate
 });
+
+// Electrical, First-Class S1: mount heights are written in inches AFF.
+test('parseMountHeightIn: bare numbers are inches; feet-inches forms convert; junk is null', () => {
+  assert.strictEqual(g.parseMountHeightIn('18'), 18);
+  assert.strictEqual(g.parseMountHeightIn('44"'), 44);
+  assert.strictEqual(g.parseMountHeightIn('44 in'), 44);
+  assert.strictEqual(g.parseMountHeightIn("4'-0\""), 48);
+  assert.strictEqual(g.parseMountHeightIn("3' 6"), 42);
+  assert.strictEqual(g.parseMountHeightIn("3'-6\""), 42);   // the app's own feet-inches notation
+  assert.strictEqual(g.parseRealWorldLength("9'-6\"", 'ft'), 9.5);
+  assert.strictEqual(g.parseRealWorldLength("9'-6\"", 'in'), 114);
+  assert.strictEqual(g.parseRealWorldLength('3-6', 'ft'), 3.5);
+  assert.strictEqual(g.parseMountHeightIn('6 ft'), 72);
+  assert.strictEqual(g.parseMountHeightIn('18.125'), 18.25);   // quarter-inch grid
+  assert.strictEqual(g.parseMountHeightIn(''), null);
+  assert.strictEqual(g.parseMountHeightIn('   '), null);
+  assert.strictEqual(g.parseMountHeightIn('ceiling'), null);
+  assert.strictEqual(g.parseMountHeightIn('-3'), null);
+});
+test('formatMountHeightIn: always inches with the mark; blanks for non-numbers', () => {
+  assert.strictEqual(g.formatMountHeightIn(18), '18"');
+  assert.strictEqual(g.formatMountHeightIn(78), '78"');
+  assert.strictEqual(g.formatMountHeightIn(0), '0"');
+  assert.strictEqual(g.formatMountHeightIn(null), '');
+  assert.strictEqual(g.formatMountHeightIn(-1), '');
+});

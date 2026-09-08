@@ -166,3 +166,15 @@ test('scaleForLineType: falls back to first scaled page, then null', () => {
   assert.strictEqual(lm.scaleForLineType([0, 1], pages).pixelsPerUnit, 3);
   assert.strictEqual(lm.scaleForLineType([0, 1], [{}, {}]), null);
 });
+
+// Electrical, First-Class S2: the default vertical the Chain tool writes.
+test('defaultVerticalFeet: ceiling − mount + make-up; off when either input is missing', () => {
+  assert.strictEqual(lm.defaultVerticalFeet(10, 18, 1), 9.5);      // receptacle under a 10' ceiling
+  assert.strictEqual(lm.defaultVerticalFeet(10, 48, 1), 7);        // switch
+  assert.strictEqual(lm.defaultVerticalFeet(10, 78, 0), 3.5);      // panel top, no make-up
+  assert.strictEqual(lm.defaultVerticalFeet(9, 0, 1), 10);         // floor box: the whole wall + make-up
+  assert.strictEqual(lm.defaultVerticalFeet(8, 120, 1), 1);        // above the ceiling line: never negative, still the make-up
+  assert.strictEqual(lm.defaultVerticalFeet(null, 18, 1), null);   // no ceiling = feature off
+  assert.strictEqual(lm.defaultVerticalFeet(10, null, 1), null);   // ceiling device = no default drop
+  assert.strictEqual(lm.defaultVerticalFeet(10, 18, undefined), 8.5); // make-up absent = 0 here (the caller supplies the project default)
+});

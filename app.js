@@ -78,14 +78,92 @@
         types: (saved.types && saved.types.length) ? saved.types : PLUMBING_DEFAULTS.types,
         materials: (saved.materials && saved.materials.length) ? saved.materials : PLUMBING_DEFAULTS.materials,
         iconByType: (saved.iconByType && typeof saved.iconByType === 'object') ? saved.iconByType : {},
-        defaultColor: saved.defaultColor || COLORS[2]
+        defaultColor: saved.defaultColor || COLORS[2],
+        // S1: the other trades' Quick profiles + the device's default trade
+        // ride this same blob (→ user_airboard.plumbing_modifiers, no migration).
+        profiles: (saved.profiles && typeof saved.profiles === 'object') ? saved.profiles : {},
+        defaultTrade: TRADES.includes(saved.defaultTrade) ? saved.defaultTrade : null
       };
     } catch (_) {
-      return { sizes: [...PLUMBING_DEFAULTS.sizes], types: [...PLUMBING_DEFAULTS.types], materials: [...PLUMBING_DEFAULTS.materials], iconByType: {}, defaultColor: COLORS[2] };
+      return { sizes: [...PLUMBING_DEFAULTS.sizes], types: [...PLUMBING_DEFAULTS.types], materials: [...PLUMBING_DEFAULTS.materials], iconByType: {}, defaultColor: COLORS[2], profiles: {}, defaultTrade: null };
     }
   }
   function savePlumbingModifiers(mods) {
     try { localStorage.setItem('plumbingModifiers', JSON.stringify(mods)); } catch (_) {}
+  }
+  // Trade profiles (Electrical, First-Class S1). One store shape per trade —
+  // sizes / types / materials / iconByType / defaultColor (+ mountByType for
+  // trades that carry a mount height). 'plumbing' IS the legacy blob; the
+  // others live under plumbingModifiers.profiles[trade], seeded from the
+  // constants.js defaults the first time they are read.
+  const TRADE_DEFAULTS = { electrical: ELECTRICAL_DEFAULTS, hvac: HVAC_DEFAULTS };
+  function getTradeModifiers(trade) {
+    const t = TRADES.includes(trade) ? trade : 'plumbing';
+    const base = getPlumbingModifiers();
+    if (t === 'plumbing') return base;
+    const def = TRADE_DEFAULTS[t];
+    const saved = (base.profiles && base.profiles[t] && typeof base.profiles[t] === 'object') ? base.profiles[t] : {};
+    return {
+      sizes: (saved.sizes && saved.sizes.length) ? saved.sizes : [...def.sizes],
+      types: (saved.types && saved.types.length) ? saved.types : [...def.types],
+      materials: (saved.materials && saved.materials.length) ? saved.materials : [...def.materials],
+      iconByType: (saved.iconByType && typeof saved.iconByType === 'object') ? saved.iconByType : {},
+      mountByType: { ...(def.mountByType || {}), ...((saved.mountByType && typeof saved.mountByType === 'object') ? saved.mountByType : {}) },
+      defaultColor: saved.defaultColor || COLORS[0]
+    };
+  }
+  function saveTradeModifiers(trade, mods) {
+    const t = TRADES.includes(trade) ? trade : 'plumbing';
+    if (t === 'plumbing') { savePlumbingModifiers(mods); return; }
+    const base = getPlumbingModifiers();
+    base.profiles = base.profiles || {};
+    base.profiles[t] = { sizes: mods.sizes, types: mods.types, materials: mods.materials, iconByType: mods.iconByType || {}, mountByType: mods.mountByType || {}, defaultColor: mods.defaultColor };
+    savePlumbingModifiers(base);
+  }
+  // The trade the Quick creator speaks right now: the project's, else the
+  // device's remembered default, else plumbing (today's behavior).
+  function getQuickTrade() {
+    if (TRADES.includes(state.trade)) return state.trade;
+    const d = getPlumbingModifiers().defaultTrade;
+    return TRADES.includes(d) ? d : 'plumbing';
+  }
+  // Stamp the project's trade (explicit, per project — decision ⚑2). `remember`
+  // also makes it the device default for the next new project. Telemetry:
+  // trade_set answers "how much of the base is electrical".
+  function setProjectTrade(trade, opts) {
+    const t = TRADES.includes(trade) ? trade : null;
+    const changed = state.trade !== t;
+    state.trade = t;
+    if (opts && opts.remember && t) {
+      const mods = getPlumbingModifiers();
+      if (mods.defaultTrade !== t) { mods.defaultTrade = t; savePlumbingModifiers(mods); }
+    }
+    if (changed) {
+      markProjectDirty();
+      logUserEvent('trade_set', state.currentProjectId || null, { trade: t, route: (opts && opts.route) || 'settings' });
+    }
+    updateUI();
+  }
+  // The default mount height (inches AFF) a trade profile assigns a device:
+  // the variant's entry, then the category's. null = at the ceiling / none.
+  function tradeMountHeightFor(trade, typeValue, sizeValue) {
+    const mods = getTradeModifiers(trade);
+    const m = mods.mountByType || {};
+    if (typeValue && typeof m[typeValue] === 'number') return m[typeValue];
+    if (sizeValue && typeof m[sizeValue] === 'number') return m[sizeValue];
+    return null;
+  }
+  // The bundled symbol a trade variant starts with (constants.js
+  // iconNameByType → the CUSTOM_ICONS entry of that name), unless the user has
+  // pinned one in the profile's iconByType.
+  function tradeIconForType(trade, typeValue) {
+    const mods = getTradeModifiers(trade);
+    if (mods.iconByType && mods.iconByType[typeValue]) return mods.iconByType[typeValue];
+    const def = TRADE_DEFAULTS[trade];
+    const name = def && def.iconNameByType && def.iconNameByType[typeValue];
+    if (!name) return null;
+    const ic = getEffectiveCustomIcons().find(i => i.name === name);
+    return ic ? ic.value : null;
   }
   // COLORS and SCALE_PRESETS live in constants.js (see note above).
 
@@ -188,7 +266,7 @@
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
-    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
+    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
@@ -679,6 +757,8 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.trade = null;
+    state.ceilingHeightFt = null;
+    state.makeUpFt = null;
     state.rooms = [];
     state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 };
     state.maxZoom = null;
@@ -3748,6 +3828,48 @@
       updateUI();
     };
   }
+  // S1/S2 Project Settings rows: trade (explicit, per project) and the
+  // vertical-by-default figures. Synced on every open by syncProjectSettingsRows.
+  function syncProjectSettingsRows() {
+    syncTradeSegment('settingsTradeSegment', state.trade);
+    const ceilEl = document.getElementById('settingsCeilingHeight');
+    if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
+    const muEl = document.getElementById('settingsMakeUp');
+    if (muEl) muEl.value = state.makeUpFt != null ? formatFeetInchesFromVal(state.makeUpFt, 'ft') : '';
+  }
+  function syncTradeSegment(segmentId, trade) {
+    const seg = document.getElementById(segmentId);
+    if (!seg) return;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.trade === trade)));
+  }
+  document.getElementById('settingsTradeSegment')?.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-trade]');
+    if (!b) return;
+    // Clicking the pressed trade clears it back to "not chosen" (plumbing behavior).
+    setProjectTrade(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.trade, { route: 'settings' });
+    syncTradeSegment('settingsTradeSegment', state.trade);
+  });
+  const commitCeilingFields = () => {
+    const ceilEl = document.getElementById('settingsCeilingHeight');
+    const muEl = document.getElementById('settingsMakeUp');
+    const ceil = ceilEl ? parseRealWorldLength(ceilEl.value, 'ft') : null;
+    const mu = muEl ? parseRealWorldLength(muEl.value, 'ft') : null;
+    const nextCeil = ceil != null && ceil > 0 ? Math.round(ceil * 100) / 100 : null;
+    const nextMu = mu != null && mu >= 0 ? Math.round(mu * 100) / 100 : null;
+    if (nextCeil !== state.ceilingHeightFt || nextMu !== state.makeUpFt) {
+      state.ceilingHeightFt = nextCeil;
+      state.makeUpFt = nextMu;
+      markProjectDirty();
+      logUserEvent('ceiling_set', state.currentProjectId || null, { ceilingFt: nextCeil, makeUpFt: nextMu });
+    }
+    syncProjectSettingsRows();
+  };
+  ['settingsCeilingHeight', 'settingsMakeUp'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('blur', commitCeilingFields);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+  });
   const showGroupColorsCheckbox = document.getElementById('showGroupColorsCheckbox');
   const showGroupColorsBtn = document.getElementById('showGroupColorsBtn');
   if (showGroupColorsCheckbox && showGroupColorsBtn) {
@@ -4070,7 +4192,7 @@
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -4383,6 +4505,7 @@
       if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
       document.body.classList.remove('sidebar-open');
       updateSettingsCheckoutSection();
+      syncProjectSettingsRows();
       showModal('settingsModal');
     }
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); App.openMySettings(); };
@@ -7160,6 +7283,13 @@
   App.getLineModifiers = getLineModifiers;
   App.saveLineModifiers = saveLineModifiers;
   App.getPlumbingModifiers = getPlumbingModifiers;
+  App.getTradeModifiers = getTradeModifiers;
+  App.syncTradeSegment = syncTradeSegment;
+  App.saveTradeModifiers = saveTradeModifiers;
+  App.getQuickTrade = getQuickTrade;
+  App.setProjectTrade = setProjectTrade;
+  App.tradeMountHeightFor = tradeMountHeightFor;
+  App.tradeIconForType = tradeIconForType;
   App.savePlumbingModifiers = savePlumbingModifiers;
   App.getIconName = getIconName;
   App.getEffectiveCustomIcons = getEffectiveCustomIcons;
@@ -7257,6 +7387,12 @@
   App.fetchUserAirboard = fetchUserAirboard;
   App.saveUserAirboard = saveUserAirboard;
   App.PLUMBING_DEFAULTS = PLUMBING_DEFAULTS;
+  App.TRADES = TRADES;
+  App.TRADE_LABELS = TRADE_LABELS;
+  App.TRADE_QUICK_PROFILES = TRADE_QUICK_PROFILES;
+  App.ELECTRICAL_DEFAULTS = ELECTRICAL_DEFAULTS;
+  App.HVAC_DEFAULTS = HVAC_DEFAULTS;
+  App.DEFAULT_MAKE_UP_FT = DEFAULT_MAKE_UP_FT;
   App.LINE_DEFAULTS = LINE_DEFAULTS;
   // Output cluster deps (features/output.js).
   App.SUPABASE_ENABLED = SUPABASE_ENABLED;
@@ -7306,6 +7442,9 @@
   App.ptDist = ptDist;
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
+  App.parseMountHeightIn = parseMountHeightIn;
+  App.formatMountHeightIn = formatMountHeightIn;
+  App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;
   // Item detail & properties modal deps (features/item-details.js; deleteGroup's
   // App registration moved there too — groups.js keeps consuming App.deleteGroup).

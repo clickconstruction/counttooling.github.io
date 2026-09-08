@@ -52,7 +52,9 @@
         state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
         state.groups = App.ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
         state.groupsEnabled = !!data.groupsEnabled;
-        state.trade = typeof data.trade === 'string' && data.trade ? data.trade : null;
+        state.trade = typeof data.trade === 'string' && data.trade ? data.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
+        state.ceilingHeightFt = typeof data.ceilingHeightFt === 'number' && data.ceilingHeightFt > 0 ? data.ceilingHeightFt : null;   // S2 vertical-by-default
+        state.makeUpFt = typeof data.makeUpFt === 'number' && data.makeUpFt >= 0 ? data.makeUpFt : null;
         state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
         // Same replace-or-keep rule as cloud load (quick-keys.js).
         if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(data.numberKeyBindings);

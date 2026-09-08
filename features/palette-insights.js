@@ -117,7 +117,7 @@
       if (isCounter) {
         const existing = it.item_id != null ? cById.get(it.item_id) : null;
         if (existing) Object.assign(existing, { name: it.name, icon: it.icon || existing.icon || '', color: it.color || existing.color || '#e8c547' });
-        else state.counters.push({ id: it.item_id || App.uid(), name: it.name, icon: it.icon || '', color: it.color || '#e8c547' });
+        else state.counters.push({ id: it.item_id || App.uid(), name: it.name, icon: it.icon || '', color: it.color || '#e8c547', ...(typeof it.mount_height_in === 'number' ? { mountHeightIn: it.mount_height_in } : {}) });
         cNames.add(nameKey(it.name));
       } else {
         const existing = it.item_id != null ? ltById.get(it.item_id) : null;

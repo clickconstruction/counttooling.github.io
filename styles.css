@@ -361,6 +361,8 @@
     .sidebar-search-filter-btn svg { width: 16px; height: 16px; }
     .sidebar-filter-hint { padding: 6px 10px; font-size: 0.72rem; color: var(--text3); font-style: italic; }
     .sidebar-filter-hint .sidebar-filter-hint-clear { color: var(--accent); cursor: pointer; text-decoration: underline; font-style: normal; }
+    .icon-grid-heading { grid-column: 1 / -1; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding: 6px 2px 2px; }
+    .icon-grid-heading:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 8px; }
     .filter-scope-segment { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
     .filter-scope-segment button { padding: 6px 10px; border: none; background: transparent; color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.78rem; white-space: nowrap; }
     .filter-scope-segment button:hover { color: var(--text); }

@@ -567,5 +567,24 @@
   App.openRoomBoxModalForEdit = openRoomBoxModalForEdit;
   App.renderRoomsList = renderRoomsList;
   App.getRoomVolumeTotals = getRoomVolumeTotals;
+  // S2 vertical-by-default: the ceiling at a point on a page — the SMALLEST
+  // room box containing it (nested rooms: the inner one is the room you are
+  // in), read across every canvas layer of the page. null = no room drawn
+  // there (the caller falls back to the project ceiling).
+  function roomHeightAtPoint(pt, pageIdx) {
+    const state = App.state;
+    const page = state.pages[pageIdx];
+    if (!page || !pt) return null;
+    let best = null, bestArea = Infinity;
+    (App.getPageCanvases ? App.getPageCanvases(page) : page.canvases || []).forEach((c) => {
+      (c?.annotations?.roomBoxes || []).forEach((b) => {
+        if (!(b.heightFt > 0) || !pointInRoomBox(pt, b)) return;
+        const area = Math.abs((b.x2 - b.x1) * (b.y2 - b.y1));
+        if (area < bestArea) { bestArea = area; best = b.heightFt; }
+      });
+    });
+    return best;
+  }
+  App.roomHeightAtPoint = roomHeightAtPoint;
   App.getRoomAirBalance = getRoomAirBalance;   // D7: duct-tool's equipment-first line + the spec seam
 })();

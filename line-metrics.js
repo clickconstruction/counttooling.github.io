@@ -119,6 +119,19 @@
     return pages[0]?.scale ?? null;
   }
 
+  // Vertical by default (Electrical, First-Class S2): the drop the Chain tool
+  // writes at a device — ceiling − mount height + make-up, in feet. null when
+  // the project has no ceiling or the counter has no mount height (the feature
+  // is off, today's behavior); never negative (a device above the ceiling line
+  // still gets its make-up). Pure: the caller resolves the room/project ceiling.
+  function defaultVerticalFeet(ceilingFt, mountHeightIn, makeUpFt) {
+    if (typeof ceilingFt !== 'number' || !(ceilingFt > 0)) return null;
+    if (typeof mountHeightIn !== 'number' || !(mountHeightIn >= 0)) return null;
+    const makeUp = typeof makeUpFt === 'number' && makeUpFt >= 0 ? makeUpFt : 0;
+    const wall = Math.max(0, ceilingFt - mountHeightIn / 12);
+    return Math.round((wall + makeUp) * 100) / 100;
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -132,5 +145,6 @@
       lineLengthFeetForTotals,
       lineLengthSplitForTotals,
       scaleForLineType,
+      defaultVerticalFeet,
     };
   }

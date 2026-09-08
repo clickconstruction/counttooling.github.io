@@ -13,6 +13,34 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(electrical): S4 — circuits: a group with a panel tag, the homerun arrow, the circuit schedule (2026-09-08)
+
+Slice 4 of Electrical, First-Class. A **group gains one optional tag** — panel and circuit
+("LP-1 · 7", plus the load the voltage-drop check will assume) — the same single field the
+duct plan adds for systems. With it:
+
+- **Panels are counters.** A counter with `panelName` / `poles` is the panelboard on the
+  plan; its marks are where the circuit's distance is measured from, and its pole count is
+  what the **cross-check** compares circuits on plan against ("LP-1 · 31 on plan · 42
+  scheduled ⚠") — under the Groups list, in the report, the email and the payload.
+- **Homeruns.** A line type or a single run flagged `homerun` draws the arrowhead-to-panel
+  at its end with the circuit tag beside it (canvas-draw.js `drawHomerunArrow`, once for the
+  live overlay and every export) and reports apart from device-to-device runs.
+- **The Circuit schedule** (`features/circuits.js` `getCircuitSchedule`, the pure graph in
+  `circuit-model.js`): per panel, each circuit with its devices served, conduit / homerun /
+  wire feet (wire from S3's `getConductorTotals`) and the **farthest device** along the runs
+  — Dijkstra over the circuit's runs from the panel mark, else from the homerun's far end,
+  devices off the runs counted apart. A new report section, an email block, and
+  `circuits` + `panels` on the TakeoffTooling payload. Copy Summary is unchanged (its rows
+  already carry the group prefix).
+- **Chain inherits the circuit.** With no group active, a chain continues the group of the
+  run it extends (`chainStart.group`), so a circuit is picked once, not per tap.
+- Editors: the group modal's Circuit row (a datalist of known panels), Panel name + poles on
+  a counter, Homerun toggles on a line type and in Line Properties — shown for electrical
+  projects or items already carrying the fields. Agent door (v2, additive): `groups[].panel`
+  / `circuit` / `loadAmps`, `counters[].panelName` / `poles`, `lineTypes[].homerun`, line
+  `homerun`.
+
 ## feat(electrical): S3 — conductors on the run: wire by gauge, cable, tick marks (2026-09-08)
 
 Slice 3 of Electrical, First-Class. A run stops being a plumbing line with an electrical

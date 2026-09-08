@@ -213,6 +213,9 @@
       // a small "plenum return" note when that per-system toggle is on (§1).
       // Plain groups render exactly as before.
       let sysHtml = '';
+      // S4: a circuit group shows its panel/number tag ("LP-1/7") like a system tag.
+      const ctag = (window.CircuitModel && window.CircuitModel.circuitTag(g)) || '';
+      if (ctag) sysHtml += '<span class="group-system-tag">' + esc(ctag) + (g.loadAmps ? ' · ' + g.loadAmps + ' A' : '') + '</span>';
       if (g.equipmentTag) {
         sysHtml = '<span class="group-system-tag">' + esc(g.equipmentTag)
           + (g.capacityCfm ? ' · ' + Number(g.capacityCfm).toLocaleString() + ' CFM' : '') + '</span>'
@@ -244,6 +247,7 @@
       }
       el.appendChild(div);
     });
+    App.renderPanelFooter && App.renderPanelFooter(el);   // S4 panel cross-check lines
   }
 
   function countItemsInGroup(groupId) {

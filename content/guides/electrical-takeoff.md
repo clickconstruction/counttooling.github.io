@@ -17,7 +17,7 @@ Open the Counter [[counter]] modal's **Quick** tab and switch the **Trade** cont
 
 Make a counter per device type — receptacles, switches, fixtures by type, data drops, panels — each with its own color and symbol so the sheet stays readable (the electrical set ships with the app; [upload your own SVG symbols](/guides/custom-icons/) to match a fixture schedule). Then click through the sheet; every click is one tally, rolled up across the whole set.
 
-- **[Groups](/guides/organizing-a-busy-sheet/)** subtotal by panel, circuit, or area — the breakdown reviewers ask for.
+- **[Groups](/guides/organizing-a-busy-sheet/) are circuits.** Give a group a **panel and circuit number** ("LP-1 · 7") in the group dialog and it becomes a circuit: the report's **Circuit schedule** lists each one with its devices, conduit, homerun and wire feet and the farthest device from the panel along the runs. Make your panel counter a panel (name + the schedule's pole count) and the app checks circuits on plan against the schedule — "LP-1 · 31 on plan · 42 scheduled ⚠" catches the homeruns you have not drawn yet. Flag the run to the panel as a **homerun** (on the line type, or one run in Line Properties) and it draws the arrow with the circuit tag. With a circuit selected, the Chain tool puts every device and run on it; with none selected, a chain continues the circuit of the run it extends.
 - **[Quick Keys](/guides/working-faster-with-the-keyboard/)** put your device types on the number row: `1` places receptacles, `2` places switches, and your hands never leave the plan.
 
 ## Measure conduit and cable runs

@@ -138,6 +138,9 @@ payload carrying any v2 field is rejected by name — send `version: 2`.
 | line `conductors` | same shape, on one quick line / polyline | overrides the line type for that run (a shared homerun carrying three circuits) |
 | palette `tickMarks` (line types) | `false` to silence the on-sheet hash marks a conductor list draws | `tickMarks: false` |
 | palette `cablePerCount` (counters) | `{ ft, name? }` — 150 ft of Cat6 per data drop | `cablePerCount` on the counter: every placement adds `ft` to a cable row named `name` |
+| `groups[].panel`, `groups[].circuit`, `groups[].loadAmps` | the panel ("LP-1") and circuit number ("7") that make the group a CIRCUIT; the load in amps the voltage-drop check assumes | `panel` / `circuit` / `loadAmps` on the group — the Circuit schedule (report, email, payload `circuits`), the sidebar tag, the Chain tool's inheritance |
+| palette `panelName`, `poles` (counters) | this counter is the panelboard named `panelName`; `poles` = the schedule's pole count | `panelName` / `poles` on the counter — its marks are where a circuit's farthest-device distance is measured from; the pole count feeds the cross-check (payload `panels`) |
+| palette `homerun` (line types) / line `homerun` | `true` when every run of the type — or this one run — is the homerun to the panel | `homerun` — the arrowhead + circuit tag on the sheet, feet reported apart from device-to-device runs |
 | `ceilingHeightFt`, `makeUpFt` | the project's ceiling (feet, > 0) and the make-up the app adds to every default vertical (feet, ≥ 0; the app assumes 1 when absent) | `state.ceilingHeightFt` / `state.makeUpFt` (Project Settings). Stored only — the door never derives drops from them; send `startDrop` / `endDrop` yourself |
 
 Response adds `group_count`, `zone_count`, `child_rules`, `trade`. Scoring: `takeoff-eval.js`

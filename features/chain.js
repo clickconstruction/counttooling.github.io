@@ -115,7 +115,10 @@
     if (!canvas) return;
     App.pushUndoSnapshotCurrentPage();
     if (!canvas.annotations.counterMarkers[state.activeCounterType]) canvas.annotations.counterMarkers[state.activeCounterType] = [];
-    canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pos.x, y: pos.y, id: App.uid(), group: state.activeGroupId || null });
+    // S4: a chain inherits its group from the run it continues — pick the
+    // circuit once at the first tap and every device and run after it rides along.
+    const group = state.activeGroupId || (anchor && anchor.group) || null;
+    canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pos.x, y: pos.y, id: App.uid(), group });
     App.logCounterMarkerAddedEvent();
     // S2 vertical by default: the device's drop (ceiling − mount height +
     // make-up) is written as an ORDINARY end drop on the run that reaches it —
@@ -128,14 +131,14 @@
     if (anchor) {
       const lt = state.lineTypes.find((l) => l.id === state.activeLineTypeId);
       if (!canvas.annotations.quickLines) canvas.annotations.quickLines = [];
-      const line = { x1: anchor.x, y1: anchor.y, x2: pos.x, y2: pos.y, color: lt?.color || '#4a9eff', id: App.uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null };
+      const line = { x1: anchor.x, y1: anchor.y, x2: pos.x, y2: pos.y, color: lt?.color || '#4a9eff', id: App.uid(), lineTypeId: state.activeLineTypeId, group };
       if (anchor.dropFt > 0 && !anchor.hasIncoming) { line.startDrop = anchor.dropFt; line.startDropUnit = 'ft'; }
       if (dropFt > 0) { line.endDrop = dropFt; line.endDropUnit = 'ft'; }
       canvas.annotations.quickLines.push(line);
       App.logLineAddedEvent('chain');
       if (dropFt > 0 && App.logDropSetEvent) App.logDropSetEvent(dropFt, 'ft', 'chain-default');
     }
-    state.chainStart = { x: pos.x, y: pos.y, page: state.currentPage, dropFt: dropFt || 0, hasIncoming: !!anchor };
+    state.chainStart = { x: pos.x, y: pos.y, page: state.currentPage, dropFt: dropFt || 0, hasIncoming: !!anchor, group };
     App.markProjectDirty();
   }
 

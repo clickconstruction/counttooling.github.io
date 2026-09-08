@@ -1480,6 +1480,10 @@ body.hotkey-peek .hk-badge { display: block; }
 .summary-derived-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .summary-derived-item .derived-tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
 .summary-derived-item .derived-total { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.panel-check-rows { margin: 4px 0 6px; }
+.panel-check-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 8px; font-size: 0.75rem; color: var(--text2); }
+.panel-check-row .meta { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.panel-check-row.warn .meta { color: var(--accent); }
 .summary-derived-heading { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding: 6px 8px 0 22px; }
 .child-count-add { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .child-count-add-spacer { flex: 1; }

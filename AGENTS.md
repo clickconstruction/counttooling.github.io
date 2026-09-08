@@ -90,7 +90,9 @@
     [line-metrics.js](line-metrics.js) (line length/scale math; after
     geometry.js), [conductor-model.js](conductor-model.js) (the pure raceway /
     conductor model — spec parsing, wire and cable rows, tick layout; after
-    line-metrics.js; exposed as `window.ConductorModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    line-metrics.js; exposed as `window.ConductorModel`), [circuit-model.js](circuit-model.js)
+    (the pure circuit model — tag, run graph, farthest device, panel
+    cross-check; `window.CircuitModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +
@@ -255,8 +257,9 @@
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
 - Electrical fields ride existing objects, never new ones: a line type's `raceway`
-  / `conductors` / `tickMarks`, a line's own `conductors`, a counter's
-  `mountHeightIn` / `cablePerCount` (palettes serialize wholesale; a line's
+  / `conductors` / `tickMarks` / `homerun`, a line's own `conductors` / `homerun`, a
+  counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a group's
+  `panel` / `circuit` / `loadAmps` (palettes serialize wholesale; a line's
   override rides the annotation). Wire and cable are DERIVED at tally time
   (features/conductors.js) — never marks, never stored totals.
 - Keep the app functional with Supabase disabled.

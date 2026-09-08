@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tutorial): the interactive walkthrough — learn the app by doing an electrical takeoff on the sample plan (2026-09-08)
+
+The stage after the six electrical slices. `features/tutorial.js` is a coach-marked tour over
+the REAL app, not a slideshow: thirteen steps from opening the sample plan through setting the
+scale, switching the trade, adding a receptacle with its mount height, counting three, making a
+3/4" EMT type with conductors, setting the ceiling, chaining a run (the drops appear), tagging a
+circuit, reading the Summary's wire rows, opening Bid Check, and the hand-off — ending with a
+real takeoff on screen.
+
+- Each doing-step spotlights the control (`#tourSpot`, a box-shadow cutout that never
+  intercepts the pointer) and advances the moment `check()` sees the state change, whichever
+  way the user made it; every doing-step also offers **Do it for me**, which goes through the
+  same App.* entry points a click would. Reading steps advance on Next.
+- Entry points: the empty-canvas hint ("new here? take the five-minute tour", hidden once
+  `clickcount-tour-done` is set), Project Settings → tour, and `?tour=1`. It refuses to start
+  over an open cloud project. Telemetry `tour_step`.
+- No new dependencies; the card sits above modals and below toasts; leaving mid-way keeps the
+  work done so far.
+
 ## feat(electrical): S6 — read the tags: the text layer picks the fixture type, the schedule builds the palette (2026-09-08)
 
 Slice 6 of Electrical, First-Class — the last of the six moves. Lighting is counted by a

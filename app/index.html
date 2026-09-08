@@ -459,7 +459,7 @@
           </div>
           <canvas id="aimLoupe" class="aim-loupe" aria-hidden="true"></canvas>
         </div>
-        <div id="canvasEmptyHint" class="canvas-empty-hint"><span>Drop a plan here — or <strong>Upload PDF</strong></span></div>
+        <div id="canvasEmptyHint" class="canvas-empty-hint"><span>Drop a plan here — or <strong>Upload PDF</strong></span><span class="canvas-empty-hint-tour"> · new here? <a href="#" id="canvasEmptyHintTour">take the five-minute tour</a></span></div>
         <div class="page-zoom-row">
           <div class="page-nav">
             <button id="prevMarkedPage" class="page-nav-marked-btn" title="Previous marked page">‹‹</button>
@@ -2091,6 +2091,7 @@
         <div class="settings-menu-links-row">
           <span class="settings-menu-link" id="settingsQuickKeys">quick keys</span>
           <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
+          <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the sample plan">tour</span>
           <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
         </div>
         <div class="form-group" id="settingsUseGroupsRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid var(--border);margin-top:6px;">
@@ -2949,7 +2950,24 @@
        element that gets .visible so showModal/hideModal and every spec
        selector keep working. Distinct simultaneous toasts stack honestly;
        each keeps its own timer (app.js "SECTION: Toasts"). -->
-  <div id="toastRegion" role="status" aria-live="polite">
+  <!-- The interactive walkthrough (features/tutorial.js): a spotlight that
+     never intercepts the pointer + a card beside the step's control. -->
+<div id="tourOverlay" style="display:none;" aria-live="polite">
+  <div id="tourSpot" class="tour-spot"></div>
+  <div id="tourCard" class="tour-card" role="dialog" aria-labelledby="tourTitle">
+    <div class="tour-card-head"><span id="tourStepNo" class="tour-step-no">1 / 13</span><span id="tourDots" class="tour-dots"></span><button type="button" id="tourLeave" class="tour-leave" title="Leave the tour">×</button></div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourBody"></p>
+    <div class="tour-card-actions">
+      <button type="button" id="tourAction" class="tour-action"></button>
+      <span id="tourStatus" class="tour-status"></span>
+      <span class="tour-spacer"></span>
+      <button type="button" id="tourBack" class="tour-nav">Back</button>
+      <button type="button" id="tourNext" class="tour-nav tour-next">Next</button>
+    </div>
+  </div>
+</div>
+<div id="toastRegion" role="status" aria-live="polite">
     <!-- Interactive card (T2-06): the "Set Scale ⚖" words are a real button
          that opens the Set Scale dialog (bound in app.js next to
          showSetScaleFirstToast); only the tail span is rewritten per call. -->
@@ -3196,6 +3214,7 @@
   <script src="/features/circuits.js"></script>
   <script src="/features/bid-check.js"></script>
   <script src="/features/tag-reader.js"></script>
+  <script src="/features/tutorial.js"></script>
   <script src="/features/twin-badge.js"></script>
   <script src="/features/auth-magic-link.js"></script>
   <script src="/report.js"></script>

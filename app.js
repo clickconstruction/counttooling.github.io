@@ -2407,6 +2407,7 @@
     if (App.renderDuctList) App.renderDuctList();
     if (App.renderBidCheck) App.renderBidCheck();   // S5 Bid Check section
     if (App.renderTagReaderUI) App.renderTagReaderUI();   // S6 the Create-tab schedule link
+    if (App.onTutorialTick) App.onTutorialTick();   // the walkthrough re-evaluates its step on every UI refresh
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
     if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
     const legendBtnEl = document.getElementById('legendBtn');

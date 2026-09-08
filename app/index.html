@@ -655,6 +655,13 @@
           <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
           <input type="number" id="counterCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;">
         </div>
+        <!-- Electrical, First-Class S1: optional mount height in inches AFF.
+             Empty = at the ceiling / no default vertical (zero behavior change);
+             the Chain tool reads it for the default drop (S2). -->
+        <div class="form-group">
+          <label>Mount height <span class="form-sublabel">(inches AFF — devices on a wall; leave empty for ceiling)</span></label>
+          <input type="text" id="counterMountHeight" placeholder='e.g. 18 or 4&#39;-0"' style="width:120px;" autocomplete="off">
+        </div>
         <div class="form-group">
           <div class="counter-icon-tabs">
             <button class="counter-icon-tab active" data-icon-tab="icon">Icon</button>
@@ -695,6 +702,18 @@
         </div>
       </div>
       <div id="counterQuickCountPanel" class="counter-tab-panel" style="display:none;">
+        <!-- Electrical, First-Class S1: the Trade switch. One panel, one store
+             shape per trade — the three rows relabel (Size/Type/Material ↔
+             Category/Variant/Rating) and the name order follows the trade.
+             Per project (state.trade); remembered as the device default. -->
+        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <span title="Which trade's vocabulary the Quick creator speaks in this project">Trade</span>
+          <div class="filter-scope-segment" id="counterQuickCountTradeSegment" role="group" aria-label="Trade">
+            <button type="button" data-trade="plumbing" aria-pressed="true">Plumbing</button>
+            <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
+            <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
+          </div>
+        </div>
         <div class="form-group">
           <div class="plum-name-row sidebar-item">
             <span id="counterQuickCountIcon" class="icon-svg" aria-hidden="true"></span>
@@ -703,7 +722,7 @@
           </div>
         </div>
         <div class="form-group plum-modifier-row">
-          <label>Size</label>
+          <label id="counterQuickCountSizeLabel">Size</label>
           <div class="plum-select-btn-row">
             <select id="counterQuickCountSize"></select>
             <button type="button" id="counterQuickCountRemoveSize" class="plum-remove-btn" title="Remove size">−</button>
@@ -711,7 +730,7 @@
           </div>
         </div>
         <div class="form-group plum-modifier-row">
-          <label>Type</label>
+          <label id="counterQuickCountTypeLabel">Type</label>
           <div class="plum-select-btn-row">
             <div class="plum-type-icon-box" id="counterQuickCountTypeIconBox" title="Select an icon below, then click to set for this type" role="button" tabindex="0"></div>
             <select id="counterQuickCountType"></select>
@@ -720,11 +739,20 @@
           </div>
         </div>
         <div class="form-group plum-modifier-row">
-          <label>Material</label>
+          <label id="counterQuickCountMaterialLabel">Material</label>
           <div class="plum-select-btn-row">
             <select id="counterQuickCountMaterial"></select>
             <button type="button" id="counterQuickCountRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
             <button type="button" id="counterQuickCountAddMaterial" class="plum-add-btn" title="Add material">+</button>
+          </div>
+        </div>
+        <!-- S1/S2: the device's mount height (inches AFF), prefilled from the
+             trade profile per variant; shown for trades that carry one. -->
+        <div class="form-group plum-modifier-row" id="counterQuickCountMountRow" style="display:none;">
+          <label>Mount height</label>
+          <div class="plum-select-btn-row">
+            <input type="text" id="counterQuickCountMount" placeholder="18" style="width:110px;" autocomplete="off" title="Inches above finished floor; empty = ceiling">
+            <span id="counterQuickCountMountHint" style="font-size:0.78rem;color:var(--text3);"></span>
           </div>
         </div>
         <div class="form-group">
@@ -1824,6 +1852,11 @@
         <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
         <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
+      <!-- S1: the per-counter mount height (inches AFF; counters only). -->
+      <div class="form-group" id="counterLineTypeDetailsMountGroup" style="display:none;">
+        <label>Mount height <span class="form-sublabel">(inches AFF — empty = ceiling / no default vertical)</span></label>
+        <input type="text" id="counterLineTypeDetailsMount" placeholder='e.g. 18 or 4&#39;-0"' autocomplete="off" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
         <div style="display:flex;gap:16px;">
@@ -1967,6 +2000,30 @@
           <button type="button" class="toggle-switch" id="settingsUseGroupsBtn" aria-pressed="false" title="Show the Groups section and Assign-to-Group menus in this project">
             <span class="toggle-switch-knob"></span>
           </button>
+        </div>
+        <!-- Electrical, First-Class S1/S2: the project's trade (explicit, per
+             project — the Quick creator's vocabulary and the export's stamp) and
+             the vertical-by-default figures the Chain tool writes at every device. -->
+        <div class="form-group" id="settingsTradeRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid var(--border);margin-top:6px;">
+          <div style="min-width:0;">
+            <div>Trade</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Which vocabulary the Quick creator speaks, and what the handoff calls this takeoff.</div>
+          </div>
+          <div class="filter-scope-segment" id="settingsTradeSegment" role="group" aria-label="Project trade">
+            <button type="button" data-trade="plumbing" aria-pressed="false">Plumbing</button>
+            <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
+            <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
+          </div>
+        </div>
+        <div class="form-group" id="settingsCeilingRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
+          <div style="min-width:0;">
+            <div>Ceiling height</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" style="width:96px;" aria-label="Ceiling height (feet)">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
+          </div>
         </div>
         <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
       </div>

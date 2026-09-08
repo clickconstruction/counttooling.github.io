@@ -7,8 +7,14 @@
  * placements are ORDINARY counter markers and quick lines (the exact shapes
  * the Counter and Quick Line tools write), so save/load, reports, exports,
  * zones, and groups all work untouched — the only new state is UI state:
- * `state.chainStart` (the anchor, `{ x, y, page }` — the page stamp is how a
- * page switch invalidates it) plus this file's private search queries.
+ * `state.chainStart` (the anchor, `{ x, y, page, dropFt, hasIncoming }` — the
+ * page stamp is how a page switch invalidates it; dropFt / hasIncoming carry the
+ * S2 default vertical to the next run) plus this file's private search queries.
+ *
+ * Vertical by default (Electrical, First-Class S2): when the project has a
+ * ceiling height (Project Settings, or a Room Sizer room at the point) and the
+ * counter a mount height, every tap writes ceiling − mount + make-up feet as
+ * the run's end drop (the first device: the first run's start drop).
  *
  * The palette panel (#chainPanel, markup in app/index.html) shows while the
  * tool is active: two searchable columns (Counters | Line types). Selection
@@ -111,14 +117,51 @@
     if (!canvas.annotations.counterMarkers[state.activeCounterType]) canvas.annotations.counterMarkers[state.activeCounterType] = [];
     canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pos.x, y: pos.y, id: App.uid(), group: state.activeGroupId || null });
     App.logCounterMarkerAddedEvent();
+    // S2 vertical by default: the device's drop (ceiling − mount height +
+    // make-up) is written as an ORDINARY end drop on the run that reaches it —
+    // the exact shape the Drop tool writes, so totals, reports and exports
+    // already count it. Each device gets its vertical exactly once: the run
+    // arriving at this tap carries it as endDrop; the very first device of a
+    // chain (no run arrives) gets it as the startDrop of the first run leaving
+    // it. A device that already had a run arrive never gets a second one.
+    const dropFt = defaultDropFeetAt(pos);
     if (anchor) {
       const lt = state.lineTypes.find((l) => l.id === state.activeLineTypeId);
       if (!canvas.annotations.quickLines) canvas.annotations.quickLines = [];
-      canvas.annotations.quickLines.push({ x1: anchor.x, y1: anchor.y, x2: pos.x, y2: pos.y, color: lt?.color || '#4a9eff', id: App.uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null });
+      const line = { x1: anchor.x, y1: anchor.y, x2: pos.x, y2: pos.y, color: lt?.color || '#4a9eff', id: App.uid(), lineTypeId: state.activeLineTypeId, group: state.activeGroupId || null };
+      if (anchor.dropFt > 0 && !anchor.hasIncoming) { line.startDrop = anchor.dropFt; line.startDropUnit = 'ft'; }
+      if (dropFt > 0) { line.endDrop = dropFt; line.endDropUnit = 'ft'; }
+      canvas.annotations.quickLines.push(line);
       App.logLineAddedEvent('chain');
+      if (dropFt > 0 && App.logDropSetEvent) App.logDropSetEvent(dropFt, 'ft', 'chain-default');
     }
-    state.chainStart = { x: pos.x, y: pos.y, page: state.currentPage };
+    state.chainStart = { x: pos.x, y: pos.y, page: state.currentPage, dropFt: dropFt || 0, hasIncoming: !!anchor };
     App.markProjectDirty();
+  }
+
+  // The default vertical for the ACTIVE counter at `pt` on the current page:
+  // ceiling (the room drawn there, else the project's) − mount height +
+  // make-up. 0 when the project has no ceiling or the counter no mount height
+  // — the feature is off, and Chain writes plain runs as it always did.
+  function defaultDropFeetAt(pt) {
+    const state = App.state;
+    const counter = state.counters.find((c) => c.id === state.activeCounterType);
+    if (!counter || typeof counter.mountHeightIn !== 'number') return 0;
+    const roomFt = App.roomHeightAtPoint ? App.roomHeightAtPoint(pt, state.currentPage) : null;
+    const ceilingFt = roomFt != null ? roomFt : state.ceilingHeightFt;
+    if (!(ceilingFt > 0)) return 0;
+    const makeUp = typeof state.makeUpFt === 'number' ? state.makeUpFt : App.DEFAULT_MAKE_UP_FT;
+    return App.defaultVerticalFeet(ceilingFt, counter.mountHeightIn, makeUp) || 0;
+  }
+  // The status bar's coaching readout: what the NEXT tap will add.
+  function chainDropHint() {
+    const state = App.state;
+    const counter = state.counters.find((c) => c.id === state.activeCounterType);
+    if (!counter || typeof counter.mountHeightIn !== 'number') return '';
+    const pt = state.mousePos || (state.chainStart && state.chainStart.page === state.currentPage ? state.chainStart : null);
+    const ft = pt ? defaultDropFeetAt(pt) : 0;
+    if (!(ft > 0)) return '';
+    return '+' + (Math.round(ft * 100) / 100) + ' ft drop at ' + (counter.name || 'counter');
   }
 
   // --- palette panel --------------------------------------------------------
@@ -291,6 +334,8 @@
   }
 
   App.commitChainPoint = commitChainPoint;
+  App.chainDropHint = chainDropHint;
+  App.chainDefaultDropFeetAt = defaultDropFeetAt;
   App.onChainToolSync = onChainToolSync;
   App.openChainPanel = openChainPanel;
   App.closeChainPanel = closeChainPanel;

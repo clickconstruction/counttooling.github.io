@@ -24,6 +24,65 @@ const LINE_DEFAULTS = {
   sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in', '3in', '4in'],
   materials: ['PEX', 'Brass', 'BI', 'Galv']
 };
+// --- Trades (Electrical, First-Class S1) ---
+// One machine, one Trade switch: `state.trade` ('plumbing' | 'electrical' |
+// 'hvac' | null) is per project (null = never chosen = plumbing behavior). The
+// Quick creator keeps ONE panel and ONE store shape for every trade — the three
+// modifier lists stay `sizes` / `types` / `materials` in storage; a trade
+// profile only relabels them and decides the name order. Non-plumbing profiles
+// live under `plumbingModifiers.profiles[trade]` so they ride the cloud
+// Artboard's existing JSON column with no migration.
+const TRADES = ['plumbing', 'electrical', 'hvac'];
+const TRADE_LABELS = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
+const TRADE_QUICK_PROFILES = {
+  plumbing: { labels: ['Size', 'Type', 'Material'], nameOrder: ['size', 'material', 'type'], fallbackName: 'Plumbing', placeholder: 'e.g. 1/2" Copper Pipe' },
+  // Electrical reads Category / Variant / Rating: "Duplex Receptacle 20A".
+  electrical: { labels: ['Category', 'Variant', 'Rating'], nameOrder: ['type', 'size', 'material'], fallbackName: 'Device', placeholder: 'e.g. Duplex Receptacle 20A' },
+  hvac: { labels: ['Size', 'Type', 'Material'], nameOrder: ['size', 'material', 'type'], fallbackName: 'HVAC', placeholder: 'e.g. 12" Supply Diffuser' }
+};
+// Electrical vocabulary: `sizes` = categories, `types` = variants, `materials`
+// = ratings ('' = no rating). `mountByType` is the default mount height in
+// inches AFF keyed by variant, then category (absent = at the ceiling / no
+// default vertical). `iconNameByType` names the bundled symbol
+// (my-counters/electrical/*.svg → CUSTOM_ICONS) a variant starts with; resolved
+// by name at read time so the store never hard-codes path data.
+const ELECTRICAL_DEFAULTS = {
+  sizes: ['Receptacle', 'Switch', 'Fixture', 'Panel', 'Junction Box', 'Disconnect', 'Motor', 'Data', 'Fire Alarm', 'Low Voltage'],
+  types: ['Duplex', 'Quad', 'GFCI', 'Dedicated', 'Floor', 'Single Pole', '3-Way', '4-Way', 'Dimmer', 'Occupancy',
+    '2x4 Troffer', '2x2 Troffer', 'Downlight', 'Wall Pack', 'Exit', 'Emergency', 'Pendant', 'Strip', 'High Bay', 'Sconce',
+    'Panelboard', 'Disconnect', 'Motor', 'Transformer', 'J-Box', 'Meter',
+    'Data Outlet', 'Phone', 'TV', 'WAP', 'Speaker', 'Camera', 'Thermostat', 'Card Reader',
+    'Smoke Detector', 'Heat Detector', 'Pull Station', 'Horn/Strobe'],
+  materials: ['', '15A', '20A', '30A', '50A', '120V', '208V', '277V', '480V'],
+  mountByType: {
+    Duplex: 18, Quad: 18, GFCI: 44, Dedicated: 18,
+    'Single Pole': 48, '3-Way': 48, '4-Way': 48, Dimmer: 48, Occupancy: 48,
+    'Wall Pack': 96, Exit: 90, Emergency: 90, Sconce: 72,
+    Panelboard: 78, Disconnect: 60, Meter: 60,
+    'Data Outlet': 18, Phone: 18, TV: 18, Thermostat: 48, 'Card Reader': 42, Speaker: 96, Camera: 108,
+    'Pull Station': 48, 'Horn/Strobe': 80,
+    Receptacle: 18, Switch: 48, Panel: 78, Data: 18, 'Fire Alarm': 80, 'Low Voltage': 18
+  },
+  iconNameByType: {
+    Duplex: 'Duplex Receptacle', Quad: 'Quad Receptacle', GFCI: 'GFCI Receptacle', Dedicated: 'Dedicated Receptacle', Floor: 'Floor Receptacle',
+    'Single Pole': 'Single Pole Switch', '3-Way': 'Three-Way Switch', '4-Way': 'Four-Way Switch', Dimmer: 'Dimmer Switch', Occupancy: 'Occupancy Sensor Switch',
+    '2x4 Troffer': '2x4 Troffer', '2x2 Troffer': '2x2 Troffer', Downlight: 'Downlight', 'Wall Pack': 'Wall Pack', Exit: 'Exit Sign', Emergency: 'Emergency Light',
+    Pendant: 'Pendant Light', Strip: 'Strip Light', 'High Bay': 'High Bay', Sconce: 'Wall Sconce',
+    Panelboard: 'Panelboard', Disconnect: 'Disconnect Switch', Motor: 'Motor', Transformer: 'Transformer', 'J-Box': 'Junction Box', Meter: 'Meter',
+    'Data Outlet': 'Data Outlet', Phone: 'Telephone Outlet', TV: 'TV Outlet', WAP: 'Wireless Access Point', Speaker: 'Speaker', Camera: 'Camera', Thermostat: 'Thermostat', 'Card Reader': 'Card Reader',
+    'Smoke Detector': 'Smoke Detector', 'Heat Detector': 'Heat Detector', 'Pull Station': 'Pull Station', 'Horn/Strobe': 'Horn Strobe'
+  }
+};
+const HVAC_DEFAULTS = {
+  sizes: ['6"', '8"', '10"', '12"', '14"', '12x12', '24x24'],
+  types: ['Supply Diffuser', 'Return Grille', 'Exhaust Grille', 'Linear Diffuser', 'Thermostat', 'VAV Box', 'Fan Coil', 'RTU', 'Exhaust Fan', 'Damper'],
+  materials: ['', 'Lay-in', 'Surface', 'Round Neck']
+};
+// The project-level defaults behind "vertical by default" (S2): a device at
+// `mountHeightIn` under a `ceilingHeightFt` ceiling gets ceiling − mount +
+// make-up feet of vertical written by the Chain tool. 1 ft of make-up is the
+// trade's working figure; null ceiling = the feature is off for the project.
+const DEFAULT_MAKE_UP_FT = 1;
 const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47','#2c3e50','#8b4513','#ff6b6b','#6366f1','#059669','#f59e0b','#0ea5e9','#7c3aed','#e11d48'];
 const SCALE_PRESETS = [
   { label: '1/6" = 1\'', pixelsPerUnit: 12, unit: 'ft' },
@@ -164,6 +223,7 @@ const USER_ACTIVITY_TZ = 'America/Chicago';
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TOOL, SCALE_MODES, PLUMBING_DEFAULTS, LINE_DEFAULTS, COLORS, SCALE_PRESETS,
+    TRADES, TRADE_LABELS, TRADE_QUICK_PROFILES, ELECTRICAL_DEFAULTS, HVAC_DEFAULTS, DEFAULT_MAKE_UP_FT,
     AUTO_SAVE_INTERVAL_MS, AUTOSAVE_TIMEOUT_MS, STORAGE_INFO_TIMEOUT_MS, CLIENT_PROBE_TIMEOUT_MS,
     CLIENT_RECYCLE_COOLDOWN_MS, DIRTY_SNAPSHOT_THRESHOLD_MS, CHECK_IN_TIMEOUT_MS, LONG_IDLE_PROBE_MS,
     TURN_IN_STALENESS_MS, AUTOSAVE_BACKOFF_LEVELS_MS, AUTOSAVE_BANNER_THRESHOLD, AUTOSAVE_RECOVERY_THRESHOLD,

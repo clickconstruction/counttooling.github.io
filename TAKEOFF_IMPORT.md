@@ -132,6 +132,8 @@ payload carrying any v2 field is rejected by name — send `version: 2`.
 | palette `childCounts[]` | `{ name, qty, per: 'count'\|'run'\|'ft', ftInterval? }` | `childCounts` on the counter / line type (features/child-counts.js: per count × marks, per run × runs, per ft × ceil(feet/interval) per scaled run) |
 | page `multiplyZones[]` | `{ x1, y1, x2, y2, multiplier ≥ 1 }` base-frame rectangle | stamped on EVERY canvas of that page (the zone lookup is per canvas) |
 | page `scaleZones[]` | `{ x1, y1, x2, y2, scale: { pixelsPerUnit, unit } }` | same |
+| palette `mountHeightIn` (counters) | inches above finished floor, 0–480 (18 receptacle, 44 GFCI, 48 switch, 78 panel); omit for ceiling devices | `mountHeightIn` on the counter — the Quick creator's and details modal's field; the Chain tool reads it for the default vertical (S2) |
+| `ceilingHeightFt`, `makeUpFt` | the project's ceiling (feet, > 0) and the make-up the app adds to every default vertical (feet, ≥ 0; the app assumes 1 when absent) | `state.ceilingHeightFt` / `state.makeUpFt` (Project Settings). Stored only — the door never derives drops from them; send `startDrop` / `endDrop` yourself |
 
 Response adds `group_count`, `zone_count`, `child_rules`, `trade`. Scoring: `takeoff-eval.js`
 `tally` now returns `groups` (per-group counts and feet) and `children` (rule totals), and

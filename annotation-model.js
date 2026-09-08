@@ -253,6 +253,9 @@ function createAnnotationModel(ctx) {
     if (Array.isArray(backup.lineTypes)) ctx.getState().lineTypes = backup.lineTypes;
     if (Array.isArray(backup.groups)) ctx.getState().groups = ctx.ensureGroupColors(backup.groups);
     if (backup.groupsEnabled != null) ctx.getState().groupsEnabled = !!backup.groupsEnabled;
+    ctx.getState().trade = typeof backup.trade === 'string' && backup.trade ? backup.trade : null;
+    ctx.getState().ceilingHeightFt = typeof backup.ceilingHeightFt === 'number' && backup.ceilingHeightFt > 0 ? backup.ceilingHeightFt : null;
+    ctx.getState().makeUpFt = typeof backup.makeUpFt === 'number' && backup.makeUpFt >= 0 ? backup.makeUpFt : null;
     if (Array.isArray(backup.rooms)) ctx.getState().rooms = backup.rooms;
     if (backup.iconNames && typeof backup.iconNames === 'object') ctx.getState().iconNames = backup.iconNames;
     if (Array.isArray(backup.iconOrder)) ctx.getState().iconOrder = backup.iconOrder;
@@ -296,6 +299,9 @@ function createAnnotationModel(ctx) {
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
     state.groups = ctx.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
     state.groupsEnabled = !!d.groupsEnabled;
+    state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
+    state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;   // S2 vertical-by-default
+    state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
     state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;

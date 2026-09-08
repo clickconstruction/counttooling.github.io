@@ -42,8 +42,10 @@ type TakeoffPage = {
 type TakeoffJson = {
   version: 1 | 2
   trade?: 'plumbing' | 'electrical' | 'hvac'
+  ceilingHeightFt?: number   // v2 (S2): the project's ceiling — with a counter mountHeightIn, the app's Chain tool writes the vertical
+  makeUpFt?: number          // v2 (S2): make-up added to every default vertical (the app defaults to 1)
   groups?: Array<{ id: string; name: string; color?: string }>
-  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[] }>
+  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number }>
   lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[] }>
   pages: TakeoffPage[]
 }
@@ -179,6 +181,32 @@ Deno.serve(async (req) => {
       if (!v2) return { error: bad(where, 'drops are version-2 fields — send version: 2') }
       const n = Number(raw)
       return num(n) && n >= 0 ? { ok: n } : { error: bad(where, 'startDrop/endDrop must be non-negative feet') }
+    }
+    // S1/S2 (v2, additive): per-counter mount height + the project ceiling /
+    // make-up. Stored only — the door never derives drops from them (a twin
+    // sends startDrop/endDrop explicitly); they let the app's Chain tool and
+    // the Quick creator carry the same facts a human would have set.
+    const mountByCounter = new Map<string, number>()
+    for (const c of t.counters) {
+      if (c.mountHeightIn == null) continue
+      if (!v2) return bad('counters.mountHeightIn', 'is a version-2 field — send version: 2')
+      const n = Number(c.mountHeightIn)
+      if (!num(n) || n < 0 || n > 480) return bad(`counters[${c.id}].mountHeightIn`, 'must be inches AFF between 0 and 480')
+      mountByCounter.set(c.id, Math.round(n * 4) / 4)
+    }
+    let ceilingHeightFt: number | null = null
+    let makeUpFt: number | null = null
+    if (t.ceilingHeightFt != null) {
+      if (!v2) return bad('ceilingHeightFt', 'is a version-2 field — send version: 2')
+      const n = Number(t.ceilingHeightFt)
+      if (!num(n) || n <= 0 || n > 200) return bad('ceilingHeightFt', 'must be feet between 0 and 200')
+      ceilingHeightFt = Math.round(n * 100) / 100
+    }
+    if (t.makeUpFt != null) {
+      if (!v2) return bad('makeUpFt', 'is a version-2 field — send version: 2')
+      const n = Number(t.makeUpFt)
+      if (!num(n) || n < 0 || n > 50) return bad('makeUpFt', 'must be feet between 0 and 50')
+      makeUpFt = Math.round(n * 100) / 100
     }
     const childRulesByCounter = new Map<string, ChildRule[]>()
     for (const c of t.counters) {
@@ -352,11 +380,13 @@ Deno.serve(async (req) => {
     })
     const data = {
       version: 1,
-      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}) })),
+      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}) })),
       lineTypes: t.lineTypes.map((lt) => ({ id: lt.id, name: lt.name, color: lt.color ?? '#4a9eff', curveStyle: 'straight', ...(childRulesByLineType.has(lt.id) ? { childCounts: childRulesByLineType.get(lt.id) } : {}) })),
       iconNames: {}, iconOrder: null, customIconPaths: [],
       groups: groupsOut, groupsEnabled: groupsOut.length > 0, rooms: [],
       ...(trade ? { trade } : {}),
+      ...(ceilingHeightFt != null ? { ceilingHeightFt } : {}),
+      ...(makeUpFt != null ? { makeUpFt } : {}),
       pages,
       activeCanvasIdByPage: {},
       numberKeyBindings: {},

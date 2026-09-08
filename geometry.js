@@ -206,7 +206,9 @@
     const s = String(str || '').trim();
     if (!s) return null;
     if (unit === 'ft' || unit === 'in') {
-      const m = s.match(/^(-?\d+(?:\.\d+)?)\s*[''-]?\s*(?:(\d+)\s*[""]?)?$/);
+      // 3'6, 3' 6", 3-6 and the app's own 3'-6" (formatFeetInchesFromVal) all read
+      // as three feet six inches; the foot mark may be followed by a dash.
+      const m = s.match(/^(-?\d+(?:\.\d+)?)\s*(?:['']\s*-?|-)?\s*(?:(\d+)\s*[""]?)?$/);
       if (m) {
         const ft = parseFloat(m[1]);
         const inPart = m[2] ? parseInt(m[2], 10) : 0;
@@ -216,6 +218,30 @@
     }
     const n = parseFloat(s);
     return isNaN(n) ? null : n;
+  }
+  // Mount height (Electrical, First-Class S1): the trade writes it in inches
+  // AFF — a bare number IS inches ("18" → 18); feet-inches forms ("4'-0\"",
+  // "3' 6", "44in", "4 ft") go through parseRealWorldLength. null = blank /
+  // unparseable; a negative is rejected. Returns whole-ish inches (¼" grid).
+  function parseMountHeightIn(str) {
+    const s = String(str || '').trim().toLowerCase();
+    if (!s) return null;
+    let inches = null;
+    if (/^\d+(?:\.\d+)?$/.test(s)) inches = parseFloat(s);
+    else if (/^\d+(?:\.\d+)?\s*(?:in|inch|inches|")$/.test(s)) inches = parseFloat(s);
+    else if (/^\d+(?:\.\d+)?\s*(?:ft|feet|foot)$/.test(s)) inches = parseFloat(s) * 12;
+    else {
+      const ft = parseRealWorldLength(s.replace(/ft|feet|foot/g, "'").replace(/in|inch|inches/g, '"'), 'ft');
+      if (ft != null) inches = ft * 12;
+    }
+    if (inches == null || isNaN(inches) || inches < 0) return null;
+    return Math.round(inches * 4) / 4;
+  }
+  // 18 → 18"; 78 → 78". The trade writes mount heights in inches AFF at any
+  // height (18" receptacle, 44" GFCI, 78" panel top), so the label does too.
+  function formatMountHeightIn(inches) {
+    if (typeof inches !== 'number' || !isFinite(inches) || inches < 0) return '';
+    return (Math.round(inches * 4) / 4) + '"';
   }
   function parseFraction(str) {
     const s = String(str || '').trim();
@@ -462,7 +488,7 @@
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
       rotatePoint90CW, pointInRect, rectsOverlap, clampMenuPosition,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine, counterTally,
-      formatLineLengthRealSum, formatFeet, formatFeetPx, parseRealWorldLength, parseFraction,
+      formatLineLengthRealSum, formatFeet, formatFeetPx, parseRealWorldLength, parseFraction, parseMountHeightIn, formatMountHeightIn,
       formatAgo, formatFeetInchesFromVal,
       formatDist, formatDistFeetInches, formatDistFeetInchesFromReal, formatArea,
       clampEffectiveDpr, convertUnitValue, roomBoxDimsFeet, bakeFramesMatch,

@@ -32,6 +32,29 @@ Options: `--out other-file.js` writes elsewhere; `--stdout` prints instead of wr
 - `viewBox` is recommended (e.g. `viewBox="0 0 1200 1200"`); defaults to `0 0 24 24` if missing.
 - Multiple paths are supported; they are joined into a single path string.
 
+## Icon sets
+
+The top-level `my-counters/*.svg` files are the original (plumbing) set. Each
+immediate **subfolder is a further set** named after the folder — today
+`my-counters/electrical/` (41 drafting-convention E-sheet symbols, Electrical,
+First-Class move 1). Every generated entry carries `set` ('plumbing' |
+'electrical'); the icon pickers' custom grid groups by set with a heading per
+set and the project's trade first (`customIconCellsHtml(icons, selected,
+firstSet)` in icon-render.js).
+
+The electrical set is **generated, not hand-drawn**:
+`node scripts/build-electrical-symbols.js` writes the SVGs from geometry
+(rings, bars, annular sectors — every symbol is one fill-only path, so outlines
+are rings and letters are built from bands), then `npm run build:icons` folds
+them in. Edit the symbol there, never the SVG.
+
+Two optional authoring elements are honored by the generator:
+
+- `<title>Duplex Receptacle</title>` — overrides the filename-derived display
+  name (so `tv-outlet.svg` can read "TV Outlet").
+- `<desc>terms: receptacle, outlet, duplex</desc>` — search terms, emitted as
+  `terms` on the entry.
+
 ## Display Names
 
 Display names are derived from filenames:

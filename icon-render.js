@@ -75,8 +75,24 @@
   }
   // Custom grid: always leads with the upload cell; each custom icon carries
   // its own viewBox. selectedValue (optional) marks the matching cell.
-  function customIconCellsHtml(effectiveCustom, selectedValue) {
-    return ICON_UPLOAD_CELL_HTML + effectiveCustom.map((ic) => iconCellHtml(ic.value, ic.viewBox, ic.value === selectedValue)).join('');
+  // Sets (S1): bundled icons carry `set` ('plumbing' | 'electrical' | …);
+  // user uploads carry none. When more than one set is present the grid gets a
+  // heading per set — plain <div>s, never .icon-cell, so every caller's
+  // `.icon-cell` wiring is untouched. `firstSet` (optional) hoists that set to
+  // the top: the Quick creator leads with the project's trade.
+  const ICON_SET_LABELS = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
+  function customIconCellsHtml(effectiveCustom, selectedValue, firstSet) {
+    const cells = (list) => list.map((ic) => iconCellHtml(ic.value, ic.viewBox, ic.value === selectedValue)).join('');
+    const sets = [];
+    effectiveCustom.forEach((ic) => { const k = ic.set || 'uploaded'; if (!sets.includes(k)) sets.push(k); });
+    if (sets.length <= 1) return ICON_UPLOAD_CELL_HTML + cells(effectiveCustom);
+    const order = sets.slice().sort((a, b) => (a === firstSet ? -1 : b === firstSet ? 1 : 0));
+    // uploads always last — they follow the "+" cell in the first block only
+    return order.map((k, i) => {
+      const label = k === 'uploaded' ? 'Uploaded' : (ICON_SET_LABELS[k] || (k.charAt(0).toUpperCase() + k.slice(1)));
+      const list = effectiveCustom.filter((ic) => (ic.set || 'uploaded') === k);
+      return '<div class="icon-grid-heading">' + label + '</div>' + (i === 0 ? ICON_UPLOAD_CELL_HTML : '') + cells(list);
+    }).join('');
   }
 
 

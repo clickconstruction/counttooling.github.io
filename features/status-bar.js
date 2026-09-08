@@ -117,6 +117,9 @@
   // fixed-placeholder rule as above so the wrap verdict stays stable while
   // the live numbers grow (DUCT unit D2 rides the T2-09 seam).
   const DUCT_READOUT_PLACEHOLDER = '88×88 · 8888\'-88" · 8,888 lb · run 88,888 lb';
+  // Chain readout worst case: the drop number varies, the counter name does
+  // not change per mousemove, so only the number rides the placeholder.
+  const CHAIN_READOUT_PLACEHOLDER = '+88.88 ft drop at counter';
 
   function updateStatus() {
     const state = App.state;
@@ -255,6 +258,17 @@
         else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? press + ' second corner' : press + ' first corner';
         else if (state.tool === TOOL.NOTE) toolHint = press + ' to add note';
         else if (state.tool === TOOL.COUNTER) toolHint = press + ' to place marker';
+        else if (state.tool === TOOL.CHAIN) {
+          // S2: the default vertical the next tap writes ("+9.5 ft drop at
+          // Duplex receptacle") — keyed by a fixed placeholder like the other
+          // live readouts so the one-line verdict never flickers with the number.
+          toolHint = state.chainStart && state.chainStart.page === state.currentPage ? press + ' next device (Enter ends)' : press + ' first device';
+          const readout = App.chainDropHint ? App.chainDropHint() : '';
+          if (readout) {
+            toolHintKeyed = toolHint + ' — ' + CHAIN_READOUT_PLACEHOLDER;
+            toolHint += ' — ' + readout;
+          }
+        }
         else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
         // The hint only rides when the bar stays on ONE line (field feedback
         // 2026-08-14): on narrow layouts the status bar flex-wraps, and a long

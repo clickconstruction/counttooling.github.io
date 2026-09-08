@@ -139,6 +139,12 @@
         App.state.pages.forEach(p => { p.scale = d.scale; });
       }
       App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+    App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
+    App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
+    App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+      App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
+      App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
+      App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
       if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
       if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
       if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
@@ -226,6 +232,9 @@
       App.state.pages.forEach(p => { p.scale = d.scale; });
     }
     App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
+    App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
+    App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
+    App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
     if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
     if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
     if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };

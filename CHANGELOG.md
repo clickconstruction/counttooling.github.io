@@ -13,6 +13,26 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tutorial): the empty-canvas tour link survives a mixed shell (2026-09-08)
+
+First report after the tutorial shipped: "take the five-minute tour" was not clickable. The
+service worker serves `app/index.html` network-first and `styles.css` cache-first, so a
+returning tab renders the new HTML (link present) against the previous version's stylesheet
+(no `.canvas-empty-hint-tour a { pointer-events: auto }`) until the updated worker takes
+control — and the hint container's `pointer-events: none` swallowed the click. Reproduced by
+routing the pre-tutorial stylesheet under the live page: the click landed on `#canvasWrapper`.
+
+- The `<a>` now carries `style="pointer-events:auto"` inline in the HTML, so the link is
+  clickable whichever stylesheet the shell paired it with. The CSS rule stays for the
+  z-index and colour.
+- `tutorial.spec.js` gains a mixed-shell guard: the current stylesheet with that rule
+  stripped, a real mouse click, the tour starts.
+- The general one-load mismatch is already handled by the `controllerchange` reload in
+  app.js when nothing would be lost; this case slipped through because a mid-propagation
+  visit can abort the new worker's verified install and leave the old shell in charge.
+
+---
+
 ## feat(tutorial): the interactive walkthrough — learn the app by doing an electrical takeoff on the sample plan (2026-09-08)
 
 The stage after the six electrical slices. `features/tutorial.js` is a coach-marked tour over

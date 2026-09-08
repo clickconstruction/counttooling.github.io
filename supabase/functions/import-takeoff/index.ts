@@ -37,8 +37,8 @@ type TakeoffPage = {
   scale?: { pixelsPerUnit: number; unit: string } | null
   rotation?: number
   counterMarkers?: Record<string, Array<Pt & { group?: string }>>
-  quickLines?: Array<{ x1: number; y1: number; x2: number; y2: number; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number; conductors?: Conductor[] }>
-  polylines?: Array<{ points: Pt[]; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number; conductors?: Conductor[] }>
+  quickLines?: Array<{ x1: number; y1: number; x2: number; y2: number; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number; conductors?: Conductor[]; homerun?: boolean }>
+  polylines?: Array<{ points: Pt[]; lineTypeId: string; group?: string; startDrop?: number; endDrop?: number; conductors?: Conductor[]; homerun?: boolean }>
   notes?: Array<{ x: number; y: number; text: string; detail?: string }>
   multiplyZones?: Array<{ x1: number; y1: number; x2: number; y2: number; multiplier: number }>
   scaleZones?: Array<{ x1: number; y1: number; x2: number; y2: number; scale: { pixelsPerUnit: number; unit: string } }>
@@ -48,9 +48,9 @@ type TakeoffJson = {
   trade?: 'plumbing' | 'electrical' | 'hvac'
   ceilingHeightFt?: number   // v2 (S2): the project's ceiling — with a counter mountHeightIn, the app's Chain tool writes the vertical
   makeUpFt?: number          // v2 (S2): make-up added to every default vertical (the app defaults to 1)
-  groups?: Array<{ id: string; name: string; color?: string }>
-  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string } }>
-  lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[]; raceway?: Raceway; conductors?: Conductor[]; tickMarks?: boolean }>
+  groups?: Array<{ id: string; name: string; color?: string; panel?: string; circuit?: string; loadAmps?: number }>   // S4: panel + circuit make the group a circuit
+  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string }; panelName?: string; poles?: number }>
+  lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[]; raceway?: Raceway; conductors?: Conductor[]; tickMarks?: boolean; homerun?: boolean }>
   pages: TakeoffPage[]
 }
 const TRADES = ['plumbing', 'electrical', 'hvac']
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
     }
     // v2: groups (circuits / panels / areas) and child-count rules on palette items.
     const groupIds = new Set<string>()
-    const groupsOut: Array<{ id: string; name: string; color: string }> = []
+    const groupsOut: Array<{ id: string; name: string; color: string; panel?: string; circuit?: string; loadAmps?: number }> = []
     if (v2 && t.groups != null) {
       if (!Array.isArray(t.groups) || t.groups.length > 200) return bad('groups', 'must be an array (max 200)')
       for (const g of t.groups) {
@@ -197,7 +197,18 @@ Deno.serve(async (req) => {
         if (!id || !gname) return bad('groups', 'each needs id + name')
         if (groupIds.has(id)) return bad('groups', `duplicate id ${id}`)
         groupIds.add(id)
-        groupsOut.push({ id, name: gname, color: typeof g.color === 'string' && g.color ? g.color : PALETTE_COLORS[groupsOut.length % PALETTE_COLORS.length] })
+        const out: { id: string; name: string; color: string; panel?: string; circuit?: string; loadAmps?: number } = { id, name: gname, color: typeof g.color === 'string' && g.color ? g.color : PALETTE_COLORS[groupsOut.length % PALETTE_COLORS.length] }
+        // S4: panel + circuit make the group a circuit; loadAmps feeds the voltage-drop check
+        const panel = String(g.panel ?? '').trim().slice(0, 24)
+        const circuit = String(g.circuit ?? '').trim().slice(0, 24)
+        if (panel) out.panel = panel
+        if (circuit) out.circuit = circuit
+        if (g.loadAmps != null) {
+          const amps = Number(g.loadAmps)
+          if (!num(amps) || amps <= 0 || amps > 6000) return bad(`groups[${id}].loadAmps`, 'must be amps between 0 and 6000')
+          if (panel || circuit) out.loadAmps = Math.round(amps * 10) / 10
+        }
+        groupsOut.push(out)
       }
     }
     const groupOf = (raw: unknown, where: string): { ok: string | null } | { error: Response } => {
@@ -257,6 +268,22 @@ Deno.serve(async (req) => {
       }
       if (lt.tickMarks === false) ticksOffByLineType.add(lt.id)
     }
+    const panelByCounter = new Map<string, { panelName: string; poles?: number }>()
+    for (const c of t.counters) {
+      if (c.panelName == null && c.poles == null) continue
+      if (!v2) return bad('counters.panelName', 'is a version-2 field — send version: 2')
+      const name = String(c.panelName ?? '').trim().slice(0, 24)
+      if (!name) return bad(`counters[${c.id}].poles`, 'needs panelName')
+      const entry: { panelName: string; poles?: number } = { panelName: name }
+      if (c.poles != null) {
+        const poles = Number(c.poles)
+        if (!num(poles) || !Number.isInteger(poles) || poles <= 0 || poles > 400) return bad(`counters[${c.id}].poles`, 'must be a whole number of poles (1..400)')
+        entry.poles = poles
+      }
+      panelByCounter.set(c.id, entry)
+    }
+    const homerunLineTypes = new Set<string>()
+    for (const lt of t.lineTypes) if (lt.homerun === true) { if (!v2) return bad('lineTypes.homerun', 'is a version-2 field — send version: 2'); homerunLineTypes.add(lt.id) }
     const cableByCounter = new Map<string, { ft: number; name: string }>()
     for (const c of t.counters) {
       if (c.cablePerCount == null) continue
@@ -411,11 +438,12 @@ Deno.serve(async (req) => {
         ...(l.endDrop != null && l.endDrop > 0 ? { endDrop: l.endDrop, endDropUnit: 'ft' } : {}),
       })
       const conductorsOf = (l: object) => (lineConductors.has(l) ? { conductors: lineConductors.get(l) } : {})
+      const homerunOf = (l: { homerun?: boolean }) => (v2 && l.homerun === true ? { homerun: true } : {})
       for (const q of p?.quickLines ?? []) {
-        annFor(canvasOf.get(`l:${q.lineTypeId}`)!).quickLines.push({ x1: q.x1, y1: q.y1, x2: q.x2, y2: q.y2, lineTypeId: q.lineTypeId, id: `q_${uid()}`, color: null, group: q.group ?? null, ...drops(q), ...conductorsOf(q) })
+        annFor(canvasOf.get(`l:${q.lineTypeId}`)!).quickLines.push({ x1: q.x1, y1: q.y1, x2: q.x2, y2: q.y2, lineTypeId: q.lineTypeId, id: `q_${uid()}`, color: null, group: q.group ?? null, ...drops(q), ...conductorsOf(q), ...homerunOf(q) })
       }
       for (const pl of p?.polylines ?? []) {
-        annFor(canvasOf.get(`l:${pl.lineTypeId}`)!).polylines.push({ points: pl.points, lineTypeId: pl.lineTypeId, id: `pl_${uid()}`, color: null, group: pl.group ?? null, ...drops(pl), ...conductorsOf(pl) })
+        annFor(canvasOf.get(`l:${pl.lineTypeId}`)!).polylines.push({ points: pl.points, lineTypeId: pl.lineTypeId, id: `pl_${uid()}`, color: null, group: pl.group ?? null, ...drops(pl), ...conductorsOf(pl), ...homerunOf(pl) })
       }
       for (const [cid, marks] of Object.entries(p?.counterMarkers ?? {})) {
         const ann = annFor(canvasOf.get(`c:${cid}`)!)
@@ -451,8 +479,8 @@ Deno.serve(async (req) => {
     })
     const data = {
       version: 1,
-      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}), ...(cableByCounter.has(c.id) ? { cablePerCount: cableByCounter.get(c.id) } : {}) })),
-      lineTypes: t.lineTypes.map((lt) => ({ id: lt.id, name: lt.name, color: lt.color ?? '#4a9eff', curveStyle: 'straight', ...(childRulesByLineType.has(lt.id) ? { childCounts: childRulesByLineType.get(lt.id) } : {}), ...(racewayByLineType.has(lt.id) ? { raceway: racewayByLineType.get(lt.id) } : {}), ...(conductorsByLineType.has(lt.id) ? { conductors: conductorsByLineType.get(lt.id) } : {}), ...(ticksOffByLineType.has(lt.id) ? { tickMarks: false } : {}) })),
+      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}), ...(cableByCounter.has(c.id) ? { cablePerCount: cableByCounter.get(c.id) } : {}), ...(panelByCounter.has(c.id) ? panelByCounter.get(c.id) : {}) })),
+      lineTypes: t.lineTypes.map((lt) => ({ id: lt.id, name: lt.name, color: lt.color ?? '#4a9eff', curveStyle: 'straight', ...(childRulesByLineType.has(lt.id) ? { childCounts: childRulesByLineType.get(lt.id) } : {}), ...(racewayByLineType.has(lt.id) ? { raceway: racewayByLineType.get(lt.id) } : {}), ...(conductorsByLineType.has(lt.id) ? { conductors: conductorsByLineType.get(lt.id) } : {}), ...(ticksOffByLineType.has(lt.id) ? { tickMarks: false } : {}), ...(homerunLineTypes.has(lt.id) ? { homerun: true } : {}) })),
       iconNames: {}, iconOrder: null, customIconPaths: [],
       groups: groupsOut, groupsEnabled: groupsOut.length > 0, rooms: [],
       ...(trade ? { trade } : {}),

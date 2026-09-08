@@ -7443,7 +7443,8 @@
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.parseMountHeightIn = parseMountHeightIn;
-  App.ConductorModel = (typeof window !== 'undefined' && window.ConductorModel) || null;   // S3 pure raceway / conductor model (conductor-model.js)
+  App.ConductorModel = (typeof window !== 'undefined' && window.ConductorModel) || null;
+  App.CircuitModel = (typeof window !== 'undefined' && window.CircuitModel) || null;   // S4 pure circuit model (circuit-model.js)   // S3 pure raceway / conductor model (conductor-model.js)
   App.formatMountHeightIn = formatMountHeightIn;
   App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;

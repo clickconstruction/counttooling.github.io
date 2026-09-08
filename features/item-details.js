@@ -165,6 +165,7 @@
     // call at open time, per the registry boundary rule.
     App.renderChildCountsSection && App.renderChildCountsSection(kind, item);
     App.renderConductorsSection && App.renderConductorsSection(kind, item);
+    App.renderPanelSection && App.renderPanelSection(kind, item);   // S4 panel / homerun
     nameEl.value = item.name || '';
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
@@ -306,6 +307,7 @@
     swatchEl.style.background = color;
     editVerticesGroup.style.display = it.type === 'poly' ? '' : 'none';
     App.renderLineConductorOverride && App.renderLineConductorOverride(line, lt);
+    App.renderLineHomerun && App.renderLineHomerun(line, lt);
     nameEl.onblur = () => {
       const v = nameEl.value.trim();
       App.pushUndoSnapshotCurrentPage();

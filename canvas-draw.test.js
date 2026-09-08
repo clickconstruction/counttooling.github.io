@@ -565,3 +565,31 @@ test('conductor ticks: one hash per conductor at the run midpoint, ground dashed
   const over = run('lt-emt', { conductors: [{ n: 9, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }] });
   assert.strictEqual(callsOf(over, 'stroke').length - callsOf(plain, 'stroke').length, 10);
 });
+
+// Electrical, First-Class S4: the homerun arrowhead + circuit tag.
+test('homerun: a filled arrowhead at the run end with the circuit tag; per line type or per run', () => {
+  Object.assign(globalThis, require('./circuit-model.js'));
+  const state = makeState({
+    lineTypes: [{ id: 'lt-hr', name: 'Homerun', homerun: true }, { id: 'lt-plain', name: 'plain' }],
+    groups: [{ id: 'g1', name: 'Open office', color: '#e85447', panel: 'LP-1', circuit: '7' }],
+  });
+  const draw = createCanvasDraw(makeDeps(state));
+  const run = (lineTypeId, extra) => {
+    const ctx = makeCtx();
+    draw.drawAnnotationsCore(ctx, Object.assign(emptyAnn(), { quickLines: [Object.assign({ x1: 0, y1: 0, x2: 100, y2: 0, color: '#8a4bb0', id: 'q', lineTypeId, group: 'g1' }, extra || {})] }), makeEnv());
+    return ctx;
+  };
+  const plain = run('lt-plain');
+  const hr = run('lt-hr');
+  assert.strictEqual(callsOf(hr, 'fill').length - callsOf(plain, 'fill').length, 1, 'one filled arrowhead');
+  assert.ok(callsOf(hr, 'fillText').some(c => c[1] === 'LP-1/7'), 'the circuit tag rides the arrow');
+  // the tip is the run END
+  const tip = callsOf(hr, 'moveTo').find(c => Math.abs(c[1] - 100) < 0.01 && Math.abs(c[2]) < 0.01);
+  assert.ok(tip, 'arrow tip at (100,0)');
+  // per-run flag on a plain type
+  const perRun = run('lt-plain', { homerun: true });
+  assert.strictEqual(callsOf(perRun, 'fill').length - callsOf(plain, 'fill').length, 1);
+  // no circuit group → arrow, no label
+  const noTag = run('lt-hr', { group: null });
+  assert.ok(!callsOf(noTag, 'fillText').some(c => c[1] === 'LP-1/7'));
+});

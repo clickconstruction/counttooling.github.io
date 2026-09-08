@@ -344,6 +344,35 @@ function createCanvasDraw(deps) {
       ctx.setLineDash([]);
       ctx.restore();
     };
+    // S4 homerun: the arrowhead-to-panel at the run's END (the drafting
+    // convention), with the circuit tag ("LP-1/7") beside it when the run's
+    // group is a circuit. Per line type or per run (`homerun: true`).
+    const drawHomerunArrow = (line, lt, endPdf, tangentPdf, color) => {
+      if (!(line && line.homerun) && !(lt && lt.homerun)) return;
+      const len = Math.hypot(tangentPdf.x, tangentPdf.y) || 1;
+      const ux = tangentPdf.x / len, uy = tangentPdf.y / len;
+      const size = (lts.parallelEndsSize ?? 10) * 1.4;
+      const tip = endPdf;
+      const base = { x: tip.x - ux * size, y: tip.y - uy * size };
+      const w = size * 0.45;
+      const l = tc({ x: base.x - uy * w, y: base.y + ux * w });
+      const r = tc({ x: base.x + uy * w, y: base.y - ux * w });
+      const t = tc(tip);
+      ctx.save();
+      ctx.fillStyle = color; ctx.globalAlpha = lo;
+      ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(l.x, l.y); ctx.lineTo(r.x, r.y); ctx.closePath(); ctx.fill();
+      const g = (state.groups || []).find(gr => gr.id === line.group);
+      const label = typeof circuitTag === 'function' && g ? circuitTag(g) : '';
+      if (label) {
+        const fs = (lts.lengthLabelSize ?? 12);
+        const zoomK = tc({ x: 1, y: 0 }).x - tc({ x: 0, y: 0 }).x;   // device px per PDF pt
+        ctx.font = 'bold ' + Math.max(9, fs * zoomK) + 'px ' + (env.fontFamily || 'sans-serif');
+        ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+        const at = tc({ x: tip.x + ux * size * 0.6 - uy * size * 0.8, y: tip.y + uy * size * 0.6 + ux * size * 0.8 });
+        ctx.fillText(label, at.x, at.y);
+      }
+      ctx.restore();
+    };
     (ann.quickLines || []).forEach(q => {
       const aPdf = { x: q.x1, y: q.y1 }, bPdf = { x: q.x2, y: q.y2 };
       const a = tc(aPdf), b = tc(bPdf);
@@ -365,6 +394,7 @@ function createCanvasDraw(deps) {
         drawGroupDot(midPdf, q.group);
       }
       drawConductorTicks(q, lt, { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 }, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y }, q.color || '#4a9eff');
+      drawHomerunArrow(q, lt, bPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y }, q.color || '#4a9eff');
       const drawDrop = (p) => drawDropMarker(ctx, p, env.dropSize, q.color || '#4a9eff', env.dropStyle);
       if ((q.startDrop || 0) > 0) drawDrop(a);
       if ((q.endDrop || 0) > 0) drawDrop(b);
@@ -427,6 +457,8 @@ function createCanvasDraw(deps) {
         const pa = pts[best], pb = pts[best + 1];
         const plt = (state.lineTypes || []).find(l => l.id === poly.lineTypeId);
         drawConductorTicks(poly, plt, { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 }, { x: pb.x - pa.x, y: pb.y - pa.y }, poly.color || '#4a9eff');
+        const last = pts[pts.length - 1], prev = pts[pts.length - 2];
+        drawHomerunArrow(poly, plt, last, { x: last.x - prev.x, y: last.y - prev.y }, poly.color || '#4a9eff');
       }
       const drawDrop = (p) => drawDropMarker(ctx, p, env.dropSize, poly.color || '#4a9eff', env.dropStyle);
       if ((poly.startDrop || 0) > 0 && pts.length > 0) drawDrop(tc(pts[0]));

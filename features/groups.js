@@ -58,6 +58,7 @@
     document.getElementById('groupModalCapacityCfm').value = g && g.capacityCfm != null ? g.capacityCfm : '';
     document.getElementById('groupModalPlenumBtn').setAttribute('aria-pressed', String(!!(g && g.plenumReturn)));
     syncPlenumRowVisibility();
+    App.renderGroupCircuitFields && App.renderGroupCircuitFields(g);   // S4 circuit row
     const groups = state.groups || [];
     const defaultColor = g ? (g.color || App.COLORS[0]) : (App.COLORS[groups.length % App.COLORS.length]);
     colorRow.innerHTML = App.COLORS.map((c, i) => '<span class="color-swatch' + (c === defaultColor ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
@@ -187,11 +188,13 @@
       pendingGroupEdit.name = name;
       pendingGroupEdit.color = color;
       applySystemFieldsTo(pendingGroupEdit);
+      App.applyGroupCircuitFields && App.applyGroupCircuitFields(pendingGroupEdit);
       App.markProjectDirty();
     } else {
       App.pushUndoSnapshot();
       const newGroup = { id: App.uid(), name, color };
       applySystemFieldsTo(newGroup);
+      App.applyGroupCircuitFields && App.applyGroupCircuitFields(newGroup);
       if (!state.groups) state.groups = [];
       state.groups.push(newGroup);
       // Latch the per-project Groups gate on: without this, deleting the last

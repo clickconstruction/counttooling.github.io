@@ -150,6 +150,16 @@
       : { byGroup: {} };
   }
 
+  // Circuits (features/circuits.js registers this on window.App after this
+  // file loads; resolved at call time, optional — S4). Shape: { panels: [{ panel,
+  // circuits: [...] }], crossCheck: [{ panel, onPlan, scheduled, verdict }] }.
+  function getCircuitSchedule(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getCircuitSchedule === 'function')
+      ? window.App.getCircuitSchedule({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : { panels: [], crossCheck: [] };
+  }
+  const fmtFt = (n) => (typeof n === 'number' ? n.toFixed(2) + ' ft' : '—');
+
   function childRuleLabel(r) {
     return r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per);
   }
@@ -279,7 +289,7 @@
     html += '<h2 class="page-header">Summary</h2>';
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     const ductSchedule = getDuctSchedule(pageIndices, getAnn);
-    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule;
+    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule || getCircuitSchedule(pageIndices, getAnn).panels.length > 0;
     let anyPxSummaryRow = false;
     if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
@@ -347,6 +357,24 @@
       if (anyPxSummaryRow) {
         html += '<p class="report-group-totals">* px rows are runs on pages without a scale — set the scale to include them in feet.</p>';
       }
+    }
+    // S4 Circuit schedule: per panel, each circuit with its devices, conduit /
+    // homerun / wire feet and the farthest device; then the panel cross-check.
+    const circuitSchedule = getCircuitSchedule(pageIndices, getAnn);
+    if (circuitSchedule.panels.length > 0) {
+      html += '<h3 class="section-header">Circuit schedule</h3>';
+      circuitSchedule.panels.forEach(p => {
+        const check = circuitSchedule.crossCheck.find(c => c.panel.toUpperCase() === p.panel.toUpperCase());
+        const checkText = check ? (check.onPlan + ' circuit' + (check.onPlan === 1 ? '' : 's') + ' on plan' + (check.scheduled != null ? ' · ' + check.scheduled + ' scheduled ' + (check.verdict === 'match' ? '✓' : '⚠') : '')) : '';
+        html += '<p class="report-group-totals"><strong>' + escapeHtml(p.panel === '—' ? 'No panel' : 'Panel ' + p.panel) + '</strong>' + (checkText ? ' · ' + escapeHtml(checkText) : '') + '</p>';
+        html += '<table class="report-table"><tr><th>Circuit</th><th>Devices</th><th>Conduit</th><th>Homerun</th><th>Wire</th><th>Farthest device</th></tr>';
+        p.circuits.forEach(c => {
+          const devices = c.devices.map(d => d.count + ' × ' + escapeHtml(d.name)).join(', ') || '—';
+          const far = c.farthestFt != null ? c.farthestFt.toFixed(0) + ' ft' + (c.farthestFrom === 'homerun' ? ' (from the homerun)' : '') : '—';
+          html += '<tr><td>' + escapeHtml((c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group) + (c.loadAmps ? ' <span style="color:#999;">' + c.loadAmps + ' A</span>' : '') + '</td><td>' + devices + '</td><td>' + fmtFt(c.conduitFt) + '</td><td>' + fmtFt(c.homerunFt) + '</td><td>' + fmtFt(c.wireFt) + '</td><td>' + far + (c.devicesOffRuns ? ' <span style="color:#999;">(' + c.devicesOffRuns + ' not on a run)</span>' : '') + '</td></tr>';
+        });
+        html += '</table>';
+      });
     }
     if (roomTotals.length > 0) {
       html += '<h3 class="section-header">Room Volumes</h3>';
@@ -530,7 +558,12 @@
         derived.wire.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, children: [], type: 'wire', derived: 'wire' }));
       }
     });
-    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '', ...(state.trade ? { trade: state.trade } : {}) }, items };
+    // S4: the circuits as facts beside the rows — TakeoffTooling shows them
+    // with the manifest and PipeTooling's bid notes can quote the cross-check.
+    const schedule = getCircuitSchedule(pageIndices, getAnn);
+    const circuits = schedule.panels.flatMap(p => p.circuits.map(c => ({ group: c.group, panel: c.panel || null, circuit: c.circuit || null, load_amps: c.loadAmps, devices: c.deviceCount, conduit_ft: c.conduitFt, homerun_ft: c.homerunFt, wire_ft: c.wireFt, farthest_ft: c.farthestFt })));
+    const panels = schedule.crossCheck.map(c => ({ panel: c.panel, circuits_on_plan: c.onPlan, poles: c.scheduled, verdict: c.verdict }));
+    return { v: 2, source: 'counttooling', project: { name: state.currentProjectName || '', ...(state.trade ? { trade: state.trade } : {}) }, items, ...(circuits.length ? { circuits, panels } : {}) };
   }
 
   function summarizeToolingExport(text) {
@@ -671,6 +704,19 @@
         }
         lines.push('');
       });
+    }
+    const circuitSchedule = getCircuitSchedule(pageIndices, getAnn);
+    if (circuitSchedule.panels.length > 0) {
+      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
+      lines.push('--- Circuits ---');
+      circuitSchedule.panels.forEach(p => {
+        const check = circuitSchedule.crossCheck.find(c => c.panel.toUpperCase() === p.panel.toUpperCase());
+        lines.push((p.panel === '—' ? 'No panel' : 'Panel ' + p.panel) + (check && check.scheduled != null ? ': ' + check.onPlan + ' circuits on plan, ' + check.scheduled + ' scheduled' + (check.verdict === 'match' ? ' ✓' : ' ⚠') : ''));
+        p.circuits.forEach(c => {
+          lines.push('• ' + (c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group + ': ' + c.deviceCount + ' device' + (c.deviceCount === 1 ? '' : 's') + ', ' + fmtFt(c.conduitFt) + ' conduit' + (c.homerunFt ? ', ' + fmtFt(c.homerunFt) + ' homerun' : '') + (c.wireFt ? ', ' + fmtFt(c.wireFt) + ' wire' : '') + (c.farthestFt != null ? ', farthest device ' + c.farthestFt.toFixed(0) + ' ft' : ''));
+        });
+      });
+      lines.push('');
     }
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     if (roomTotals.length > 0) {

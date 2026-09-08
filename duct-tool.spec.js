@@ -216,6 +216,14 @@ test.describe('Duct tool (D2, live since D5)', () => {
   });
 
   test('live footer readout: size · length · lb · run lb while tracing', async ({ page }) => {
+    // The status bar drops its tool hint (readout included) whenever the hint's
+    // worst-case placeholder would wrap the bar onto two lines (features/status-bar.js,
+    // the one-line rule). Linux CI's fallback font metrics are wider than macOS's, so
+    // at the default 1280px viewport the duct placeholder wrapped there and the
+    // readout never appeared — the same sequence a human on a narrow window sees.
+    // Give the bar the room a desktop estimator has; the readout itself is asserted
+    // through App.ductLiveReadout() below regardless of the DOM.
+    await page.setViewportSize({ width: 1600, height: 900 });
     const wrapper = page.locator('#canvasWrapper');
     await armDuct(page);
     await wrapper.click({ position: { x: 150, y: 150 } });

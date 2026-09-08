@@ -50,7 +50,7 @@ type TakeoffJson = {
   makeUpFt?: number          // v2 (S2): make-up added to every default vertical (the app defaults to 1)
   bidCheck?: { manual?: Record<string, boolean>; loadAmps?: number; volts?: number }   // v2 (S5): manual ticks + the voltage-drop defaults
   groups?: Array<{ id: string; name: string; color?: string; panel?: string; circuit?: string; loadAmps?: number }>   // S4: panel + circuit make the group a circuit
-  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string }; panelName?: string; poles?: number }>
+  counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string }; panelName?: string; poles?: number; tag?: string }>
   lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[]; raceway?: Raceway; conductors?: Conductor[]; tickMarks?: boolean; homerun?: boolean }>
   pages: TakeoffPage[]
 }
@@ -283,6 +283,14 @@ Deno.serve(async (req) => {
       }
       panelByCounter.set(c.id, entry)
     }
+    const tagByCounter = new Map<string, string>()   // S6: the fixture tag the plan writes beside the device
+    for (const c of t.counters) {
+      if (c.tag == null) continue
+      if (!v2) return bad('counters.tag', 'is a version-2 field — send version: 2')
+      const tag = String(c.tag).trim().toUpperCase().slice(0, 5)
+      if (!/^[A-Z]{1,3}\d{0,2}$/.test(tag)) return bad(`counters[${c.id}].tag`, "must read like a fixture tag — 'A', 'B1', 'EM'")
+      tagByCounter.set(c.id, tag)
+    }
     const homerunLineTypes = new Set<string>()
     for (const lt of t.lineTypes) if (lt.homerun === true) { if (!v2) return bad('lineTypes.homerun', 'is a version-2 field — send version: 2'); homerunLineTypes.add(lt.id) }
     const cableByCounter = new Map<string, { ft: number; name: string }>()
@@ -494,7 +502,7 @@ Deno.serve(async (req) => {
     })
     const data = {
       version: 1,
-      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}), ...(cableByCounter.has(c.id) ? { cablePerCount: cableByCounter.get(c.id) } : {}), ...(panelByCounter.has(c.id) ? panelByCounter.get(c.id) : {}) })),
+      counters: t.counters.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'M96 96h448v448H96z', color: c.color ?? '#e8c547', ...(childRulesByCounter.has(c.id) ? { childCounts: childRulesByCounter.get(c.id) } : {}), ...(mountByCounter.has(c.id) ? { mountHeightIn: mountByCounter.get(c.id) } : {}), ...(cableByCounter.has(c.id) ? { cablePerCount: cableByCounter.get(c.id) } : {}), ...(panelByCounter.has(c.id) ? panelByCounter.get(c.id) : {}), ...(tagByCounter.has(c.id) ? { tag: tagByCounter.get(c.id) } : {}) })),
       lineTypes: t.lineTypes.map((lt) => ({ id: lt.id, name: lt.name, color: lt.color ?? '#4a9eff', curveStyle: 'straight', ...(childRulesByLineType.has(lt.id) ? { childCounts: childRulesByLineType.get(lt.id) } : {}), ...(racewayByLineType.has(lt.id) ? { raceway: racewayByLineType.get(lt.id) } : {}), ...(conductorsByLineType.has(lt.id) ? { conductors: conductorsByLineType.get(lt.id) } : {}), ...(ticksOffByLineType.has(lt.id) ? { tickMarks: false } : {}), ...(homerunLineTypes.has(lt.id) ? { homerun: true } : {}) })),
       iconNames: {}, iconOrder: null, customIconPaths: [],
       groups: groupsOut, groupsEnabled: groupsOut.length > 0, rooms: [],

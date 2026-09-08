@@ -257,7 +257,13 @@
         else if (state.tool === TOOL.ROOM) toolHint = state.roomBoxStart ? press + ' second corner' : press + ' first corner';
         else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? press + ' second corner' : press + ' first corner';
         else if (state.tool === TOOL.NOTE) toolHint = press + ' to add note';
-        else if (state.tool === TOOL.COUNTER) toolHint = press + ' to place marker';
+        else if (state.tool === TOOL.COUNTER) {
+          toolHint = press + ' to place marker';
+          // S6: the tag the text layer reads beside the cursor ("Plan says B → Type B")
+          const th = App.tagHintText ? App.tagHintText() : '';
+          if (th) { toolHintKeyed = toolHint + ' — Plan says WW → counter name placeholder'; toolHint += ' — ' + th; }
+        }
+        else if (state.tool === TOOL.SCHEDULE) toolHint = state.scheduleBoxStart ? press + ' the schedule\'s far corner' : press + ' one corner of the fixture schedule';
         else if (state.tool === TOOL.CHAIN) {
           // S2: the default vertical the next tap writes ("+9.5 ft drop at
           // Duplex receptacle") — keyed by a fixed placeholder like the other

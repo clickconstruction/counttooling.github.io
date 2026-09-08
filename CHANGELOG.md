@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(electrical): S6 — read the tags: the text layer picks the fixture type, the schedule builds the palette (2026-09-08)
+
+Slice 6 of Electrical, First-Class — the last of the six moves. Lighting is counted by a
+letter beside the symbol, and that letter is in the PDF's text layer with coordinates.
+
+- **The text layer, in app space** (`features/tag-reader.js` `pageTextItems`): pdf.js
+  `getTextContent` on the page's own proxy, each item's corners run through the page's
+  scale-1 viewport into the annotation coordinate space (the same space `canvasToPdf`
+  produces), cached per session. Regex over text, no model, offline. Honest about scans: no
+  text layer, no suggestion, the click behaves exactly as before.
+- **Tag-aware placement.** With the Counter tool on an electrical project the cursor reads
+  the nearest tag — a chip says *Plan says B → Type B* and rings the letter it read; the
+  click lands on the counter whose tag matches (`tag-model.js` `tagOfCounter`: an explicit
+  `counter.tag`, else a name like "Type B" / "B — 2x2 troffer"), so one tool covers every
+  fixture type instead of switching counters per click. No counter for the tag? Enter
+  creates "Type X" (tagged, the letter icon) and makes it active.
+- **Palette from the schedule.** `TOOL.SCHEDULE` (the Create tab's "Read a schedule from
+  the sheet…" link; a rect tool like Room Sizer) — drag a box over the fixture schedule and
+  the rows inside are proposed as counters, tag + description, existing tags unticked,
+  one confirm. Counters are named by their tag ("EM — Emergency wall pack") so they read
+  back as tags.
+- The details modal gains a Fixture tag field; the agent door accepts `counters[].tag`;
+  telemetry `tag_suggestion_accepted` (click / enter-create / schedule). The panel schedule
+  gesture (poles from a box) is deliberately not built: panel schedules vary too much in
+  layout for a regex to be honest about.
+
 ## feat(electrical): S5 — Bid Check: the app says what it knows and asks what it cannot (2026-09-08)
 
 Slice 5 of Electrical, First-Class — the panel the duct plan specified, built electrical-first

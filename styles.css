@@ -1496,6 +1496,12 @@ body.hotkey-peek .hk-badge { display: block; }
 .bid-check-row.done .bid-check-label { color: var(--text3); text-decoration: line-through; }
 .bid-check-defaults { font-size: 0.74rem; color: var(--text2); padding: 8px 8px 4px; line-height: 1.6; }
 .bid-check-defaults input { width: 52px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font: inherit; padding: 1px 4px; }
+.schedule-palette-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow: auto; margin-bottom: 8px; }
+label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr; column-gap: 10px; align-items: center; margin: 0; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+.schedule-palette-row input[type="checkbox"] { margin: 0; }
+.schedule-palette-row .tag { font-family: 'DM Mono', monospace; font-weight: 600; }
+.schedule-palette-row .desc { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.schedule-palette-row.exists .desc::after { content: ' · already a counter'; color: var(--text3); }
 .panel-check-rows { margin: 4px 0 6px; }
 .panel-check-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 8px; font-size: 0.75rem; color: var(--text2); }
 .panel-check-row .meta { white-space: nowrap; font-variant-numeric: tabular-nums; }

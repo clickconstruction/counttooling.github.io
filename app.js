@@ -265,7 +265,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -1438,7 +1438,7 @@
     if (!toolName || !state.pages.length || getPageScale(state.currentPage)) return;
     // Same reset as the Move button (the #moveBtn onclick): drop to Move + clear starts.
     state.tool = TOOL.NONE;
-    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null; state.chainStart = null;
+    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null; state.scheduleBoxStart = null; state.chainStart = null;
     if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
     showSetScaleFirstToast(toolName);
     logUserEvent('unscaled_ft_block', state.currentProjectId || null, { surface: 'page-switch' });
@@ -2041,6 +2041,14 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
+    if (state.scheduleBoxStart && state.mousePos) {
+      // S6: the schedule box rubber band (amber, dashed)
+      const tl = toCanvas({ x: Math.min(state.scheduleBoxStart.x, state.mousePos.x), y: Math.min(state.scheduleBoxStart.y, state.mousePos.y) });
+      const br = toCanvas({ x: Math.max(state.scheduleBoxStart.x, state.mousePos.x), y: Math.max(state.scheduleBoxStart.y, state.mousePos.y) });
+      ctx.strokeStyle = '#e8c547'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.setLineDash([]);
+    }
     if (state.roomBoxStart && state.mousePos) {
       const minX = Math.min(state.roomBoxStart.x, state.mousePos.x), maxX = Math.max(state.roomBoxStart.x, state.mousePos.x);
       const minY = Math.min(state.roomBoxStart.y, state.mousePos.y), maxY = Math.max(state.roomBoxStart.y, state.mousePos.y);
@@ -2102,6 +2110,7 @@
     // size chip. Sits after the hideMarks early-return above, so a hidden
     // overlay paints no duct either.
     if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, lineOpacity: lo });
+    if (App.drawTagOverlay) App.drawTagOverlay(ctx, { fontScale: z * currentEffDpr });   // S6: the "Plan says B" chip
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
       pts.forEach((pt, i) => {
@@ -2397,6 +2406,7 @@
     // deferred seam — the section stays hidden until the first run exists.
     if (App.renderDuctList) App.renderDuctList();
     if (App.renderBidCheck) App.renderBidCheck();   // S5 Bid Check section
+    if (App.renderTagReaderUI) App.renderTagReaderUI();   // S6 the Create-tab schedule link
     const noteBtnSidebar = document.getElementById('noteBtnSidebar');
     if (noteBtnSidebar) noteBtnSidebar.classList.toggle('active', state.tool === TOOL.NOTE);
     const legendBtnEl = document.getElementById('legendBtn');
@@ -2429,7 +2439,7 @@
       state.multiplyZoneStart = null;
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
-      state.roomBoxStart = null;
+      state.roomBoxStart = null; state.scheduleBoxStart = null;
       state.chainStart = null;
       state.drawingPolyline = null;
       state.editingPolyline = null;
@@ -3520,7 +3530,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.chainStart = null;
     state.ghostRectStart = null;
     state.placingGhost = null;
@@ -3558,7 +3568,7 @@
       state.multiplyZoneStart = null;
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
-      state.roomBoxStart = null;
+      state.roomBoxStart = null; state.scheduleBoxStart = null;
       state.chainStart = null;
       state.tool = TOOL.CHAIN;
       collapsePagesSectionForPlacing();
@@ -3577,7 +3587,7 @@
       state.multiplyZoneStart = null;
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
-      state.roomBoxStart = null;
+      state.roomBoxStart = null; state.scheduleBoxStart = null;
       state.chainStart = null;
       state.tool = TOOL.DROP;
       collapsePagesSectionForPlacing();
@@ -3629,7 +3639,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.HIGHLIGHT;
     // Re-click while active reopens a closed bookmarks panel (the Chain pattern).
     App.openHighlightPanel && App.openHighlightPanel();
@@ -3640,7 +3650,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.MULTIPLY_ZONE;
     updateUI();
   };
@@ -3653,7 +3663,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.SCALE_ZONE;
     updateUI();
   };
@@ -3662,7 +3672,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.ghostRectStart = null;
     // A ghost mid-placement survives nothing but a drop or Escape — re-arming
     // the tool while carrying one would leave it orphaned on the cursor.
@@ -3676,7 +3686,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.DELETE_ZONE;
     updateUI();
   };
@@ -3689,7 +3699,7 @@
     state.multiplyZoneStart = null;
     state.scaleZoneStart = null;
     state.deleteZoneStart = null;
-    state.roomBoxStart = null;
+    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.ROOM;
     updateUI();
   };
@@ -3733,7 +3743,7 @@
       state.multiplyZoneStart = null;
       state.scaleZoneStart = null;
       state.deleteZoneStart = null;
-      state.roomBoxStart = null;
+      state.roomBoxStart = null; state.scheduleBoxStart = null;
       state.chainStart = null;
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
@@ -5410,8 +5420,11 @@
       const page = state.pages[state.currentPage];
       const canvas = page && ensureActiveCanvas(page);
       if (canvas) {
-        if (!canvas.annotations.counterMarkers[state.activeCounterType]) canvas.annotations.counterMarkers[state.activeCounterType] = [];
-        canvas.annotations.counterMarkers[state.activeCounterType].push({ x: pos.x, y: pos.y, id: uid(), group: state.activeGroupId || null });
+        // S6 tag-aware placement: the tag the text layer reads beside the click
+        // picks the counter (features/tag-reader.js); no tag = the active one.
+        const targetId = (App.tagSwapCounterId && App.tagSwapCounterId(pos)) || state.activeCounterType;
+        if (!canvas.annotations.counterMarkers[targetId]) canvas.annotations.counterMarkers[targetId] = [];
+        canvas.annotations.counterMarkers[targetId].push({ x: pos.x, y: pos.y, id: uid(), group: state.activeGroupId || null });
         logCounterMarkerAddedEvent();
         markProjectDirty();
       }
@@ -5514,6 +5527,18 @@
       }
       renderAnnotations();
       updateUI();
+    } else if (state.tool === TOOL.SCHEDULE) {
+      // S6: a box over the fixture schedule → counters (features/tag-reader.js).
+      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
+      if (!state.scheduleBoxStart) {
+        state.scheduleBoxStart = pdf;
+      } else {
+        const box = { x1: Math.min(state.scheduleBoxStart.x, pdf.x), x2: Math.max(state.scheduleBoxStart.x, pdf.x), y1: Math.min(state.scheduleBoxStart.y, pdf.y), y2: Math.max(state.scheduleBoxStart.y, pdf.y) };
+        state.scheduleBoxStart = null;
+        App.proposeCountersFromBox && App.proposeCountersFromBox(box);
+      }
+      renderAnnotations();
+      updateUI();
     } else if (state.tool === TOOL.ROOM) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Room Sizer'); return; }
@@ -5522,7 +5547,7 @@
       } else {
         const x1 = Math.min(state.roomBoxStart.x, pdf.x), x2 = Math.max(state.roomBoxStart.x, pdf.x);
         const y1 = Math.min(state.roomBoxStart.y, pdf.y), y2 = Math.max(state.roomBoxStart.y, pdf.y);
-        state.roomBoxStart = null;
+        state.roomBoxStart = null; state.scheduleBoxStart = null;
         App.openRoomBoxModal({ x1, y1, x2, y2 });
       }
       renderAnnotations();
@@ -5677,7 +5702,7 @@
   // aim-timer move-cancel threshold so "drag" and "hold-to-aim" can never both
   // claim a gesture: hold still 280ms -> loupe wins; move >6px first -> drag wins.
   const RECT_DRAG_MIN_PX = 6;   // client px
-  const RECT_TOOL_START_KEY = { [TOOL.HIGHLIGHT]: 'highlightStart',
+  const RECT_TOOL_START_KEY = { [TOOL.SCHEDULE]: 'scheduleBoxStart', [TOOL.HIGHLIGHT]: 'highlightStart',
     [TOOL.MULTIPLY_ZONE]: 'multiplyZoneStart', [TOOL.SCALE_ZONE]: 'scaleZoneStart',
     [TOOL.ROOM]: 'roomBoxStart', [TOOL.DELETE_ZONE]: 'deleteZoneStart' };
 
@@ -6080,8 +6105,10 @@
       annotationModel.translateGhost(state.placingGhost, pdf.x - state.placingGhostLast.x, pdf.y - state.placingGhostLast.y);
       state.placingGhostLast = { x: pdf.x, y: pdf.y };
       renderAnnotations();
-    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost)) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing())) {
+    } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.SCHEDULE && state.scheduleBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost)) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing())) {
       renderAnnotations();
+    } else if (state.tool === TOOL.COUNTER && App.tagHintText && App.tagHintText()) {
+      renderAnnotations();   // S6: the tag chip follows the cursor
     }
     const t = hitTest(pdf);
     state.hoverLegendResize = !!(t && t.type === 'legendResize');
@@ -6390,7 +6417,7 @@
       const moved = ptDist(state.touchPanStart, c) > 10;
       // A drag before the hold fires cancels precision mode (so a quick tap still places).
       if (state.aimPressTimer && moved) { clearTimeout(state.aimPressTimer); state.aimPressTimer = null; }
-      if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart)) && moved) {
+      if (((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.SCHEDULE && state.scheduleBoxStart)) && moved) {
         if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
         const pt = canvasPointFromEvent(e);
         const pdf = canvasToPdf(pt.x, pt.y);
@@ -6484,7 +6511,7 @@
       } else {
         const x1 = Math.min(state.roomBoxStart.x, pdf.x), x2 = Math.max(state.roomBoxStart.x, pdf.x);
         const y1 = Math.min(state.roomBoxStart.y, pdf.y), y2 = Math.max(state.roomBoxStart.y, pdf.y);
-        state.roomBoxStart = null;
+        state.roomBoxStart = null; state.scheduleBoxStart = null;
         App.openRoomBoxModal({ x1, y1, x2, y2 });
       }
       renderAnnotations();
@@ -6967,7 +6994,7 @@
         if (App.handleGhostEscape && App.handleGhostEscape()) { renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; state.activeGhostId = null; updateUI(); renderAnnotations(); }
       } else if (state.tool === TOOL.ROOM) {
-        if (state.roomBoxStart) { state.roomBoxStart = null; renderAnnotations(); updateUI(); }
+        if (state.roomBoxStart) { state.roomBoxStart = null; state.scheduleBoxStart = null; renderAnnotations(); updateUI(); }
         else { state.tool = TOOL.NONE; updateUI(); }
       } else if (state.tool === TOOL.NOTE) {
         state.tool = TOOL.NONE;
@@ -7021,6 +7048,8 @@
     // Chain: Enter ends the current run like the first Escape (tool stays
     // active — the next click starts a fresh chain); with no run in progress
     // it closes the palette instead (the header pair chip takes over).
+    // S6: Enter with a "Plan says B" hint and no Type B counter creates it.
+    if (e.key === 'Enter' && state.tool === TOOL.COUNTER && App.tagCreateFromHint && App.tagCreateFromHint()) { e.preventDefault(); return; }
     if (e.key === 'Enter' && state.tool === TOOL.CHAIN) {
       if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
       else if (App.isChainPanelOpen && App.isChainPanelOpen()) { App.closeChainPanel(); updateUI(); }
@@ -7210,6 +7239,7 @@
   App.pushUndoSnapshotCurrentPage = pushUndoSnapshotCurrentPage;
   App.markProjectDirty = markProjectDirty;
   App.showModal = showModal;
+  App.handleCanvasClick = (e, pdf) => handleCanvasClick(e, pdf);   // S6 specs drive placement through the real path
   App.hideModal = hideModal;
   // Sign-in wall gate (Tier-3 B7): feature-file gated openers
   // (features/my-settings.js, features/load-project.js) route through this so

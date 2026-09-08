@@ -43,6 +43,7 @@
   <script src="/conductor-model.js"></script>
   <script src="/circuit-model.js"></script>
   <script src="/bid-check-model.js"></script>
+  <script src="/tag-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/canvas-draw.js"></script>
   <script src="/render-service.js"></script>
@@ -691,7 +692,7 @@
             <label id="counterCustomIconsLabel" style="cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
             <div class="icon-grid" id="counterIconGridCustom"></div>
           </div>
-          <div class="settings-menu-links-row"><button type="button" class="settings-menu-link" id="counterManageIcons" title="Rename, reorder, or delete icons">Manage icons…</button></div>
+          <div class="settings-menu-links-row"><button type="button" class="settings-menu-link" id="counterManageIcons" title="Rename, reorder, or delete icons">Manage icons…</button><button type="button" class="settings-menu-link" id="counterReadSchedule" title="Drag a box over the fixture schedule on the sheet — the app reads the rows and proposes a counter per type" style="display:none;">Read a schedule from the sheet…</button></div>
         </div>
         <div class="form-group">
           <label>Color</label>
@@ -1879,6 +1880,12 @@
         <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
         <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
+      <!-- S6: the fixture tag the plan writes beside this device ("B"); tag-aware
+           placement lands a click on the counter whose tag matches. -->
+      <div class="form-group" id="counterLineTypeDetailsTagGroup" style="display:none;">
+        <label>Fixture tag <span class="form-sublabel">(the letter beside the symbol on the plan — read from the text layer at placement)</span></label>
+        <input type="text" id="counterLineTypeDetailsTag" placeholder="e.g. B or EM" autocomplete="off" maxlength="5" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;text-transform:uppercase;">
+      </div>
       <!-- S1: the per-counter mount height (inches AFF; counters only). -->
       <div class="form-group" id="counterLineTypeDetailsMountGroup" style="display:none;">
         <label>Mount height <span class="form-sublabel">(inches AFF — empty = ceiling / no default vertical)</span></label>
@@ -1965,6 +1972,22 @@
       <div class="actions">
         <button id="deleteCounterLineTypeCancel">Cancel</button>
         <button id="deleteCounterLineTypeConfirm" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+  <!-- S6 (features/tag-reader.js): the rows the app read inside the schedule
+       box, one proposed counter per fixture type — one confirm. -->
+  <div class="modal-overlay" id="schedulePaletteModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h2>Counters from the schedule</h2>
+        <button type="button" class="modal-close-btn" id="schedulePaletteClose" aria-label="Close">×</button>
+      </div>
+      <p id="schedulePaletteIntro" style="margin:0 0 10px;font-size:0.9rem;color:var(--text2);"></p>
+      <div id="schedulePaletteList" class="schedule-palette-list"></div>
+      <div class="actions">
+        <button type="button" id="schedulePaletteCancel">Cancel</button>
+        <button type="button" id="schedulePaletteCreate">Create counters</button>
       </div>
     </div>
   </div>
@@ -3172,6 +3195,7 @@
   <script src="/features/conductors.js"></script>
   <script src="/features/circuits.js"></script>
   <script src="/features/bid-check.js"></script>
+  <script src="/features/tag-reader.js"></script>
   <script src="/features/twin-badge.js"></script>
   <script src="/features/auth-magic-link.js"></script>
   <script src="/report.js"></script>

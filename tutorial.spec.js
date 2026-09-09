@@ -11,6 +11,12 @@
  * over an open cloud project; the "do it for me" path ends with a real
  * electrical takeoff on the sample plan — receptacles, a conduit type with
  * conductors, chained runs with drops, a circuit, an expanded Bid Check.
+ *
+ * The plumbing tour shares the engine: its own link, ?tour=plumbing, its own
+ * done key (finishing it hides only its link), the project stamped plumbing on
+ * open, and a do-it-for-me path that ends with three water closets, a 1in PEX
+ * type with a hanger rule, three chained lavatories with a 3 ft riser on the
+ * first run, a ×3 zone around Men 105, an RFI note, and the proof modal open.
  */
 const { test, expect } = require('@playwright/test');
 
@@ -141,5 +147,119 @@ test.describe('Interactive walkthrough', () => {
     const box = await page.locator('#canvasEmptyHintTour').boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await waitForStep(page, 'welcome');
+  });
+
+  test('the plumbing tour: its own link and ?tour=plumbing start it, do-it-for-me builds a plumbing takeoff, its own done key hides only its link', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => { try { localStorage.removeItem('clickcount-tour-done'); localStorage.removeItem('clickcount-tour-done-plumbing'); } catch (_) {} });
+    // a device whose last bid was electrical still gets a plumbing tour
+    await page.evaluate(() => { const m = JSON.parse(localStorage.getItem('plumbingModifiers') || '{}'); m.defaultTrade = 'electrical'; localStorage.setItem('plumbingModifiers', JSON.stringify(m)); });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    expect(await page.locator('#canvasEmptyHintTourPlumbing').isVisible()).toBe(true);
+    expect(await page.locator('#canvasEmptyHintTour').isVisible()).toBe(true);
+    await page.click('#canvasEmptyHintTourPlumbing');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['plumbing', 'welcome']);
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 14');
+
+    // 1. the sample plan → the project is stamped plumbing (not remembered as the device default)
+    await page.click('#tourAction');
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await waitForStep(page, 'scale');
+    expect(await page.evaluate(() => window.state.trade)).toBe('plumbing');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plumbingModifiers')).defaultTrade)).toBe('electrical');
+    // 2. scale
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.state.pages[0].scale.pixelsPerUnit)).toBe(9);
+    await waitForStep(page, 'measure');
+    // 3. the 20'-0" dimension measures 20 ft through the real Measure commit
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');
+    expect(await page.evaluate(() => window.state.tool)).toBe(0);
+    await waitForStep(page, 'counter');
+    // 4. a Water Closet with the plumbing set's Toilet symbol
+    await page.click('#tourAction');
+    const wc = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Water Closet'); const t = window.App.getEffectiveCustomIcons().find((i) => i.name === 'Toilet'); return { has: !!c, toilet: !!c && c.icon === t.value }; });
+    expect(wc).toEqual({ has: true, toilet: true });
+    await waitForStep(page, 'place');
+    // 5. three marks on the drawn water closets inside Men 105
+    await page.click('#tourAction');
+    const marks = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Water Closet'); return window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id]; });
+    expect(marks.length).toBe(3);
+    marks.forEach((m) => { expect(m.x).toBeGreaterThan(322); expect(m.x).toBeLessThan(465); expect(m.y).toBeGreaterThan(266); expect(m.y).toBeLessThan(442); });
+    await waitForStep(page, 'linetype');
+    // 6. the Quick Line name
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.state.lineTypes.map((l) => l.name))).toEqual(['1in PEX']);
+    await waitForStep(page, 'chain');
+    // 7. three lavatories chained: two runs, no drops yet (no ceiling in a plumbing project)
+    await page.click('#tourAction');
+    const chained = await page.evaluate(() => { const a = window.App.getActiveAnnotations(window.state.pages[0]); const lav = window.state.counters.find((x) => x.name === 'Lavatory'); return { lavs: (a.counterMarkers[lav.id] || []).length, runs: a.quickLines.length, drops: a.quickLines.map((q) => [q.startDrop || 0, q.endDrop || 0]) }; });
+    expect(chained).toEqual({ lavs: 3, runs: 2, drops: [[0, 0], [0, 0]] });
+    await waitForStep(page, 'drop');
+    // 8. a 3 ft riser on the branch's start, written through the shared drop-node model
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).quickLines.map((q) => [q.startDrop || 0, q.endDrop || 0]))).toEqual([[3, 0], [0, 0]]);
+    expect(await page.evaluate(() => window.state.recentDrops[0])).toEqual({ value: 3, unit: 'ft' });
+    await waitForStep(page, 'hangers');
+    // 9. the hanger rule rides the line type and tallies in the summary
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.state.lineTypes[0].childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: 4 }]);
+    await waitForStep(page, 'zone');
+    // 10. the ×3 zone around Men 105 triples the water closets in the tally
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).multiplyZones.map((z) => z.multiplier))).toEqual([3]);
+    expect(await page.evaluate(() => window.getPipeToolingSummary())).toContain('Water Closet\t9');
+    await waitForStep(page, 'rfi');
+    // 11. the RFI note is collected by Copy RFI Flags' collector
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).notes.map((n) => n.text))).toEqual(['RFI: floor drain in Men 105?']);
+    await waitForStep(page, 'proof');
+    // 12. the proof modal opens on the Water Closet
+    await page.click('#tourAction');
+    await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/);
+    await waitForStep(page, 'handoff');
+    await page.click('#summaryCountDetailClose');
+    // 13 + 14: reading, then Finish sets ONLY the plumbing key; the electrical link stays
+    expect(await page.locator('#tourNext').textContent()).toBe('Next');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('done');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe(null);
+    expect(await page.evaluate(() => [!!localStorage.getItem('clickcount-tour-done-plumbing'), !!localStorage.getItem('clickcount-tour-done')])).toEqual([true, false]);
+    // (a plan is open, so the whole hint is hidden — read the links' own display)
+    expect(await page.evaluate(() => [document.getElementById('canvasEmptyHintTourPlumbing').style.display, document.getElementById('canvasEmptyHintTour').style.display])).toEqual(['none', '']);
+    // the takeoff is real: the PipeTooling summary carries the fixtures, the pipe with its riser, and the hangers
+    const summary = await page.evaluate(() => window.getPipeToolingSummary());
+    expect(summary).toContain('Water Closet\t9');
+    expect(summary).toContain('Lavatory\t9');
+    expect(summary).toContain('ft of 1in PEX\t26.33');
+    expect(summary).toContain('  Hanger\t9');
+    expect(errors).toEqual([]);
+  });
+
+  test('?tour=plumbing opens the plumbing tour; the Settings link opens it; finishing electrical hides only its link', async ({ page }) => {
+    await page.goto('/app/?tour=plumbing');
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'welcome', null, { timeout: 5000 });
+    expect(await page.evaluate(() => window.App.tutorialId())).toBe('plumbing');
+    await page.click('#tourLeave');
+    // Settings → plumbing tour
+    await page.evaluate(() => window.App.showModal('settingsModal'));
+    await page.click('#settingsTourPlumbing');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['plumbing', 'welcome']);
+    await page.click('#tourLeave');
+    // an electrical finish leaves the plumbing offer in place
+    await page.evaluate(() => { localStorage.setItem('clickcount-tour-done', new Date().toISOString()); window.App.startTutorial('electrical'); window.App.stopTutorial(true); });
+    expect(await page.locator('#canvasEmptyHintTour').isVisible()).toBe(false);
+    expect(await page.locator('#canvasEmptyHintTourPlumbing').isVisible()).toBe(true);
+    expect(await page.locator('#canvasEmptyHintTourSep').isVisible()).toBe(false);
+    // both done → the whole offer goes
+    await page.evaluate(() => { window.App.startTutorial('plumbing'); window.App.stopTutorial(true); });
+    expect(await page.locator('.canvas-empty-hint-tour').isVisible()).toBe(false);
   });
 });

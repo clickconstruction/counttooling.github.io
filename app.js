@@ -7527,6 +7527,7 @@
   App.formatDropLabel = formatDropLabel;
   App.getRecentDrops = () => state.recentDrops || [];
   App.pushRecentDrop = pushRecentDrop;
+  App.commitMeasurePoint = commitMeasurePoint;     // features/tutorial.js ("Do it for me" on the Measure step)
   App.logDropSetEvent = logDropSetEvent;
   App.toCanvas = toCanvas;
   App.showContextMenu = showContextMenu;               // spec seam (drop-mode.spec.js)

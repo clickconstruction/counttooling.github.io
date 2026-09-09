@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tutorial): the plumbing walkthrough — a second tour on the same engine (2026-09-09)
+
+The electrical tour shipped first because that trade's features were the newest; the
+plumbing tour covers the app's home trade. `features/tutorial.js` now holds ONE engine
+and two step lists (`TOURS.electrical`, `TOURS.plumbing`); nothing in the overlay,
+the check/advance loop or the do-it-for-me plumbing changed.
+
+- **Fourteen plumbing steps**, each teaching one idea the electrical tour does not:
+  open the sample plan → the 1/8" preset → **prove the scale** with Measure on the
+  20'-0" dimension under Women 106 (the footer reads 20'-0") → a Water Closet counter
+  with the plumbing set's Toilet symbol → count the three DRAWN water closets of Men
+  105 → a "1in PEX" line type from the Quick tab → chain the three lavatories → a 3 ft
+  riser with the Drop tool → a Hanger child count (1 per 4 ft) → a ×3 multiply zone
+  around Men 105 → an "RFI:" note → the Summary proof modal → the PipeTooling hand-off
+  → done. The refinement pass dropped a Groups step (the ×3 zone is the stronger
+  story in that slot; groups get a sentence in the done step) and chose a water line
+  over waste because the Quick tab's stock materials include PEX and not PVC — the
+  two-click point would have been lost to a typed name.
+- **Sample-plan geometry in PDF points.** The PDF is 918 × 594 (the SVG source at
+  0.75), so the do-it-for-me marks land on the drawn fixtures: water closets at
+  y ≈ 289, lavatories at y ≈ 424, Men 105 = (322, 266)–(465, 442).
+- **The trade is stamped, not remembered.** A device whose last bid was electrical
+  keeps that as its default trade; the plumbing welcome step sets the project to
+  plumbing (`setProjectTrade`, `remember: false`) the moment the plan is open, so
+  the Quick pickers speak plumbing without changing the device default.
+- **Per-tour done keys.** `clickcount-tour-done` (electrical, unchanged) and
+  `clickcount-tour-done-plumbing`: finishing one hides only its link in the
+  empty-canvas hint (now "take the five-minute tour: plumbing · electrical"), and
+  the whole offer goes when both are set. Project Settings has "plumbing tour" /
+  "electrical tour"; `?tour=plumbing` / `?tour=electrical` open them on load and
+  `?tour=1` still means electrical.
+- One new publish-only registry entry: `App.commitMeasurePoint`, so the Measure
+  step's "Do it for me" goes through the real two-point commit (toast + footer chip).
+- `tutorial.spec.js` walks the plumbing path end to end and pins the entry points.
+
+---
+
 ## fix(tutorial): the empty-canvas tour link survives a mixed shell (2026-09-08)
 
 First report after the tutorial shipped: "take the five-minute tour" was not clickable. The

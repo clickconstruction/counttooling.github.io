@@ -1,0 +1,533 @@
+{
+  "generated": "npm run build:rules",
+  "site": "https://counttooling.com",
+  "rules": [
+    {
+      "id": "elec.conduit.fill-limit",
+      "trade": "electrical",
+      "kind": "code",
+      "status": "applied",
+      "title": "Conduit fill limits",
+      "summary": "How much of a raceway's inside area conductors may fill — 53% for one, 31% for two, 40% for three or more.",
+      "values": [
+        {
+          "when": "1 conductor",
+          "value": 53,
+          "unit": "%"
+        },
+        {
+          "when": "2 conductors",
+          "value": 31,
+          "unit": "%"
+        },
+        {
+          "when": "3 or more conductors",
+          "value": 40,
+          "unit": "%"
+        }
+      ],
+      "source": {
+        "code": "NEC",
+        "section": "Chapter 9, Table 1",
+        "editions": [
+          2017,
+          2020,
+          2023
+        ],
+        "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
+      },
+      "amendments": [],
+      "used_by": [
+        "bidCheck"
+      ],
+      "url": "/rules/electrical/conduit-fill/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "elec.vertical.make-up",
+      "trade": "electrical",
+      "kind": "convention",
+      "status": "applied",
+      "title": "Make-up on a vertical",
+      "summary": "The foot of conduit the app adds to every vertical it writes, for the box entry and the bend that plan view never shows.",
+      "values": [
+        {
+          "when": "every device vertical the Chain tool writes",
+          "value": 1,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "trade practice",
+        "section": "estimating convention; not a code figure",
+        "editions": []
+      },
+      "amendments": [],
+      "used_by": [
+        "chain"
+      ],
+      "url": "/rules/electrical/make-up/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "elec.mount-height.defaults",
+      "trade": "electrical",
+      "kind": "convention",
+      "status": "applied",
+      "title": "Default mount heights for devices",
+      "summary": "The heights above finished floor the app starts each device at — 18\" receptacles, 44\" GFCI at a counter, 48\" switches, 78\" panel top — so the Chain tool can write the vertical.",
+      "values": [
+        {
+          "when": "Duplex receptacle, to center",
+          "value": 18,
+          "unit": "in AFF"
+        },
+        {
+          "when": "GFCI receptacle at a counter",
+          "value": 44,
+          "unit": "in AFF"
+        },
+        {
+          "when": "Single-pole switch",
+          "value": 48,
+          "unit": "in AFF"
+        },
+        {
+          "when": "Panelboard, to the top",
+          "value": 78,
+          "unit": "in AFF"
+        },
+        {
+          "when": "Exit sign",
+          "value": 90,
+          "unit": "in AFF"
+        },
+        {
+          "when": "Data outlet",
+          "value": 18,
+          "unit": "in AFF"
+        },
+        {
+          "when": "Thermostat",
+          "value": 48,
+          "unit": "in AFF"
+        }
+      ],
+      "source": {
+        "code": "NEC",
+        "section": "404.8(A), 240.24(A); ADA 308 reach range",
+        "editions": [
+          2020,
+          2023
+        ],
+        "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
+      },
+      "amendments": [],
+      "used_by": [
+        "chain",
+        "quickCreate"
+      ],
+      "url": "/rules/electrical/mount-heights/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "elec.voltage-drop.k-constant",
+      "trade": "electrical",
+      "kind": "convention",
+      "status": "applied",
+      "title": "The K constant for voltage drop",
+      "summary": "The resistivity figure the estimator's single-phase voltage-drop formula uses — 12.9 for copper, 21.2 for aluminum, in ohm-circular-mils per foot.",
+      "values": [
+        {
+          "when": "copper conductors",
+          "value": 12.9,
+          "unit": "Ω·cmil/ft"
+        },
+        {
+          "when": "aluminum conductors",
+          "value": 21.2,
+          "unit": "Ω·cmil/ft"
+        }
+      ],
+      "source": {
+        "code": "NEC",
+        "section": "Chapter 9, Table 8 (as the trade rounds it)",
+        "editions": [
+          2017,
+          2020,
+          2023
+        ],
+        "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
+      },
+      "amendments": [],
+      "used_by": [
+        "bidCheck"
+      ],
+      "url": "/rules/electrical/voltage-drop-k/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "elec.voltage-drop.branch-limit",
+      "trade": "electrical",
+      "kind": "recommendation",
+      "status": "applied",
+      "title": "Voltage drop on a branch circuit",
+      "summary": "The app flags a branch circuit whose drop to the farthest device exceeds 3% — the NEC's informational recommendation, not a requirement.",
+      "values": [
+        {
+          "when": "branch circuit, to the farthest device",
+          "value": 3,
+          "unit": "%"
+        }
+      ],
+      "source": {
+        "code": "NEC",
+        "section": "210.19(A), Informational Note",
+        "editions": [
+          2017,
+          2020,
+          2023
+        ],
+        "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
+      },
+      "amendments": [],
+      "used_by": [
+        "bidCheck"
+      ],
+      "url": "/rules/electrical/voltage-drop-limit/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "hvac.duct.gauge-schedule",
+      "trade": "hvac",
+      "kind": "standard",
+      "status": "applied",
+      "title": "Duct gauge by size and pressure class",
+      "summary": "The simplified gauge schedule the Duct tool picks metal with — by the duct's larger side or diameter and the system's pressure class — before you override it.",
+      "values": [
+        {
+          "when": "1 in w.g., larger side up to 12 in",
+          "value": 26,
+          "unit": "ga"
+        },
+        {
+          "when": "1 in w.g., up to 30 in",
+          "value": 24,
+          "unit": "ga"
+        },
+        {
+          "when": "1 in w.g., up to 54 in",
+          "value": 22,
+          "unit": "ga"
+        },
+        {
+          "when": "1 in w.g., up to 84 in",
+          "value": 20,
+          "unit": "ga"
+        },
+        {
+          "when": "1 in w.g., larger",
+          "value": 18,
+          "unit": "ga"
+        },
+        {
+          "when": "2 in w.g., larger side up to 10 in",
+          "value": 26,
+          "unit": "ga"
+        },
+        {
+          "when": "3 in w.g., larger side up to 8 in",
+          "value": 26,
+          "unit": "ga"
+        }
+      ],
+      "source": {
+        "code": "SMACNA",
+        "section": "HVAC Duct Construction Standards, gauge tables (simplified)",
+        "editions": [
+          2020
+        ],
+        "url": "https://www.smacna.org/"
+      },
+      "amendments": [],
+      "used_by": [
+        "ductSchedule"
+      ],
+      "url": "/rules/hvac/duct-gauge/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "hvac.duct.schedule-factors",
+      "trade": "hvac",
+      "kind": "convention",
+      "status": "applied",
+      "title": "Duct Schedule factors",
+      "summary": "The estimating knobs the Duct Schedule starts with — seam and waste, the quick-bid fitting factor, and the design friction rate and velocity cap the ductulator suggests sizes from.",
+      "values": [
+        {
+          "when": "seam and waste, on the straight-duct pounds",
+          "value": 15,
+          "unit": "%"
+        },
+        {
+          "when": "fitting factor, when fittings are not counted individually",
+          "value": 40,
+          "unit": "%"
+        },
+        {
+          "when": "design friction rate for size suggestions",
+          "value": 0.08,
+          "unit": "in w.g. per 100 ft"
+        },
+        {
+          "when": "maximum velocity for size suggestions",
+          "value": 1200,
+          "unit": "fpm"
+        }
+      ],
+      "source": {
+        "code": "trade practice",
+        "section": "estimating convention; ASHRAE Fundamentals duct design for the rate and velocity",
+        "editions": []
+      },
+      "amendments": [],
+      "used_by": [
+        "ductSchedule"
+      ],
+      "url": "/rules/hvac/duct-schedule-factors/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "hvac.room.airflow-defaults",
+      "trade": "hvac",
+      "kind": "convention",
+      "status": "applied",
+      "title": "Room airflow by type",
+      "summary": "The cubic feet per minute per square foot the app assumes for a room type when no target is given — office 1.0, conference and break 1.5, storage 0.5.",
+      "values": [
+        {
+          "when": "office",
+          "value": 1,
+          "unit": "cfm/ft²"
+        },
+        {
+          "when": "conference",
+          "value": 1.5,
+          "unit": "cfm/ft²"
+        },
+        {
+          "when": "break room",
+          "value": 1.5,
+          "unit": "cfm/ft²"
+        },
+        {
+          "when": "storage",
+          "value": 0.5,
+          "unit": "cfm/ft²"
+        }
+      ],
+      "source": {
+        "code": "trade practice",
+        "section": "light-commercial supply-air rule of thumb",
+        "editions": []
+      },
+      "amendments": [],
+      "used_by": [
+        "roomSizer",
+        "ductSchedule"
+      ],
+      "url": "/rules/hvac/room-airflow/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "hvac.duct.sheet-weight",
+      "trade": "hvac",
+      "kind": "standard",
+      "status": "applied",
+      "title": "Galvanized sheet weight by gauge",
+      "summary": "Pounds per square foot of galvanized steel sheet at each gauge — the basis of every duct weight the schedule reports.",
+      "values": [
+        {
+          "when": "26 gauge",
+          "value": 0.906,
+          "unit": "lb/ft²"
+        },
+        {
+          "when": "24 gauge",
+          "value": 1.156,
+          "unit": "lb/ft²"
+        },
+        {
+          "when": "22 gauge",
+          "value": 1.406,
+          "unit": "lb/ft²"
+        },
+        {
+          "when": "20 gauge",
+          "value": 1.656,
+          "unit": "lb/ft²"
+        },
+        {
+          "when": "18 gauge",
+          "value": 2.156,
+          "unit": "lb/ft²"
+        }
+      ],
+      "source": {
+        "code": "ASTM",
+        "section": "A653 / A924, nominal galvanized sheet weight by gauge",
+        "editions": [],
+        "url": "https://www.astm.org/"
+      },
+      "amendments": [],
+      "used_by": [
+        "ductSchedule"
+      ],
+      "url": "/rules/hvac/sheet-weight/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.hanger.cast-iron",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Hanger spacing for cast-iron pipe",
+      "summary": "How far apart cast-iron pipe may be supported — 5 feet horizontal (10 feet where 10-foot lengths are installed), 15 feet vertical.",
+      "values": [
+        {
+          "when": "horizontal",
+          "value": 5,
+          "unit": "ft",
+          "note": "10 ft where 10-foot lengths are installed"
+        },
+        {
+          "when": "vertical",
+          "value": 15,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "308.5, Table 308.5",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hanger-spacing-cast-iron/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.hanger.copper",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Hanger spacing for copper tube",
+      "summary": "How far apart copper tube may be supported — 6 feet horizontal at 1-1/4 inch and smaller, 10 feet at 1-1/2 inch and larger, 10 feet vertical.",
+      "values": [
+        {
+          "when": "horizontal, 1-1/4 in and smaller",
+          "value": 6,
+          "unit": "ft"
+        },
+        {
+          "when": "horizontal, 1-1/2 in and larger",
+          "value": 10,
+          "unit": "ft"
+        },
+        {
+          "when": "vertical",
+          "value": 10,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "308.5, Table 308.5",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hanger-spacing-copper/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.hanger.pex",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Hanger spacing for PEX",
+      "summary": "How far apart PEX tubing may be supported — 32 inches horizontal at 1 inch and smaller, 48 inches at 1-1/4 inch and larger, 10 feet vertical.",
+      "values": [
+        {
+          "when": "horizontal, 1 in and smaller",
+          "value": 32,
+          "unit": "in"
+        },
+        {
+          "when": "horizontal, 1-1/4 in and larger",
+          "value": 48,
+          "unit": "in"
+        },
+        {
+          "when": "vertical",
+          "value": 10,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "308.5, Table 308.5",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hanger-spacing-pex/",
+      "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.hanger.pvc",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Hanger spacing for PVC pipe",
+      "summary": "How far apart PVC pipe may be supported — 4 feet horizontal, 10 feet vertical.",
+      "values": [
+        {
+          "when": "horizontal",
+          "value": 4,
+          "unit": "ft"
+        },
+        {
+          "when": "vertical",
+          "value": 10,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "308.5, Table 308.5",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hanger-spacing-pvc/",
+      "updated": "2026-09-09"
+    }
+  ]
+}

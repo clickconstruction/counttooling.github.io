@@ -38,6 +38,10 @@ const GAUGE_ORDER = ['#18', '#16', '#14', '#12', '#10', '#8', '#6', '#4', '#3', 
 // Chapter 9 Table 1 — fill limits by conductor count.
 const fillLimitFor = (count) => (count <= 1 ? 0.53 : count === 2 ? 0.31 : 0.40);
 const VD_K = { copper: 12.9, aluminum: 21.2 };
+// Branch-circuit voltage-drop limit the checks use by default (NEC 210.19(A)
+// Informational Note — a recommendation, not a requirement). Rulebook:
+// content/rules/electrical/voltage-drop-limit.md.
+const VD_LIMIT_PCT_DEFAULT = 3;
 
 function conductorAreaIn2(c) {
   const fam = INSUL_FAMILY[String(c.insul || 'THHN').toUpperCase()] || 'THHN';
@@ -91,7 +95,7 @@ function voltageDrop(opts) {
   const volts = o.volts > 0 ? o.volts : 120;
   const k = VD_K[o.material || 'copper'] || VD_K.copper;
   const factor = o.phase === 'three' ? 1.732 : 2;
-  const limit = o.limitPct > 0 ? o.limitPct : 3;
+  const limit = o.limitPct > 0 ? o.limitPct : VD_LIMIT_PCT_DEFAULT;
   const drop = (factor * k * o.amps * o.feet) / cm;
   const pct = (drop / volts) * 100;
   const ok = pct <= limit;
@@ -180,7 +184,7 @@ function bidCheckOpenCount(autoRows, manualState, trade) {
   return { auto, manual, total: auto + manual };
 }
 
-const BID_CHECK_MODEL_API = { RACEWAY_AREA_IN2, CONDUCTOR_AREA_IN2, GAUGE_CMIL, GAUGE_ORDER, fillLimitFor, conductorAreaIn2, smallestGauge, nextGaugeUp, conduitFill, voltageDrop, BID_CHECK_MANUAL_ROWS, bidCheckAutoRows, bidCheckOpenCount };
+const BID_CHECK_MODEL_API = { RACEWAY_AREA_IN2, CONDUCTOR_AREA_IN2, GAUGE_CMIL, GAUGE_ORDER, fillLimitFor, VD_K, VD_LIMIT_PCT_DEFAULT, conductorAreaIn2, smallestGauge, nextGaugeUp, conduitFill, voltageDrop, BID_CHECK_MANUAL_ROWS, bidCheckAutoRows, bidCheckOpenCount };
 if (typeof window !== 'undefined') window.BidCheckModel = BID_CHECK_MODEL_API;
 // Node test harness only: in a classic browser <script> `module` is undefined.
 if (typeof module !== 'undefined' && module.exports) module.exports = BID_CHECK_MODEL_API;

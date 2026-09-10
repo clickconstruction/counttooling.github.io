@@ -184,6 +184,11 @@ function validateDuctFitting(f) {
 // weights — the basis of every pounds number below).
 const SHEET_WEIGHT_LB_PER_SQFT = { 26: 0.906, 24: 1.156, 22: 1.406, 20: 1.656, 18: 2.156 };
 
+// DATA TABLE — the Duct Schedule's per-project knob defaults (state.ductSettings
+// is seeded from a copy; every intake restores the saved values over it).
+// Rulebook: content/rules/hvac/duct-schedule-factors.md.
+const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 };
+
 // DATA TABLE — gauge schedule keyed by pressure class (in. w.g., as strings)
 // then by the LARGER side dimension (rect: max(w,h); round: diameter), inches.
 // Rows are { maxDimIn, gauge }: first row whose maxDimIn >= dim wins.
@@ -1301,7 +1306,7 @@ if (typeof module !== 'undefined' && module.exports) {
     roomTargetCfm, pointInRoomBox, roomServedCfm, roomAirBalance,
     ductSystemDesignedCfm, ductEquipmentPosForGroup, suggestSystemsForCfm,
     // gauge
-    SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES,
+    SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES, DUCT_SETTINGS_DEFAULTS,
     ductGoverningDimIn, selectGauge,
     // weight
     ductPerimeterIn, ductWeightPerFoot, segmentPounds,

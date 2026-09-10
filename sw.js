@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '8eafbe064572';
+const CACHE_VERSION = 'fb5cc5a6550c';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -192,9 +192,9 @@ const PRECACHE_SHA256 = {
   '/line-metrics.js': '79e7bdbc91c02ebd4c62be3a26ad33eb5822d11d7233d75eb67a8de72a5c2126',
   '/conductor-model.js': '2fdea89c54aefa85ff19260a1dd02a2d83a3d94477bda95be451fd309a6de01a',
   '/circuit-model.js': '19e0de705524e0390476d4f9346008ffdad190786c8b1720eb4a8dab64febc09',
-  '/bid-check-model.js': '33cef4d945edd1ee67f76f6c4161ac0ffea0a8a2731297f502a7c9fc51b5a67d',
+  '/bid-check-model.js': '8966a3e7df0595d14cf726557fecf236d823cd66568b45e265126c5146169081',
   '/tag-model.js': '26bb52e7a00b42f2e5e7168f07323c899cdf0e2b594546fccabd60742de3102e',
-  '/duct-model.js': '2d49f3889eb5cba725bc0e72d05394b74f5597ac4a0959b0cd0073e456c3a2e7',
+  '/duct-model.js': 'f4e0387a5b960d7de36e36b40a47ff98d282d0ee156013bd0d7cdee85dc37823',
   '/canvas-draw.js': '1c1db8273573fae7ce36eef730a0f124ad06df7fc7c6aa9e34b6b15ddd7a345b',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
   '/render-worker.js': '97409f02a7150a5f9b5e456769083b49dca0c7baaae0263a34e2fc7a1d23a54d',
@@ -210,7 +210,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': '74e02c6a74eb387f9b76d7996fdf424b0d8dc1f16174a5476ff9d8f6accb9224',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': 'ebdd77d30a1e2b9ad1d012dc1896d386d9fab4e0880fc60744925e2123423011',
+  '/app.js': '68458163289bb7bf8f83fe18b94abbbea1dd13ed0af4a6e92b40f7b9d8e4ccd9',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'c649e68099ede5af867ac46e0e77f7238ab701ac0c59b34969ae46a2fc37db14',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',

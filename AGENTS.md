@@ -37,6 +37,28 @@
   `guides/img/*.png` referenced from articles via Markdown `![]()`. Both are manual (browser +
   non-deterministic pixels) and **not** in `npm run check` — like `build:og-image`; the
   link-integrity test fails only if an article references a missing image.
+- **The rulebook (/rules/)**: the PUBLIC trade rules the app applies (NEC fill limits,
+  the voltage-drop recommendation, SMACNA-style gauge, mount heights, hanger spacing…),
+  written as the app applies them and cited by section — never the code text reprinted,
+  never company practice (that lives with pricing in PipeTooling). One Markdown file per
+  rule in `content/rules/<trade>/<slug>.md` with STRUCTURED front-matter (`id`, `kind`
+  code|standard|recommendation|convention, `status` applied|draft, `values[]` with
+  `when`/`value`/`unit`, `source` code+section+editions, `amendments`, `used_by`) and a
+  prose body — authoring rules in `content/rules/README.md`. `npm run build:rules`
+  ([scripts/build-rules.js](scripts/build-rules.js), on [scripts/lib/rules.js](scripts/lib/rules.js)
+  + the shared site chrome in [scripts/lib/site.js](scripts/lib/site.js)) renders
+  `rules/<trade>/<slug>/index.html`, the searchable `rules/index.html`, and
+  `rules/rules.json` (the same list for the app and any AI — stable ids). **The drift
+  check**: a value row's `code: <file>.js#<expr>` pointer is resolved against the
+  module's CommonJS exports (walked, never eval'd) and must equal the rule
+  (× `scale`); `build:rules --check` — in `npm run check` — fails on a mismatch, so a
+  number in code cannot change without its rule. When you change one of those
+  tables (`fillLimitFor`, `VD_K`, `VD_LIMIT_PCT_DEFAULT`, `ELECTRICAL_DEFAULTS.mountByType`,
+  `DEFAULT_MAKE_UP_FT`, `DUCT_GAUGE_TABLE`, `SHEET_WEIGHT_LB_PER_SQFT`,
+  `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`), change the rule in the same
+  commit. `build:guides` owns `sitemap.xml` and lists the rule pages too.
+  [rules.test.js](rules.test.js) (Node, CI) pins the parser, the pointers, the pages and
+  the JSON.
 - **PWA / offline**: the app is an installable PWA (scoped to `/app/`). Third-party libs (pdf.js + worker,
   pdf-lib, html2canvas, jsPDF, supabase-js, tus) and fonts are **vendored locally** in
   `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is

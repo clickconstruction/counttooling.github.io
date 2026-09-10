@@ -332,6 +332,9 @@
     currentProjectId: null,
     currentProjectName: null,
     currentProjectExternalRef: null,
+    // The cloud row's updated_at as loaded (view links only today) — the bid
+    // basis manifest carries it so PipeTooling can tell "takeoff changed since".
+    currentProjectUpdatedAt: null,
     isAdmin: false,
     isOverseer: false,
     isDigitalTwin: false,
@@ -769,6 +772,7 @@
     state.currentProjectId = null;
     state.currentProjectName = null;
     state.currentProjectExternalRef = null;
+    state.currentProjectUpdatedAt = null;
     state.pdfBuffer = null;
     state.pdfBufferSize = 0;
     state.pdfStoragePath = null;
@@ -4248,9 +4252,17 @@
   // modals, the footer layers menu, the show-all-canvases peek toggle, and their
   // pending state) moved to features/canvas-layers.js; the canvas switcher's
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
+  // The Canvas JSON export shape — every page's layers, scales and rotations
+  // plus the palette, small enough to keep and re-import onto the same PDF
+  // (matched by hash). Shared with the bid-basis manifest
+  // (features/bid-basis.js), which stores it on the PipeTooling bid as the
+  // "which marks did we bid to" snapshot.
+  function buildCanvasExportData() {
+    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+  }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    const data = buildCanvasExportData();
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -7300,6 +7312,7 @@
   // registered by features/line-color.js (split #36).
   App.ensureActiveCanvas = ensureActiveCanvas;
   App.getMaxZoom = getMaxZoom;
+  App.buildCanvasExportData = buildCanvasExportData;
   App.getWheelZoomSpeed = getWheelZoomSpeed;
   // Zoom rail deps (features/zoom-rail.js): publish-only — the wheel/pinch
   // paths in this file keep using them directly.
@@ -7663,6 +7676,10 @@
           await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
         }
         await App.initViewOnlyMode(viewToken);
+        // Bid basis (features/bid-basis.js): PipeTooling opened this link with
+        // `export=bid-basis&ref=<bid>` — open Export PDFs preset to the marked
+        // sheets. No-op unless the flag is present and the plan loaded.
+        try { App.maybeStartBidBasisExport && App.maybeStartBidBasisExport(); } catch (bbErr) { console.warn('[Bid basis] start failed:', bbErr); }
         try {
           await initSupabaseAuth();
           if (state.supabaseSession?.user) {

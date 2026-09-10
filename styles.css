@@ -1092,6 +1092,34 @@
     .specific-pages-bulk-actions button.bulk-unmarked:hover { border-color: var(--blue); background: rgba(74,158,255,0.15); }
     .specific-pages-bulk-actions button.bulk-exclude:hover { border-color: var(--red); background: rgba(232,84,71,0.15); }
     .specific-pages-bulk-actions button.bulk-all-canvases:hover { border-color: var(--accent); background: rgba(232,197,71,0.15); }
+    .specific-pages-bulk-actions button.bulk-marks-only:hover { border-color: var(--green); background: rgba(71,200,142,0.15); }
+    /* Bid basis (features/bid-basis.js): the title chip, the "Saves as" row, the done card. */
+    .specific-pages-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .specific-pages-title-row h2 { margin-bottom: 8px; }
+    .specific-pages-bid-basis-chip { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 4px 10px; font-size: 0.78rem; color: var(--accent); background: rgba(232,197,71,0.12); border: 1px solid rgba(232,197,71,0.5); border-radius: 999px; white-space: nowrap; }
+    .specific-pages-bid-basis-chip[hidden] { display: none; }
+    .specific-page-card.specific-page-no-marks { opacity: 0.45; }
+    .specific-page-card .specific-page-marks { font-size: 0.62rem; color: var(--green); }
+    .specific-page-card.specific-page-no-marks .specific-page-marks { color: var(--text3); }
+    .specific-pages-filename-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; }
+    .specific-pages-filename-row[hidden] { display: none; }
+    .specific-pages-filename-label, .specific-pages-filename-hint { font-size: 0.75rem; color: var(--text2); white-space: nowrap; }
+    .specific-pages-filename { flex: 1; min-width: 0; font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text); word-break: break-all; }
+    .modal-card-bid-basis-done { max-width: 520px; }
+    .bid-basis-done-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .bid-basis-done-head h2 { margin-bottom: 2px; }
+    .bid-basis-done-check { width: 36px; height: 36px; border-radius: 50%; background: rgba(71,200,142,0.15); border: 1px solid var(--green); color: var(--green); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bid-basis-done-summary { font-size: 0.8rem; color: var(--text2); }
+    .bid-basis-done-filename-row { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+    .bid-basis-done-filename { flex: 1; min-width: 0; font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text); word-break: break-all; line-height: 1.4; }
+    .bid-basis-done-copy { font-family: inherit; min-height: 36px; padding: 4px 10px; background: var(--surface3); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.8rem; cursor: pointer; flex-shrink: 0; }
+    .bid-basis-done-copy:hover { border-color: var(--border2); }
+    .bid-basis-done-hint { margin-top: 6px; font-size: 0.75rem; color: var(--text3); }
+    .bid-basis-done-hint span { color: var(--text2); }
+    .bid-basis-done-sheets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .bid-basis-done-sheets span { font-size: 0.75rem; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; }
+    .bid-basis-done-status { display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; line-height: 1.35; padding: 10px 12px; border-radius: 6px; background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.4); }
+    .bid-basis-done-status.bid-basis-done-status-warn { background: rgba(232,84,71,0.08); border-color: rgba(232,84,71,0.45); }
     .settings-users-list .settings-project-name { flex: 1; font-size: 1.05rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
     .settings-users-list .settings-project-row { align-items: flex-start; flex-wrap: wrap; }
     .settings-users-list .settings-project-row .settings-project-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }

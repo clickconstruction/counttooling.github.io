@@ -3432,3 +3432,21 @@ in TAKEOFF_IMPORT.md) writes an agent's takeoff.json as a normal reviewable proj
 exact save-engine data shape; `takeoff-eval.js` (+node tests) diffs any takeoff against a
 reference — counts per counter name, decimal feet per line-type name (unscaled px kept
 separate) — the scoring rail for agent-vs-human comparison.
+
+## Bid basis: the marked-up plans handoff to PipeTooling (2026-09-10)
+
+When a plan set is too rough to bid to, the office bids to its marked-up copy and sends the
+marked sheets with the proposal. PipeTooling's Cover Letter opens the project's view link with
+`export=bid-basis&ref=<bid>`; `features/bid-basis.js` (pure model in `bid-basis-model.js`) opens
+Export PDFs preset to the sheets that carry marks (`bidBasisPageSelections`: counters, runs,
+ducts, rooms — highlights and notes alone never select a page), report first, notes at the back,
+names the file `bid-basis_<ref>_<project>_<date>_<HHMM>.pdf` (bid first, so a computer search
+finds it), and after the download shows the Downloaded card and `postMessage`s a manifest —
+file name, sheets, mark totals, the takeoff's last-saved time, and the Canvas JSON snapshot —
+to the PipeTooling tab that opened it, targeted at the PipeTooling origins only. A lighter
+"loaded" notice goes out as soon as the plan opens so PipeTooling can flag "takeoff changed
+since". Export PDFs was refactored on the way: `readSpecificPagesOptionsFromDom()` +
+`runSpecificPagesExport(options)` replace the DOM-driven download function, and a new **Only
+sheets with marks** bulk button makes the preset's selection repeatable by hand. Regression:
+`bid-basis.spec.js` (popup flow end to end) and `bid-basis-model.test.js`. PipeTooling side:
+v2.3219 (`bid_plan_basis_exports`, the Cover Letter card, the letter clause).

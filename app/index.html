@@ -46,6 +46,7 @@
   <script src="/tag-model.js"></script>
   <script src="/support-model.js"></script>
   <script src="/duct-model.js"></script>
+  <script src="/bid-basis-model.js"></script>
   <script src="/canvas-draw.js"></script>
   <script src="/render-service.js"></script>
   <script src="/constants.js"></script>
@@ -1323,8 +1324,11 @@
   </div>
   <div class="modal-overlay" id="specificPagesModal">
     <div class="modal-card modal-card-large">
-      <h2>Export PDFs</h2>
-      <p class="form-group specific-pages-intro" style="color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
+      <div class="specific-pages-title-row">
+        <h2>Export PDFs</h2>
+        <span id="specificPagesBidBasisChip" class="specific-pages-bid-basis-chip" hidden></span>
+      </div>
+      <p class="form-group specific-pages-intro" id="specificPagesIntro" style="color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
       <div class="specific-pages-scale-row">
         <div class="form-group">
           <label>Marker size: <span id="specificPagesMarkerScaleVal">75</span>%</label>
@@ -1358,6 +1362,7 @@
       </div>
       <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
       <div class="specific-pages-bulk-actions">
+        <button type="button" id="specificPagesMarksOnly" class="bulk-marks-only" title="Include only the sheets that carry counters, runs, ducts or rooms">Only sheets with marks</button>
         <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
         <button type="button" id="specificPagesAllUnmarked" class="bulk-unmarked">All Not Marked Up</button>
         <button type="button" id="specificPagesAllExclude" class="bulk-exclude">Exclude All</button>
@@ -1368,9 +1373,42 @@
         <div id="specificPagesGrid" class="specific-pages-grid"></div>
         <button type="button" class="specific-pages-nav specific-pages-nav-next" aria-label="Next pages" title="Next pages">›</button>
       </div>
+      <div id="specificPagesFilenameRow" class="specific-pages-filename-row" hidden>
+        <span class="specific-pages-filename-label">Saves as</span>
+        <code id="specificPagesFilename" class="specific-pages-filename"></code>
+        <span id="specificPagesFilenameHint" class="specific-pages-filename-hint">then tells PipeTooling</span>
+      </div>
       <div class="actions">
         <button id="specificPagesCancel">Cancel</button>
         <button id="specificPagesDownload">Download</button>
+      </div>
+    </div>
+  </div>
+  <!-- Bid basis: the confirmation after a PipeTooling-requested export downloads (features/bid-basis.js) -->
+  <div class="modal-overlay" id="bidBasisDoneModal">
+    <div class="modal-card modal-card-bid-basis-done">
+      <div class="bid-basis-done-head">
+        <span class="bid-basis-done-check" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>
+        </span>
+        <div>
+          <h2>Downloaded</h2>
+          <div id="bidBasisDoneSummary" class="bid-basis-done-summary"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>File name</label>
+        <div class="bid-basis-done-filename-row">
+          <code id="bidBasisDoneFilename" class="bid-basis-done-filename"></code>
+          <button type="button" id="bidBasisDoneCopy" class="bid-basis-done-copy" title="Copy file name">Copy</button>
+        </div>
+        <div class="bid-basis-done-hint">Lose it later? Search your computer for <span id="bidBasisDoneRef"></span>.</div>
+      </div>
+      <div id="bidBasisDoneSheets" class="bid-basis-done-sheets"></div>
+      <div id="bidBasisDoneStatus" class="bid-basis-done-status"></div>
+      <div class="actions">
+        <button type="button" id="bidBasisDoneAgain" class="secondary">Download again</button>
+        <button type="button" id="bidBasisDoneBack">Back to PipeTooling</button>
       </div>
     </div>
   </div>
@@ -3176,6 +3214,7 @@
   <script src="/features/multiply-zone-settings.js"></script>
   <script src="/features/scale-zone-settings.js"></script>
   <script src="/features/export-pdfs.js"></script>
+  <script src="/features/bid-basis.js"></script>
   <script src="/features/legend-settings.js"></script>
   <script src="/features/page-settings.js"></script>
   <script src="/features/counter-settings.js"></script>

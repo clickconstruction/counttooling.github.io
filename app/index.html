@@ -160,6 +160,10 @@
       <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
       </div>
       <span class="spacer"></span>
+      <!-- [Close] (2026-09-10): shown by updateUI only while VIEWING a cloud
+           project this session edited earlier (after a turn-in) — never for a
+           view-link session, never while editing. App.closeProject. -->
+      <button type="button" id="headerCloseProjectBtn" class="header-edit-status edit-status-close supabase-only" style="display:none;" title="Close this project">[Close]</button>
       <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
       <button id="saveStatusBtnHeader" class="header-settings-gear sidebar-triggers supabase-only header-save-status-btn" style="display:none;" aria-label="Save status" title="Save status">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg>
@@ -204,6 +208,9 @@
             <button type="button" class="export-dropdown-option" data-action="pdf">Original PDF (no marks)</button>
             <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
             <button type="button" class="export-dropdown-option" data-action="import-canvas">Import Canvas <span class="dl-qual" id="importCanvasBlockedNote"></span></button>
+            <!-- Close project (2026-09-10): the findable door — App.closeProject,
+                 the same routine as Project Settings → Close Project. -->
+            <button type="button" class="export-dropdown-option export-dropdown-option-sep" data-action="close-project">Close project</button>
           </div>
         </div>
       </div>
@@ -2998,6 +3005,7 @@
         <span>Some edits may not have been saved &mdash; check the Save status bell.</span>
       </p>
       <div class="actions">
+        <button type="button" id="forceTurnInNoticeClose">Close project</button>
         <button type="button" id="forceTurnInNoticeCheckout">Check out to edit</button>
         <button type="button" class="btn-yellow" id="forceTurnInNoticeKeepViewing">Keep viewing</button>
       </div>
@@ -3058,6 +3066,12 @@
       <!-- Copy to /Tooling fills this with the by-unit split of what was copied
            (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
       <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
+    </div>
+    <!-- Interactive card (2026-09-10): "Project turned in." with the door the
+         estimator reaches for next — Close project is a real button (bound in
+         features/turn-in.js, showTurnedInToast). -->
+    <div class="toast-card toast-interactive" id="turnedInToastModal">
+      <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span id="turnedInToastText">Project turned in.</span><button type="button" id="turnedInToastClose" class="toast-link">Close project</button></p>
     </div>
     <div class="toast-card" id="airboardToastModal">
       <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>

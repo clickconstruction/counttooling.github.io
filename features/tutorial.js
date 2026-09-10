@@ -18,6 +18,14 @@
  * App.* entry points a click would, so a reader who only wants the tour of the
  * ideas still ends with a real takeoff on screen. Reading steps advance on Next.
  *
+ * `target` is a LADDER, deepest control first: the spotlight follows the reader
+ * INTO a dialog (the Quick tab, the Trade segment, Create Counter, the Child
+ * counts row) instead of going dark the moment one opens — with a dialog up,
+ * only a target inside it qualifies, so a control under the backdrop is never
+ * lit. Back HOLDS: a step re-entered with Back never auto-advances, however
+ * complete its work already is — Next lights up instead (Wendi, 2026-09-10:
+ * "it won't let me stay back").
+ *
  * Both tours run on samples/sample-plan.pdf (fetched into #pdfInput like a
  * drop, so it goes through the normal intake; 1224 × 792 PDF points, the
  * restrooms Men 105 / Women 106 carry drawn water closets and lavatories; a
@@ -49,11 +57,14 @@
   let stepIdx = 0;
   let timer = null;
   let doneAt = 0;          // when the current step's check first passed (auto-advance after a beat)
+  let heldByBack = false;  // the step was re-entered with Back: never auto-advance, Next lights up
   let tourCounterId = null;
   let tourLineTypeId = null;
   let tourSecondCounterId = null;
 
-  const q = (sels) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null) return el; } return null; };
+  // First visible match of the ladder. While a dialog is open only a control
+  // inside it qualifies — the header and sidebar sit under the backdrop.
+  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && (!within || within.contains(el))) return el; } return null; };
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
@@ -104,15 +115,15 @@
     PROVE_STEP,
     {
       id: 'trade', title: 'Tell the app this is electrical', kind: 'do',
-      body: 'Open Counters → + Add → the Quick tab and switch Trade to Electrical. The pickers become Category / Variant / Rating, the symbols become the ones on an E-sheet, and every device gets its mount height. A plumbing bid never sees any of this.',
-      target: ['#addCounter'],
+      body: 'Counters → + Add opens the counter dialog. On its Quick tab switch Trade to Electrical. The pickers become Category / Variant / Rating, the symbols become the ones on an E-sheet, and every device gets its mount height. A plumbing bid never sees any of this.',
+      target: ['#counterQuickCountTradeSegment [data-trade="electrical"]', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => state().trade === 'electrical',
       action: { label: 'Switch to Electrical', run: () => App.setProjectTrade('electrical', { remember: false, route: 'tour' }) },
     },
     {
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
       body: 'On the Quick tab pick Receptacle · Duplex and press Add Counter. It arrives with the receptacle symbol and a mount height of 18" — the number the Chain tool will turn into vertical conduit in a moment.',
-      target: ['#counterQuickCountAdd', '#addCounter'],
+      target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number'); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Add it for me', run: addReceptacle },
     },
@@ -126,28 +137,28 @@
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
       body: 'Line Types → + Add. Name it 3/4" EMT, then in its details give it the raceway (EMT, 3/4") and the conductors the way you already write them: 3 #12 THHN + 1 #12 G. From now on every run of this type tallies conduit AND wire by gauge.',
-      target: ['#addLineType'],
+      target: ['#childCountsGroup', '#createLineTypeName', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'],
       check: () => { const lt = eLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 3/4" EMT · 3 #12 + G', run: addEmtLineType },
     },
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
       body: 'Project Settings (the gear) → Ceiling height 10\'-0". With a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws — 9.5 ft per receptacle nobody has to type.',
-      target: ['#settingsGearBtn', '#sidebarLogoGear'],
+      target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => state().ceilingHeightFt > 0,
       action: { label: 'Set 10\'-0"', run: () => { state().ceilingHeightFt = 10; state().makeUpFt = 1; App.markProjectDirty(); App.updateUI(); } },
     },
     {
       id: 'chain', title: 'Chain a run', kind: 'do',
       body: 'Pick Chain (T), choose the receptacle and 3/4" EMT, then click three devices in a row. Every tap places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
-      target: ['#chainBtn'],
+      target: ['#chainPanel', '#chainBtn'],
       check: () => { const a = ann(); return !!a && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
       action: { label: 'Chain three for me', run: chainThreeReceptacles },
     },
     {
       id: 'circuit', title: 'Make it a circuit', kind: 'do',
       body: 'Groups → + Add. Name it, and give it a panel and circuit number — LP-1 · 7. A group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
-      target: ['#addGroup', '#groupsSectionTitle'],
+      target: ['#groupModal .modal-card', '#addGroup', '#groupsSectionTitle'],
       check: () => (state().groups || []).some((g) => g.panel),
       action: { label: 'Create LP-1 / 7 and assign the run', run: makeCircuit },
     },
@@ -212,7 +223,7 @@
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
       body: 'Counters → + Add. On the Create tab name it Water Closet and pick the Toilet symbol from the plumbing set — the app ships the trade\'s icons, so the mark reads like the drawing. Choose a colour and press Create Counter; the counter tool arms itself.',
-      target: ['#addCounter'],
+      target: ['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
     },
@@ -225,29 +236,29 @@
     },
     {
       id: 'linetype', title: 'A line type in two clicks', kind: 'do',
-      body: 'Line Types → + Add, then the Quick tab: pick 1in and PEX and press Add Line Type. The name assembles itself — "1in PEX" — so every bid spells it the same way and the tallies never split across spellings. The line tool arms itself.',
-      target: ['#addLineType'],
+      body: 'The cold-water branch that feeds the lav battery needs a line type. Line Types → + Add, then the Quick tab: pick 1in and PEX and press Add Line Type. The name assembles itself — "1in PEX" — so every bid spells it the same way and the tallies never split across spellings. The line tool arms itself.',
+      target: ['#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#addLineType'],
       check: () => { const lt = pLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 1in PEX', run: addPexLineType },
     },
     {
       id: 'chain', title: 'Chain the lav battery', kind: 'do',
-      body: 'Pick Chain (T). In the panel choose a Lavatory counter (+ New counter makes one right there) and 1in PEX, then click the three lavatories on the south wall of Men 105. Every tap places the fixture and draws the branch back to the last one — a battery is three clicks, not nine.',
-      target: ['#chainBtn'],
+      body: 'You counted the water closets one at a time. The three lavatories on the south wall of Men 105 sit on one 1in PEX branch that runs lav to lav, so count them the other way: pick Chain (T), in the panel choose a Lavatory counter (+ New counter makes one right there) and 1in PEX, then click the three lavatories in order. Every click places the fixture AND draws the branch back to the last one — the lavs and the pipe that feeds them, three clicks instead of nine.',
+      target: ['#counterCreate', '#counterQuickCountAdd', '#chainPanel', '#chainBtn'],
       check: () => { const a = ann(); return !!a && (a.quickLines || []).length >= 2; },
       action: { label: 'Chain the three lavs for me', run: chainThreeLavs },
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
       body: 'The branch comes up from below the slab. Pick Drop (B), choose 3 ft in the palette, and click the end of the run at the first lavatory. The riser\'s 3 ft joins the footage — plan view never shows it, the bid needs it. Click the same end again to clear it.',
-      target: ['#dropBtn'],
+      target: ['#dropPanel', '#dropBtn'],
       check: anyDrop,
       action: { label: 'Add a 3 ft riser for me', run: addRiserDrop },
     },
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
-      body: 'Open 1in PEX\'s details (the pencil). Under Child counts the rulebook offers Hanger · 1 per 32 in — the IPC spacing for PEX at 1 in, read off the type\'s name. Add it. From now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
-      target: ['#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
+      body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers — the app can do it from the pipe. Open 1in PEX\'s details (the pencil). Under Child counts the rulebook offers Hanger · 1 per 32 in — the IPC spacing for PEX at 1 in, read off the type\'s name. Add it. From now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
+      target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
       check: () => (state().lineTypes || []).some((lt) => (lt.childCounts || []).length),
       action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
@@ -268,7 +279,7 @@
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
       body: 'In Summary click the Water Closet total. The breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
-      target: ['#summarySectionTitle'],
+      target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
     },
@@ -493,7 +504,10 @@
 
   // --- the overlay ------------------------------------------------------------------
   function el(id) { return document.getElementById(id); }
-  let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view once
+  let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
+  let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
+                             // panel may not have laid out on the first tick); after that the
+                             // reader may scroll away freely
   function render() {
     const overlay = el('tourOverlay');
     if (!overlay) return;
@@ -513,15 +527,20 @@
     el('tourBack').style.visibility = stepIdx === 0 ? 'hidden' : '';
     el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || 'Waiting for you…')) : '';
     el('tourDots').innerHTML = STEPS.map((s, i) => '<span class="tour-dot' + (i < stepIdx ? ' past' : i === stepIdx ? ' now' : '') + '"></span>').join('');
-    // spotlight + card placement
-    const modalOpen = !!document.querySelector('.modal-overlay.visible');
-    const target = !modalOpen && step.target.length ? q(step.target) : null;
+    // spotlight + card placement: the ladder follows the reader into an open
+    // dialog (only a control inside it qualifies there)
+    const openModal = document.querySelector('.modal-overlay.visible');
+    const modalOpen = !!openModal;
+    const target = step.target.length ? q(step.target, openModal) : null;
     const spot = el('tourSpot');
     const card = el('tourCard');
     if (target) {
-      if (target !== lastTarget) { try { target.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) {} }
+      if (target !== lastTarget) scrollSettled = false;
+      let r = target.getBoundingClientRect();
+      const inView = r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+      if (!inView && !scrollSettled) { try { target.scrollIntoView({ block: 'nearest', inline: 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
+      else if (inView) scrollSettled = true;
       lastTarget = target;
-      const r = target.getBoundingClientRect();
       const pad = 6;
       spot.style.display = '';
       spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
@@ -537,8 +556,9 @@
       if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
       else { card.style.left = '50%'; card.style.top = '50%'; card.style.right = ''; card.style.bottom = ''; card.style.transform = 'translate(-50%, -50%)'; }
     }
-    // auto-advance a beat after a doing-step completes
-    if (step.kind === 'do' && done && stepIdx < STEPS.length - 1) {
+    // auto-advance a beat after a doing-step completes — never on a step the
+    // reader came Back to (its work is already there; Next is lit instead)
+    if (step.kind === 'do' && done && !heldByBack && stepIdx < STEPS.length - 1) {
       if (!doneAt) doneAt = Date.now();
       else if (Date.now() - doneAt > 900) goTo(stepIdx + 1);
     } else doneAt = 0;
@@ -546,7 +566,9 @@
   function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
   function safeHint(step) { try { return step.hint() || ''; } catch (_) { return ''; } }
   function goTo(i) {
-    stepIdx = Math.max(0, Math.min(STEPS.length - 1, i));
+    const next = Math.max(0, Math.min(STEPS.length - 1, i));
+    heldByBack = next < stepIdx;
+    stepIdx = next;
     doneAt = 0;
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     render();
@@ -557,7 +579,7 @@
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
-    stepIdx = 0; doneAt = 0; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);

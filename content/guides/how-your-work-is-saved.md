@@ -1,7 +1,7 @@
 ---
 title: How your work is saved (and how to tell)
 description: Auto-save every few seconds, local backups on your device, and the Save Status bell — what each state means and what to do on the rare yellow day.
-updated: 2026-08-10
+updated: 2026-09-10
 order: 7.5
 icon: save-status
 category: Collaboration
@@ -35,7 +35,7 @@ On a flaky connection the app retries automatically with increasing patience, an
 
 ## If your edit session expires
 
-Shared projects use [check-out](/guides/sharing-and-view-links/) — one editor at a time, released after about 30 minutes of inactivity. If you walk away long enough for your session to expire, the app first tries to quietly re-check-out for you; if it can't (say a teammate grabbed the project), a recovery dialog explains your options: re-check out and save, export your local work, or discard. Nothing is lost silently in any path.
+Shared projects use [check-out](/guides/sharing-and-view-links/) — one editor at a time, released after about 30 minutes of inactivity. When you turn a project in, the confirmation offers **Close project**, and a **[Close]** appears in the header beside the edit-status banner while you are viewing a project you edited this session; the same door sits at the foot of the header's cloud menu and in Project Settings, and it only asks first when there is unsaved work to lose. If you walk away long enough for your session to expire, the app first tries to quietly re-check-out for you; if it can't (say a teammate grabbed the project), a recovery dialog explains your options: re-check out and save, export your local work, or discard. Nothing is lost silently in any path.
 
 ## The restore prompt
 

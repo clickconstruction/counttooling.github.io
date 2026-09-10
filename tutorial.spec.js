@@ -13,7 +13,10 @@
  * conductors, chained runs with drops, a circuit, an expanded Bid Check. Both tours
  * share the scale step (through the real dialog; the sample plan is a true ANSI B
  * sheet so no sheet-size correction rides along) and the prove-the-scale step, which
- * gates on the 20'-0" wall reading 20 ft and names a wrong reading.
+ * gates on the 20'-0" wall reading 20 ft and names a wrong reading. Back HOLDS
+ * (a step re-entered with Back never auto-advances — Next lights up), and the
+ * spotlight follows the reader INTO a dialog (the ladder's deepest visible
+ * control wins; a control under the backdrop never does).
  *
  * The plumbing tour shares the engine: its own link, ?tour=plumbing, its own
  * done key (finishing it hides only its link), the project stamped plumbing on
@@ -122,11 +125,16 @@ test.describe('Interactive walkthrough', () => {
     // a real upload (the sample plan through the same input) satisfies step 1
     await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'samples', 'sample-plan.pdf'));
     await waitForStep(page, 'scale');
-    // Back returns; Next on a doing-step skips
+    // Back HOLDS: welcome is already satisfied, but a step re-entered with Back
+    // never auto-advances — Next lights up instead (Wendi: "it won't let me stay back")
     await page.click('#tourBack');
     expect(await stepId(page)).toBe('welcome');
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('welcome');
+    expect(await page.locator('#tourNext').textContent()).toBe('Next');
+    expect(await page.locator('#tourNext').evaluate((b) => b.classList.contains('tour-next-ready'))).toBe(true);
+    expect(await page.locator('#tourStatus').textContent()).toBe('✓ Done');
     await page.click('#tourNext');
-    // welcome is already satisfied, so it auto-advances again
     await waitForStep(page, 'scale');
     expect(await page.locator('#tourNext').textContent()).toBe('Skip step');
     await page.click('#tourNext');
@@ -197,6 +205,19 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');
     expect(await page.evaluate(() => window.state.tool)).toBe(0);
     await waitForStep(page, 'counter');
+    // the spotlight follows the reader into the dialog: with the counter dialog
+    // open the ladder lights Create Counter, never the + Add under the backdrop
+    await page.click('#addCounter');
+    await page.waitForSelector('#counterModal.visible');
+    // the spot moves on the 400 ms tick with a 160 ms transition — poll, don't sleep
+    // …and the lit control must actually be ON SCREEN: at this viewport Create
+    // Counter starts clipped below the dialog's scroll panel, so the loop has to
+    // scroll it into view (the first-tick scroll lands before the panel lays out)
+    const spotOn = (id) => page.waitForFunction((want) => { const spot = document.getElementById('tourSpot'); const r = spot.getBoundingClientRect(); const b = document.getElementById(want).getBoundingClientRect(); return getComputedStyle(spot).display !== 'none' && Math.abs(r.left + 6 - b.left) < 2 && Math.abs(r.top + 6 - b.top) < 2 && b.top >= 0 && b.bottom <= window.innerHeight; }, id, { timeout: 4000 });
+    await spotOn('counterCreate');
+    expect(await page.evaluate(() => document.getElementById('counterCreatePanel').scrollTop)).toBeGreaterThan(0);
+    await page.evaluate(() => window.App.hideModal('counterModal'));
+    await spotOn('addCounter');
     // 4. a Water Closet with the plumbing set's Toilet symbol
     await page.click('#tourAction');
     const wc = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Water Closet'); const t = window.App.getEffectiveCustomIcons().find((i) => i.name === 'Toilet'); return { has: !!c, toilet: !!c && c.icon === t.value }; });

@@ -129,7 +129,7 @@ payload carrying any v2 field is rejected by name — send `version: 2`.
 | `groups[]` | circuits, panels, areas — `{ id, name, color? }` (max 200; palette color assigned when omitted) | `data.groups`, `groupsEnabled: true` when any |
 | mark / line `group` | one of `groups[].id` | `group` on the mark or line (the app's own field — Summary, report, Copy to /Tooling, the payload all group by it) |
 | line `startDrop` / `endDrop` | feet of vertical at that end (a receptacle at 18" under a 10' ceiling: 9.5 with make-up) | `startDrop`/`endDrop` + `…Unit: 'ft'` — exactly what the Drop tool writes; counted in the totals |
-| palette `childCounts[]` | `{ name, qty, per: 'count'\|'run'\|'ft', ftInterval? }` | `childCounts` on the counter / line type (features/child-counts.js: per count × marks, per run × runs, per ft × ceil(feet/interval) per scaled run) |
+| palette `childCounts[]` | `{ name, qty, per: 'count'\|'run'\|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` is the rulebook id the row came from (below) | `childCounts` on the counter / line type (features/child-counts.js: per count × marks, per run × runs, per ft × ceil(feet/interval) per scaled run); a `ruleId` row wears the § chip in the Summary and rides the hand-off payload's `children[]` |
 | page `multiplyZones[]` | `{ x1, y1, x2, y2, multiplier ≥ 1 }` base-frame rectangle | stamped on EVERY canvas of that page (the zone lookup is per canvas) |
 | page `scaleZones[]` | `{ x1, y1, x2, y2, scale: { pixelsPerUnit, unit } }` | same |
 | palette `mountHeightIn` (counters) | inches above finished floor, 0–480 (18 receptacle, 44 GFCI, 48 switch, 78 panel); omit for ceiling devices | `mountHeightIn` on the counter — the Quick creator's and details modal's field; the Chain tool reads it for the default vertical (S2) |
@@ -150,3 +150,35 @@ Response adds `group_count`, `zone_count`, `child_rules`, `trade`. Scoring: `tak
 `diffTakeoffs` returns `children` and `groups` rows beside `counts` and `feet` — a takeoff
 that counts right but puts a device on the wrong circuit is caught in `groups`, and a
 forgotten drop shows in `feet`.
+
+## The rulebook — public rules an agent should cite (2026-09-10)
+
+CountTooling publishes the public trade rules it applies at
+**https://counttooling.com/rules/** (pages for people) and
+**https://counttooling.com/rules/rules.json** (the same list for software). Each rule is
+`{ id, trade, kind, status, title, summary, values: [{ when, value, unit }], source: { code,
+section, editions, url }, amendments, used_by, url, updated }`. `kind` is `code` (a model
+code — NEC, IPC, UPC), `standard` (SMACNA, ASTM), `recommendation` (in the code but
+advisory) or `convention` (a working figure the trade uses); `status: applied` means the
+app itself uses the value and the drift check keeps it equal to the app's code.
+
+How an agent uses it:
+
+- **Derive from a rule, not from memory.** Hanger spacing, fill limits, the voltage-drop
+  limit, mount heights, make-up: fetch the list, pick the rule for the trade and material,
+  and use a value only under the `when` it is stated for. If no rule covers the case, do not
+  invent one — count what the drawing shows and flag the gap as an `RFI:` note.
+- **Stamp what you derived.** A per-ft child count taken from a rule carries `ruleId`
+  (`{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }`).
+  The app shows the citation, the reviewer can check it, and the hand-off payload carries it
+  to PipeTooling. `intervalIn` is inches; use it for anything under a foot's precision.
+- **Say when the edition is not covered.** `source.editions` lists the editions a rule was
+  checked against; if the bid's jurisdiction adopts another, say so in the import `note` and
+  keep the value — a person decides.
+- **Public knowledge only.** The rulebook never carries a shop's own practice (preferred
+  spacing, materials, labor). Those live with pricing in PipeTooling; do not read a company
+  standard into a rule, and do not ask the rulebook to hold one.
+
+The four hanger rules (`plumb.hanger.pex`, `.copper`, `.pvc`, `.cast-iron`) are the ones a
+plumbing takeoff cites today; the app's own suggestion logic is `support-model.js`
+(`hangerSuggestionsFor(lineTypeName)`), which is what a reviewer will compare against.

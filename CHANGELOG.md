@@ -61,6 +61,25 @@ silently skipped offer would lose the old session to the newer backup on the nex
 while a prompt costs one click.
 ---
 
+## feat(rules): the rulebook at the agent door (2026-09-10)
+
+A digital twin could not find the rulebook or send what it teaches: the twin-facing
+docs never mentioned `/rules/`, and the import door stripped a child count down to
+name / qty / per / whole feet — a rulebook hanger (`intervalIn: 32`, `ruleId`) arrived
+as "1 per 10 ft" with no rule.
+
+- `import-takeoff` accepts `intervalIn` (positive inches, ≤ 1200; wins over `ftInterval`)
+  and `ruleId` (the rulebook id grammar; a 400 names the field and points at
+  `counttooling.com/rules/rules.json`).
+- TAKEOFF_IMPORT.md documents both fields and gains **The rulebook** — where the list is,
+  its shape, and the four rules of use: derive from a rule not from memory, stamp `ruleId`,
+  say when the edition is not covered, public knowledge only.
+- PipeTooling's twin docs (the CountTooling bid guide served as `get_ct_guide`, the app
+  directory, the estimator brief) point at the rulebook in the same words — a separate PR
+  there.
+
+---
+
 ## feat(rules): slice 4 — Codes & jurisdiction (2026-09-09)
 
 A rule's value depends on which edition a jurisdiction adopts, so a project now says.

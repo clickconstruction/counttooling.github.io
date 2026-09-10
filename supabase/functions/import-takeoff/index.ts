@@ -26,7 +26,11 @@ type Pt = { x: number; y: number }
 // vertical at either end), palette items may carry childCounts (the per-count / per-run
 // / per-N-ft rules that tally boxes, couplings and straps), pages may carry multiply
 // and scale zones, and the takeoff may name its trade. v1 payloads are unchanged.
-type ChildRule = { name: string; qty: number; per: 'count' | 'run' | 'ft'; ftInterval?: number }
+// Rulebook (2026-09-10): a per-ft rule may carry `intervalIn` (inches — wins over the
+// whole-foot ftInterval; the rulebook's unit for hanger spacing) and `ruleId`, the
+// counttooling.com/rules/rules.json id the row was taken from (the § chip in the app).
+type ChildRule = { name: string; qty: number; per: 'count' | 'run' | 'ft'; ftInterval?: number; intervalIn?: number; ruleId?: string }
+const RULE_ID_RE = /^[a-z][a-z0-9]*(\.[a-z0-9-]+)+$/
 // S3 conductors: a line type's raceway + conductor list (wire tallies by gauge from every
 // run; MC / AC / NM tally as cable), a line's own list, a counter's cable per placement.
 type Conductor = { n: number; gauge: string; insul: string; role: 'hot' | 'neutral' | 'ground' }
@@ -68,9 +72,20 @@ function validChildRules(rules: unknown, where: string): { ok: ChildRule[] } | {
     if (!['count', 'run', 'ft'].includes(per)) return { error: bad(where, "childCounts.per must be 'count', 'run' or 'ft'") }
     const rule: ChildRule = { name, qty, per: per as ChildRule['per'] }
     if (per === 'ft') {
-      const iv = Number(r?.ftInterval ?? 10)
-      if (!num(iv) || iv <= 0) return { error: bad(where, 'childCounts.ftInterval must be a positive number of feet') }
-      rule.ftInterval = iv
+      if (r?.intervalIn != null) {
+        const ii = Number(r.intervalIn)
+        if (!num(ii) || ii <= 0 || ii > 1200) return { error: bad(where, 'childCounts.intervalIn must be a positive number of inches (≤ 1200)') }
+        rule.intervalIn = ii
+      } else {
+        const iv = Number(r?.ftInterval ?? 10)
+        if (!num(iv) || iv <= 0) return { error: bad(where, 'childCounts.ftInterval must be a positive number of feet') }
+        rule.ftInterval = iv
+      }
+    }
+    if (r?.ruleId != null) {
+      const rid = String(r.ruleId).trim()
+      if (!RULE_ID_RE.test(rid) || rid.length > 80) return { error: bad(where, 'childCounts.ruleId must be a rulebook id like plumb.hanger.pex (see counttooling.com/rules/rules.json)') }
+      rule.ruleId = rid
     }
     out.push(rule)
   }

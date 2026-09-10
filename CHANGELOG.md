@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(guides): regenerate the screenshots on the ANSI B sample plan (2026-09-09)
+
+The 44 guide images (`guides/img/*.png` + the landing hero) were still captured on the old
+918 × 594 sample sheet. `scripts/build-screenshots.js` now places markup as fractions of
+the DRAWING's extent (`PLAN_W × PLAN_H` = 918 × 594 pt, the plan group on the 1224 × 792
+sheet) instead of the page, frames every shot on the drawing (`fitPlan`, so the images keep
+their old framing rather than showing the whole sheet), and routes canvas clicks through
+`planPoint`. Three shots improved on the way: the takeoff shots show the live legend the
+alt text promises, the Multiply Zone dialog now comes from the real two-click path so its
+"In this area" count is the app's own (8 counters in Women 106), and the annotate note sits
+clear of the Open Office label. Still manual, still not in `npm run check`.
+
+---
+
 ## fix(tutorial): the screenshot walk — panel, ⋯ menu, off-screen targets (2026-09-09)
 
 A step-by-step screenshot pass over the plumbing tour at a 1440 × 900 desktop viewport

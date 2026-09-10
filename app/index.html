@@ -204,6 +204,9 @@
             <button type="button" class="export-dropdown-option" data-action="pdf">Original PDF (no marks)</button>
             <button type="button" class="export-dropdown-option" data-action="both">Export Both</button>
             <button type="button" class="export-dropdown-option" data-action="import-canvas">Import Canvas <span class="dl-qual" id="importCanvasBlockedNote"></span></button>
+            <!-- Close project (2026-09-10): the findable door — App.closeProject,
+                 the same routine as Project Settings → Close Project. -->
+            <button type="button" class="export-dropdown-option export-dropdown-option-sep" data-action="close-project">Close project</button>
           </div>
         </div>
       </div>
@@ -2998,6 +3001,7 @@
         <span>Some edits may not have been saved &mdash; check the Save status bell.</span>
       </p>
       <div class="actions">
+        <button type="button" id="forceTurnInNoticeClose">Close project</button>
         <button type="button" id="forceTurnInNoticeCheckout">Check out to edit</button>
         <button type="button" class="btn-yellow" id="forceTurnInNoticeKeepViewing">Keep viewing</button>
       </div>
@@ -3058,6 +3062,12 @@
       <!-- Copy to /Tooling fills this with the by-unit split of what was copied
            (counts vs line feet vs unscaled px) — features/output.js setCopiedDetail. -->
       <p id="pipeToolingCopiedDetail" style="margin:6px 0 0;font-size:0.85rem;color:var(--text2);display:none;"></p>
+    </div>
+    <!-- Interactive card (2026-09-10): "Project turned in." with the door the
+         estimator reaches for next — Close project is a real button (bound in
+         features/turn-in.js, showTurnedInToast). -->
+    <div class="toast-card toast-interactive" id="turnedInToastModal">
+      <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span id="turnedInToastText">Project turned in.</span><button type="button" id="turnedInToastClose" class="toast-link">Close project</button></p>
     </div>
     <div class="toast-card" id="airboardToastModal">
       <p id="airboardToastText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>

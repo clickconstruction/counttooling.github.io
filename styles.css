@@ -1436,6 +1436,7 @@
     .canvas-menu-item.active .canvas-menu-item-edit { color: #000; }
     .canvas-menu-heading { padding: 6px 12px 8px; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted, #8a8a92); }
     .canvas-menu-sep { height: 1px; background: var(--border); margin: 4px 6px; }
+    .export-dropdown-option-sep { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 10px; border-radius: 0 0 6px 6px; }
     .ghost-menu-check { display: inline-block; width: 12px; flex-shrink: 0; color: var(--yellow); }
     .canvas-menu-add { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: 1px solid var(--yellow); border-radius: 4px; color: var(--text); cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 4px; transition: background 0.15s ease; }
     .canvas-menu-add:hover { background: var(--surface2); }

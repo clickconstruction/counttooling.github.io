@@ -38,7 +38,7 @@
       await App.refreshProjectPermissions();
       App.updateSettingsCheckoutSection();
       if (opts.hideSettings) App.hideModal('settingsModal');
-      App.showToast(result.releasedByServer ? 'Edit session had already expired — turned in.' : 'Project turned in.');
+      showTurnedInToast(result.releasedByServer ? 'Edit session had already expired — turned in.' : 'Project turned in.');
       if (App.state.pdfBuffer && !App.state.pdfStoragePath) {
         App.showToast('PDF saved locally—use Save Project to Cloud to add it to the project.', 3000);
       }
@@ -212,6 +212,32 @@
   document.getElementById('forceTurnInNoticeKeepViewing').onclick = () => {
     App.hideModal('forceTurnInNoticeModal');
   };
+  // The demoted editor's third way out: they were done anyway.
+  document.getElementById('forceTurnInNoticeClose').onclick = async () => {
+    App.hideModal('forceTurnInNoticeModal');
+    await App.closeProject({ route: 'force_turn_in_notice' });
+  };
+
+  // "Project turned in." with Close project on the card (2026-09-10): the
+  // moment an estimator used to reach for the browser's reload. A static
+  // interactive toast like #setScaleFirstModal — the text span is rewritten
+  // per call, the button is bound once; 6 s leaves time to reach it.
+  let turnedInToastTimer = null;
+  function showTurnedInToast(text) {
+    const t = document.getElementById('turnedInToastText');
+    if (!t) { App.showToast(text); return; }
+    t.textContent = text;
+    if (turnedInToastTimer) clearTimeout(turnedInToastTimer);
+    App.showModal('turnedInToastModal');
+    turnedInToastTimer = setTimeout(() => { App.hideModal('turnedInToastModal'); turnedInToastTimer = null; }, 6000);
+  }
+  const turnedInToastCloseBtn = document.getElementById('turnedInToastClose');
+  if (turnedInToastCloseBtn) turnedInToastCloseBtn.onclick = async () => {
+    if (turnedInToastTimer) { clearTimeout(turnedInToastTimer); turnedInToastTimer = null; }
+    App.hideModal('turnedInToastModal');
+    await App.closeProject({ route: 'turn_in_toast' });
+  };
+  App.showTurnedInToast = showTurnedInToast;
   document.getElementById('forceTurnInNoticeCheckout').onclick = async () => {
     const btn = document.getElementById('forceTurnInNoticeCheckout');
     btn.disabled = true;

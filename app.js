@@ -2794,9 +2794,16 @@
       const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
       if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks — clear or undo first)' : '';
     }
+    // Close project rides the same menu for every session that opened a
+    // project itself — a view-link recipient has no project of their own to
+    // close (B6 keeps that menu empty), and a shared-project reader who was
+    // just turned in still gets the door (state.isViewer, NOT a view link).
+    const exportCloseOpt = document.querySelector('.export-dropdown-option[data-action="close-project"]');
+    const showCloseRow = !shieldImportMode && !state.loadedViaViewLink && state.pages.length > 0;
+    if (exportCloseOpt) exportCloseOpt.style.display = showCloseRow ? '' : 'none';
     let showExportDropdown = showExportDropdownBase;
     if (showExportDropdown && !shieldImportMode && exportContent) {
-      const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer);
+      const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer) || showCloseRow;
       if (!anyExportRow) showExportDropdown = false;
     }
     if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
@@ -4384,7 +4391,11 @@
         exportDropdownMenu.classList.remove('visible');
       } else {
         exportDropdownMenu.style.left = '-9999px';
-        exportDropdownMenu.style.right = '';
+        // right:auto, not '' — the class's `right: 0` would otherwise stay in
+        // force beside the fixed left, stretching the menu to the viewport's
+        // far edge (and its off-screen measure would clamp left to the margin,
+        // so the menu rendered full-width).
+        exportDropdownMenu.style.right = 'auto';
         exportDropdownMenu.classList.add('visible');
         const btnRect = exportDropdownBtn.getBoundingClientRect();
         exportDropdownMenu.style.position = 'fixed';
@@ -4404,6 +4415,8 @@
         await App.downloadProjectPdf();
       } else if (action === 'import-canvas') {
         document.getElementById('importInput').click();
+      } else if (action === 'close-project') {
+        await App.closeProject({ route: 'cloud_menu' });
       }
     };
   });
@@ -4885,9 +4898,18 @@
       hideModal('settingsModal');
       App.openLoadProjectModalOrPromptSave();
     };
-    document.getElementById('settingsCloseProject').onclick = async () => {
-      hideModal('settingsModal');
-      if (state.pages.length > 0 && !confirm('Close project? Any unsaved changes will be lost.')) return;
+    // Close project: ONE routine behind every door — Project Settings, the
+    // header cloud menu, the "Project turned in." toast and the admin
+    // force-turn-in notice (Wendi, 2026-09-10: "I just refresh after I turn
+    // things in"). Confirms only when there is something to lose: unsaved
+    // edits, or a takeoff that lives on this device alone — a turned-in
+    // project is already saved and closes on the click.
+    async function closeProject(opts) {
+      opts = opts || {};
+      const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
+      const localOnly = !state.currentProjectId;
+      if (state.pages.length > 0 && (unsaved || localOnly) && !confirm('Close project? Any unsaved changes will be lost.')) return false;
+      logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
       await checkInCurrentProjectIfHeld();
       resetGridOrigin();
       resetLocalSessionState({ keepArtboard: true });
@@ -4897,6 +4919,12 @@
       document.getElementById('pagesCollapseIcon').textContent = '▶';
       updateUI();
       renderPdf();
+      return true;
+    }
+    (window.App = window.App || {}).closeProject = closeProject;
+    document.getElementById('settingsCloseProject').onclick = async () => {
+      hideModal('settingsModal');
+      await closeProject({ route: 'settings' });
     };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); App.openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); App.openShareProjectModal(); };

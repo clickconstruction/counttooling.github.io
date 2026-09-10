@@ -13,6 +13,56 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tutorial): the tour shows where, Back stays, the lavs say why — and a Close project door (2026-09-10)
+
+Estimator feedback on the plumbing walkthrough (Wendi, relayed 2026-09-10): "it should show
+you where the buttons are, not just explain"; "why are we chaining the lavs?"; "it won't let
+me stay Back"; "we're counting hangers now?"; and "there should be a Close project that's
+easier to find — I just refresh after I turn things in."
+
+- **The spotlight follows the reader into a dialog.** A step's `target` is now a LADDER,
+  deepest control first, and the render loop no longer goes dark the moment a
+  `.modal-overlay` opens — with a dialog up, only a target INSIDE it qualifies (the
+  header and sidebar sit under the backdrop, so they are never lit). The trade step
+  walks + Add → the Quick tab → the Electrical segment; the counter steps light Add
+  Counter / Create Counter; the line-type steps the Quick or Create tab and its Add; the
+  chain and drop steps their floating palettes (and the + New counter dialog); the
+  hangers step the Child counts row and the rulebook's suggestion; the ceiling step the
+  Project Settings field; the circuit step the group dialog; the proof step the Summary
+  row. `#tourOverlay` already sat above modals (z 320 > 200) and never intercepts the
+  pointer, so no new machinery.
+- **Back holds.** The render loop auto-advanced 900 ms after a doing-step's check read
+  true — and a step re-entered with Back is by definition already done, so Back never
+  stayed for more than a second, on any completed step. `goTo` now marks a backward move
+  (`heldByBack`); a held step never auto-advances, its status reads ✓ Done and Next lights
+  up. A forward move clears the hold, so an already-satisfied step still skips ahead.
+- **The lavs say why.** The 1in PEX step names what the type is for (the cold-water branch
+  that feeds the lav battery); the chain step contrasts it with the hand-counted water
+  closets — the three lavs sit on one branch that runs lav to lav, so every click places
+  the fixture AND the pipe that feeds it; the hangers step opens with why hangers are
+  counted at all (every foot hangs from a support the bid has to count — and the app can
+  do it from the pipe).
+- **Close project, findable.** One routine, `App.closeProject({ route })` (app.js, the
+  former Project Settings handler), now behind four doors: Project Settings (unchanged),
+  a **Close project** row at the foot of the header cloud menu (shown once a project is
+  open; never for a view-link session — `loadedViaViewLink`, NOT `isViewer`, so a reader
+  who was just turned in keeps the door), a **Close project** link on the "Project turned
+  in." toast (`#turnedInToastModal`, a static interactive card like Set-Scale-first;
+  `App.showTurnedInToast`, features/turn-in.js), and a third button on the admin
+  force-turn-in notice. The confirm now fires only when there is something to lose —
+  unsaved edits (`getAutoSaveDirty`) or a takeoff that lives on this device alone — so a
+  turned-in project closes on the click. Telemetry: `project_close` carries the route.
+- While there: the header cloud menu opened full-width — the open handler cleared the
+  inline `right` to '' so the class's `right: 0` stayed in force beside the fixed `left`,
+  and the off-screen measure clamped `left` to the margin. It now sets `right: auto` and
+  the menu hangs under its button at its own width.
+- Specs: tutorial.spec.js pins the hold (Back on a satisfied step stays 1.5 s, Next lit)
+  and the in-dialog spotlight (Create Counter lit with the counter dialog open, + Add
+  again once it closes); close-project.spec.js pins the row's visibility rules, the
+  local-only confirm, the view-link exclusion, and both turn-in doors closing the project.
+
+---
+
 ## fix(restore): the "Project from Last Session" offer waits its turn (2026-09-10)
 
 Two sightings of the T1-01 prompt fighting the user. A plumbing tour's chained runs

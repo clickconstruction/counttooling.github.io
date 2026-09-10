@@ -10,7 +10,10 @@
  * finishing does (and the empty-canvas link goes away); it refuses to start
  * over an open cloud project; the "do it for me" path ends with a real
  * electrical takeoff on the sample plan — receptacles, a conduit type with
- * conductors, chained runs with drops, a circuit, an expanded Bid Check.
+ * conductors, chained runs with drops, a circuit, an expanded Bid Check. Both tours
+ * share the scale step (through the real dialog; the sample plan is a true ANSI B
+ * sheet so no sheet-size correction rides along) and the prove-the-scale step, which
+ * gates on the 20'-0" wall reading 20 ft and names a wrong reading.
  *
  * The plumbing tour shares the engine: its own link, ?tour=plumbing, its own
  * done key (finishing it hides only its link), the project stamped plumbing on
@@ -47,9 +50,15 @@ test.describe('Interactive walkthrough', () => {
     await page.click('#tourAction');
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await waitForStep(page, 'scale');
-    // 2. scale: do it for me writes the 1/8" preset
+    // 2. scale: do it for me picks the 1/8" preset THROUGH the dialog — on a true ANSI B
+    // sheet there is no sheet-size correction, so the scale is the plain preset
     await page.click('#tourAction');
-    expect(await page.evaluate(() => window.state.pages[0].scale.pixelsPerUnit)).toBe(9);
+    await waitForStep(page, 'measure');
+    expect(await page.evaluate(() => { const sc = window.state.pages[0].scale; return [sc.pixelsPerUnit, sc.correctionFactor, sc.sheetSize]; })).toEqual([9, undefined, undefined]);
+    expect(await page.locator('#scaleModal').evaluate((m) => m.classList.contains('visible'))).toBe(false);
+    // 2b. prove it: the 20'-0" wall reads 20'-0"
+    await page.click('#tourAction');
+    expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');
     await waitForStep(page, 'trade');
     // 3. trade
     await page.click('#tourAction');
@@ -121,7 +130,7 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'scale');
     expect(await page.locator('#tourNext').textContent()).toBe('Skip step');
     await page.click('#tourNext');
-    expect(await stepId(page)).toBe('trade');
+    expect(await stepId(page)).toBe('measure');
     // leaving mid-way does not mark it done
     await page.click('#tourLeave');
     expect(await stepId(page)).toBe(null);
@@ -165,6 +174,7 @@ test.describe('Interactive walkthrough', () => {
     await page.click('#canvasEmptyHintTourPlumbing');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['plumbing', 'welcome']);
     expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 14');
+    // the sample plan is a true ANSI B sheet — no sheet-size warning can greet the scale step
 
     // 1. the sample plan → the project is stamped plumbing (not remembered as the device default)
     await page.click('#tourAction');
@@ -172,11 +182,17 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'scale');
     expect(await page.evaluate(() => window.state.trade)).toBe('plumbing');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plumbingModifiers')).defaultTrade)).toBe('electrical');
-    // 2. scale
+    // 2. scale — through the real dialog; the page is standard so no correction rides along
+    expect(await page.evaluate(() => window.App.getPageSheetAnalysis(0).isStandard)).toBe(true);
     await page.click('#tourAction');
-    expect(await page.evaluate(() => window.state.pages[0].scale.pixelsPerUnit)).toBe(9);
     await waitForStep(page, 'measure');
-    // 3. the 20'-0" dimension measures 20 ft through the real Measure commit
+    expect(await page.evaluate(() => { const sc = window.state.pages[0].scale; return [sc.pixelsPerUnit, sc.correctionFactor]; })).toEqual([9, undefined]);
+    // 3. the proof GATES: a wrong reading names itself and does not advance
+    await page.evaluate(() => { window.state.lastMeasure = { text: 'Distance: 53\'-4"', pageIdx: 0, pts: 180, scale: { pixelsPerUnit: 3.375, unit: 'ft' } }; });
+    await page.waitForTimeout(600);
+    expect(await stepId(page)).toBe('measure');
+    expect(await page.locator('#tourStatus').textContent()).toBe('Read 53\'-4" — go Back and set the scale again');
+    // ...and the 20'-0" dimension measures 20 ft through the real Measure commit
     await page.click('#tourAction');
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');
     expect(await page.evaluate(() => window.state.tool)).toBe(0);

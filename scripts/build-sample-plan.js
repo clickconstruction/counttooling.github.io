@@ -1,9 +1,20 @@
 #!/usr/bin/env node
 /**
  * Generates samples/sample-plan.pdf — a synthetic commercial floor plan used as the
- * backdrop for the guide screenshots (so they show a realistic takeoff, not a blank
- * sheet). No confidential data; fully reproducible. Renders an inline SVG to PDF via the
- * Chromium that ships with @playwright/test (no new deps).
+ * backdrop for the guide screenshots and the interactive walkthroughs (so they show a
+ * realistic takeoff, not a blank sheet). No confidential data; fully reproducible.
+ * Renders an inline SVG to PDF via the Chromium that ships with @playwright/test (no
+ * new deps).
+ *
+ * The sheet is a TRUE ANSI B (11 × 17 in = 792 × 1224 PDF points), and the plan
+ * geometry is drawn at a true 1/8" = 1'-0" (9 pt per foot: the 65'-0" building is
+ * 585 pt wide), so the title block's scale is literally correct with no sheet-size
+ * correction. The first cut printed the same SVG at 918 × 594 pt — a non-standard
+ * sheet — and the Set Scale dialog greeted every tour with the "compressed or
+ * re-boxed" warning, defaulting to a 0.375 correction that made the 65' building
+ * measure 173 ft (2026-09-09). The plan group is scaled by PLAN_SCALE inside the sheet
+ * so every fixture keeps the PDF-point coordinates the tours already use (SVG unit ×
+ * 0.75); only the border and title block sit in sheet coordinates.
  *
  * Run with: npm run build:sample-plan
  */
@@ -13,8 +24,9 @@ const { chromium } = require('@playwright/test');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'samples', 'sample-plan.pdf');
-const W = 1224; // 17in landscape @ 72dpi
+const W = 1224; // 17in landscape @ 72pt — the SVG user unit is one PDF point
 const H = 792;  // 11in
+const PLAN_SCALE = 0.75; // the plan group's SVG px → points (1/8" = 1' at 9 pt/ft)
 
 // --- fixture symbols (architectural-ish, thin black linework) -----------------
 function wc(x, y, rot = 0) { // toilet: tank + bowl
@@ -52,7 +64,7 @@ function dim(x1, y, x2, label) { // horizontal dimension line with ticks
 }
 
 // --- the plan -----------------------------------------------------------------
-const PLAN = `
+const GEOMETRY = `
   <!-- building outer wall -->
   <rect x="150" y="120" width="780" height="470" fill="#fff" stroke="#111" stroke-width="5"/>
   <!-- interior partitions -->
@@ -96,6 +108,10 @@ const PLAN = `
   ${dim(430, 615, 690, '21\'-8"')}
   ${dim(690, 615, 930, '20\'-0"')}
 
+`;
+
+// Sheet chrome — in sheet coordinates (points), not scaled with the plan.
+const TITLE_BLOCK = `
   <!-- title block -->
   <g font-family="Helvetica, Arial">
     <rect x="820" y="650" width="380" height="120" fill="#fff" stroke="#111" stroke-width="2"/>
@@ -110,14 +126,15 @@ const PLAN = `
   </g>
 `;
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="17in" height="11in" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="#fff"/>
   <rect x="18" y="18" width="${W - 36}" height="${H - 36}" fill="none" stroke="#111" stroke-width="1.5"/>
-  ${PLAN}
+  <g transform="scale(${PLAN_SCALE})">${GEOMETRY}</g>
+  ${TITLE_BLOCK}
 </svg>`;
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-  @page { size: ${W}px ${H}px; margin: 0; }
+  @page { size: 17in 11in; margin: 0; }
   html,body { margin: 0; padding: 0; }
   svg { display: block; }
 </style></head><body>${svg}</body></html>`;
@@ -127,7 +144,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.setContent(html, { waitUntil: 'networkidle' });
-  await page.pdf({ path: OUT, width: `${W}px`, height: `${H}px`, printBackground: true, pageRanges: '1' });
+  await page.pdf({ path: OUT, width: '17in', height: '11in', printBackground: true, pageRanges: '1' });
   await browser.close();
-  console.log('Wrote samples/sample-plan.pdf (' + W + 'x' + H + ').');
+  console.log('Wrote samples/sample-plan.pdf (ANSI B, ' + W + 'x' + H + ' pt).');
 })().catch((e) => { console.error(e); process.exit(1); });

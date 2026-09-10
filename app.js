@@ -5352,7 +5352,9 @@
       // state.localPdfHash) — a per-sheet fact: the chip renders only while
       // lastMeasure.pageIdx === state.currentPage (features/status-bar.js), a
       // new measure overwrites it, and a PDF/project load resets state.
-      state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage };
+      // pts + scale ride along so a consumer can re-derive the length in any unit
+      // (features/tutorial.js checks the prove-the-scale reading against 20 ft).
+      state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage, pts: dist, scale: effScale };
       showToast('Distance: ' + formatted, 5000);
       state.scalePointA = null;
       state.scalePointB = null;

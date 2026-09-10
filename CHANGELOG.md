@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tutorial): the screenshot walk — panel, ⋯ menu, off-screen targets (2026-09-09)
+
+A step-by-step screenshot pass over the plumbing tour at a 1440 × 900 desktop viewport
+(same engine as electrical) turned up three things the state-level checks could not see.
+
+- **The Chain palette stayed open** from the chain step to Finish, covering the Pages
+  section and the first sidebar rows. A do-it-for-me chain now ends the run and exits the
+  tool, as Enter then Esc would — both tours.
+- **Multiply Zone and Note live behind ⋯ More tools on desktop**, so their steps had no
+  visible target and the card sat centred over the plan — over Men 105, exactly where the
+  ×3 zone had just been drawn. Both steps now fall back to spotlighting `#headerMoreBtn`,
+  and the copy says where the tool is.
+- **Sidebar targets can be scrolled out of view** (Summary, Export Options); the first
+  time a step spotlights a target it is scrolled into view.
+- Copy now names the real buttons: Create Counter, Add Line Type.
+- The electrical tour's do-it-for-me receptacles now land inside Open Office 104 (the
+  old spots assumed a 792 × 612 page and put two of them on the Men's room lavatories).
+
+Estimators also reported the electrical tour's **Set the scale** step as confusing. Reproduced:
+the sample PDF was 918 × 594 pt — not a standard sheet — so the dialog greeted the step with
+the "compressed or re-boxed" warning and a picker defaulting to ANSI D; following the card and
+clicking 1/8" applied a 0.375 correction (the 65' building measured 173 ft) and dropped the
+estimator into verify mode the card never mentioned. Four changes:
+
+- **The sample plan is a true ANSI B sheet** (`scripts/build-sample-plan.js`: 17 × 11 in =
+  1224 × 792 pt, the plan group at 0.75 inside it so every fixture keeps its PDF-point
+  coordinates). The title block's 1/8" is literally true; no warning, no correction.
+- **Prove the scale gates.** The step passes only when the 20'-0" wall reads within 0.6 ft of
+  20; a wrong reading shows in the status line ("Read 53'-4" — go Back and set the scale
+  again") via the new optional `hint()` on a step. `state.lastMeasure` now carries `pts` +
+  `scale` so the reading can be re-derived in feet.
+- **The electrical tour gets the same proof step** right after Set Scale (14 steps now); both
+  tours share `SCALE_STEP` / `PROVE_STEP`.
+- **The scale step's copy says what the dialog shows** (the Architectural & Engineering tab,
+  the 1/8" = 1' row), and its Do-it-for-me opens the real dialog and clicks that row, so the
+  estimator sees it once; a direct write remains the fallback.
+
+---
+
 ## feat(tutorial): the plumbing walkthrough — a second tour on the same engine (2026-09-09)
 
 The electrical tour shipped first because that trade's features were the newest; the

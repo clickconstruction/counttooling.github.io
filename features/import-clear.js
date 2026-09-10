@@ -54,6 +54,7 @@
         state.groupsEnabled = !!data.groupsEnabled;
         state.trade = typeof data.trade === 'string' && data.trade ? data.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
         state.ceilingHeightFt = typeof data.ceilingHeightFt === 'number' && data.ceilingHeightFt > 0 ? data.ceilingHeightFt : null;   // S2 vertical-by-default
+        state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(data.codes) : null;   // rulebook slice 4
         state.makeUpFt = typeof data.makeUpFt === 'number' && data.makeUpFt >= 0 ? data.makeUpFt : null;
         state.bidCheck = (data.bidCheck && typeof data.bidCheck === 'object') ? { ...data.bidCheck, manual: { ...(data.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
         state.rooms = Array.isArray(data.rooms) ? data.rooms : [];

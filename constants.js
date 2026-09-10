@@ -83,6 +83,27 @@ const HVAC_DEFAULTS = {
 // make-up feet of vertical written by the Chain tool. 1 ft of make-up is the
 // trade's working figure; null ceiling = the feature is off for the project.
 const DEFAULT_MAKE_UP_FT = 1;
+// --- Codes & jurisdiction (rulebook slice 4) ---
+// Which editions the rulebook's values resolve against for a project, per trade,
+// plus the jurisdiction whose amendments apply. `state.codes` holds only what the
+// project chose (null = never chosen); getProjectCodes() in app.js layers the
+// device default and CODE_DEFAULTS under it. The lists are what the rule pages
+// have been checked against or are likely to be asked for.
+const CODE_EDITIONS = {
+  plumbing: ['IPC 2015', 'IPC 2018', 'IPC 2021', 'IPC 2024', 'UPC 2018', 'UPC 2021', 'UPC 2024'],
+  electrical: ['NEC 2017', 'NEC 2020', 'NEC 2023'],
+  hvac: ['SMACNA 2005', 'SMACNA 2020'],
+};
+const CODE_DEFAULTS = { plumbing: 'IPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020' };
+// A saved/imported `codes` blob → the shape the app stores, or null when it holds
+// nothing. Unknown editions are kept (a newer app may know them); non-strings drop.
+function normalizeProjectCodes(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const out = {};
+  ['plumbing', 'electrical', 'hvac'].forEach((t) => { if (typeof raw[t] === 'string' && raw[t].trim()) out[t] = raw[t].trim(); });
+  if (typeof raw.jurisdiction === 'string' && raw.jurisdiction.trim()) out.jurisdiction = raw.jurisdiction.trim();
+  return Object.keys(out).length ? out : null;
+}
 const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47','#2c3e50','#8b4513','#ff6b6b','#6366f1','#059669','#f59e0b','#0ea5e9','#7c3aed','#e11d48'];
 const SCALE_PRESETS = [
   { label: '1/6" = 1\'', pixelsPerUnit: 12, unit: 'ft' },
@@ -223,7 +244,7 @@ const USER_ACTIVITY_TZ = 'America/Chicago';
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TOOL, SCALE_MODES, PLUMBING_DEFAULTS, LINE_DEFAULTS, COLORS, SCALE_PRESETS,
-    TRADES, TRADE_LABELS, TRADE_QUICK_PROFILES, ELECTRICAL_DEFAULTS, HVAC_DEFAULTS, DEFAULT_MAKE_UP_FT,
+    TRADES, TRADE_LABELS, TRADE_QUICK_PROFILES, ELECTRICAL_DEFAULTS, HVAC_DEFAULTS, DEFAULT_MAKE_UP_FT, CODE_EDITIONS, CODE_DEFAULTS, normalizeProjectCodes,
     AUTO_SAVE_INTERVAL_MS, AUTOSAVE_TIMEOUT_MS, STORAGE_INFO_TIMEOUT_MS, CLIENT_PROBE_TIMEOUT_MS,
     CLIENT_RECYCLE_COOLDOWN_MS, DIRTY_SNAPSHOT_THRESHOLD_MS, CHECK_IN_TIMEOUT_MS, LONG_IDLE_PROBE_MS,
     TURN_IN_STALENESS_MS, AUTOSAVE_BACKOFF_LEVELS_MS, AUTOSAVE_BANNER_THRESHOLD, AUTOSAVE_RECOVERY_THRESHOLD,

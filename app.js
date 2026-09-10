@@ -144,6 +144,31 @@
     }
     updateUI();
   }
+  // Codes & jurisdiction (rulebook slice 4): which editions the rulebook resolves
+  // against for this project, and whose amendments apply. `state.codes` holds
+  // only what the project chose; the device default (the last bid's choices,
+  // like the trade) and CODE_DEFAULTS sit under it. Telemetry: codes_set.
+  const CODES_DEFAULT_KEY = 'codesDefault';
+  function getDeviceDefaultCodes() {
+    try { return normalizeProjectCodes(JSON.parse(localStorage.getItem(CODES_DEFAULT_KEY) || 'null')); } catch (_) { return null; }
+  }
+  function getProjectCodes() {
+    return { ...CODE_DEFAULTS, jurisdiction: '', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
+  }
+  function setProjectCodes(patch, opts) {
+    const merged = { ...(state.codes || {}), ...(patch || {}) };
+    Object.keys(merged).forEach((k) => { if (merged[k] == null || String(merged[k]).trim() === '') delete merged[k]; });
+    const next = normalizeProjectCodes(merged);
+    const changed = JSON.stringify(next) !== JSON.stringify(state.codes || null);
+    state.codes = next;
+    // Remembered as the device default unless told not to (the tour never remembers).
+    if (!opts || opts.remember !== false) { try { localStorage.setItem(CODES_DEFAULT_KEY, JSON.stringify(next)); } catch (_) {} }
+    if (changed) {
+      markProjectDirty();
+      logUserEvent('codes_set', state.currentProjectId || null, { ...(next || {}), route: (opts && opts.route) || 'settings' });
+    }
+    updateUI();
+  }
   // The default mount height (inches AFF) a trade profile assigns a device:
   // the variant's entry, then the category's. null = at the ceiling / none.
   function tradeMountHeightFor(trade, typeValue, sizeValue) {
@@ -266,7 +291,7 @@
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
-    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
+    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
@@ -758,6 +783,7 @@
     state.groupsEnabled = false;
     state.trade = null;
     state.ceilingHeightFt = null;
+    state.codes = null;
     state.makeUpFt = null;
     state.bidCheck = { manual: {} };
     state.rooms = [];
@@ -3845,6 +3871,17 @@
   // vertical-by-default figures. Synced on every open by syncProjectSettingsRows.
   function syncProjectSettingsRows() {
     syncTradeSegment('settingsTradeSegment', state.trade);
+    // Codes & jurisdiction (rulebook slice 4)
+    const codes = getProjectCodes();
+    TRADES.forEach((t) => {
+      const sel = document.getElementById('settingsCode' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (!sel) return;
+      if (!sel.options.length) CODE_EDITIONS[t].forEach((e) => { const o = document.createElement('option'); o.value = e; o.textContent = e; sel.appendChild(o); });
+      if (codes[t] && ![...sel.options].some((o) => o.value === codes[t])) { const o = document.createElement('option'); o.value = codes[t]; o.textContent = codes[t]; sel.appendChild(o); }
+      sel.value = codes[t] || '';
+    });
+    const jEl = document.getElementById('settingsJurisdiction');
+    if (jEl) jEl.value = codes.jurisdiction || '';
     const ceilEl = document.getElementById('settingsCeilingHeight');
     if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
     const muEl = document.getElementById('settingsMakeUp');
@@ -3862,6 +3899,14 @@
     setProjectTrade(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.trade, { route: 'settings' });
     syncTradeSegment('settingsTradeSegment', state.trade);
   });
+  TRADES.forEach((t) => {
+    document.getElementById('settingsCode' + t.charAt(0).toUpperCase() + t.slice(1))?.addEventListener('change', (e) => setProjectCodes({ [t]: e.target.value }, { route: 'settings' }));
+  });
+  const jurisdictionEl = document.getElementById('settingsJurisdiction');
+  if (jurisdictionEl) {
+    jurisdictionEl.addEventListener('change', () => setProjectCodes({ jurisdiction: jurisdictionEl.value }, { route: 'settings' }));
+    jurisdictionEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); jurisdictionEl.blur(); } });
+  }
   const commitCeilingFields = () => {
     const ceilEl = document.getElementById('settingsCeilingHeight');
     const muEl = document.getElementById('settingsMakeUp');
@@ -4205,7 +4250,7 @@
   // edit pen reaches the details modal via App.openCanvasDetailsModal.
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
-    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    const data = { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
     const a = document.createElement('a');
     a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
     a.download = App.sanitizeForFilename(state.currentProjectName) + '.json';
@@ -7530,7 +7575,12 @@
   App.getRecentDrops = () => state.recentDrops || [];
   App.pushRecentDrop = pushRecentDrop;
   App.commitMeasurePoint = commitMeasurePoint;     // features/tutorial.js ("Do it for me" on the Measure step)
-  App.DUCT_SETTINGS_DEFAULTS = DUCT_SETTINGS_DEFAULTS;   // duct-model.js data table (features/duct-schedule.js seeds from it; rulebook-pinned)
+  App.DUCT_SETTINGS_DEFAULTS = DUCT_SETTINGS_DEFAULTS;
+  App.getProjectCodes = getProjectCodes;                // rulebook slice 4 (features/rules.js popover, bid-check.js footer, codes.spec.js)
+  App.setProjectCodes = setProjectCodes;
+  App.normalizeProjectCodes = normalizeProjectCodes;
+  App.CODE_EDITIONS = CODE_EDITIONS;
+  App.syncProjectSettingsRows = syncProjectSettingsRows;   // duct-model.js data table (features/duct-schedule.js seeds from it; rulebook-pinned)
   App.logDropSetEvent = logDropSetEvent;
   App.toCanvas = toCanvas;
   App.showContextMenu = showContextMenu;               // spec seam (drop-mode.spec.js)

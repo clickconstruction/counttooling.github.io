@@ -2120,6 +2120,25 @@
             <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
           </div>
         </div>
+        <!-- Rulebook slice 4: which editions the rules resolve against, and whose amendments apply (app.js syncProjectSettingsRows / setProjectCodes). -->
+        <div class="form-group" id="settingsCodesRow" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
+          <div style="min-width:0;">
+            <div>Codes</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Which editions the rulebook's values resolve against. Rule chips and Bid Check say "this project" from these. Remembered for your next bid.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end;">
+            <select id="settingsCodePlumbing" aria-label="Plumbing code edition" style="width:150px;"></select>
+            <select id="settingsCodeElectrical" aria-label="Electrical code edition" style="width:150px;"></select>
+            <select id="settingsCodeHvac" aria-label="HVAC standard edition" style="width:150px;"></select>
+          </div>
+        </div>
+        <div class="form-group" id="settingsJurisdictionRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
+          <div style="min-width:0;">
+            <div>Jurisdiction</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">State and city, so amendments on file are applied and named. Not on file means the model code as written.</div>
+          </div>
+          <input type="text" id="settingsJurisdiction" placeholder="e.g. Texas · Austin" autocomplete="off" style="width:150px;flex-shrink:0;" aria-label="Jurisdiction">
+        </div>
         <div class="form-group" id="settingsCeilingRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
           <div style="min-width:0;">
             <div>Ceiling height</div>

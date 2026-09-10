@@ -90,24 +90,37 @@
   function valueRows(rule) {
     return rule.values.map((v) => '<tr><td>' + esc(v.when) + (v.note ? '<div class="rule-pop-note">' + esc(v.note) + '</div>' : '') + '</td><td class="rule-pop-val"><span class="rule-pop-num">' + esc(v.value) + '</span>' + (v.unit ? ' <span class="rule-pop-unit">' + esc(v.unit) + '</span>' : '') + '</td></tr>').join('');
   }
+  // "This project": the edition the project follows for the rule's trade and the
+  // jurisdiction, with the two honest warnings — the rule was not checked against
+  // that edition, or the project follows a different code family (UPC vs IPC).
   function projectLine(rule) {
     const codes = App.getProjectCodes ? App.getProjectCodes() : null;
     if (!codes) return '';
     const edition = codes[rule.trade] || null;
     const jurisdiction = codes.jurisdiction || '';
     if (!edition && !jurisdiction) return '';
-    const checked = (rule.source && rule.source.editions) || [];
+    const family = edition ? String(edition).split(/\s+/)[0] : '';
     const year = edition ? String(edition).replace(/\D+/g, '') : '';
-    const unchecked = year && checked.length && !checked.map(String).includes(year);
+    const cited = rule.source && rule.source.code;
+    const checked = ((rule.source && rule.source.editions) || []).map(String);
+    let warn = '';
+    if (family && cited && ['IPC', 'UPC', 'NEC', 'SMACNA'].includes(cited) && ['IPC', 'UPC', 'NEC', 'SMACNA'].includes(family) && family !== cited) warn = 'cited from the ' + esc(cited) + ' — this project follows ' + esc(edition) + '; read that section there';
+    else if (year && checked.length && !checked.includes(year)) warn = 'not checked against ' + esc(edition);
     return '<div class="rule-pop-project"><span class="rule-pop-k">This project</span> ' + esc([edition, jurisdiction].filter(Boolean).join(' · ') || '—')
-      + (unchecked ? ' <span class="rule-pop-warn">not checked against ' + esc(edition) + '</span>' : '') + '</div>';
+      + (warn ? ' <span class="rule-pop-warn">' + warn + '</span>' : '') + '</div>';
+  }
+  function amendmentsFor(rule) {
+    const all = rule.amendments || [];
+    const codes = App.getProjectCodes ? App.getProjectCodes() : null;
+    const j = codes && codes.jurisdiction ? String(codes.jurisdiction).toLowerCase() : '';
+    const mine = j ? all.filter((a) => j.includes(String(a.jurisdiction || '').toLowerCase())) : all;
+    if (mine.length) return '<ul class="rule-pop-amend">' + mine.map((a) => '<li><b>' + esc(a.jurisdiction) + '</b> — ' + esc(a.note) + '</li>').join('') + '</ul>';
+    return '<span class="rule-pop-muted">no state or local amendment on file' + (j ? ' for ' + esc(codes.jurisdiction) : '') + '</span>';
   }
   function render(rule) {
     const editions = ((rule.source && rule.source.editions) || []).map(String).join(' · ');
     const used = (rule.used_by || []).map((u) => '<span class="rule-pop-chip">' + esc(USED_BY_LABEL[u] || u) + '</span>').join(' ');
-    const amend = (rule.amendments || []).length
-      ? '<ul class="rule-pop-amend">' + rule.amendments.map((a) => '<li><b>' + esc(a.jurisdiction) + '</b> — ' + esc(a.note) + '</li>').join('') + '</ul>'
-      : '<span class="rule-pop-muted">no state or local amendment on file</span>';
+    const amend = amendmentsFor(rule);
     return '<div class="rule-pop-head"><span class="rule-pop-kind rule-pop-kind-' + esc(rule.kind) + '">' + esc(KIND_LABEL[rule.kind] || rule.kind) + '</span>'
       + (rule.status === 'draft' ? '<span class="rule-pop-draft">not applied yet</span>' : '')
       + '<code class="rule-pop-id">' + esc(rule.id) + '</code><button type="button" class="rule-pop-close" id="rulePopoverClose" aria-label="Close">×</button></div>'

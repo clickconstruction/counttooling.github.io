@@ -167,6 +167,16 @@
       }
       list.appendChild(div);
     });
+    // Rulebook slice 4: which editions the rows resolve against, with the way to change them.
+    if (App.getProjectCodes) {
+      const codes = App.getProjectCodes();
+      const edition = codes[state.trade || 'plumbing'] || '';
+      const foot = document.createElement('div');
+      foot.className = 'bid-check-codes';
+      foot.innerHTML = 'Rules resolve for <b>' + esc([edition, codes.jurisdiction].filter(Boolean).join(' · ') || 'the model code as written') + '</b> — <button type="button" class="bid-check-codes-link" id="bidCheckCodesLink">Project Settings</button>';
+      foot.querySelector('#bidCheckCodesLink').onclick = () => { App.syncProjectSettingsRows && App.syncProjectSettingsRows(); App.showModal('settingsModal'); };
+      list.appendChild(foot);
+    }
     // The voltage-drop defaults, inline (electrical only).
     if (state.trade === 'electrical') {
       const d = check.defaults;

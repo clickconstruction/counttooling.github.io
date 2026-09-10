@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): slice 4 — Codes & jurisdiction (2026-09-09)
+
+A rule's value depends on which edition a jurisdiction adopts, so a project now says.
+Project Settings gains **Codes** (plumbing IPC/UPC by edition, electrical NEC, HVAC
+SMACNA) and **Jurisdiction** (free text — "Texas · Austin") under Trade.
+
+- `state.codes` holds only what the project chose; `getProjectCodes()` layers the device
+  default (the last bid's choices, remembered on every change like the trade) and the
+  app's defaults (IPC 2021 · NEC 2023 · SMACNA 2020) under it. Rides every persistence
+  site beside `ceilingHeightFt`: the save payloads, hydrate, the IndexedDB backup, canvas
+  JSON export/import, copy / load / pdf-intake. An old save resolves to the defaults.
+- The rule popover's **This project** line names the edition and jurisdiction and carries
+  the two honest warnings: *not checked against IPC 2024* when the rule's editions do not
+  include the project's, and *cited from the IPC — this project follows UPC 2021* when the
+  project's code family differs from the citation. Amendments on file are scoped to the
+  jurisdiction; none on file says so by name.
+- Bid Check ends with *Rules resolve for IPC 2021 · Texas · Austin — Project Settings*.
+- `CODE_EDITIONS` / `CODE_DEFAULTS` / `normalizeProjectCodes` live in constants.js;
+  `codes.spec.js` pins the rows, the dirty flag, the device default, the popover lines,
+  the footer, and the persistence shapes.
+
+What the self-critique changed: the mock-up's picker listed every authority having
+jurisdiction; that is a database nobody maintains, so jurisdiction is a free-text field
+and "not on file" is stated rather than implied.
+
+---
+
 ## feat(rules): slice 3 — hangers from the rulebook, inch intervals, plumbing Bid Check (2026-09-09)
 
 The plumbing rules stop being prose. `support-model.js` carries hanger spacing as the app

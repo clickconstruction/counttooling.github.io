@@ -2057,3 +2057,9 @@ body.tour-active .canvas-empty-hint { display: none; }
 .child-count-suggest-add { background: var(--accent); color: var(--bg); border: 1px solid var(--accent); border-radius: 6px; padding: 5px 12px; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
 .child-count-suggest-add:hover { background: var(--accent2); border-color: var(--accent2); }
 .child-count-suggest-foot { font-size: 0.72rem; color: var(--text3); }
+
+/* Bid Check: the codes footer (rulebook slice 4) */
+.bid-check-codes { font-size: 0.74rem; color: var(--text2); padding: 8px 8px 4px; border-top: 1px solid var(--border); margin-top: 6px; line-height: 1.5; }
+.bid-check-codes b { color: var(--text); font-weight: 500; }
+.bid-check-codes-link { background: none; border: none; color: var(--accent); font: inherit; font-size: inherit; cursor: pointer; padding: 0; }
+.bid-check-codes-link:hover { text-decoration: underline; }

@@ -378,6 +378,7 @@
     state.currentProjectId = projectData.projectId;
     state.currentProjectName = projectData.name || 'Untitled';
     state.currentProjectExternalRef = projectData.externalRef || null;
+    state.currentProjectUpdatedAt = projectData.updatedAt || null;
     state.pdfStoragePath = null;
     state.pdfBuffer = null;
     state.pdfBufferSize = 0;

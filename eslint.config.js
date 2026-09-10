@@ -171,7 +171,7 @@ module.exports = [
   js.configs.recommended,
   // Definition modules: classic scripts whose top-level declarations exist
   // solely to be consumed cross-file by the index.html IIFE / report.js.
-  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'duct-model.js', 'conductor-model.js', 'circuit-model.js', 'bid-check-model.js', 'tag-model.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
+  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'duct-model.js', 'conductor-model.js', 'circuit-model.js', 'bid-check-model.js', 'tag-model.js', 'bid-basis-model.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
   // idb.js / format.js: classic <script>s loaded after constants.js, so they
   // reference constants (store names / caps, USER_ACTIVITY_TZ) by bare name.
   // Constants-only globals — NOT their own exports (no-redeclare).

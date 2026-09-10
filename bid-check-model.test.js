@@ -73,7 +73,8 @@ test('bidCheckOpenCount: ⚠ auto rows + unticked manual rows for the trade', ()
   const auto = [{ verdict: 'warn' }, { verdict: 'ok' }, { verdict: 'na' }];
   const all = bc.bidCheckOpenCount(auto, {}, 'electrical');
   assert.deepStrictEqual(all, { auto: 1, manual: 8, total: 9 });
-  assert.deepStrictEqual(bc.bidCheckOpenCount(auto, { addenda: true }, 'plumbing'), { auto: 1, manual: 2, total: 3 });
+  // plumbing: the 3 trade-neutral rows (addenda ticked) + the 4 plumbing rows
+  assert.deepStrictEqual(bc.bidCheckOpenCount(auto, { addenda: true }, 'plumbing'), { auto: 1, manual: 6, total: 7 });
   assert.deepStrictEqual(bc.bidCheckOpenCount([], null, null), { auto: 0, manual: 3, total: 3 });
 });
 

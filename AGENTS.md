@@ -281,6 +281,7 @@
 - Do not remove or rename the `window.*` globals consumed by report.js.
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
+- A palette item's `childCounts[]` rows are `{ name, qty, per: 'count'|'run'|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` names the rulebook rule a row was taken from (the § chip). Palettes serialize wholesale, so both ride save/load, export/import and the Artboard for free.
 - Electrical fields ride existing objects, never new ones: a line type's `raceway`
   / `conductors` / `tickMarks` / `homerun`, a line's own `conductors` / `homerun`, a
   counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a counter's `tag`, a group's

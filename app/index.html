@@ -44,6 +44,7 @@
   <script src="/circuit-model.js"></script>
   <script src="/bid-check-model.js"></script>
   <script src="/tag-model.js"></script>
+  <script src="/support-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/canvas-draw.js"></script>
   <script src="/render-service.js"></script>
@@ -1948,13 +1949,14 @@
       <div class="form-group" id="childCountsGroup">
         <label>Child counts</label>
         <div id="childCountsList"></div>
+        <div id="childCountsSuggest" class="child-count-suggest" hidden></div>
         <div class="child-count-add">
           <input type="text" id="childCountName" placeholder="name…" aria-label="Child count name">
         </div>
         <div class="child-count-add">
           <input type="number" id="childCountQty" min="1" step="1" value="1" aria-label="Quantity">
           <select id="childCountPer" aria-label="Rule"></select>
-          <span id="childCountFtNWrap" style="display:none;"><input type="number" id="childCountFtN" min="1" step="1" value="10" aria-label="Feet interval"> ft</span>
+          <span id="childCountFtNWrap" style="display:none;"><input type="number" id="childCountFtN" min="1" step="1" value="10" aria-label="Interval"> <select id="childCountIntervalUnit" aria-label="Interval unit"><option value="ft">ft</option><option value="in">in</option></select></span>
           <span class="child-count-add-spacer"></span>
           <button type="button" id="childCountAdd">+ Add</button>
         </div>

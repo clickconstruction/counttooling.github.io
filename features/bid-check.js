@@ -109,6 +109,12 @@
         defaults: d,
       });
     }
+    // Plumbing (rulebook slice 3): every line type whose name declares a
+    // supported material should count its hangers from the rulebook spacing.
+    if (trade === 'plumbing' && window.SupportModel) {
+      const row = window.SupportModel.hangerCoverage(state.lineTypes);
+      if (row) auto = [row];
+    }
     const manualState = bidCheckState().manual;
     const manual = bm.BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).map((r) => ({ id: r.id, label: r.label, trade: r.trade, done: !!manualState[r.id] }));
     return { auto, manual, open: bm.bidCheckOpenCount(auto, manualState, trade), defaults: d };

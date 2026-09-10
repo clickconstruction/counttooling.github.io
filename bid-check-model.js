@@ -121,6 +121,11 @@ const BID_CHECK_MANUAL_ROWS = [
   { id: 'equipment-connections', label: 'Equipment connections coordinated with HVAC and plumbing', trade: 'electrical' },
   { id: 'temp-power', label: 'Temporary power and lighting included', trade: 'electrical' },
   { id: 'pull-points', label: 'Pull points within 360° of bends on every run', trade: 'electrical' },
+  // Plumbing (rulebook slice 3): the calls the drawing alone cannot settle.
+  { id: 'fixture-units', label: 'Fixture units checked against the building drain size', trade: 'plumbing' },
+  { id: 'trap-arms', label: 'Trap arm lengths within the table', trade: 'plumbing' },
+  { id: 'waste-slope', label: 'Slope set on every waste run', trade: 'plumbing' },
+  { id: 'backflow-venting', label: 'Backflow and water-heater venting per the AHJ', trade: 'plumbing' },
 ];
 
 const pct1 = (p) => Math.round(p * 10) / 10;

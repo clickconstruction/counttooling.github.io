@@ -24,8 +24,9 @@
       const div = document.createElement('div');
       div.className = 'summary-child-item';
       div.innerHTML = '<span class="name">' + esc(r.name) + '</span>'
-        + '<span class="child-rule">' + esc(r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per)) + (r.excludedPxRuns ? ' *' : '') + '</span>'
-        + '<span class="child-total">' + r.total + '</span>';
+        + '<span class="child-rule">' + esc(r.qty + '/' + (r.per === 'ft' ? (window.SupportModel ? window.SupportModel.childIntervalLabel(r) : r.ftInterval + ' ft') : r.per)) + (r.excludedPxRuns ? ' *' : '') + '</span>'
+        + '<span class="child-total">' + r.total + '</span>'
+        + (r.ruleId && App.ruleChipHtml ? App.ruleChipHtml(r.ruleId) : '');
       if (r.excludedPxRuns) div.title = r.excludedPxRuns + ' run(s) without a scale are excluded from this per-ft count';
       el.appendChild(div);
     });

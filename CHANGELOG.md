@@ -13,6 +13,36 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): slice 3 — hangers from the rulebook, inch intervals, plumbing Bid Check (2026-09-09)
+
+The plumbing rules stop being prose. `support-model.js` carries hanger spacing as the app
+applies it (IPC Table 308.5: PEX 32 in at 1 in and smaller, 48 in above; copper 6 ft to
+1-1/4 in, 10 ft above; PVC / ABS / DWV 4 ft; cast iron 5 ft), and the four `plumb.hanger.*`
+rules point at it — `status: applied`, 44 values now pinned by the drift check.
+
+- **From the rulebook** in the Child counts editor: a line type whose name declares a
+  supported material and size ("1in PEX", '3/4" Cu') is offered its hanger row — `Hanger ·
+  1 per 32 in`, with what it matched (PEX · horizontal · 1 in) and the § chip. Add stamps the
+  rule on the child count, so the Summary row, the editor row and every export carry it.
+  A name with no size gets the tighter spacing; CPVC is not PVC; fix the name, not the rule.
+- **Inch intervals.** A per-ft child count may carry `intervalIn`, which wins over the
+  whole-foot `ftInterval` (the editor gained a ft / in unit select). 48 in reads "4 ft".
+  The engine, the Summary label, the report, the PipeTooling text and the agent-door
+  evaluator all honour it.
+- **Plumbing Bid Check**: an auto row, **Hangers on every supported run**, warns while a
+  PEX / copper / PVC / cast-iron type carries no hanger count (and cites the rule); four
+  manual rows — fixture units against the drain, trap arms, waste slope, backflow and
+  water-heater venting — join the trade-neutral three.
+- The plumbing tour's hanger step now takes the rulebook's row (1 per 32 in, stamped) —
+  the sample's two runs and riser make 15 hangers across the ×3 zone.
+
+What the self-critique changed: the mock-up also offered a riser clamp; the app cannot
+split a run into horizontal and vertical, so that row was dropped and the rule pages say
+the count runs on the tally length, drops included — tighter than the vertical rule, never
+looser.
+
+---
+
 ## feat(rules): slice 2 — the § chip and popover in the app (2026-09-09)
 
 The rulebook reaches the estimator where the number is. `features/rules.js` fetches

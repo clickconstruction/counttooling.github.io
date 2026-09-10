@@ -390,7 +390,7 @@
       "id": "plumb.hanger.cast-iron",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Hanger spacing for cast-iron pipe",
       "summary": "How far apart cast-iron pipe may be supported — 5 feet horizontal (10 feet where 10-foot lengths are installed), 15 feet vertical.",
       "values": [
@@ -416,7 +416,10 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "childCount",
+        "bidCheck"
+      ],
       "url": "/rules/plumbing/hanger-spacing-cast-iron/",
       "updated": "2026-09-09"
     },
@@ -424,7 +427,7 @@
       "id": "plumb.hanger.copper",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Hanger spacing for copper tube",
       "summary": "How far apart copper tube may be supported — 6 feet horizontal at 1-1/4 inch and smaller, 10 feet at 1-1/2 inch and larger, 10 feet vertical.",
       "values": [
@@ -454,7 +457,10 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "childCount",
+        "bidCheck"
+      ],
       "url": "/rules/plumbing/hanger-spacing-copper/",
       "updated": "2026-09-09"
     },
@@ -462,7 +468,7 @@
       "id": "plumb.hanger.pex",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Hanger spacing for PEX",
       "summary": "How far apart PEX tubing may be supported — 32 inches horizontal at 1 inch and smaller, 48 inches at 1-1/4 inch and larger, 10 feet vertical.",
       "values": [
@@ -492,7 +498,10 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "childCount",
+        "bidCheck"
+      ],
       "url": "/rules/plumbing/hanger-spacing-pex/",
       "updated": "2026-09-09"
     },
@@ -500,7 +509,7 @@
       "id": "plumb.hanger.pvc",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Hanger spacing for PVC pipe",
       "summary": "How far apart PVC pipe may be supported — 4 feet horizontal, 10 feet vertical.",
       "values": [
@@ -525,7 +534,10 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "childCount",
+        "bidCheck"
+      ],
       "url": "/rules/plumbing/hanger-spacing-pvc/",
       "updated": "2026-09-09"
     }

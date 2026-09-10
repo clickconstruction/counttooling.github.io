@@ -224,7 +224,8 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'hangers');
     // 9. the hanger rule rides the line type and tallies in the summary
     await page.click('#tourAction');
-    expect(await page.evaluate(() => window.state.lineTypes[0].childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: 4 }]);
+    // the hanger comes from the rulebook: PEX at 1 in → 32 in, stamped with its rule
+    expect(await page.evaluate(() => window.state.lineTypes[0].childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }]);
     await waitForStep(page, 'zone');
     // 10. the ×3 zone around Men 105 triples the water closets in the tally
     await page.click('#tourAction');
@@ -254,7 +255,7 @@ test.describe('Interactive walkthrough', () => {
     expect(summary).toContain('Water Closet\t9');
     expect(summary).toContain('Lavatory\t9');
     expect(summary).toContain('ft of 1in PEX\t26.33');
-    expect(summary).toContain('  Hanger\t9');
+    expect(summary).toContain('  Hanger\t15');
     expect(errors).toEqual([]);
   });
 

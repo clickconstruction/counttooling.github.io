@@ -170,7 +170,8 @@
   }
 
   function childRuleLabel(r) {
-    return r.qty + '/' + (r.per === 'ft' ? r.ftInterval + ' ft' : r.per);
+    const sm = typeof window !== 'undefined' && window.SupportModel;
+    return r.qty + '/' + (r.per === 'ft' ? (sm ? sm.childIntervalLabel(r) : r.ftInterval + ' ft') : r.per);
   }
 
   function buildReportHtml(options = {}) {

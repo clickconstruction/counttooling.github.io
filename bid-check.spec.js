@@ -100,15 +100,27 @@ test.describe('Electrical, First-Class S5 — Bid Check', () => {
     expect(errors).toEqual([]);
   });
 
-  test('plumbing: only the trade-neutral manual rows, no auto rows, no advisory; the advisory shows after an electrical copy and never blocks it', async ({ page }) => {
+  test('plumbing: the trade-neutral + plumbing manual rows, no auto row without a supported material, no advisory; the advisory shows after an electrical copy and never blocks it', async ({ page }) => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
     await seed(page, 'plumbing');
     const bc = await page.evaluate(() => window.App.getBidCheck());
     expect(bc.auto).toEqual([]);
-    expect(bc.manual.map((r) => r.id)).toEqual(['scope-vs-drawings', 'addenda', 'scale-verified']);
-    expect(await page.locator('#bidCheckBadge').textContent()).toBe('3');
+    expect(bc.manual.map((r) => r.id)).toEqual(['scope-vs-drawings', 'addenda', 'scale-verified', 'fixture-units', 'trap-arms', 'waste-slope', 'backflow-venting']);
+    expect(await page.locator('#bidCheckBadge').textContent()).toBe('7');
+    // a PEX line type without a hanger count turns the hanger-coverage row on and warns; a stamped count clears it
+    await page.evaluate(() => { window.state.lineTypes.push({ id: 'pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); window.App.updateUI(); });
+    let hang = (await page.evaluate(() => window.App.getBidCheck())).auto.find((r) => r.id === 'hangers');
+    expect(hang.verdict).toBe('warn');
+    expect(hang.rule).toBe('plumb.hanger.pex');
+    expect(hang.detail).toContain('1in PEX has no hanger count');
+    expect(await page.locator('#bidCheckBadge').textContent()).toBe('8');
+    await page.evaluate(() => { window.state.lineTypes.find((l) => l.id === 'pex').childCounts = [{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }]; window.App.updateUI(); });
+    hang = (await page.evaluate(() => window.App.getBidCheck())).auto.find((r) => r.id === 'hangers');
+    expect(hang.verdict).toBe('ok');
+    expect(await page.locator('#bidCheckBadge').textContent()).toBe('7');
+    await page.evaluate(() => { window.state.lineTypes = window.state.lineTypes.filter((l) => l.id !== 'pex'); window.App.updateUI(); });
     // no advisory when nothing is at ⚠
     await page.evaluate(() => window.App.showBidCheckAdvisory('copy'));
     expect(await page.locator('#bidCheckAdvisoryModal.visible').count()).toBe(0);

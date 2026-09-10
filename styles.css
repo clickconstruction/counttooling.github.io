@@ -2046,3 +2046,14 @@ body.tour-active .canvas-empty-hint { display: none; }
 .rule-pop-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; font-size: 0.76rem; }
 .rule-pop-foot a { color: var(--accent); text-decoration: none; }
 .rule-pop-foot a:hover { text-decoration: underline; }
+
+/* Child counts: the "From the rulebook" suggestions (features/child-counts.js, rulebook slice 3) */
+.child-count-suggest[hidden] { display: none; }
+.child-count-suggest { border: 1px solid rgba(232,197,71,0.45); background: rgba(232,197,71,0.06); border-radius: 8px; padding: 8px 10px; margin: 6px 0 8px; display: flex; flex-direction: column; gap: 6px; }
+.child-count-suggest-head { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+.child-count-suggest-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+.child-count-suggest-main { flex: 1; min-width: 0; }
+.child-count-suggest-match { font-size: 0.74rem; color: var(--text2); margin-top: 1px; }
+.child-count-suggest-add { background: var(--accent); color: var(--bg); border: 1px solid var(--accent); border-radius: 6px; padding: 5px 12px; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.child-count-suggest-add:hover { background: var(--accent2); border-color: var(--accent2); }
+.child-count-suggest-foot { font-size: 0.72rem; color: var(--text3); }

@@ -143,12 +143,12 @@ function bidCheckAutoRows(inputs) {
   if (fills.length) {
     const bad = fills.filter((x) => !x.r.ok);
     rows.push({
-      id: 'conduit-fill', kind: 'auto', label: 'Conduit fill within the table limit', verdict: bad.length ? 'warn' : 'ok',
+      id: 'conduit-fill', kind: 'auto', rule: 'elec.conduit.fill-limit', label: 'Conduit fill within the table limit', verdict: bad.length ? 'warn' : 'ok',
       detail: bad.length
         ? bad.map((x) => x.f.label + ' · ' + fmtPct(x.r.pct * 100) + ' ⚠' + (x.r.upsize ? ' → ' + x.r.upsize.size + ' ' + x.f.raceway.kind + ' ' + fmtPct(x.r.upsize.pct * 100) + ' ✓' : ' · no size of this kind fits')).join('; ')
         : fills.map((x) => x.f.label + ' · ' + fmtPct(x.r.pct * 100) + ' ✓').join('; '),
     });
-  } else rows.push({ id: 'conduit-fill', kind: 'auto', label: 'Conduit fill within the table limit', verdict: 'na', detail: 'Give a line type a conduit size and conductors to check its fill.' });
+  } else rows.push({ id: 'conduit-fill', kind: 'auto', rule: 'elec.conduit.fill-limit', label: 'Conduit fill within the table limit', verdict: 'na', detail: 'Give a line type a conduit size and conductors to check its fill.' });
   // 2. Voltage drop ≤ 3% on branch circuits
   const vds = (i.circuits || []).filter((c) => c.farthestFt > 0 && c.hotGauges && c.hotGauges.length).map((c) => {
     const gauge = smallestGauge(c.hotGauges);
@@ -158,8 +158,8 @@ function bidCheckAutoRows(inputs) {
   if (vds.length) {
     const bad = vds.filter((x) => !x.r.ok);
     const line = (x) => (x.c.tag || x.c.group) + ' · ' + Math.round(x.c.farthestFt) + ' ft · ' + x.amps + ' A · ' + x.gauge + ' ' + fmtPct(x.r.pct) + (x.r.ok ? ' ✓' : ' ⚠' + (x.r.upsize ? ' → ' + x.r.upsize.gauge + ' ' + fmtPct(x.r.upsize.pct) + ' ✓' : ''));
-    rows.push({ id: 'voltage-drop', kind: 'auto', label: 'Voltage drop within 3% to the farthest device', verdict: bad.length ? 'warn' : 'ok', detail: (bad.length ? bad : vds).map(line).join('; ') + ' (at ' + d.volts + ' V)' });
-  } else rows.push({ id: 'voltage-drop', kind: 'auto', label: 'Voltage drop within 3% to the farthest device', verdict: 'na', detail: 'Needs a circuit with a panel mark or a homerun, runs with conductors, and a device on the runs.' });
+    rows.push({ id: 'voltage-drop', kind: 'auto', rule: 'elec.voltage-drop.branch-limit', label: 'Voltage drop within 3% to the farthest device', verdict: bad.length ? 'warn' : 'ok', detail: (bad.length ? bad : vds).map(line).join('; ') + ' (at ' + d.volts + ' V)' });
+  } else rows.push({ id: 'voltage-drop', kind: 'auto', rule: 'elec.voltage-drop.branch-limit', label: 'Voltage drop within 3% to the farthest device', verdict: 'na', detail: 'Needs a circuit with a panel mark or a homerun, runs with conductors, and a device on the runs.' });
   // 3. Circuits on plan vs the panel schedule
   const cc = (i.crossCheck || []).filter((c) => c.scheduled != null);
   if (cc.length) {

@@ -2125,7 +2125,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" style="width:96px;" aria-label="Ceiling height (feet)">
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <button type="button" class="rule-chip" data-rule="elec.vertical.make-up" hidden></button> <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
           </div>
         </div>
         <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
@@ -2968,6 +2968,10 @@
     </div>
   </div>
 </div>
+<!-- The rulebook popover (features/rules.js): one element, repositioned per
+     open beside the § chip that opened it. Above modals (the Duct Schedule
+     has chips), below the tour card and toasts. -->
+<div id="rulePopover" class="rule-popover" role="dialog" aria-label="Rule" aria-hidden="true"></div>
 <div id="toastRegion" role="status" aria-live="polite">
     <!-- Interactive card (T2-06): the "Set Scale ⚖" words are a real button
          that opens the Set Scale dialog (bound in app.js next to
@@ -3213,6 +3217,7 @@
   <script src="/features/child-counts.js"></script>
   <script src="/features/conductors.js"></script>
   <script src="/features/circuits.js"></script>
+  <script src="/features/rules.js"></script>
   <script src="/features/bid-check.js"></script>
   <script src="/features/tag-reader.js"></script>
   <script src="/features/tutorial.js"></script>

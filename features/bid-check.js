@@ -142,7 +142,7 @@
       const div = document.createElement('div');
       div.className = 'bid-check-row auto ' + r.verdict;
       div.innerHTML = '<span class="bid-check-mark">' + (r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : '·') + '</span>'
-        + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + ' <span class="bid-check-kind">auto</span></div><div class="bid-check-detail">' + esc(r.detail) + '</div></div>';
+        + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + ' <span class="bid-check-kind">auto</span>' + (r.rule && App.ruleChipHtml ? ' ' + App.ruleChipHtml(r.rule) : '') + '</div><div class="bid-check-detail">' + esc(r.detail) + '</div></div>';
       list.appendChild(div);
     });
     check.manual.forEach((r) => {

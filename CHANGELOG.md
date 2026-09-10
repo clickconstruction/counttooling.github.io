@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): slice 2 — the § chip and popover in the app (2026-09-09)
+
+The rulebook reaches the estimator where the number is. `features/rules.js` fetches
+`/rules/rules.json` at boot (now precached, so it works in the basement) and any surface
+that DERIVES a number from a rule shows a small chip: the citation for a code, standard
+or recommendation (`§ NEC Chapter 9`, `§ IPC 308.5`), the word `convention` for a working
+figure. Click → one popover: the values as the app applies them, the section, the editions
+checked, what in the app uses it, amendments on file, and the rule page. Never the code's
+text. Counts the estimator clicked never carry a chip.
+
+- Chips on: the Bid Check auto rows (the model's rows now say `rule:` — conduit fill and
+  the voltage-drop recommendation), the Chain palette foot when the counter has a mount
+  height (mount heights + make-up), the Duct Schedule's Gauge and lb/ft headers and its
+  Seam & waste line, and the make-up field in Project Settings.
+- Escape closes the popover in a capture-phase listener, so the app's Esc ladder never
+  sees the key — the tool and any open modal stay as they were.
+- The Duct Schedule's own literal copy of the knob defaults now reads
+  `App.DUCT_SETTINGS_DEFAULTS` — the third copy the drift check could not see.
+- `rules-chip.spec.js` pins the chip, the popover, Escape, the static chip, the Chain
+  palette, and the precache; the model test pins the `rule:` ids.
+
+---
+
 ## feat(rules): the rulebook, slice 1 — rules as source, the site, and the drift check (2026-09-09)
 
 The line the product draws is public knowledge versus company knowledge: NEC fill, the

@@ -2014,3 +2014,35 @@ body.tour-active .canvas-empty-hint { display: none; }
     .note-peek-chip .note-chip-body { font-size: 0.82rem; color: var(--text); line-height: 1.4; }
     .note-peek-chip .note-chip-detail { font-size: 0.74rem; color: var(--text2); margin-top: 4px; line-height: 1.4; }
     .note-peek-chip .note-chip-answer { font-size: 0.74rem; color: var(--green); margin-top: 4px; line-height: 1.4; }
+
+/* The rulebook in the app (features/rules.js): § chips on derived rows + the popover */
+.rule-chip { display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; border: 1px solid var(--accent); color: var(--accent); background: rgba(232,197,71,0.12); border-radius: 4px; padding: 0 5px; font: inherit; font-family: 'DM Mono', monospace; font-size: 0.66rem; line-height: 1.5; letter-spacing: 0.02em; cursor: pointer; white-space: nowrap; }
+.rule-chip:hover { background: rgba(232,197,71,0.24); }
+.rule-chip-th { font-weight: 400; text-transform: none; letter-spacing: 0.02em; }
+.rule-popover { display: none; position: fixed; z-index: 330; width: min(380px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--border2); border-radius: 10px; box-shadow: 0 18px 44px rgba(0,0,0,0.5); padding: 12px 14px 10px; font-size: 0.85rem; line-height: 1.45; }
+.rule-popover.visible { display: block; }
+.rule-pop-head { display: flex; align-items: center; gap: 8px; }
+.rule-pop-kind { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; border: 1px solid var(--border2); border-radius: 3px; padding: 0 5px; color: var(--text2); }
+.rule-pop-kind-code { color: var(--accent); border-color: var(--accent); }
+.rule-pop-draft { font-size: 0.66rem; color: var(--accent); background: rgba(232,197,71,0.14); border-radius: 3px; padding: 0 5px; }
+.rule-pop-id { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rule-pop-close { margin-left: auto; background: none; border: none; color: var(--text3); font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 2px; }
+.rule-pop-close:hover { color: var(--text); }
+.rule-pop-title { font-size: 1rem; font-weight: 600; margin: 6px 0 8px; }
+.rule-pop-values { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.rule-pop-values th { text-align: left; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); font-weight: 500; padding: 0 0 4px; }
+.rule-pop-values td { padding: 4px 0; border-top: 1px dashed var(--border); vertical-align: top; color: var(--text2); }
+.rule-pop-val { text-align: right; white-space: nowrap; }
+.rule-pop-num { font-family: 'DM Mono', monospace; font-size: 1rem; color: var(--accent); }
+.rule-pop-unit { color: var(--text2); font-size: 0.78rem; }
+.rule-pop-note { font-size: 0.72rem; color: var(--text3); }
+.rule-pop-facts { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; color: var(--text2); border-top: 1px dashed var(--border); padding-top: 8px; }
+.rule-pop-k { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-right: 4px; }
+.rule-pop-chip { display: inline-block; font-size: 0.72rem; border: 1px solid var(--border2); border-radius: 3px; padding: 0 6px; color: var(--text); }
+.rule-pop-muted { color: var(--text3); }
+.rule-pop-warn { color: var(--accent); }
+.rule-pop-amend { margin: 2px 0 0; padding-left: 16px; }
+.rule-pop-project { color: var(--text); }
+.rule-pop-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; font-size: 0.76rem; }
+.rule-pop-foot a { color: var(--accent); text-decoration: none; }
+.rule-pop-foot a:hover { text-decoration: underline; }

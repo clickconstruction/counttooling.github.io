@@ -52,6 +52,12 @@ easier to find — I just refresh after I turn things in."
   force-turn-in notice. The confirm now fires only when there is something to lose —
   unsaved edits (`getAutoSaveDirty`) or a takeoff that lives on this device alone — so a
   turned-in project closes on the click. Telemetry: `project_close` carries the route.
+- **The header [Close].** Left of the edit-status banner, shown by `updateUI` only while
+  VIEWING a cloud project this session edited earlier (the in-memory `editedProjectIds`
+  set, fed whenever the session holds a project as its editor; cleared by the sign-out wipe,
+  kept across Close project). After a turn-in the banner reads "[Check out to Edit]" and
+  the way out sits right beside it; never while editing, never for a view-link session,
+  never for a project only ever viewed.
 - While there: the header cloud menu opened full-width — the open handler cleared the
   inline `right` to '' so the class's `right: 0` stayed in force beside the fixed `left`,
   and the off-screen measure clamped `left` to the margin. It now sets `right: auto` and

@@ -160,6 +160,10 @@
       <button id="doneEditing" class="sidebar-triggers" style="display:none;">Done Editing</button>
       </div>
       <span class="spacer"></span>
+      <!-- [Close] (2026-09-10): shown by updateUI only while VIEWING a cloud
+           project this session edited earlier (after a turn-in) — never for a
+           view-link session, never while editing. App.closeProject. -->
+      <button type="button" id="headerCloseProjectBtn" class="header-edit-status edit-status-close supabase-only" style="display:none;" title="Close this project">[Close]</button>
       <span id="headerEditStatusBanner" class="header-edit-status supabase-only" style="display:none;"></span>
       <button id="saveStatusBtnHeader" class="header-settings-gear sidebar-triggers supabase-only header-save-status-btn" style="display:none;" aria-label="Save status" title="Save status">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg>

@@ -7,6 +7,11 @@
  * open (never for a view-link session); a local-only takeoff confirms before
  * it closes (the work lives on this device alone); the toast and the notice
  * carry the door and it closes the project; every door leaves an empty app.
+ * The header [Close] (left of the edit-status banner) appears only while
+ * VIEWING a cloud project this session edited earlier — after a turn-in —
+ * never while editing, never for a view-link session, never for a project
+ * only ever viewed; the memory survives Close project (same session) and
+ * dies with the sign-out wipe.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -61,6 +66,43 @@ test.describe('Close project', () => {
     await page.evaluate(() => { window.state.loadedViaViewLink = false; window.App.updateUI(); });
     await page.click('#exportDropdownBtn');
     expect(await page.locator('.export-dropdown-option[data-action="close-project"]').isVisible()).toBe(true);
+  });
+
+  test('the header [Close] shows only while viewing a project this session edited, and closes it', async ({ page }) => {
+    page.on('dialog', async (d) => { await d.accept(); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await openLocalPlan(page);
+    const btn = page.locator('#headerCloseProjectBtn');
+    const setView = (isViewer, viewLink) => page.evaluate(([v, l]) => { window.state.currentProjectId = 'p1'; window.state.isViewer = v; window.state.loadedViaViewLink = l; window.state.checkedOutBy = undefined; window.App.updateUI(); }, [isViewer, viewLink]);
+    // a project only ever viewed: no button
+    await setView(true, false);
+    expect(await btn.isVisible()).toBe(false);
+    // editing it: still no button (Turn In is the way out)
+    await setView(false, false);
+    expect(await btn.isVisible()).toBe(false);
+    // turned in → viewing a project this session edited: the button, left of the banner
+    await setView(true, false);
+    expect(await btn.isVisible()).toBe(true);
+    expect(await page.evaluate(() => { const b = document.getElementById('headerCloseProjectBtn'); return b.nextElementSibling && b.nextElementSibling.id; })).toBe('headerEditStatusBanner');
+    expect(await btn.textContent()).toBe('[Close]');
+    // a view-link session never gets it
+    await setView(true, true);
+    expect(await btn.isVisible()).toBe(false);
+    await setView(true, false);
+    // click closes the project; the memory survives (same session) so reopening the
+    // project as a viewer still offers it
+    await btn.click();
+    await page.waitForFunction(() => window.state.pages.length === 0);
+    expect(await btn.isVisible()).toBe(false);
+    await openLocalPlan(page);
+    await setView(true, false);
+    expect(await btn.isVisible()).toBe(true);
+    // the sign-out wipe forgets
+    await page.evaluate(() => window.App.resetLocalSessionState());
+    await openLocalPlan(page);
+    await setView(true, false);
+    expect(await btn.isVisible()).toBe(false);
   });
 
   test('the "Project turned in." toast and the force-turn-in notice both carry Close project, and it closes', async ({ page }) => {

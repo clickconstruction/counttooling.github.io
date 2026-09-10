@@ -761,9 +761,17 @@
 
   function resetAutosaveDegradedState() { return saveEngine.resetAutosaveDegradedState(); }
 
+  // Projects this signed-in session has held for editing (checked out, or
+  // opened as the editor). The header [Close] beside the edit-status banner
+  // shows only while VIEWING one of these — an estimator who turned a project
+  // in gets a one-click way out; a project only ever viewed does not grow a
+  // button. In-memory, cleared with the sign-out wipe (not by Close project
+  // itself — the same user reopening the project is still that session).
+  const editedProjectIds = new Set();
   function resetLocalSessionState(opts) {
     opts = opts || {};
     const keepArtboard = !!opts.keepArtboard;
+    if (!keepArtboard) editedProjectIds.clear();
     saveEngine.abortInFlightAutoSave('session_reset', true);
     try { subscribeToProjectCheckoutChanges(null); } catch (_) {}
     clearPdfBitmapCache();
@@ -2645,6 +2653,15 @@
           sidebarBanner.innerHTML = editBanner.innerHTML;
         }
       }
+    }
+    // The header [Close] (left of the banner): viewing a cloud project this
+    // session edited earlier — after a turn-in, typically. Never for a
+    // view-link session, never while editing (Turn In is the way out there).
+    if (state.currentProjectId && !state.isViewer && !state.loadedViaViewLink) editedProjectIds.add(state.currentProjectId);
+    const headerCloseBtn = document.getElementById('headerCloseProjectBtn');
+    if (headerCloseBtn) {
+      const showHeaderClose = SUPABASE_ENABLED && !!state.currentProjectId && state.isViewer && !state.loadedViaViewLink && editedProjectIds.has(state.currentProjectId);
+      headerCloseBtn.style.display = showHeaderClose ? '' : 'none';
     }
     document.body.classList.toggle('has-pdf', state.pages.length > 0);
     const uploadPdfEl = document.getElementById('uploadPdf');
@@ -4922,6 +4939,8 @@
       return true;
     }
     (window.App = window.App || {}).closeProject = closeProject;
+    const headerCloseProjectBtn = document.getElementById('headerCloseProjectBtn');
+    if (headerCloseProjectBtn) headerCloseProjectBtn.onclick = async () => { await closeProject({ route: 'header' }); };
     document.getElementById('settingsCloseProject').onclick = async () => {
       hideModal('settingsModal');
       await closeProject({ route: 'settings' });
@@ -7539,6 +7558,7 @@
   // the registry otherwise).
   App.setAutoSaveDirty = (v) => saveEngine.setAutoSaveDirty(v);
   App.getAutoSaveDirty = () => saveEngine.getAutoSaveDirty();
+  App.resetLocalSessionState = (opts) => resetLocalSessionState(opts);
   App.performAutoSave = (runId) => saveEngine.performAutoSave(runId);
   App.sha256Hex = (buf) => saveEngine.sha256Hex(buf);
   App.refreshProjectPermissions = () => refreshProjectPermissions();

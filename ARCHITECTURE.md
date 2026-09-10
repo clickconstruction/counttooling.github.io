@@ -28,12 +28,12 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,898 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,918 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,018 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,310 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,321 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,094 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,325 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,096 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 730 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 884 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
@@ -211,7 +211,7 @@ modules. Candidates in priority order:
 | [local-save-signal.spec.js](local-save-signal.spec.js) | Playwright regression for the **signed-out save signal** (Tier-3 B11 / J12 J15) — the status-bar mode line shows "Saved on this device · <time>" after the real dirty → 1s-debounce → IDB backup path lands and tracks later backups; narrow desktop bars (<1280px) compact the words to "Saved · <time>" and widening swaps the full words back; signed-in the mode line never shows the stamp (cloudMode branch unchanged — Canvas label + dot titles as before); the Save Status panel signed-out shows green "Saved on this device" Canvas/PDF rows with the `#saveStatusSignedOutHint` "Sign in to sync across devices." line (hidden signed-in), and keeps the grey "Not signed in to cloud" row before any backup exists. `npx playwright test local-save-signal.spec.js` |
 | [features/canvas-switcher.js](features/canvas-switcher.js) | The **footer canvas switcher renderer** (`renderCanvasSwitcher`: current-name label, `(n/N)` index, the pills, the layers-dropdown rows, show-all peek-button visibility), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps (everything it reads was already on the registry). Registers `App.renderCanvasSwitcher`; the edit pen keeps opening [features/canvas-layers.js](features/canvas-layers.js)'s details modal via `App.openCanvasDetailsModal`. The peek-button visibility path it renders is exercised by [show-all-canvases.spec.js](show-all-canvases.spec.js) |
 | [features/summary-list.js](features/summary-list.js) | The **sidebar Summary section renderer** (`renderSummary`: per-group or flat counter / line-type rollups with multiply-zone-adjusted counts and always-feet lengths; T2-11 — counter rows carry a `"N placed · M with repeats"` hover `title` when a multiply zone makes the two differ, the flat path tallying through `App.counterTally`), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps. Registers `App.renderSummary`; rows open the count-detail modal in [features/summary-detail.js](features/summary-detail.js) via `App.openSummaryCountDetailModal` ([summary-detail.spec.js](summary-detail.spec.js) covers that modal and renders through the real `updateUI()` path) |
-| [features/turn-in.js](features/turn-in.js) | The **checkout lifecycle UX**, extracted 2026-07-30 from app.js's `[sync]` Turn In section (the one `[sync]` stretch that was real code rather than engine wrappers): `doTurnInAndHandleResult` (result handling over the engine's staged `doTurnIn` — expired short-circuit, already-released refresh, recovery-modal routing), the shared `doCheckoutCurrentProject` action, the header/sidebar edit-status banner click handler, the Project Settings Check Out / Turn In / Force turn-in buttons, and the force-turn-in notice modal the demoted editor sees (`openForceTurnInNoticeModal`, registered as `App.openForceTurnInNoticeModal`; the engine reaches it via `ctx.notifyForceTurnedIn` with a toast fallback — Stage-5 J17 finding, 2026-08-31). **Close project doors** (2026-09-10): the "Project turned in." toast is the static interactive card `#turnedInToastModal` (`showTurnedInToast(text)`, registered as `App.showTurnedInToast`; 6 s; its Close project button and the notice's third button `#forceTurnInNoticeClose` both call `App.closeProject({ route })` — the one routine in app.js behind Project Settings and the header cloud menu's `data-action="close-project"` row). Regression: [close-project.spec.js](close-project.spec.js). All four functions and every call site were internal to the cluster, so app.js needed no wrappers; the engine keeps the staged release (`App.doTurnIn` passthrough), and the expired-attention flags stay app-side behind the existing accessors (`isCheckoutExpiredAttention`/`setCheckoutExpiredAttention`/`clearCheckoutExpiredAttention`/`isAutoSaveSuspended`/`setLastCheckoutRefreshAt`) |
+| [features/turn-in.js](features/turn-in.js) | The **checkout lifecycle UX**, extracted 2026-07-30 from app.js's `[sync]` Turn In section (the one `[sync]` stretch that was real code rather than engine wrappers): `doTurnInAndHandleResult` (result handling over the engine's staged `doTurnIn` — expired short-circuit, already-released refresh, recovery-modal routing), the shared `doCheckoutCurrentProject` action, the header/sidebar edit-status banner click handler, the Project Settings Check Out / Turn In / Force turn-in buttons, and the force-turn-in notice modal the demoted editor sees (`openForceTurnInNoticeModal`, registered as `App.openForceTurnInNoticeModal`; the engine reaches it via `ctx.notifyForceTurnedIn` with a toast fallback — Stage-5 J17 finding, 2026-08-31). **Close project doors** (2026-09-10): the "Project turned in." toast is the static interactive card `#turnedInToastModal` (`showTurnedInToast(text)`, registered as `App.showTurnedInToast`; 6 s; its Close project button and the notice's third button `#forceTurnInNoticeClose` both call `App.closeProject({ route })` — the one routine in app.js behind Project Settings, the header cloud menu's `data-action="close-project"` row, and the header `#headerCloseProjectBtn` "[Close]" left of the banner — shown by app.js `updateUI` only while viewing a cloud project in its session-scoped `editedProjectIds` set). Regression: [close-project.spec.js](close-project.spec.js). All four functions and every call site were internal to the cluster, so app.js needed no wrappers; the engine keeps the staged release (`App.doTurnIn` passthrough), and the expired-attention flags stay app-side behind the existing accessors (`isCheckoutExpiredAttention`/`setCheckoutExpiredAttention`/`clearCheckoutExpiredAttention`/`isAutoSaveSuspended`/`setLastCheckoutRefreshAt`) |
 | [features/quick-keys.js](features/quick-keys.js) | **Quick Keys** — binds the number row (`1`–`9`, `0`) to counters and line types so the user switches what they're placing with a keystroke instead of a trip to the sidebar. Owns the bindings modal (`#quickKeysModal`: ten slot rows, each a keycap + colour swatch + `<select>` of the project's counters/line types + a clear button, plus the `#quickKeysSearch` filter — a name-substring search that refilters all ten dropdowns per keystroke; it lives OUTSIDE `#quickKeysList` so re-renders never steal its focus, a slot's bound item always stays listed/selected even when it doesn't match, the box hides in the empty state, and the filter resets on every open) and its two openers: the desktop status-bar link (`#statusBarQuickKeys`, keypad icon + `keys` left of `macros`; hidden below 769px and re-shown **by ID** in the desktop media query — the house pattern; `.has-icon` deliberately sets no `display` so it can't out-cascade the mobile hide) and the Project Settings row (`#settingsQuickKeys`, the mobile path — the settings modal is reachable everywhere via the sidebar logo). Registers `App.openQuickKeysModal` / `App.triggerQuickKey(slot)` / `App.getQuickKeyLabels()` / `App.QUICK_KEY_SLOTS`. **ONE SELECTION PATH**: a number key does not activate anything itself — it calls `App.setActiveCounterType` / `App.setActiveLineType`, the same functions the sidebar rows call (extracted in app.js for exactly this), so toggle-off semantics, the tool switch, and the pages-section collapse can't drift between the two entry points. Data: `state.numberKeyBindings`, slot → `{kind:'counter'\|'lineType', id}` — per-project (ids are `uid()`-scoped), riding save/load, export/import, and the IDB takeoff backup. Bindings ALSO ride the cloud Artboard (`user_airboard.number_key_bindings`, migration 20260724180000): `seedQuickKeysFromArtboard(raw, {replace})` fills-if-empty on sign-in auto-restore and replaces on the explicit My Settings → Load; `applyProjectQuickKeys(incoming)` is the single funnel for all three project intakes (cloud load / PDF-intake restore / canvas-JSON import) — a payload with bindings replaces and clears the artboard-lineage flag, one without keeps a seeded layout but drops a previous project's; `resetLocalSessionState` wipes unconditionally (it doubles as sign-out hygiene). Artboard export includes bindings; Clear artboard clears them. A binding whose target was deleted resolves stale: it toasts rather than silently no-op'ing, and the id is **retained** so re-creating or re-importing that item revives the slot. Two new publish-only deps (`setActiveCounterType`/`setActiveLineType`); viewer-gated inside `triggerQuickKey`. **Sidebar badges**: bound rows show a keycap badge (`.quick-key-slot-badge`, accent digit on a dark chip echoing the Keyboard Map's lit keys) — `quickKeyBadgeHtml(kind, id)` in app.js's list renderers reads the feature-registered reverse lookup `App.getQuickKeySlotFor(kind, id)` deferred, and the modal's bind/clear handlers refresh both lists live, so the bindings teach themselves during normal work. Regression: [quick-keys.spec.js](quick-keys.spec.js) |
 | [quick-keys.spec.js](quick-keys.spec.js) | Playwright regression for Quick Keys (8 tests) — binding through the real status-bar → modal → `<select>` path and asserting `state.numberKeyBindings`; the number row then switching counter/line type with the right tool and toggling off on a second press; **an equivalence test** that a number key and `App.setActiveCounterType` leave byte-identical state (the guard on the one-selection-path claim); the keystrokes it must NOT steal (unbound digits, digits typed into an input, `Ctrl`+digit); a stale binding toasting via `#airboardToastText` while retaining its id and rendering a "deleted" marker; clear-slot; bindings surviving the canvas-JSON import; the Keyboard Map lighting bound digits with their names (`1 — Floor Drain`) while unbound ones stay grey; and the search filter (dropdowns filter live, a bound non-matching item survives selected, typing keeps focus, binding through a filtered list works, and reopening resets the filter). Note: keydown is dispatched on `<body>`, not `document` — the handler's input guard calls `.matches`, which `document` doesn't have. `npx playwright test quick-keys.spec.js` |
 | [features/keyboard-map.js](features/keyboard-map.js) | The **Keyboard Map** — the visual companion to the Macros / Keyboard Shortcuts list. **Two hosts** picked by CSS at the 769px breakpoint: desktop renders it INLINE at the top of the Macros modal (`#macrosKeyboardInline`, built once at feature load since the source table is static markup and this script is last in the body); mobile hides that and the "See Keyboard" button (`#macrosSeeKeyboard`) opens the standalone `#keyboardMapModal` (rendered on each open). A "host" is any element wrapping a `.kb-board` + `.kb-caption`, and every function here takes one, so neither path is special-cased; both are built regardless of viewport so crossing the breakpoint needs no rebuild. Registers `App.openKeyboardMapModal` + `App.renderKeyboardMapInline`. Renders a 65%-ANSI keyboard silhouette (5 rows, each 15 width units over a 60-column grid so the 1.25/1.5/1.75/2.25-unit keys land on exact boundaries); keys carrying a shortcut light accent-yellow, modifiers (Shift/Ctrl/Cmd/Alt) get the softer outlined variant, everything else stays the grey silhouette. Hovering (mouse only — a touch "hover" would fire and vanish), tapping, or focusing a lit key names its action in `#keyboardMapCaption`. **The lit keys are DERIVED from the Macros table, not hand-declared**: `collectMacroKeys()` walks `#macrosModal .macros-table`, reading each row's `<kbd>` cells for the keys and the last cell for the action, so adding a shortcut row lights its key automatically and the two surfaces cannot drift (rows with no `<kbd>` — the section headers, the `<th>` row, the em-dash Scale Zone row — drop out on their own). `normalizeKeyToken` maps the table's glyphs/words (`←`, `Cmd`, `Esc`, `Space`, …) onto the board's key ids; single characters normalize to uppercase. A **zero-new-dep** split (only `App.showModal`/`App.hideModal`). Registers `App.openKeyboardMapModal`; the opener + close bindings are element-bound at load. The Escape branch in app.js checks this modal **before** `macrosModal` so one Escape closes the board and leaves the list up. Regression: [keyboard-map.spec.js](keyboard-map.spec.js) |
@@ -575,62 +575,62 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L657 - [sync] Field-error telemetry
 - L716 - [sync] Dirty tracking & local session reset
 - L722 - Undo/redo stacks
-- L870 - [sync] Checkout probe, hashing & PDF cache
-- L932 - Math & Format Helpers
-- L1383 - Coordinate Helpers
-- L1391 - PDF render bitmap cache
-- L1445 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1456 - PDF Rendering
-- L2249 - UI Render Functions
-- L2915 - Inline rename & polyline edit mode
-- L3029 - Modal primitives (showModal / hideModal)
-- L3063 - Toasts & line color picker
-- L3131 - Airboard cloud sync
-- L3176 - Supabase RPC & presence heartbeat
-- L3216 - User activity / event telemetry
-- L3275 - Supabase auth & dev auth
-- L3461 - [sync] Checkout subscription & permission refresh
-- L3471 - Modals & Handlers
-- L3539 - PDF intake (upload, test PDF, hashing)
-- L3547 - Toolbar tool buttons
-- L3747 - Tool sidebar buttons & legend overlay
-- L3838 - Add Line Type modal
-- L3982 - Line color & sidebar handlers
-- L4191 - Polyline modal & drawing
-- L4234 - Zoom bar & page navigation
-- L4260 - Export canvas JSON
-- L4284 - PDF download helpers
-- L4293 - View-link URL helpers & show-highlights/notes
-- L4365 - Custom icon upload handler
-- L4375 - Export & report dropdown menus
-- L4468 - Sidebar drawer toggles
-- L4499 - Mobile actions burger menu pointer & header logo
-- L4511 - User Activity pointer (format.js + features/user-activity.js)
-- L4523 - My Settings pointer (features/my-settings.js)
-- L4548 - Auth & settings entry buttons
-  - L4608 - Project Settings checkout & Save Status bell
-  - L4700 - [sync] Checkout expired recovery
-  - L4756 - [sync] Turn In
-  - L4865 - Share modal pointer & copy-project openers
-  - L4896 - Settings menu actions
-  - L4932 - Auth sign-in form
-  - L4957 - Save Project modal
-  - L4970 - Checkout expired recovery modal wiring
-  - L5075 - Last-session restore prompt
-  - L5082 - Canvas Repair modal wiring
-- L5269 - Canvas Event Handlers
-- L5773 - Event Binding
-- L5783 - Aim loupe (mobile press-hold precise placement)
-- L5935 - Zoom transform preview & commit
-- L6014 - Canvas mouse, wheel & touch handlers
-- L6768 - Global dropdown dismissal & keyboard hotkeys
-- L7150 - [sync] Manual save to cloud
-- L7160 - [sync] Auto-save
-- L7167 - [sync] Local backup (IndexedDB takeoff state)
-- L7300 - [sync] Checkout keep-alive
-- L7314 - App feature registry
-- L7659 - View-only mode
-- L7665 - Init / boot
+- L878 - [sync] Checkout probe, hashing & PDF cache
+- L940 - Math & Format Helpers
+- L1391 - Coordinate Helpers
+- L1399 - PDF render bitmap cache
+- L1453 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1464 - PDF Rendering
+- L2257 - UI Render Functions
+- L2932 - Inline rename & polyline edit mode
+- L3046 - Modal primitives (showModal / hideModal)
+- L3080 - Toasts & line color picker
+- L3148 - Airboard cloud sync
+- L3193 - Supabase RPC & presence heartbeat
+- L3233 - User activity / event telemetry
+- L3292 - Supabase auth & dev auth
+- L3478 - [sync] Checkout subscription & permission refresh
+- L3488 - Modals & Handlers
+- L3556 - PDF intake (upload, test PDF, hashing)
+- L3564 - Toolbar tool buttons
+- L3764 - Tool sidebar buttons & legend overlay
+- L3855 - Add Line Type modal
+- L3999 - Line color & sidebar handlers
+- L4208 - Polyline modal & drawing
+- L4251 - Zoom bar & page navigation
+- L4277 - Export canvas JSON
+- L4301 - PDF download helpers
+- L4310 - View-link URL helpers & show-highlights/notes
+- L4382 - Custom icon upload handler
+- L4392 - Export & report dropdown menus
+- L4485 - Sidebar drawer toggles
+- L4516 - Mobile actions burger menu pointer & header logo
+- L4528 - User Activity pointer (format.js + features/user-activity.js)
+- L4540 - My Settings pointer (features/my-settings.js)
+- L4565 - Auth & settings entry buttons
+  - L4625 - Project Settings checkout & Save Status bell
+  - L4717 - [sync] Checkout expired recovery
+  - L4773 - [sync] Turn In
+  - L4882 - Share modal pointer & copy-project openers
+  - L4913 - Settings menu actions
+  - L4951 - Auth sign-in form
+  - L4976 - Save Project modal
+  - L4989 - Checkout expired recovery modal wiring
+  - L5094 - Last-session restore prompt
+  - L5101 - Canvas Repair modal wiring
+- L5288 - Canvas Event Handlers
+- L5792 - Event Binding
+- L5802 - Aim loupe (mobile press-hold precise placement)
+- L5954 - Zoom transform preview & commit
+- L6033 - Canvas mouse, wheel & touch handlers
+- L6787 - Global dropdown dismissal & keyboard hotkeys
+- L7169 - [sync] Manual save to cloud
+- L7179 - [sync] Auto-save
+- L7186 - [sync] Local backup (IndexedDB takeoff state)
+- L7319 - [sync] Checkout keep-alive
+- L7333 - App feature registry
+- L7679 - View-only mode
+- L7685 - Init / boot
 
 <!-- END SECTION TOC -->
 

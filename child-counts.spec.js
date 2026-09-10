@@ -125,4 +125,52 @@ test.describe('Child counts', () => {
     const strapRow = await page.evaluate(() => [...document.querySelectorAll('#summaryList .summary-child-item')].map((d) => d.textContent.trim()).find((t) => t.includes('strap')));
     expect(strapRow).toContain('*');
   });
+
+  test('from the rulebook: a PEX type is offered its hanger by name and size; Add stamps the rule; inch intervals tally and label', async ({ page }) => {
+    await setupProject(page);
+    await page.evaluate(() => window.App.rulesReady && window.App.rulesReady());
+    // a PEX type with the same two runs (10.00 ft and 11.67 ft): 32 in → ceil(10/2.667)=4 + ceil(11.67/2.667)=5 = 9
+    await page.evaluate(() => {
+      const s = window.state;
+      s.lineTypes.push({ id: 'lt-pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight', childCounts: [] });
+      const ann = s.pages[0].canvases[0].annotations;
+      ann.quickLines.push({ x1: 100, y1: 300, x2: 220, y2: 300, color: '#47c88e', id: 'p1', lineTypeId: 'lt-pex', group: null });
+      ann.quickLines.push({ x1: 220, y1: 300, x2: 220, y2: 440, color: '#47c88e', id: 'p2', lineTypeId: 'lt-pex', group: null });
+      window.App.updateUI();
+    });
+    await page.evaluate(() => window.App.openCounterLineTypeDetailsModal('lineType', window.state.lineTypes.find((l) => l.id === 'lt-pex')));
+    const suggest = page.locator('#childCountsSuggest');
+    await expect(suggest).toBeVisible();
+    expect(await suggest.textContent()).toContain('Hanger · 1 per 32 in');
+    expect(await suggest.textContent()).toContain('matches PEX · horizontal · 1 in');
+    await expect(suggest.locator('.rule-chip[data-rule="plumb.hanger.pex"]')).toBeVisible();
+    // no suggestion for a type with no supported material
+    await page.evaluate(() => window.App.openCounterLineTypeDetailsModal('lineType', window.state.lineTypes.find((l) => l.id === 'lt-emt')));
+    await expect(suggest).toBeHidden();
+    await page.evaluate(() => window.App.openCounterLineTypeDetailsModal('lineType', window.state.lineTypes.find((l) => l.id === 'lt-pex')));
+    await suggest.locator('.child-count-suggest-add').click();
+    expect(await page.evaluate(() => window.state.lineTypes.find((l) => l.id === 'lt-pex').childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }]);
+    // taken: the suggestion is gone, the row shows the rule chip, the list shows "per 32 in"
+    await expect(suggest).toBeHidden();
+    expect(await page.locator('#childCountsList').textContent()).toContain('per 32 in');
+    await expect(page.locator('#childCountsList .rule-chip[data-rule="plumb.hanger.pex"]')).toBeVisible();
+    // the engine: 4 + 5 = 9, labeled in inches, stamped
+    const rows = await page.evaluate(() => window.App.getChildCountTotals().byGroup.null.lineType['lt-pex']);
+    expect(rows).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: null, intervalIn: 32, ruleId: 'plumb.hanger.pex', total: 9, excludedPxRuns: 0 }]);
+    await page.evaluate(() => window.App.hideModal('counterLineTypeDetailsModal'));
+    const child = page.locator('#summaryList .summary-child-item', { hasText: 'Hanger' });
+    expect(await child.locator('.child-rule').textContent()).toBe('1/32 in');
+    expect(await child.locator('.child-total').textContent()).toBe('9');
+    await expect(child.locator('.rule-chip[data-rule="plumb.hanger.pex"]')).toBeVisible();
+    // the hand-off text carries the interval the same way
+    expect(await page.evaluate(() => window.getPipeToolingSummary())).toContain('  Hanger\t9');
+    // a hand-typed inch interval through the editor: 1 per 16 in
+    await page.evaluate(() => window.App.openCounterLineTypeDetailsModal('lineType', window.state.lineTypes.find((l) => l.id === 'lt-pex')));
+    await page.locator('#childCountName').fill('Riser clamp');
+    await page.locator('#childCountPer').selectOption('ft');
+    await page.locator('#childCountFtN').fill('16');
+    await page.locator('#childCountIntervalUnit').selectOption('in');
+    await page.click('#childCountAdd');
+    expect(await page.evaluate(() => window.state.lineTypes.find((l) => l.id === 'lt-pex').childCounts.at(-1))).toEqual({ name: 'Riser clamp', qty: 1, per: 'ft', intervalIn: 16 });
+  });
 });

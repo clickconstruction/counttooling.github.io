@@ -44,6 +44,7 @@
   <script src="/circuit-model.js"></script>
   <script src="/bid-check-model.js"></script>
   <script src="/tag-model.js"></script>
+  <script src="/support-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/bid-basis-model.js"></script>
   <script src="/canvas-draw.js"></script>
@@ -1986,13 +1987,14 @@
       <div class="form-group" id="childCountsGroup">
         <label>Child counts</label>
         <div id="childCountsList"></div>
+        <div id="childCountsSuggest" class="child-count-suggest" hidden></div>
         <div class="child-count-add">
           <input type="text" id="childCountName" placeholder="name…" aria-label="Child count name">
         </div>
         <div class="child-count-add">
           <input type="number" id="childCountQty" min="1" step="1" value="1" aria-label="Quantity">
           <select id="childCountPer" aria-label="Rule"></select>
-          <span id="childCountFtNWrap" style="display:none;"><input type="number" id="childCountFtN" min="1" step="1" value="10" aria-label="Feet interval"> ft</span>
+          <span id="childCountFtNWrap" style="display:none;"><input type="number" id="childCountFtN" min="1" step="1" value="10" aria-label="Interval"> <select id="childCountIntervalUnit" aria-label="Interval unit"><option value="ft">ft</option><option value="in">in</option></select></span>
           <span class="child-count-add-spacer"></span>
           <button type="button" id="childCountAdd">+ Add</button>
         </div>
@@ -2156,6 +2158,25 @@
             <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
           </div>
         </div>
+        <!-- Rulebook slice 4: which editions the rules resolve against, and whose amendments apply (app.js syncProjectSettingsRows / setProjectCodes). -->
+        <div class="form-group" id="settingsCodesRow" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
+          <div style="min-width:0;">
+            <div>Codes</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Which editions the rulebook's values resolve against. Rule chips and Bid Check say "this project" from these. Remembered for your next bid.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end;">
+            <select id="settingsCodePlumbing" aria-label="Plumbing code edition" style="width:150px;"></select>
+            <select id="settingsCodeElectrical" aria-label="Electrical code edition" style="width:150px;"></select>
+            <select id="settingsCodeHvac" aria-label="HVAC standard edition" style="width:150px;"></select>
+          </div>
+        </div>
+        <div class="form-group" id="settingsJurisdictionRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
+          <div style="min-width:0;">
+            <div>Jurisdiction</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">State and city, so amendments on file are applied and named. Not on file means the model code as written.</div>
+          </div>
+          <input type="text" id="settingsJurisdiction" placeholder="e.g. Texas · Austin" autocomplete="off" style="width:150px;flex-shrink:0;" aria-label="Jurisdiction">
+        </div>
         <div class="form-group" id="settingsCeilingRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
           <div style="min-width:0;">
             <div>Ceiling height</div>
@@ -2163,7 +2184,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" style="width:96px;" aria-label="Ceiling height (feet)">
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <button type="button" class="rule-chip" data-rule="elec.vertical.make-up" hidden></button> <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
           </div>
         </div>
         <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
@@ -3006,6 +3027,10 @@
     </div>
   </div>
 </div>
+<!-- The rulebook popover (features/rules.js): one element, repositioned per
+     open beside the § chip that opened it. Above modals (the Duct Schedule
+     has chips), below the tour card and toasts. -->
+<div id="rulePopover" class="rule-popover" role="dialog" aria-label="Rule" aria-hidden="true"></div>
 <div id="toastRegion" role="status" aria-live="polite">
     <!-- Interactive card (T2-06): the "Set Scale ⚖" words are a real button
          that opens the Set Scale dialog (bound in app.js next to
@@ -3252,6 +3277,7 @@
   <script src="/features/child-counts.js"></script>
   <script src="/features/conductors.js"></script>
   <script src="/features/circuits.js"></script>
+  <script src="/features/rules.js"></script>
   <script src="/features/bid-check.js"></script>
   <script src="/features/tag-reader.js"></script>
   <script src="/features/tutorial.js"></script>

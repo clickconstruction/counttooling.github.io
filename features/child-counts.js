@@ -34,9 +34,10 @@
   'use strict';
   const App = (window.App = window.App || {});
 
+  const SM = () => window.SupportModel;
   function ruleLabel(ch) {
     if (ch.per === 'count') return 'per count';
-    if (ch.per === 'ft') return 'per ' + (ch.ftInterval || 10) + ' ft';
+    if (ch.per === 'ft') return 'per ' + (SM() ? SM().childIntervalLabel(ch) : (ch.ftInterval || 10) + ' ft');
     return 'per run';
   }
 
@@ -99,12 +100,15 @@
         const u = g.lineType[lt.id];
         if (!u) return;
         const rows = lt.childCounts.map((ch) => {
+          const stamp = ch.ruleId ? { ruleId: ch.ruleId } : {};
           if (ch.per === 'ft') {
-            const n = ch.ftInterval || 10;
+            // The interval in feet: an inch interval (the rulebook's unit for
+            // hanger spacing) wins over the whole-foot ftInterval.
+            const n = SM() ? SM().childIntervalFeet(ch) : (ch.ftInterval || 10);
             const total = u.ftRuns.reduce((s, run) => s + Math.ceil(run.rawFeet / n) * run.zone, 0) * ch.qty;
-            return { name: ch.name, qty: ch.qty, per: 'ft', ftInterval: n, total, excludedPxRuns: u.pxRuns };
+            return { name: ch.name, qty: ch.qty, per: 'ft', ftInterval: ch.intervalIn > 0 ? null : n, ...(ch.intervalIn > 0 ? { intervalIn: ch.intervalIn } : {}), ...stamp, total, excludedPxRuns: u.pxRuns };
           }
-          return { name: ch.name, qty: ch.qty, per: 'run', ftInterval: null, total: u.runUnits * ch.qty, excludedPxRuns: 0 };
+          return { name: ch.name, qty: ch.qty, per: 'run', ftInterval: null, ...stamp, total: u.runUnits * ch.qty, excludedPxRuns: 0 };
         }).filter((r) => r.total > 0 || r.excludedPxRuns > 0);
         if (rows.length) out.lineType[lt.id] = rows;
       });
@@ -119,9 +123,42 @@
     const listEl = document.getElementById('childCountsList');
     const perSel = document.getElementById('childCountPer');
     const ftWrap = document.getElementById('childCountFtNWrap');
+    const suggestEl = document.getElementById('childCountsSuggest');
     if (!listEl || !perSel) return;
 
     if (!Array.isArray(item.childCounts)) item.childCounts = item.childCounts || [];
+
+    // "From the rulebook" (slice 3): a line type whose name declares a
+    // supported material and size earns its hanger count as a one-tap row,
+    // stamped with the rule id so the Summary row wears the § chip. The match
+    // is named so a mis-named type is fixed at the name, not the rule.
+    const renderSuggestions = () => {
+      if (!suggestEl) return;
+      const sm = SM();
+      const sugg = kind === 'lineType' && sm ? sm.hangerSuggestionsFor(item.name) : [];
+      const pending = sugg.filter((sg) => !(item.childCounts || []).some((ch) => ch.ruleId === sg.ruleId));
+      if (!pending.length) { suggestEl.innerHTML = ''; suggestEl.hidden = true; return; }
+      const esc = App.escapeHtml;
+      suggestEl.hidden = false;
+      suggestEl.innerHTML = '<div class="child-count-suggest-head">From the rulebook</div>'
+        + pending.map((sg, i) => '<div class="child-count-suggest-row" data-idx="' + i + '">'
+          + '<div class="child-count-suggest-main"><div>' + esc(sg.name) + ' · ' + esc(sg.qty) + ' per ' + esc(sm.childIntervalLabel(sg)) + '</div>'
+          + '<div class="child-count-suggest-match">matches ' + esc(sg.match) + (App.ruleChipHtml ? ' ' + App.ruleChipHtml(sg.ruleId) : '') + '</div></div>'
+          + '<button type="button" class="child-count-suggest-add">Add</button></div>').join('')
+        + '<div class="child-count-suggest-foot">Suggested from the line type\'s name. Wrong material or size? Fix the name, not the rule.</div>';
+      suggestEl.querySelectorAll('.child-count-suggest-add').forEach((btn) => {
+        btn.onclick = () => {
+          const sg = pending[Number(btn.closest('.child-count-suggest-row').dataset.idx)];
+          App.pushUndoSnapshotCurrentPage();
+          item.childCounts.push({ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId });
+          App.markProjectDirty();
+          App.logUserEvent && App.logUserEvent('child_count_from_rule', App.state.currentProjectId || null, { rule: sg.ruleId, lineType: item.name });
+          App.updateUI();
+          renderRows();
+          renderSuggestions();
+        };
+      });
+    };
 
     // Rule choices depend on the parent kind.
     perSel.innerHTML = kind === 'counter'
@@ -139,7 +176,7 @@
           '<div class="child-count-row" data-idx="' + i + '">' +
           '<span class="child-count-qty">' + esc(ch.qty) + ' ×</span>' +
           '<span class="child-count-name">' + esc(ch.name) + '</span>' +
-          '<span class="child-count-per">' + esc(ruleLabel(ch)) + '</span>' +
+          '<span class="child-count-per">' + esc(ruleLabel(ch)) + (ch.ruleId && App.ruleChipHtml ? ' ' + App.ruleChipHtml(ch.ruleId) : '') + '</span>' +
           '<button type="button" class="child-count-remove" title="Remove" aria-label="Remove">×</button>' +
           '</div>').join('')
         : '<div class="child-count-empty">None yet — counted automatically with every ' + (kind === 'counter' ? 'placed count' : 'run') + '.</div>';
@@ -151,10 +188,12 @@
           App.markProjectDirty();
           App.updateUI();
           renderRows();
+          renderSuggestions();
         };
       });
     };
     renderRows();
+    renderSuggestions();
 
     document.getElementById('childCountAdd').onclick = () => {
       const nameEl = document.getElementById('childCountName');
@@ -164,7 +203,11 @@
       const qty = Math.max(1, Math.round(Number(qtyEl.value) || 1));
       if (!name) { App.showToast('Name the child count first'); return; }
       const ch = { name, qty, per: perSel.value };
-      if (ch.per === 'ft') ch.ftInterval = Math.max(1, Math.round(Number(ftNEl.value) || 10));
+      if (ch.per === 'ft') {
+        const unitEl = document.getElementById('childCountIntervalUnit');
+        const n = Math.max(1, Math.round(Number(ftNEl.value) || (unitEl && unitEl.value === 'in' ? 12 : 10)));
+        if (unitEl && unitEl.value === 'in') ch.intervalIn = n; else ch.ftInterval = n;
+      }
       App.pushUndoSnapshotCurrentPage();
       item.childCounts.push(ch);
       App.markProjectDirty();

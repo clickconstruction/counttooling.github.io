@@ -247,6 +247,13 @@ function createAnnotationModel(ctx) {
     }
   }
 
+  // Codes & jurisdiction (rulebook slice 4): keep only the strings a project chose.
+  function normCodes(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const out = {};
+    ['plumbing', 'electrical', 'hvac', 'jurisdiction'].forEach((k) => { if (typeof raw[k] === 'string' && raw[k].trim()) out[k] = raw[k].trim(); });
+    return Object.keys(out).length ? out : null;
+  }
   function applyTakeoffBackupToState(backup) {
     if (!backup) return;
     if (Array.isArray(backup.counters)) ctx.getState().counters = backup.counters;
@@ -256,6 +263,7 @@ function createAnnotationModel(ctx) {
     ctx.getState().trade = typeof backup.trade === 'string' && backup.trade ? backup.trade : null;
     ctx.getState().ceilingHeightFt = typeof backup.ceilingHeightFt === 'number' && backup.ceilingHeightFt > 0 ? backup.ceilingHeightFt : null;
     ctx.getState().makeUpFt = typeof backup.makeUpFt === 'number' && backup.makeUpFt >= 0 ? backup.makeUpFt : null;
+    ctx.getState().codes = normCodes(backup.codes);
     ctx.getState().bidCheck = (backup.bidCheck && typeof backup.bidCheck === 'object') ? { ...backup.bidCheck, manual: { ...(backup.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
     if (Array.isArray(backup.rooms)) ctx.getState().rooms = backup.rooms;
     if (backup.iconNames && typeof backup.iconNames === 'object') ctx.getState().iconNames = backup.iconNames;
@@ -303,6 +311,7 @@ function createAnnotationModel(ctx) {
     state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
     state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;   // S2 vertical-by-default
     state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
+    state.codes = normCodes(d.codes);   // rulebook slice 4: the editions + jurisdiction the project chose
     state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
     state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;

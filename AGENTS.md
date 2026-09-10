@@ -281,6 +281,7 @@
 - Do not remove or rename the `window.*` globals consumed by report.js.
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
+- A palette item's `childCounts[]` rows are `{ name, qty, per: 'count'|'run'|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` names the rulebook rule a row was taken from (the § chip). Palettes serialize wholesale, so both ride save/load, export/import and the Artboard for free.
 - Electrical fields ride existing objects, never new ones: a line type's `raceway`
   / `conductors` / `tickMarks` / `homerun`, a line's own `conductors` / `homerun`, a
   counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a counter's `tag`, a group's
@@ -391,7 +392,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   toggle — features/drop-peek.js), `view:scale:<token>` (the viewer's temporary local
   page scales — the offline fallback when the shared `set-view-scale` write
   fails; a page-index → scale map, server scale wins on restore).
-- Per-project, in save/load: `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored), `maxZoom`, `groups`, `ductSettings` (the Duct
+- Per-project, in save/load: `codes` (rulebook slice 4 — `{ plumbing?, electrical?, hvac?, jurisdiction? }`, only what the project CHOSE (null = never chosen); `getProjectCodes()` layers the device default (localStorage `codesDefault`, written on every change like `defaultTrade`) and `CODE_DEFAULTS` under it; rides every intake beside `ceilingHeightFt` — save payloads, hydrate, the IndexedDB backup, canvas JSON export/import, copy/load/pdf-intake), `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored), `maxZoom`, `groups`, `ductSettings` (the Duct
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the

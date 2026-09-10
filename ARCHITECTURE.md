@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,800 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 3,015 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 7,851 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 3,018 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,310 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,285 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,044 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 728 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
-| [annotation-model.js](annotation-model.js) | 875 | Done — extracted canvas/annotation data model + node tests. |
+| [app/index.html](app/index.html) | 3,311 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,093 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 730 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
+| [annotation-model.js](annotation-model.js) | 884 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
-| [report.js](report.js) | 823 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (81 files) | 21,287 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| [report.js](report.js) | 824 | Self-contained report builder with a frozen `window.*` contract. Leave. |
+| `features/*.js` (82 files) | 21,557 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -234,6 +234,11 @@ modules. Candidates in priority order:
 | [features/tag-reader.js](features/tag-reader.js) | **Read the tags** (S6): the PDF's text layer at placement time. `pageTextItems(pageIdx)` — pdf.js `getTextContent` on the page's own proxy, each item's four transformed corners run through the page's scale-1 viewport (`convertToViewportPoint`) into the annotation coordinate space, cached per session by proxy; `[]` while loading (the load re-renders when it lands). **Tag-aware placement:** with the Counter tool on an electrical project (or any tagged counter), `drawTagOverlay` paints the "Plan says B → Type B" chip beside the cursor and rings the tag it read; `tagSwapCounterId(pt)` makes the click land on the tag's counter (app.js's COUNTER branch); `tagCreateFromHint()` (Enter) creates "Type X" with the tag and the letter icon when no counter carries it. **Palette from the schedule:** `TOOL.SCHEDULE` (armed by the Create tab's "Read a schedule from the sheet…" link; a rect tool via `RECT_TOOL_START_KEY` / `state.scheduleBoxStart`) → `proposeCountersFromBox(box)` → `#schedulePaletteModal` lists tag + description rows (existing tags unticked) → counters named "EM — Emergency wall pack" with `tag`. Also `renderTagField` (the details modal's Fixture tag) and `renderTagReaderUI` (the link's visibility). Honest about scans: no text layer, no suggestion, no change. Telemetry `tag_suggestion_accepted` (route click / enter-create / schedule). Deps: `state`, `TOOL`, `toCanvas`, `getOrderedIcons`, `getEffectiveCustomIcons`, `pushUndoSnapshot(CurrentPage)`, `markProjectDirty`, `updateUI`, `renderAnnotations`, `showModal`, `hideModal`, `showToast`, `logUserEvent`, `escapeHtml`, `COLORS`, `uid`. |
 | [tag-reader.spec.js](tag-reader.spec.js) | Playwright regression for S6 — a text-layer PDF built in-page with the vendored pdf-lib: items land in app space; the hint names the nearest tag and its counter; the click lands on the tag's counter, not the active one, and places normally away from tags; Enter creates "Type X"; the schedule box proposes A / B (existing, unticked) / EM (new) and creates it; the details modal writes the tag; a plumbing project reads nothing and hides the link. |
 | [features/tutorial.js](features/tutorial.js) | The **interactive walkthroughs** (2026-09-08; the plumbing tour 2026-09-09): learn the app by doing a small takeoff on `samples/sample-plan.pdf`, one coach-marked step at a time. ONE engine, two step lists in `TOURS` — `electrical` (14 steps: the shared scale + **prove-the-scale** steps, trade switch, a receptacle with `mountHeightIn`, three marks, a 3/4" EMT type with conductors, the ceiling, `commitChainPoint` ×3, an LP-1/7 group, `bidCheckCollapsed = false`) and `plumbing` (14 steps: the same two, a Water Closet with the plumbing set's Toilet symbol, three marks on the DRAWN water closets of Men 105, a "1in PEX" Quick Line, three chained lavatories, a 3 ft riser through `collectDropNodes`/`applyDropToNode`, a `childCounts` hanger rule (1 per 4 ft), a ×3 multiply zone around Men 105, an "RFI:" note, `openSummaryCountDetailModal` as the proof, the PipeTooling hand-off). The two shared steps: `SCALE_STEP`'s Do-it-for-me opens the REAL dialog, switches to the presets tab and clicks the 1/8" row (direct write as the fallback); `PROVE_STEP` measures the 20'-0" dimension through `App.commitMeasurePoint` and GATES — it passes only when `state.lastMeasure` (now carrying `pts` + `scale`) reads within 0.6 ft of 20, and a step's optional `hint()` puts the wrong reading in the status line ("Read 53'-4" — go Back and set the scale again"). The sample plan is a true ANSI B sheet (1224 × 792 pt) at a true 1/8" so the dialog shows no sheet-size warning; plan geometry is the SVG source × 0.75 in PDF points. A step is `{ id, title, body, kind: 'do'\|'read', target (selector list), check(), action? }`; `#tourOverlay` spotlights the target with a box-shadow cutout (`#tourSpot`, pointer-events none — the real control stays clickable) and places `#tourCard` beside it (below when there is no room; bottom-right while a modal is open; centered with no target); a target is scrolled into view (`scrollIntoView` nearest) the first time it is spotlighted, and a tool that lives behind the desktop ⋯ More-tools menu lists `#headerMoreBtn` as its fallback target; `check()` reads the REAL state and a doing-step auto-advances a beat after it passes; every doing-step offers **Do it for me**, which performs the same change through the same App.* entry points a click would (a do-it-for-me chain ends the run and exits the tool, as Enter then Esc would, so the palette does not cover the next step). The plumbing welcome step stamps the project `trade = 'plumbing'` (`setProjectTrade`, never remembered) once the plan is open, so a device whose default trade is electrical still gets plumbing pickers. Entry points: the empty-canvas hint's two links (`#canvasEmptyHintTourPlumbing` / `#canvasEmptyHintTour`, each hidden once its own done key is set — `clickcount-tour-done-plumbing` / `clickcount-tour-done` — and the whole offer hidden when both are), Project Settings → `#settingsTourPlumbing` / `#settingsTour`, `?tour=plumbing` / `?tour=electrical` (`?tour=1` still means electrical); refuses to start over a cloud project. Telemetry `tour_step` (carries `tour`). Registers `startTutorial(id)`, `stopTutorial`, `isTutorialActive`, `onTutorialTick` (updateUI + a 400 ms interval), `tutorialStepId`, `tutorialId`, `tutorialGoTo`. |
+| [features/rules.js](features/rules.js) | **The rulebook in the app** (slice 2, 2026-09-09): fetches `/rules/rules.json` once at boot (precached — chips work offline) and gives derived surfaces the § chip + popover. `ruleChipHtml(id)` → `<button class="rule-chip" data-rule>` whose label is the citation (`§ NEC Chapter 9`, `§ IPC 308.5`) or `convention` for a working figure; static chips in app/index.html (the make-up field in Project Settings) are filled by `syncChips()` when the list arrives. One popover (`#rulePopover`, placed via `App.placeFixedMenu` under the chip) renders the values table "as the app applies it", source + section, editions checked, the project line (via `App.getProjectCodes`, slice 4), used-by chips, amendments on file, and the rule-page link. Closes on Escape (capture-phase listener, so the Esc ladder never sees it), outside click, or ×. Chips live on: Bid Check auto rows (`rule:` on `bidCheckAutoRows` output — conduit-fill, voltage-drop), the Chain palette foot (mount heights + make-up when the counter has a mount height), the Duct Schedule's Gauge / lb-per-ft headers and Seam & waste line. Telemetry `rule_open`. Registers `getRule`, `ruleChipHtml`, `ruleChipLabel`, `openRulePopover`, `closeRulePopover`, `isRulePopoverOpen`, `rulesReady`, `rulesCount`, `syncRuleChips`. |
+| [support-model.js](support-model.js) | **The pure pipe-support model** (rulebook slice 3, 2026-09-09): `HANGER_SPACING` (IPC Table 308.5 as the app applies it — PEX 32 in ≤ 1 in / 48 in above, copper 6 ft ≤ 1-1/4 in / 10 ft above, PVC-ABS-DWV 4 ft, cast iron 5 ft; verticals kept for the pages; the `plumb.hanger.*` rules point here, so the drift check pins every number), `supportMaterialFromName` / `supportSizeInFromName` (word-bounded — CPVC is not PVC; sizes as `1in`, `3/4"`, `1-1/4 in`), `hangerSuggestionsFor(name)` (the Child counts row a line type earns: `{ name: 'Hanger', qty: 1, per: 'ft', intervalIn, ruleId, match }`; no size in the name → the tighter spacing), `childIntervalFeet` / `childIntervalLabel` (an inch `intervalIn` wins over the whole-foot `ftInterval`; 48 in reads "4 ft"), `lineTypeCountsHangers`, `hangerCoverage(lineTypes)` (the Bid Check auto row for plumbing: warn while a supported-material type has no hanger count). Classic script after tag-model.js; `window.SupportModel` + CommonJS footer. |
+| [support-model.test.js](support-model.test.js) | Node tests for the support model: material and size detection (CPVC ≠ PVC, ABS/DWV = PVC), the suggestion by material and size and the no-size fallback, the interval helpers, and the coverage row's verdicts and rule id. |
+| [rules-chip.spec.js](rules-chip.spec.js) | Playwright regression for the chips: rules.json loads and `getRule` reads it; the conduit-fill row carries `§ NEC Chapter 9` and a row without a public rule carries nothing; the popover states the value, section, editions and Bid Check, links the page, closes on Escape without touching the active tool and on an outside click; the Project Settings make-up chip reads `convention` and Escape closes the popover without closing the modal; the Chain palette cites both vertical rules; `/rules/rules.json` is in the service-worker precache. |
+| [codes.spec.js](codes.spec.js) | Playwright regression for Codes & jurisdiction (rulebook slice 4): the Project Settings rows show the defaults (IPC 2021 · NEC 2023 · SMACNA 2020); a change lands on `state.codes`, marks the project dirty and is remembered in `codesDefault`; the rule popover's "This project" line names the edition and jurisdiction, warns `not checked against IPC 2024` and `cited from the IPC — this project follows UPC 2021`, and scopes amendments to the jurisdiction; Bid Check's footer says what the rows resolve for and opens Project Settings; the choices ride hydrate and the takeoff backup and an old save resolves to the defaults. |
 | [tutorial.spec.js](tutorial.spec.js) | Playwright regression for both walkthroughs — the empty-canvas links and `?tour=1` / `?tour=plumbing` start them; the electrical do-it-for-me path walks all 14 steps (the scale through the real dialog with no correction on the ANSI B sample, the 20'-0" proof) and ends with a real takeoff (9.5 ft drops on the chained runs, wire rows in the payload, the LP-1 circuit); the plumbing path walks all 14 (the project stamped plumbing without touching the device default, a wrong 53'-4" reading holds the proof step and names itself, then the 20'-0" measure, three marks inside Men 105, the 1in PEX type, two chained runs with a 3 ft start drop on the first, the hanger rule, the ×3 zone tripling the tally, the RFI note, the proof modal) and finishing sets only `clickcount-tour-done-plumbing` — the electrical link stays; a real upload satisfies step 1; Back / Skip step / Leave behave; the Settings links open each tour; a cloud project refuses. |
 | [bid-check.spec.js](bid-check.spec.js) | Playwright regression for S5 — the four auto rows with their work (fill 43.8% → 3/4" 25%; voltage drop 4.4% → #10 2.8%; 1 on plan vs 42; 1 device on no circuit), the collapsed section with its badge, manual ticks persisting and counting down, the editable voltage-drop defaults, the report / email / payload; plumbing gets the three trade-neutral rows and no advisory; an electrical gated copy runs AND shows the advisory, whose Review expands the section. |
 | [circuits.spec.js](circuits.spec.js) | Playwright regression for S4 — the schedule's devices, conduit / homerun / wire feet and farthest device from the panel mark (then from the homerun end when the mark is gone), the cross-check, the sidebar tag + footer, the report / email / payload; the group modal, the counter's Panel fields and both Homerun toggles write and delete the fields; Chain inherits the circuit; plumbing hides the rows. |
@@ -561,71 +566,71 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 <!-- BEGIN SECTION TOC (generated by scripts/build-toc.js - do not edit by hand) -->
 
 - L2 - Constants
-- L170 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
-- L214 - ICONS array lives in icons.js (see icon-data note above).
-- L264 - State
-- L460 - [sync] Sync recovery & client recycle
-- L541 - [sync] Global force reload
-- L629 - [sync] Save Status log & envelope
-- L632 - [sync] Field-error telemetry
-- L691 - [sync] Dirty tracking & local session reset
-- L697 - Undo/redo stacks
-- L844 - [sync] Checkout probe, hashing & PDF cache
-- L906 - Math & Format Helpers
-- L1357 - Coordinate Helpers
-- L1365 - PDF render bitmap cache
-- L1419 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1430 - PDF Rendering
-- L2223 - UI Render Functions
-- L2882 - Inline rename & polyline edit mode
-- L2996 - Modal primitives (showModal / hideModal)
-- L3027 - Toasts & line color picker
-- L3095 - Airboard cloud sync
-- L3140 - Supabase RPC & presence heartbeat
-- L3180 - User activity / event telemetry
-- L3239 - Supabase auth & dev auth
-- L3425 - [sync] Checkout subscription & permission refresh
-- L3435 - Modals & Handlers
-- L3503 - PDF intake (upload, test PDF, hashing)
-- L3511 - Toolbar tool buttons
-- L3711 - Tool sidebar buttons & legend overlay
-- L3802 - Add Line Type modal
-- L3927 - Line color & sidebar handlers
-- L4136 - Polyline modal & drawing
-- L4179 - Zoom bar & page navigation
-- L4205 - Export canvas JSON
-- L4229 - PDF download helpers
-- L4238 - View-link URL helpers & show-highlights/notes
-- L4310 - Custom icon upload handler
-- L4320 - Export & report dropdown menus
-- L4407 - Sidebar drawer toggles
-- L4438 - Mobile actions burger menu pointer & header logo
-- L4450 - User Activity pointer (format.js + features/user-activity.js)
-- L4462 - My Settings pointer (features/my-settings.js)
-- L4487 - Auth & settings entry buttons
-  - L4547 - Project Settings checkout & Save Status bell
-  - L4639 - [sync] Checkout expired recovery
-  - L4695 - [sync] Turn In
-  - L4804 - Share modal pointer & copy-project openers
-  - L4835 - Settings menu actions
-  - L4856 - Auth sign-in form
-  - L4881 - Save Project modal
-  - L4894 - Checkout expired recovery modal wiring
-  - L4999 - Last-session restore prompt
-  - L5006 - Canvas Repair modal wiring
-- L5193 - Canvas Event Handlers
-- L5697 - Event Binding
-- L5707 - Aim loupe (mobile press-hold precise placement)
-- L5859 - Zoom transform preview & commit
-- L5938 - Canvas mouse, wheel & touch handlers
-- L6692 - Global dropdown dismissal & keyboard hotkeys
-- L7074 - [sync] Manual save to cloud
-- L7084 - [sync] Auto-save
-- L7091 - [sync] Local backup (IndexedDB takeoff state)
-- L7224 - [sync] Checkout keep-alive
-- L7238 - App feature registry
-- L7575 - View-only mode
-- L7581 - Init / boot
+- L195 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
+- L239 - ICONS array lives in icons.js (see icon-data note above).
+- L289 - State
+- L485 - [sync] Sync recovery & client recycle
+- L566 - [sync] Global force reload
+- L654 - [sync] Save Status log & envelope
+- L657 - [sync] Field-error telemetry
+- L716 - [sync] Dirty tracking & local session reset
+- L722 - Undo/redo stacks
+- L870 - [sync] Checkout probe, hashing & PDF cache
+- L932 - Math & Format Helpers
+- L1383 - Coordinate Helpers
+- L1391 - PDF render bitmap cache
+- L1445 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1456 - PDF Rendering
+- L2249 - UI Render Functions
+- L2908 - Inline rename & polyline edit mode
+- L3022 - Modal primitives (showModal / hideModal)
+- L3053 - Toasts & line color picker
+- L3121 - Airboard cloud sync
+- L3166 - Supabase RPC & presence heartbeat
+- L3206 - User activity / event telemetry
+- L3265 - Supabase auth & dev auth
+- L3451 - [sync] Checkout subscription & permission refresh
+- L3461 - Modals & Handlers
+- L3529 - PDF intake (upload, test PDF, hashing)
+- L3537 - Toolbar tool buttons
+- L3737 - Tool sidebar buttons & legend overlay
+- L3828 - Add Line Type modal
+- L3972 - Line color & sidebar handlers
+- L4181 - Polyline modal & drawing
+- L4224 - Zoom bar & page navigation
+- L4250 - Export canvas JSON
+- L4274 - PDF download helpers
+- L4283 - View-link URL helpers & show-highlights/notes
+- L4355 - Custom icon upload handler
+- L4365 - Export & report dropdown menus
+- L4452 - Sidebar drawer toggles
+- L4483 - Mobile actions burger menu pointer & header logo
+- L4495 - User Activity pointer (format.js + features/user-activity.js)
+- L4507 - My Settings pointer (features/my-settings.js)
+- L4532 - Auth & settings entry buttons
+  - L4592 - Project Settings checkout & Save Status bell
+  - L4684 - [sync] Checkout expired recovery
+  - L4740 - [sync] Turn In
+  - L4849 - Share modal pointer & copy-project openers
+  - L4880 - Settings menu actions
+  - L4901 - Auth sign-in form
+  - L4926 - Save Project modal
+  - L4939 - Checkout expired recovery modal wiring
+  - L5044 - Last-session restore prompt
+  - L5051 - Canvas Repair modal wiring
+- L5238 - Canvas Event Handlers
+- L5742 - Event Binding
+- L5752 - Aim loupe (mobile press-hold precise placement)
+- L5904 - Zoom transform preview & commit
+- L5983 - Canvas mouse, wheel & touch handlers
+- L6737 - Global dropdown dismissal & keyboard hotkeys
+- L7119 - [sync] Manual save to cloud
+- L7129 - [sync] Auto-save
+- L7136 - [sync] Local backup (IndexedDB takeoff state)
+- L7269 - [sync] Checkout keep-alive
+- L7283 - App feature registry
+- L7626 - View-only mode
+- L7632 - Init / boot
 
 <!-- END SECTION TOC -->
 

@@ -84,6 +84,14 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Download current page** — One sheet, marks included, as a quick PDF.
 - **Canvas JSON export/import** — Move a takeoff between projects or people as a small file, PDF not required.
 
+## The rulebook
+
+- **A public rulebook at /rules/** — Every public trade rule the app applies (NEC fill limits, the 3% voltage-drop recommendation, the K constant, device mount heights, make-up; the SMACNA-style gauge schedule, sheet weight, Duct Schedule factors, room airflow; hanger spacing for PEX, copper, PVC and cast iron), written as the app applies it and cited by section and edition — never the code's text reprinted, never company practice — with a searchable index and the same list as `rules.json` for software.
+- **Rules that cannot drift from the code** — Every value that lives in code points at its rule and `npm run check` fails when they disagree, so a number cannot change in one place without the other.
+- **§ chips on derived rows** — A Bid Check row, the Chain palette's vertical, the Duct Schedule's gauge and weight, a hanger child count: each wears a small citation chip; click it for the value as the app applies it, the section, the editions checked, what uses it, and the rule page. Counts you clicked never carry one.
+- **Hangers from the rulebook** — Name a line type with its material and size ("1in PEX", '3/4" Cu') and Child counts offers its hanger row (1 per 32 in for PEX at 1 in), stamped with the rule; Bid Check warns while a supported material counts none. Child counts take an interval in inches or feet.
+- **Codes & jurisdiction per project** — Project Settings says which editions the rules resolve against (IPC or UPC, NEC, SMACNA) and the jurisdiction; the chip's popover says "this project" and warns when a rule was not checked against that edition or is cited from a different code family. Remembered for your next bid.
+
 ## Cloud & collaboration
 
 - **Auto-save every 5 seconds + local backups** — Work is continuously saved to the cloud and to on-device backups, so a crash, a dead battery, or a bad connection costs you nothing. The "Project from Last Session" restore prompt works signed-out and fully offline — the backup lives on your device — and re-uploading the same PDF brings your marks back even when the backup lost its copy of the file.

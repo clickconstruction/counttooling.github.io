@@ -36,7 +36,11 @@
       let total = 0;
       if (r.per === 'count') total = qty * marks;
       else if (r.per === 'run') total = qty * runsFeet.length;
-      else if (r.per === 'ft') total = runsFeet.reduce((s, f) => s + (f > 0 ? qty * Math.ceil(f / (Number(r.ftInterval) || 10)) : 0), 0);
+      else if (r.per === 'ft') {
+        // an inch interval (the rulebook's unit for hanger spacing) wins over the whole-foot ftInterval
+        const n = Number(r.intervalIn) > 0 ? Number(r.intervalIn) / 12 : (Number(r.ftInterval) || 10);
+        total = runsFeet.reduce((s, f) => s + (f > 0 ? qty * Math.ceil(f / n) : 0), 0);
+      }
       if (total > 0) out.push({ name: r.name, total });
     }
     return out;

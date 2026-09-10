@@ -109,6 +109,12 @@
         defaults: d,
       });
     }
+    // Plumbing (rulebook slice 3): every line type whose name declares a
+    // supported material should count its hangers from the rulebook spacing.
+    if (trade === 'plumbing' && window.SupportModel) {
+      const row = window.SupportModel.hangerCoverage(state.lineTypes);
+      if (row) auto = [row];
+    }
     const manualState = bidCheckState().manual;
     const manual = bm.BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).map((r) => ({ id: r.id, label: r.label, trade: r.trade, done: !!manualState[r.id] }));
     return { auto, manual, open: bm.bidCheckOpenCount(auto, manualState, trade), defaults: d };
@@ -142,7 +148,7 @@
       const div = document.createElement('div');
       div.className = 'bid-check-row auto ' + r.verdict;
       div.innerHTML = '<span class="bid-check-mark">' + (r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : '·') + '</span>'
-        + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + ' <span class="bid-check-kind">auto</span></div><div class="bid-check-detail">' + esc(r.detail) + '</div></div>';
+        + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + ' <span class="bid-check-kind">auto</span>' + (r.rule && App.ruleChipHtml ? ' ' + App.ruleChipHtml(r.rule) : '') + '</div><div class="bid-check-detail">' + esc(r.detail) + '</div></div>';
       list.appendChild(div);
     });
     check.manual.forEach((r) => {
@@ -161,6 +167,16 @@
       }
       list.appendChild(div);
     });
+    // Rulebook slice 4: which editions the rows resolve against, with the way to change them.
+    if (App.getProjectCodes) {
+      const codes = App.getProjectCodes();
+      const edition = codes[state.trade || 'plumbing'] || '';
+      const foot = document.createElement('div');
+      foot.className = 'bid-check-codes';
+      foot.innerHTML = 'Rules resolve for <b>' + esc([edition, codes.jurisdiction].filter(Boolean).join(' · ') || 'the model code as written') + '</b> — <button type="button" class="bid-check-codes-link" id="bidCheckCodesLink">Project Settings</button>';
+      foot.querySelector('#bidCheckCodesLink').onclick = () => { App.syncProjectSettingsRows && App.syncProjectSettingsRows(); App.showModal('settingsModal'); };
+      list.appendChild(foot);
+    }
     // The voltage-drop defaults, inline (electrical only).
     if (state.trade === 'electrical') {
       const d = check.defaults;

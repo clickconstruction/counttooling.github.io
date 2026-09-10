@@ -59,6 +59,85 @@ What building it changed: the brief said "auto-keep", and reading for the timer 
 session unless Keep" was read literally rather than as "never prompt a busy session": a
 silently skipped offer would lose the old session to the newer backup on the next boot,
 while a prompt costs one click.
+---
+
+## feat(rules): slice 4 — Codes & jurisdiction (2026-09-09)
+
+A rule's value depends on which edition a jurisdiction adopts, so a project now says.
+Project Settings gains **Codes** (plumbing IPC/UPC by edition, electrical NEC, HVAC
+SMACNA) and **Jurisdiction** (free text — "Texas · Austin") under Trade.
+
+- `state.codes` holds only what the project chose; `getProjectCodes()` layers the device
+  default (the last bid's choices, remembered on every change like the trade) and the
+  app's defaults (IPC 2021 · NEC 2023 · SMACNA 2020) under it. Rides every persistence
+  site beside `ceilingHeightFt`: the save payloads, hydrate, the IndexedDB backup, canvas
+  JSON export/import, copy / load / pdf-intake. An old save resolves to the defaults.
+- The rule popover's **This project** line names the edition and jurisdiction and carries
+  the two honest warnings: *not checked against IPC 2024* when the rule's editions do not
+  include the project's, and *cited from the IPC — this project follows UPC 2021* when the
+  project's code family differs from the citation. Amendments on file are scoped to the
+  jurisdiction; none on file says so by name.
+- Bid Check ends with *Rules resolve for IPC 2021 · Texas · Austin — Project Settings*.
+- `CODE_EDITIONS` / `CODE_DEFAULTS` / `normalizeProjectCodes` live in constants.js;
+  `codes.spec.js` pins the rows, the dirty flag, the device default, the popover lines,
+  the footer, and the persistence shapes.
+
+What the self-critique changed: the mock-up's picker listed every authority having
+jurisdiction; that is a database nobody maintains, so jurisdiction is a free-text field
+and "not on file" is stated rather than implied.
+
+---
+
+## feat(rules): slice 3 — hangers from the rulebook, inch intervals, plumbing Bid Check (2026-09-09)
+
+The plumbing rules stop being prose. `support-model.js` carries hanger spacing as the app
+applies it (IPC Table 308.5: PEX 32 in at 1 in and smaller, 48 in above; copper 6 ft to
+1-1/4 in, 10 ft above; PVC / ABS / DWV 4 ft; cast iron 5 ft), and the four `plumb.hanger.*`
+rules point at it — `status: applied`, 44 values now pinned by the drift check.
+
+- **From the rulebook** in the Child counts editor: a line type whose name declares a
+  supported material and size ("1in PEX", '3/4" Cu') is offered its hanger row — `Hanger ·
+  1 per 32 in`, with what it matched (PEX · horizontal · 1 in) and the § chip. Add stamps the
+  rule on the child count, so the Summary row, the editor row and every export carry it.
+  A name with no size gets the tighter spacing; CPVC is not PVC; fix the name, not the rule.
+- **Inch intervals.** A per-ft child count may carry `intervalIn`, which wins over the
+  whole-foot `ftInterval` (the editor gained a ft / in unit select). 48 in reads "4 ft".
+  The engine, the Summary label, the report, the PipeTooling text and the agent-door
+  evaluator all honour it.
+- **Plumbing Bid Check**: an auto row, **Hangers on every supported run**, warns while a
+  PEX / copper / PVC / cast-iron type carries no hanger count (and cites the rule); four
+  manual rows — fixture units against the drain, trap arms, waste slope, backflow and
+  water-heater venting — join the trade-neutral three.
+- The plumbing tour's hanger step now takes the rulebook's row (1 per 32 in, stamped) —
+  the sample's two runs and riser make 15 hangers across the ×3 zone.
+
+What the self-critique changed: the mock-up also offered a riser clamp; the app cannot
+split a run into horizontal and vertical, so that row was dropped and the rule pages say
+the count runs on the tally length, drops included — tighter than the vertical rule, never
+looser.
+
+---
+
+## feat(rules): slice 2 — the § chip and popover in the app (2026-09-09)
+
+The rulebook reaches the estimator where the number is. `features/rules.js` fetches
+`/rules/rules.json` at boot (now precached, so it works in the basement) and any surface
+that DERIVES a number from a rule shows a small chip: the citation for a code, standard
+or recommendation (`§ NEC Chapter 9`, `§ IPC 308.5`), the word `convention` for a working
+figure. Click → one popover: the values as the app applies them, the section, the editions
+checked, what in the app uses it, amendments on file, and the rule page. Never the code's
+text. Counts the estimator clicked never carry a chip.
+
+- Chips on: the Bid Check auto rows (the model's rows now say `rule:` — conduit fill and
+  the voltage-drop recommendation), the Chain palette foot when the counter has a mount
+  height (mount heights + make-up), the Duct Schedule's Gauge and lb/ft headers and its
+  Seam & waste line, and the make-up field in Project Settings.
+- Escape closes the popover in a capture-phase listener, so the app's Esc ladder never
+  sees the key — the tool and any open modal stay as they were.
+- The Duct Schedule's own literal copy of the knob defaults now reads
+  `App.DUCT_SETTINGS_DEFAULTS` — the third copy the drift check could not see.
+- `rules-chip.spec.js` pins the chip, the popover, Escape, the static chip, the Chain
+  palette, and the precache; the model test pins the `rule:` ids.
 
 ---
 
@@ -3401,3 +3480,21 @@ in TAKEOFF_IMPORT.md) writes an agent's takeoff.json as a normal reviewable proj
 exact save-engine data shape; `takeoff-eval.js` (+node tests) diffs any takeoff against a
 reference — counts per counter name, decimal feet per line-type name (unscaled px kept
 separate) — the scoring rail for agent-vs-human comparison.
+
+## Bid basis: the marked-up plans handoff to PipeTooling (2026-09-10)
+
+When a plan set is too rough to bid to, the office bids to its marked-up copy and sends the
+marked sheets with the proposal. PipeTooling's Cover Letter opens the project's view link with
+`export=bid-basis&ref=<bid>`; `features/bid-basis.js` (pure model in `bid-basis-model.js`) opens
+Export PDFs preset to the sheets that carry marks (`bidBasisPageSelections`: counters, runs,
+ducts, rooms — highlights and notes alone never select a page), report first, notes at the back,
+names the file `bid-basis_<ref>_<project>_<date>_<HHMM>.pdf` (bid first, so a computer search
+finds it), and after the download shows the Downloaded card and `postMessage`s a manifest —
+file name, sheets, mark totals, the takeoff's last-saved time, and the Canvas JSON snapshot —
+to the PipeTooling tab that opened it, targeted at the PipeTooling origins only. A lighter
+"loaded" notice goes out as soon as the plan opens so PipeTooling can flag "takeoff changed
+since". Export PDFs was refactored on the way: `readSpecificPagesOptionsFromDom()` +
+`runSpecificPagesExport(options)` replace the DOM-driven download function, and a new **Only
+sheets with marks** bulk button makes the preset's selection repeatable by hand. Regression:
+`bid-basis.spec.js` (popup flow end to end) and `bid-basis-model.test.js`. PipeTooling side:
+v2.3219 (`bid_plan_basis_exports`, the Cover Letter card, the letter clause).

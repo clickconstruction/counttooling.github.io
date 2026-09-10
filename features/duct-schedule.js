@@ -75,7 +75,7 @@
   function getDuctSettings() {
     const state = App.state;
     if (!state.ductSettings || typeof state.ductSettings !== 'object') {
-      state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted' };
+      state.ductSettings = { ...(App.DUCT_SETTINGS_DEFAULTS || { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted' }) };
     }
     const ds = state.ductSettings;
     if (!Number.isFinite(ds.seamWastePct) || ds.seamWastePct < 0) ds.seamWastePct = 15;
@@ -208,7 +208,8 @@
     let html = '';
     // Straight duct
     html += '<div class="duct-schedule-section-label">Straight duct</div>';
-    html += '<table class="duct-schedule-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
+    const chip = (id) => (App.ruleChipHtml ? ' ' + App.ruleChipHtml(id, { cls: 'rule-chip-th' }) : '');
+    html += '<table class="duct-schedule-table"><tr><th>Size</th><th>Gauge' + chip('hvac.duct.gauge-schedule') + '</th><th>LF</th><th>lb/ft' + chip('hvac.duct.sheet-weight') + '</th><th>lb</th></tr>';
     s.straightRows.forEach((r) => {
       html += '<tr><td class="mono">' + esc(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : '—') + '</td><td class="mono">' + esc(lfLabel(r)) + '</td><td class="mono">' + r.lbPerFt.toFixed(2) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
     });
@@ -246,7 +247,7 @@
     // Subtotal → seam & waste → Bid weight
     html += '<table class="duct-schedule-table duct-schedule-rollup">';
     html += '<tr><td>Straight + fittings</td><td class="mono num">' + fmtLb(s.subtotalLb) + ' lb</td></tr>';
-    html += '<tr><td>Seam &amp; waste +<input type="number" id="ductSeamWastePct" class="duct-schedule-pct" min="0" max="100" step="1" value="' + s.seamWastePct + '" aria-label="Seam and waste percent">%</td><td class="mono num">' + fmtLb(s.seamWasteLb) + ' lb</td></tr>';
+    html += '<tr><td>Seam &amp; waste +<input type="number" id="ductSeamWastePct" class="duct-schedule-pct" min="0" max="100" step="1" value="' + s.seamWastePct + '" aria-label="Seam and waste percent">%' + chip('hvac.duct.schedule-factors') + '</td><td class="mono num">' + fmtLb(s.seamWasteLb) + ' lb</td></tr>';
     html += '<tr class="duct-schedule-bid-row"><td>Bid weight</td><td class="mono num">' + fmtLb(s.bidWeightLb) + ' lb</td></tr>';
     html += '</table>';
 

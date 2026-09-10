@@ -64,7 +64,7 @@ test('ids differing across projects still join by name', () => {
 test('v2: groups, drops and child-count rules tally and diff', () => {
   const data = (marksGroup, drop) => ({
     counters: [{ id: 'c1', name: 'Duplex Receptacle', childCounts: [{ name: '4" Square Box', qty: 1, per: 'count' }] }],
-    lineTypes: [{ id: 'lt1', name: '1/2" EMT', childCounts: [{ name: 'Coupling', qty: 1, per: 'ft', ftInterval: 10 }, { name: 'Connector', qty: 2, per: 'run' }] }],
+    lineTypes: [{ id: 'lt1', name: '1/2" EMT', childCounts: [{ name: 'Coupling', qty: 1, per: 'ft', ftInterval: 10 }, { name: 'Connector', qty: 2, per: 'run' }, { name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }] }],
     groups: [{ id: 'g1', name: 'LP-1 / 7' }, { id: 'g2', name: 'LP-1 / 9' }],
     pages: [{ scale: { pixelsPerUnit: 12, unit: 'ft' }, canvases: [{ annotations: {
       counterMarkers: { c1: [{ x: 0, y: 0, group: 'g1' }, { x: 1, y: 1, group: marksGroup }] },
@@ -76,7 +76,7 @@ test('v2: groups, drops and child-count rules tally and diff', () => {
   assert.strictEqual(ref.counts['duplex receptacle'].count, 2);
   assert.strictEqual(Math.round(ref.feet['1/2" emt'].feet * 100) / 100, 19.5, '10 ft traced + 9.5 ft drop');
   assert.strictEqual(ref.groups['lp-1 / 7'].counts['duplex receptacle'].count, 2);
-  assert.deepStrictEqual(Object.fromEntries(Object.entries(ref.children).map(([k, v]) => [k, v.total])), { '4" square box': 2, coupling: 2, connector: 2 }, 'ceil(19.5/10)=2 couplings, 2 connectors per run, box per count');
+  assert.deepStrictEqual(Object.fromEntries(Object.entries(ref.children).map(([k, v]) => [k, v.total])), { '4" square box': 2, coupling: 2, connector: 2, hanger: 8 }, 'ceil(19.5/10)=2 couplings, 2 connectors per run, box per count, ceil(19.5/2.667)=8 hangers at 32 in');
   // candidate wired one receptacle to the wrong circuit and forgot the drop
   const diff = diffTakeoffs(data('g2', 0), data('g1', 9.5));
   assert.strictEqual(diff.counts[0].verdict, 'match', 'total count still right');

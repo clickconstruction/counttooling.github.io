@@ -227,7 +227,8 @@
     const counter = state.counters.find((c) => c.id === state.activeCounterType);
     const lt = state.lineTypes.find((l) => l.id === state.activeLineTypeId);
     if (counter && lt) {
-      foot.innerHTML = 'Chaining: <b>' + esc(counter.name || 'Counter') + '</b> + <b>' + esc(lt.name || 'Line') + '</b> · Enter/Esc ends the run';
+      const vertical = typeof counter.mountHeightIn === 'number' && App.ruleChipHtml ? ' · vertical ' + App.ruleChipHtml('elec.mount-height.defaults') + ' ' + App.ruleChipHtml('elec.vertical.make-up') : '';
+      foot.innerHTML = 'Chaining: <b>' + esc(counter.name || 'Counter') + '</b> + <b>' + esc(lt.name || 'Line') + '</b> · Enter/Esc ends the run' + vertical;
     } else {
       foot.textContent = 'Pick a counter and a line type to start placing.';
     }

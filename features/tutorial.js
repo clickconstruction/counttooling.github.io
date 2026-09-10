@@ -246,10 +246,10 @@
     },
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
-      body: 'Open 1in PEX\'s details (the pencil) → Child counts: Hanger, 1 per 4 ft. From now on every run of this type counts its own hangers into the Summary and every export. Delete a run and its hangers go with it — never a mark on the sheet, never stale.',
+      body: 'Open 1in PEX\'s details (the pencil). Under Child counts the rulebook offers Hanger · 1 per 32 in — the IPC spacing for PEX at 1 in, read off the type\'s name. Add it. From now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
       target: ['#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
       check: () => (state().lineTypes || []).some((lt) => (lt.childCounts || []).length),
-      action: { label: 'Add Hanger · 1 per 4 ft', run: addHangerRule },
+      action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
     {
       id: 'zone', title: 'A typical floor', kind: 'do',
@@ -465,8 +465,11 @@
     if (!pLineType()) addPexLineType();
     const lt = pLineType();
     if ((lt.childCounts || []).length) return;
+    // the same row the Child counts editor offers from the rulebook
+    const sm = window.SupportModel;
+    const sg = (sm && sm.hangerSuggestionsFor(lt.name)[0]) || { name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' };
     App.pushUndoSnapshotCurrentPage();
-    lt.childCounts = [{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: 4 }];
+    lt.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }];
     App.markProjectDirty(); App.updateUI();
   }
   function addTypicalFloorZone() {

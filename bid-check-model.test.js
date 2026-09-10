@@ -73,6 +73,14 @@ test('bidCheckOpenCount: ⚠ auto rows + unticked manual rows for the trade', ()
   const auto = [{ verdict: 'warn' }, { verdict: 'ok' }, { verdict: 'na' }];
   const all = bc.bidCheckOpenCount(auto, {}, 'electrical');
   assert.deepStrictEqual(all, { auto: 1, manual: 8, total: 9 });
-  assert.deepStrictEqual(bc.bidCheckOpenCount(auto, { addenda: true }, 'plumbing'), { auto: 1, manual: 2, total: 3 });
+  // plumbing: the 3 trade-neutral rows (addenda ticked) + the 4 plumbing rows
+  assert.deepStrictEqual(bc.bidCheckOpenCount(auto, { addenda: true }, 'plumbing'), { auto: 1, manual: 6, total: 7 });
   assert.deepStrictEqual(bc.bidCheckOpenCount([], null, null), { auto: 0, manual: 3, total: 3 });
+});
+
+test('the auto rows that apply a public rule name it (rulebook chips)', () => {
+  const rows = bc.bidCheckAutoRows({ fillCases: [], circuits: [], crossCheck: [], untaggedDevices: 0, offRunDevices: 0, defaults: { loadAmps: 12, volts: 120 } });
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+  assert.strictEqual(byId['conduit-fill'].rule, 'elec.conduit.fill-limit');
+  assert.strictEqual(byId['voltage-drop'].rule, 'elec.voltage-drop.branch-limit');
 });

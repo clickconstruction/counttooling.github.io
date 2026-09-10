@@ -138,6 +138,7 @@
       App.state.groupsEnabled = !!d.groupsEnabled;
       App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
       App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
+      App.state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
       App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
       App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
       App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];

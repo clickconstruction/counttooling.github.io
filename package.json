@@ -9,6 +9,7 @@
     "build:sample-plan": "node scripts/build-sample-plan.js",
     "build:screenshots": "node scripts/build-screenshots.js",
     "build:guides": "node scripts/build-guides.js",
+    "build:rules": "node scripts/build-rules.js",
     "build:toc": "node scripts/build-toc.js",
     "build:filemap": "node scripts/build-filemap.js",
     "build:macros": "node scripts/build-macros.js",

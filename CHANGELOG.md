@@ -13,6 +13,46 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): the rulebook, slice 1 — rules as source, the site, and the drift check (2026-09-09)
+
+The line the product draws is public knowledge versus company knowledge: NEC fill, the
+voltage-drop recommendation, SMACNA-style gauge, hanger spacing are the drawing's side
+and belong in the app; shop spacing and labor stay with pricing. Until now the public
+half lived only as numbers in code. Slice 1 writes it down once and makes code answer to
+it.
+
+- **Rules are Markdown with structured front-matter** — `content/rules/<trade>/<slug>.md`:
+  a stable dotted `id`, `kind` (code | standard | recommendation | convention — mount
+  heights are conventions, and the page says so), `status` (applied | draft), `values[]`
+  as `when` / `value` / `unit`, `source` (code, section, editions, public URL),
+  `amendments`, `used_by`, then prose that says what the app does and does not do with it.
+  Thirteen rules ship: conduit fill, the 3% voltage-drop recommendation, the K constant,
+  device mount heights, make-up (electrical); the gauge schedule, sheet weight, the Duct
+  Schedule factors, room airflow (HVAC); hanger spacing for PEX, copper, PVC and cast
+  iron (plumbing, `draft` — not yet wired to child counts). Cited by section, never
+  reprinted; the Chapter 9 area tables stay in code.
+- **`npm run build:rules`** renders `/rules/` — a rule card per page (the values as the
+  app applies them, source, editions checked, used-by chips, amendments on file), a
+  searchable index with trade filters, and `rules/rules.json` for the app and any AI.
+  The site chrome moved to `scripts/lib/site.js` so Guides and Rules share one header
+  (both now link to each other; the landing nav too); `build:guides` keeps `sitemap.xml`
+  and lists the rule pages.
+- **The drift check.** A value row may point at code — `bid-check-model.js#fillLimitFor(3)`,
+  `duct-model.js#DUCT_GAUGE_TABLE["1"][0].gauge` — and `build:rules --check`, now in
+  `npm run check`, resolves it by walking the module's exports (no eval) and fails when
+  code and rule disagree. 34 values are pinned. To make them reachable,
+  `VD_LIMIT_PCT_DEFAULT` and `VD_K` joined the Bid Check model's exports and the Duct
+  Schedule knob defaults moved into `duct-model.js` as `DUCT_SETTINGS_DEFAULTS` (app.js
+  spreads them; two literal copies gone).
+- `rules.test.js` pins the parser, the pointers, the pages, the JSON and the sitemap.
+
+What the self-critique changed before it shipped: `kind` was added when writing the mount
+heights made it plain they are not code; `status: draft` was added so the plumbing rules
+could be published honestly before the app applies them; the index cites the section and
+the condition but reprints no table.
+
+---
+
 ## chore(guides): regenerate the screenshots on the ANSI B sample plan (2026-09-09)
 
 The 44 guide images (`guides/img/*.png` + the landing hero) were still captured on the old

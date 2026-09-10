@@ -21,6 +21,7 @@ const STEPS = [
   { name: 'build:filemap --check', cmd: 'node', args: ['scripts/build-filemap.js', '--check'] },
   { name: 'build:macros --check', cmd: 'node', args: ['scripts/build-macros.js', '--check'] },
   { name: 'build:guides --check', cmd: 'node', args: ['scripts/build-guides.js', '--check'] },
+  { name: 'build:rules --check', cmd: 'node', args: ['scripts/build-rules.js', '--check'] },
   { name: 'build:sw --check', cmd: 'node', args: ['scripts/build-sw.js', '--check'] },
   { name: 'brand tokens', cmd: 'node', args: ['scripts/check-brand-tokens.js'] },
 ];

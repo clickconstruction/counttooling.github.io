@@ -22,6 +22,19 @@
  * the getter-accessor the save engine's clobber guard polls: while the prompt
  * is unresolved, every takeoff-backup write is held (T1-01).
  *
+ * The offer waits its turn (2026-09-10): boot is async, so on a slow path a
+ * ?tour= walkthrough or a dialog (the ?signin=1 auth modal, Set Scale) can be
+ * up by the time the candidate arrives. `openLastSessionRestorePrompt` then
+ * DEFERS instead of showing — the candidate sits in the private
+ * `deferredRestore` (NOT `pendingRestore`: the T1-01 write hold is for a
+ * shown prompt, and work in progress must keep backing up — the candidate is
+ * safe anyway, on the held key the engine never writes) — and
+ * `App.retryDeferredRestorePrompt` re-evaluates it when the tour stops
+ * (features/tutorial.js) or a modal hides (app.js hideModal), with a 1 s
+ * safety poll for overlays closed without hideModal. Nothing is ever restored
+ * without a click on Keep: boot's silent palette/page pre-apply is skipped
+ * when the session already has pages, is dirty, or is running a tour.
+ *
  * Loaded as a classic <script src="/features/restore-last-session.js"> AFTER
  * app.js; boot (init) runs after all classic scripts, so the registration is
  * always in place before the boot path calls it. idb primitives
@@ -35,6 +48,10 @@
   const App = (window.App = window.App || {});
 
   let pendingRestore = null;
+  // The candidate handed over while a tour or another modal was up; retried
+  // when the blocker goes (see the header). Never both set at once.
+  let deferredRestore = null;
+  let deferredPoll = null;
 
   // Prompt copy: the project name is escaped and gets zero-width break hints
   // after -/_ so long takeoff names wrap instead of overflowing the modal.
@@ -42,8 +59,31 @@
     return App.escapeHtml(name || 'Untitled').replace(/([-_])/g, '$1​');
   }
 
+  // What stands between the prompt and the user right now: a running tour,
+  // an open modal, or nothing. Toasts are `.toast-card`s, not overlays, so
+  // they never block; the prompt's own overlay is skipped so a retry while it
+  // is already up is a no-op.
+  function restorePromptBlocker() {
+    if (App.isTutorialActive && App.isTutorialActive()) return 'tour';
+    const open = Array.from(document.querySelectorAll('.modal-overlay.visible')).find((el) => el.id !== 'lastSessionRestoreModal');
+    return open ? 'modal' : null;
+  }
+  function stopDeferredPoll() { if (deferredPoll) { clearInterval(deferredPoll); deferredPoll = null; } }
+  const promptSource = (p) => (p.cloudLast ? 'cloud' : 'local');
+  const promptProjectId = (p) => (p.cloudLast ? (p.cloudLast.projectId || null) : null);
+
+  // Returns true when the prompt is on screen, false when it was deferred.
   function openLastSessionRestorePrompt(pending) {
-    if (!pending) return;
+    if (!pending) return false;
+    const blocker = restorePromptBlocker();
+    if (blocker) {
+      deferredRestore = pending;
+      try { App.logUserEvent('restore_prompt_deferred', promptProjectId(pending), { source: promptSource(pending), blocker }); } catch (_) { /* noop */ }
+      if (!deferredPoll) deferredPoll = setInterval(retryDeferredRestorePrompt, 1000);
+      return false;
+    }
+    deferredRestore = null;
+    stopDeferredPoll();
     // Tier-3 B1 (Esc ladder): lastSessionRestoreModal is now in the ladder via
     // App.dismissLastSessionRestorePrompt — NEVER a bare hideModal: with the
     // T1-01 clobber guard, a hidden-but-pending prompt would suspend takeoff
@@ -59,6 +99,23 @@
       }
     }
     App.showModal('lastSessionRestoreModal');
+    try { App.logUserEvent('restore_prompt_shown', promptProjectId(pending), { source: promptSource(pending) }); } catch (_) { /* noop */ }
+    return true;
+  }
+
+  // Give a deferred offer its turn once whatever blocked it is gone. Runs on
+  // a macrotask so a handler that closes one surface and opens another
+  // (Project Settings → "start the tour": hideModal, then startTutorial)
+  // settles first — the re-check sees the tour and keeps waiting.
+  function retryDeferredRestorePrompt() {
+    if (!deferredRestore) return;
+    setTimeout(() => {
+      if (!deferredRestore || pendingRestore || restorePromptBlocker()) return;
+      const p = deferredRestore;
+      deferredRestore = null;
+      stopDeferredPoll();
+      openLastSessionRestorePrompt(p);
+    }, 0);
   }
 
   // Total counter markers across the restored pages (restore_keep telemetry).
@@ -278,7 +335,12 @@
     pendingRestore = null;
     App.hideModal('lastSessionRestoreModal');
   };
-  App.onLastSessionRestoreReset = () => { pendingRestore = null; };
+  App.retryDeferredRestorePrompt = retryDeferredRestorePrompt;
+  // A session teardown (sign-out, user change, Close project) drops a deferred
+  // offer too — nothing is consumed, so it returns next boot like an ignored
+  // prompt.
+  App.onLastSessionRestoreReset = () => { pendingRestore = null; deferredRestore = null; stopDeferredPoll(); };
+  App.isRestorePromptDeferred = () => !!deferredRestore;
   // Polled by the save engine's clobber guard (via the app.js ctx wiring):
   // takeoff-backup writes hold while the Keep/Discard prompt is unresolved.
   App.isRestorePromptPending = () => !!pendingRestore;

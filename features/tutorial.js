@@ -570,6 +570,9 @@
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: finished ? 'finished' : 'left', index: stepIdx });
     render();
     syncEntryPoints();
+    // A "Project from Last Session" offer that arrived mid-tour waited for
+    // this moment (features/restore-last-session.js; no-op otherwise).
+    if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
   }
   // The empty-canvas hint offers each tour until THAT tour is finished on this
   // device; the whole offer goes when both are.

@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,783 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,800 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,015 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,310 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,246 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,016 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,285 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,044 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 728 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 875 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 823 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (80 files) | 20,997 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (81 files) | 21,287 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -92,6 +92,7 @@ modules. Candidates in priority order:
 | [circuit-model.js](circuit-model.js) | The pure circuit model behind **Circuits** (Electrical, First-Class S4, 2026-09-08): `circuitTag` ("LP-1/7"), `isCircuitGroup`, `buildRunGraph` (runs → nodes snapped within a tolerance + adjacency in feet), `distancesFrom` (Dijkstra), `farthestDeviceFeet({ runs, devices, panelPoints, homerunEnds })` (the farthest device along the circuit's runs from the panel mark, else from the homerun's far end; devices off the runs counted apart — where voltage drop lives, S5), `panelCrossCheck(groups, counters)` (circuits on plan = distinct numbers among a panel's groups vs the panel counter's `poles`; verdict match / under / over / unknown). Loaded after conductor-model.js; `window.CircuitModel`; node-tested in [circuit-model.test.js](circuit-model.test.js). |
 | [bid-check-model.js](bid-check-model.js) | The pure rule table behind **Bid Check** (Electrical, First-Class S5, 2026-09-08): NEC Chapter 9 tables (`RACEWAY_AREA_IN2` by kind and size, `CONDUCTOR_AREA_IN2` by insulation family, `GAUGE_CMIL`), `conduitFill(raceway, conductors)` → `{ pct, limit, ok, upsize }` (the smallest size of that kind that passes), `voltageDrop({ feet, amps, gauge, volts, phase, material })` → `{ pct, ok, upsize: { gauge } }` (2·K·I·L/CM, K 12.9 copper), `BID_CHECK_MANUAL_ROWS` (trade-neutral + electrical judgment calls), `bidCheckAutoRows(inputs)` (the four electrical auto rows — fill, voltage drop to the farthest device, circuits vs panel, devices on circuits — as `{ id, label, verdict: ok\|warn\|na, detail }` that show their work), `bidCheckOpenCount`. `window.BidCheckModel`; node-tested in [bid-check-model.test.js](bid-check-model.test.js) with the report's appendix figures. |
 | [tag-model.js](tag-model.js) | The pure text-layer reading model behind **Read the tags** (Electrical, First-Class S6, 2026-09-08): `isTagToken` (1–3 letters + optional digits — "A", "B1", "EM"; not words or room numbers), `tagOfCounter` (an explicit `counter.tag`, else a name that is a tag or reads "Type B" / "B — …"), `nearestTag(items, pt, radius)` (by box center), `rowsInBox` (items in a box clustered into baseline rows, left to right), `parseScheduleRows` (tag + description rows; headers and notes skipped). Items are `{ str, x, y, w, h }` in app PDF-space — features/tag-reader.js does the pdf.js → viewport conversion. `window.TagModel`; node-tested in [tag-model.test.js](tag-model.test.js). |
+| [bid-basis-model.js](bid-basis-model.js) | The pure model behind the **Bid basis** handoff (PipeTooling, 2026-09-10): `parseBidBasisParams` (`?export=bid-basis&ref=b409` on a view link), `buildBidBasisFilename` (`bid-basis_<ref>_<project-slug>_<YYYY-MM-DD>_<HHMM>.pdf` — bid first so a computer search for the bid number finds it), `pageHasBidMarks` / `bidBasisPageSelections` (counters, runs, ducts, rooms select a sheet; highlights and notes alone never do), `summarizeIncludedPages`, `buildBidBasisManifest` + `buildBidBasisLoadedNotice` (the two `postMessage` envelopes PipeTooling's `bidBasis.ts` parses), `bidBasisTargetOrigins` (the PipeTooling hosts only — never `'*'`; localhost adds the Vite dev ports and itself for specs). Loaded after duct-model.js; `window.BidBasisModel`; node-tested in [bid-basis-model.test.js](bid-basis-model.test.js). |
 | [line-metrics.test.js](line-metrics.test.js) | Node `node:test` unit tests for [line-metrics.js](line-metrics.js) — straight vs arc segment length, polyline summation, drop-length addition (only when scaled), scale-zone override in `effectiveScaleForLine`, real-world length with/without drops, the multiply-zone factor in `lineLengthForTotals`, and `scaleForLineType` unit preference / fallbacks. Sets up the geometry globals via `Object.assign(globalThis, require('./geometry.js'))` before requiring the module; run with `npm run test:unit` |
 | [duct-model.js](duct-model.js) | Pure duct-takeoff math + data model (DUCT-PLAN.md unit D1) in the geometry.js mold — the run/size/fitting factories + validators (`makeDuctRun`, `makeRectSize`/`makeRoundSize`, `makeDuctFitting`, `formatDuctSize`, `runSegmentSpans`), the SMACNA-style gauge schedule by pressure class (`DUCT_GAUGE_TABLE`, `selectGauge`), pounds math (`ductWeightPerFoot`, `segmentPounds`, `fittingPounds`, `runStraightItems`, `tallyStraightBySize`, `rollupDuct`/`rollupRunsToSchedule`), insulation sq ft, the equal-friction ductulator (+velocity cap, round↔rect equivalents, `suggestRoundAndRect`), the neck-size table, and (D2) the `ductStrokePx` stroke-width band table the drawing tool paints with (bands on the governing dimension: ≤8"→3px, ≤14"→4, ≤20"→5, ≤28"→6, ≤40"→8, ≤60"→10, else 12), and (D3) the **fitting inference walk** — `inferAutoDuctFittings` (interior-vertex bends ≥30° → elbow45, ≥60° → elbow90, sized to the arriving segment; segment boundaries → transition at the larger side; a run whose first vertex lands within `DUCT_TAP_SNAP_PDF` (12 pdf-pts, deliberately zoom-independent) of another run → tap ON THE PARENT at the child's starting size) + `reconcileDuctFittings` (idempotent auto/manual contract documented atop §3b: autos re-derived with anchor-stable ids, non-auto overrides and suppressed delete-tombstones preserved by anchor, orphans of deleted runs pruned) + `ductFittingAnchor`/`ductFittingOutDirection`/`tallyDuctFittingCounts`. Classic `<script src>` loaded before [canvas-draw.js](canvas-draw.js) (which reads it by bare name); zero DOM/`state` deps; guarded CommonJS footer for [duct-model.test.js](duct-model.test.js). D6 adds §3c **design-build accumulation**: `ductNearestOnPolyline`/`ductPolylineLength`, the device ATTACHMENT rule `attachDuctDevices` (nearest run within `DUCT_TAP_SNAP_PDF`), the tap-rule network `ductChildLinks`, attachment-derived system inheritance `ductDeviceSystemId`, the oriented downstream query `ductDownstreamCfm` (equipment end = vertex nearest `equipmentPos` for roots, always vertex 0 for tapped children; supply/return share the cross-section magnitude — the traversal doc atop §3c), and the live-trace `ductDraftRemainingCfm` (total system CFM − served; tip-adjacent devices still downstream) |
 | [duct-model.test.js](duct-model.test.js) | Node `node:test` unit tests for [duct-model.js](duct-model.js) — factories/validators, gauge-table boundaries, the DUCT-PLAN worked lb/ft numbers, rollup composition (counted vs factor fittings, seam & waste, liner/wrap sq ft), ductulator anchor points + velocity binding, rect-equivalent picks, neck-size boundaries, the D2 stroke-band mapping, and the D3 inference walk (bend-angle thresholds, larger-side transitions, tap snap/nearest-parent, anchor resolution/pruning, reconcile idempotency + override/tombstone survival, count tallies); run with `npm run test:unit` |
@@ -127,8 +128,10 @@ modules. Candidates in priority order:
 | [multiply-zone-settings.spec.js](multiply-zone-settings.spec.js) | Playwright regression for pilot #5 — uploads `test-2pages.pdf`, asserts `window.App.openMultiplyZoneSettingsModal` is a function, opens via the registry, sets `#multiplyZoneSettingsDefaultMult` to 5 + `#multiplyZoneSettingsLabelSize` to 20 (dispatching `input`, asserting `#multiplyZoneSettingsLabelSizeVal` reads `20`), clicks `#multiplyZoneSettingsShowLabelBtn` to toggle the label off, sets position to `top-left`, clicks `#multiplyZoneSettingsClose`, and asserts `state.multiplyZoneSettings` deep-equals `{ showLabelOnZone: false, defaultMultiplier: 5, labelSize: 20, labelPosition: 'top-left' }` with no console / page errors; `npx playwright test multiply-zone-settings.spec.js` |
 | [features/scale-zone-settings.js](features/scale-zone-settings.js) | The Scale Zone **settings** modal — sibling of [features/multiply-zone-settings.js](features/multiply-zone-settings.js), born from a field report (the zone's fallback `0.23 ft/pt` label rendered dead-center over the fixtures being counted; scale zones previously had **no** label controls — always shown, centered, size borrowed from `multiplyZoneSettings`). Registers `App.openScaleZoneSettingsModal` (called from the Scale Zone toolbar/sidebar right-click via [features/tool-context-menu.js](features/tool-context-menu.js) — the button moved OUT of that file's no-settings toast list); binds the `#scaleZoneSettings*` toggle/slider/Close at load. Commits `state.scaleZoneSettings` `{ showLabelOnZone, labelSize (8–24), labelPosition }` — default position **top-left** — consumed by the scale-zone block in [canvas-draw.js](canvas-draw.js) (which also factors the shared `zoneLabelLayout` corner/center placement helper used by both zone kinds). Setting rides save/load + export/import + the IndexedDB backup alongside `multiplyZoneSettings`. Zero new published deps (close re-renders via `App.renderAnnotations` — annotation-only, no re-raster) |
 | [scale-zone-settings.spec.js](scale-zone-settings.spec.js) | Playwright regression for the Scale Zone settings modal — uploads `test-2pages.pdf`, asserts `App.openScaleZoneSettingsModal` is registered and `App.__toolContextMap()` lists `scaleZoneBtn: ['Scale Zone Settings…']` (and NOT in `noSettings`), asserts the state defaults `{ showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' }`, opens via the registry, sets size 10 (live `#scaleZoneSettingsLabelSizeVal` check), toggles the label off, sets position `bottom-right`, closes, and asserts the committed `state.scaleZoneSettings`; no console / page errors; `npx playwright test scale-zone-settings.spec.js` |
-| [features/export-pdfs.js](features/export-pdfs.js) | Sixth feature-file split (`window.App` registry pilot #6) and the **largest single move so far** (the ~250-line `specificPages*` cluster, 9 publish-only deps). The Export PDFs modal — the two module-locals `specificPagesSelections`/`specificPagesCanvasMode`, `openSpecificPagesModal`, `updateSpecificPagesCanvasModeVisibility`/`updateSpecificPagesDownloadState`/`updateSpecificPagesNavState`, `setAllSpecificPagesTo`/`setAllSpecificPagesToMarkedWithAllCanvases`, `downloadSpecificPages`, and all `#specificPages*` button/scroll/nav bindings. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openSpecificPagesModal`, and binds `#specificPages.onclick = openSpecificPagesModal` plus the rest at load. **Interleaved move**: the shared PDF-download helpers (`sanitizeForFilename`/`downloadPdfBuffer`/`downloadProjectPdf`) and the "Copy to PipeTooling" dropdown toggle sat in the middle of the old section and **stay** in app.js. 9 publish-only deps stay defined in app.js (`getPageCanvases`, `renderAnnotationsToContext`, `addReportPagesToPdf`, `addHighlightsToPdf`, `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`, `logUserEvent`) and are read via `App.*`. The Escape-key `hideModal('specificPagesModal')` branch is modal-string-only and stays |
+| [features/export-pdfs.js](features/export-pdfs.js) | Sixth feature-file split (`window.App` registry pilot #6) and the **largest single move so far** (the ~250-line `specificPages*` cluster, 9 publish-only deps). The Export PDFs modal — the two module-locals `specificPagesSelections`/`specificPagesCanvasMode`, `openSpecificPagesModal`, `updateSpecificPagesCanvasModeVisibility`/`updateSpecificPagesDownloadState`/`updateSpecificPagesNavState`, `setAllSpecificPagesTo`/`setAllSpecificPagesToMarkedWithAllCanvases`, `downloadSpecificPages`, and all `#specificPages*` button/scroll/nav bindings. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openSpecificPagesModal`, and binds `#specificPages.onclick = openSpecificPagesModal` plus the rest at load. **Interleaved move**: the shared PDF-download helpers (`sanitizeForFilename`/`downloadPdfBuffer`/`downloadProjectPdf`) and the "Copy to PipeTooling" dropdown toggle sat in the middle of the old section and **stay** in app.js. 9 publish-only deps stay defined in app.js (`getPageCanvases`, `renderAnnotationsToContext`, `addReportPagesToPdf`, `addHighlightsToPdf`, `addNotesToPdf`, `hasAnyHighlights`, `hasAnyNotes`, `sanitizeForFilename`, `logUserEvent`) and are read via `App.*`. The Escape-key `hideModal('specificPagesModal')` branch is modal-string-only and stays **Options refactor (2026-09-10, Bid basis):** `readSpecificPagesOptionsFromDom()` is the one DOM read and `runSpecificPagesExport(options, onProgress)` builds the (unsaved) jsPDF from an options object, so a preset never pokes the controls; `openSpecificPagesModal({ preset: 'bid-basis', ref, filename })` (or `App.getActiveBidBasisPreset()` when called bare) applies `setSpecificPagesToMarksOnly()` — the new **Only sheets with marks** bulk button (`#specificPagesMarksOnly`, bid-basis-model.js `bidBasisPageSelections`) — turns the report on, highlights off, notes on, shows the `#specificPagesBidBasisChip` title chip and the `#specificPagesFilenameRow` "Saves as" row; every page card now carries an `N marks` / `no marks` caption (`.specific-page-marks`) and an excluded no-marks card dims (`.specific-page-no-marks`). Spec seam `App.getSpecificPagesSelections()`. |
 | [export-pdfs.spec.js](export-pdfs.spec.js) | Playwright regression for pilot #6 — uploads `test-2pages.pdf`, asserts `window.App.openSpecificPagesModal` + the 9 publish-only deps are functions, opens via the registry (asserts 2 `.specific-page-card`), exercises bulk select (`#specificPagesAllExclude` → `#specificPagesDownload` disabled; `#specificPagesAllMarked` → enabled), the marker-scale slider (set `#specificPagesMarkerScale` to 125 + dispatch `input`, assert `#specificPagesMarkerScaleVal` reads `125`), and `#specificPagesCancel` closing the modal; asserts no console / page errors. Behavior-neutral — deliberately does **not** click Download (real jsPDF render + save is covered by the manual smoke); `npx playwright test export-pdfs.spec.js` |
+| [features/bid-basis.js](features/bid-basis.js) | **Bid basis** (2026-09-10): when PipeTooling opens a view link with `export=bid-basis&ref=<bid>`, `App.maybeStartBidBasisExport()` (called by app.js right after `initViewOnlyMode`) posts the loaded notice to `window.opener`, then opens Export PDFs with the preset (`App.getActiveBidBasisPreset()` — export-pdfs.js asks for it on every open in that tab, sidebar button included, and mints a fresh file name each time). After the download export-pdfs.js hands the jsPDF to `App.onBidBasisExported`, which builds the manifest (sheets, mark totals, notes, size via `doc.output('arraybuffer')`, the takeoff's `state.currentProjectUpdatedAt`, and `App.buildCanvasExportData()` — the Canvas JSON snapshot), posts it to the opener at the PipeTooling origins, and shows `#bidBasisDoneModal` (file name + Copy, sheet chips, "PipeTooling has been told" or the by-hand fallback when no opener answered; Download again re-opens the preset; Back to PipeTooling focuses the opener). Spec seams `App.getBidBasisContext` / `App.getLastBidBasisManifest`. Deps: `state`, `openSpecificPagesModal`, `getActiveAnnotations`, `buildCanvasExportData`, `showModal`, `hideModal`, `showToast`. |
+| [bid-basis.spec.js](bid-basis.spec.js) | Playwright regression for the Bid basis handoff — a same-origin opener page `window.open`s the view link (get-view-project stubbed at the context level, email gate pre-seeded) with the flag: the dialog opens on its own with the chip, the intro's sheet count, the preset selection ({0: marked, 1: exclude} for a note-only page), toggles report on / highlights off / notes on, the dimmed no-marks card, the "Saves as" row; "Only sheets with marks" is repeatable after All Marked Up; Download saves under the promised name, the Downloaded card shows it, the opener received the loaded notice and the manifest (sheets, totals, snapshot), Copy puts the name on the clipboard, Download again re-opens on the preset. Plus: a view link without the flag leaves the dialog closed and chip-less, and the flag on a non-view-link boot is ignored. |
 | [features/legend-settings.js](features/legend-settings.js) | Seventh feature-file split (`window.App` registry pilot #7) and the **lowest-risk move so far** — the Summary Legend **settings** modal (`openLegendSettingsModal` + its `legendSettingsClose` and 8 live appearance handlers `legendBgOpacity`/`legendBgColor`/`legendShowBorder(Btn)`/`legendScale`/`legendShowResizeHighlight(Btn)`/`legendTextOpacity`/`legendShowRooms(Btn)`/`legendShowDuct(Btn)` — the duct-rows toggle is DUCT unit D5, default ON — plus the `#summarySectionTitle` opener). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openLegendSettingsModal`, binds the close/handlers/opener at load. **Second zero-new-dep move** — every dep (`state`, `showModal`, `hideModal`, `renderPdf`) was already on `App`. Each handler mutates `state.legendSettings` then calls `App.renderPdf()` (live). Scope is the settings modal only — the on-canvas legend overlay (`drawLegend`, the `legendBtn`/`legendBtnSidebar` toggles), the Summary section **collapse** icon (`#summaryCollapseIcon`, a different element — its toggle stays), and every `state.legendSettings` save/load/import site stay in app.js. The moved opener keeps its `closest('#summaryCollapseIcon')` guard |
 | [legend-settings.spec.js](legend-settings.spec.js) | Playwright regression for pilot #7 — uploads `test-2pages.pdf`, asserts `window.App.openLegendSettingsModal` is a function, opens via the registry, sets `#legendScale` to 150 (dispatching `input`, asserting `#legendScaleVal` reads `150` and `state.legendSettings.legendScale === 1.5`), clicks `#legendShowBorderBtn` and asserts `state.legendSettings.showBorder` flipped, clicks `#legendSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test legend-settings.spec.js` |
 | [features/page-settings.js](features/page-settings.js) | Eighth feature-file split (`window.App` registry pilot #8) — the Page **settings** modal (`openPageSettingsModal` + its `pageSettingsTruncate`/`pageSettingsHideUnmarked` toggles + `pageSettingsClose`, plus the `#pagesSectionTitle` opener). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openPageSettingsModal`, binds the toggles/close/opener at load. One new publish-only dep — `renderPagesList` (stays defined in app.js, read via `App.*`); `state`/`showModal`/`hideModal`/`updateUI` were already on `App`. Each toggle mutates `state` (`pagesTitlesTruncated` / `hideUnmarkedPagesFromSidebar`), persists to `localStorage`, then calls `App.renderPagesList()` + `App.updateUI()`. Scope is the settings modal only — the Pages section **collapse** icon (`#pagesCollapseIcon`, a different element — its toggle stays), the scattered collapse-icon `textContent` writes, and the Escape-key close branch stay in app.js. The moved opener keeps its `closest('#pagesCollapseIcon')` guard |
@@ -561,68 +564,68 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L170 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L214 - ICONS array lives in icons.js (see icon-data note above).
 - L264 - State
-- L457 - [sync] Sync recovery & client recycle
-- L538 - [sync] Global force reload
-- L626 - [sync] Save Status log & envelope
-- L629 - [sync] Field-error telemetry
-- L688 - [sync] Dirty tracking & local session reset
-- L694 - Undo/redo stacks
-- L840 - [sync] Checkout probe, hashing & PDF cache
-- L902 - Math & Format Helpers
-- L1353 - Coordinate Helpers
-- L1361 - PDF render bitmap cache
-- L1415 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1426 - PDF Rendering
-- L2219 - UI Render Functions
-- L2878 - Inline rename & polyline edit mode
-- L2992 - Modal primitives (showModal / hideModal)
-- L3023 - Toasts & line color picker
-- L3091 - Airboard cloud sync
-- L3136 - Supabase RPC & presence heartbeat
-- L3176 - User activity / event telemetry
-- L3235 - Supabase auth & dev auth
-- L3421 - [sync] Checkout subscription & permission refresh
-- L3431 - Modals & Handlers
-- L3499 - PDF intake (upload, test PDF, hashing)
-- L3507 - Toolbar tool buttons
-- L3707 - Tool sidebar buttons & legend overlay
-- L3798 - Add Line Type modal
-- L3923 - Line color & sidebar handlers
-- L4132 - Polyline modal & drawing
-- L4175 - Zoom bar & page navigation
-- L4201 - Export canvas JSON
-- L4217 - PDF download helpers
-- L4226 - View-link URL helpers & show-highlights/notes
-- L4298 - Custom icon upload handler
-- L4308 - Export & report dropdown menus
-- L4395 - Sidebar drawer toggles
-- L4426 - Mobile actions burger menu pointer & header logo
-- L4438 - User Activity pointer (format.js + features/user-activity.js)
-- L4450 - My Settings pointer (features/my-settings.js)
-- L4475 - Auth & settings entry buttons
-  - L4535 - Project Settings checkout & Save Status bell
-  - L4627 - [sync] Checkout expired recovery
-  - L4683 - [sync] Turn In
-  - L4792 - Share modal pointer & copy-project openers
-  - L4823 - Settings menu actions
-  - L4844 - Auth sign-in form
-  - L4869 - Save Project modal
-  - L4882 - Checkout expired recovery modal wiring
-  - L4987 - Last-session restore prompt
-  - L4994 - Canvas Repair modal wiring
-- L5181 - Canvas Event Handlers
-- L5685 - Event Binding
-- L5695 - Aim loupe (mobile press-hold precise placement)
-- L5847 - Zoom transform preview & commit
-- L5926 - Canvas mouse, wheel & touch handlers
-- L6680 - Global dropdown dismissal & keyboard hotkeys
-- L7062 - [sync] Manual save to cloud
-- L7072 - [sync] Auto-save
-- L7079 - [sync] Local backup (IndexedDB takeoff state)
-- L7212 - [sync] Checkout keep-alive
-- L7226 - App feature registry
-- L7562 - View-only mode
-- L7568 - Init / boot
+- L460 - [sync] Sync recovery & client recycle
+- L541 - [sync] Global force reload
+- L629 - [sync] Save Status log & envelope
+- L632 - [sync] Field-error telemetry
+- L691 - [sync] Dirty tracking & local session reset
+- L697 - Undo/redo stacks
+- L844 - [sync] Checkout probe, hashing & PDF cache
+- L906 - Math & Format Helpers
+- L1357 - Coordinate Helpers
+- L1365 - PDF render bitmap cache
+- L1419 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1430 - PDF Rendering
+- L2223 - UI Render Functions
+- L2882 - Inline rename & polyline edit mode
+- L2996 - Modal primitives (showModal / hideModal)
+- L3027 - Toasts & line color picker
+- L3095 - Airboard cloud sync
+- L3140 - Supabase RPC & presence heartbeat
+- L3180 - User activity / event telemetry
+- L3239 - Supabase auth & dev auth
+- L3425 - [sync] Checkout subscription & permission refresh
+- L3435 - Modals & Handlers
+- L3503 - PDF intake (upload, test PDF, hashing)
+- L3511 - Toolbar tool buttons
+- L3711 - Tool sidebar buttons & legend overlay
+- L3802 - Add Line Type modal
+- L3927 - Line color & sidebar handlers
+- L4136 - Polyline modal & drawing
+- L4179 - Zoom bar & page navigation
+- L4205 - Export canvas JSON
+- L4229 - PDF download helpers
+- L4238 - View-link URL helpers & show-highlights/notes
+- L4310 - Custom icon upload handler
+- L4320 - Export & report dropdown menus
+- L4407 - Sidebar drawer toggles
+- L4438 - Mobile actions burger menu pointer & header logo
+- L4450 - User Activity pointer (format.js + features/user-activity.js)
+- L4462 - My Settings pointer (features/my-settings.js)
+- L4487 - Auth & settings entry buttons
+  - L4547 - Project Settings checkout & Save Status bell
+  - L4639 - [sync] Checkout expired recovery
+  - L4695 - [sync] Turn In
+  - L4804 - Share modal pointer & copy-project openers
+  - L4835 - Settings menu actions
+  - L4856 - Auth sign-in form
+  - L4881 - Save Project modal
+  - L4894 - Checkout expired recovery modal wiring
+  - L4999 - Last-session restore prompt
+  - L5006 - Canvas Repair modal wiring
+- L5193 - Canvas Event Handlers
+- L5697 - Event Binding
+- L5707 - Aim loupe (mobile press-hold precise placement)
+- L5859 - Zoom transform preview & commit
+- L5938 - Canvas mouse, wheel & touch handlers
+- L6692 - Global dropdown dismissal & keyboard hotkeys
+- L7074 - [sync] Manual save to cloud
+- L7084 - [sync] Auto-save
+- L7091 - [sync] Local backup (IndexedDB takeoff state)
+- L7224 - [sync] Checkout keep-alive
+- L7238 - App feature registry
+- L7575 - View-only mode
+- L7581 - Init / boot
 
 <!-- END SECTION TOC -->
 

@@ -13,6 +13,54 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(restore): the "Project from Last Session" offer waits its turn (2026-09-10)
+
+Two sightings of the T1-01 prompt fighting the user. A plumbing tour's chained runs
+vanished about ten seconds in when the electrical session's backup "restored itself"; and
+on a slow CI runner the prompt appeared mid-test (duct-balance.spec.js, the export → import
+round trip) and intercepted the next click. Both are the async boot landing late: auth and
+the IndexedDB reads take as long as they take, and by the time `init` reaches the
+takeoff-backup step, a `?tour=` walkthrough or a working user can already have pages on
+screen. There was never an auto-keep timer — what looked like one was boot's silent
+palette/page **pre-apply** (`applyTakeoffBackupToState`) writing the backup's
+`pageCanvases` onto pages that did not exist when the boot started.
+
+- **Deferral.** `openLastSessionRestorePrompt` (features/restore-last-session.js) now
+  checks what is in the way: a running tour (`App.isTutorialActive()`) or another
+  `.modal-overlay.visible` (the `?signin=1` auth modal, Set Scale, a counter dialog). Behind
+  either, the candidate is held in a private `deferredRestore` — not `pendingRestore`, so
+  the T1-01 write hold is NOT engaged (the modal-blocks-editing premise does not hold for
+  a deferred offer, and work in progress must keep backing up; the candidate is safe
+  regardless, on the held key the engine never writes). `App.retryDeferredRestorePrompt()`
+  re-evaluates on a macrotask when the tour stops (`stopTutorial`) or any modal hides
+  (`hideModal`), with a 1 s safety poll for overlays closed without `hideModal`; the
+  macrotask matters for Project Settings → "start the tour", which hides one surface and
+  opens another in the same handler. A session reset drops a deferred offer like it drops
+  a shown one — nothing consumed, it returns next boot. Esc-dismiss, Keep, Discard and the
+  held-record lifecycle are unchanged.
+- **Nothing restores without Keep.** Boot's pre-apply runs only into a QUIET session:
+  skipped when pages are loaded, the project is dirty, or a tour is active. A busy session
+  still gets the prompt (the old session may be worth rescuing); only Keep replaces the
+  work on screen. A quiet boot keeps the silent palette pre-apply exactly as before.
+- `App.bootSettled` flips in init's `finally` so a spec that reloads and then acts can
+  settle the boot instead of racing it. duct-balance.spec.js does, and clears the offer
+  if the 5 s backup interval happened to land a promptable backup before its reload.
+- Telemetry: `restore_prompt_shown` moved into the feature (logged when the prompt is
+  actually on screen) and `restore_prompt_deferred` carries the blocker (`tour` / `modal`).
+- restore-last-session.spec.js pins the modal deferral (no write hold, surfaces when the
+  last modal hides, reset drops it) and, through the REAL boot held at its
+  storage-persist await, the tour case (offer waits, the tour's plan and marks survive,
+  the prompt comes at tour end, Discard leaves the takeoff alone), the busy-user case
+  (prompt comes, nothing pre-applied over the two loaded pages), and the quiet boot
+  (palette pre-applied, prompt up — T1-01 as documented).
+
+What building it changed: the brief said "auto-keep", and reading for the timer found none
+— the fix moved from the prompt to the pre-apply. The brief's "never restore over a busy
+session unless Keep" was read literally rather than as "never prompt a busy session": a
+silently skipped offer would lose the old session to the newer backup on the next boot,
+while a prompt costs one click.
+---
+
 ## feat(rules): slice 4 — Codes & jurisdiction (2026-09-09)
 
 A rule's value depends on which edition a jurisdiction adopts, so a project now says.

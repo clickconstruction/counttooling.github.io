@@ -3039,6 +3039,9 @@
     if (id === 'summaryCountDetailModal') App.onSummaryCountDetailHidden && App.onSummaryCountDetailHidden();
     if (id === 'toolingScaleCheckModal') App.onToolingScaleCheckHidden && App.onToolingScaleCheckHidden();
     document.getElementById(id).classList.remove('visible');
+    // A "Project from Last Session" offer that arrived while this modal was
+    // up gets its turn now (features/restore-last-session.js; no-op otherwise).
+    if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
   }
 
   // The Counter/Line Type details modal (openCounterLineTypeDetailsModal +
@@ -7288,6 +7291,8 @@
   // app.js then calls those via deferred bindings (() => App.fn()). See
   // ARCHITECTURE.md "Feature files / window.App registry".
   const App = (window.App = window.App || {});
+  // Flipped by init's finally once the async boot has run to completion.
+  App.bootSettled = false;
   App.state = state;
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
@@ -7787,7 +7792,15 @@
         }
       } catch (_) {}
     }
-    if (backupToApply) applyTakeoffBackupToState(backupToApply);
+    // The silent pre-apply is for a QUIET boot only. Boot is async (auth, IDB
+    // reads), so on a slow path the user — or a ?tour= walkthrough — can have
+    // pages and marks on screen by the time this line runs, and the backup's
+    // palette and pageCanvases would land on top of them (what looked like the
+    // prompt "auto-keeping" ~10 s in was this pre-apply, not a Keep). A busy
+    // session still gets the offer below; restoring over it takes a click on
+    // Keep.
+    const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive());
+    if (backupToApply && !bootSessionBusy) applyTakeoffBackupToState(backupToApply);
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
       const ok = await devAuthSignIn();
       if (ok && window.history?.replaceState) {
@@ -7811,11 +7824,12 @@
     // (the dev-auth block is localhost-only, and the key-aside protects that
     // window anyway), so no interval tick can interleave — `pendingRestore`
     // (the clobber-guard gate) is set before any backup write becomes possible.
+    // The feature file logs restore_prompt_shown / restore_prompt_deferred
+    // itself: with a tour or a modal up, the offer waits (see its header).
     let offeredRestore = false;
     if (bootRestorePromptable) {
       const projForRestore = { id: 'local', name: bootRestoreCandidate.projectName || 'Untitled', data: backupDataToProjFormat(bootRestoreCandidate.data || {}), updated_at: null, pdf_path: null, pdf_hash: bootRestoreCandidate.pdfHash, user_id: state.supabaseSession?.user?.id || null, checked_out_by: null, checked_out_at: null };
       App.openLastSessionRestorePrompt({ proj: projForRestore, cachedBlob: bootRestoreCandidate.pdfBlob, heldBackup: bootRestoreCandidate });
-      logUserEvent('restore_prompt_shown', null, { source: 'local' });
       offeredRestore = true;
     }
     if (SUPABASE_ENABLED && supabase && state.supabaseSession?.user) {
@@ -7840,12 +7854,17 @@
             const last = JSON.parse(stored);
             if (last && last.userId === uid && last.projectId) {
               App.openLastSessionRestorePrompt({ cloudLast: last });
-              logUserEvent('restore_prompt_shown', last.projectId, { source: 'cloud' });
             }
           }
         }
       } catch (_) {}
     }
     updateUI();
-  })();
+  })().finally(() => {
+    // Boot is done (every exit, the view-link path included): the takeoff
+    // backup was read, the "Project from Last Session" offer was made,
+    // deferred, or not applicable. Specs that reload and then act wait on
+    // this instead of racing the async boot (duct-balance.spec.js).
+    App.bootSettled = true;
+  });
   })();

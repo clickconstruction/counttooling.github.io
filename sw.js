@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'b0d8c02b4595';
+const CACHE_VERSION = '81522679f677';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -218,7 +218,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': 'd17b643b180ef7ff6e55a2bd9905435ed3bbbcf3b750d91ad88f966c9431a203',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '9418c455bc52db792e89a99dbdece1839aae7ded67844fbdee0429456ee6d091',
+  '/app.js': '60b8f9b9fe37cc82a5836b9b0334212b68bcbb3775943e366f08624d632a7411',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '9661cefd7251eb82a9459bb348f31320500c590cbd745bb7153f424e612b51f9',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -262,7 +262,7 @@ const PRECACHE_SHA256 = {
   '/features/share-links.js': 'a9d0a7546b38fff5c7b0aa17adf583bd3edc20e3e71939d3c233ec24651ff2b5',
   '/features/import-clear.js': 'c56150079d2c1d8a42d50d2ceaef5c319560ebf7f36ecfcdfb7fa6af39eb2348',
   '/features/zone-modals.js': '48943280aa220ba4206c9d7a6abafdbcd989643c60203af0c071460fdf09dcae',
-  '/features/restore-last-session.js': '20460f5143bbd9eb053bb663990db5fc10561130cf2aab14538ce19e767c1e20',
+  '/features/restore-last-session.js': '2c4458520fa731613839dfe0bde7af14a708c2bdd9baa6d7a25fe147d69c76c8',
   '/features/summary-detail.js': 'dc82451da2877e4cc06438f84f5133c10f134cbd7cdb83ad161650b87331bd91',
   '/features/room-sizer.js': '149d057f7df5d2ecd1a0568ef5954daac0a2811f7fc7c32a945c878354c698e4',
   '/features/burger-menu.js': 'defc53bc9189dc014ca34f7f6e679881b2f00dbd499592b07faec95edaa3cc9f',
@@ -298,7 +298,7 @@ const PRECACHE_SHA256 = {
   '/features/bid-check.js': '033727e274ab2685919e7b7805af416cf03cb4087b9a85fef1711e7bb30e004b',
   '/features/rules.js': '177417cff5a2eca101fc311e47451f12b7af01eafda05d86525527af44af3152',
   '/features/tag-reader.js': '724b4a905c94873d7642e222c60ad63d43aca537d9eaf9eabf0bd8a977e0e399',
-  '/features/tutorial.js': '4c575d5a2fc81a8ffba67cff5a3f3ae67aa2549ff2ff537e308f886ffef476b3',
+  '/features/tutorial.js': '338466ccd00fc1ed03e38ebddba6b2a8df181da7ed8aba877a12fc4bbffae1d3',
   '/features/twin-badge.js': '2b3f7def0ce1691fd9468af9a01aab67a74eb17dd764130bdc00d5464bce010b',
   '/features/auth-magic-link.js': '900d106a478f652c23210c28526db5c4a0929619b3fa54aef00647521d38f964',
   '/report.js': '68eb5402a05763355d03a6a98b179e3975563e00d722f528b0eef85447fd7a16',

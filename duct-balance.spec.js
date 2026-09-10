@@ -247,9 +247,19 @@ test.describe('Duct air balance (D7)', () => {
     expect(data.rooms[0].roomType).toBe('conference');
     expect(data.rooms[0].targetCfmOverride).toBe(2400);
 
-    // …and a fresh app restores them through the real import path.
+    // …and a fresh app restores them through the real import path. Whether
+    // the work above landed a promptable 'local' backup before the reload
+    // depends on the 5 s backup interval, so settle the async boot and clear
+    // a "Project from Last Session" offer if it came — on a slow runner it
+    // arrived mid-test and intercepted the #groupsSectionTitle click below
+    // (CI, 2026-09-10).
     await page.reload();
     await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => window.App.bootSettled === true);
+    if (await page.evaluate(() => document.getElementById('lastSessionRestoreModal').classList.contains('visible'))) {
+      await page.locator('#lastSessionRestoreDiscard').click();
+      await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    }
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await page.locator('#importInput').setInputFiles({ name: 'takeoff.json', mimeType: 'application/json', buffer: Buffer.from(exported) });

@@ -19,7 +19,7 @@
 /* global TextEncoder, TextDecoder, btoa, atob, crypto */
 
 export const VIEW_GRANT_MAX_AGE_SECONDS = 24 * 60 * 60
-export const VIEW_GRANT_SOURCES = ['pipetooling-sub-portal']
+export const VIEW_GRANT_SOURCES = ['pipetooling-sub-portal', 'pipetooling-bid-basis']
 
 const enc = new TextEncoder()
 

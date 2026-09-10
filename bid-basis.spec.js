@@ -83,7 +83,29 @@ async function stubViewProject(context) {
   // boot goes straight to the plan (the gate itself is pinned by view-only.spec.js).
   await context.addInitScript((token) => {
     try { localStorage.setItem('view:allowed:' + token, 'estimator@clickplumbing.com'); } catch (_) {}
+    // Headless Chromium HAS showSaveFilePicker; a real one would open a native dialog and hang.
+    // The picker tests below install their own stub; everything else runs the plain download.
+    if (!window.__pickerStub) { try { delete window.showSaveFilePicker; } catch (_) {} }
   }, TOKEN);
+}
+
+/** Stub the save picker: `mode` = 'confirm' (returns a handle named `name`) | 'cancel' (AbortError) | 'refuse' (NotAllowedError). */
+async function stubSavePicker(context, mode, name) {
+  await context.addInitScript(({ mode, name }) => {
+    window.__savedBytes = 0;
+    window.__pickerStub = true;
+    window.showSaveFilePicker = async () => {
+      if (mode === 'cancel') { const e = new Error('cancelled'); e.name = 'AbortError'; throw e; }
+      if (mode === 'refuse') { const e = new Error('no gesture'); e.name = 'NotAllowedError'; throw e; }
+      return {
+        name,
+        createWritable: async () => ({
+          write: async (blob) => { window.__savedBytes += blob.size || 0; },
+          close: async () => {},
+        }),
+      };
+    };
+  }, { mode, name });
 }
 
 const FILENAME_RE = /^bid-basis_b409_livingston-steel-office-ti_\d{4}-\d{2}-\d{2}_\d{4}\.pdf$/;
@@ -186,6 +208,12 @@ test.describe('Bid basis export (PipeTooling handoff)', () => {
     expect(m.ctUpdatedAt).toBe('2026-09-09T18:58:00Z');
     expect(typeof m.fileSizeBytes).toBe('number');
     expect(m.fileSizeBytes).toBeGreaterThan(1000);
+    expect(m.saveMethod).toBe('intended');
+    await expect(popup.locator('#bidBasisDoneSummary')).toContainText('in your Downloads folder');
+    // The preset renders lighter (3x / 0.85) — the options the export ran with say so.
+    const opts = await popup.evaluate(() => window.App.readSpecificPagesOptionsFromDom());
+    expect(opts.exportScale).toBe(3);
+    expect(opts.jpegQuality).toBe(0.85);
     expect(m.canvasSnapshot).toMatchObject({ version: 1 });
     expect(m.canvasSnapshot.pages.length).toBe(2);
     expect(Object.keys(m.canvasSnapshot.pages[0].canvases[0].annotations.counterMarkers)).toEqual(['c1']);
@@ -235,5 +263,70 @@ test.describe('Bid basis export (PipeTooling handoff)', () => {
     await page.waitForLoadState('networkidle');
     expect(await page.evaluate(() => window.App.getBidBasisContext())).toBeNull();
     await expect(page.locator('#specificPagesModal')).not.toHaveClass(/visible/);
+  });
+});
+
+test.describe('Bid basis export — the save picker (File System Access API)', () => {
+  async function openPresetPopup(context, page) {
+    await stubViewProject(context);
+    await page.goto('/');
+    await page.evaluate(() => {
+      // @ts-ignore
+      window.__bidBasisMessages = [];
+      // @ts-ignore
+      window.addEventListener('message', (e) => { window.__bidBasisMessages.push({ origin: e.origin, data: e.data }); });
+    });
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate((token) => { window.open('/app/?t=' + token + '&export=bid-basis&ref=b409', '_blank'); }, TOKEN);
+    const popup = await popupPromise;
+    await popup.waitForSelector('#specificPagesModal.visible', { timeout: 30000 });
+    return popup;
+  }
+
+  test('confirmed: the picker runs before the render, the file is written to the handle, and the manifest carries the chosen name', async ({ context, page }) => {
+    test.setTimeout(90000);
+    await stubSavePicker(context, 'confirm', 'my-own-name.pdf');
+    const popup = await openPresetPopup(context, page);
+    let downloads = 0;
+    popup.on('download', () => { downloads++; });
+    await popup.locator('#specificPagesDownload').click();
+    await popup.waitForSelector('#bidBasisDoneModal.visible', { timeout: 60000 });
+    await expect(popup.locator('#bidBasisDoneFilename')).toHaveText('my-own-name.pdf');
+    await expect(popup.locator('#bidBasisDoneSummary')).toContainText('saved where you chose');
+    expect(await popup.evaluate(() => window.__savedBytes)).toBeGreaterThan(1000);
+    expect(downloads).toBe(0);
+    const m = await popup.evaluate(() => window.App.getLastBidBasisManifest());
+    expect(m.filename).toBe('my-own-name.pdf');
+    expect(m.saveMethod).toBe('confirmed');
+    const messages = await page.evaluate(() => window.__bidBasisMessages.filter((x) => x.data && x.data.type === 'counttooling:bid-basis-export'));
+    expect(messages[0].data.filename).toBe('my-own-name.pdf');
+    expect(messages[0].data.saveMethod).toBe('confirmed');
+  });
+
+  test('cancel: nothing renders or downloads, a toast says so, and the dialog comes back on the preset', async ({ context, page }) => {
+    await stubSavePicker(context, 'cancel');
+    const popup = await openPresetPopup(context, page);
+    let downloads = 0;
+    popup.on('download', () => { downloads++; });
+    await popup.locator('#specificPagesDownload').click();
+    await popup.waitForSelector('#specificPagesModal.visible', { timeout: 10000 });
+    await expect(popup.locator('#airboardToastText')).toContainText('Download cancelled');
+    await expect(popup.locator('#specificPagesBidBasisChip')).toBeVisible();
+    await expect(popup.locator('#bidBasisDoneModal')).not.toHaveClass(/visible/);
+    expect(downloads).toBe(0);
+    expect(await popup.evaluate(() => window.App.getLastBidBasisManifest())).toBeNull();
+  });
+
+  test('refused (no activation / unsupported): the plain download runs and the manifest says intended', async ({ context, page }) => {
+    test.setTimeout(90000);
+    await stubSavePicker(context, 'refuse');
+    const popup = await openPresetPopup(context, page);
+    const downloadPromise = popup.waitForEvent('download', { timeout: 60000 });
+    await popup.locator('#specificPagesDownload').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(FILENAME_RE);
+    await popup.waitForSelector('#bidBasisDoneModal.visible', { timeout: 30000 });
+    const m = await popup.evaluate(() => window.App.getLastBidBasisManifest());
+    expect(m.saveMethod).toBe('intended');
   });
 });

@@ -178,7 +178,7 @@
     if (activePreset) {
       const intro = document.getElementById('specificPagesIntro');
       const n = Object.values(specificPagesSelections).filter((v) => v === 'marked').length;
-      if (intro) intro.textContent = 'Preset: the ' + n + (n === 1 ? ' sheet' : ' sheets') + ' that carry marks, report first, notes at the back. Change anything before you download.';
+      if (intro) intro.textContent = 'Preset: the ' + n + (n === 1 ? ' sheet' : ' sheets') + ' that carry marks, report first, notes at the back, a lighter file for email. Change anything before you download.';
     }
   }
 
@@ -257,7 +257,11 @@
 
   /** The dialog's controls as one options object — the only DOM read the export makes. */
   function readSpecificPagesOptionsFromDom() {
+    const render = (activePreset && activePreset.render) || {};
     return {
+      // Raster settings: Export PDFs' 4x / 0.95 unless the preset asks for lighter (bid basis: 3x / 0.85).
+      exportScale: render.scale || 4,
+      jpegQuality: render.jpegQuality != null ? render.jpegQuality : 0.95,
       markerScale: parseInt(document.getElementById('specificPagesMarkerScale').value, 10) / 100,
       lineScale: parseInt(document.getElementById('specificPagesLineScale').value, 10) / 100,
       includeReport: document.getElementById('specificPagesIncludeReport').checked,
@@ -281,7 +285,8 @@
     const included = state.pages.map((_, i) => i).filter(i => selections[i] !== 'exclude');
     if (!included.length) return { doc: null, included };
     const jsPDFLib = window.jspdf;
-    const EXPORT_SCALE = 4;
+    const EXPORT_SCALE = options.exportScale || 4;
+    const JPEG_QUALITY = options.jpegQuality != null ? options.jpegQuality : 0.95;
     const PT_TO_MM = 25.4 / 72;
     const exportOverrides = { markerScale: options.markerScale, lineScale: options.lineScale };
     let doc = null;
@@ -304,7 +309,7 @@
         canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
         await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
         const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
         const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
         if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
@@ -321,7 +326,7 @@
           const ctx = canvas.getContext('2d');
           await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
           App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || App.makeAnnotations());
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          const imgData = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
           const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
           const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
           const caption = c.name || 'Main';
@@ -344,7 +349,7 @@
         const ctx = canvas.getContext('2d');
         await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
         App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
         const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
         const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
         if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
@@ -380,14 +385,28 @@
     const origText = btn.textContent;
     btn.textContent = 'Downloading…';
     try {
+      const baseName = App.sanitizeForFilename(state.currentProjectName);
+      const filename = (preset && preset.filename) || ('takeoff-specific-pages_' + baseName + '.pdf');
+      // Bid basis: ask WHERE to save before the render (the save picker needs the click's
+      // user activation, which a minutes-long export would spend) — features/bid-basis.js.
+      let save = null;
+      if (preset && preset.preset === 'bid-basis' && App.beginBidBasisSave) {
+        save = await App.beginBidBasisSave(filename);
+        if (save && save.cancelled) {
+          btn.textContent = origText;
+          App.showToast && App.showToast('Download cancelled — nothing was saved. Click Download to try again.', 3500);
+          openSpecificPagesModal(preset);
+          return;
+        }
+      }
       const { doc, included } = await runSpecificPagesExport(options, (text) => { btn.textContent = text; });
       if (doc) {
-        const baseName = App.sanitizeForFilename(state.currentProjectName);
-        const filename = (preset && preset.filename) || ('takeoff-specific-pages_' + baseName + '.pdf');
-        doc.save(filename);
+        let saved = { filename, saveMethod: 'intended' };
+        if (save && save.handle && App.finishBidBasisSave) saved = await App.finishBidBasisSave(save.handle, doc, filename);
+        else doc.save(filename);
         App.logUserEvent('export_pdf', state.currentProjectId, { source: preset ? preset.preset : 'specific-pages' });
         if (preset && preset.preset === 'bid-basis' && App.onBidBasisExported) {
-          App.onBidBasisExported({ doc, included, filename, options, preset });
+          App.onBidBasisExported({ doc, included, filename: saved.filename, saveMethod: saved.saveMethod, options, preset });
         } else {
           App.showBidCheckAdvisory && App.showBidCheckAdvisory('export-pdfs');   // S5: advisory, never a block
         }

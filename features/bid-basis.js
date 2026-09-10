@@ -37,9 +37,10 @@
 
   /** features/export-pdfs.js asks for this on every open of the dialog. */
   function getActiveBidBasisPreset() {
-    if (!ctx) return null;
+    const M = model();
+    if (!ctx || !M) return null;
     ctx.filename = freshFilename();
-    return { preset: 'bid-basis', ref: ctx.ref, filename: ctx.filename };
+    return { preset: 'bid-basis', ref: ctx.ref, filename: ctx.filename, render: M.BID_BASIS_RENDER };
   }
 
   function maybeStartBidBasisExport() {
@@ -72,6 +73,36 @@
     return delivered;
   }
 
+  // --- Save picker (File System Access API, Chrome / Edge) --------------------
+  // The browser can rename a plain download on a collision ("(1)") and never
+  // tells the page. With the picker the person chooses the folder and the page
+  // learns the exact name it saved under — the manifest then carries
+  // saveMethod 'confirmed'. Safari / Firefox (no API) fall back to the plain
+  // download and 'intended'. Cancel = no download at all.
+  function beginBidBasisSave(filename) {
+    if (typeof window.showSaveFilePicker !== 'function') return Promise.resolve({ handle: null, cancelled: false });
+    return window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+    }).then((handle) => ({ handle, cancelled: false }), (err) => {
+      if (err && err.name === 'AbortError') return { handle: null, cancelled: true };
+      // Not allowed / not supported here: plain download instead.
+      return { handle: null, cancelled: false };
+    });
+  }
+  async function finishBidBasisSave(handle, doc, fallbackName) {
+    try {
+      const writable = await handle.createWritable();
+      await writable.write(doc.output('blob'));
+      await writable.close();
+      return { filename: handle.name || fallbackName, saveMethod: 'confirmed' };
+    } catch (err) {
+      console.warn('[Bid basis] save picker write failed, downloading instead:', err);
+      doc.save(fallbackName);
+      return { filename: fallbackName, saveMethod: 'intended' };
+    }
+  }
+
   function fileSizeOf(doc) {
     try { return doc.output('arraybuffer').byteLength; } catch (_) { return null; }
   }
@@ -87,7 +118,7 @@
     const manifest = M.buildBidBasisManifest({
       ref: ctx ? ctx.ref : null,
       filename: result.filename,
-      saveMethod: 'intended',
+      saveMethod: result.saveMethod || 'intended',
       fileSizeBytes: fileSizeOf(result.doc),
       sheets: included.map((i) => state.pages[i]?.label || ('Page ' + (i + 1))),
       pageIndices: included,
@@ -114,6 +145,7 @@
     if (manifest.includeReport) parts.push('report');
     if (manifest.notesCount) parts.push(manifest.notesCount + (manifest.notesCount === 1 ? ' note' : ' notes'));
     if (manifest.fileSizeBytes) parts.push((manifest.fileSizeBytes / (1024 * 1024)).toFixed(1) + ' MB');
+    parts.push(manifest.saveMethod === 'confirmed' ? 'saved where you chose' : 'in your Downloads folder');
     if (el('bidBasisDoneSummary')) el('bidBasisDoneSummary').textContent = parts.join(' · ');
     if (el('bidBasisDoneFilename')) el('bidBasisDoneFilename').textContent = manifest.filename;
     if (el('bidBasisDoneRef')) el('bidBasisDoneRef').textContent = manifest.ref || 'bid-basis';
@@ -158,6 +190,8 @@
   App.maybeStartBidBasisExport = maybeStartBidBasisExport;
   App.getActiveBidBasisPreset = getActiveBidBasisPreset;
   App.onBidBasisExported = onBidBasisExported;
+  App.beginBidBasisSave = beginBidBasisSave;
+  App.finishBidBasisSave = finishBidBasisSave;
   // Spec seams.
   App.getBidBasisContext = () => (ctx ? { ...ctx } : null);
   App.getLastBidBasisManifest = () => lastManifest;

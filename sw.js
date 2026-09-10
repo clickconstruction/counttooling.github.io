@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '81522679f677';
+const CACHE_VERSION = '15f131e4ed60';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -202,7 +202,7 @@ const PRECACHE_SHA256 = {
   '/tag-model.js': '26bb52e7a00b42f2e5e7168f07323c899cdf0e2b594546fccabd60742de3102e',
   '/support-model.js': '3bdf6da1ecca431ecb25904ea944e2f3838a445c088fe4d7fb0d616982839c21',
   '/duct-model.js': 'f4e0387a5b960d7de36e36b40a47ff98d282d0ee156013bd0d7cdee85dc37823',
-  '/bid-basis-model.js': 'a2a3a5f2dcc74638d0ba4d991e86e3fe458b209fe47d5e4da2647fa28cfd5075',
+  '/bid-basis-model.js': '825fc0a1cfd1a765dbb3bab5f06eb49c9780253d071def87784939e194a834f0',
   '/canvas-draw.js': '1c1db8273573fae7ce36eef730a0f124ad06df7fc7c6aa9e34b6b15ddd7a345b',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
   '/render-worker.js': '97409f02a7150a5f9b5e456769083b49dca0c7baaae0263a34e2fc7a1d23a54d',
@@ -230,8 +230,8 @@ const PRECACHE_SHA256 = {
   '/features/zoom-rail.js': 'd9fd46d047c55cac555c2c1cfac70f4d36b9f537302efc400a3e240d6edfbcc6',
   '/features/manage-icons.js': '05d99d299583073854b53f7fd67601b791357e19cb3c4c72f17fde645496ccc0',
   '/features/multiply-zone-settings.js': 'e808757a5758d7c0ba64d989ef3f6e051266b40a26ff01ae9ea8187b7b834dee',
-  '/features/export-pdfs.js': 'a5383a118c3bf98a2dbcfbbeffa8587760f9535d72e7f0af49140b9f32136388',
-  '/features/bid-basis.js': '2f207cc9ccfb691b7e7d295a28edb11b3e9fa20cf976da5d871376e8732fc5ff',
+  '/features/export-pdfs.js': '4bd527bc8c8988cc9fe49eeeb7532f86c35b48ba249008cb12dfeb816d8bcc41',
+  '/features/bid-basis.js': 'e8b56590a3725bb169c5e60a2a48b007ead5104367d7ad0e920828e58200c060',
   '/features/legend-settings.js': 'b0152833e161b51c83ce7f2c3ac4e9fc33ba9a9dc3ece1187ac52fa2e99f2215',
   '/features/page-settings.js': '2e9b961016930ea467a50e9a426cf8aa3a901f10dd2fb2fbe11a9186c7020e40',
   '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',

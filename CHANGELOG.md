@@ -3498,3 +3498,20 @@ since". Export PDFs was refactored on the way: `readSpecificPagesOptionsFromDom(
 sheets with marks** bulk button makes the preset's selection repeatable by hand. Regression:
 `bid-basis.spec.js` (popup flow end to end) and `bid-basis-model.test.js`. PipeTooling side:
 v2.3219 (`bid_plan_basis_exports`, the Cover Letter card, the letter clause).
+
+## Bid basis follow-ups: save picker, lighter render, the grant source (2026-09-10)
+
+Three refinements to the handoff above. **Confirmed file name**: with the File System Access
+API (Chrome / Edge) the bid-basis download asks WHERE to save before the render — the click's
+user activation would not survive a minutes-long export — writes the PDF to the chosen handle,
+and the manifest carries the name the person actually chose (`saveMethod: 'confirmed'`);
+Safari / Firefox keep the plain download (`intended`); Cancel saves nothing, toasts, and re-opens
+the dialog on the preset (`App.beginBidBasisSave` / `App.finishBidBasisSave` in
+features/bid-basis.js, called from export-pdfs.js). **Lighter render**: the preset renders at
+3x / 0.85 JPEG (`BID_BASIS_RENDER` in bid-basis-model.js; `readSpecificPagesOptionsFromDom`
+now carries `exportScale` / `jpegQuality`, defaults 4 / 0.95 for the plain dialog). **Grant
+source**: `_shared/viewGrant.mjs` accepts `via: 'pipetooling-bid-basis'` — PipeTooling's new
+`bid-basis-grant` function names the estimator so `get-view-project` skips the email gate and
+the access log shows who opened the takeoff (redeploy `get-view-project`). Regression:
+`bid-basis.spec.js` (picker confirmed / cancel / refused) and `view-grant.test.js`.
+PipeTooling side: v2.3226.

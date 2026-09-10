@@ -36,6 +36,13 @@
 
   const MAX_REF_LENGTH = 40;
 
+  /**
+   * The bid-basis render: 3x at 0.85 JPEG instead of Export PDFs' 4x at 0.95 — about a
+   * third of the bytes, so a five-sheet basis stays emailable; the marks are still
+   * crisp at print scale. The normal Export PDFs button keeps 4x / 0.95.
+   */
+  const BID_BASIS_RENDER = Object.freeze({ scale: 3, jpegQuality: 0.85 });
+
   function isLocalOrigin(origin) {
     return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(String(origin || ''));
   }
@@ -200,6 +207,7 @@
     BID_BASIS_LOADED_MESSAGE_TYPE,
     BID_BASIS_MESSAGE_VERSION,
     BID_BASIS_URL_FLAG,
+    BID_BASIS_RENDER,
     PIPETOOLING_ORIGINS,
     bidBasisTargetOrigins,
     parseBidBasisParams,

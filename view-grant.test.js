@@ -62,3 +62,14 @@ test('mint refuses to sign without a token, a name, or a secret', async () => {
   await assert.rejects(() => mintViewGrant({ t: TOKEN, name: '  ' }, SECRET, NOW), /viewer name/);
   await assert.rejects(() => mintViewGrant({ t: TOKEN, name: 'X' }, '', NOW), /secret/);
 });
+
+test('the bid-basis source (PipeTooling Cover Letter → Export PDFs) is accepted; anything else is unknown_source', async () => {
+  const { mintViewGrant, verifyViewGrant } = await lib();
+  const g = await mintViewGrant({ t: TOKEN, name: 'Grace', email: 'grace@example.com', via: 'pipetooling-bid-basis' }, SECRET, NOW);
+  const v = await verifyViewGrant({ grant: g, secret: SECRET, token: TOKEN, nowSeconds: NOW + 60 });
+  assert.equal(v.ok, true);
+  assert.equal(v.claims.via, 'pipetooling-bid-basis');
+  const bad = await mintViewGrant({ t: TOKEN, name: 'Grace', via: 'pipetooling-something-else' }, SECRET, NOW);
+  const vb = await verifyViewGrant({ grant: bad, secret: SECRET, token: TOKEN, nowSeconds: NOW + 60 });
+  assert.deepEqual({ ok: vb.ok, reason: vb.reason }, { ok: false, reason: 'unknown_source' });
+});

@@ -23,6 +23,35 @@ const ROOT = path.join(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'guides', 'img');
 const PLAN = path.join(ROOT, 'samples', 'sample-plan.pdf');
 const ACCENT = '#e8c547';
+// The sample plan is a true ANSI B sheet (1224 × 792 pt); the drawing itself occupies
+// the top-left PLAN_W × PLAN_H of it (the SVG source at 0.75 — see
+// scripts/build-sample-plan.js). Markup is placed as fractions of the DRAWING's extent,
+// and every shot frames the drawing (fitPlan) rather than the whole sheet, so the
+// images keep the framing they had when the drawing filled the page.
+const PLAN_W = 918, PLAN_H = 594;
+const FIT_PLAN_SRC = `window.__fitPlan = () => {
+  const s = window.state, App = window.App;
+  const wrap = document.querySelector('.canvas-wrapper');
+  if (!wrap || !s.pages.length) return;
+  const r = wrap.getBoundingClientRect();
+  s.zoom = Math.max(0.2, Math.min(App.getMaxZoom(), Math.min(r.width / ${PLAN_W}, r.height / ${PLAN_H})));
+  s.pan = { x: 0, y: 0 };
+  App.renderPdf();
+  App.updateUI();
+};`;
+async function fitPlan(page) {
+  await page.evaluate(FIT_PLAN_SRC);
+  await page.evaluate(() => window.__fitPlan());
+  await page.waitForTimeout(250);
+}
+// Viewport coordinates of a point given as fractions of the drawing's extent (the
+// annotation canvas covers the whole sheet, so its box fractions no longer line up
+// with the drawing; the page origin is the canvas box origin at pan 0).
+async function planPoint(page, fx, fy) {
+  const box = await page.locator('#annCanvas').boundingBox();
+  const zoom = await page.evaluate(() => window.state.zoom);
+  return { x: box.x + fx * PLAN_W * zoom, y: box.y + fy * PLAN_H * zoom };
+}
 
 // A round circle icon path (viewBox ~0..640) for the demo counters.
 const DOT = 'M320 96C196 96 96 196 96 320s100 224 224 224 224-100 224-224S444 96 320 96z';
@@ -72,13 +101,11 @@ async function drawOverlays(page, items, accent) {
 }
 
 // Lay a sample takeoff onto the plan: counters on the restroom fixtures (placed as
-// fractions of the real PDF page size, read from pdf.js, so they land regardless of the
-// page's point/pixel scale), a measured waste line, a page scale, and the legend.
+// fractions of the DRAWING's extent, PLAN_W × PLAN_H, so they land on the drawn
+// fixtures), a measured waste line, a page scale, and the legend.
 async function takeoffSetup(page) {
-  await page.evaluate((dot) => {
+  await page.evaluate(({ dot, pw, ph }) => {
     const s = window.state, App = window.App, uid = () => App.uid();
-    const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
-    const pw = vp.width, ph = vp.height;
     const wc = uid(), lav = uid(), lt = uid();
     s.counters.push({ id: wc, name: 'Water Closet', icon: dot, color: '#e8c547', size: 16 });
     s.counters.push({ id: lav, name: 'Lavatory', icon: dot, color: '#4a9eff', size: 16 });
@@ -89,11 +116,14 @@ async function takeoffSetup(page) {
     ann.counterMarkers[wc] = wcX.map((fx) => ({ x: fx * pw, y: 0.4962 * ph, id: uid(), group: null }));
     ann.counterMarkers[lav] = lavX.map((fx) => ({ x: fx * pw, y: 0.7134 * ph, id: uid(), group: null }));
     ann.quickLines.push({ id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: lt, color: '#47c88e', group: null });
+    // the legend at the drawing's top-right corner, above the north arrow (the page's
+    // own default corner is off the framed area now that the sheet is wider)
+    ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
     s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
-    App.fitZoom();
     App.renderPdf();
     App.updateUI();
-  }, DOT);
+  }, { dot: DOT, pw: PLAN_W, ph: PLAN_H });
+  await fitPlan(page);
   await page.waitForTimeout(350);
 }
 
@@ -102,10 +132,8 @@ async function takeoffSetup(page) {
 // markers, two different values, so the shots show real variety.
 async function dropSetup(page) {
   await takeoffSetup(page);
-  await page.evaluate(() => {
+  await page.evaluate(({ pw, ph }) => {
     const s = window.state, App = window.App, uid = () => App.uid();
-    const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
-    const pw = vp.width, ph = vp.height;
     const ann = s.pages[0].canvases[0].annotations;
     const waste = ann.quickLines[0];
     waste.startDrop = 3; waste.startDropUnit = 'ft';
@@ -114,7 +142,7 @@ async function dropSetup(page) {
     ann.quickLines.push({ id: uid(), x1: 0.68 * pw, y1: 0.30 * ph, x2: 0.68 * pw, y2: 0.62 * ph, lineTypeId: cu, color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' });
     App.renderPdf();
     App.updateUI();
-  });
+  }, { pw: PLAN_W, ph: PLAN_H });
   await page.waitForTimeout(250);
 }
 
@@ -122,10 +150,8 @@ async function dropSetup(page) {
 // sample plan's real rooms (Office 101 and Conference 103) so the boxes read as
 // tracing actual rooms. The legend is nudged left so it isn't clipped at the edge.
 async function roomSetup(page) {
-  await page.evaluate(() => {
+  await page.evaluate(({ pw, ph }) => {
     const s = window.state, App = window.App, uid = () => App.uid();
-    const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
-    const pw = vp.width, ph = vp.height;
     const office = uid(), conf = uid();
     s.rooms.push({ id: office, name: 'Office 101', color: '#e85447' });
     s.rooms.push({ id: conf, name: 'Conference 103', color: '#4a9eff' });
@@ -134,10 +160,10 @@ async function roomSetup(page) {
     ann.roomBoxes.push({ id: uid(), x1: 0.575 * pw, y1: 0.175 * ph, x2: 0.755 * pw, y2: 0.41 * ph, heightFt: 8, roomId: conf });
     ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
     s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
-    App.fitZoom();
     App.renderPdf();
     App.updateUI();
-  });
+  }, { pw: PLAN_W, ph: PLAN_H });
+  await fitPlan(page);
   await page.waitForTimeout(350);
 }
 
@@ -146,7 +172,7 @@ async function roomSetup(page) {
 // laid out on the sample plan, and the "signed URL" is the same-origin sample PDF.
 const VIEW_TOKEN = 'demo-view-token';
 function viewProjectPayload(withDrops) {
-  const pw = 921.6, ph = 597.6; // sample-plan.pdf page size in points (12.8 × 8.3 in)
+  const pw = PLAN_W, ph = PLAN_H; // the drawing's extent on the ANSI B sample sheet
   const wcX = [0.3717, 0.4003, 0.4289, 0.5310, 0.5596, 0.5882, 0.6168];
   const lavX = [0.3676, 0.3962, 0.4248, 0.5270, 0.5556, 0.5841, 0.6127];
   let n = 0; const uid = () => 'view-demo-' + (++n);
@@ -182,7 +208,7 @@ function viewProjectPayload(withDrops) {
             polylines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [],
             // withDrops: legend sits lower so the shot's "label them all" callout
             // (anchored under the header's Drop sizes button) doesn't cover it.
-            legend: { x: pw - 210, y: withDrops ? 90 : 16, w: 195, h: 60, userResized: false },
+            legend: { x: pw - 210, y: withDrops ? 135 : 16, w: 195, h: 60, userResized: false },
           },
         }],
       }],
@@ -280,8 +306,7 @@ const SHOTS = [
     name: 'zones',
     clip: '#canvasWrapper',
     async setup(page) {
-      await page.evaluate(() => { window.App.fitZoom(); window.App.renderPdf(); });
-      await page.waitForTimeout(250);
+      await fitPlan(page);
     },
     boxes: [
       { rect: { x: 0.12, y: 0.14, w: 0.64, h: 0.29 }, label: 'Multiply zone ×3' },
@@ -304,8 +329,8 @@ const SHOTS = [
     async setup(page) {
       await roomSetup(page);
       await page.evaluate(() => {
-        const vp = window.state.pages[0].pdfPage.getViewport({ scale: 1 });
-        window.App.openRoomBoxModal({ x1: 0.13 * vp.width, y1: 0.5 * vp.height, x2: 0.38 * vp.width, y2: 0.72 * vp.height });
+        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
+        window.App.openRoomBoxModal({ x1: 0.13 * pw, y1: 0.5 * ph, x2: 0.38 * pw, y2: 0.72 * ph });
         const h = document.getElementById('roomBoxHeight');
         h.value = "9'6";
         h.dispatchEvent(new Event('input'));
@@ -407,10 +432,9 @@ const SHOTS = [
     async setup(page) {
       await takeoffSetup(page);
       await page.evaluate(() => { window.state.tool = window.App.TOOL.DELETE_ZONE; window.App.updateUI(); });
-      const box = await page.locator('#annCanvas').boundingBox();
-      await page.mouse.click(box.x + box.width * 0.30, box.y + box.height * 0.42);
+      { const pt = await planPoint(page, 0.30, 0.42); await page.mouse.click(pt.x, pt.y); }
       await page.waitForTimeout(150);
-      await page.mouse.click(box.x + box.width * 0.68, box.y + box.height * 0.80);
+      { const pt = await planPoint(page, 0.68, 0.80); await page.mouse.click(pt.x, pt.y); }
       await page.waitForSelector('#deleteZoneModal.visible', { timeout: 5000 });
       await page.waitForTimeout(150);
     },
@@ -533,11 +557,10 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
-        const pw = vp.width, ph = vp.height;
+        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
         const ann = s.pages[0].canvases[0].annotations;
         ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid(), label: 'Fixture schedule' });
-        ann.notes.push({ x: 0.135 * pw, y: 0.56 * ph, text: 'Confirm fixture spec — see addendum 2', id: App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' });
+        ann.notes.push({ x: 0.135 * pw, y: 0.64 * ph, text: 'Confirm fixture spec — see addendum 2', id: App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' });
         App.renderAnnotations();
       });
       await page.waitForTimeout(250);
@@ -552,8 +575,7 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
-        const pw = vp.width, ph = vp.height;
+        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
         const ann = s.pages[0].canvases[0].annotations;
         ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid(), label: 'Fixture schedule' });
         ann.highlights.push({ x1: 0.09 * pw, y1: 0.13 * ph, x2: 0.4 * pw, y2: 0.3 * ph, id: App.uid(), label: 'Pipe material' });
@@ -572,8 +594,7 @@ const SHOTS = [
     clip: '#canvasWrapper',
     async setup(page) {
       await takeoffSetup(page);
-      const box = await page.locator('#annCanvas').boundingBox();
-      await page.mouse.click(box.x + box.width * 0.4003, box.y + box.height * 0.4962, { button: 'right' });
+      { const pt = await planPoint(page, 0.4003, 0.4962); await page.mouse.click(pt.x, pt.y, { button: 'right' }); }
       await page.waitForSelector('#contextMenu', { state: 'visible', timeout: 5000 });
       await page.waitForTimeout(150);
     },
@@ -608,10 +629,9 @@ const SHOTS = [
       await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
       await page.locator('#scaleVerifyBtn').click();
       await page.waitForTimeout(500);
-      const box = await page.locator('#annCanvas').boundingBox();
-      await page.mouse.click(box.x + box.width * 0.372, box.y + box.height * 0.655);
+      { const pt = await planPoint(page, 0.372, 0.655); await page.mouse.click(pt.x, pt.y); }
       await page.waitForTimeout(500); // scale taps are debounced 400ms
-      await page.mouse.click(box.x + box.width * 0.617, box.y + box.height * 0.655);
+      { const pt = await planPoint(page, 0.617, 0.655); await page.mouse.click(pt.x, pt.y); }
       await page.waitForSelector('#scaleCheckPanel', { state: 'visible', timeout: 5000 });
       await page.locator('#scaleCheckValue').fill('25');
       await page.locator('#scaleCheckBtn').click();
@@ -656,12 +676,14 @@ const SHOTS = [
     clip: '#multiplyZoneModal',
     async setup(page) {
       await takeoffSetup(page);
-      await page.evaluate(() => {
-        const el = document.getElementById('multiplyZoneMultiplier');
-        if (el) el.value = '3';
-        window.App.showModal('multiplyZoneModal');
-      });
+      // the real two-click tool path around Women 106, so the "In this area" count is
+      // the app's own reading of what the box holds
+      await page.evaluate(() => { window.state.tool = window.App.TOOL.MULTIPLY_ZONE; window.App.updateUI(); });
+      { const pt = await planPoint(page, 0.515, 0.44); await page.mouse.click(pt.x, pt.y); }
+      await page.waitForTimeout(150);
+      { const pt = await planPoint(page, 0.75, 0.76); await page.mouse.click(pt.x, pt.y); }
       await page.waitForSelector('#multiplyZoneModal.visible', { timeout: 5000 });
+      await page.evaluate(() => { const el = document.getElementById('multiplyZoneMultiplier'); if (el) el.value = '3'; });
       await page.waitForTimeout(150);
     },
   },
@@ -712,8 +734,7 @@ const SHOTS = [
     clip: '#canvasWrapper',
     async setup(page) {
       await roomSetup(page);
-      const box = await page.locator('#annCanvas').boundingBox();
-      await page.mouse.click(box.x + box.width * 0.24, box.y + box.height * 0.29, { button: 'right' });
+      { const pt = await planPoint(page, 0.24, 0.29); await page.mouse.click(pt.x, pt.y, { button: 'right' }); }
       await page.waitForSelector('#contextMenu', { state: 'visible', timeout: 5000 });
       await page.waitForTimeout(150);
     },
@@ -729,8 +750,7 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        const vp = s.pages[0].pdfPage.getViewport({ scale: 1 });
-        const pw = vp.width, ph = vp.height;
+        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
         const ann = s.pages[0].canvases[0].annotations;
         // Zone labels render at the rectangle's CENTER (canvas-draw.js), so both
         // rects are placed with their centers on empty floor — clear of room
@@ -783,6 +803,7 @@ const SHOTS = [
       }, VIEW_TOKEN);
       await page.goto(baseUrl + '/app/?t=' + VIEW_TOKEN, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0 && window.state && window.state.isViewer; }, { timeout: 20000 });
+      await fitPlan(page);
       await page.waitForTimeout(500);
     },
     boxes: [{ sel: '#hideMarksBtn', label: 'Hide marks' }],
@@ -828,6 +849,7 @@ const SHOTS = [
       }, VIEW_TOKEN);
       await page.goto(baseUrl + '/app/?t=' + VIEW_TOKEN, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0 && window.state && window.state.isViewer; }, { timeout: 20000 });
+      await fitPlan(page);
       await page.waitForTimeout(500);
       await page.evaluate(() => {
         const q = window.state.pages[0].canvases[0].annotations.quickLines[0];
@@ -958,6 +980,7 @@ async function loadApp(page, baseUrl) {
   await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
   // dismiss any restore/last-session prompt that could cover the canvas
   await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
+  await fitPlan(page);
 }
 
 (async () => {

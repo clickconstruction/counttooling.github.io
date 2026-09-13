@@ -28,6 +28,12 @@ live users (new modules precached, no UI change).
 | D9 | Bid Check: sidebar panel (AUTO rows computed-with-numbers, MANUAL rows persistent checkboxes), export/copy gate badge + interactive toast ("Review · Export anyway", T2-04/T2-06 machinery), worked row "Fits the roof" (manual→auto when deck+ceiling+size known), S-popover depth line | claude/duct-d09-bidcheck | ☑ merged 2026-09-12, pushed ckpt 3 (extends the upstream S5 Bid Check panel) |
 | D10 | Plan-and-spec: PDF text-layer query primitive (callouts near a point), starting-size prefill, step-down offers while tracing ("Plan says 20×12 — S accepts") | claude/duct-d10-callouts | ☑ merged 2026-09-12, final push — QUEUE COMPLETE (also fixed the Create-tab focus-steal bug behind the duct-balance flake) |
 
+| D11 | **Static-path AUTO row**: `espInWg` on system groups (beside capacity), fitting equivalent-length table in duct-model, critical-path walk per system (longest run + fittings' eq ft at the friction rate) → Bid Check row upgrades manual→auto with the number ("0.34" of 0.80" ESP · critical path 187 eq ft"), ⚠ names the long leg | claude/duct-d11-static | queued |
+| D12 | **Orientation chip** (Flat / On edge, default Flat) on duct runs — context menu + run details; "Fits the roof" reads h when flat, the larger side when on edge; S-popover depth line follows | claude/duct-d12-orientation | queued |
+| D13 | **True-width ghost** (was D8b): translucent band at true scaled width under each run's stroke, honoring rotation/zoom/export; render-pixels baselines regenerated via ci/regen-baselines/* (linux) + darwin locally | claude/duct-d13-ghost | queued — **push after** |
+
+Item 2 (Bid Check label click) is Will's chip session task_4c782a3d — merged by the integrator when it lands, not a queue unit.
+
 Conflict/sequencing notes:
 - D2 owns the S popover; D6 (suggestion line), D8 (rise/drop, dual sizes),
   D9 (depth line) each EXTEND it — strict order matters.
@@ -53,4 +59,4 @@ The build is not done until this live walk passes.
 
 > **LIVE WALK PASSED 2026-09-12** on counttooling.com (CACHE_VERSION 0bf69debc470), driven in a real browser: 1-page plan with printed "24x12"/"20x12" callouts → scale 1/4"=1' → Duct armed → hovering the printed 20x12 produced "Plan says 20×12 here — S accepts" (2.3 pt from the callout); S popover showed FROM THE PLAN / STEP DOWN / CUSTOM / RISE-DROP in seam order; accepted → run committed 68' · 443 lb with 2 elbows + 1 transition auto-logged; right-click reclassified one elbow to 45°; Duct Schedule: straight 443 + fittings 64 = 507, +15% = **583 lb bid weight** (hand-checked); a 400 CFM diffuser placed → new trace read "400 CFM downstream · suggests 12"Ø or 16×8 @ 0.08″/100′ — S accepts"; Bid Check panel showed 4 auto rows + manual rows; ticking "Fits the roof" persisted (`duct-fits-roof: true`, badge 9→8 unchecked); Export PDFs with unresolved rows raised "Bid Check: Fits the roof? — Review · Export anyway", and Export anyway opened the Export modal. Papercut found: clicking a manual row's LABEL does not toggle it — only the box does (chip filed).
 
-Follow-ups after the queue: D8b true-width ghost (needs linux baselines via ci/regen-baselines/*); static-path AUTO evaluator (equivalent-length table + critical-path walk); `duct_run` migration application (Will's call); callout-accept telemetry if wanted.
+Follow-ups approved 2026-09-12 (Will: 'Build all of them') → queued as D11–D13 above; `duct_run` migration APPLIED 2026-09-12.

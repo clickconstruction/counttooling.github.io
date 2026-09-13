@@ -1,6 +1,6 @@
 # Entry-point & modal surface inventory — Phase 1 (2026-08-02)
 
-**71 modals** in app/index.html. Doc-derived; Phase 2 verifies.
+**71 modals** in app/index.html at Phase 1 (**77 `.modal-overlay` ids on 2026-09-13** after the electrical S1–S5 and duct D1–D16 builds — the duct additions are listed in the addendum at the end). Doc-derived; Phase 2 verifies.
 
 ## Desktop header (shared DOM with mobile; visibility flipped by CSS classes replaced-by-status-bar / consolidated-mobile / supabase-only)
 
@@ -20,6 +20,8 @@
 - #counterBtn (right-click=settings) + headerActiveCounter chip
 - #quickLine (right-click=Line Type settings) + headerActiveLineType chip
 - #polylineBtn (right-click=Line Type settings)
+- #ductBtn (title "Duct run"; NO hotkey; also a row in the ⋯ menu — D14, 2026-09-12)
+- #headerMoreBtn ⋯ "More tools" (desktop, unconditional since 2026-08-15): rows Polyline P · Duct · Highlight H · Multiply Zone X · Scale Zone · Room Sizer V · Ghost / Stamp G · Delete Area · Note N · Legend · Grid — rows click through and forward right-clicks to the real buttons (features/header-more.js)
 - lineTypeSnapToHVHeaderBtn (snap 45°, conditional)
 - doneEditing
 - headerEditStatusBanner (display only)
@@ -267,3 +269,14 @@
 - Open question for Phase 2 walk: burger-menu.js line 6 comment says a media query 'folds the header's PDF actions into the drawer, on desktop' — verify at which breakpoints the burger drawer is actually reachable and what it contains on desktop vs mobile.
 - Open question for Phase 2 walk: several modals are referenced from multiple files (e.g. macrosModal by app.js + keyboard-map.js; multiplyZoneModal by zone-modals.js + multiply-zone-settings.js; lineTypeModal by choose-create-line-type.js + quick-line.js + app.js) — owner assignments above follow ARCHITECTURE's Files table where named, filename convention otherwise.
 - Marketing landing at repo-root /index.html is a separate surface from the app shell at /app/index.html; guides live under /guides/ (28 articles, source markdown in content/guides/).
+
+## Duct surfaces — drift patrol addendum (2026-09-13, J19 walked)
+
+- **Header:** #ductBtn in the strip (title "Duct run", scale-gated like Polyline, no hotkey) + the ⋯ menu row "Duct" (blank key column).
+- **Footer finish bar:** #ductFinishBar → #finishDuctRunBtn "Finish Duct Run" · #ductSizeStepBtn "Size… (S)" (the polyline finish-bar pattern).
+- **Canvas while tracing:** the size chip riding the cursor (tap = popover) with the suggestion / plan-callout line under it; `S` → #ductSizePopover (non-modal, sections by order: plan-callout @3 · ductulator-suggestion @5 · step-grid @10 · custom-size @20 · rise-drop @30 · depth-line @40 · orientation @41); Enter / double-click commit; Esc ladder (popover → vertex → abandon → Move).
+- **Canvas right-click:** fitting marker or run stretch → #ductFittingMenu (non-modal; heading "90° elbow · 22×16 · auto" / "Run · 24×12 → 22×16"; 45° elbow · Transition · Tap · Boot · Offset · Delete fitting · Remove/Add volume damper · Orientation Flat | On edge · Delete run); CFM-carrying marker → #contextMenu #ctxMarkerCfm "CFM for this one…" → `markerCfmModal`.
+- **Sidebar:** #ductSection (between Groups and Rooms, hidden until the first run): #ductSectionTitle (collapse), #ductScheduleBtn "Schedule", #ductList (run rows → per-size rows → fittings line → All duct total; row click selects/jumps); #bidCheckSection (collapsed by default; badge = open items; auto rows + manual checkboxes — label click does NOT tick, box does); Groups header rows gain `.group-system-tag` "RTU-1 · 2,000 CFM", `.group-capacity-line` "150 designed / 2,000 capacity ✓ · 0.17" of 0.8" ESP", `.group-plenum-note`; Rooms rows gain `.room-balance-row` "needs 342 · served 300 ⚠"; #specificPages / #forPipeTooling carry `.bid-gate-badge` "1 ⚠ · 6 unchecked" + a title.
+- **Modals added (rows for the table above):** `ductCreateModal` — New Duct Run (name, airside chip, rect/round size, pressure class, insulation; equipment-first line; plan-callout note) — features/duct-tool.js; `ductScheduleModal` — Duct Schedule (straight · fittings Counted|Factor · flex · insulation · seam & waste · Bid weight; scope segment at 2+ pages; knobs Friction · Max velocity · Terminal · Deck height · Max flex · VD per tap; Copy Schedule / Done) — features/duct-schedule.js; `markerCfmModal` — per-marker CFM override — features/duct-suggest.js; `bidGateToastModal` — interactive corner toast "Bid Check: … — Review · Export anyway" — features/duct-bidcheck.js; `bidCheckAdvisoryModal` — passive post-action toast "Bid Check has N open items … Review" — features/bid-check.js. Extended: `groupModal` (Equipment tag · CFM · ESP · Plenum return), `roomEditModal` (Room type select + target CFM override), `counterModal` Create tab (#counterCfm, #counterFlexDrop, Icon | Custom Icons sub-tabs with Plumbing · Electrical · HVAC groups) and Quick tab (trade segment incl. HVAC; #counterQuickCountCfm), `counterLineTypeDetailsModal` (CFM, flex drop, neck line, overrides list), `legendSettingsModal` (Show duct rows · Show duct true width), `settingsModal` ("Use groups in this project" toggle — the only door to system groups; header ⚙ #settingsGearBtn is the signed-out route, the sidebar gear row is CSS-hidden without a session).
+- **Hotkeys:** no arming key for Duct (the one drawing tool without one); `S` while tracing opens the popover and outranks Set Scale; Enter / Esc / double-click as for polylines.
+- **Telemetry:** `duct_run` on commit (segments, totalFt, totalLb, airside, fittings); nothing on schedule open, Copy Schedule, suggestion accept, reclassify, Bid Check ticks, gate outcome.

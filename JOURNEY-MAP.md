@@ -69,6 +69,19 @@ refinements (the per-article recipe in [GUIDES-PLAN.md](GUIDES-PLAN.md) starts w
 > retracted on verification: the locked groups toggle already ships
 > `disabled` + explanatory tooltip (app.js `updateUI`, styles.css :disabled
 > rule). B18's shipped items landed 2026-08-17.
+> **2026-09-13 — Duct drift patrol STARTED** (program unit P1 of
+> [journeys/plans/_INDEX-DUCT.md](journeys/plans/_INDEX-DUCT.md), after the D1–D16
+> duct build shipped). **J19 walked + verified** as persona H on two synthetic
+> 1/4"-scale plans (design-build + plan-and-spec): 15 findings confirmed — 0
+> blockers, 6 stumbles, 8 papercuts, 1 teach — one downgraded (system groups are
+> reachable via the header ⚙, not the CSS-hidden sidebar gear), four candidates
+> killed; the pounds math hand-checks, so no Tier-1 row. Papercuts → Tier-3 batch
+> **B19**; the six stumbles are Tier-2 re-rank candidates (hidden groups toggle, deck
+> height unreachable before the first run, silent 8" device attachment, no duct in
+> Copy Summary / Copy to /Tooling, laptop-width footer drops the S hint + live
+> readout, room type not on the Room Size dialog). **Queued:** J5 / J6 / J11
+> re-walks against the duct tool; the **day-7 `duct_run` telemetry line is due
+> ~2026-09-19** (migration applied 2026-09-12).
 
 ---
 
@@ -104,7 +117,7 @@ but lose time or confidence) · **papercut** (annoyance; costs polish, not outco
 |---|---|---|
 | P | Plumbing estimator | The core user — daily takeoffs, palette standards, PipeTooling handoff |
 | E | Electrical estimator | Devices/fixtures by schedule mark, conduit runs + drops, panels as groups |
-| H | HVAC estimator | The growth track — Room Sizer today; duct-by-size is the known #1 gap |
+| H | HVAC estimator | The growth track — Room Sizer + the Duct tool (design-build sizing → Bid weight, shipped 2026-09; J7, J19) |
 | F | Field / tablet user | Touch, offline, aim loupe, install — basements with no signal |
 | V | View-link recipient | A GC/owner/inspector with a `?t=` link — no account; **this journey is the sales funnel** |
 | N | Brand-new user | The first 10 minutes — the make-or-break journey |
@@ -113,7 +126,7 @@ but lose time or confidence) · **papercut** (annoyance; costs polish, not outco
 
 ## Journey inventory
 
-17 journeys. Status: ☐ not started · ◐ dossier drafted · ● dossier verified (walked in the app).
+19 journeys (17 original + J18 from the coverage critic + J19 from the duct drift patrol). Status: ☐ not started · ◐ dossier drafted · ● dossier verified (walked in the app).
 
 | # | Slug | Journey | Personas |
 |---|---|---|---|
@@ -135,6 +148,7 @@ but lose time or confidence) · **papercut** (annoyance; costs polish, not outco
 | J16 | `reuse-standards-across-bids` | Artboard, Palette Insights, Quick Keys riding the artboard, icon library | P E H |
 | J17 | `admin-onboards-a-team` | Create users, passwords, transfer, activity, force turn-in | A |
 | J18 | `prove-the-number` *(added from the Phase-1 coverage critic, approved 2026-08-02)* | Double-check counts before sending the bid: Summary drill-down w/ thumbnails, footer totals, mid-takeoff page rotation | P E H |
+| J19 | `duct-takeoff` *(added by the duct drift patrol, 2026-09-13 — ● walked + verified)* | Design-build duct: devices with CFM → system group → trace the main with S step-downs and suggestions → auto fittings → Duct Schedule / Bid weight → Bid Check → export gate (plan-and-spec callouts as the variant). Surfaces: #ductBtn + ⋯ row, New Duct Run, S popover, fitting/run menus, Duct section + Schedule, Groups as systems, Room type, Bid Check, export gate | H |
 
 ## Phase 1 findings (2026-08-02)
 
@@ -288,6 +302,7 @@ J4 count-fixtures are the daily core**; J3/J6/J7/J11/J13/J15/J16 are telemetry-b
 | B16 | Cold start | Accept drag-and-drop of a PDF (today it triggers browser-default navigation and replaces the app) + a quiet "Drop a plan here — or Upload PDF" hint in the empty black canvas (J1 ×2) |
 | B17 | Dead-UI removal | Delete the PLUM quick-add rows with their bindings and viewerHideIds entries together, or boot throws (styles.css:266, quick-modals.js:14, app.js:2119, J1 J4); hide the modal-level "Search counters…" box on the Create/Quick tabs it doesn't filter (index.html:569-71, J4) |
 | B18 | Project Settings & Advanced composition (2026-08-17 audit) | **Shipped 2026-08-17:** delete Advanced "Export PDF" — it called the identical `App.downloadProjectPdf()` as the main modal's "Download PDF" under a different name (app.js:4174 vs :4182); demote Export Canvas from Advanced's yellow primary — the loudest button was the marks-only-JSON wrong-file-to-GC trap B4 documents; retire the three-verb "Name / Upload / Save Project to Cloud" label (the save modal never uploads — it names and saves) for stateful "Save Project to Cloud"/"Save Changes" across settings/sidebar/header/modal-h2/turn-in toast; rename the settings "macros" link to "keyboard shortcuts" so the link matches the modal it opens. **Queued:** status-bar "keys"/"macros" dialect rename travels with B4's naming pass (drags working-faster-with-the-keyboard.md + its `[[macros]]` ICON_BTN chip along); the coarse-pointer keyboard-links question is **RESOLVED 2026-08-31 (delegated call): KEEP the links visible on coarse pointers** — they're the ONLY route on phones and tablets with paired keyboards genuinely use Quick Keys; a visible link costs a phone user nothing, while hiding removes the only route (no code change — current behavior stands); the red Clear Page link's placement in the help-links row resolves with Tier-2 #13. **Verified-keep:** the locked groups toggle (disabled + tooltip already shipped); Advanced's remaining residents (Canvas Repair, Empty cache, Global force reload, dev Load test PDF) are correctly gated and genuinely advanced |
+| B19 | Duct drift-patrol batch (J19, 2026-09-13 — the confirmed papercuts; the six stumbles wait for the Tier-2 re-rank) | Give Duct a hotkey (an unbound letter, e.g. U) in HOTKEYS so the ⋯ row and Keyboard Map stop teaching a blank (hotkeys.js, header-more.js `key: ''`); Bid Check manual-row LABEL click ticks the row like the box (features/bid-check.js:178 — Will's chip task_4c782a3d); Copy Schedule shows ONE toast — fold the open-items count into "Duct schedule copied — Bid weight …" or skip the post-action advisory on the duct copy (features/duct-schedule.js + bid-check.js showBidCheckAdvisory); the export gate on an AUTO ⚠ row gets an acknowledge so a deliberate under-serve stops re-asking on every press (features/duct-bidcheck.js gate — ⚑ borderline on spirit (3), Will's call); Create tab: a typed CFM (or an HVAC project trade) switches to the Custom Icons panel and hoists the HVAC group first like the Quick tab (icon-render.js `firstSet`), and icon cells get a name tooltip; flex-drop sublabel + placeholder "empty = 8'" → 5' to match DUCT_FLEX_DEFAULTS.dropFt (app/index.html:692-693); Seam & waste % input gets the `duct-schedule-num` class (400 px wide today, features/duct-schedule.js); draw a small marker + "3' ↑" tag at rise/drop vertices (canvas-draw.js never reads `verticalFt`); **known build item:** `build:icons` has no `--check`, so a stale icons-custom.js is not caught by `npm run check` (scripts/build-custom-icons.js, scripts/check.js STEPS) |
 
 ### Tier 4 — teach: the guide-edit list
 

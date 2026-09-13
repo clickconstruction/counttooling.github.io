@@ -103,6 +103,9 @@
     // velocity cap (DUCT-PLAN §5). Pre-D6 saves get the defaults here.
     if (!Number.isFinite(ds.frictionInPer100ft) || ds.frictionInPer100ft <= 0) ds.frictionInPer100ft = 0.08;
     if (!Number.isFinite(ds.maxVelocityFpm) || ds.maxVelocityFpm <= 0) ds.maxVelocityFpm = 1200;
+    // D11 — the static-path terminal allowance (diffuser + flex, in. w.g.),
+    // added once at the end of the critical path; 0 is a legal "none".
+    if (!Number.isFinite(ds.terminalAllowanceInWg) || ds.terminalAllowanceInWg < 0) ds.terminalAllowanceInWg = 0.10;
     // D8 polish knobs. deckHeightFt is deliberately null-until-set (the
     // auto-riser only arms once the project has a real deck height);
     // countVdPerTap defaults ON for pre-D8 saves (absent ⇒ true).
@@ -375,6 +378,8 @@
     const velocity = document.getElementById('ductMaxVelocity');
     if (friction) friction.value = ds.frictionInPer100ft;
     if (velocity) velocity.value = ds.maxVelocityFpm;
+    const terminal = document.getElementById('ductTerminalAllowance');
+    if (terminal) terminal.value = ds.terminalAllowanceInWg;   // D11
     // D8 knobs, same row: deck height (empty = unset — no auto-riser), the
     // max-flex warning cap, and the VD-per-tap toggle.
     const deck = document.getElementById('ductDeckHeight');
@@ -504,6 +509,7 @@
     getDuctSettings().frictionInPer100ft = Number.isFinite(v) && v > 0 ? v : 0.08;
     syncDesignRow();
     App.markProjectDirty();
+    App.updateUI();   // D11: the static-path row + system headers track the rate
   });
   const velocityInput = document.getElementById('ductMaxVelocity');
   if (velocityInput) velocityInput.addEventListener('change', () => {
@@ -511,6 +517,15 @@
     getDuctSettings().maxVelocityFpm = Number.isFinite(v) && v > 0 ? v : 1200;
     syncDesignRow();
     App.markProjectDirty();
+  });
+  // D11: the static-path terminal allowance (0 allowed; junk → the default).
+  const terminalInput = document.getElementById('ductTerminalAllowance');
+  if (terminalInput) terminalInput.addEventListener('change', () => {
+    const v = parseFloat(terminalInput.value);
+    getDuctSettings().terminalAllowanceInWg = Number.isFinite(v) && v >= 0 ? v : 0.10;
+    syncDesignRow();
+    App.markProjectDirty();
+    App.updateUI();   // the Bid Check row + the system headers re-read it
   });
   // D8: deck height (empty clears — the auto-riser disarms), max-flex cap
   // (re-renders the body so the ⚠ labels track), VD-per-tap toggle (re-renders

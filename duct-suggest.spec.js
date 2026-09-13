@@ -185,11 +185,13 @@ test.describe('Duct design-build suggestions (D6)', () => {
       seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted',
       frictionInPer100ft: 0.08, maxVelocityFpm: 1200,
       deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true,   // D8
+      terminalAllowanceInWg: 0.1,   // D11
     });
     await page.evaluate(() => window.App.openDuctScheduleModal());
     await expect(page.locator('#ductScheduleModal')).toHaveClass(/visible/);
     await expect(page.locator('#ductFrictionRate')).toHaveValue('0.08');
     await expect(page.locator('#ductMaxVelocity')).toHaveValue('1200');
+    await expect(page.locator('#ductTerminalAllowance')).toHaveValue('0.1');   // D11
 
     await page.locator('#ductFrictionRate').fill('0.1');
     await page.locator('#ductFrictionRate').dispatchEvent('change');
@@ -202,6 +204,16 @@ test.describe('Duct design-build suggestions (D6)', () => {
     await page.locator('#ductFrictionRate').fill('');
     await page.locator('#ductFrictionRate').dispatchEvent('change');
     expect(await page.evaluate(() => window.state.ductSettings.frictionInPer100ft)).toBe(0.08);
+    // D11: the terminal allowance (0 is a legal "none"; junk → the default).
+    await page.locator('#ductTerminalAllowance').fill('0.15');
+    await page.locator('#ductTerminalAllowance').dispatchEvent('change');
+    expect(await page.evaluate(() => window.state.ductSettings.terminalAllowanceInWg)).toBe(0.15);
+    await page.locator('#ductTerminalAllowance').fill('0');
+    await page.locator('#ductTerminalAllowance').dispatchEvent('change');
+    expect(await page.evaluate(() => window.state.ductSettings.terminalAllowanceInWg)).toBe(0);
+    await page.locator('#ductTerminalAllowance').fill('');
+    await page.locator('#ductTerminalAllowance').dispatchEvent('change');
+    expect(await page.evaluate(() => window.state.ductSettings.terminalAllowanceInWg)).toBe(0.1);
 
     expect(errors).toEqual([]);
   });

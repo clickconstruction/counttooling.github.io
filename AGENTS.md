@@ -399,7 +399,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   schedule modal's Suggestions row, and the D8 polish knobs on its Polish row:
   `deckHeightFt` (null = unset; arms the auto-riser on equipment-started runs),
   `maxFlexFt` (6, the single-drop flex warning cap) and `countVdPerTap` (true —
-  a Volume damper fittings row per tap; absent in pre-D8 saves ⇒ true);
+  a Volume damper fittings row per tap; absent in pre-D8 saves ⇒ true), and the
+  D11 static-path knob `terminalAllowanceInWg` (0.10 — the diffuser + flex
+  allowance added once at the end of the critical path; on the Suggestions row);
   defaults in app.js state init, restored by
   every intake like `legendSettings`), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is

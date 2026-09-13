@@ -22,6 +22,8 @@
  *      equivalents, suggestRoundAndRect.
  *   6. Neck-size rules of thumb (CFM → device/neck suggestion).
  *   7. Bid Check (D9) — the duct row table + pure evaluators (plenum fit).
+ *   7b. Static path (D11) — the fitting equivalent-length table + the
+ *      critical-path walk behind the "will it blow?" row.
  */
 
 // --- 1. Annotation model -----------------------------------------------------
@@ -222,7 +224,7 @@ const SHEET_WEIGHT_LB_PER_SQFT = { 26: 0.906, 24: 1.156, 22: 1.406, 20: 1.656, 1
 // D8 adds deckHeightFt (project deck height, null = unset — arms the auto-riser
 // on equipment-started runs), maxFlexFt (single-drop flex warning cap) and
 // countVdPerTap (a volume damper counted at every tap).
-const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true };
+const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true, terminalAllowanceInWg: 0.10 };
 
 // DATA TABLE — gauge schedule keyed by pressure class (in. w.g., as strings)
 // then by the LARGER side dimension (rect: max(w,h); round: diameter), inches.
@@ -1416,10 +1418,10 @@ function suggestNeckSize(cfm) {
 // rows are checkboxes ticked per project (state.bidCheck.manual[id]). A
 // MANUAL row MAY carry an evaluate too — the "Fits the roof" upgrade rule:
 // while evaluate returns null (inputs missing) it stays a checkbox; the moment
-// the app has every number it becomes an AUTO row showing its work. Static
-// path stays MANUAL — its evaluator (equivalent-length table + critical-path
-// walk) is deferred past D10 per the ledger. Trades skin the table by adding
-// rows here, never in the panel.
+// the app has every number it becomes an AUTO row showing its work. D11 gives
+// "Static path" the same upgrade (§7b: equivalent-length table + critical-path
+// walk, once a system group carries an ESP and has a run). Trades skin the
+// table by adding rows here, never in the panel.
 
 // DATA TABLE — insulation thickness (in) assumed when a run carries a liner /
 // wrap type but no explicit linerThicknessIn (the create modal writes 0): 1"
@@ -1491,6 +1493,271 @@ function ductPlenumFit(opts) {
   return { ok: !offending.length, tightest: rows[0], offending: offending };
 }
 
+// --- 7b. Static path (unit D11) ----------------------------------------------
+//
+// The master's "will it blow?" (DUCT-PLAN master walkthrough, "Static path"):
+// the CRITICAL PATH — the longest equipment-to-terminal path in EQUIVALENT
+// feet (straight LF incl. verticals + every fitting on the way expressed as
+// feet of straight duct) — at the design friction rate, plus a terminal
+// allowance, against the unit's available external static pressure (ESP).
+//
+//   static = frictionRate × eqFt / 100 + terminalAllowanceInWg
+//
+// THE EQUIVALENT-LENGTH CONVENTION. Duct design texts express a fitting's
+// loss as a coefficient C on the velocity pressure (ASHRAE Handbook —
+// Fundamentals, "Duct Design", the SMACNA HVAC Systems Duct Design manual);
+// the field shorthand — the ACCA Manual D / residential equivalent-length
+// tables, and the numbers every ductulator's back panel prints — converts
+// those to "this elbow costs about as much as N feet of straight duct of its
+// size". That shorthand is what a master carries in his head, and it is what
+// this table encodes: rules of thumb, sized by the fitting's governing
+// dimension (rect larger side, round diameter) since a 24×12 elbow loses far
+// more than an 8×6 one at the same friction rate. Edit here, no code changes.
+
+// DATA TABLE — equivalent feet per fitting, as [maxGoverningIn, eqFt] bands
+// (the first band whose bound covers the size applies; the last is open).
+//   elbow90    10–35 ft rising with size (a smooth-radius elbow at low
+//              velocity; a hard mitre with vanes lands in the same range).
+//   elbow45    half a 90.
+//   transition ~5 ft (a gradual change; abrupt ones cost more — override by
+//              editing the band).
+//   tap / boot 10–15 ft — the branch entry (the air turning into the collar),
+//              counted only when the path LEAVES through it; a tee passed
+//              straight-through costs little and is ignored.
+//   offset     2 × a 45 (two 45s back to back).
+//   vd         ~2 ft — a volume damper, blade open (D8 counts one per tap).
+const DUCT_FITTING_EQ_FT = {
+  elbow90: [[8, 10], [14, 15], [20, 20], [28, 25], [40, 30], [Infinity, 35]],
+  elbow45: [[8, 5], [14, 7.5], [20, 10], [28, 12.5], [40, 15], [Infinity, 17.5]],
+  transition: [[Infinity, 5]],
+  tap: [[8, 10], [14, 12], [Infinity, 15]],
+  boot: [[8, 10], [14, 12], [Infinity, 15]],
+  offset: [[8, 10], [14, 15], [20, 20], [28, 25], [40, 30], [Infinity, 35]],
+  vd: [[Infinity, 2]],
+};
+
+/**
+ * Equivalent feet of straight duct for one fitting of `type` at `size`.
+ * Unknown type → 0. A size-less fitting reads as the smallest band (a data
+ * gap, not a physics case — every inferred fitting carries its size).
+ */
+function ductFittingEqFt(type, size) {
+  const bands = DUCT_FITTING_EQ_FT[type];
+  if (!bands) return 0;
+  const dim = isDuctSize(size) ? ductGoverningDimIn(size) : 0;
+  for (const [maxIn, eqFt] of bands) { if (dim <= maxIn) return eqFt; }
+  return bands[bands.length - 1][1];
+}
+
+// Per-run geometry for the walk: cumulative RAW arclength and FEET at every
+// vertex (distFt is the app's scale glue — pdf-space pair → feet — so a
+// multiply zone or an unscaled sheet is the caller's business), plus the
+// equipment orientation (D6's rule: a child's equipment end is vertex 0, a
+// root's is the vertex nearer equipmentPos).
+function ductRunWalkGeom(run, isChild, equipmentPos, distFt) {
+  const d = distFt || ductVertexDistDefault;
+  const verts = run.vertices;
+  const cumRaw = [0], cumFt = [0];
+  for (let i = 0; i < verts.length - 1; i++) {
+    cumRaw.push(cumRaw[i] + Math.hypot(verts[i + 1].x - verts[i].x, verts[i + 1].y - verts[i].y));
+    cumFt.push(cumFt[i] + (d(verts[i], verts[i + 1]) || 0));
+  }
+  const total = cumRaw[cumRaw.length - 1];
+  const equipStart = ductEquipmentEndIsStart(run, isChild, equipmentPos);
+  // feet along the polyline from vertex 0 to raw arclength s (per-segment
+  // interpolation, so non-uniform scale glue is honored)
+  const feetAt = (s) => {
+    if (s <= 0) return 0;
+    for (let i = 0; i < cumRaw.length - 1; i++) {
+      if (s <= cumRaw[i + 1] + 1e-9) {
+        const span = cumRaw[i + 1] - cumRaw[i];
+        return cumFt[i] + (span > 0 ? (s - cumRaw[i]) / span * (cumFt[i + 1] - cumFt[i]) : 0);
+      }
+    }
+    return cumFt[cumFt.length - 1];
+  };
+  return {
+    cumRaw, total, equipStart, feetAt,
+    // oriented arclength (distance from the equipment end) of a raw s
+    fromEquip: (s) => (equipStart ? s : total - s),
+    // straight feet from the equipment end to oriented arclength q
+    straightFtTo: (q) => (equipStart ? feetAt(q) : cumFt[cumFt.length - 1] - feetAt(total - q)),
+    // is vertex i passed on the way from the equipment end to oriented q?
+    vertexPassed: (i, q) => (equipStart ? cumRaw[i] <= q + 1e-9 : cumRaw[i] >= total - q - 1e-9),
+  };
+}
+
+// The fittings on one run, resolved to raw arclength: through-fittings
+// (elbows, transitions, boots, offsets — cost when the path passes them) vs
+// taps (cost only when the path leaves through them). Suppressed tombstones
+// and size-less/unknown types are skipped.
+function ductRunWalkFittings(run, fittings) {
+  const through = [], taps = [];
+  (fittings || []).forEach(f => {
+    if (!f || f.suppressed || f.runId !== run.id || !DUCT_FITTING_TYPES.includes(f.type)) return;
+    let s = null;
+    if (f.vertexIdx != null && run.vertices[f.vertexIdx]) {
+      s = ductNearestOnPolyline(run.vertices[f.vertexIdx], run.vertices).s;
+    } else if (f.position) {
+      s = ductNearestOnPolyline(f.position, run.vertices).s;
+    }
+    if (s == null) return;
+    (f.type === 'tap' ? taps : through).push({ f: f, s: s });
+  });
+  return { through, taps };
+}
+
+/**
+ * THE CRITICAL-PATH WALK. For one system, over its run network (D6's
+ * machinery: roots = runs no other run taps, children joined at the tap
+ * arclength), the equipment-to-terminal path with the most equivalent feet.
+ *
+ * opts: { runs, fittings, systemGroupId, distFt?, equipmentPos?, snapDist?,
+ *         frictionRate, terminalAllowanceInWg, countVdPerTap? }
+ *   - runs / fittings: one canvas's ductRuns / ductFittings.
+ *   - systemGroupId: trees are keyed by their ROOT's systemGroupId (a child
+ *     inherits its tree's system through the tap — DUCT-PLAN §2).
+ *   - distFt(a, b): vertex pair → FEET (default Euclidean on the raw coords).
+ *   - frictionRate: in. w.g. per 100 ft (ductSettings.frictionInPer100ft);
+ *     terminalAllowanceInWg: the diffuser + flex allowance added once at the
+ *     end of the path (ductSettings.terminalAllowanceInWg, default 0.10").
+ *   - countVdPerTap: add a volume damper's eq ft at every tap the path
+ *     leaves through (the D8 setting; a tap flagged noVd is exempt).
+ *
+ * Per run, from its equipment end: straight feet to the exit point (the
+ * terminal end, or the tap a child leaves through) + every verticalFt entry
+ * at a vertex passed on the way + the through-fittings anchored before the
+ * exit; leaving through a tap adds that tap's eq ft (+ VD) and the child's
+ * own best path. The longest candidate wins at every run; the longest root
+ * wins for the system. Cycle-safe.
+ *
+ * Returns null when the system has no root run. Otherwise
+ *   { eqFt, straightFt, fittingsEqFt, fittingCounts: { type: n },
+ *     staticInWg, frictionInWg, frictionRate, terminalAllowanceInWg,
+ *     path: [runId…], longestLegName, longestLegSize }
+ * — longestLegName/Size are the LAST run on the path (the leg that ends it)
+ * and that run's smallest segment size (the one to upsize).
+ */
+function ductStaticPath(opts) {
+  const o = opts || {};
+  const runs = (o.runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const sys = o.systemGroupId || null;
+  const frictionRate = o.frictionRate > 0 ? o.frictionRate : DUCT_SETTINGS_DEFAULTS.frictionInPer100ft;
+  const terminal = o.terminalAllowanceInWg >= 0 ? o.terminalAllowanceInWg : DUCT_SETTINGS_DEFAULTS.terminalAllowanceInWg;
+  const countVd = o.countVdPerTap !== false;
+  const links = ductChildLinks(runs, o);
+  const hasParent = new Set(links.map(l => l.childId));
+  const childrenOf = new Map();
+  links.forEach(l => {
+    if (!childrenOf.has(l.parentId)) childrenOf.set(l.parentId, []);
+    childrenOf.get(l.parentId).push(l);
+  });
+  const runById = new Map(runs.map(r => [r.id, r]));
+  const geomOf = new Map();
+  const geom = (run) => {
+    if (!geomOf.has(run.id)) geomOf.set(run.id, ductRunWalkGeom(run, hasParent.has(run.id), o.equipmentPos, o.distFt));
+    return geomOf.get(run.id);
+  };
+  const emptyLeg = () => ({ eqFt: 0, straightFt: 0, fittingsEqFt: 0, counts: {}, path: [] });
+  const addFitting = (leg, type, size) => {
+    const eq = ductFittingEqFt(type, size);
+    leg.eqFt += eq;
+    leg.fittingsEqFt += eq;
+    leg.counts[type] = (leg.counts[type] || 0) + 1;
+  };
+  // the run's own cost from its equipment end to oriented arclength q
+  const legTo = (run, q) => {
+    const g = geom(run);
+    const leg = emptyLeg();
+    leg.straightFt = g.straightFtTo(q);
+    (run.verticalFt || []).forEach(e => {
+      if (e && e.ft > 0 && Number.isInteger(e.vertexIdx) && e.vertexIdx < run.vertices.length && g.vertexPassed(e.vertexIdx, q)) leg.straightFt += e.ft;
+    });
+    leg.eqFt = leg.straightFt;
+    ductRunWalkFittings(run, o.fittings).through.forEach(({ f, s }) => {
+      if (g.fromEquip(s) <= q + 1e-9) addFitting(leg, f.type, f.size);
+    });
+    leg.path = [run.id];
+    return leg;
+  };
+  const best = (runId, visited) => {
+    const run = runById.get(runId);
+    if (!run || visited.has(runId)) return null;
+    visited.add(runId);
+    const g = geom(run);
+    let top = legTo(run, g.total);   // the terminal exit
+    const taps = ductRunWalkFittings(run, o.fittings).taps;
+    (childrenOf.get(runId) || []).forEach(l => {
+      const child = best(l.childId, visited);
+      if (!child) return;
+      const leg = legTo(run, g.fromEquip(l.s));
+      const tap = taps.find(t => Math.abs(t.s - l.s) <= 1e-6) || null;
+      if (tap) {
+        addFitting(leg, 'tap', tap.f.size);
+        if (countVd && !tap.f.noVd) addFitting(leg, 'vd', tap.f.size);
+      }
+      leg.eqFt += child.eqFt;
+      leg.straightFt += child.straightFt;
+      leg.fittingsEqFt += child.fittingsEqFt;
+      Object.entries(child.counts).forEach(([t, n]) => { leg.counts[t] = (leg.counts[t] || 0) + n; });
+      leg.path = leg.path.concat(child.path);
+      if (leg.eqFt > top.eqFt) top = leg;
+    });
+    return top;
+  };
+  let winner = null;
+  runs.forEach(root => {
+    if (hasParent.has(root.id) || (root.systemGroupId || null) !== sys) return;
+    const leg = best(root.id, new Set());
+    if (leg && (!winner || leg.eqFt > winner.eqFt)) winner = leg;
+  });
+  if (!winner) return null;
+  const last = runById.get(winner.path[winner.path.length - 1]);
+  let smallest = null;
+  runSegmentSpans(last).forEach(sp => { if (!smallest || largerDuctSize(smallest, sp.size) === smallest) smallest = sp.size; });
+  const frictionInWg = frictionRate * winner.eqFt / 100;
+  return {
+    eqFt: winner.eqFt, straightFt: winner.straightFt, fittingsEqFt: winner.fittingsEqFt,
+    fittingCounts: winner.counts,
+    staticInWg: frictionInWg + terminal, frictionInWg: frictionInWg,
+    frictionRate: frictionRate, terminalAllowanceInWg: terminal,
+    path: winner.path,
+    longestLegName: last.name || 'Duct run', longestLegSize: smallest,
+  };
+}
+
+// "2 elbows + 1 transition" — the fittings on the path, in table order.
+const DUCT_EQ_FT_LABELS = { elbow90: ['elbow', 'elbows'], elbow45: ['45° elbow', '45° elbows'], transition: ['transition', 'transitions'], tap: ['tap', 'taps'], boot: ['boot', 'boots'], offset: ['offset', 'offsets'], vd: ['VD', 'VDs'] };
+function ductStaticPathFittingsLabel(counts) {
+  return Object.keys(DUCT_EQ_FT_LABELS)
+    .filter(t => counts && counts[t] > 0)
+    .map(t => counts[t] + ' ' + DUCT_EQ_FT_LABELS[t][counts[t] === 1 ? 0 : 1])
+    .join(' + ');
+}
+const fmtInWg = (v, dp) => (Math.round(v * 100) / 100).toFixed(dp == null ? 2 : dp) + '"';
+
+/**
+ * One system's static-path line, the row's work shown. s = { name, espInWg,
+ * path: ductStaticPath result }. ✓ when static ≤ ESP:
+ *   RTU-1: 0.34" of 0.80" ESP · critical path 187 eq ft (68' duct + 2 elbows
+ *   + 1 transition @ 0.08"/100' + 0.10" terminal) ✓
+ * ⚠ when over, naming the long leg and the size to upsize:
+ *   RTU-2: 0.91" of 0.80" ESP — Branch 3 is the long leg; upsize its 8×6 or
+ *   lower the friction rate ⚠
+ */
+function ductStaticPathLine(s) {
+  const p = s.path;
+  const head = s.name + ': ' + fmtInWg(p.staticInWg) + ' of ' + fmtInWg(s.espInWg) + ' ESP';
+  if (p.staticInWg > s.espInWg + 1e-9) {
+    const size = isDuctSize(p.longestLegSize) ? 'its ' + formatDuctSize(p.longestLegSize) : 'it';
+    return { over: true, text: head + ' — ' + p.longestLegName + ' is the long leg; upsize ' + size + ' or lower the friction rate ⚠' };
+  }
+  const fittings = ductStaticPathFittingsLabel(p.fittingCounts);
+  const work = Math.round(p.straightFt) + "' duct" + (fittings ? ' + ' + fittings : '')
+    + ' @ ' + p.frictionRate + '"/100\'' + (p.terminalAllowanceInWg > 0 ? ' + ' + fmtInWg(p.terminalAllowanceInWg) + ' terminal' : '');
+  return { over: false, text: head + ' · critical path ' + Math.round(p.eqFt) + ' eq ft (' + work + ') ✓' };
+}
+
 // Inputs the duct rows evaluate (all optional — a missing block reads as
 // not-applicable, never as a ⚠):
 //   rooms:        [{ name, targetCfm, servedCfm, under }]   D7 getRoomAirBalance rows
@@ -1499,6 +1766,8 @@ function ductPlenumFit(opts) {
 //   ductPages:    [label]   sheets carrying duct
 //   unscaledPages:[label]   sheets carrying duct with no effective scale (T1-05 collector)
 //   plenum:       { deckHeightFt, items }   see ductPlenumFit
+//   statics:      [{ name, espInWg, path }]   D11 — systems with an ESP and a
+//                 run, path = ductStaticPath (the feature picks the worst sheet)
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
 const DUCT_BID_CHECK_ROWS = [
   {
@@ -1555,7 +1824,18 @@ const DUCT_BID_CHECK_ROWS = [
   },
   { id: 'duct-fire-dampers', kind: 'manual', label: 'Fire dampers at rated walls', short: 'Fire dampers at rated walls' },
   { id: 'duct-oa-code', kind: 'manual', label: 'OA meets code', short: 'OA meets code' },
-  { id: 'duct-static-path', kind: 'manual', label: 'Static path within unit ESP', short: 'Static path within unit ESP' },   // auto deferred past D10
+  // D11: MANUAL until a system group carries an ESP and has a duct run, then
+  // AUTO with the critical path's work — one line per system, ⚠ if any is
+  // over (naming its long leg). Clearing the ESP drops it back to a checkbox.
+  {
+    id: 'duct-static-path', kind: 'manual', label: 'Static path within unit ESP', short: 'Static path within unit ESP',
+    evaluate(i) {
+      const systems = ((i && i.statics) || []).filter(s => s && s.espInWg > 0 && s.path && Number.isFinite(s.path.staticInWg));
+      if (!systems.length) return null;   // inputs missing → stays a checkbox
+      const lines = systems.map(ductStaticPathLine);
+      return { verdict: lines.some(l => l.over) ? 'warn' : 'ok', detail: lines.map(l => l.text).join('; ') };
+    },
+  },
   { id: 'duct-curb-power', kind: 'manual', label: 'Curb & power coordinated', short: 'Curb & power coordinated' },
   { id: 'duct-controls', kind: 'manual', label: 'Controls / stat locations set', short: 'Controls / stat locations set' },
 ];
@@ -1718,6 +1998,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // Bid Check (D9)
     DUCT_INSULATION_DEFAULT_IN, ductInsulationThicknessIn, ductDepthIn, ductDepthLabel, ductPlenumFit,
     DUCT_BID_CHECK_ROWS, ductBidCheckRows, ductBidCheckUnresolved,
+    // static path (D11)
+    DUCT_FITTING_EQ_FT, ductFittingEqFt, ductStaticPath, ductStaticPathLine, ductStaticPathFittingsLabel,
     // plan-and-spec callouts (D10)
     DUCT_CALLOUT_RADIUS_PT, parseDuctCallout, ductDistToTextBox, nearestDuctCallout,
   };

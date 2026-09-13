@@ -1346,6 +1346,22 @@ test('ductBareDepthIn / ductRunDepthIn: rect h when flat, the larger side on edg
   assert.strictEqual(dm.ductDepthLabel(rect, 'wrap', 0), '24×12 + 2" wrap = 14"');
 });
 
+test('ductPlanWidthIn (D13): rect w when flat, the smaller side on edge (the complement of the depth); round d either way', () => {
+  const rect = dm.makeRectSize(24, 12);
+  assert.strictEqual(dm.ductPlanWidthIn(rect, 'flat'), 24);
+  assert.strictEqual(dm.ductPlanWidthIn(rect, undefined), 24);
+  assert.strictEqual(dm.ductPlanWidthIn(rect, 'edge'), 12);
+  assert.strictEqual(dm.ductPlanWidthIn(dm.makeRectSize(12, 24), 'edge'), 12);   // deeper than wide: the smaller side still sits in plan
+  assert.strictEqual(dm.ductPlanWidthIn(dm.makeRectSize(12, 24), 'flat'), 12);   // flat reads w verbatim, even when h is larger
+  // width + depth always account for both sides of the sheet
+  assert.strictEqual(dm.ductPlanWidthIn(rect, 'edge') + dm.ductBareDepthIn(rect, 'edge'), 36);
+  assert.strictEqual(dm.ductPlanWidthIn(rect, 'flat') + dm.ductBareDepthIn(rect, 'flat'), 36);
+  assert.strictEqual(dm.ductPlanWidthIn(dm.makeRoundSize(10), 'edge'), 10);
+  assert.strictEqual(dm.ductPlanWidthIn(dm.makeRoundSize(10), 'flat'), 10);
+  assert.strictEqual(dm.ductPlanWidthIn({ kind: 'nope' }, 'flat'), null);
+  assert.strictEqual(dm.ductPlanWidthIn(null, 'flat'), null);
+});
+
 test('the roof row on edge: the canvas numbers — 24×12 + 2" wrap flat = 14" ✓ at 30"; on edge = 26" ⚠ at 24" — and the subject names the orientation', () => {
   const byId = (rows) => Object.fromEntries(rows.map(r => [r.id, r]));
   const main = { runName: 'Supply Main', size: dm.makeRectSize(24, 12), linerType: 'wrap', ceilingFt: 10 };

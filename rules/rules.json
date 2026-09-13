@@ -262,7 +262,7 @@
       "kind": "convention",
       "status": "applied",
       "title": "Duct Schedule factors",
-      "summary": "The estimating knobs the Duct Schedule starts with — seam and waste, the quick-bid fitting factor, and the design friction rate and velocity cap the ductulator suggests sizes from.",
+      "summary": "The estimating knobs the Duct Schedule starts with — seam and waste, the quick-bid fitting factor, the design friction rate and velocity cap the ductulator suggests sizes from, and the terminal allowance the static-path check adds at the end of the critical path.",
       "values": [
         {
           "when": "seam and waste, on the straight-duct pounds",
@@ -283,6 +283,11 @@
           "when": "maximum velocity for size suggestions",
           "value": 1200,
           "unit": "fpm"
+        },
+        {
+          "when": "terminal allowance (diffuser + flex) added once at the end of the static path",
+          "value": 0.1,
+          "unit": "in w.g."
         }
       ],
       "source": {
@@ -295,7 +300,7 @@
         "ductSchedule"
       ],
       "url": "/rules/hvac/duct-schedule-factors/",
-      "updated": "2026-09-09"
+      "updated": "2026-09-12"
     },
     {
       "id": "hvac.room.airflow-defaults",

@@ -56,6 +56,7 @@
     // System fields (D4): tag + capacity CFM + plenum-return toggle.
     document.getElementById('groupModalEquipTag').value = g ? (g.equipmentTag || '') : '';
     document.getElementById('groupModalCapacityCfm').value = g && g.capacityCfm != null ? g.capacityCfm : '';
+    document.getElementById('groupModalEspInWg').value = g && g.espInWg > 0 ? g.espInWg : '';   // D11
     document.getElementById('groupModalPlenumBtn').setAttribute('aria-pressed', String(!!(g && g.plenumReturn)));
     syncPlenumRowVisibility();
     App.renderGroupCircuitFields && App.renderGroupCircuitFields(g);   // S4 circuit row
@@ -164,17 +165,23 @@
   // D4 system fields, read at Done. A group with no tag stays exactly
   // { id, name, color } — the fields are DELETED, not nulled, so existing
   // projects' group objects are byte-identical (zero behavior change).
+  // D11: `espInWg` (the unit's available external static, in. w.g.) is set
+  // ONLY when positive and deleted otherwise, so a D4-era system group with
+  // no ESP keeps its shape too. It arms the Bid Check "Static path" row.
   function applySystemFieldsTo(grp) {
     const equipTag = document.getElementById('groupModalEquipTag').value.trim();
     const cfmRaw = parseFloat(document.getElementById('groupModalCapacityCfm').value);
+    const espRaw = parseFloat(document.getElementById('groupModalEspInWg').value);
     if (equipTag) {
       grp.equipmentTag = equipTag;
       grp.capacityCfm = Number.isFinite(cfmRaw) && cfmRaw > 0 ? cfmRaw : null;
       grp.plenumReturn = document.getElementById('groupModalPlenumBtn').getAttribute('aria-pressed') === 'true';
+      if (Number.isFinite(espRaw) && espRaw > 0) grp.espInWg = espRaw; else delete grp.espInWg;
     } else {
       delete grp.equipmentTag;
       delete grp.capacityCfm;
       delete grp.plenumReturn;
+      delete grp.espInWg;
     }
   }
 

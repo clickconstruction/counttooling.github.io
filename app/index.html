@@ -955,6 +955,9 @@
         <span class="duct-schedule-section-label">Suggestions</span>
         <label>Friction <input type="number" id="ductFrictionRate" class="duct-schedule-pct duct-schedule-num" min="0.01" max="1" step="0.01" aria-label="Friction rate, inches per 100 feet">″/100′</label>
         <label>Max velocity <input type="number" id="ductMaxVelocity" class="duct-schedule-pct duct-schedule-num" min="100" max="5000" step="50" aria-label="Maximum velocity, feet per minute"> fpm</label>
+        <!-- D11: the diffuser + flex allowance added once at the end of the
+             static-path walk (ductSettings.terminalAllowanceInWg, 0.10 default). -->
+        <label title="Terminal allowance — the diffuser + flex drop's static, added once at the end of the critical path">Terminal <input type="number" id="ductTerminalAllowance" class="duct-schedule-pct duct-schedule-num" min="0" max="1" step="0.01" aria-label="Terminal allowance, inches w.g.">″</label>
       </div>
       <!-- D8 polish knobs (state.ductSettings — per project like the row
            above; synced/wired by features/duct-schedule.js): deck height arms
@@ -2094,9 +2097,13 @@
       <div class="form-group">
         <label>Equipment tag <span class="group-modal-hint">(optional — makes this a system)</span></label>
         <div class="duct-size-inputs">
-          <input type="text" id="groupModalEquipTag" placeholder="e.g. RTU-1" style="width:110px;">
-          <input type="number" id="groupModalCapacityCfm" min="0" step="50" placeholder="CFM" aria-label="Capacity (CFM)" style="width:80px;">
+          <input type="text" id="groupModalEquipTag" placeholder="e.g. RTU-1" style="width:100px;">
+          <input type="number" id="groupModalCapacityCfm" min="0" step="50" placeholder="CFM" aria-label="Capacity (CFM)" style="width:72px;">
           <span>CFM</span>
+          <!-- D11: the unit's available external static (in. w.g.) — arms the
+               Bid Check "Static path" auto row. Stored only when > 0. -->
+          <input type="number" id="groupModalEspInWg" min="0" step="0.05" placeholder="ESP" aria-label="External static pressure available (inches w.g.)" title="External static pressure available at the unit, inches w.g. — arms the Bid Check static-path row" style="width:62px;">
+          <span style="white-space:nowrap;">″ ESP</span>
         </div>
       </div>
       <!-- Electrical, First-Class S4 (features/circuits.js): a group with a

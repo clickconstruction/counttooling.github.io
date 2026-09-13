@@ -1238,7 +1238,7 @@ test('ductPlenumFit: null while inputs are missing; ✓ shows the tightest segme
   assert.strictEqual(bad.offending[0].label, '24×12 + 2" wrap = 14" · plenum 6"');
 });
 
-test('DUCT_BID_CHECK_ROWS: the shipped table — four auto rows, the upgradable roof row, five manual rows', () => {
+test('DUCT_BID_CHECK_ROWS: the shipped table — four auto rows, the upgradable roof + static-path rows, four plain manual rows', () => {
   const rows = dm.DUCT_BID_CHECK_ROWS;
   assert.deepStrictEqual(rows.map(r => [r.id, r.kind, typeof r.evaluate === 'function']), [
     ['duct-rooms-served', 'auto', true],
@@ -1248,7 +1248,7 @@ test('DUCT_BID_CHECK_ROWS: the shipped table — four auto rows, the upgradable 
     ['duct-fits-roof', 'manual', true],
     ['duct-fire-dampers', 'manual', false],
     ['duct-oa-code', 'manual', false],
-    ['duct-static-path', 'manual', false],
+    ['duct-static-path', 'manual', true],
     ['duct-curb-power', 'manual', false],
     ['duct-controls', 'manual', false],
   ]);
@@ -1322,6 +1322,190 @@ test('ductBidCheckUnresolved: auto ⚠ first, then unticked manual — the first
   assert.strictEqual(all.first.short, 'Fits the roof');
   const none = dm.ductBidCheckUnresolved(dm.ductBidCheckRows({}, Object.fromEntries(dm.DUCT_BID_CHECK_ROWS.filter(r => r.kind === 'manual').map(r => [r.id, true]))));
   assert.strictEqual(none.first, null);
+});
+
+// --- 7b. Static path (unit D11) ----------------------------------------------
+
+test('DUCT_FITTING_EQ_FT / ductFittingEqFt: band boundaries by governing dimension, elbow45 = half, offset = 2×45, unknown type = 0', () => {
+  const rect = (w, h) => dm.makeRectSize(w, h);
+  // elbow90 bands: ≤8 → 10, ≤14 → 15, ≤20 → 20, ≤28 → 25, ≤40 → 30, else 35
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(8, 6)), 10);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(10, 6)), 15);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(14, 8)), 15);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(16, 10)), 20);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(20, 12)), 20);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(24, 12)), 25);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(28, 12)), 25);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(30, 12)), 30);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(40, 20)), 30);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(48, 20)), 35);
+  // governing dim: the LARGER side (12×24 reads like 24×12); round keys on d
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', rect(12, 24)), 25);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', dm.makeRoundSize(8)), 10);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', dm.makeRoundSize(9)), 15);
+  // elbow45 = half a 90 at every band; offset = two 45s = a 90
+  [rect(8, 6), rect(14, 8), rect(20, 12), rect(28, 12), rect(40, 20), rect(48, 20)].forEach(sz => {
+    close(dm.ductFittingEqFt('elbow45', sz), dm.ductFittingEqFt('elbow90', sz) / 2);
+    close(dm.ductFittingEqFt('offset', sz), 2 * dm.ductFittingEqFt('elbow45', sz));
+  });
+  // transition flat 5; tap/boot 10 / 12 / 15; VD 2
+  assert.strictEqual(dm.ductFittingEqFt('transition', rect(48, 24)), 5);
+  assert.strictEqual(dm.ductFittingEqFt('tap', rect(8, 6)), 10);
+  assert.strictEqual(dm.ductFittingEqFt('tap', rect(12, 8)), 12);
+  assert.strictEqual(dm.ductFittingEqFt('tap', rect(16, 8)), 15);
+  assert.strictEqual(dm.ductFittingEqFt('boot', dm.makeRoundSize(8)), 10);
+  assert.strictEqual(dm.ductFittingEqFt('vd', rect(24, 12)), 2);
+  // unknown type → 0; a size-less fitting → the smallest band
+  assert.strictEqual(dm.ductFittingEqFt('flange', rect(8, 6)), 0);
+  assert.strictEqual(dm.ductFittingEqFt('elbow90', null), 10);
+  // every fitting type (and the derived VD) has a row
+  dm.DUCT_FITTING_TYPES.concat(['vd']).forEach(t => assert.ok(Array.isArray(dm.DUCT_FITTING_EQ_FT[t]), t));
+  // the terminal allowance ships in the settings defaults (drift-checked by the rulebook)
+  assert.strictEqual(dm.DUCT_SETTINGS_DEFAULTS.terminalAllowanceInWg, 0.10);
+});
+
+// A scaled network: raw units ÷ 10 = feet. Trunk 0→400 east with a 10' auto
+// riser at vertex 0; Branch A taps at x=100 and runs 300 south; Branch B
+// taps at x=300, runs 100 south then 50 east (a 90° elbow).
+const staticNet = () => {
+  const trunk = dm.makeDuctRun({ id: 't', name: 'Trunk', systemGroupId: 'g1', vertices: [{ x: 0, y: 0 }, { x: 400, y: 0 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }], verticalFt: [{ vertexIdx: 0, ft: 10, auto: true }] });
+  const a = dm.makeDuctRun({ id: 'a', name: 'Branch A', vertices: [{ x: 100, y: 0 }, { x: 100, y: 300 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(12, 8) }] });
+  const b = dm.makeDuctRun({ id: 'b', name: 'Branch B', vertices: [{ x: 300, y: 0 }, { x: 300, y: 100 }, { x: 350, y: 100 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(8, 6) }] });
+  const runs = [trunk, a, b];
+  const fittings = dm.reconcileDuctFittings([], dm.inferAutoDuctFittings(runs), runs);
+  return { runs, fittings };
+};
+const tenth = (p, q) => Math.hypot(q.x - p.x, q.y - p.y) / 10;
+const walk = (net, extra) => dm.ductStaticPath({ runs: net.runs, fittings: net.fittings, systemGroupId: 'g1', distFt: tenth, frictionRate: 0.08, terminalAllowanceInWg: 0.10, ...(extra || {}) });
+
+test('ductStaticPath: the branching network picks the LONGER branch in eq ft; taps add the child path; verticals count; on-path fittings only', () => {
+  const net = staticNet();
+  const r = walk(net);
+  // Branch B: trunk 30' + riser 10' + tap 8×6 (10) + VD (2) + branch 10' + 5' + elbow90 8×6 (10) = 77 eq ft
+  // Branch A: trunk 10' + riser 10' + tap 12×8 (12) + VD (2) + branch 30' = 64 — shorter in eq ft despite the longer straight
+  assert.deepStrictEqual(r.path, ['t', 'b']);
+  close(r.eqFt, 77);
+  close(r.straightFt, 55);
+  close(r.fittingsEqFt, 22);
+  assert.deepStrictEqual(r.fittingCounts, { tap: 1, vd: 1, elbow90: 1 });
+  assert.strictEqual(r.longestLegName, 'Branch B');
+  assert.deepStrictEqual(r.longestLegSize, dm.makeRectSize(8, 6));
+  // static = 0.08 × 77 / 100 + 0.10 terminal
+  close(r.frictionInWg, 0.0616);
+  close(r.staticInWg, 0.1616);
+  assert.strictEqual(r.frictionRate, 0.08);
+  assert.strictEqual(r.terminalAllowanceInWg, 0.10);
+  // Branch A's tap (12×8 → 12) and the trunk's far 10' past x=300 are OFF the path: not counted.
+  // Lengthen Branch A past B and the walk flips to it (10' + 10' + 12 + 2 + 55' = 89 > 77).
+  net.runs[1].vertices[1].y = 550;
+  const r2 = walk(net);
+  assert.deepStrictEqual(r2.path, ['t', 'a']);
+  close(r2.eqFt, 89);
+  assert.strictEqual(r2.longestLegName, 'Branch A');
+  assert.deepStrictEqual(r2.longestLegSize, dm.makeRectSize(12, 8));
+  // VD-per-tap off drops the 2 ft
+  close(walk(net, { countVdPerTap: false }).eqFt, 87);
+  // a tap flagged noVd is exempt on its own
+  net.fittings.find(f => f.type === 'tap' && f.position.x === 100).noVd = true;
+  close(walk(net).eqFt, 87);
+});
+
+test('ductStaticPath: a lone run walks to its terminal; verticalFt entries beyond the exit are skipped; equipmentPos flips a root traced backwards', () => {
+  const rect = dm.makeRectSize;
+  // Trunk with a transition at x=200 (24×12 → 12×8) and a rise at the far end.
+  const trunk = dm.makeDuctRun({ id: 't', name: 'Main', systemGroupId: 'g1', vertices: [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 400, y: 0 }], segments: [{ startVertexIdx: 0, size: rect(24, 12) }, { startVertexIdx: 1, size: rect(12, 8) }], verticalFt: [{ vertexIdx: 2, ft: 6 }] });
+  const fittings = dm.reconcileDuctFittings([], dm.inferAutoDuctFittings([trunk]), [trunk]);
+  const r = dm.ductStaticPath({ runs: [trunk], fittings, systemGroupId: 'g1', distFt: tenth, frictionRate: 0.10, terminalAllowanceInWg: 0.05 });
+  // 40' + 6' vertical + transition (5) = 51 eq ft; static 0.10 × 51 / 100 + 0.05 = 0.101
+  assert.deepStrictEqual(r.path, ['t']);
+  close(r.straightFt, 46);
+  close(r.eqFt, 51);
+  assert.deepStrictEqual(r.fittingCounts, { transition: 1 });
+  close(r.staticInWg, 0.101);
+  assert.strictEqual(r.longestLegName, 'Main');
+  assert.deepStrictEqual(r.longestLegSize, rect(12, 8));   // the smallest segment on the leg
+  // A branch tapping the trunk at x=100 makes the far vertical (at vertex 2)
+  // off-path for that candidate — but the terminal candidate (51) still wins
+  // over trunk-to-tap 10' + tap 10 + VD 2 + branch 10' = 32.
+  const br = dm.makeDuctRun({ id: 'b', name: 'Stub', vertices: [{ x: 100, y: 0 }, { x: 100, y: 100 }], segments: [{ startVertexIdx: 0, size: rect(8, 6) }] });
+  const runs2 = [trunk, br];
+  const f2 = dm.reconcileDuctFittings([], dm.inferAutoDuctFittings(runs2), runs2);
+  const r2 = dm.ductStaticPath({ runs: runs2, fittings: f2, systemGroupId: 'g1', distFt: tenth, frictionRate: 0.10, terminalAllowanceInWg: 0.05 });
+  assert.deepStrictEqual(r2.path, ['t']);
+  close(r2.eqFt, 51);
+  // Stretch the stub to 400 south: 10' + 10 + 2 + 40' = 62 > 51 → the stub's
+  // path wins and the trunk's far vertical + transition are NOT on it.
+  br.vertices[1].y = 400;
+  const r3 = dm.ductStaticPath({ runs: runs2, fittings: f2, systemGroupId: 'g1', distFt: tenth, frictionRate: 0.10, terminalAllowanceInWg: 0.05 });
+  assert.deepStrictEqual(r3.path, ['t', 'b']);
+  close(r3.eqFt, 62);
+  assert.deepStrictEqual(r3.fittingCounts, { tap: 1, vd: 1 });
+  // equipmentPos near the LAST vertex: the trunk is oriented backwards — the
+  // riser at vertex 2 is now at the equipment end, the tap sits 30' along.
+  const r4 = dm.ductStaticPath({ runs: runs2, fittings: f2, systemGroupId: 'g1', distFt: tenth, equipmentPos: { x: 400, y: 5 }, frictionRate: 0.10, terminalAllowanceInWg: 0.05 });
+  // terminal candidate: 40' + 6' + transition 5 = 51; stub candidate: 30' + 6' + transition 5 + tap 10 + VD 2 + 40' = 93
+  assert.deepStrictEqual(r4.path, ['t', 'b']);
+  close(r4.eqFt, 93);
+});
+
+test('ductStaticPath: null without a root run in the system; other systems\' trees are ignored; defaults apply; suppressed fittings skipped', () => {
+  const net = staticNet();
+  assert.strictEqual(dm.ductStaticPath({ runs: net.runs, fittings: net.fittings, systemGroupId: 'g2', distFt: tenth }), null);
+  assert.strictEqual(dm.ductStaticPath({ runs: [], fittings: [], systemGroupId: 'g1' }), null);
+  assert.strictEqual(dm.ductStaticPath(null), null);
+  // a root of another system beside ours does not enter the walk
+  const other = dm.makeDuctRun({ id: 'o', name: 'Other', systemGroupId: 'g2', vertices: [{ x: 0, y: 900 }, { x: 9000, y: 900 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(30, 12) }] });
+  const r = dm.ductStaticPath({ runs: net.runs.concat([other]), fittings: net.fittings, systemGroupId: 'g1', distFt: tenth });
+  assert.deepStrictEqual(r.path, ['t', 'b']);
+  // defaults: friction 0.08, terminal 0.10 (the settings defaults), VD counted
+  close(r.staticInWg, 0.08 * 77 / 100 + 0.10);
+  // a deleted (suppressed) elbow costs nothing
+  net.fittings.find(f => f.type === 'elbow90').suppressed = true;
+  close(walk(net).eqFt, 67);
+  // no distFt → raw units read as feet
+  const raw = dm.ductStaticPath({ runs: net.runs, fittings: net.fittings, systemGroupId: 'g1' });
+  close(raw.straightFt, 300 + 100 + 50 + 10);
+});
+
+test('ductStaticPathLine + the static-path row: ✓ shows the work, ⚠ names the long leg; manual → auto → manual with the ESP', () => {
+  const net = staticNet();
+  const path = walk(net);
+  const ok = dm.ductStaticPathLine({ name: 'RTU-1', espInWg: 0.8, path });
+  assert.deepStrictEqual(ok, { over: false, text: 'RTU-1: 0.16" of 0.80" ESP · critical path 77 eq ft (55\' duct + 1 elbow + 1 tap + 1 VD @ 0.08"/100\' + 0.10" terminal) ✓' });
+  const over = dm.ductStaticPathLine({ name: 'RTU-2', espInWg: 0.15, path });
+  assert.deepStrictEqual(over, { over: true, text: 'RTU-2: 0.16" of 0.15" ESP — Branch B is the long leg; upsize its 8×6 or lower the friction rate ⚠' });
+  // exactly at the ESP is still ✓ (≤)
+  assert.strictEqual(dm.ductStaticPathLine({ name: 'X', espInWg: path.staticInWg, path }).over, false);
+  // a path with no fittings and no terminal allowance reads plain
+  const bare = dm.ductStaticPathLine({ name: 'AHU', espInWg: 0.5, path: { ...path, fittingCounts: {}, terminalAllowanceInWg: 0, straightFt: 68, eqFt: 68, staticInWg: 0.0544 } });
+  assert.strictEqual(bare.text, 'AHU: 0.05" of 0.50" ESP · critical path 68 eq ft (68\' duct @ 0.08"/100\') ✓');
+  assert.strictEqual(dm.ductStaticPathFittingsLabel({ elbow90: 2, transition: 1 }), '2 elbows + 1 transition');
+  assert.strictEqual(dm.ductStaticPathFittingsLabel({ elbow45: 1, offset: 2, boot: 1 }), '1 45° elbow + 1 boot + 2 offsets');   // table order
+  assert.strictEqual(dm.ductStaticPathFittingsLabel({}), '');
+
+  const byId = (rows) => Object.fromEntries(rows.map(r => [r.id, r]));
+  // no statics block → manual, the tick honored
+  let row = byId(dm.ductBidCheckRows({}, {}))['duct-static-path'];
+  assert.deepStrictEqual([row.kind, row.verdict, row.done, row.upgraded], ['manual', 'open', false, false]);
+  row = byId(dm.ductBidCheckRows({ statics: [] }, { 'duct-static-path': true }))['duct-static-path'];
+  assert.deepStrictEqual([row.kind, row.verdict, row.done], ['manual', 'done', true]);
+  // a system with an ESP but no path (no run yet) → still manual
+  row = byId(dm.ductBidCheckRows({ statics: [{ name: 'RTU-1', espInWg: 0.8, path: null }] }, {}))['duct-static-path'];
+  assert.strictEqual(row.kind, 'manual');
+  // ESP + path → AUTO, the stale tick ignored, the work shown
+  row = byId(dm.ductBidCheckRows({ statics: [{ name: 'RTU-1', espInWg: 0.8, path }] }, { 'duct-static-path': true }))['duct-static-path'];
+  assert.deepStrictEqual([row.kind, row.verdict, row.done, row.upgraded], ['auto', 'ok', false, true]);
+  assert.strictEqual(row.detail, ok.text);
+  // two systems: one line each; ⚠ overall when any is over
+  row = byId(dm.ductBidCheckRows({ statics: [{ name: 'RTU-1', espInWg: 0.8, path }, { name: 'RTU-2', espInWg: 0.15, path }] }, {}))['duct-static-path'];
+  assert.strictEqual(row.verdict, 'warn');
+  assert.strictEqual(row.detail, ok.text + '; ' + over.text);
+  // the ⚠ counts as unresolved and names the gate toast
+  const u = dm.ductBidCheckUnresolved(dm.ductBidCheckRows({ statics: [{ name: 'RTU-2', espInWg: 0.15, path }] }, {}));
+  assert.strictEqual(u.first.id, 'duct-static-path');
+  // ESP cleared (0 / absent) → back to a checkbox
+  row = byId(dm.ductBidCheckRows({ statics: [{ name: 'RTU-1', espInWg: 0, path }] }, {}))['duct-static-path'];
+  assert.strictEqual(row.kind, 'manual');
 });
 
 // --- 8. Plan-and-spec callout reading (unit D10) -----------------------------

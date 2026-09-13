@@ -18,8 +18,22 @@
  *                              size/liner are all known, then AUTO with its work
  *                              ("24×12 + 2" wrap = 14" · plenum 30" ✓" — duct-model
  *                              ductPlenumFit; depth = rect h / round d + 2 × insulation)
- *   + the manual rows (fire dampers, OA, static path — auto deferred, curb &
- *     power, controls), ticked in state.bidCheck.manual like S5's.
+ *   Static path                D11 MANUAL until a system group carries `espInWg` AND has
+ *                              a duct run, then AUTO: duct-model's ductStaticPath —
+ *                              the critical path (longest equipment→terminal path in
+ *                              EQUIVALENT feet: straight LF incl. verticals + the
+ *                              fittings on the way from DUCT_FITTING_EQ_FT) over each
+ *                              page's active-canvas runs/fittings (D6's tap network,
+ *                              equipment end via App.getDuctSystemEquipmentPos, feet
+ *                              via the scale glue), the WORST sheet per system; static
+ *                              = frictionInPer100ft × eqFt/100 + terminalAllowanceInWg
+ *                              ('RTU-1: 0.34" of 0.80" ESP · critical path 187 eq ft
+ *                              (68' duct + 2 elbows + 1 transition @ 0.08"/100' + 0.10"
+ *                              terminal) ✓'; ⚠ names the long leg + the size to upsize).
+ *                              App.getDuctSystemStaticPath(groupId) is the same walk for
+ *                              the sidebar's system header ('· 0.34" of 0.8" ESP').
+ *   + the manual rows (fire dampers, OA, curb & power, controls), ticked in
+ *     state.bidCheck.manual like S5's.
  *
  * Three more surfaces this file owns:
  *   1. The export GATE — Copy to /Tooling (features/output.js runGatedCopy,
@@ -139,7 +153,51 @@
       ductPages: ductPageIdx.map(pageLabel),
       unscaledPages: unscaledIdx.map(pageLabel),
       plenum: { deckHeightFt: ds.deckHeightFt > 0 ? ds.deckHeightFt : null, items: collectPlenumItems(runs) },
+      statics: collectStatics(scope),   // D11
     };
+  }
+
+  // D11 — one system's critical path over the scope's pages: duct-model's
+  // ductStaticPath per page (ACTIVE-canvas runs + fittings, feet via the
+  // page's scale glue, the equipment end from the D7 marker ladder), the
+  // WORST sheet winning — a system may span sheets and the bid answers for
+  // its longest path. null when no scope page holds a root run of the system.
+  function systemStaticPath(group, scope) {
+    if (!group || typeof ductStaticPath !== 'function') return null;
+    const state = App.state;
+    const ds = App.getDuctSettings ? App.getDuctSettings() : (state.ductSettings || {});
+    let worst = null;
+    scope.pageIndices.forEach((pi) => {
+      const ann = scope.getAnn(pi);
+      const runs = ann?.ductRuns || [];
+      if (!runs.length) return;
+      const distFt = (a, b) => App.getLineRealWorldLengthFeet({ points: [a, b] }, pi, true, ann) || 0;
+      const path = ductStaticPath({
+        runs, fittings: ann.ductFittings || [], systemGroupId: group.id, distFt,
+        equipmentPos: App.getDuctSystemEquipmentPos ? App.getDuctSystemEquipmentPos(group.id, pi) : null,
+        frictionRate: ds.frictionInPer100ft, terminalAllowanceInWg: ds.terminalAllowanceInWg,
+        countVdPerTap: ds.countVdPerTap !== false,
+      });
+      if (path && (!worst || path.eqFt > worst.eqFt)) worst = path;
+    });
+    return worst;
+  }
+
+  function collectStatics(scope) {
+    return (App.state.groups || []).filter((g) => g && g.espInWg > 0).map((g) => ({
+      name: g.name || 'System', espInWg: g.espInWg, path: systemStaticPath(g, scope),
+    }));
+  }
+
+  // The sidebar seam (features/sidebar-lists.js, the system header line):
+  // the whole project's walk for one group, or null without ESP / a run.
+  function getDuctSystemStaticPath(groupId) {
+    const state = App.state;
+    if (!state || !state.pages || !state.pages.length) return null;
+    const group = (state.groups || []).find((g) => g && g.id === groupId);
+    if (!group || !(group.espInWg > 0)) return null;
+    const path = systemStaticPath(group, scopeOf(null));
+    return path ? { ...path, espInWg: group.espInWg, over: path.staticInWg > group.espInWg + 1e-9 } : null;
   }
 
   function manualTicks() {
@@ -286,6 +344,7 @@
   }
 
   App.getDuctBidCheck = getDuctBidCheck;
+  App.getDuctSystemStaticPath = getDuctSystemStaticPath;   // D11: the system header's ESP fragment
   App.hasDuctRuns = hasDuctRuns;
   App.runDuctBidGate = runDuctBidGate;
   App.ductBidGateHandles = ductBidGateHandles;

@@ -231,12 +231,26 @@
         // via App.getDuctSystemDesignedCfm (features/duct-suggest.js — the D6
         // accumulation from each root's equipment end). Deferred App.* read;
         // groups without a capacity render exactly as before.
+        // D11: the same line carries "· 0.34" of 0.8" ESP" once the group
+        // has an ESP and a run (App.getDuctSystemStaticPath, features/
+        // duct-bidcheck.js — the Bid Check static-path walk); ⚠ colors the
+        // line when the static is over the ESP. No ESP / no run = no text.
+        const parts = [];
+        let over = false;
         if (g.capacityCfm > 0 && App.getDuctSystemDesignedCfm) {
           const designed = App.getDuctSystemDesignedCfm(g.id) || 0;
-          const over = designed > g.capacityCfm;
-          sysHtml += '<span class="group-capacity-line' + (over ? ' over' : '') + '">'
-            + Math.round(designed).toLocaleString() + ' designed / '
-            + Number(g.capacityCfm).toLocaleString() + ' capacity ' + (over ? '⚠' : '✓') + '</span>';
+          if (designed > g.capacityCfm) over = true;
+          parts.push(Math.round(designed).toLocaleString() + ' designed / '
+            + Number(g.capacityCfm).toLocaleString() + ' capacity ' + (designed > g.capacityCfm ? '⚠' : '✓'));
+        }
+        const sp = g.espInWg > 0 && App.getDuctSystemStaticPath ? App.getDuctSystemStaticPath(g.id) : null;
+        if (sp) {
+          if (sp.over) over = true;
+          const inWg = (v) => String(Math.round(v * 100) / 100) + '"';
+          parts.push(inWg(sp.staticInWg) + ' of ' + inWg(g.espInWg) + ' ESP' + (sp.over ? ' ⚠' : ''));
+        }
+        if (parts.length) {
+          sysHtml += '<span class="group-capacity-line' + (over ? ' over' : '') + '">' + parts.join(' · ') + '</span>';
         }
       }
       div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';

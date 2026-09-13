@@ -5,6 +5,8 @@ Program unit P2 of [_INDEX-DUCT.md](_INDEX-DUCT.md); the in-repo successor to
 [_NEXT.md](_NEXT.md) Stage 6). Source of every row: JOURNEY-MAP.md Tier 5
 (X1–X17), the STATUS block's drift-patrol note, and the ledgers.
 
+> **Decisions 2026-09-13 (Will: "Build it all", after the ratchet pass):** X1 BUILD · X2 BUILD · X3 BUILD in edit mode · X4 option D · X6 option D · J5-D option (b) + Pin · J5-A with X3 · J6-H in B19. Execution ledger: _INDEX-DUCT.md Wave 3 (D18–D25). The remaining `[decision]` slots below are the rows that were NOT on the What's Left canvas (fold-ins, defused, no-deliberately) and stand as written.
+
 ## Purpose, and how to use this document
 
 One conversation, one table. Every `[decision]` slot below is Will's — the

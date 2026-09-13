@@ -359,7 +359,11 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the
-  schedule modal's Suggestions row; defaults in app.js state init, restored by
+  schedule modal's Suggestions row, and the D8 polish knobs on its Polish row:
+  `deckHeightFt` (null = unset; arms the auto-riser on equipment-started runs),
+  `maxFlexFt` (6, the single-drop flex warning cap) and `countVdPerTap` (true —
+  a Volume damper fittings row per tap; absent in pre-D8 saves ⇒ true);
+  defaults in app.js state init, restored by
   every intake like `legendSettings`), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is
   true OR the project has groups; latched true on first group create; restored

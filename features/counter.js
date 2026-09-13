@@ -117,6 +117,9 @@
     // value from the previous create must never silently ride a new counter.
     const cfmEl = document.getElementById('counterCfm');
     if (cfmEl) cfmEl.value = '';
+    // D8: same rule for the optional flex-drop length beside it.
+    const flexEl = document.getElementById('counterFlexDrop');
+    if (flexEl) flexEl.value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
@@ -265,6 +268,10 @@
     // non-air counter's shape is unchanged (and old exports stay byte-alike).
     const cfmVal = parseFloat(document.getElementById('counterCfm')?.value);
     if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
+    // D8: optional flex-drop length (ft) — same set-only-when-positive rule;
+    // absent means the DUCT_FLEX_DEFAULTS.dropFt table default (8').
+    const flexVal = parseFloat(document.getElementById('counterFlexDrop')?.value);
+    if (Number.isFinite(flexVal) && flexVal > 0) newCounter.flexDropFt = flexVal;
     state.counters.push(newCounter);
     App.pushRecentColor(color);
     state.activeCounterType = newCounter.id;

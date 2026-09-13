@@ -211,7 +211,10 @@
     // and fitting-factor % lines plus the Counted|Factor mode pick. D6 adds
     // the design-build ductulator knobs: equal-friction rate (in/100ft) and
     // the velocity cap (fpm) behind the size-chip/S-popover suggestions.
-    ductSettings: { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 },
+    // D8 adds deckHeightFt (project deck height, null = unset — arms the
+    // auto-riser on equipment-started runs), maxFlexFt (single-drop flex
+    // warning cap) and countVdPerTap (a volume damper counted at every tap).
+    ductSettings: { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true },
     multiplyZoneSettings: { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' },
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
@@ -679,7 +682,7 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.rooms = [];
-    state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 };
+    state.ductSettings = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true };
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
     // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key

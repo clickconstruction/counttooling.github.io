@@ -348,7 +348,7 @@
       const ds = ductSchedule;
       const fmtLbR = (lb) => Math.round(lb).toLocaleString();
       const fmtFtR = (ft) => Math.round(ft).toLocaleString() + "'";
-      const FIT_LABELS = { elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition', tap: 'Tap', boot: 'Boot', offset: 'Offset' };
+      const FIT_LABELS = { elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition', tap: 'Tap', boot: 'Boot', offset: 'Offset', vd: 'Volume damper' };
       html += '<h3 class="section-header">Duct Schedule</h3>';
       html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
       ds.straightRows.forEach(r => {
@@ -364,6 +364,11 @@
       } else {
         html += '<tr><td>Fittings — factor ' + ds.fittingFactorPct + '% of straight</td><td></td><td></td><td></td><td>' + fmtLbR(ds.fittingFactorLb) + '</td></tr>';
       }
+      // D8: per-system flex-drop rows — LF only, priced by the drop, never in
+      // the bid-weight pounds.
+      (ds.flexRows || []).forEach(r => {
+        html += '<tr><td>Flex — ' + escapeHtml(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFtR(r.totalFt) + '</td></tr>';
+      });
       if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + Math.round(ds.linerSqFt).toLocaleString() + ' sq ft</td></tr>';
       if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
       html += '<tr><td>Seam &amp; waste (+' + ds.seamWastePct + '%)</td><td></td><td></td><td></td><td>' + fmtLbR(ds.seamWasteLb) + '</td></tr>';

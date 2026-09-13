@@ -647,6 +647,13 @@
           <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
           <input type="number" id="counterCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;">
         </div>
+        <!-- DUCT unit D8: optional per-type flex-drop length (ft) beside the
+             CFM it belongs to. Empty = the data-table default (8'); only CFM
+             devices attached to duct contribute flex to the schedule. -->
+        <div class="form-group">
+          <label>Flex drop <span class="form-sublabel">(ft per drop — air devices; empty = 8')</span></label>
+          <input type="number" id="counterFlexDrop" min="0" step="0.5" placeholder="8" style="width:120px;">
+        </div>
         <div class="form-group">
           <div class="counter-icon-tabs">
             <button class="counter-icon-tab active" data-icon-tab="icon">Icon</button>
@@ -883,6 +890,21 @@
         <span class="duct-schedule-section-label">Suggestions</span>
         <label>Friction <input type="number" id="ductFrictionRate" class="duct-schedule-pct duct-schedule-num" min="0.01" max="1" step="0.01" aria-label="Friction rate, inches per 100 feet">″/100′</label>
         <label>Max velocity <input type="number" id="ductMaxVelocity" class="duct-schedule-pct duct-schedule-num" min="100" max="5000" step="50" aria-label="Maximum velocity, feet per minute"> fpm</label>
+      </div>
+      <!-- D8 polish knobs (state.ductSettings — per project like the row
+           above; synced/wired by features/duct-schedule.js): deck height arms
+           the auto-riser on runs started at a system's equipment marker
+           (empty = off), max flex caps a single drop before the schedule's ⚠,
+           and VD per tap counts a Volume damper fittings row at every tap. -->
+      <div class="duct-schedule-design-row">
+        <span class="duct-schedule-section-label">Polish</span>
+        <label>Deck height <input type="number" id="ductDeckHeight" class="duct-schedule-pct duct-schedule-num" min="0" step="0.5" placeholder="—" aria-label="Project deck height, feet"> ft</label>
+        <label>Max flex <input type="number" id="ductMaxFlex" class="duct-schedule-pct duct-schedule-num" min="1" max="25" step="0.5" aria-label="Maximum single flex drop, feet"> ft</label>
+        <label class="duct-schedule-vd-label">VD per tap
+          <button type="button" class="toggle-switch" id="ductVdPerTapBtn" aria-pressed="true" title="Count a volume damper at every tap">
+            <span class="toggle-switch-knob"></span>
+          </button>
+        </label>
       </div>
       <div class="actions">
         <button id="ductScheduleCopy" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
@@ -1815,6 +1837,16 @@
       <div class="form-group" id="counterLineTypeDetailsCfmGroup" style="display:none;">
         <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
         <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <!-- D8: the neck-size prefill line ("150 CFM → 8&quot;Ø neck" from the
+             D1 table) — shown only for CFM counters whose name carries no
+             explicit size; text set by features/item-details.js. -->
+        <div class="form-sublabel" id="counterLineTypeDetailsNeck" style="display:none;margin-top:6px;"></div>
+      </div>
+      <!-- DUCT unit D8: per-type flex-drop length (counters only, beside the
+           CFM). Empty = the 8' data-table default. -->
+      <div class="form-group" id="counterLineTypeDetailsFlexGroup" style="display:none;">
+        <label>Flex drop <span class="form-sublabel">(ft per drop — air devices; empty = 8')</span></label>
+        <input type="number" id="counterLineTypeDetailsFlexDrop" min="0" step="0.5" placeholder="8" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>

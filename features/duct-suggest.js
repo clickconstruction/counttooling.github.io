@@ -21,10 +21,12 @@
  *
  * The size: duct-model's suggestRoundAndRect at the per-project design knobs
  * (state.ductSettings.frictionInPer100ft / maxVelocityFpm — the settings row
- * on the Duct Schedule modal, features/duct-schedule.js). The offered size
- * follows the draft's current shape (rect draft → rect equivalent, round →
- * round), and the binding constraint is NAMED when the velocity cap governs
- * ("velocity-limited") — DUCT-PLAN §5.
+ * on the Duct Schedule modal, features/duct-schedule.js). D8 (the master
+ * walkthrough's round-first rule): BOTH sizes are offered — '10"Ø or 12×8',
+ * spiral first — as the chip line's dual label and as TWO popover chips,
+ * either of which applies through applyDuctSizeStep; `size` stays the primary
+ * (round) answer for the S-accept path. The binding constraint is NAMED when
+ * the velocity cap governs ("velocity-limited") — DUCT-PLAN §5.
  *
  * Surfaces: App.getDuctDraftSuggestion() (consumed by duct-tool.js's overlay
  * for the chip line, and the spec seam), plus the popover section registered
@@ -50,7 +52,9 @@
   const App = (window.App = window.App || {});
 
   // Placed air devices on a page: every marker of a counter type with cfm > 0,
-  // from the MERGED annotations (any layer), carrying its marker group.
+  // from the MERGED annotations (any layer), carrying its marker group and —
+  // D8 — the counter's per-type flex-drop length (null = the 8' table
+  // default, resolved in duct-model's tallyFlexDrops).
   function collectDuctDevices(pageIdx) {
     const state = App.state;
     const page = state.pages[pageIdx];
@@ -62,10 +66,26 @@
       const c = byId.get(typeId);
       if (!c || !(c.cfm > 0)) return;
       (markers || []).forEach((m) => {
-        if (m && Number.isFinite(m.x) && Number.isFinite(m.y)) out.push({ x: m.x, y: m.y, cfm: c.cfm, groupId: m.group || null });
+        if (m && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+          out.push({ x: m.x, y: m.y, cfm: c.cfm, groupId: m.group || null, flexDropFt: c.flexDropFt > 0 ? c.flexDropFt : null });
+        }
       });
     });
     return out;
+  }
+
+  // D8 neck-size prefill (DUCT-PLAN master walkthrough, MINIMAL surface):
+  // "150 CFM → 8"Ø neck" from duct-model's D1 table, for a CFM counter whose
+  // name carries NO explicit size already (8"Ø, 12×8, …). Consumed by the
+  // sidebar counter-row title attr and the details-modal line — no new UI.
+  const EXPLICIT_SIZE_RE = /\d+\s*["″]?\s*[Øø]|\d+\s*[x×]\s*\d+/;
+  function getDuctNeckSuggestionText(counter) {
+    if (!counter || !(counter.cfm > 0)) return null;
+    if (EXPLICIT_SIZE_RE.test(counter.name || '')) return null;
+    const n = typeof suggestNeckSize === 'function' ? suggestNeckSize(counter.cfm) : null;
+    if (!n) return null;
+    return Math.round(counter.cfm) + ' CFM → ' + n.neckDIn + '"Ø neck'
+      + (n.overCapacity ? ' (over the table — split the drop)' : '');
   }
 
   // --- D7 balance glue ------------------------------------------------------
@@ -153,19 +173,22 @@
     const maxVelocityFpm = ds.maxVelocityFpm > 0 ? ds.maxVelocityFpm : 1200;
     const s = suggestRoundAndRect(remaining.cfm, { frictionRate: frictionRate, maxVelocityFpm: maxVelocityFpm });
     if (!s) return null;
-    // Offer the draft's own shape: a rect trace gets the rect equivalent, a
-    // round trace the round size (rect falls back to round if no rect fits).
-    const cur = App.getCurrentDuctSize ? App.getCurrentDuctSize() : null;
-    const wantRound = cur ? cur.kind === 'round' : false;
-    const size = !wantRound && s.rect ? makeRectSize(s.rect.w, s.rect.h) : makeRoundSize(s.round.diameterIn);
-    const sizeLabel = formatDuctSize(size);
+    // D8 round-first dual suggestion (the master walkthrough): BOTH sizes are
+    // offered — spiral first ('10"Ø or 12×8'), the rect equivalent beside it
+    // (absent when no rect fits the aspect cap). `size` stays the primary
+    // (round) size — the S-accept path and older consumers keep working.
+    const roundSize = makeRoundSize(s.round.diameterIn);
+    const rectSize = s.rect ? makeRectSize(s.rect.w, s.rect.h) : null;
+    const sizeLabel = formatDuctSize(roundSize) + (rectSize ? ' or ' + formatDuctSize(rectSize) : '');
     const cfmLabel = Math.round(remaining.cfm).toLocaleString();
     const limitNote = s.binding === 'velocity' ? ' · velocity-limited' : '';
     return {
       cfm: remaining.cfm,
       totalCfm: remaining.totalCfm,
       servedCfm: remaining.servedCfm,
-      size: size,
+      size: roundSize,
+      roundSize: roundSize,
+      rectSize: rectSize,
       sizeLabel: sizeLabel,
       binding: s.binding,
       velocityFpm: s.round.velocityFpm,
@@ -188,19 +211,30 @@
       label.className = 'duct-popover-section-label';
       label.textContent = 'Suggested';
       container.appendChild(label);
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'duct-suggest-chip';
-      b.title = sug.popoverLabel;
-      b.setAttribute('aria-label', sug.popoverLabel);
-      b.textContent = sug.sizeLabel;
-      const from = document.createElement('span');
+      // D8 round-first dual chips: spiral first, the rect equivalent beside
+      // it — tapping EITHER applies that size through applyDuctSizeStep.
+      const row = document.createElement('div');
+      row.className = 'duct-suggest-row';
+      [[sug.roundSize, 'round'], [sug.rectSize, 'rect']].forEach(([size]) => {
+        if (!size) return;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'duct-suggest-chip';
+        const chipLabel = 'Suggested: ' + formatDuctSize(size) + ' · from '
+          + Math.round(sug.cfm).toLocaleString() + ' CFM'
+          + (sug.binding === 'velocity' ? ' · velocity-limited' : '');
+        b.title = chipLabel;
+        b.setAttribute('aria-label', chipLabel);
+        b.textContent = formatDuctSize(size);
+        b.onclick = () => ctx.applySize(size);
+        row.appendChild(b);
+      });
+      container.appendChild(row);
+      const from = document.createElement('div');
       from.className = 'duct-suggest-from';
       from.textContent = 'from ' + Math.round(sug.cfm).toLocaleString() + ' CFM @ '
         + sug.frictionRate + '″/100′' + (sug.binding === 'velocity' ? ' · velocity-limited' : '');
-      b.appendChild(from);
-      b.onclick = () => ctx.applySize(sug.size);
-      container.appendChild(b);
+      container.appendChild(from);
     },
   });
 
@@ -211,4 +245,6 @@
   App.collectDuctDevices = collectDuctDevices;
   App.getDuctSystemEquipmentPos = getDuctSystemEquipmentPos;
   App.getDuctSystemDesignedCfm = getDuctSystemDesignedCfm;
+  // D8: the neck-size prefill text (sidebar row title + details-modal line).
+  App.getDuctNeckSuggestionText = getDuctNeckSuggestionText;
 })();

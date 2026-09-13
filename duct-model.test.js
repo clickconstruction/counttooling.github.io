@@ -1054,3 +1054,147 @@ test('suggestSystemsForCfm: the ~2,000 CFM/system rule of thumb', () => {
   assert.strictEqual(dm.suggestSystemsForCfm(-5), null);
   assert.strictEqual(dm.suggestSystemsForCfm(NaN), null);
 });
+
+// --- D8: vertical footage, flex drops, VD-per-tap ----------------------------
+
+test('makeDuctRun: verticalFt attached only when valid entries exist (pre-D8 shape otherwise)', () => {
+  const base = dm.makeDuctRun({ id: 'r1' });
+  assert.ok(!('verticalFt' in base));
+  assert.ok(!('verticalFt' in dm.makeDuctRun({ id: 'r2', verticalFt: [] })));
+  // Junk filtered; auto normalized to presence-only-when-true.
+  const run = dm.makeDuctRun({
+    id: 'r3',
+    verticalFt: [
+      { vertexIdx: 0, ft: 12, auto: true },
+      { vertexIdx: 2, ft: 4.5 },
+      { vertexIdx: -1, ft: 3 },          // bad index
+      { vertexIdx: 1, ft: 0 },           // non-positive
+      { vertexIdx: 1.5, ft: 2 },         // non-integer index
+      null,
+    ],
+  });
+  assert.deepStrictEqual(run.verticalFt, [
+    { vertexIdx: 0, ft: 12, auto: true },
+    { vertexIdx: 2, ft: 4.5 },
+  ]);
+  // All-junk input → key absent.
+  assert.ok(!('verticalFt' in dm.makeDuctRun({ id: 'r4', verticalFt: [{ vertexIdx: 0, ft: -2 }] })));
+});
+
+test('runStraightItems: verticalFt entries tally at the segment-at-vertex size', () => {
+  // 24×12 for 10 units, steps to 20×12 for 10 more (unit distances = feet).
+  const run = dm.makeDuctRun({
+    id: 'r1', linerType: 'liner',
+    vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }],
+    segments: [
+      { startVertexIdx: 0, size: dm.makeRectSize(24, 12) },
+      { startVertexIdx: 1, size: dm.makeRectSize(20, 12) },
+    ],
+    verticalFt: [
+      { vertexIdx: 0, ft: 12, auto: true },   // the deck riser — 24×12 arrives at v0
+      { vertexIdx: 2, ft: 3 },                // a drop at the far end — 20×12
+    ],
+  });
+  const items = dm.runStraightItems(run);
+  assert.strictEqual(items.length, 4);
+  const vertical = items.filter(i => i.vertical);
+  assert.strictEqual(vertical.length, 2);
+  assert.deepStrictEqual(vertical[0], { size: { kind: 'rect', w: 24, h: 12 }, lengthFt: 12, liner: 'liner', vertical: true });
+  assert.deepStrictEqual(vertical[1], { size: { kind: 'rect', w: 20, h: 12 }, lengthFt: 3, liner: 'liner', vertical: true });
+  // The tally folds them into the per-size rows: 24×12 = 10 + 12, 20×12 = 10 + 3.
+  const tally = dm.tallyStraightBySize(items, '1');
+  const by = Object.fromEntries(tally.rows.map(r => [r.sizeKey, r.lengthFt]));
+  assert.strictEqual(by['24×12'], 22);
+  assert.strictEqual(by['20×12'], 13);
+  assert.strictEqual(tally.totalLengthFt, 35);
+  // A degenerate run (no drawable spans) contributes nothing, verticals included.
+  assert.deepStrictEqual(dm.runStraightItems(dm.makeDuctRun({ id: 'r2', verticalFt: [{ vertexIdx: 0, ft: 5 }] })), []);
+});
+
+test('tallyFlexDrops: attached CFM devices, per system, defaults + over-max counting', () => {
+  assert.deepStrictEqual(dm.DUCT_FLEX_DEFAULTS, { dropFt: 8, maxFlexFt: 6 });
+  const runA = dm.makeDuctRun({
+    id: 'a', systemGroupId: 'g1',
+    vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+    segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }],
+  });
+  const runB = dm.makeDuctRun({
+    id: 'b',
+    vertices: [{ x: 0, y: 50 }, { x: 100, y: 50 }],
+    segments: [{ startVertexIdx: 0, size: dm.makeRoundSize(10) }],
+  });
+  const devices = [
+    { x: 20, y: 2, cfm: 150 },                     // on A → default 8'
+    { x: 60, y: 2, cfm: 200, flexDropFt: 5 },      // on A → its own 5'
+    { x: 40, y: 52, cfm: 100, flexDropFt: 7 },     // on B (no system) → 7' (over 6)
+    { x: 40, y: 200, cfm: 100 },                   // attached to nothing → excluded
+  ];
+  const rows = dm.tallyFlexDrops(devices, [runA, runB]);
+  assert.strictEqual(rows.length, 2);
+  const g1 = rows.find(r => r.systemGroupId === 'g1');
+  assert.deepStrictEqual(g1, { systemGroupId: 'g1', count: 2, totalFt: 13, overCount: 1 });
+  const none = rows.find(r => r.systemGroupId === null);
+  assert.deepStrictEqual(none, { systemGroupId: null, count: 1, totalFt: 7, overCount: 1 });
+  // A tighter cap flags more; a looser one clears them.
+  assert.strictEqual(dm.tallyFlexDrops(devices, [runA, runB], { maxFlexFt: 4 }).find(r => r.systemGroupId === 'g1').overCount, 2);
+  assert.strictEqual(dm.tallyFlexDrops(devices, [runA, runB], { maxFlexFt: 10 }).reduce((n, r) => n + r.overCount, 0), 0);
+  // Custom default drop length.
+  assert.strictEqual(dm.tallyFlexDrops([{ x: 20, y: 2, cfm: 150 }], [runA], { defaultDropFt: 6 })[0].totalFt, 6);
+  assert.deepStrictEqual(dm.tallyFlexDrops([], [runA]), []);
+});
+
+test('ductVolumeDamperFittings: one vd per live tap; noVd/suppressed/non-tap skipped', () => {
+  assert.ok(dm.FITTING_EQUIV_LF.vd > 0);
+  const size = dm.makeRoundSize(10);
+  const fittings = [
+    dm.makeDuctFitting({ id: 'f1', runId: 'a', type: 'tap', size: size, position: { x: 1, y: 1 }, auto: true }),
+    dm.makeDuctFitting({ id: 'f2', runId: 'a', type: 'tap', size: dm.makeRectSize(12, 8), position: { x: 2, y: 2 }, noVd: true }),
+    dm.makeDuctFitting({ id: 'f3', runId: 'a', type: 'tap', size: size, position: { x: 3, y: 3 }, suppressed: true }),
+    dm.makeDuctFitting({ id: 'f4', runId: 'a', type: 'elbow90', size: size, vertexIdx: 1 }),
+  ];
+  const vds = dm.ductVolumeDamperFittings(fittings);
+  assert.deepStrictEqual(vds, [{ type: 'vd', size: { kind: 'round', d: 10 } }]);
+  // The vd rows price through the normal fitting math (equiv-LF × lb/ft).
+  const lb = dm.fittingPounds('vd', size, 26);
+  assert.ok(Math.abs(lb - dm.FITTING_EQUIV_LF.vd * dm.ductWeightPerFoot(size, 26)) < 1e-9);
+  // And ride rollupDuct like any counted fitting.
+  const r = dm.rollupDuct({ straightItems: [], fittings: vds, pressureClass: '1' });
+  assert.strictEqual(r.fittings.rows.length, 1);
+  assert.strictEqual(r.fittings.rows[0].type, 'vd');
+  assert.strictEqual(r.fittings.rows[0].count, 1);
+});
+
+test('noVd survives re-inference (the auto:false preservation pattern + auto carry)', () => {
+  // Parent + child (the child's first vertex ON the parent) → one auto tap.
+  const parent = dm.makeDuctRun({
+    id: 'p', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+    segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }],
+  });
+  const child = dm.makeDuctRun({
+    id: 'c', vertices: [{ x: 50, y: 0 }, { x: 50, y: 60 }],
+    segments: [{ startVertexIdx: 0, size: dm.makeRoundSize(10) }],
+  });
+  const runs = [parent, child];
+  let fittings = dm.reconcileDuctFittings([], dm.inferAutoDuctFittings(runs), runs);
+  const tap = fittings.find(f => f.type === 'tap');
+  assert.ok(tap && tap.auto);
+  assert.strictEqual(dm.ductVolumeDamperFittings(fittings).length, 1);
+
+  // The context-menu gesture: noVd + auto:false (features/duct-fittings.js).
+  tap.noVd = true;
+  tap.auto = false;
+  fittings = dm.reconcileDuctFittings(fittings, dm.inferAutoDuctFittings(runs), runs);
+  const tap2 = fittings.filter(f => f.type === 'tap' && !f.suppressed);
+  assert.strictEqual(tap2.length, 1);                       // no auto twin resurrected
+  assert.strictEqual(tap2[0].noVd, true);
+  assert.strictEqual(dm.ductVolumeDamperFittings(fittings).length, 0);
+
+  // Belt-and-braces: a still-auto tap carrying noVd keeps it through re-derive.
+  const autoTap = dm.reconcileDuctFittings(
+    [dm.makeDuctFitting({ ...tap2[0], auto: true, noVd: true })],
+    dm.inferAutoDuctFittings(runs), runs,
+  ).filter(f => f.type === 'tap');
+  assert.strictEqual(autoTap.length, 1);
+  assert.strictEqual(autoTap[0].noVd, true);
+  assert.strictEqual(autoTap[0].auto, true);
+});

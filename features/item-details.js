@@ -91,6 +91,17 @@
     const cfmGroup = document.getElementById('counterLineTypeDetailsCfmGroup');
     const cfmEl = document.getElementById('counterLineTypeDetailsCfm');
     if (cfmGroup) cfmGroup.style.display = kind === 'counter' ? '' : 'none';
+    // D8: the neck-size prefill line under the CFM ("150 CFM → 8"Ø neck",
+    // duct-model's D1 table via App.getDuctNeckSuggestionText — shown only
+    // when the counter carries a CFM and its name has no explicit size).
+    const neckEl = document.getElementById('counterLineTypeDetailsNeck');
+    const syncNeckLine = () => {
+      if (!neckEl) return;
+      const t = kind === 'counter' && App.getDuctNeckSuggestionText ? App.getDuctNeckSuggestionText(item) : null;
+      neckEl.textContent = t || '';
+      neckEl.style.display = t ? '' : 'none';
+    };
+    syncNeckLine();
     if (cfmEl && kind === 'counter') {
       cfmEl.value = Number.isFinite(item.cfm) && item.cfm > 0 ? item.cfm : '';
       cfmEl.onblur = () => {
@@ -100,6 +111,25 @@
         App.pushUndoSnapshotCurrentPage();
         if (next == null) delete item.cfm;
         else item.cfm = next;
+        App.markProjectDirty();
+        App.updateUI();
+        syncNeckLine();
+      };
+    }
+    // D8: the per-type flex-drop length (ft) — the CFM field's optional-field
+    // semantics exactly (cleared/invalid deletes the key).
+    const flexGroup = document.getElementById('counterLineTypeDetailsFlexGroup');
+    const flexEl = document.getElementById('counterLineTypeDetailsFlexDrop');
+    if (flexGroup) flexGroup.style.display = kind === 'counter' ? '' : 'none';
+    if (flexEl && kind === 'counter') {
+      flexEl.value = Number.isFinite(item.flexDropFt) && item.flexDropFt > 0 ? item.flexDropFt : '';
+      flexEl.onblur = () => {
+        const v = parseFloat(flexEl.value);
+        const next = Number.isFinite(v) && v > 0 ? v : null;
+        if ((next == null && item.flexDropFt == null) || next === item.flexDropFt) return;
+        App.pushUndoSnapshotCurrentPage();
+        if (next == null) delete item.flexDropFt;
+        else item.flexDropFt = next;
         App.markProjectDirty();
         App.updateUI();
       };

@@ -1,7 +1,7 @@
 ---
 title: Duct takeoff by the pound
 description: Trace duct runs with size step-downs, let fittings count themselves, and read one Bid weight off the Duct Schedule — sheet metal priced like a bid.
-updated: 2026-09-06
+updated: 2026-09-12
 order: 9.15
 icon: duct
 category: By trade
@@ -33,7 +33,7 @@ Most duct jobs are **design-build** — there's no engineered duct to copy, just
 1. **Give your air devices a CFM.** The counter Create tab (and each counter's settings) carries an optional **CFM** field — 150 on the lay-in diffuser, 300 on the big register. Leave it empty on anything that isn't an air device; nothing changes for those.
 2. **Place the diffusers first**, straight off the reflected ceiling plan.
 3. **Trace the main.** While you trace, the size chip grows a second line: *"450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S accepts."* Every device the trace passes hands off its air, and the suggestion shrinks with the remaining CFM — the classic ductulator answer (equal friction, 0.08″/100 ft by default) computed live at the cursor.
-4. **Accept with a tap.** Press `S`: the suggested size sits at the top of the step popover, pre-highlighted; one tap steps the run down to it. Suggestions only ever *inform* — the size never changes unless you take it.
+4. **Accept with a tap.** Press `S`: the suggestion sits at the top of the step popover as two chips — spiral first, then the rectangular equivalent (*"10"Ø or 12×8"*, the way a master sizes it); one tap on either steps the run down to that size. Suggestions only ever *inform* — the size never changes unless you take it.
 
 Devices belong to a run when the trace (or a branch's tap) lands within snap distance of them, and to a **system** through that run's group — so with two RTUs on the sheet, each system accumulates only its own air. When the **velocity cap** governs instead of friction (default 1,200 fpm), the suggestion says so: *"velocity-limited."* Both knobs — friction rate and max velocity — live at the bottom of the Duct Schedule and stick with the project.
 
@@ -45,6 +45,15 @@ Once a room has a target, its sidebar row keeps score: *"needs 450 · served 300
 
 And before any duct is traced at all, the New Duct Run dialog reads the room targets and offers the **equipment-first** rule of thumb: *"Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (edit in Groups)"* (~400 CFM per ton, ~5 tons per light-commercial rooftop unit). It's one quiet line, it never creates anything, and it disappears as soon as a system group carries a real capacity. Naming an equipment counter after a group's tag (place an "RTU-1" counter for the RTU-1 system) also anchors the system's unit on the sheet, so return mains accumulate correctly no matter which end you traced them from.
 
+### Vertical footage, flex, and necks
+
+A flat trace can't see the riser off the rooftop unit or the drop down a chase, so the `S` popover carries a **Rise / drop** row: type the feet and tap Add, and that vertical footage joins the run at the size of the segment it sits on — in the schedule, the legend, and the live readout, priced like any other straight duct. Two defaults absorb the common cases:
+
+- **Deck height** (bottom of the Duct Schedule, per project) — once it's set, a run that *starts* on its system's equipment marker gets the riser added automatically (deck height less the ceiling of the room box it starts in, when one is drawn; the full deck height otherwise). Open the popover right after that first click to see it — and to remove it if the unit sits on grade.
+- **Flex drop** — every CFM counter carries a per-drop flex length (8' unless you set one on the Create tab or the counter's settings). Devices that hang off a run feed a per-system **Flex duct** line on the schedule: *"RTU-1 · 5 drops · 40'"*. Flex is priced by the drop, so this line is linear feet only and never touches the bid weight. When any single drop runs past the **Max flex** cap (6' by default, editable beside deck height), the row says so — *"3 drops over 6' max"* — because that's exactly the drop a master flags on the walkthrough.
+
+One more prefill: a CFM counter whose name doesn't already say a size shows the neck-size rule of thumb as its hover title and in its settings — *"150 CFM → 8"Ø neck"* — so the exported layout reads like a submittal.
+
 ## Fittings count themselves
 
 You never click "add elbow." The geometry already says where the fittings are, so the app counts them from the trace:
@@ -55,12 +64,15 @@ You never click "add elbow." The geometry already says where the fittings are, s
 
 Every inferred fitting is a marker on the sheet. Right-click one to **reclassify** it (45°, boot, offset…) or delete it — your call always outranks the geometry, and re-tracing never resurrects a fitting you removed. It's the same philosophy as the automatic gauge pick: the app does the routine call, you keep the override.
 
+Taps carry one more default: a **volume damper**. With *VD per tap* on (the toggle at the bottom of the schedule, on by default), every tap adds a Volume damper row to the fittings section at the tap's size. Right-click a tap for **Remove volume damper** where the branch runs undampered — that call sticks through re-tracing too — and **Add volume damper** puts it back. Fire dampers stay manual counters: the app can't know where the rated walls are.
+
 ## The Duct Schedule
 
 Click **Schedule** on the Duct section of the sidebar. The schedule prices like a bid:
 
 - **Straight duct by size** — size, gauge, LF, lb/ft, pounds. Round rows also show the **joint count** (spiral lands in 10' sticks), because spiral is catalog-priced by LF as often as by weight.
-- **Fittings** — the counted rows (each type and size at its equivalent-weight each), or flip the toggle to **Factor %** and apply one percentage of straight pounds for a quick bid. The default is 40%; both the mode and the percentage stick with the project.
+- **Fittings** — the counted rows (each type and size at its equivalent-weight each, volume dampers included), or flip the toggle to **Factor %** and apply one percentage of straight pounds for a quick bid. The default is 40%; both the mode and the percentage stick with the project.
+- **Flex duct** — per-system drops and linear feet, with the over-max warning. Priced by the drop, so it stays out of the pounds.
 - **Insulation** — liner and wrap square feet, derived from the same footage × perimeter.
 - **Seam & waste** — its own labeled line, +15% by default and editable, never buried in a unit price.
 - **Bid weight** — the one number that goes on the bid.

@@ -143,6 +143,10 @@
       vertices: [],
       segments: [{ startVertexIdx: 0, size: size }],
       sizeSteps: [],
+      // D8 (§4): rise/drop entries staged on the draft — { vertexIdx, ft,
+      // auto? }; the popover's rise/drop section adds/removes them and the
+      // commit carries them onto the run (duct-model verticalFt shape).
+      verticalFt: [],
     };
     state.tool = App.TOOL.DUCT;
     App.hideModal('ductCreateModal');
@@ -188,7 +192,37 @@
     }
     App.pushUndoSnapshotCurrentPage();
     draft.vertices.push(pt);
+    // D8 auto-riser (§4 "defaults absorb the common cases"): the FIRST vertex
+    // of a system run landing on the system's equipment marker gets the
+    // deck-height riser staged automatically (visible in tallies, removable
+    // via the popover's rise/drop section while still at vertex 0).
+    if (draft.vertices.length === 1) maybeAutoDeckRiser(draft);
     App.markProjectDirty();
+  }
+
+  // The auto-riser rule: project deck height set (ductSettings.deckHeightFt)
+  // AND the draft belongs to a system group AND its first vertex lands within
+  // the tap-snap tolerance of that system's equipment marker (D7's matching
+  // ladder via App.getDuctSystemEquipmentPos). Riser feet = deck height minus
+  // the ceiling of the room box under the vertex when one is known (heightFt
+  // of a containing roomBox on the page's merged annotations), else the full
+  // deck height; nothing is added when that lands ≤ 0.
+  function maybeAutoDeckRiser(draft) {
+    const state = App.state;
+    const ds = App.getDuctSettings ? App.getDuctSettings() : null;
+    const deck = ds && ds.deckHeightFt > 0 ? ds.deckHeightFt : 0;
+    if (!deck || !draft.systemGroupId) return;
+    const equip = App.getDuctSystemEquipmentPos && App.getDuctSystemEquipmentPos(draft.systemGroupId, state.currentPage);
+    if (!equip) return;
+    const v0 = draft.vertices[0];
+    if (Math.hypot(v0.x - equip.x, v0.y - equip.y) > DUCT_TAP_SNAP_PDF) return;
+    const page = state.pages[state.currentPage];
+    const ann = page && App.getMergedAnnotationsForPage(page);
+    const box = (ann?.roomBoxes || []).find((b) => b && b.heightFt > 0 && pointInRoomBox(v0, b));
+    const ft = box ? Math.round((deck - box.heightFt) * 100) / 100 : deck;
+    if (!(ft > 0)) return;
+    if (!draft.verticalFt) draft.verticalFt = [];
+    draft.verticalFt.push({ vertexIdx: 0, ft: ft, auto: true });
   }
 
   // A popover pick: end the current segment at the LAST placed vertex, start
@@ -237,6 +271,7 @@
         systemGroupId: draft.systemGroupId,
         vertices: draft.vertices,
         segments: draft.segments,
+        verticalFt: draft.verticalFt,   // D8 — attached only when entries exist
       });
       run.sizeSteps = draft.sizeSteps;   // D3's transition-fitting input
       if (!canvas.annotations.ductRuns) canvas.annotations.ductRuns = [];
@@ -297,6 +332,8 @@
         const dropped = draft.segments.pop();
         draft.sizeSteps = draft.sizeSteps.filter((s) => s.vertexIdx !== dropped.startVertexIdx);
       }
+      // D8: rise/drop entries anchored to the popped vertex go with it.
+      if (draft.verticalFt) draft.verticalFt = draft.verticalFt.filter((e) => e.vertexIdx < n);
       App.renderAnnotations();
       App.updateUI();
     } else {
@@ -465,16 +502,89 @@
     const eff = ann ? App.getEffectiveScaleForLine(ann, { points: segPts }, true, pageIdx) : App.getPageScale(pageIdx);
     const lenLabel = App.formatDistFeetInches(pdfPts, eff);
     const distFt = (a, b) => feetBetween(a, b, ann, pageIdx);
-    const items = runStraightItems({ vertices: verts, segments: draft.segments, linerType: draft.linerType }, distFt);
+    // D8: verticalFt rides the items (at the segment-at-vertex size) so the
+    // run pounds include staged risers/drops; the CURRENT-segment pounds stay
+    // the last flat span (vertical items carry `vertical: true`).
+    const items = runStraightItems({ vertices: verts, segments: draft.segments, linerType: draft.linerType, verticalFt: draft.verticalFt }, distFt);
     let segLb = 0, runLb = 0;
-    items.forEach((it, i) => {
+    items.forEach((it) => {
       const lb = segmentPounds(it.size, selectGauge(draft.pressureClass, it.size), it.lengthFt) || 0;
       runLb += lb;
-      if (i === items.length - 1) segLb = lb;
+      if (!it.vertical) segLb = lb;
     });
     return formatDuctSize(cur.size) + ' · ' + lenLabel + ' · ' + Math.round(segLb).toLocaleString()
       + ' lb · run ' + Math.round(runLb).toLocaleString() + ' lb';
   }
+
+  // --- D8: the rise/drop popover section (§4 "Vertical footage lives in the
+  // S popover") — registered at order 30, the D2 seam's reserved slot. "Rise/
+  // drop X ft here": vertical LF staged on the draft at the LAST placed
+  // vertex; existing entries AT that vertex list with a remove × — the auto
+  // deck riser included, so opening the popover right after the first click
+  // (still at vertex 0) is the way to drop an unwanted riser. NOTE: this file
+  // loads BEFORE duct-size-popover.js, so the registration happens in wire()
+  // (first updateUI — the seam exists by then; same-id re-registers are
+  // idempotent), not at IIFE load. ------------------------------------------
+
+  const riseDropSection = {
+    id: 'rise-drop',
+    order: 30,
+    render(container, ctx) {
+      const draft = App.state.drawingDuct;
+      if (!draft || !draft.vertices.length) return false;   // nothing placed — nowhere to anchor
+      const vIdx = draft.vertices.length - 1;
+      const label = document.createElement('div');
+      label.className = 'duct-popover-section-label';
+      label.textContent = 'Rise / drop';
+      container.appendChild(label);
+      (draft.verticalFt || []).forEach((e, i) => {
+        if (e.vertexIdx !== vIdx) return;
+        const row = document.createElement('div');
+        row.className = 'duct-vertical-row';
+        const txt = document.createElement('span');
+        txt.textContent = e.ft + "' vertical" + (e.auto ? ' · auto riser' : '');
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'duct-vertical-remove';
+        del.title = 'Remove this rise/drop';
+        del.setAttribute('aria-label', 'Remove ' + e.ft + ' ft rise/drop');
+        del.textContent = '×';
+        del.onclick = () => {
+          draft.verticalFt.splice(i, 1);
+          App.markProjectDirty();
+          App.updateUI();
+          ctx.requestRender();
+        };
+        row.append(txt, del);
+        container.appendChild(row);
+      });
+      const inputs = document.createElement('div');
+      inputs.className = 'duct-size-inputs';
+      const ftInput = document.createElement('input');
+      ftInput.type = 'number';
+      ftInput.min = '0';
+      ftInput.step = '0.5';
+      ftInput.placeholder = 'ft';
+      ftInput.setAttribute('aria-label', 'Rise or drop, feet');
+      const unit = document.createElement('span');
+      unit.textContent = 'ft here';
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'duct-custom-apply';
+      add.textContent = 'Add';
+      add.onclick = () => {
+        const ft = parseFloat(ftInput.value);
+        if (!(ft > 0)) { App.showToast('Enter the vertical feet'); return; }
+        if (!draft.verticalFt) draft.verticalFt = [];
+        draft.verticalFt.push({ vertexIdx: vIdx, ft: ft });
+        App.markProjectDirty();
+        App.updateUI();
+        ctx.requestRender();
+      };
+      inputs.append(ftInput, unit, add);
+      container.appendChild(inputs);
+    },
+  };
 
   // --- core→feature sync (updateUI calls this every pass) -------------------
 
@@ -496,6 +606,9 @@
   function wire() {
     if (wired) return;
     wired = true;
+    // D8: the rise/drop popover section — registered here because the seam
+    // (duct-size-popover.js) loads after this file.
+    App.registerDuctPopoverSection && App.registerDuctPopoverSection(riseDropSection);
     const btn = document.getElementById('ductBtn');
     if (btn) btn.onclick = onDuctBtnClick;
     document.getElementById('ductCreateCancel').onclick = () => App.hideModal('ductCreateModal');

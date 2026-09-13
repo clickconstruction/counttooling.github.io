@@ -5,8 +5,9 @@
  * - Counters gain an optional CFM (Create tab input); placed markers inherit
  *   it and feed the live suggestion: total system CFM minus what the trace
  *   has already passed (duct-model's ductDraftRemainingCfm attachment rule).
- * - The S popover's FIRST section is the pre-highlighted suggested size
- *   (order 5 via the D2 seam); one tap applies it through applyDuctSizeStep
+ * - The S popover's FIRST section is the pre-highlighted suggestion (order 5
+ *   via the D2 seam) — D8: round-first DUAL chips ('10"Ø or 12×8', spiral
+ *   first); one tap on either applies that size through applyDuctSizeStep
  *   and records the step. Suggestions never auto-apply.
  * - No-CFM projects show no suggestion line and no popover section (the
  *   clean-absence rule).
@@ -98,33 +99,41 @@ test.describe('Duct design-build suggestions (D6)', () => {
     sug = await suggestion(page);
     expect(Math.round(sug.cfm)).toBe(200);
     expect(sug.binding).toBe('friction');
-    expect(sug.size.kind).toBe('rect');   // rect draft → rect equivalent offered
+    // D8 round-first dual suggestion: the primary size is the SPIRAL answer,
+    // the rect equivalent rides beside it, and the label carries both.
+    expect(sug.size.kind).toBe('round');
+    expect(sug.roundSize).toEqual(sug.size);
+    expect(sug.rectSize.kind).toBe('rect');
+    expect(sug.sizeLabel).toContain(' or ');
+    expect(sug.chipText).toContain(sug.sizeLabel);
 
-    // S popover: the suggestion is the FIRST section, pre-highlighted.
+    // S popover: the suggestion is the FIRST section — two chips, round first.
     await page.keyboard.press('s');
     await expect(page.locator('#ductSizePopover')).toBeVisible();
     const firstSection = page.locator('#ductSizeSections .duct-popover-section').first();
     expect(await firstSection.getAttribute('data-section-id')).toBe('ductulator-suggestion');
-    const chip = page.locator('#ductSizeSections .duct-suggest-chip');
-    await expect(chip).toBeVisible();
-    await expect(chip).toContainText(sug.sizeLabel);
-    await expect(chip).toContainText('from 200 CFM');
-    expect(await chip.getAttribute('aria-label')).toContain('Suggested: ' + sug.sizeLabel + ' · from 200 CFM');
+    const chips = page.locator('#ductSizeSections .duct-suggest-chip');
+    await expect(chips).toHaveCount(2);
+    const roundLabel = await page.evaluate(() => window.formatDuctSize(window.App.getDuctDraftSuggestion().roundSize));
+    await expect(chips.first()).toHaveText(roundLabel);
+    expect(await chips.first().getAttribute('aria-label')).toContain('Suggested: ' + roundLabel + ' · from 200 CFM');
+    await expect(page.locator('#ductSizeSections .duct-suggest-from')).toContainText('from 200 CFM');
 
     // Nothing auto-applied so far — the draft still carries its armed size.
     expect(await page.evaluate(() => window.state.drawingDuct.segments.length)).toBe(1);
 
-    // One tap accepts: the step lands through applyDuctSizeStep + is recorded.
-    await chip.click();
+    // One tap accepts: the step lands through applyDuctSizeStep + is recorded
+    // (the ROUND chip here; duct-polish.spec.js covers the rect twin).
+    await chips.first().click();
     await expect(page.locator('#ductSizePopover')).toBeHidden();
     const st = await page.evaluate(() => ({
       segments: window.state.drawingDuct.segments,
       sizeSteps: window.state.drawingDuct.sizeSteps,
     }));
     expect(st.segments.length).toBe(2);
-    expect(st.segments[1].size).toEqual(sug.size);
+    expect(st.segments[1].size).toEqual(sug.roundSize);
     expect(st.sizeSteps.length).toBe(1);
-    expect(st.sizeSteps[0].to).toEqual(sug.size);
+    expect(st.sizeSteps[0].to).toEqual(sug.roundSize);
     expect(st.sizeSteps[0].from).toEqual({ kind: 'rect', w: 24, h: 12 });
 
     expect(errors).toEqual([]);
@@ -166,7 +175,7 @@ test.describe('Duct design-build suggestions (D6)', () => {
     expect(sug.chipText).toContain('velocity-limited');
 
     await page.keyboard.press('s');
-    await expect(page.locator('#ductSizeSections .duct-suggest-chip')).toContainText('velocity-limited');
+    await expect(page.locator('#ductSizeSections .duct-suggest-from')).toContainText('velocity-limited');
 
     expect(errors).toEqual([]);
   });
@@ -175,6 +184,7 @@ test.describe('Duct design-build suggestions (D6)', () => {
     expect(await page.evaluate(() => ({ ...window.state.ductSettings }))).toEqual({
       seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted',
       frictionInPer100ft: 0.08, maxVelocityFpm: 1200,
+      deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true,   // D8
     });
     await page.evaluate(() => window.App.openDuctScheduleModal());
     await expect(page.locator('#ductScheduleModal')).toHaveClass(/visible/);

@@ -178,9 +178,16 @@
       }
       list.appendChild(div);
     });
+    // A manual row is a wrapping <label> (the house checkbox pattern — the
+    // scale dialog's "Show the scale line"): the whole row, label text
+    // included, is the tick's click target, and the text is the box's
+    // accessible name. A click on the text activates the labelled button
+    // once (the browser's label activation), a click on the box is the box's
+    // own click — never two toggles. Viewers keep the disabled box: a label
+    // click on a disabled control does nothing.
     check.manual.forEach((r) => {
-      const div = document.createElement('div');
-      div.className = 'bid-check-row manual' + (r.done ? ' done' : '');
+      const div = document.createElement('label');
+      div.className = 'bid-check-row manual' + (r.done ? ' done' : '') + (showEdit ? '' : ' readonly');
       div.dataset.rowId = r.id;
       div.innerHTML = '<button type="button" class="bid-check-box" role="checkbox" aria-checked="' + r.done + '" data-id="' + esc(r.id) + '"' + (showEdit ? '' : ' disabled') + '></button>'
         + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + '</div></div>';

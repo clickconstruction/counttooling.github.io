@@ -100,6 +100,58 @@ test.describe('Electrical, First-Class S5 — Bid Check', () => {
     expect(errors).toEqual([]);
   });
 
+  test('manual rows: the whole row is the tick\'s click target — a label click persists the tick and counts the badge down; auto rows stay untickable; viewers keep read-only rows', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await seed(page, 'plumbing');
+    await page.click('#bidCheckSectionTitle');
+    const row = page.locator('#bidCheckList .bid-check-row[data-row-id="scale-verified"]');
+    // The row is a wrapping <label> (the house checkbox pattern) at the 44px
+    // minimum hit height; the label text names the box.
+    expect(await row.evaluate((el) => el.tagName)).toBe('LABEL');
+    expect((await row.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await expect(row.locator('.bid-check-box')).toHaveAccessibleName(/Scale verified/i);
+    // The live-walk papercut: clicking the label TEXT (not the box) ticks the row.
+    await expect(page.locator('#bidCheckBadge')).toHaveText('7');
+    await row.locator('.bid-check-label').click();
+    expect(await page.evaluate(() => window.state.bidCheck.manual['scale-verified'])).toBe(true);
+    await expect(page.locator('#bidCheckBadge')).toHaveText('6');
+    await expect(row).toHaveClass(/done/);
+    await expect(row.locator('.bid-check-box')).toHaveAttribute('aria-checked', 'true');
+    // One toggle per click, whether on the text or on the box: text unticks, box re-ticks.
+    await row.locator('.bid-check-label').click();
+    expect(await page.evaluate(() => 'scale-verified' in window.state.bidCheck.manual)).toBe(false);
+    await expect(page.locator('#bidCheckBadge')).toHaveText('7');
+    await row.locator('.bid-check-box').click();
+    expect(await page.evaluate(() => window.state.bidCheck.manual['scale-verified'])).toBe(true);
+    await expect(page.locator('#bidCheckBadge')).toHaveText('6');
+    // A row's padding is part of the target: a click on the row's far right edge toggles too.
+    const box = await row.boundingBox();
+    await page.mouse.click(box.x + box.width - 4, box.y + box.height / 2);
+    expect(await page.evaluate(() => 'scale-verified' in window.state.bidCheck.manual)).toBe(false);
+    await expect(page.locator('#bidCheckBadge')).toHaveText('7');
+    // Auto rows carry no box and a click on their label changes nothing.
+    await page.evaluate(() => { window.state.lineTypes.push({ id: 'pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); window.App.updateUI(); });
+    const autoRow = page.locator('#bidCheckList .bid-check-row[data-row-id="hangers"]');
+    await expect(autoRow).toHaveClass(/auto/);
+    await expect(autoRow.locator('.bid-check-box')).toHaveCount(0);
+    await autoRow.locator('.bid-check-label').click();
+    expect(await page.evaluate(() => ({ ...window.state.bidCheck.manual }))).toEqual({});
+    await expect(page.locator('#bidCheckBadge')).toHaveText('8');
+    // Viewers: the box is disabled, the row is read-only, a label click is a no-op.
+    await page.evaluate(() => { window.state.isViewer = true; window.App.updateUI(); });
+    await expect(row).toHaveClass(/readonly/);
+    await expect(row.locator('.bid-check-box')).toBeDisabled();
+    // Playwright's actionability check refuses a label whose control is
+    // disabled (proof the label is wired to the box); force the click so the
+    // no-op is what's exercised.
+    await row.locator('.bid-check-label').click({ force: true });
+    expect(await page.evaluate(() => ({ ...window.state.bidCheck.manual }))).toEqual({});
+    await page.evaluate(() => { window.state.isViewer = false; window.App.updateUI(); });
+    expect(errors).toEqual([]);
+  });
+
   test('plumbing: the trade-neutral + plumbing manual rows, no auto row without a supported material, no advisory; the advisory shows after an electrical copy and never blocks it', async ({ page }) => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });

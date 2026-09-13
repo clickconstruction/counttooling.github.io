@@ -1523,6 +1523,12 @@ body.hotkey-peek .hk-badge { display: block; }
 .bid-check-kind { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; }
 .bid-check-detail { color: var(--text2); font-size: 0.74rem; margin-top: 2px; line-height: 1.35; }
 .bid-check-box { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; border: 1px solid var(--border2, var(--border)); border-radius: 3px; background: var(--surface2); cursor: pointer; padding: 0; }
+/* Manual rows are wrapping <label>s: the whole row toggles the box, at the
+   house 44px minimum hit height (the .sidebar-item rule); viewers' rows are
+   read-only (disabled box, no pointer). */
+.bid-check-row.manual { min-height: 44px; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.bid-check-row.manual .bid-check-box { margin-top: 0; }
+.bid-check-row.manual.readonly { cursor: default; }
 .bid-check-box[aria-checked="true"] { background: var(--green); border-color: var(--green); }
 .bid-check-row.done .bid-check-label { color: var(--text3); text-decoration: line-through; }
 /* D9: the gate toast's Review lands on one row and flashes it (B10's keyframe). */

@@ -93,8 +93,10 @@ test.describe('Duct Bid Check (D9)', () => {
     await expect(roofRow).toHaveClass(/manual/);
     await expect(roofRow.locator('.bid-check-box')).toHaveCount(1);
     await expect(roofRow).toContainText('Fits the roof — deepest duct + insulation clears the plenum');
-    // Tick it: state.bidCheck.manual carries it, the badge counts down.
-    await roofRow.locator('.bid-check-box').click();
+    // Tick it by its label TEXT (the live-walk papercut, 2026-09-12: only
+    // the box square used to toggle): state.bidCheck.manual carries it, the
+    // badge counts down.
+    await roofRow.locator('.bid-check-label').click();
     expect(await page.evaluate(() => window.state.bidCheck.manual['duct-fits-roof'])).toBe(true);
     await expect(page.locator('#bidCheckBadge')).toHaveText('8');
     await expect(roofRow).toHaveClass(/done/);

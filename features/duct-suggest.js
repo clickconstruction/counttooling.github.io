@@ -43,6 +43,20 @@
  * from each system root's equipment end, with equipmentPos passed through so
  * root-run orientation is right regardless of trace direction).
  *
+ * D15 (the per-marker CFM override): a placed marker may carry its own
+ * `cfmOverride` — "CFM for this one…" on the marker's context menu
+ * (#ctxMarkerCfm, shown by app.js's showContextMenu for markers of a
+ * CFM-carrying type) opens the tiny #markerCfmModal (the highlight-name
+ * modal pattern: one number input, Save / Cancel, Enter commits); Save writes
+ * a positive value as marker.cfmOverride and DELETES the key when the field
+ * is cleared, so an un-overridden marker stays byte-identical. BOTH
+ * collectors below resolve every marker through duct-model's ductMarkerCfm
+ * (override ?? type CFM), so attachment, accumulation, the live suggestion,
+ * the room served sums and the system designed totals all read one number.
+ * App.getCounterCfmOverrideText(counter) renders the "(override 250)" note
+ * the sidebar row title and the details modal show beside the type CFM.
+ * Markers serialize wholesale, so the key rides save/load + export/import.
+ *
  * Boundary rule: read shared deps from App.* at call time; pure duct math by
  * bare duct-model.js globals. See ARCHITECTURE.md "Feature files / window.App
  * registry".
@@ -51,10 +65,11 @@
   'use strict';
   const App = (window.App = window.App || {});
 
-  // Placed air devices on a page: every marker of a counter type with cfm > 0,
-  // from the MERGED annotations (any layer), carrying its marker group and —
-  // D8 — the counter's per-type flex-drop length (null = the 5' table
-  // default, resolved in duct-model's tallyFlexDrops).
+  // Placed air devices on a page: every marker that resolves to a CFM through
+  // duct-model's ductMarkerCfm (D15: the marker's own cfmOverride, else its
+  // counter type's cfm), from the MERGED annotations (any layer), carrying its
+  // marker group and — D8 — the counter's per-type flex-drop length (null =
+  // the 5' table default, resolved in duct-model's tallyFlexDrops).
   function collectDuctDevices(pageIdx) {
     const state = App.state;
     const page = state.pages[pageIdx];
@@ -64,14 +79,34 @@
     const out = [];
     Object.entries(ann?.counterMarkers || {}).forEach(([typeId, markers]) => {
       const c = byId.get(typeId);
-      if (!c || !(c.cfm > 0)) return;
+      if (!c) return;
       (markers || []).forEach((m) => {
-        if (m && Number.isFinite(m.x) && Number.isFinite(m.y)) {
-          out.push({ x: m.x, y: m.y, cfm: c.cfm, groupId: m.group || null, flexDropFt: c.flexDropFt > 0 ? c.flexDropFt : null });
-        }
+        if (!m || !Number.isFinite(m.x) || !Number.isFinite(m.y)) return;
+        const cfm = ductMarkerCfm(m, c);
+        if (!(cfm > 0)) return;
+        out.push({ x: m.x, y: m.y, cfm: cfm, groupId: m.group || null, flexDropFt: c.flexDropFt > 0 ? c.flexDropFt : null });
       });
     });
     return out;
+  }
+
+  // D15: the "(override 250)" note for a counter whose placed markers carry a
+  // cfmOverride that differs from the type's CFM — distinct values, ascending
+  // ("(override 250, 300)"); null when no marker differs. Walks every page's
+  // canvases (the details modal is project-scoped, like its usage list).
+  function getCounterCfmOverrideText(counter) {
+    if (!counter) return null;
+    const values = new Set();
+    (App.state.pages || []).forEach((p) => {
+      App.getPageCanvases(p).forEach((cv) => {
+        (cv.annotations?.counterMarkers?.[counter.id] || []).forEach((m) => {
+          const o = m && m.cfmOverride;
+          if (Number.isFinite(o) && o > 0 && o !== counter.cfm) values.add(o);
+        });
+      });
+    });
+    if (!values.size) return null;
+    return '(override ' + [...values].sort((a, b) => a - b).map((v) => Math.round(v).toLocaleString()).join(', ') + ')';
   }
 
   // D8 neck-size prefill (DUCT-PLAN master walkthrough, MINIMAL surface):
@@ -106,7 +141,7 @@
       if (!c) return;
       (markers || []).forEach((m) => {
         if (m && Number.isFinite(m.x) && Number.isFinite(m.y)) {
-          out.push({ x: m.x, y: m.y, counterName: c.name || '', cfm: c.cfm > 0 ? c.cfm : null, groupId: m.group || null });
+          out.push({ x: m.x, y: m.y, counterName: c.name || '', cfm: ductMarkerCfm(m, c), groupId: m.group || null });
         }
       });
     });
@@ -238,7 +273,77 @@
     },
   });
 
+  // --- D15: the per-marker CFM override ---------------------------------------
+  // The marker being edited while #markerCfmModal is up ({ marker, counter }),
+  // null otherwise. The context-menu target (state.ctxTarget = hitTest's
+  // { type: 'marker', typeId, index }) names the ACTIVE canvas's marker — the
+  // same array #ctxDelete splices.
+  let editingMarkerCfm = null;
+
+  function openMarkerCfmModal(marker, counter) {
+    if (!marker || !counter) return;
+    editingMarkerCfm = { marker: marker, counter: counter };
+    const hint = document.getElementById('markerCfmHint');
+    if (hint) {
+      hint.textContent = counter.cfm > 0
+        ? 'Leave empty to use the counter\u2019s CFM (' + Math.round(counter.cfm).toLocaleString() + ')'
+        : 'Leave empty for no CFM on this one';
+    }
+    const input = document.getElementById('markerCfmInput');
+    input.value = marker.cfmOverride > 0 ? marker.cfmOverride : '';
+    input.placeholder = counter.cfm > 0 ? String(counter.cfm) : 'e.g. 150';
+    App.showModal('markerCfmModal');
+    input.focus();
+    input.select();
+  }
+
+  function commitMarkerCfm() {
+    if (!editingMarkerCfm) return;
+    const { marker } = editingMarkerCfm;
+    const v = parseFloat(document.getElementById('markerCfmInput').value);
+    const next = Number.isFinite(v) && v > 0 ? v : null;
+    const cur = marker.cfmOverride > 0 ? marker.cfmOverride : null;
+    editingMarkerCfm = null;
+    App.hideModal('markerCfmModal');
+    if (next === cur) return;
+    App.pushUndoSnapshotCurrentPage();
+    if (next == null) delete marker.cfmOverride;   // cleared = back to the type's CFM, key gone
+    else marker.cfmOverride = next;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
+
+  function cancelMarkerCfm() {
+    editingMarkerCfm = null;
+    App.hideModal('markerCfmModal');
+  }
+
+  const ctxMarkerCfmBtn = document.getElementById('ctxMarkerCfm');
+  if (ctxMarkerCfmBtn) ctxMarkerCfmBtn.onclick = () => {
+    const state = App.state;
+    const t = state.ctxTarget;
+    document.getElementById('contextMenu').classList.remove('visible');
+    state.ctxTarget = null;
+    if (!t || t.type !== 'marker') return;
+    const page = state.pages[state.currentPage];
+    const ann = page ? App.getActiveAnnotations(page) : null;
+    const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
+    const counter = (state.counters || []).find((c) => c.id === t.typeId);
+    if (marker && counter) openMarkerCfmModal(marker, counter);
+  };
+  document.getElementById('markerCfmSave')?.addEventListener('click', commitMarkerCfm);
+  document.getElementById('markerCfmCancel')?.addEventListener('click', cancelMarkerCfm);
+  document.getElementById('markerCfmInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitMarkerCfm(); }
+  });
+
   App.getDuctDraftSuggestion = getDuctDraftSuggestion;
+  // D15: the per-marker override entry (spec seam + the context-menu row) and
+  // the "(override 250)" note (sidebar row title + details modal).
+  App.openMarkerCfmModal = openMarkerCfmModal;
+  App.cancelMarkerCfm = cancelMarkerCfm;
+  App.getCounterCfmOverrideText = getCounterCfmOverrideText;
   // D7 balance glue: shared device collection + the system designed/equipment
   // queries (consumed by room-sizer's balance rows and sidebar-lists' system
   // capacity line; equipmentPos wiring is D6's documented follow-up).

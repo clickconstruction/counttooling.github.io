@@ -231,6 +231,10 @@
     updateCounterQuickCountTypeIconBox();
     applyCounterQuickCountIconForType();
     updateCounterQuickCountMount(true);
+    // D15: the optional CFM (air devices only) always opens empty — the
+    // Create tab's rule: a stale value must never silently ride a new counter.
+    const cfmEl = document.getElementById('counterQuickCountCfm');
+    if (cfmEl) cfmEl.value = '';
     const swatchEl = document.getElementById('counterQuickCountSwatch');
     if (swatchEl) {
       swatchEl.onclick = () => {
@@ -322,6 +326,10 @@
       const mountIn = App.parseMountHeightIn ? App.parseMountHeightIn(document.getElementById('counterQuickCountMount')?.value) : null;
       if (mountIn != null) newCounter.mountHeightIn = mountIn;
     }
+    // D15: optional CFM — the Create tab's #counterCfm rule: set only when a
+    // positive number was entered, so a non-air counter's shape is unchanged.
+    const cfmVal = parseFloat(document.getElementById('counterQuickCountCfm')?.value);
+    if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
     // A project that never chose a trade adopts the one it just created in.
     if (App.state.trade == null && App.setProjectTrade) App.setProjectTrade(quickTrade(), { route: 'quick-add' });
     App.state.counters.push(newCounter);

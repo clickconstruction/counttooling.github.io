@@ -28,11 +28,14 @@
  * roomTargetCfm/roomServedCfm over App.collectDuctDevices' markers) and the
  * Rooms sidebar rows grow a "needs 450 · served 300 ⚠" badge (⚠ only when
  * under-served beyond duct-model's DUCT_BALANCE_TOLERANCE).
- * DELIBERATELY OUT OF SCOPE (D7): the legend's room rows do NOT carry the ⚠ —
- * canvas-draw's computeLegendRows is per-page and pure over its deps seam,
- * while a room's target derives from its PROJECT-wide floor area, so the
- * badge would need a new cross-page dep on the draw core (and re-baselining
- * risk) for one glyph; the sidebar badge is the §3 surface for now.
+ * D15 closes what D7 deferred — the legend's room ⚠ line: computeLegendRows
+ * is per-page and pure over its deps seam, while a room's target derives
+ * from its PROJECT-wide floor area, so the cross-page number is computed
+ * HERE (getRoomBalanceForPage(pageIdx): the project-derived target, served
+ * = that page's point-in-rect sum) and handed to the draw core through the
+ * `getRoomBalanceForPage` dep app.js wires — the core never reaches across
+ * pages, and payloads without a room target yield no rows (the render-pixels
+ * baselines are untouched). The line paints behind legendSettings.showDuct.
  *
  * Loaded as a classic <script src="/features/room-sizer.js"> AFTER app.js.
  * Boundary rule: read shared deps from App.* at call time, never captured at
@@ -358,6 +361,38 @@
     return out;
   }
 
+  /**
+   * D15 — the legend's per-sheet air rows: for every room WITH a target that
+   * has a box on `pageIdx`, { id, name, color, targetCfm, servedCfm, under }
+   * where the target is the same project-derived number the sidebar badge
+   * shows (total floor area × rate, per-room override wins) and served is the
+   * CFM of the devices inside THIS page's boxes only (point-in-rect, page-
+   * scoped — the legend tallies "This sheet"). Reached from canvas-draw's
+   * computeLegendRows through the deps seam (live overlay, export and report
+   * legends alike), so it is pure over state and cheap: [] the moment no room
+   * carries a target, devices collected once per call and only when needed.
+   */
+  function getRoomBalanceForPage(pageIdx) {
+    if (!balanceReady() || !App.collectDuctDevices) return [];
+    const rooms = App.state.rooms || [];
+    if (!rooms.some(r => r.roomType || r.targetCfmOverride > 0)) return [];
+    let devices = null;
+    const out = [];
+    getRoomVolumeTotals().forEach(t => {
+      if (!t.id) return;
+      const here = t.boxes.filter(e => e.pageIdx === pageIdx);
+      if (!here.length) return;
+      const room = rooms.find(r => r.id === t.id);
+      const target = roomTargetCfm(room, t.areaSqFt);
+      if (!(target > 0)) return;
+      if (!devices) devices = App.collectDuctDevices(pageIdx).map(d => ({ ...d, pageIdx }));
+      const boxes = here.map(e => ({ x1: e.box.x1, y1: e.box.y1, x2: e.box.x2, y2: e.box.y2, pageIdx }));
+      const bal = roomAirBalance(target, roomServedCfm(boxes, devices));
+      if (bal) out.push({ id: t.id, name: t.name, color: t.color, targetCfm: bal.targetCfm, servedCfm: bal.servedCfm, under: bal.under });
+    });
+    return out;
+  }
+
   // ---- Room edit modal (rename / recolor / delete) --------------------------
 
   // D7: the room-type dropdown, built from duct-model's editable
@@ -587,4 +622,5 @@
   }
   App.roomHeightAtPoint = roomHeightAtPoint;
   App.getRoomAirBalance = getRoomAirBalance;   // D7: duct-tool's equipment-first line + the spec seam
+  App.getRoomBalanceForPage = getRoomBalanceForPage;   // D15: the legend's per-sheet ⚠ lines (canvas-draw dep via app.js)
 })();

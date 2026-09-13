@@ -1794,6 +1794,11 @@
     // D5 legend duct rows: per-vertex-pair feet — the duct-sidebar scale glue.
     getLineRealWorldLengthFeet: (line, pageIdx, isPoly, ann) => getLineRealWorldLengthFeet(line, pageIdx, isPoly, ann),
     formatDropLabel: (value, unit) => formatDropLabel(value, unit),
+    // D15 legend room-air lines: the per-sheet balance rows (room target is
+    // project-derived, served is that page's point-in-rect) computed app-side
+    // by features/room-sizer.js — deferred App.* read so the draw core stays
+    // pure and a payload without rooms/CFM devices yields no rows.
+    getRoomBalanceForPage: (pageIdx) => (App.getRoomBalanceForPage ? App.getRoomBalanceForPage(pageIdx) : []),
   });
 
   function renderAnnotations() {
@@ -5321,6 +5326,15 @@
     ctxEditSzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'scaleZone' ? 'block' : 'none';
     const ctxEditRoomBoxBtn = document.getElementById('ctxEditRoomBox');
     if (ctxEditRoomBoxBtn) ctxEditRoomBoxBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'roomBox' ? 'block' : 'none';
+    // D15: "CFM for this one…" — a placed marker of a CFM-carrying counter
+    // type gets the per-marker override row (features/duct-suggest.js binds
+    // the click and owns #markerCfmModal).
+    const ctxMarkerCfmBtn = document.getElementById('ctxMarkerCfm');
+    if (ctxMarkerCfmBtn) {
+      const mc = !state.isViewer && state.ctxTarget?.type === 'marker'
+        ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
+      ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
+    }
     const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
     if (ctxNameHighlightBtn) {
       const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';
@@ -6993,6 +7007,7 @@
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
       else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
       else if (document.getElementById('ductScheduleModal')?.classList.contains('visible')) { hideModal('ductScheduleModal'); } // DUCT D5
+      else if (document.getElementById('markerCfmModal')?.classList.contains('visible')) { App.cancelMarkerCfm ? App.cancelMarkerCfm() : hideModal('markerCfmModal'); } // DUCT D15
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.

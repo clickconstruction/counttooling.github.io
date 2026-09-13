@@ -785,6 +785,16 @@
             <span id="counterQuickCountMountHint" style="font-size:0.78rem;color:var(--text3);"></span>
           </div>
         </div>
+        <!-- DUCT unit D15: optional CFM beside the name — the Create tab's
+             #counterCfm twin (same set-only-when-positive rule; empty = not an
+             air device, zero behavior change). -->
+        <div class="form-group plum-modifier-row" id="counterQuickCountCfmRow">
+          <label>CFM</label>
+          <div class="plum-select-btn-row">
+            <input type="number" id="counterQuickCountCfm" min="0" step="5" placeholder="e.g. 150" style="width:110px;" autocomplete="off" title="Air devices only — leave empty otherwise">
+            <span style="font-size:0.78rem;color:var(--text3);">air devices only — empty = not an air device</span>
+          </div>
+        </div>
         <div class="form-group">
           <div class="counter-icon-tabs">
             <button class="counter-icon-tab active" data-counter-quickcount-icon-tab="icon">Icon</button>
@@ -1754,6 +1764,22 @@
       </div>
     </div>
   </div>
+  <!-- DUCT unit D15: the per-marker CFM override ("CFM for this one…" on a
+       placed marker's context menu). One number; empty = the counter's CFM
+       (features/duct-suggest.js owns it; the highlight-name modal pattern). -->
+  <div class="modal-overlay" id="markerCfmModal">
+    <div class="modal-card">
+      <h2>CFM for this one</h2>
+      <div class="form-group">
+        <label>CFM <span class="form-sublabel" id="markerCfmHint"></span></label>
+        <input type="number" id="markerCfmInput" min="0" step="5" placeholder="e.g. 150" autocomplete="off" style="width:140px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="actions">
+        <button id="markerCfmCancel">Cancel</button>
+        <button id="markerCfmSave">Save</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="multiplyZoneModal">
     <div class="modal-card">
       <h2>Multiply Zone</h2>
@@ -1970,6 +1996,8 @@
              D1 table) — shown only for CFM counters whose name carries no
              explicit size; text set by features/item-details.js. -->
         <div class="form-sublabel" id="counterLineTypeDetailsNeck" style="display:none;margin-top:6px;"></div>
+        <!-- DUCT unit D15: placed markers whose own CFM differs ("(override 250)"). -->
+        <div class="form-sublabel" id="counterLineTypeDetailsCfmOverrides" style="display:none;margin-top:6px;"></div>
       </div>
       <!-- DUCT unit D8: per-type flex-drop length (counters only, beside the
            CFM). Empty = the 8' data-table default. -->
@@ -3252,6 +3280,7 @@
     <button id="ctxEditScaleZone" style="display:none;">Edit scale</button>
     <button id="ctxEditRoomBox" style="display:none;">Edit room box</button>
     <button id="ctxNameHighlight" style="display:none;">Name highlight…</button>
+    <button id="ctxMarkerCfm" style="display:none;">CFM for this one…</button>
     <button class="danger" id="ctxDelete">Delete</button>
     <div id="ctxTargetNameRow" class="context-menu-target-name" aria-hidden="true"></div>
   </div>

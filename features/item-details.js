@@ -95,11 +95,20 @@
     // duct-model's D1 table via App.getDuctNeckSuggestionText — shown only
     // when the counter carries a CFM and its name has no explicit size).
     const neckEl = document.getElementById('counterLineTypeDetailsNeck');
+    // D15: the "(override 250)" note — placed markers of this counter whose
+    // own CFM differs from the type's (App.getCounterCfmOverrideText).
+    const overridesEl = document.getElementById('counterLineTypeDetailsCfmOverrides');
     const syncNeckLine = () => {
-      if (!neckEl) return;
-      const t = kind === 'counter' && App.getDuctNeckSuggestionText ? App.getDuctNeckSuggestionText(item) : null;
-      neckEl.textContent = t || '';
-      neckEl.style.display = t ? '' : 'none';
+      if (neckEl) {
+        const t = kind === 'counter' && App.getDuctNeckSuggestionText ? App.getDuctNeckSuggestionText(item) : null;
+        neckEl.textContent = t || '';
+        neckEl.style.display = t ? '' : 'none';
+      }
+      if (overridesEl) {
+        const o = kind === 'counter' && App.getCounterCfmOverrideText ? App.getCounterCfmOverrideText(item) : null;
+        overridesEl.textContent = o ? 'Placed marks with their own CFM: ' + o : '';
+        overridesEl.style.display = o ? '' : 'none';
+      }
     };
     syncNeckLine();
     if (cfmEl && kind === 'counter') {

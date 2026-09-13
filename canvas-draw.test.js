@@ -428,6 +428,54 @@ test('drawLegend: mixed scaled/unscaled line rows read "N ft + M px", all-scaled
   assert.ok(texts2.includes('Waste 12.00 ft'), 'all-scaled row unchanged; got ' + JSON.stringify(texts2));
 });
 
+// D15: the legend's room air ⚠ line rides the deps seam (getRoomBalanceForPage
+// — app-side, cross-page), so the core stays pure: under-served rooms on the
+// sheet paint one line each behind legendSettings.showDuct; served rooms,
+// showDuct:false, a box-less page and a missing dep all paint NOTHING extra —
+// the call log is byte-identical to the pre-D15 renderer.
+test('drawLegend: D15 room air line — under-served rooms only, behind showDuct, absent without the dep', () => {
+  const balance = [
+    { id: 'r1', name: 'Office 101', color: '#8e6fd8', targetCfm: 450, servedCfm: 300, under: true },
+    { id: 'r2', name: 'Storage', color: '#47c88e', targetCfm: 100, servedCfm: 100, under: false },
+  ];
+  const withDep = (state, rows) => Object.assign(legendDeps(state), { getRoomBalanceForPage: () => rows });
+
+  const state = legendState();
+  const ctx = makeCtx();
+  createCanvasDraw(withDep(state, balance)).drawLegend(ctx, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  const texts = callsOf(ctx, 'fillText').map(c => c[1]);
+  assert.ok(texts.includes('⚠ Office 101 needs 450 · served 300'), 'under-served line; got ' + JSON.stringify(texts));
+  assert.ok(!texts.some(t => String(t).includes('Storage')), 'a served room paints no line; got ' + JSON.stringify(texts));
+  assert.ok(callsOf(ctx, 'measureText').some(c => c[1] === '⚠ Office 101 needs 450 · served 300'), 'the line joins the width fit');
+  // Legend row order: the air line sits right after the room volume row.
+  assert.ok(texts.indexOf('⚠ Office 101 needs 450 · served 300') === texts.indexOf('Bath 800 ft³') + 1);
+
+  // Baseline: the pre-D15 renderer (no dep at all).
+  const base = makeCtx();
+  createCanvasDraw(legendDeps(legendState())).drawLegend(base, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  assert.ok(!callsOf(base, 'fillText').some(c => String(c[1]).startsWith('⚠')));
+
+  // Dep present but nothing under-served → byte-identical to the baseline.
+  const served = makeCtx();
+  createCanvasDraw(withDep(legendState(), [balance[1]])).drawLegend(served, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  assert.deepStrictEqual(served.calls, base.calls);
+  // Dep present, rows empty (no room carries a target — the render-pixels fixture) → identical.
+  const empty = makeCtx();
+  createCanvasDraw(withDep(legendState(), [])).drawLegend(empty, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  assert.deepStrictEqual(empty.calls, base.calls);
+  // showDuct off → the line is gated with the duct rows (no new toggle).
+  const off = makeCtx();
+  const offState = legendState({ legendSettings: { legendScale: 1, bgColor: '#ffffff', bgOpacity: 1, textOpacity: 1, showBorder: true, showDuct: false } });
+  createCanvasDraw(withDep(offState, balance)).drawLegend(off, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  assert.deepStrictEqual(off.calls, base.calls);
+  // A page without room boxes never even asks the dep.
+  let asked = 0;
+  const noBoxes = Object.assign(legendDeps(legendState()), { getRoomBalanceForPage: () => { asked++; return balance; } });
+  const ann = legendAnn(); ann.roomBoxes = [];
+  createCanvasDraw(noBoxes).drawLegend(makeCtx(), makePage(612, 792), 0, ann, 1, tc1);
+  assert.strictEqual(asked, 0);
+});
+
 // B10 (J8): an empty legend used to paint a mystery "No items" box on a
 // brand-new sheet — it now paints NOTHING, and legendHasRows exposes the same
 // gate so app.js hitTest can keep the invisible box from catching the mouse.

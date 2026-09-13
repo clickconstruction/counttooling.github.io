@@ -120,3 +120,6 @@ which gaps become features, which become "no, deliberately."
 After any major feature ships (e.g. HVAC duct), re-run a single-journey walk +
 verify for the affected journey and update its dossier — the KB stays true the
 same way the guides do.
+
+## Hand-off (2026-09-13)
+The remaining build queue (Wave 3, D19–D25 — the B19 papercuts, X1/X2/X3, the X4/X6 decisions, the strip call) is written up as self-contained briefs in [plans/_TODO.md](plans/_TODO.md) for whoever picks it up next, with the run loop, gates and environment gotchas included. D18 was the last unit this session ran.

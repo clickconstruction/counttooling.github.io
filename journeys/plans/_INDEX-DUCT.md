@@ -42,6 +42,8 @@ live users (new modules precached, no UI change).
 
 ## Wave 3 — "Build it all" (Will, 2026-09-13, after the ratchet pass over the What's Left canvas)
 
+> **HAND-OFF 2026-09-13 (Will): this session finishes D18 and stops. D19–D25 are handed to the next person/session — full self-contained briefs in [_TODO.md](_TODO.md).**
+
 | Unit | Scope (ratcheted form — see JOURNEY-MAP B19 and _STAGE6.md) | Branch | Status |
 |---|---|---|---|
 | D18 | B19 part 1: Duct hotkey via HOTKEYS single source (+ button tooltip); inline "→ Supply Diffuser · change" chip beside the CFM field (no tab switch; "change" opens the grid at HVAC; cell tooltips); one toast on Copy Schedule; export gate remembers the unresolved set at "Export anyway" and re-fires only when it changes (no Acknowledge control); flex label reads the data-table default; seam input gets `duct-schedule-num`; rise/drop entries join the fitting-marker family (paint, hit-test, menu edit/delete, reconcile, schedule list); `build:icons --check` in `npm run check` | claude/duct-d18-b19a | queued |

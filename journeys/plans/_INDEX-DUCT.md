@@ -32,6 +32,12 @@ live users (new modules precached, no UI change).
 | D12 | **Orientation chip** (Flat / On edge, default Flat) on duct runs — context menu + run details; "Fits the roof" reads h when flat, the larger side when on edge; S-popover depth line follows | claude/duct-d12-orientation | queued |
 | D13 | **True-width ghost** (was D8b): translucent band at true scaled width under each run's stroke, honoring rotation/zoom/export; render-pixels baselines regenerated via ci/regen-baselines/* (linux) + darwin locally | claude/duct-d13-ghost | queued — **push after** |
 
+| D14 | **Cleanup sweep** (Will 2026-09-12, "build all, keep the strip order"): Duct added to the header "…" overflow list ONLY (no strip reorder); remove the temp `rect_drag_complete` probe (T2-10 bake-in done) + its spec assertion; Export PDFs bulk button → "Every layer with marks" (B4 dialect; rendered only when a page has >1 layer; siblings de-Title-Cased); DUCT-PLAN.md worked numbers corrected to the shipped gauge table (16×10 @ 24 ga = 5.01) with the rule quoted; AGENTS.md feature-file count stamped by build:filemap | claude/duct-d14-cleanup | queued |
+| D15 | **Deferred duct choices closed**: optional CFM box on Quick Count create; legend carries the room air ⚠ line (computeLegendRows gains the cross-page room-target dep D7 declined — keep render-pixels scenarios untouched); right-click marker → "CFM for this one…" per-marker override that feeds accumulation/balance | claude/duct-d15-deferred | queued |
+| D16 | **HVAC icon set**: supply diffuser (boxed X), return grille (louvers), RTU (fan+coil), VAV box, fire/smoke damper — house 20px stroke style per the approved Cleanup Follow-ups canvas — shipped through my-counters/ → build:icons as an "HVAC" group on the Create tab; CFM-carrying counters default to the diffuser glyph | claude/duct-d16-icons | queued — **push after** |
+| P1 | **Drift patrol** (program, agents): J19 "Duct takeoff (design-build)" dossier walked + adversarially verified Phase-2 style; J5 / J6 / J11 re-walked against the duct tool; findings → a new Tier-3 batch row; day-7 `duct_run` telemetry line | — | queued after D16 |
+| P2 | **Stage-6 prep** (program): draft journeys/plans/_STAGE6.md — the 17 Tier-5 gap rows bucketed (build / product call / fold-in / defused / no-deliberately) with BLANK decision slots for Will; the session itself is Will's | — | queued after P1 |
+
 Item 2 (Bid Check label click) is Will's chip session task_4c782a3d — merged by the integrator when it lands, not a queue unit.
 
 Conflict/sequencing notes:

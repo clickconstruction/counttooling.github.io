@@ -85,7 +85,33 @@
     const m = mods();
     return (m.iconByType && m.iconByType[type]) || null;
   }
+  // D16: `quickIconPicked` is false until the estimator clicks a cell — the
+  // populate/type selection is the app's. While it stays false, a positive
+  // CFM with no type symbol (iconForType) resolves to the HVAC set's Supply
+  // Diffuser: the preview, the live selection and Add all read this one
+  // function. A trade-mapped type symbol keeps precedence (a "Return Grille"
+  // with a CFM stays a grille); an explicit pick always wins.
+  let quickIconPicked = false;
+  App.markQuickIconPicked = () => { quickIconPicked = true; };   // an upload (custom-icon-upload.js) is a pick
+  function cfmDefaultIfUnpicked() {
+    if (quickIconPicked) return null;
+    const v = parseFloat(document.getElementById('counterQuickCountCfm')?.value);
+    if (!(Number.isFinite(v) && v > 0)) return null;
+    if (iconForType(document.getElementById('counterQuickCountType')?.value)) return null;
+    return (App.cfmDefaultIcon && App.cfmDefaultIcon()) || null;
+  }
+  function syncQuickIconToCfm() {
+    if (quickIconPicked) return;
+    const cfmIcon = cfmDefaultIfUnpicked();
+    const all = Array.from(document.querySelectorAll('#counterQuickCountIconGrid .icon-cell, #counterQuickCountIconGridCustom .icon-cell'));
+    all.forEach(x => x.classList.remove('selected'));
+    const cell = cfmIcon ? all.find(c => c.dataset.path === cfmIcon) : (all.find(c => c.dataset.path === iconForType(document.getElementById('counterQuickCountType')?.value)) || all.find(c => c.dataset.path));
+    if (cell) cell.classList.add('selected');
+    updateCounterQuickCountNamePreview();
+  }
   function getCounterQuickCountEffectiveIconPath() {
+    const cfmIcon = cfmDefaultIfUnpicked();
+    if (cfmIcon) return cfmIcon;
     const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
     if (sel?.dataset.path) return sel.dataset.path;
     const type = document.getElementById('counterQuickCountType')?.value;
@@ -208,6 +234,7 @@
         document.querySelectorAll('#counterQuickCountIconGridCustom .icon-cell').forEach(x => x.classList.remove('selected'));
         grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
         c.classList.add('selected');
+        quickIconPicked = true;
         updateCounterQuickCountNamePreview();
       });
     }
@@ -222,10 +249,12 @@
           document.querySelectorAll('#counterQuickCountIconGrid .icon-cell').forEach(x => x.classList.remove('selected'));
           customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
           c.classList.add('selected');
+          quickIconPicked = true;
           updateCounterQuickCountNamePreview();
         };
       });
     }
+    quickIconPicked = false;   // D16: a fresh panel — the selection below is the app's
     showCounterQuickCountIconTab('icon');
     updateCounterQuickCountNamePreview();
     updateCounterQuickCountTypeIconBox();
@@ -234,7 +263,7 @@
     // D15: the optional CFM (air devices only) always opens empty — the
     // Create tab's rule: a stale value must never silently ride a new counter.
     const cfmEl = document.getElementById('counterQuickCountCfm');
-    if (cfmEl) cfmEl.value = '';
+    if (cfmEl) { cfmEl.value = ''; cfmEl.oninput = syncQuickIconToCfm; }   // D16: CFM ↔ diffuser default
     const swatchEl = document.getElementById('counterQuickCountSwatch');
     if (swatchEl) {
       swatchEl.onclick = () => {
@@ -272,6 +301,7 @@
     updateCounterQuickCountNamePreview();
     updateCounterQuickCountTypeIconBox();
     applyCounterQuickCountIconForType();
+    if (cfmDefaultIfUnpicked()) syncQuickIconToCfm();   // D16: a CFM'd type without a symbol → the diffuser
     updateCounterQuickCountMount(true);
   });
   document.getElementById('counterQuickCountMaterial')?.addEventListener('change', updateCounterQuickCountNamePreview);
@@ -317,7 +347,9 @@
     const nameInput = document.getElementById('counterQuickCountName');
     const name = (nameInput?.value?.trim() || computedName) || profile().fallbackName;
     const sel = document.querySelector('#counterQuickCountIconGrid .icon-cell.selected') || document.querySelector('#counterQuickCountIconGridCustom .icon-cell.selected');
-    const icon = sel ? sel.dataset.path : (getCounterQuickCountEffectiveIconPath() || App.getEffectiveCustomIcons()[0]?.value || App.getOrderedIcons()[0]?.value);
+    // D16: the CFM default (unpicked + CFM + no type symbol) precedes the
+    // selected cell — the same rule the preview showed.
+    const icon = cfmDefaultIfUnpicked() || (sel ? sel.dataset.path : (getCounterQuickCountEffectiveIconPath() || App.getEffectiveCustomIcons()[0]?.value || App.getOrderedIcons()[0]?.value));
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color: getCounterQuickCountEffectiveColor(icon) };
     // S1: the mount height rides the counter when the trade carries one and

@@ -114,3 +114,36 @@ test('customIconCellsHtml: leads with the upload cell; selects by value', () => 
   // No selectedValue -> only the upload cell precedes unselected cells.
   assert.doesNotMatch(ir.customIconCellsHtml(custom), /icon-cell selected/);
 });
+
+// D16: the bundled HVAC set + the CFM default glyph.
+test('CUSTOM_ICONS: the HVAC set ships its five symbols under set "hvac"', () => {
+  const hvac = customIcons.CUSTOM_ICONS.filter((ic) => ic.set === 'hvac').map((ic) => ic.name);
+  assert.deepStrictEqual(hvac.sort(), ['Fire/Smoke Damper', 'RTU', 'Return Grille', 'Supply Diffuser', 'VAV Box']);
+  for (const ic of customIcons.CUSTOM_ICONS.filter((i) => i.set === 'hvac')) {
+    assert.strictEqual(ic.viewBox, '0 0 1200 1200');
+    assert.ok(ic.terms && ic.terms.includes('hvac'), ic.name + ' carries the hvac search term');
+    assert.ok(ir.CUSTOM_ICON_META[ic.value], ic.name + ' has a CUSTOM_ICON_META entry');
+  }
+});
+
+test('customIconCellsHtml: the hvac set gets an "HVAC" heading and its cells sit together', () => {
+  const custom = [
+    { value: 'P1', viewBox: '0 0 1 1', set: 'plumbing' },
+    { value: 'H1', viewBox: '0 0 1 1', set: 'hvac' },
+    { value: 'E1', viewBox: '0 0 1 1', set: 'electrical' },
+    { value: 'H2', viewBox: '0 0 1 1', set: 'hvac' },
+  ];
+  const html = ir.customIconCellsHtml(custom, undefined, 'hvac');
+  assert.match(html, /^<div class="icon-grid-heading">HVAC<\/div>/);   // the trade's set leads
+  assert.match(html, /data-path="H1"><svg[^]*?<\/div><div class="icon-cell" data-path="H2"/);
+  assert.ok(html.indexOf('data-path="H2"') < html.indexOf('>Plumbing<'));
+});
+
+test('cfmDefaultIconFromList: resolves the HVAC Supply Diffuser by set + name; null without it', () => {
+  const diffuser = customIcons.CUSTOM_ICONS.find((ic) => ic.set === 'hvac' && ic.name === 'Supply Diffuser');
+  assert.strictEqual(ir.cfmDefaultIconFromList(customIcons.CUSTOM_ICONS), diffuser.value);
+  // A same-named icon in another set (a user upload called "Supply Diffuser") never matches.
+  assert.strictEqual(ir.cfmDefaultIconFromList([{ value: 'X', viewBox: '0 0 1 1', name: 'Supply Diffuser' }]), null);
+  assert.strictEqual(ir.cfmDefaultIconFromList([]), null);
+  assert.strictEqual(ir.cfmDefaultIconFromList(undefined), null);
+});

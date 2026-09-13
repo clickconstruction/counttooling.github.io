@@ -7411,6 +7411,9 @@
   App.svgShapeToPath = svgShapeToPath;   // pure (icon-render.js) — custom-icon-upload feeds DOMParser shapes through it
   App.iconGridCellsHtml = iconGridCellsHtml;     // pure (icon-render.js) — shared picker-grid cell markup
   App.customIconCellsHtml = customIconCellsHtml; // pure (icon-render.js) — upload cell + custom icon cells
+  // D16: the Supply Diffuser glyph a CFM-carrying counter defaults to when no
+  // icon was picked (Create tab + Quick Count); null if the HVAC set is absent.
+  App.cfmDefaultIcon = () => cfmDefaultIconFromList(getEffectiveCustomIcons());
   App.getUserCustomIcons = getUserCustomIcons;
   App.saveUserCustomIcons = saveUserCustomIcons;
   App.showToast = showToast;

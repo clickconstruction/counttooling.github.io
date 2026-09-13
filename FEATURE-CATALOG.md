@@ -132,6 +132,15 @@ heater), so the takeoff doubles as a legible drawing anyone can review. A search
 icon grid filters the library by name, so finding the right symbol is a few keystrokes instead of
 scrolling ~250 cells.
 
+**HVAC icon set — the M-sheet symbols, grouped, with the CFM → diffuser default**
+*Problem:* An air-device takeoff drawn with plumbing glyphs reads wrong to the mechanical
+estimator checking it, and hunting the right symbol per counter is a tax on every create.
+*Useful because:* The Custom Icons tab carries an **HVAC** group — supply diffuser, return
+grille, RTU, VAV box, fire/smoke damper — drawn in the same drafting convention as the
+Electrical set, with the project's trade on top. A counter created with a CFM starts with the
+supply diffuser (an explicit pick or the HVAC Quick profile's type symbol wins), so the air side
+of a plan is legible without a single icon hunt.
+
 **Groups — subtotals for related items**
 *Problem:* A dense sheet with hundreds of marks becomes an undifferentiated cloud; restroom groups
 and risers need their own numbers.

@@ -37,16 +37,33 @@ Options: `--out other-file.js` writes elsewhere; `--stdout` prints instead of wr
 The top-level `my-counters/*.svg` files are the original (plumbing) set. Each
 immediate **subfolder is a further set** named after the folder — today
 `my-counters/electrical/` (41 drafting-convention E-sheet symbols, Electrical,
-First-Class move 1). Every generated entry carries `set` ('plumbing' |
-'electrical'); the icon pickers' custom grid groups by set with a heading per
-set and the project's trade first (`customIconCellsHtml(icons, selected,
-firstSet)` in icon-render.js).
+First-Class move 1) and `my-counters/hvac/` (the 5 M-sheet symbols of DUCT
+unit D16: Supply Diffuser, Return Grille, RTU, VAV Box, Fire/Smoke Damper).
+Every generated entry carries `set` ('plumbing' | 'electrical' | 'hvac'); the
+icon pickers' custom grid groups by set with a heading per set
+(`ICON_SET_LABELS` — "Plumbing" / "Electrical" / "HVAC") and the project's
+trade first (`customIconCellsHtml(icons, selected, firstSet)` in
+icon-render.js). Within a set the cells follow filename order.
 
-The electrical set is **generated, not hand-drawn**:
-`node scripts/build-electrical-symbols.js` writes the SVGs from geometry
-(rings, bars, annular sectors — every symbol is one fill-only path, so outlines
-are rings and letters are built from bands), then `npm run build:icons` folds
-them in. Edit the symbol there, never the SVG.
+The electrical and HVAC sets are **generated, not hand-drawn**:
+`node scripts/build-electrical-symbols.js` / `node scripts/build-hvac-symbols.js`
+write the SVGs from geometry (rings, bars, annular sectors — every symbol is
+one fill-only path, so outlines are rings and letters are built from bands;
+viewBox `0 0 1200 1200`, the 70-unit band weight), then `npm run build:icons`
+folds them in. Edit the symbol there, never the SVG. A bundled icon is a
+single fill that takes the counter's color, so a symbol can't carry its own
+tint (the fire/smoke damper is red only when the counter is).
+
+**CFM → diffuser default (D16).** A counter created WITH a CFM (the Create
+tab's CFM box or Quick Count's) and no explicit icon click takes the HVAC
+set's Supply Diffuser — `cfmDefaultIconFromList` (icon-render.js) resolves it
+by set + name, published as `App.cfmDefaultIcon()`. The Create tab moves the
+selection live as the CFM is typed and restores the T2-05 prefill when it's
+cleared; Quick Count shows it in the preview swatch. Precedence: an explicit
+cell click > the trade's type symbol (`HVAC_DEFAULTS.iconNameByType` —
+Supply/Linear Diffuser, Return/Exhaust Grille, VAV Box, RTU, Damper,
+Thermostat) > the CFM default > the picker's ordinary default. A counter
+without a CFM is untouched.
 
 Two optional authoring elements are honored by the generator:
 

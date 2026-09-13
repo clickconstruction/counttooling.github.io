@@ -105,6 +105,33 @@
   // existing counter uses (respects the user's iconOrder; falls back to
   // icon[0] when every name is taken) and selects that cell so the name
   // matches the visible selection.
+  //
+  // D16: `createIconPicked` is false until the estimator clicks a cell — the
+  // prefill selection is the app's choice, not hers. While it stays false, a
+  // positive CFM moves the selection to the HVAC set's Supply Diffuser
+  // (App.cfmDefaultIcon) and clearing it restores the prefill, so the Create
+  // button's "selected cell" read stays WYSIWYG; the create handler applies
+  // the same rule once more as the guarantee. A non-CFM counter never changes.
+  let createIconPicked = false;
+  let createPrefillPath = null;
+  function selectCreateIconCell(path) {
+    const grid = document.getElementById('counterIconGrid');
+    const customGrid = document.getElementById('counterIconGridCustom');
+    grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+    customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+    const cell = path && Array.from(grid.querySelectorAll('.icon-cell[data-path]')).concat(Array.from(customGrid.querySelectorAll('.icon-cell[data-path]'))).find(c => c.dataset.path === path);
+    if (cell) cell.classList.add('selected');
+  }
+  // An SVG upload is an explicit choice too: the shared upload handler
+  // (features/custom-icon-upload.js) rebuilds this panel's custom grid with
+  // its own click wiring and selects the new icon, so it reports here.
+  App.markCreateIconPicked = () => { createIconPicked = true; };
+  function syncCreateIconToCfm() {
+    if (createIconPicked) return;
+    const v = parseFloat(document.getElementById('counterCfm')?.value);
+    const cfmIcon = Number.isFinite(v) && v > 0 && App.cfmDefaultIcon ? App.cfmDefaultIcon() : null;
+    selectCreateIconCell(cfmIcon || createPrefillPath);
+  }
   function prepCreatePanel() {
     const state = App.state;
     showCounterIconTab('icon');
@@ -112,6 +139,8 @@
     const usedNames = new Set(state.counters.map(c => (c.name || '').trim().toLowerCase()));
     let prefillIdx = icons.findIndex(ic => !usedNames.has(App.getIconName(ic.value).trim().toLowerCase()));
     if (prefillIdx < 0) prefillIdx = 0;
+    createIconPicked = false;
+    createPrefillPath = icons[prefillIdx].value;
     document.getElementById('counterName').value = App.getIconName(icons[prefillIdx].value);
     // D6: the optional CFM (air devices only) always opens empty — a stale
     // value from the previous create must never silently ride a new counter.
@@ -132,6 +161,7 @@
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected');
+      createIconPicked = true;
       const path = c.dataset.path;
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
     });
@@ -144,10 +174,12 @@
         grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
         customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
         c.classList.add('selected');
+        createIconPicked = true;
         const path = c.dataset.path;
         if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
       };
     });
+    if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
   }
 
@@ -266,6 +298,7 @@
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       c.classList.add('selected');
+      createIconPicked = true;
       const path = c.dataset.path;
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
     });
@@ -274,7 +307,15 @@
   document.getElementById('counterCreate').onclick = () => {
     const state = App.state;
     const sel = document.querySelector('#counterIconGrid .icon-cell.selected') || document.querySelector('#counterIconGridCustom .icon-cell.selected');
-    const icon = sel ? sel.dataset.path : App.getOrderedIcons()[0].value;
+    let icon = sel ? sel.dataset.path : App.getOrderedIcons()[0].value;
+    // D6: optional CFM — set only when a positive number was entered, so a
+    // non-air counter's shape is unchanged (and old exports stay byte-alike).
+    const cfmVal = parseFloat(document.getElementById('counterCfm')?.value);
+    const hasCfm = Number.isFinite(cfmVal) && cfmVal > 0;
+    // D16: a CFM-carrying counter whose icon was never picked takes the HVAC
+    // set's Supply Diffuser (the live sync above already moved the selection;
+    // this is the guarantee). An explicit pick always wins.
+    if (hasCfm && !createIconPicked && App.cfmDefaultIcon) icon = App.cfmDefaultIcon() || icon;
     // A blank name falls back to the selected icon's name — never the
     // literal string 'Counter' (repeat blanks used to collide under it).
     const rawName = document.getElementById('counterName').value.trim() || App.getIconName(icon);
@@ -282,10 +323,7 @@
     const { name, color } = resolveCounterTwin(rawName, icon, rawColor, state.counters, App.COLORS);
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color };
-    // D6: optional CFM — set only when a positive number was entered, so a
-    // non-air counter's shape is unchanged (and old exports stay byte-alike).
-    const cfmVal = parseFloat(document.getElementById('counterCfm')?.value);
-    if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
+    if (hasCfm) newCounter.cfm = cfmVal;
     // S1: optional mount height (inches AFF) — same set-only rule; the Chain
     // tool reads it for the default vertical (S2).
     const mountIn = App.parseMountHeightIn(document.getElementById('counterMountHeight')?.value);

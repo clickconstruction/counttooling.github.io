@@ -94,6 +94,16 @@
       return '<div class="icon-grid-heading">' + label + '</div>' + (i === 0 ? ICON_UPLOAD_CELL_HTML : '') + cells(list);
     }).join('');
   }
+  // D16: the glyph a CFM-carrying counter defaults to when the estimator never
+  // picked an icon — the bundled HVAC set's Supply Diffuser (my-counters/hvac/
+  // supply-diffuser.svg), resolved by set + name from the supplied effective
+  // list so nothing hard-codes path data. null when the set is absent (a
+  // stripped build), so callers keep their existing default.
+  const CFM_DEFAULT_ICON = { set: 'hvac', name: 'Supply Diffuser' };
+  function cfmDefaultIconFromList(icons) {
+    const ic = (icons || []).find((i) => i.set === CFM_DEFAULT_ICON.set && i.name === CFM_DEFAULT_ICON.name);
+    return ic ? ic.value : null;
+  }
 
 
 // The SVG-shape -> path-data converter behind custom icon upload
@@ -138,6 +148,7 @@ function svgShapeToPath(tag, attr) {
       iconCellHtml,
       iconGridCellsHtml,
       customIconCellsHtml,
+      cfmDefaultIconFromList,
       svgShapeToPath,
     };
   }

@@ -1323,3 +1323,81 @@ test('ductBidCheckUnresolved: auto ⚠ first, then unticked manual — the first
   const none = dm.ductBidCheckUnresolved(dm.ductBidCheckRows({}, Object.fromEntries(dm.DUCT_BID_CHECK_ROWS.filter(r => r.kind === 'manual').map(r => [r.id, true]))));
   assert.strictEqual(none.first, null);
 });
+
+// --- 8. Plan-and-spec callout reading (unit D10) -----------------------------
+
+test('parseDuctCallout: the accepted grammar (rect + round, spaces, marks, case)', () => {
+  const rect = (w, h) => ({ kind: 'rect', w, h });
+  const round = (d) => ({ kind: 'round', d });
+  // rect spellings
+  assert.deepStrictEqual(dm.parseDuctCallout('24x12'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24×12'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24X12'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24"x12"'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24" x 12"'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24″×12″'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24/12'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout(' 20 x 12 '), rect(20, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('24x12 SA'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('(24x12)'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('SA 24x12 UP'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('120x48'), rect(120, 48));
+  assert.deepStrictEqual(dm.parseDuctCallout('4x4'), rect(4, 4));
+  // round spellings
+  assert.deepStrictEqual(dm.parseDuctCallout('12"Ø'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12Ø'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12" DIA'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12 dia.'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12" DIAM'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12" DIAMETER'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12"φ'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12"⌀'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('Ø12'), round(12));
+  assert.deepStrictEqual(dm.parseDuctCallout('ø 10'), round(10));
+  assert.deepStrictEqual(dm.parseDuctCallout('8"Ø FLEX'), round(8));
+  // earlier token wins in a mixed string
+  assert.deepStrictEqual(dm.parseDuctCallout('24x12 to 12"Ø'), rect(24, 12));
+  assert.deepStrictEqual(dm.parseDuctCallout('12"Ø to 24x12'), round(12));
+});
+
+test('parseDuctCallout: rejects what merely looks like a size', () => {
+  const rejects = [
+    null, undefined, '', 'SUPPLY', 'RTU-1', 'OFFICE 104', '2026',
+    '12/25/2026', '9/12/26', '2026-09-12',          // dates
+    "24'-0\"", "24'-0\" x 12'-0\"", "12' x 8'",     // dimensions in feet
+    '1/4" = 1\'-0"', '1:100', '1/8', '3/4"',        // scale ratios + pipe sizes
+    '2x4', '2 x 4 STUDS', '1x1',                    // under the 4" floor
+    '24x12x8', '150x12',                            // a box, over the 120" cap
+    '2.5x4', '24.5x12',                             // decimals
+    'DIAGRAM 12', '12 DIAGONAL', 'RADIUS 12',       // DIA inside a word
+    '1234x12', '24x1234',                           // glued digits
+  ];
+  rejects.forEach((s) => assert.strictEqual(dm.parseDuctCallout(s), null, JSON.stringify(s)));
+});
+
+test('nearestDuctCallout: nearest readable within radius, measured to the text box; radius default', () => {
+  assert.strictEqual(dm.DUCT_CALLOUT_RADIUS_PT, 60);
+  const items = [
+    { str: '24x12', x: 100, y: 100, w: 30, h: 10 },
+    { str: '20x12', x: 300, y: 100, w: 30, h: 10 },
+    { str: 'SUPPLY', x: 105, y: 112, w: 40, h: 10 },   // nearer than 24x12 to the probe, but not a size
+    { str: '12/25/2026', x: 200, y: 100, w: 60, h: 10 },
+  ];
+  // right beside 24x12 (the word SUPPLY is nearer — ignored, it isn't a size)
+  const a = dm.nearestDuctCallout(items, { x: 108, y: 125 }, 60);
+  assert.deepStrictEqual(a.size, { kind: 'rect', w: 24, h: 12 });
+  assert.strictEqual(a.str, '24x12');
+  assert.ok(Math.abs(a.dist - 15) < 1e-9);   // to the box's bottom edge (y 110), not its center
+  // inside the box → dist 0
+  assert.strictEqual(dm.nearestDuctCallout(items, { x: 110, y: 105 }).dist, 0);
+  // near the date only → null; far from everything → null
+  assert.strictEqual(dm.nearestDuctCallout(items, { x: 230, y: 130 }, 25), null);
+  assert.strictEqual(dm.nearestDuctCallout(items, { x: 500, y: 500 }), null);
+  // the default radius is the documented constant: 59 pt away reads, 61 does not
+  assert.deepStrictEqual(dm.nearestDuctCallout(items, { x: 315, y: 169 }).size, { kind: 'rect', w: 20, h: 12 });
+  assert.strictEqual(dm.nearestDuctCallout(items, { x: 315, y: 171 }), null);
+  // bad input
+  assert.strictEqual(dm.nearestDuctCallout(items, null), null);
+  assert.strictEqual(dm.nearestDuctCallout(null, { x: 0, y: 0 }), null);
+  assert.strictEqual(dm.ductDistToTextBox({ x: 0, y: 0 }, { x: 3, y: 4, w: 10, h: 10 }), 5);
+});

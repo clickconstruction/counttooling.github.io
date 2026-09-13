@@ -208,7 +208,10 @@ the drawing.
 schedule picks the gauge, corners/steps/taps count themselves as fittings (reclassify or delete any
 of them from a right-click), and the Duct Schedule rolls it all — straight lb by size, fittings
 counted or as a Factor %, liner/wrap sq ft, seam & waste — into one Bid weight. Copy Schedule
-pastes the table into pricing; the report, Export PDFs, and the legend carry the same numbers.
+pastes the table into pricing; the report, Export PDFs, and the legend carry the same numbers. On an
+engineered plan-and-spec sheet the trace also reads the printed callouts out of the PDF's text layer —
+the starting size pre-fills from the nearest one, and each step-down the cursor passes is offered
+("Plan says 20×12 here — S accepts"), never applied on its own; a scanned sheet behaves as before.
 
 **Always-feet totals**
 *Problem:* Plan sets mix scale units (inches, feet, metric), and summing mixed units is a classic

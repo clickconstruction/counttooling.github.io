@@ -177,10 +177,26 @@
   // are her own fixture codes. Keep the one-keystroke create but select the
   // prefilled text whenever the Create tab is surfaced, so the first
   // keystroke replaces it instead of appending.
+  //
+  // The focus is DEFERRED (rAF + macrotask) past the modal's open paint, and
+  // that deferral is a race: under load it can fire AFTER the user (or a test
+  // driver) has already moved on to another field — "Diffuser 400" typed in
+  // the name, the caret placed in CFM — at which point the stolen focus +
+  // select() sends the next keystrokes into the NAME box ("400" replaced the
+  // name, CFM stayed empty; duct-balance.spec's "0 designed" under a parallel
+  // suite, 2026-09-12). Same hazard for a fast human: type "Dif…" and have
+  // select-all swallow it on the next key. So the deferred focus runs only
+  // while it is still harmless: nothing else in the modal holds the caret and
+  // the prefilled text is untouched.
   function focusCreateName() {
     const nameInput = document.getElementById('counterName');
+    const seeded = nameInput.value;
     requestAnimationFrame(() => setTimeout(() => {
       if (!nameInput.offsetParent) return; // Create panel not visible
+      const active = document.activeElement;
+      const modal = document.getElementById('counterModal');
+      if (active && active !== nameInput && modal && modal.contains(active)) return;   // the caret moved on
+      if (nameInput.value !== seeded) return;   // typing already started — never select over it
       nameInput.focus();
       nameInput.select();
     }, 0));

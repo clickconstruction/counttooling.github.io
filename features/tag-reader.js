@@ -21,13 +21,23 @@
  *
  * Honest about scans: no text layer, no suggestion — the click behaves
  * exactly as before. Nothing is persisted but the counters the user creates
- * (and their `tag`); the text cache is per session, keyed by the page's proxy.
+ * (and their `tag`); the text cache is per session, keyed by the page's proxy
+ * + rotation (a rotate re-reads, since the items are stored in rotated space).
+ *
+ * The text-layer primitive is SHARED (DUCT unit D10 reads duct callouts
+ * through it): pageTextItems(pageIdx) is the lazy per-page cache — the FIRST
+ * call fetches getTextContent, later calls are a plain array read, pages the
+ * user never works on are never fetched — and queryPdfTextNear(pageIdx, pt,
+ * radiusPt) is the geometric lookup over it (items within radius of a point,
+ * nearest first, distance to the text BOX). Consumers that need to know when
+ * a lazy load lands register App.onPageTextLoaded(pageIdx) (duct-callouts.js).
  *
  * Registrations: drawTagOverlay(ctx, env) (renderAnnotations, after the duct
  * overlay), tagHintText() (status bar), tagSwapCounterId(pdfPoint) (the
  * Counter tool's placement), tagCreateFromHint() (Enter), proposeCountersFromBox
  * (TOOL.SCHEDULE corner 2), renderTagField(kind, item) (details modal),
- * renderTagReaderUI() (updateUI: the Create-tab link), pageTextItems(pageIdx).
+ * renderTagReaderUI() (updateUI: the Create-tab link), pageTextItems(pageIdx),
+ * queryPdfTextNear(pageIdx, pdfPt, radiusPt).
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
@@ -39,7 +49,7 @@
   const HINT_RADIUS_PT = 18;   // ~1/4" on the sheet: the tag sits right beside its symbol
 
   // --- the text layer, in app PDF-space --------------------------------------
-  const textCache = new Map();   // pageIdx -> { pdfPage, items: [] | null (loading), promise }
+  const textCache = new Map();   // pageIdx -> { pdfPage, rotation, items: [] | null (loading), promise }
 
   function active() {
     const state = App.state;
@@ -55,12 +65,12 @@
     const state = App.state;
     const page = state && state.pages && state.pages[pageIdx];
     if (!page || !page.pdfPage) return [];
+    const rot = page.rotation ?? 0;
     const cached = textCache.get(pageIdx);
-    if (cached && cached.pdfPage === page.pdfPage) return cached.items || [];
-    const entry = { pdfPage: page.pdfPage, items: null, promise: null };
+    if (cached && cached.pdfPage === page.pdfPage && cached.rotation === rot) return cached.items || [];
+    const entry = { pdfPage: page.pdfPage, rotation: rot, items: null, promise: null };
     textCache.set(pageIdx, entry);
     entry.promise = page.pdfPage.getTextContent().then((tc) => {
-      const rot = page.rotation ?? 0;
       const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
       const items = [];
       (tc.items || []).forEach((it) => {
@@ -76,10 +86,31 @@
         items.push({ str: it.str, x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
       });
       entry.items = items;
-      if (App.renderAnnotations && state.tool === App.TOOL.COUNTER) App.renderAnnotations();
+      // A stale entry (page replaced / rotated meanwhile) must not repaint or
+      // notify — the live entry's own load will.
+      if (textCache.get(pageIdx) !== entry) return items;
+      if (App.renderAnnotations && (state.tool === App.TOOL.COUNTER || state.tool === App.TOOL.DUCT)) App.renderAnnotations();
+      App.onPageTextLoaded && App.onPageTextLoaded(pageIdx);
       return items;
     }).catch(() => { entry.items = []; return []; });
     return [];
+  }
+
+  // The shared geometric primitive: text items within `radiusPt` of a PDF-
+  // space point, nearest first, each carrying `dist` (to the item's box — 0
+  // inside it). Pure lookup over the cached items: no pdf.js call after the
+  // page's first fetch, [] while that fetch is in flight or on a scan.
+  function queryPdfTextNear(pageIdx, pdfPt, radiusPt) {
+    if (!pdfPt || !Number.isFinite(pdfPt.x) || !Number.isFinite(pdfPt.y)) return [];
+    const r = radiusPt > 0 ? radiusPt : HINT_RADIUS_PT;
+    const out = [];
+    pageTextItems(pageIdx).forEach((it) => {
+      const dx = Math.max(it.x - pdfPt.x, 0, pdfPt.x - (it.x + it.w));
+      const dy = Math.max(it.y - pdfPt.y, 0, pdfPt.y - (it.y + it.h));
+      const d = Math.hypot(dx, dy);
+      if (d <= r) out.push({ str: it.str, x: it.x, y: it.y, w: it.w, h: it.h, dist: d });
+    });
+    return out.sort((a, b) => a.dist - b.dist);
   }
 
   // --- tag-aware placement ------------------------------------------------------
@@ -263,6 +294,7 @@
   }
 
   App.pageTextItems = pageTextItems;
+  App.queryPdfTextNear = queryPdfTextNear;
   App.drawTagOverlay = drawTagOverlay;
   App.tagHintText = tagHintText;
   App.tagSwapCounterId = tagSwapCounterId;

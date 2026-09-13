@@ -1585,6 +1585,99 @@ function ductBidCheckUnresolved(rows) {
   return { auto: auto, manual: manual, first: auto[0] || manual[0] || null };
 }
 
+// --- 8. Plan-and-spec callout reading (unit D10) -----------------------------
+//
+// An engineered M-sheet prints every duct size beside its run, and the PDF's
+// text layer carries those callouts with coordinates. This section is the
+// GRAMMAR — regex over text, no model, offline — and the geometric pick; the
+// text layer itself is fetched by features/tag-reader.js (pageTextItems /
+// queryPdfTextNear) and the offers are features/duct-callouts.js.
+
+/**
+ * How far (PDF points) a callout may sit from the cursor / the click to count
+ * as "here": 60 pt ≈ 5/6" on the sheet — a printed size rides right beside
+ * its run, and two callouts on one trunk are never that close together.
+ * Documented here so the tests, the guide and the feature agree.
+ */
+const DUCT_CALLOUT_RADIUS_PT = 60;
+
+// The callout grammar (case-insensitive, spaces tolerated around the mark):
+//   rect:  24x12   24×12   24"x12"   24" x 12"   24/12   24X12   24*12
+//   round: 12"Ø   12Ø   12" DIA   12 DIA.   12"φ   Ø12   ⌀12   12"⌀
+// Bounds keep it honest on a sheet full of numbers: whole inches, each
+// dimension 4–120 (a 1/4" scale ratio, a 3/4" pipe, a 2x4 stud are all under
+// 4; nothing on a duct sheet is 121" wide), and the token must stand ALONE —
+// not glued to more digits, a slash, a dash, a dot, a foot mark or another
+// "x" — so 12/25/2026 (a date), 24'-0" (a dimension), 1:100, "3/4"" and a
+// 24x12x8 box never read as duct.
+const DUCT_CALLOUT_MIN_IN = 4;
+const DUCT_CALLOUT_MAX_IN = 120;
+const DUCT_CALLOUT_RECT_RE = /(?<![\d./'\-x×])(\d{1,3})\s*(?:"|″|”|in\b)?\s*[x×*/]\s*(\d{1,3})\s*(?:"|″|”|in\b)?(?![\d./'"″”-]|\s*[x×])/gi;
+const DUCT_CALLOUT_ROUND_RE = /(?<![\d./'-])(\d{1,3})\s*(?:"|″|”|in\b)?\s*(?:[Øø⌀φΦ]|DIA(?:M(?:ETER)?)?\.?(?![a-z]))(?![\d])/gi;
+const DUCT_CALLOUT_ROUND_PREFIX_RE = /[Øø⌀φΦ]\s*(\d{1,3})(?![\d./'"″”-])/g;
+
+function ductCalloutDimOk(n) { return Number.isInteger(n) && n >= DUCT_CALLOUT_MIN_IN && n <= DUCT_CALLOUT_MAX_IN; }
+
+/**
+ * Read a printed duct size out of one text item. Returns a duct-model size
+ * ({kind:'rect',w,h} / {kind:'round',d}) or null — dates, dimensions, scale
+ * ratios, pipe sizes and plain words all read as null. Where a string carries
+ * both a rect and a round token the EARLIER one wins (a transition callout
+ * "24x12 to 12"Ø" reads its first size).
+ */
+function parseDuctCallout(text) {
+  const s = String(text == null ? '' : text);
+  if (!s || !/\d/.test(s)) return null;
+  let best = null;
+  const consider = (index, size) => { if (size && (!best || index < best.index)) best = { index: index, size: size }; };
+  let m;
+  DUCT_CALLOUT_RECT_RE.lastIndex = 0;
+  while ((m = DUCT_CALLOUT_RECT_RE.exec(s))) {
+    const w = parseInt(m[1], 10), h = parseInt(m[2], 10);
+    if (ductCalloutDimOk(w) && ductCalloutDimOk(h)) consider(m.index, makeRectSize(w, h));
+  }
+  DUCT_CALLOUT_ROUND_RE.lastIndex = 0;
+  while ((m = DUCT_CALLOUT_ROUND_RE.exec(s))) {
+    const d = parseInt(m[1], 10);
+    if (ductCalloutDimOk(d)) consider(m.index, makeRoundSize(d));
+  }
+  DUCT_CALLOUT_ROUND_PREFIX_RE.lastIndex = 0;
+  while ((m = DUCT_CALLOUT_ROUND_PREFIX_RE.exec(s))) {
+    const d = parseInt(m[1], 10);
+    if (ductCalloutDimOk(d)) consider(m.index, makeRoundSize(d));
+  }
+  return best ? best.size : null;
+}
+
+/** Distance from a point to a text box (0 inside; to the nearest edge/corner outside). */
+function ductDistToTextBox(pt, it) {
+  const dx = Math.max(it.x - pt.x, 0, pt.x - (it.x + (it.w || 0)));
+  const dy = Math.max(it.y - pt.y, 0, pt.y - (it.y + (it.h || 0)));
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * The nearest readable callout within `radius` of `pt` over a page's text
+ * items ([{ str, x, y, w, h }] in app PDF-space, any order) —
+ * { size, str, x, y, w, h, dist } or null. Distance is measured to the text
+ * BOX (a wide "24x12 SA" item counts from its edge, not its far-off center);
+ * items that don't parse as a size are ignored, whatever their distance.
+ */
+function nearestDuctCallout(items, pt, radius) {
+  if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return null;
+  const r = radius > 0 ? radius : DUCT_CALLOUT_RADIUS_PT;
+  let best = null;
+  (items || []).forEach(it => {
+    if (!it || !Number.isFinite(it.x) || !Number.isFinite(it.y)) return;
+    const d = ductDistToTextBox(pt, it);
+    if (d > r || (best && d >= best.dist)) return;
+    const size = parseDuctCallout(it.str);
+    if (!size) return;
+    best = { size: size, str: it.str, x: it.x, y: it.y, w: it.w || 0, h: it.h || 0, dist: d };
+  });
+  return best;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // model
@@ -1625,5 +1718,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Bid Check (D9)
     DUCT_INSULATION_DEFAULT_IN, ductInsulationThicknessIn, ductDepthIn, ductDepthLabel, ductPlenumFit,
     DUCT_BID_CHECK_ROWS, ductBidCheckRows, ductBidCheckUnresolved,
+    // plan-and-spec callouts (D10)
+    DUCT_CALLOUT_RADIUS_PT, parseDuctCallout, ductDistToTextBox, nearestDuctCallout,
   };
 }

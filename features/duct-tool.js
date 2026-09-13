@@ -113,7 +113,24 @@
     syncCreateShape();
     syncCreateAirside();
     syncEquipFirstLine();
+    // D10 plan-and-spec: the nearest printed callout to the cursor's last
+    // canvas position pre-fills the starting size (features/duct-callouts.js
+    // — a no-op on scans; the fields stay editable).
+    App.syncDuctCalloutPrefill && App.syncDuctCalloutPrefill();
     App.showModal('ductCreateModal');
+  }
+
+  // Set the create modal's starting-size fields from a duct-model size (the
+  // D10 prefill's writer; the user can still change everything).
+  function setDuctCreateSize(size) {
+    if (!isDuctSize(size)) return;
+    createShape = size.kind === 'round' ? 'round' : 'rect';
+    if (size.kind === 'round') document.getElementById('ductCreateD').value = size.d;
+    else {
+      document.getElementById('ductCreateW').value = size.w;
+      document.getElementById('ductCreateH').value = size.h;
+    }
+    syncCreateShape();
   }
 
   function readCreateSize() {
@@ -434,16 +451,21 @@
       const chipX = pc.x + 24 + 14 * fontScale;
       const chipY = pc.y - 10 - 8 * fontScale;
       chip(formatDuctSize(cur) + ' ▾', chipX, chipY, true);
-      // D6: the design-build suggestion line rides UNDER the size chip when
-      // the system has CFM data ("450 CFM downstream · suggests 12×10 @
-      // 0.08″/100′ — S accepts"; features/duct-suggest.js — informs only, S /
-      // the popover accepts). Drawn at a smaller size so the chip stays the
-      // headline; defensive read per the registry boundary rule.
-      const sug = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion();
-      if (sug) {
+      // ONE quiet line rides UNDER the size chip — never two: D10's plan
+      // callout ("Plan says 20×12 here — S accepts") when the sheet's text
+      // layer prints a different size within reach of the cursor, else D6's
+      // design-build suggestion ("450 CFM downstream · suggests 12×10 @
+      // 0.08″/100′ — S accepts"). Precedence + both sources resolved by
+      // features/duct-callouts.js getDuctCursorLine (falls back to the D6
+      // read alone if that file is absent). Informs only — S / the popover
+      // accepts. Drawn at a smaller size so the chip stays the headline;
+      // defensive reads per the registry boundary rule.
+      const line = App.getDuctCursorLine ? App.getDuctCursorLine()
+        : (() => { const s = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion(); return s ? { kind: 'suggestion', text: s.chipText } : null; })();
+      if (line && line.text) {
         const sFont = 8.5 * fontScale;
         ctx.font = '600 ' + sFont + 'px DM Sans';
-        const tw = ctx.measureText(sug.chipText).width;
+        const tw = ctx.measureText(line.text).width;
         const pad = 4;
         const sy = chipY + (10 * fontScale) / 2 + pad * 2 + sFont / 2 + 3;
         ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -454,9 +476,12 @@
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(sug.chipText, chipX, sy);
+        ctx.fillText(line.text, chipX, sy);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
+        // D10: ring the callout that was read, so the offer is traceable to
+        // the sheet (the tag-reader chip idiom).
+        if (line.kind === 'callout' && App.drawDuctCalloutRing) App.drawDuctCalloutRing(ctx, env, line.offer, color);
       }
     }
     ctx.restore();
@@ -631,6 +656,7 @@
 
   App.isDuctDrawing = isDuctDrawing;
   App.getCurrentDuctSize = currentDuctSize;
+  App.setDuctCreateSize = setDuctCreateSize;   // D10 prefill writer
   App.commitDuctClick = commitDuctClick;
   App.applyDuctSizeStep = applyDuctSizeStep;
   App.finishDuctRun = finishDuctRun;

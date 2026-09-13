@@ -1714,6 +1714,8 @@ body.tour-active .canvas-empty-hint { display: none; }
 .duct-suggest-row { display: flex; gap: 6px; }
 .duct-suggest-from { display: block; margin-top: 4px; font-family: inherit; font-size: 0.7rem; font-weight: 400; color: var(--text2); }
 .duct-suggest-chip:hover .duct-suggest-from { color: #17171a; }
+/* D10 plan-and-spec: the create modal's "from the plan: 24×12" prefill note. */
+.duct-callout-note { margin: 6px 0 0; font-size: 0.78rem; color: var(--accent); line-height: 1.4; }
 .form-sublabel { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
 
 /* D8 polish: the second schedule knobs row (deck height / max flex / VD per

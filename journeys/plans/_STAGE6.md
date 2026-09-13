@@ -168,6 +168,19 @@ mode may or may not have). `[decision]` ____
   Room Size loop the best-designed stretch of the app. Con: the J7 finding
   stands — labels cover the plan's room names on multi-box rooms.
 
+- **D. Don't cover what the plan already says (recommended, 2026-09-13
+  ratchet — "is that the best we can do?").** When a Room box is drawn, the
+  D10 text-layer primitive looks inside it for printed room text; if found,
+  the room NAME is pre-filled from the plan ("from the plan", exactly like
+  the duct starting size) and the on-plan label stops repainting the name —
+  it paints only the totals as a small tag placed where the printed text
+  isn't (collision check against the text items, corner-first). Multi-box
+  rooms label their union once. Pro: nothing shrinks, nothing leaves the
+  plan, the plan's own lettering stays readable, and typing the name goes
+  away; spirit (1)(2)(3)(4) all hold. Con: scanned plans (no text layer)
+  fall back to B silently, so the two behaviors coexist; rides on D10.
+  Size S–M (one primitive call + a placement rule).
+
 Either A or B wants a mockup round first (the DUCT-PLAN way — artboards, an
 estimator walkthrough); this is a design call before it is a build.
 `[decision]` ____

@@ -902,6 +902,12 @@
           <span>Ø</span>
           <input type="number" id="ductCreateD" min="4" step="1" value="12" aria-label="Diameter (inches)">
         </div>
+        <!-- D10 plan-and-spec prefill (features/duct-callouts.js): when the
+             sheet's text layer carries a size callout within
+             DUCT_CALLOUT_RADIUS_PT of the cursor's last canvas position, the
+             fields above are pre-filled from it and this line says so
+             ("from the plan: 24×12"). Editable as ever; hidden on scans. -->
+        <p id="ductCreateCalloutNote" class="duct-callout-note" style="display:none;" title="Read from the nearest size callout in the sheet's text layer — change it if the plan says otherwise"></p>
       </div>
       <div class="form-group">
         <label>Pressure class (in. w.g.)</label>
@@ -3193,9 +3199,10 @@
        opened by S / the cursor size chip / the finish-bar Size button while a
        duct trace is in progress. #ductSizeSections is the EXTENSION SEAM —
        the popover module renders its registered sections into it in order
-       (D2 ships step-grid + custom entry; D6 appends the ductulator
-       suggestion row, D8 the rise/drop + dual-size rows, D9 the depth line —
-       via App.registerDuctPopoverSection, contract in the module header). -->
+       (D2 ships step-grid + custom entry; D10 prepends the plan callout
+       ("From the plan", order 3), D6 appends the ductulator suggestion row,
+       D8 the rise/drop + dual-size rows, D9 the depth line — via
+       App.registerDuctPopoverSection, contract in the module header). -->
   <div class="duct-size-popover" id="ductSizePopover" style="display:none;" role="dialog" aria-label="Duct size">
     <div class="duct-size-popover-head">
       <span id="ductSizeCurrent"></span>
@@ -3324,6 +3331,7 @@
   <script src="/features/duct-sidebar.js"></script>
   <script src="/features/duct-schedule.js"></script>
   <script src="/features/duct-suggest.js"></script>
+  <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>

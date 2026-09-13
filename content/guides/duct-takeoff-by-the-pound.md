@@ -26,6 +26,15 @@ Real trunks step down as air leaves them. Mid-trace, press **`S`** (or tap the s
 
 `Enter`, a double-click, or the **Finish Duct Run** bar commits the run. `Esc` steps backward first — it closes the popover, then removes the last corner, then abandons the trace.
 
+## Plan-and-spec: read the sizes off the sheet
+
+When an engineered mechanical sheet arrives, the sizes are already printed beside every run — and a real PDF (not a scan) carries those callouts in its text layer with coordinates. The Duct tool reads them so you don't retype them:
+
+- **Starting size from the plan.** Point at the trunk you're about to trace and press Duct: if a size callout sits within about 60 points of the cursor (`24x12`, `24×12`, `24"x12"`, `24/12`, `12"Ø`, `12" DIA`, `Ø12` — any of the usual spellings), the create dialog opens pre-filled from it and says so: *"from the plan: 24×12."* Change it if the sheet says otherwise; with no callout nearby the fields are simply left as they were.
+- **Step-downs as you pass them.** While you trace, a callout of a *different* size near the cursor puts a quiet line under the size chip — *"Plan says 20×12 here — S accepts"* — and rings the text it read. Press `S` and that size is the first chip in the popover; one tap steps the run down (and the transition counts itself, as always). Nothing is ever applied on its own.
+
+Where a plan callout and a design-build suggestion (below) are both available at the cursor, the printed size wins the line — the engineer's number outranks a rule of thumb — and the popover shows both, plan first. There is no mode to switch: a scanned sheet has no text layer, reads nothing, and the tool behaves exactly as it does on a design-build job. Dates, dimensions like 24'-0", scale ratios and pipe sizes never read as duct.
+
 ## Design-build: the plan sizes itself
 
 Most duct jobs are **design-build** — there's no engineered duct to copy, just an architectural background and a load. CountTooling turns the takeoff into the design pass:

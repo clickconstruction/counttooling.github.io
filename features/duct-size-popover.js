@@ -1,6 +1,6 @@
 /*
  * features/duct-size-popover.js — the Duct step-size popover (DUCT-PLAN.md
- * unit D2). Owned by D2; D6/D8/D9 EXTEND it — see the extension seam below.
+ * unit D2). Owned by D2; D6/D8/D9/D10 EXTEND it — see the extension seam below.
  *
  * The surface: a small anchored (#ductSizePopover, position:fixed, clamped by
  * App.placeFixedMenu) popover opened while a duct trace is in progress by `S`,
@@ -14,6 +14,8 @@
  *     id:     unique string ('step-grid', 'custom-size', …),
  *     order:  number — sections render into #ductSizeSections sorted ascending
  *             (D2 ships 'step-grid' @10 and 'custom-size' @20; suggested slots:
+ *             D10 plan callout @3 — FIRST when the sheet prints a different
+ *             size here (features/duct-callouts.js 'plan-callout');
  *             D6 ductulator suggestion @5 — above the grid, it IS the answer;
  *             D8 rise/drop + round-first dual sizes @30; D9 depth line @40),
  *     render(container, ctx) — build the section's DOM into `container` (a

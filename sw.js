@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '4a2757b5f922';
+const CACHE_VERSION = '90c538171006';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -194,8 +194,8 @@ const PRECACHE_SHA256 = {
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '4fad0716f98809c79c9a32bb6c9e3365b737119f8e1f9e3ac5001caa4a6791ab',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
-  '/icons-custom.js': 'e23fcd656b46f0048bc543d5907e1c8997f467f9791c5c5099cc14184d2f70e3',
-  '/icon-render.js': 'e23b77f6e846e2f413e5649405ebe92b167ef2c7b4a1c296cbb385053be7765c',
+  '/icons-custom.js': 'efe6b960301031a5fb40abc2f54de18798e19f4b7b04e0eccb81b47f1e9cacad',
+  '/icon-render.js': 'b4c2a3954462e9eff2a1acc795b1fd3c2e24b9cf5b9d3c5945340325e5234453',
   '/geometry.js': '132ab8c676657d177634ddb9a29a27b554779d5a01dfa5e2d687dbaffb73f625',
   '/line-metrics.js': '79e7bdbc91c02ebd4c62be3a26ad33eb5822d11d7233d75eb67a8de72a5c2126',
   '/conductor-model.js': '2fdea89c54aefa85ff19260a1dd02a2d83a3d94477bda95be451fd309a6de01a',
@@ -208,7 +208,7 @@ const PRECACHE_SHA256 = {
   '/canvas-draw.js': 'ce36350ca4bc35de236cc69f826d2cdc3d5b1c7b2fed3546c464551b87946fad',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
   '/render-worker.js': '97409f02a7150a5f9b5e456769083b49dca0c7baaae0263a34e2fc7a1d23a54d',
-  '/constants.js': 'a954a0553ff89063eeaef065c8726fbf6bfcbc2ca127250d50979dba2ff7d67b',
+  '/constants.js': '50d6c9dd6351965c230bc5cbbfbd1d654dc6ab6392440629d6551ceeefc290c0',
   '/zoom-ladder.js': 'c8396a9b8610ce94c703b575e3180ad3152d17a5b23c9e576c8d45b980005ba3',
   '/hotkeys.js': '481ef7e17f26b8463bda701a46932eba606b1178db909e4042ef0133716bf3d3',
   '/recent-colors.js': '8f201f7c7e067580483aab71948653274ce8c97facfb0a25f56f51517e5c5f84',
@@ -220,7 +220,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': 'd17b643b180ef7ff6e55a2bd9905435ed3bbbcf3b750d91ad88f966c9431a203',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '1eea85d466db19e37c7730e998e1699d87a58acfb5b8bd6e27d7549232d2a1ff',
+  '/app.js': '410e7a1510919dcc8b934a0e5cc09719e1d813ab8648102af09c479a494e28b7',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '9661cefd7251eb82a9459bb348f31320500c590cbd745bb7153f424e612b51f9',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -244,7 +244,7 @@ const PRECACHE_SHA256 = {
   '/features/groups.js': 'a6397bfbea34bfbd7b67b6eacee0c4f048c58bdd267a256b14fcde96696049c1',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
   '/features/quick-line.js': '12f987130bbcdcd06d8f27aaeeb7cc535a86d6364914569b99a061fe6329e63f',
-  '/features/counter.js': '0bb7c43d60b10f4823568fd8337cc24562d76c69824b1ce9a8318b702cf82596',
+  '/features/counter.js': '1186f91940657a39e1eb4aa67f1774c720730bc8981a4f049614854b5f33ea64',
   '/features/save-status.js': 'd4af89c0258d6609d19b402ec5684198948d44fc75d7446592e79d29bf15d919',
   '/features/status-bar.js': '225a83e4f31cfa72d17c868ac7374c59388d5fc359dee77d4560ce84368964dc',
   '/features/turn-in.js': 'e3c2af69f1693f3819cb31733aeead36be659546f53d86c0da406dadee664944',
@@ -255,7 +255,7 @@ const PRECACHE_SHA256 = {
   '/features/review-flow.js': '7fe62b8120ac3ea327db6851365a4b17ef19e60fa8bf5646ccc3970d142f2405',
   '/features/copy-project.js': 'e5a1b0a04292778d70fd898d4beb6ba11eeb3f3e6683076302a9af275b45315c',
   '/features/prepare-pdf.js': 'fa59aad964c2c0282cd1e85f38aca90a099ae38905376fe023c59d38cc39f76d',
-  '/features/quick-modals.js': 'ecf0409dd24800b2ed767ff3ed03b94f311d04bc1aa6c03b904d3e48d9560867',
+  '/features/quick-modals.js': 'a85349fd19c8abaec0a15ff7909bf05af914d049ada99b077033df47e8375d00',
   '/features/pdf-bundle.js': '9f08fe5a316ff8c82561c4655c6b2d4d4858268bb3ee2807fe6e61df0cc8351e',
   '/features/item-details.js': 'ace7fb2eb336e47ade33873e31997cc75b488bcaca42559564dc275228353822',
   '/features/output.js': '69f8d30c9fd15bbc47f29abb186846cd2c55966c68d72fe4a9dd11a565d453c7',

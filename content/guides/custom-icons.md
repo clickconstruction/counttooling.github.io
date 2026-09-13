@@ -1,7 +1,7 @@
 ---
 title: Custom icons — make the plan read like your trade
 description: Pick from the built-in trade icon library or upload your own SVG symbols, manage and reorder them, and carry your icon library between devices.
-updated: 2026-08-10
+updated: 2026-09-13
 order: 3.5
 icon: counter
 category: Counting
@@ -14,6 +14,8 @@ A takeoff you can *read* is a takeoff someone else can check. When a counter loo
 ## The built-in library
 
 Create a counter [[counter]] and the icon grid offers the bundled set: general symbols plus a library of real trade fixtures. Use the search box to filter by name. Every icon takes the counter's color, so the same symbol can serve several types.
+
+The **Custom Icons** tab groups the trade libraries under their own headings — **Plumbing**, **Electrical**, and **HVAC** (the M-sheet symbols: supply diffuser, return grille, RTU, VAV box, fire/smoke damper) — with your project's trade on top. A counter you give a **CFM** to starts with the supply diffuser unless you pick another icon.
 
 ## Upload your own SVG
 

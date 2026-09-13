@@ -76,7 +76,16 @@ const ELECTRICAL_DEFAULTS = {
 const HVAC_DEFAULTS = {
   sizes: ['6"', '8"', '10"', '12"', '14"', '12x12', '24x24'],
   types: ['Supply Diffuser', 'Return Grille', 'Exhaust Grille', 'Linear Diffuser', 'Thermostat', 'VAV Box', 'Fan Coil', 'RTU', 'Exhaust Fan', 'Damper'],
-  materials: ['', 'Lay-in', 'Surface', 'Round Neck']
+  materials: ['', 'Lay-in', 'Surface', 'Round Neck'],
+  // D16: the bundled HVAC symbol (my-counters/hvac/*.svg → CUSTOM_ICONS, set
+  // 'hvac') a type starts with — same by-name resolution as electrical. Types
+  // without a symbol (Thermostat, Fan Coil, …) keep the picker's default.
+  iconNameByType: {
+    'Supply Diffuser': 'Supply Diffuser', 'Linear Diffuser': 'Supply Diffuser',
+    'Return Grille': 'Return Grille', 'Exhaust Grille': 'Return Grille',
+    'VAV Box': 'VAV Box', RTU: 'RTU', Damper: 'Fire/Smoke Damper',
+    Thermostat: 'Thermostat'   // the electrical set's ring-T — the same symbol on an M-sheet
+  }
 };
 // The project-level defaults behind "vertical by default" (S2): a device at
 // `mountHeightIn` under a `ceilingHeightFt` ceiling gets ceiling − mount +

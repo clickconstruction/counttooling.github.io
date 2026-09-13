@@ -1,7 +1,7 @@
 ---
 title: Doing an HVAC takeoff
 description: Room volumes for airflow and equipment sizing, counters for diffusers and equipment, and duct runs measured off the plan — HVAC estimating on the PDF.
-updated: 2026-07-31
+updated: 2026-09-13
 order: 9.1
 icon: room
 category: By trade
@@ -31,7 +31,7 @@ Per-room area and volume land in the Rooms sidebar, on the sheet as labels, in t
 
 ## Count the equipment
 
-Make a [counter](/guides/counting-with-counters/) [[counter]] per device — diffusers, grilles, exhaust fans, thermostats, equipment — each with its own icon and color ([upload your own symbols](/guides/custom-icons/) to match your schedule). Click each one; the tally rolls up across every sheet. Use [groups](/guides/organizing-a-busy-sheet/) to subtotal by system or by zone.
+Make a [counter](/guides/counting-with-counters/) [[counter]] per device — diffusers, grilles, exhaust fans, thermostats, equipment — each with its own icon and color. The icon picker's **HVAC** group ships the M-sheet symbols (supply diffuser, return grille, RTU, VAV box, fire/smoke damper), a counter with a CFM starts with the supply diffuser, and you can still [upload your own symbols](/guides/custom-icons/) to match your schedule. Click each one; the tally rolls up across every sheet. Use [groups](/guides/organizing-a-busy-sheet/) to subtotal by system or by zone.
 
 ## Measure the runs
 

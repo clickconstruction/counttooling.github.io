@@ -1112,7 +1112,10 @@ test('runStraightItems: verticalFt entries tally at the segment-at-vertex size',
 });
 
 test('tallyFlexDrops: attached CFM devices, per system, defaults + over-max counting', () => {
-  assert.deepStrictEqual(dm.DUCT_FLEX_DEFAULTS, { dropFt: 8, maxFlexFt: 6 });
+  // D9 correction: a typical drop (5') sits UNDER the 6' spec cap, so a fresh
+  // default drop never warns on its own.
+  assert.deepStrictEqual(dm.DUCT_FLEX_DEFAULTS, { dropFt: 5, maxFlexFt: 6 });
+  assert.ok(dm.DUCT_FLEX_DEFAULTS.dropFt <= dm.DUCT_FLEX_DEFAULTS.maxFlexFt);
   const runA = dm.makeDuctRun({
     id: 'a', systemGroupId: 'g1',
     vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
@@ -1124,15 +1127,15 @@ test('tallyFlexDrops: attached CFM devices, per system, defaults + over-max coun
     segments: [{ startVertexIdx: 0, size: dm.makeRoundSize(10) }],
   });
   const devices = [
-    { x: 20, y: 2, cfm: 150 },                     // on A → default 8'
-    { x: 60, y: 2, cfm: 200, flexDropFt: 5 },      // on A → its own 5'
+    { x: 20, y: 2, cfm: 150 },                     // on A → default 5'
+    { x: 60, y: 2, cfm: 200, flexDropFt: 7 },      // on A → its own 7' (over 6)
     { x: 40, y: 52, cfm: 100, flexDropFt: 7 },     // on B (no system) → 7' (over 6)
     { x: 40, y: 200, cfm: 100 },                   // attached to nothing → excluded
   ];
   const rows = dm.tallyFlexDrops(devices, [runA, runB]);
   assert.strictEqual(rows.length, 2);
   const g1 = rows.find(r => r.systemGroupId === 'g1');
-  assert.deepStrictEqual(g1, { systemGroupId: 'g1', count: 2, totalFt: 13, overCount: 1 });
+  assert.deepStrictEqual(g1, { systemGroupId: 'g1', count: 2, totalFt: 12, overCount: 1 });
   const none = rows.find(r => r.systemGroupId === null);
   assert.deepStrictEqual(none, { systemGroupId: null, count: 1, totalFt: 7, overCount: 1 });
   // A tighter cap flags more; a looser one clears them.
@@ -1197,4 +1200,126 @@ test('noVd survives re-inference (the auto:false preservation pattern + auto car
   assert.strictEqual(autoTap.length, 1);
   assert.strictEqual(autoTap[0].noVd, true);
   assert.strictEqual(autoTap[0].auto, true);
+});
+
+// --- Bid Check (D9) -----------------------------------------------------------
+
+test('ductDepthIn / ductDepthLabel: rect reads h (the size chip\'s Depth), round d; insulation adds 2× thickness', () => {
+  assert.deepStrictEqual(dm.DUCT_INSULATION_DEFAULT_IN, { liner: 1, wrap: 1 });
+  assert.deepStrictEqual(dm.ductDepthIn(dm.makeRectSize(24, 12), null, 0), { bareIn: 12, addIn: 0, depthIn: 12 });
+  assert.deepStrictEqual(dm.ductDepthIn(dm.makeRectSize(24, 12), 'wrap', 0), { bareIn: 12, addIn: 2, depthIn: 14 });
+  assert.deepStrictEqual(dm.ductDepthIn(dm.makeRoundSize(10), 'liner', 1.5), { bareIn: 10, addIn: 3, depthIn: 13 });
+  assert.strictEqual(dm.ductDepthIn({ kind: 'nope' }), null);
+  assert.strictEqual(dm.ductDepthLabel(dm.makeRectSize(24, 12), 'wrap', 0), '24×12 + 2" wrap = 14"');
+  assert.strictEqual(dm.ductDepthLabel(dm.makeRectSize(24, 12), null, 0), '24×12 = 12"');
+  assert.strictEqual(dm.ductDepthLabel(dm.makeRoundSize(10), 'liner', 0), '10"Ø + 2" liner = 12"');
+});
+
+test('ductPlenumFit: null while inputs are missing; ✓ shows the tightest segment; ⚠ names the offending one', () => {
+  const trunk = { runName: 'Trunk', size: dm.makeRectSize(24, 12), linerType: 'wrap', linerThicknessIn: 0, ceilingFt: 10 };
+  // no deck height / no item with a ceiling → not known
+  assert.strictEqual(dm.ductPlenumFit(null), null);
+  assert.strictEqual(dm.ductPlenumFit({ deckHeightFt: null, items: [trunk] }), null);
+  assert.strictEqual(dm.ductPlenumFit({ deckHeightFt: 12.5, items: [] }), null);
+  assert.strictEqual(dm.ductPlenumFit({ deckHeightFt: 12.5, items: [{ ...trunk, ceilingFt: null }] }), null);
+  // deck 12.5' − ceiling 10' = 30" plenum; 24×12 + 2" wrap = 14" ✓
+  const ok = dm.ductPlenumFit({ deckHeightFt: 12.5, items: [trunk] });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.tightest.label, '24×12 + 2" wrap = 14" · plenum 30"');
+  assert.strictEqual(ok.tightest.marginIn, 16);
+  // the tightest of several passing segments is the one shown
+  const two = dm.ductPlenumFit({ deckHeightFt: 12.5, items: [trunk, { runName: 'Branch', size: dm.makeRectSize(12, 8), ceilingFt: 10 }] });
+  assert.strictEqual(two.tightest.runName, 'Trunk');
+  // a 12' ceiling under a 12.5' deck leaves 6" — the trunk fails and is named; a 4"Ø branch beside it still fits
+  const bad = dm.ductPlenumFit({ deckHeightFt: 12.5, items: [{ ...trunk, ceilingFt: 12 }, { runName: 'Branch', size: dm.makeRoundSize(4), ceilingFt: 12 }] });
+  assert.strictEqual(bad.ok, false);
+  assert.strictEqual(bad.offending.length, 1);
+  assert.strictEqual(bad.offending[0].runName, 'Trunk');
+  assert.strictEqual(bad.offending[0].label, '24×12 + 2" wrap = 14" · plenum 6"');
+});
+
+test('DUCT_BID_CHECK_ROWS: the shipped table — four auto rows, the upgradable roof row, five manual rows', () => {
+  const rows = dm.DUCT_BID_CHECK_ROWS;
+  assert.deepStrictEqual(rows.map(r => [r.id, r.kind, typeof r.evaluate === 'function']), [
+    ['duct-rooms-served', 'auto', true],
+    ['duct-systems-capacity', 'auto', true],
+    ['duct-flex-max', 'auto', true],
+    ['duct-sheets-scaled', 'auto', true],
+    ['duct-fits-roof', 'manual', true],
+    ['duct-fire-dampers', 'manual', false],
+    ['duct-oa-code', 'manual', false],
+    ['duct-static-path', 'manual', false],
+    ['duct-curb-power', 'manual', false],
+    ['duct-controls', 'manual', false],
+  ]);
+  rows.forEach(r => { assert.ok(r.label && r.short, r.id); });
+  assert.strictEqual(rows.find(r => r.id === 'duct-fits-roof').short, 'Fits the roof');
+  assert.strictEqual(rows.find(r => r.id === 'duct-rooms-served').rule, 'hvac.room.airflow-defaults');
+});
+
+test('ductBidCheckRows: every auto evaluator reads na / ok / warn with its number', () => {
+  const byId = (rows) => Object.fromEntries(rows.map(r => [r.id, r]));
+  // nothing known → every auto row is not-applicable, every manual row open
+  const empty = byId(dm.ductBidCheckRows({}, {}));
+  ['duct-rooms-served', 'duct-systems-capacity', 'duct-flex-max', 'duct-sheets-scaled'].forEach(id => assert.strictEqual(empty[id].verdict, 'na', id));
+  assert.strictEqual(empty['duct-fits-roof'].kind, 'manual');
+  assert.strictEqual(empty['duct-fire-dampers'].verdict, 'open');
+  // rooms
+  const r1 = byId(dm.ductBidCheckRows({ rooms: [{ name: 'Office 101', targetCfm: 108, servedCfm: 50, under: true }, { name: 'Storage', targetCfm: 40, servedCfm: 40, under: false }] }));
+  assert.strictEqual(r1['duct-rooms-served'].verdict, 'warn');
+  assert.strictEqual(r1['duct-rooms-served'].detail, '1 of 2 rooms under-served: Office 101 needs 108 · served 50 ⚠');
+  assert.strictEqual(byId(dm.ductBidCheckRows({ rooms: [{ name: 'A', targetCfm: 100, servedCfm: 100, under: false }] }))['duct-rooms-served'].detail, '1 room served ✓');
+  // systems
+  const s1 = byId(dm.ductBidCheckRows({ systems: [{ name: 'RTU-1', designedCfm: 700, capacityCfm: 600 }, { name: 'RTU-2', designedCfm: 500, capacityCfm: 600 }] }));
+  assert.strictEqual(s1['duct-systems-capacity'].verdict, 'warn');
+  assert.strictEqual(s1['duct-systems-capacity'].detail, 'RTU-1 · 700 designed / 600 capacity ⚠');
+  const s2 = byId(dm.ductBidCheckRows({ systems: [{ name: 'RTU-2', designedCfm: 500, capacityCfm: 600 }, { name: 'AHU', designedCfm: 0, capacityCfm: null }] }));
+  assert.strictEqual(s2['duct-systems-capacity'].verdict, 'ok');
+  assert.strictEqual(s2['duct-systems-capacity'].detail, 'RTU-2 · 500 designed / 600 capacity ✓');
+  // flex
+  const f1 = byId(dm.ductBidCheckRows({ flex: { drops: 5, overCount: 2, maxFlexFt: 6, overSystems: ['RTU-1'] } }));
+  assert.strictEqual(f1['duct-flex-max'].verdict, 'warn');
+  assert.strictEqual(f1['duct-flex-max'].detail, "2 drops over 6' max ⚠ (RTU-1)");
+  assert.strictEqual(byId(dm.ductBidCheckRows({ flex: { drops: 1, overCount: 0, maxFlexFt: 6 } }))['duct-flex-max'].detail, "1 drop · all within 6' ✓");
+  // sheets
+  const p1 = byId(dm.ductBidCheckRows({ ductPages: ['Page 1', 'Page 2'], unscaledPages: ['Page 2'] }));
+  assert.strictEqual(p1['duct-sheets-scaled'].verdict, 'warn');
+  assert.strictEqual(p1['duct-sheets-scaled'].detail, 'Page 2 has duct but no scale ⚠');
+  assert.strictEqual(byId(dm.ductBidCheckRows({ ductPages: ['Page 1'], unscaledPages: [] }))['duct-sheets-scaled'].detail, '1 duct sheet scaled ✓');
+});
+
+test('the roof row: manual (tick honored) until deck + ceiling + size are known, then auto with the number and the tick ignored', () => {
+  const byId = (rows) => Object.fromEntries(rows.map(r => [r.id, r]));
+  const trunk = { runName: 'Trunk', size: dm.makeRectSize(24, 12), linerType: 'wrap', ceilingFt: 10 };
+  // no deck → manual, open
+  let roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: null, items: [trunk] } }, {}))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.kind, roof.verdict, roof.done, roof.upgraded], ['manual', 'open', false, false]);
+  // ticked → manual, done
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: null, items: [trunk] } }, { 'duct-fits-roof': true }))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.kind, roof.verdict, roof.done], ['manual', 'done', true]);
+  // deck but no ceiling under the run → still manual
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 12.5, items: [] } }, {}))['duct-fits-roof'];
+  assert.strictEqual(roof.kind, 'manual');
+  // all three known → AUTO, shows its work, the stale tick is ignored
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 12.5, items: [trunk] } }, { 'duct-fits-roof': true }))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.kind, roof.verdict, roof.done, roof.upgraded], ['auto', 'ok', false, true]);
+  assert.strictEqual(roof.detail, '24×12 + 2" wrap = 14" · plenum 30" ✓');
+  // and names the offending segment when it does not fit
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 11, items: [trunk] } }, {}))['duct-fits-roof'];
+  assert.strictEqual(roof.verdict, 'warn');
+  assert.strictEqual(roof.detail, 'Trunk: 24×12 + 2" wrap = 14" · plenum 12" ⚠');
+});
+
+test('ductBidCheckUnresolved: auto ⚠ first, then unticked manual — the first names the gate toast', () => {
+  const rows = dm.ductBidCheckRows({ flex: { drops: 2, overCount: 1, maxFlexFt: 6 } }, { 'duct-fits-roof': true });
+  const u = dm.ductBidCheckUnresolved(rows);
+  assert.strictEqual(u.auto.length, 1);
+  assert.strictEqual(u.auto[0].id, 'duct-flex-max');
+  assert.strictEqual(u.manual.length, 5);   // six manual rows, the roof row ticked
+  assert.strictEqual(u.first.id, 'duct-flex-max');
+  const all = dm.ductBidCheckUnresolved(dm.ductBidCheckRows({}, {}));
+  assert.strictEqual(all.auto.length, 0);
+  assert.strictEqual(all.first.short, 'Fits the roof');
+  const none = dm.ductBidCheckUnresolved(dm.ductBidCheckRows({}, Object.fromEntries(dm.DUCT_BID_CHECK_ROWS.filter(r => r.kind === 'manual').map(r => [r.id, true]))));
+  assert.strictEqual(none.first, null);
 });

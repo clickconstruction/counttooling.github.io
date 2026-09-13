@@ -19,7 +19,7 @@
  *                   the % to straight pounds (default 40, editable).
  *   Flex duct       D8 — per-system "N drops · X LF" rows over the CFM
  *                   devices ATTACHED to duct (D6's nearest-run rule; drop
- *                   length = the counter's flexDropFt, default 8'), with the
+ *                   length = the counter's flexDropFt, default 5'), with the
  *                   "N drops over X' max" warning past ductSettings.maxFlexFt.
  *                   LF ONLY — flex is priced by the drop, never weighed, so
  *                   these rows deliberately do NOT touch the bid weight.
@@ -549,6 +549,7 @@
   };
 
   App.openDuctScheduleModal = openDuctScheduleModal;
+  App.collectUnscaledDuctPages = collectUnscaledDuctPages;   // D9: the "Scale set on every duct sheet" row re-walks the gate's rule
   App.getDuctSettings = getDuctSettings;   // D6: duct-suggest.js reads the design knobs
   App.computeDuctSchedule = computeDuctSchedule;
   App.getDuctScheduleForReport = getDuctScheduleForReport;

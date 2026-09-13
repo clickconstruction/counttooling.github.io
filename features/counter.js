@@ -275,7 +275,7 @@
     const mountIn = App.parseMountHeightIn(document.getElementById('counterMountHeight')?.value);
     if (mountIn != null) newCounter.mountHeightIn = mountIn;
     // D8: optional flex-drop length (ft) — same set-only-when-positive rule;
-    // absent means the DUCT_FLEX_DEFAULTS.dropFt table default (8').
+    // absent means the DUCT_FLEX_DEFAULTS.dropFt table default (5').
     const flexVal = parseFloat(document.getElementById('counterFlexDrop')?.value);
     if (Number.isFinite(flexVal) && flexVal > 0) newCounter.flexDropFt = flexVal;
     state.counters.push(newCounter);

@@ -3087,6 +3087,13 @@
     <div class="toast-card toast-interactive" id="bidCheckAdvisoryModal">
       <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span id="bidCheckAdvisoryText">Bid Check has open items.</span><button type="button" id="bidCheckAdvisoryReview" class="toast-link">Review</button></p>
     </div>
+    <!-- D9: the Bid Check GATE — Copy to /Tooling / Export PDFs pressed with
+         duct present and rows unresolved. "Bid Check: Fits the roof? — Review ·
+         Export anyway" — Review opens the sidebar row (flashed), Export anyway
+         proceeds inside the click; features/duct-bidcheck.js. Never a block. -->
+    <div class="toast-card toast-interactive" id="bidGateToastModal">
+      <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span id="bidGateToastText">Bid Check: Fits the roof?</span> — <button type="button" id="bidGateReview" class="toast-link">Review</button> · <button type="button" id="bidGateExportAnyway" class="toast-link">Export anyway</button></p>
+    </div>
     <div class="toast-card toast-interactive" id="copyAgainModal">
       <p style="margin:0;font-size:1rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span>Scale set —</span><button type="button" id="copyAgainLink" class="toast-link">Copy again</button><span>to finish the copy.</span></p>
     </div>
@@ -3325,6 +3332,7 @@
   <script src="/features/circuits.js"></script>
   <script src="/features/rules.js"></script>
   <script src="/features/bid-check.js"></script>
+  <script src="/features/duct-bidcheck.js"></script>
   <script src="/features/tag-reader.js"></script>
   <script src="/features/tutorial.js"></script>
   <script src="/features/twin-badge.js"></script>

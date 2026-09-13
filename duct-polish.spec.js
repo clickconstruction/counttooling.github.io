@@ -11,9 +11,11 @@
  *   { vertexIdx: 0, auto: true } riser — deck height minus the containing
  *   room box's ceiling when known — removable from the popover at vertex 0.
  * - Flex drops: CFM devices attached to duct feed the per-system Flex line
- *   (counter flexDropFt, default 8'), with the "N drops over X' max" warning
- *   past ductSettings.maxFlexFt (editable, re-renders live); the copy text
- *   carries the same lines. LF only — the bid weight is untouched.
+ *   (counter flexDropFt, default 5' — UNDER the 6' cap, so a fresh drop never
+ *   warns on its own; D9's correction), with the "N drops over X' max"
+ *   warning past ductSettings.maxFlexFt for an explicit over-max drop
+ *   (editable, re-renders live); the copy text carries the same lines. LF
+ *   only — the bid weight is untouched.
  * - VD-per-tap (§6): the schedule's Volume damper row per tap, the
  *   #ductVdPerTapBtn toggle, and the per-fitting right-click Remove/Add
  *   volume damper (noVd survives re-inference — the auto:false pattern).
@@ -158,12 +160,13 @@ test.describe('Duct polish (D8)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('flex drops: per-system schedule line, default 8\', over-max warning tracks the editable cap', async ({ page }) => {
+  test('flex drops: per-system schedule line, default 5\' never warns, an explicit over-max drop does and tracks the editable cap', async ({ page }) => {
     await page.evaluate(() => {
       const s = window.state;
       s.groups.push({ id: 'g1', name: 'RTU-1', color: '#e05d5d', equipmentTag: 'RTU-1', capacityCfm: 600 });
       s.groupsEnabled = true;
-      // Two CFM counter types: default flex (8') and an explicit 9' drop.
+      // Two CFM counter types: default flex (5', under the 6' cap) and an
+      // explicit 9' drop (over it).
       const icon = window.App.getOrderedIcons()[0].value;
       s.counters.push({ id: 'c-def', name: 'Diffuser A', icon, color: '#e8c547', cfm: 150 });
       s.counters.push({ id: 'c-nine', name: 'Diffuser B', icon, color: '#4a9eff', cfm: 200, flexDropFt: 9 });
@@ -186,19 +189,20 @@ test.describe('Duct polish (D8)', () => {
     const flexRow = body.locator('table').nth(2).locator('tr').nth(1);
     await expect(flexRow).toContainText('RTU-1');
     await expect(flexRow).toContainText('2');
-    await expect(flexRow).toContainText("17'");
-    // Both drops (the 8' default AND the 9') are past the default 6' cap.
-    await expect(flexRow.locator('.duct-flex-warn')).toHaveText("⚠ 2 drops over 6' max");
+    await expect(flexRow).toContainText("14'");   // 5' default + 9' explicit
+    // Only the explicit 9' drop is past the default 6' cap — the 5' default
+    // never warns on its own (the D9 correction: typical drop ≈ 5', spec cap 6').
+    await expect(flexRow.locator('.duct-flex-warn')).toHaveText("⚠ 1 drop over 6' max");
 
     // The copy text carries the same line (LF only, flagged).
     const copyText = await page.evaluate(() => window.App.buildDuctScheduleText(window.App.computeDuctSchedule({})));
     expect(copyText).toContain('Flex duct (by the drop — not in bid weight)');
-    expect(copyText).toContain("RTU-1\t2 drops\t17'\t⚠ 2 drops over 6' max");
+    expect(copyText).toContain("RTU-1\t2 drops\t14'\t⚠ 1 drop over 6' max");
 
-    // The cap on the Polish row re-renders live: 8.5' flags only the 9' drop…
-    await page.locator('#ductMaxFlex').fill('8.5');
+    // The cap on the Polish row re-renders live: 4.5' flags the default drop too…
+    await page.locator('#ductMaxFlex').fill('4.5');
     await page.locator('#ductMaxFlex').dispatchEvent('change');
-    await expect(flexRow.locator('.duct-flex-warn')).toHaveText("⚠ 1 drop over 8.5' max");
+    await expect(flexRow.locator('.duct-flex-warn')).toHaveText("⚠ 2 drops over 4.5' max");
     // …and 10' clears the warning.
     await page.locator('#ductMaxFlex').fill('10');
     await page.locator('#ductMaxFlex').dispatchEvent('change');

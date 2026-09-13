@@ -9,6 +9,8 @@
  * optional `terms` list from the SVG's <desc>.
  *
  * Usage: node scripts/build-custom-icons.js [--dir path/to/svgs] [--out file.js] [--stdout]
+ *        node scripts/build-custom-icons.js --check   (exit 1 when icons-custom.js is
+ *                                                     stale vs my-counters/ — in `npm run check`)
  */
 
 const fs = require('fs');
@@ -18,6 +20,7 @@ const args = process.argv.slice(2);
 let dir = path.join(__dirname, '..', 'my-counters');
 let outFile = path.join(__dirname, '..', 'icons-custom.js');
 let toStdout = false;
+let check = false;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--dir' && args[i + 1]) {
     dir = args[i + 1];
@@ -27,6 +30,8 @@ for (let i = 0; i < args.length; i++) {
     i++;
   } else if (args[i] === '--stdout') {
     toStdout = true;
+  } else if (args[i] === '--check') {
+    check = true;
   }
 }
 
@@ -144,7 +149,19 @@ const FOOTER = [
 ].join('\n');
 const output = HEADER + '\n  const CUSTOM_ICONS = ' + arrayLiteral + ';\n' + FOOTER;
 
-if (!toStdout) {
+if (check) {
+  // D18: the committed-artifact check the other generators have (build-toc /
+  // build-macros / build-sw) — a symbol added to my-counters/ without a rerun
+  // used to ship silently. Compares against the exact bytes the write path
+  // produces (no trailing-newline difference from --stdout's console.log).
+  const outPath = path.isAbsolute(outFile) ? outFile : path.join(process.cwd(), outFile);
+  const current = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf8') : null;
+  if (current !== output) {
+    console.error('icons-custom.js is stale vs my-counters/. Run `npm run build:icons` (then `npm run build:sw`) and commit.');
+    process.exit(1);
+  }
+  console.log('icons-custom.js up to date (' + icons.length + ' icons).');
+} else if (!toStdout) {
   const outPath = path.isAbsolute(outFile) ? outFile : path.join(process.cwd(), outFile);
   fs.writeFileSync(outPath, output, 'utf8');
   console.log('Wrote', icons.length, 'icons to', outPath);

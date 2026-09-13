@@ -150,6 +150,22 @@
       swatchEl.style.background = color;
       swatchEl.title = color === base ? 'Change color' : "Color adjusted so these marks don't match an existing counter";
     }
+    // D18: the inline icon chip beside the CFM (the Create tab's twin, one
+    // renderer in features/counter.js): names the glyph Add will stamp while
+    // a CFM is typed; "change" opens the Custom Icons grid at the HVAC group.
+    const cfmVal = parseFloat(document.getElementById('counterQuickCountCfm')?.value);
+    const hasCfm = Number.isFinite(cfmVal) && cfmVal > 0;
+    if (App.syncCfmIconChip) {
+      App.syncCfmIconChip('counterQuickCountCfmIconChip', {
+        hasCfm, iconPath: path,
+        onChange: () => {
+          showCounterQuickCountIconTab('custom');
+          App.scrollIconGridToSet && App.scrollIconGridToSet(document.getElementById('counterQuickCountIconGridCustom'), 'HVAC');
+        },
+      });
+    }
+    const hintEl = document.getElementById('counterQuickCountCfmHint');
+    if (hintEl) hintEl.hidden = hasCfm && !!path;
   }
   // S1/S2: the mount height row — prefilled from the profile per variant,
   // then per category; the estimator can overwrite it before Add.

@@ -34,6 +34,12 @@ const HOTKEYS = [
   { key: 'l', btnId: 'quickLine', section: 'Tools', action: 'Quick Line mode', kbd: null, icon: { btn: 'quickLine' } },
   { key: 'j', runner: 'toggleSnap', viewerAllowed: true, section: 'Tools', action: 'Toggle snap to 45° angles', kbd: null, icon: { btn: 'lineTypeSnapToHVHeaderBtn' } },
   { key: 'p', btnId: 'polylineBtn', section: 'Tools', action: 'Polyline mode', kbd: null, icon: { btn: 'polylineBtn' } },
+  // D18 (B19 ratchet, 2026-09-13): Duct was the one drawing tool with no key.
+  // D (the natural letter) is Measure's, so the first free letter of "Duct"
+  // — U — arms it. Every surface (keydown, Macros/Keyboard Map, the ⋯ row,
+  // the Cmd-peek badge, #ductBtn's tooltip) reads THIS row. Mid-trace S still
+  // steps size (the app.js keydown guard runs before the table lookup).
+  { key: 'u', btnId: 'ductBtn', section: 'Tools', action: 'Duct mode (trace a duct run)', kbd: null, icon: { btn: 'ductBtn' } },
   { key: 't', btnId: 'chainBtn', section: 'Tools', action: 'Chain mode (counter + connecting line)', kbd: null, icon: { btn: 'chainBtn' } },
   { key: 'b', btnId: 'dropBtn', section: 'Tools', action: 'Drop mode (add rise/fall at line ends)', kbd: null, icon: { btn: 'dropBtn' } },
   { key: 'd', btnId: 'measureBtn', viewerAllowed: true, section: 'Tools', action: 'Measure Distance', kbd: null, icon: { btn: 'measureBtn' } },

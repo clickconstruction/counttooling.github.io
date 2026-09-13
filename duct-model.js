@@ -672,6 +672,19 @@ function ductFittingAnchor(f, runs) {
   return null;
 }
 
+/** D18 — where a run's rise/drop (verticalFt) entry paints and hit-tests: the
+ * vertex it is anchored to, lifted DUCT_VERTICAL_OFFSET_PDF points up the
+ * sheet so a vertical and a corner elbow at the same vertex both read and
+ * both catch the mouse (the fitting-marker family shares one anchor rule for
+ * paint, hitTest and export). null when the vertex no longer exists. */
+const DUCT_VERTICAL_OFFSET_PDF = 10;
+function ductVerticalMarkerAnchor(run, entry) {
+  if (!run || !entry || !Number.isInteger(entry.vertexIdx)) return null;
+  const v = (run.vertices || [])[entry.vertexIdx];
+  if (!v) return null;
+  return { x: v.x, y: v.y - DUCT_VERTICAL_OFFSET_PDF };
+}
+
 /** Outgoing unit direction at a fitting's anchor (for oriented glyphs like
  * the transition chevrons); null for position-anchored/unresolvable ones. */
 function ductFittingOutDirection(f, runs) {
@@ -2105,6 +2118,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ductBendAngleDeg, largerDuctSize, ductSizeAtVertex, ductDistToPolyline,
     inferAutoDuctFittings, ductFittingAnchorKey, ductFittingAnchor,
     ductFittingOutDirection, reconcileDuctFittings, tallyDuctFittingCounts,
+    DUCT_VERTICAL_OFFSET_PDF, ductVerticalMarkerAnchor,
     // VD-per-tap + flex drops (D8)
     ductVolumeDamperFittings, DUCT_FLEX_DEFAULTS, tallyFlexDrops,
     // multiply zones (D17)

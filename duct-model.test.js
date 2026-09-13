@@ -1774,3 +1774,16 @@ test('rollupDuct + tallyDuctFittingCounts honor a fitting\'s `repeat`; the whole
   assert.strictEqual(dm.ductRepeatOf({ repeat: 2.5 }), 1);
   assert.strictEqual(dm.ductRepeatOf(null), 1);
 });
+
+// D18: rise/drop markers join the fitting family — one anchor rule for paint,
+// hitTest and export: the entry's vertex lifted DUCT_VERTICAL_OFFSET_PDF up
+// the sheet; null once the vertex is gone.
+test('ductVerticalMarkerAnchor: the vertex lifted 10 pt; null for a missing vertex or entry', () => {
+  const run = dm.makeDuctRun({ vertices: [{ x: 100, y: 200 }, { x: 300, y: 200 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }], verticalFt: [{ vertexIdx: 1, ft: 12 }] });
+  assert.strictEqual(dm.DUCT_VERTICAL_OFFSET_PDF, 10);
+  assert.deepStrictEqual(dm.ductVerticalMarkerAnchor(run, run.verticalFt[0]), { x: 300, y: 190 });
+  assert.deepStrictEqual(dm.ductVerticalMarkerAnchor(run, { vertexIdx: 0, ft: 3, auto: true }), { x: 100, y: 190 });
+  assert.strictEqual(dm.ductVerticalMarkerAnchor(run, { vertexIdx: 5, ft: 3 }), null);
+  assert.strictEqual(dm.ductVerticalMarkerAnchor(run, null), null);
+  assert.strictEqual(dm.ductVerticalMarkerAnchor(null, { vertexIdx: 0, ft: 3 }), null);
+});

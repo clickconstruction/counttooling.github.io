@@ -4,8 +4,10 @@
  * package.json `&&` chain: every step ALWAYS runs, so one stale stamp no
  * longer hides the next four — all failures are reported in one pass.
  *
- * Steps mirror the old chain exactly: lint, unit tests, the four generator
- * `--check`s, the service-worker stamp check, and the brand-token verifier.
+ * Steps mirror the old chain exactly: lint, unit tests, the generator
+ * `--check`s (toc, filemap, macros, guides, rules, icons — D18 added
+ * `build:icons --check`), the service-worker stamp check, and the
+ * brand-token verifier.
  * Output for passing steps is suppressed to a status line; failing steps
  * replay their full output at the end. Exit code 1 when anything failed.
  */
@@ -22,6 +24,7 @@ const STEPS = [
   { name: 'build:macros --check', cmd: 'node', args: ['scripts/build-macros.js', '--check'] },
   { name: 'build:guides --check', cmd: 'node', args: ['scripts/build-guides.js', '--check'] },
   { name: 'build:rules --check', cmd: 'node', args: ['scripts/build-rules.js', '--check'] },
+  { name: 'build:icons --check', cmd: 'node', args: ['scripts/build-custom-icons.js', '--check'] },
   { name: 'build:sw --check', cmd: 'node', args: ['scripts/build-sw.js', '--check'] },
   { name: 'brand tokens', cmd: 'node', args: ['scripts/check-brand-tokens.js'] },
 ];

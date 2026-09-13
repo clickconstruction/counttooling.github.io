@@ -33,6 +33,19 @@
  *      the tool-context-menu.js pattern: listeners attached only while open,
  *      Escape handled in the CAPTURE phase with stopImmediatePropagation so
  *      the app's global Escape ladder never sees the press (B1 rule).
+ *      D18 (J19 #14): rise/drop entries (`run.verticalFt`, D8) are the
+ *      family's fourth member — hitTest's { ductVertical, index, entryIdx }
+ *      target opens "12' rise/drop · Trunk (· auto riser)" with
+ *      "Edit rise/drop…" (an INLINE numeric row inside the menu, the S
+ *      popover's own field via App.buildDuctVerticalFtInputs — Enter or Save
+ *      commits; an edited auto riser drops `auto` so D17's retroactive deck
+ *      pass never overwrites the human's number, the reclassify precedent)
+ *      and "Remove" (splices the entry; the key goes when the list empties,
+ *      the pre-D8 byte-alike rule). The entries live ON the run, so
+ *      reconcileDuctFittings (which only ever rewrites ductFittings) preserves
+ *      them exactly as it preserves manual fittings; the schedule already
+ *      counts them as straight LF through runStraightItems — nothing here
+ *      touches the tallies.
  *
  *   3. Counts — App.getDuctFittingCounts(pageIdx?) tallies committed fittings
  *      by type + size key (duct-model tallyDuctFittingCounts, tombstones
@@ -177,7 +190,9 @@
       btn.type = 'button';
       btn.setAttribute('role', 'menuitem');
       btn.textContent = a.label;
-      btn.onclick = () => { hideDuctFittingMenu(); a.run(); };
+      // `keepOpen` (D18): the action re-renders INSIDE the menu (the inline
+      // rise/drop edit) instead of closing it.
+      btn.onclick = a.keepOpen ? () => a.run() : () => { hideDuctFittingMenu(); a.run(); };
       menu.appendChild(btn);
     });
     menu.hidden = false;
@@ -216,6 +231,16 @@
       }
       actions.push({ label: 'Delete fitting', run: () => deleteFitting(target.index) });
       return showMenu(clientX, clientY, heading, actions);
+    }
+    if (target.type === 'ductVertical') {
+      const run = ann.ductRuns?.[target.index];
+      const e = run && Array.isArray(run.verticalFt) ? run.verticalFt[target.entryIdx] : null;
+      if (!run || !e) return false;
+      const heading = verticalLabel(e) + ' rise/drop · ' + (run.name || 'Duct run') + (e.auto ? ' · auto riser' : '');
+      return showMenu(clientX, clientY, heading, [
+        { label: 'Edit rise/drop…', keepOpen: true, run: () => showVerticalEdit(target.index, target.entryIdx, heading) },
+        { label: 'Remove', run: () => removeVerticalFt(target.index, target.entryIdx) },
+      ]);
     }
     if (target.type === 'ductRun') {
       const run = ann.ductRuns?.[target.index];
@@ -310,6 +335,62 @@
     App.updateUI();
   }
 
+  // --- D18: rise/drop entries (the family's fourth member) --------------------
+
+  const verticalLabel = (e) => (Number.isInteger(e.ft) ? String(e.ft) : String(Math.round(e.ft * 10) / 10)) + "'";
+
+  // The inline edit: the open menu re-renders as heading + the S popover's
+  // rise/drop field (App.buildDuctVerticalFtInputs, value prefilled) — Enter
+  // or Save commits and closes; Escape / outside click abandon as usual.
+  function showVerticalEdit(runIndex, entryIdx, heading) {
+    const menu = document.getElementById('ductFittingMenu');
+    const ann = currentAnn();
+    const e = ann?.ductRuns?.[runIndex]?.verticalFt?.[entryIdx];
+    if (!menu || !e || !App.buildDuctVerticalFtInputs) { hideDuctFittingMenu(); return; }
+    menu.innerHTML = '';
+    const h = document.createElement('div');
+    h.className = 'tool-context-menu-heading';
+    h.textContent = heading;
+    menu.appendChild(h);
+    const row = document.createElement('div');
+    row.className = 'duct-menu-vertical-edit';
+    row.appendChild(App.buildDuctVerticalFtInputs({
+      value: e.ft, unitText: 'ft', buttonLabel: 'Save',
+      onCommit: (ft) => { hideDuctFittingMenu(); setVerticalFt(runIndex, entryIdx, ft); },
+    }));
+    menu.appendChild(row);
+    const input = row.querySelector('input');
+    if (input) { input.focus(); input.select(); }
+  }
+
+  function setVerticalFt(runIndex, entryIdx, ft) {
+    const ann = currentAnn();
+    const run = ann?.ductRuns?.[runIndex];
+    const e = run && Array.isArray(run.verticalFt) ? run.verticalFt[entryIdx] : null;
+    if (!e || !(ft > 0)) return;
+    if (e.ft === ft && !e.auto) return;
+    App.pushUndoSnapshotCurrentPage();
+    e.ft = ft;
+    // The human's number: out of the auto set, so the D17 retroactive deck
+    // pass leaves it alone (a manual entry at vertex 0 is never duplicated).
+    delete e.auto;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
+
+  function removeVerticalFt(runIndex, entryIdx) {
+    const ann = currentAnn();
+    const run = ann?.ductRuns?.[runIndex];
+    if (!run || !Array.isArray(run.verticalFt) || !run.verticalFt[entryIdx]) return;
+    App.pushUndoSnapshotCurrentPage();
+    run.verticalFt.splice(entryIdx, 1);
+    if (!run.verticalFt.length) delete run.verticalFt;   // pre-D8 byte-alike shape
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
+
   function deleteRun(index) {
     const ann = currentAnn();
     if (!ann?.ductRuns?.[index]) return;
@@ -328,6 +409,8 @@
   App.getDuctFittingCounts = getDuctFittingCounts;
   App.tryOpenDuctContextMenu = tryOpenDuctContextMenu;
   App.setDuctRunOrientation = setRunOrientation;   // D12 (spec seam + the sidebar)
+  App.setDuctVerticalFt = setVerticalFt;           // D18 (spec seam)
+  App.removeDuctVerticalFt = removeVerticalFt;     // D18 (spec seam)
   App.hideDuctFittingMenu = hideDuctFittingMenu;
   App.isDuctFittingMenuOpen = () => menuOpen;   // spec seam
 })();

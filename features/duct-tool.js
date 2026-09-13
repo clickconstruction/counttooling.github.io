@@ -742,33 +742,50 @@
         row.append(txt, del);
         container.appendChild(row);
       });
-      const inputs = document.createElement('div');
-      inputs.className = 'duct-size-inputs';
-      const ftInput = document.createElement('input');
-      ftInput.type = 'number';
-      ftInput.min = '0';
-      ftInput.step = '0.5';
-      ftInput.placeholder = 'ft';
-      ftInput.setAttribute('aria-label', 'Rise or drop, feet');
-      const unit = document.createElement('span');
-      unit.textContent = 'ft here';
-      const add = document.createElement('button');
-      add.type = 'button';
-      add.className = 'duct-custom-apply';
-      add.textContent = 'Add';
-      add.onclick = () => {
-        const ft = parseFloat(ftInput.value);
-        if (!(ft > 0)) { App.showToast('Enter the vertical feet'); return; }
-        if (!draft.verticalFt) draft.verticalFt = [];
-        draft.verticalFt.push({ vertexIdx: vIdx, ft: ft });
-        App.markProjectDirty();
-        App.updateUI();
-        ctx.requestRender();
-      };
-      inputs.append(ftInput, unit, add);
-      container.appendChild(inputs);
+      container.appendChild(buildVerticalFtInputs({
+        unitText: 'ft here', buttonLabel: 'Add',
+        onCommit: (ft) => {
+          if (!draft.verticalFt) draft.verticalFt = [];
+          draft.verticalFt.push({ vertexIdx: vIdx, ft: ft });
+          App.markProjectDirty();
+          App.updateUI();
+          ctx.requestRender();
+        },
+      }));
     },
   };
+
+  // The ONE rise/drop numeric field: the popover's "[ft] ft here · Add" row
+  // above, and (D18) the fitting menu's "Edit rise/drop…" inline edit reuse
+  // it, so the two never drift (same min/step/placeholder, same "Enter the
+  // vertical feet" guard, Enter commits). opts: { value?, unitText,
+  // buttonLabel, onCommit(ft) }. Returns the .duct-size-inputs row.
+  function buildVerticalFtInputs(opts) {
+    const inputs = document.createElement('div');
+    inputs.className = 'duct-size-inputs';
+    const ftInput = document.createElement('input');
+    ftInput.type = 'number';
+    ftInput.min = '0';
+    ftInput.step = '0.5';
+    ftInput.placeholder = 'ft';
+    if (opts.value > 0) ftInput.value = String(opts.value);
+    ftInput.setAttribute('aria-label', 'Rise or drop, feet');
+    const unit = document.createElement('span');
+    unit.textContent = opts.unitText || 'ft';
+    const apply = document.createElement('button');
+    apply.type = 'button';
+    apply.className = 'duct-custom-apply';
+    apply.textContent = opts.buttonLabel || 'Add';
+    const commit = () => {
+      const ft = parseFloat(ftInput.value);
+      if (!(ft > 0)) { App.showToast('Enter the vertical feet'); return; }
+      opts.onCommit(ft);
+    };
+    apply.onclick = commit;
+    ftInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); } });
+    inputs.append(ftInput, unit, apply);
+    return inputs;
+  }
 
   // --- core→feature sync (updateUI calls this every pass) -------------------
 
@@ -794,7 +811,14 @@
     // (duct-size-popover.js) loads after this file.
     App.registerDuctPopoverSection && App.registerDuctPopoverSection(riseDropSection);
     const btn = document.getElementById('ductBtn');
-    if (btn) btn.onclick = onDuctBtnClick;
+    if (btn) {
+      btn.onclick = onDuctBtnClick;
+      // D18: the tooltip names the hotkey FROM the HOTKEYS single source
+      // ("Duct · U") — never a literal here, so the letter can only ever be
+      // the one the keydown handler executes.
+      const hk = (App.HOTKEYS || []).find((h) => !h.bespoke && h.btnId === 'ductBtn');
+      btn.title = hk && hk.key ? 'Duct · ' + String(hk.key).toUpperCase() : 'Duct';
+    }
     document.getElementById('ductCreateCancel').onclick = () => App.hideModal('ductCreateModal');
     document.getElementById('ductCreateStart').onclick = startDuctTrace;
     document.getElementById('ductCreateShapeToggle').addEventListener('click', (e) => {
@@ -814,6 +838,7 @@
   }
 
   App.isDuctDrawing = isDuctDrawing;
+  App.buildDuctVerticalFtInputs = buildVerticalFtInputs;   // D18: the fitting menu's inline rise/drop edit
   App.getCurrentDuctSize = currentDuctSize;
   App.setDuctCreateSize = setDuctCreateSize;   // D10 prefill writer
   App.commitDuctClick = commitDuctClick;

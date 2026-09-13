@@ -17,6 +17,10 @@
  * every row is hidden the ⋯ button hides too. D14 (2026-09-12): Duct gets a
  * menu row WITHOUT leaving the strip (see OVERFLOW_TOOLS' `strip` flag). The ⋯ button takes .active
  * (the shared gold treatment) whenever the active tool lives in the menu.
+ * D18 (2026-09-13): the row's hotkey column is READ from `App.HOTKEYS` (the
+ * hotkeys.js single source, by btnId) at build time — the rows carried their
+ * own key literals until Duct's arrived blank (J19 #7); now a key exists on
+ * this surface exactly when the keydown handler executes it.
  *
  * Sequencing with body.header-collapsed (features/burger-menu.js): this mode
  * engages FIRST (unconditional), then App.updateHeaderCollapsed() runs the
@@ -42,20 +46,28 @@
   // not in styles.css's body.header-more hide list, so its strip position is
   // unchanged; the row is the reachable path when the strip scrolls
   // (compact mode) and excluded from the ⋯ indicator (the inline button
-  // already shows the gold). Row order mirrors the strip's DOM order.
+  // already shows the gold). Row order mirrors the strip's DOM order. No
+  // `key` field: the hotkey column comes from App.HOTKEYS (hotkeyFor).
   const OVERFLOW_TOOLS = [
-    { id: 'polylineBtn', name: 'Polyline', key: 'P', tool: true },
-    { id: 'ductBtn', name: 'Duct', key: '', tool: true, strip: true },
-    { id: 'highlightBtn', name: 'Highlight', key: 'H', tool: true },
-    { id: 'multiplyZoneBtn', name: 'Multiply Zone', key: 'X', tool: true },
-    { id: 'scaleZoneBtn', name: 'Scale Zone', key: '', tool: true },
-    { id: 'roomBtn', name: 'Room Sizer', key: 'V', tool: true },
-    { id: 'ghostBtn', name: 'Ghost / Stamp', key: 'G', tool: true },
-    { id: 'deleteZoneBtn', name: 'Delete Area', key: '', tool: true },
-    { id: 'noteBtn', name: 'Note', key: 'N', tool: true },
-    { id: 'legendBtn', name: 'Legend', key: '' },
-    { id: 'gridBtn', name: 'Grid', key: '' },
+    { id: 'polylineBtn', name: 'Polyline', tool: true },
+    { id: 'ductBtn', name: 'Duct', tool: true, strip: true },
+    { id: 'highlightBtn', name: 'Highlight', tool: true },
+    { id: 'multiplyZoneBtn', name: 'Multiply Zone', tool: true },
+    { id: 'scaleZoneBtn', name: 'Scale Zone', tool: true },
+    { id: 'roomBtn', name: 'Room Sizer', tool: true },
+    { id: 'ghostBtn', name: 'Ghost / Stamp', tool: true },
+    { id: 'deleteZoneBtn', name: 'Delete Area', tool: true },
+    { id: 'noteBtn', name: 'Note', tool: true },
+    { id: 'legendBtn', name: 'Legend' },
+    { id: 'gridBtn', name: 'Grid' },
   ];
+  // The row's hotkey, from the single source: the non-bespoke HOTKEYS entry
+  // whose btnId is this button ('' when none — Scale Zone, Delete Area,
+  // Legend, Grid have no key and render no <kbd>).
+  function hotkeyFor(id) {
+    const h = (App.HOTKEYS || []).find((x) => !x.bespoke && x.btnId === id);
+    return h && h.key ? String(h.key).toUpperCase() : '';
+  }
 
   let menuOpen = false;
 
@@ -91,9 +103,10 @@
       row.className = 'hm-row' + (src.classList.contains('active') ? ' active' : '');
       row.dataset.toolId = t.id;
       const svg = src.querySelector('svg');
+      const key = hotkeyFor(t.id);
       row.innerHTML = '<span class="hm-icon">' + (svg ? svg.outerHTML : '') + '</span>'
         + '<span class="hm-name">' + t.name + '</span>'
-        + (t.key ? '<kbd class="hm-key">' + t.key + '</kbd>' : '');
+        + (key ? '<kbd class="hm-key">' + key + '</kbd>' : '');
       row.onclick = () => { closeMenu(); src.click(); };
       // Right-click parity: forward to the source button so the shared
       // tool-context-menu settings open, positioned at the row.

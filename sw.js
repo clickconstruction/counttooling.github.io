@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '90c538171006';
+const CACHE_VERSION = '3160dd76c9d6';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -226,7 +226,7 @@ const PRECACHE_SHA256 = {
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
   '/features/pdf-intake.js': '5afb884a3916a754a672e0d3715aaabcdcd60966988f106cf8fc79e67326a90e',
   '/features/line-color.js': '2fd4c7594f1a3686fd9323b7bc4d97f5b9c151b32475d5a4428062a075378ecb',
-  '/features/custom-icon-upload.js': '4858125fa06680787ed1f6e581c8190914750d04ba7bf45e6061ae98e174b107',
+  '/features/custom-icon-upload.js': '37de2928d10b860235e81f64c96cce7cbde292f9d8c921c82221fe91901eaa95',
   '/features/note.js': 'b7cc88aa00ac8a2450c59299959108ae3bd5b18b0e420fd61264533c23347d6b',
   '/features/zoom.js': 'cceb56f7ae4c91124aa17b246b276b9796463dc27ce93835a849f5a3d31f31fc',
   '/features/zoom-rail.js': 'd9fd46d047c55cac555c2c1cfac70f4d36b9f537302efc400a3e240d6edfbcc6',
@@ -244,7 +244,7 @@ const PRECACHE_SHA256 = {
   '/features/groups.js': 'a6397bfbea34bfbd7b67b6eacee0c4f048c58bdd267a256b14fcde96696049c1',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
   '/features/quick-line.js': '12f987130bbcdcd06d8f27aaeeb7cc535a86d6364914569b99a061fe6329e63f',
-  '/features/counter.js': '1186f91940657a39e1eb4aa67f1774c720730bc8981a4f049614854b5f33ea64',
+  '/features/counter.js': 'c214898bb0a8ce636f644c9066addd1f247a1387e2887b3a758efdd64de1a980',
   '/features/save-status.js': 'd4af89c0258d6609d19b402ec5684198948d44fc75d7446592e79d29bf15d919',
   '/features/status-bar.js': '225a83e4f31cfa72d17c868ac7374c59388d5fc359dee77d4560ce84368964dc',
   '/features/turn-in.js': 'e3c2af69f1693f3819cb31733aeead36be659546f53d86c0da406dadee664944',
@@ -255,7 +255,7 @@ const PRECACHE_SHA256 = {
   '/features/review-flow.js': '7fe62b8120ac3ea327db6851365a4b17ef19e60fa8bf5646ccc3970d142f2405',
   '/features/copy-project.js': 'e5a1b0a04292778d70fd898d4beb6ba11eeb3f3e6683076302a9af275b45315c',
   '/features/prepare-pdf.js': 'fa59aad964c2c0282cd1e85f38aca90a099ae38905376fe023c59d38cc39f76d',
-  '/features/quick-modals.js': 'a85349fd19c8abaec0a15ff7909bf05af914d049ada99b077033df47e8375d00',
+  '/features/quick-modals.js': '503e1a4531b804da3577985d552ab832012879f310ab94a0cda82f44eaf6175d',
   '/features/pdf-bundle.js': '9f08fe5a316ff8c82561c4655c6b2d4d4858268bb3ee2807fe6e61df0cc8351e',
   '/features/item-details.js': 'ace7fb2eb336e47ade33873e31997cc75b488bcaca42559564dc275228353822',
   '/features/output.js': '69f8d30c9fd15bbc47f29abb186846cd2c55966c68d72fe4a9dd11a565d453c7',

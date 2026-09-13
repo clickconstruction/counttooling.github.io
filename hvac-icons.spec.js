@@ -175,6 +175,21 @@ test.describe('HVAC icon set (D16)', () => {
     await page.locator('#counterCreate').click();
     await page.waitForFunction(() => window.state.tool === window.App.TOOL.COUNTER);
     expect(await lastCounter(page)).toEqual({ name: 'SD-2', icon: diffuser, cfm: 300 });
+
+    // 5. An SVG upload after the CFM is an explicit pick too: the uploaded icon wins over the default.
+    await openCreateTab(page);
+    await page.locator('#counterName').fill('Uploaded 120');
+    await page.locator('#counterCfm').fill('120');
+    const before = await page.evaluate(() => window.App.getUserCustomIcons().length);
+    await page.locator('#customIconUploadInput').setInputFiles({
+      name: 'my-diffuser.svg', mimeType: 'image/svg+xml',
+      buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24"/></svg>'),
+    });
+    await page.waitForFunction((n) => window.App.getUserCustomIcons().length === n + 1, before, { timeout: 5000 });
+    const uploaded = await page.evaluate(() => { const u = window.App.getUserCustomIcons(); return u[u.length - 1].value; });
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.COUNTER);
+    expect(await lastCounter(page)).toEqual({ name: 'Uploaded 120', icon: uploaded, cfm: 120 });
     expect(errors).toEqual([]);
   });
 

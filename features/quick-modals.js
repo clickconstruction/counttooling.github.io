@@ -92,6 +92,7 @@
   // function. A trade-mapped type symbol keeps precedence (a "Return Grille"
   // with a CFM stays a grille); an explicit pick always wins.
   let quickIconPicked = false;
+  App.markQuickIconPicked = () => { quickIconPicked = true; };   // an upload (custom-icon-upload.js) is a pick
   function cfmDefaultIfUnpicked() {
     if (quickIconPicked) return null;
     const v = parseFloat(document.getElementById('counterQuickCountCfm')?.value);

@@ -83,12 +83,14 @@
       if (customGrid) {
         refreshCustomGrid(customGrid, '#counterIconGrid', customCells, (c) => {
           const path = c.dataset.path;
+          App.markCreateIconPicked && App.markCreateIconPicked();   // D16: a click here is a pick (beats the CFM default)
           if (path) {
             const nameEl = document.getElementById('counterName');
             if (!nameEl.value.trim()) nameEl.value = App.getIconName(path);
           }
         });
         if (selectUploadedIcon(customGrid, '#counterIconGrid', icon.value)) {
+          App.markCreateIconPicked && App.markCreateIconPicked();   // D16: so is the upload itself
           const nameEl = document.getElementById('counterName');
           if (!nameEl.value.trim()) nameEl.value = icon.name;
         }
@@ -96,9 +98,11 @@
       const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');
       if (counterQuickCountCustomGrid) {
         refreshCustomGrid(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', customCells, () => {
+          App.markQuickIconPicked && App.markQuickIconPicked();   // D16: a pick (beats the CFM default)
           App.updateCounterQuickCountNamePreview();
         });
         if (selectUploadedIcon(counterQuickCountCustomGrid, '#counterQuickCountIconGrid', icon.value)) {
+          App.markQuickIconPicked && App.markQuickIconPicked();
           App.updateCounterQuickCountNamePreview();
         }
       }

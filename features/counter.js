@@ -122,6 +122,10 @@
     const cell = path && Array.from(grid.querySelectorAll('.icon-cell[data-path]')).concat(Array.from(customGrid.querySelectorAll('.icon-cell[data-path]'))).find(c => c.dataset.path === path);
     if (cell) cell.classList.add('selected');
   }
+  // An SVG upload is an explicit choice too: the shared upload handler
+  // (features/custom-icon-upload.js) rebuilds this panel's custom grid with
+  // its own click wiring and selects the new icon, so it reports here.
+  App.markCreateIconPicked = () => { createIconPicked = true; };
   function syncCreateIconToCfm() {
     if (createIconPicked) return;
     const v = parseFloat(document.getElementById('counterCfm')?.value);

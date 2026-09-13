@@ -1,6 +1,6 @@
 # J11 — Copy to PipeTooling + Copy Summary — takeoff into the bid
 
-Personas: P · Status: ● walked 2026-08-02 · re-walked 2026-08-09 (headless Chromium, local static server, signed-out; cloud paths stubbed or recorded as walls; re-walk on port 4111 with an independent seed reproduced every confirmed finding and added Friction #8)
+Personas: P · Status: ● walked 2026-08-02 · re-walked 2026-08-09 (headless Chromium, local static server, signed-out; cloud paths stubbed or recorded as walls; re-walk on port 4111 with an independent seed reproduced every confirmed finding and added Friction #8) · re-walked 2026-09-13 (duct drift patrol — see the last section)
 
 > Seeded from the Phase-1 cross-index workflow (2026-08-02). Phase-2 walk done on
 > test-2pages.pdf with a seeded takeoff (page 1 scaled 1/8"=1', page 2 deliberately
@@ -185,3 +185,39 @@ Adversarial re-drive of the 2026-08-09 re-walk's claims (including Friction #8 a
 **Not re-driven:** #7's live half (stubbed view route; code re-confirmed instead — view-only.js:281/288 set `currentProjectId` + `loadedViaViewLink`, so the anonymous viewer really does hit the sign-in branch first); mobile; cloud paths (walls stand as recorded).
 
 **Verdicts this pass:** 8/8 findings CONFIRMED (7 re-verified + #8 upgraded from "walked" to CONFIRMED-with-root-cause), none downgraded, none killed. Proposals: 9 [verified] / 1 [rejected] stand as annotated; the #8 proposal's simplicity budget improved (root cause is a one-line `right` leak, not a layout rework). Severities audited: #1 blocker stands (silent, plausible-looking, reproduced on four surfaces); #8 stays papercut despite both walkers pausing — it costs a beat of confidence, not a wrong number.
+
+## Drift patrol 2026-09-13 (post-duct)
+
+Re-walked as persona P on the LOCAL app (main 2c55825, after the D1–D16 duct build): headless Chromium 1380×900, zero-dep static server on a free port serving the worktree, every non-127.0.0.1 request aborted (no cloud), signed out, `test-2pages.pdf`, the walk's seed shape (WC ×6 and a 306-pt line on p1 scaled 1/8" = 1', a 367.2-pt line on p2 left unscaled; trade unset). The copy surfaces were rebuilt twice since this dossier's verification — T1-05 (2026-08-10) and B3/B4 (2026-08-30) — and D5/D9 then hung Copy Schedule and the Bid Check gate on the same machinery; each step below says which change it is reading.
+
+**Route re-verified (7 steps):**
+
+| step | as recorded | now | drift source |
+|---|---|---|---|
+| 1 | Export Options below the fold; "Copy to /Tooling" the yellow primary | ✓ below the fold; **Export PDFs is the yellow primary**, Copy to /Tooling at neighbor weight; an "Open in TakeoffTooling" row sits between them (electrical track); no gate badge on any button | B4 (not duct); S-track row |
+| 2 | scope drop-up: "This Canvas Only / All Visible Canvases / All Canvases" — full-window band (#8) | ✓ menu **anchored to its button** (left 12 px, 280 px wide) with "This sheet / Every sheet / Everything" (Copy Summary at one canvas per page shows just the first two); opening Copy Summary's menu closes the /Tooling one | B3 (#8 fixed) + B4 dialect (not duct) |
+| 3 | signed-out toast "Counts copied. Save the project to the cloud to include a view link." | ✓ same words, now followed by the by-unit split: "… 1 count (6 ea) · 1 line type (74.8 ft)." | B3 (not duct) |
+| 4 | "Check scale before exporting" lists `test-2pages.pdf — p2` | ✓ verbatim; body adds "Set the scale on each page (or its scale zone), then export again." | — |
+| 5 | Set scale jumps to p2 with presets open | ✓ page 2, `#scaleModal` open on presets | — |
+| 6 | the copy does NOT resume (#3) | ✗-as-recorded: the preset click raises **"Scale set — Copy again to finish the copy."**; one tap → clipboard `Water Closet⇥6⇥1` / `ft of 4" PVC Waste⇥74.80⇥1, 2` | B3 (#3 fixed; not duct) |
+| 7 | Copy Summary never runs the scale check; ships `401.20 ft` (#1) | ✗-as-recorded: **Copy Summary is gated** — same modal, same p2 row; Export anyway ships `• 34.00 ft of 4" PVC Waste: 1 run (page 1)` and `• 367 px of 4" PVC Waste: 1 run (page 2 — no scale set)` as separate rows; the Line Types chip, Summary and footer read `34.00 ft + 367 px`. Copy Summary still renders below the links row (X7 stands) | T1-05 (#1 fixed; not duct) |
+
+**The duct seams (persona P, then with one duct run to see what the gate does):**
+
+- *No duct:* no badge on Copy to /Tooling or Export PDFs, no "Review · Export anyway" toast, no duct block in either paste; the /Tooling paste is the two-row shape the walk recorded. features/output.js `runGatedCopy` wraps only the pipe-tooling / takeoff-tooling surfaces in `App.runDuctBidGate`, and the gate returns `proceed()` synchronously without duct — the clipboard gesture survives. ✓ keep.
+- *Bid Check for a plumber:* the sidebar section reads "3" (three trade-neutral manual rows — S5, 2026-09-08, not duct). With **Trade = Plumbing** set, the copy raises a post-copy advisory card "Bid Check has 1 open item: hangers on every supported run. Review" — the rulebook's hanger row (S5 + rules slice 3), not duct; recorded for the S-track, not filed here.
+- *One duct run on p1 (real UI):* the badge **"9 unchecked"** appears on BOTH Copy to /Tooling and Export PDFs (title "Bid Check: 9 unchecked — review in the sidebar, or export anyway"), never on Copy Summary; the /Tooling copy raises "Bid Check: Fits the roof? — Review · Export anyway"; Export anyway copies the same two rows — **no duct in the /Tooling paste** (J19 #4, not re-reported); the Bid Check section badge goes 3 → 9. Copy Summary is not bid-gated (email surface) and its text gains the block in finding I.
+
+**New findings (adversarially re-driven before filing):**
+
+| # | severity | what happens | why it hurts | verdict |
+|---|----------|--------------|--------------|---------|
+| I | papercut (H) | **Copy Summary pastes the duct panel's setup hints as bid lines.** With one run and nothing else HVAC, the email text gains `--- Bid Check (9 open) ---` followed by `— Every room served: Give a room a type on its Edit Room dialog to check its air.` / `— Systems within capacity: Give a system group a unit capacity (Groups) to check it.` / `— Flex drops within max: No CFM device hangs off a duct run yet.` / `✓ Scale set on every duct sheet: 1 duct sheet scaled ✓` and nine `☐` manual rows (Fits the roof, Fire dampers, OA meets code, Static path, Curb & power, Controls, Scope letter, Addenda, Scale verified) — while the duct itself (pounds, sizes) is absent (J19 #4). report.js's email block prints every Bid Check row with its detail; D9's duct rows carry `na` verdicts whose detail is an instruction to the estimator | The recipient is pricing, not the estimator: "on its Edit Room dialog", "(Groups)" and "No CFM device hangs off a duct run yet" are app instructions in an email that is supposed to be the takeoff | CONFIRMED — full clipboard read twice (trade unset, one run). **polish**: the email block skips `na` rows (or prints label-only) and the manual rows only when ticked or when the block is asked for; pair with J19 #4's duct block so the summary carries pounds instead of hints. Spirit: (1) n/a; (2) removes software language from the bid email; (3) removes lines, adds none; (4) invisible |
+
+**What the duct work fixed for free:** nothing on J11 — but nothing regressed either: D9 wrapped the gate around the /Tooling surfaces only, so T1-05's scale gate, B3's Copy-again resume and the split px rows all still run for a plumber exactly as re-verified above. The steps that read ✗-as-recorded (#1, #3, #8) were closed by T1-05 and B3, not the duct build.
+
+**Killed / not filed:** "the gate toast and the advisory stack on one copy" (the advisory seen beside the gate was the 8 s card from the previous plumbing-trade copy — one card per surface on a clean re-drive; J19 #9 already files the Copy Schedule pair); "Copy Summary is bid-gated" (it is not — only the scale gate; verified by code and the re-drive).
+
+**Not walkable / not walked:** cloud view-link footer, signed-in copy modal, the viewer branch (no-cloud rule; B3's branch reorder is code-verified in output.js); the pipetooling.com paste; mobile; Show Report's rendered HTML (no `getReportHtml` seam exposed — J19 checked the report).
+
+**Net verdict:** J11's route holds post-duct — for a plumber the copy surfaces are cleaner than the dossier recorded (scale gate on both buttons, resume toast, anchored menus, split px rows) and carry zero duct chrome until a run exists; the one drift is on the HVAC side of the same surface (I), where the email summary gained the Bid Check panel's instructions before it gained any pounds.

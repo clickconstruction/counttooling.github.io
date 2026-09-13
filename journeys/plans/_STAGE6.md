@@ -119,7 +119,7 @@ already opens to switch layers. Size **S**. Rides on canvas-layers.js's peek
 and B9's touch batch (drawer auto-close). Telemetry: none needed (no layer
 events exist; add `layer_peek` opportunistically if the file is open).
 
-**X3 — scale re-edit.** Stop hiding the header Set Scale button once a scale
+**X3 — scale re-edit.** (Ratchet 2026-09-13: the button stays AND opens in EDIT mode — the tab that set it, current value preloaded, two-point offering re-verify — so it is a change, not a do-over.) Stop hiding the header Set Scale button once a scale
 is set: it stays, in a "set" state that reads the value (the sidebar twin
 already renders value · label · px — `setScaleContent` fills both), so the
 button you used to set the scale is the button you use to change it. Pair it
@@ -145,6 +145,7 @@ way:
 - **B. Honest wording — say "(active layer)".** Match the copy menus to what
   Show Report / Download already say. Pro: cheap, true, one string. Con: the
   screen can still show marks the copy omits; the user is told, not helped.
+- **D. Explicit layers, defaulting to what you see (A + C merged; recommended after the 2026-09-13 ratchet).** Two scopes (this sheet / everything) plus a layer picker only when a page has >1 layer, pre-checked to what is visible at copy time; the paste header names the layers included ("layers: Main, Gas"). Pro: matches the screen (the J11 moment cannot happen) AND is explicit, so the number is reproducible and never silently depends on a view toggle. Con: C's cost on the flagship surface, softened because the default needs no interaction.
 - **C. Remove the decision.** Two scopes (this sheet / everything) plus a
   layer picker only when a page has >1 layer — the D14 "Every layer with
   marks" precedent from Export PDFs. Pro: spirit (1) — fewer decisions on the
@@ -219,7 +220,7 @@ J5-B / J6-G shipped in D17; J19 #4–#6 were folded into B19 by Will on
 | Stumble | What it is | Recommendation | `[decision]` |
 |---|---|---|---|
 | **J5-A** — Set Scale mid-draw drops the tool but not the draft | `setScaleClick` (features/scale.js) sets Move before opening the modal and clears neither `quickLineStart` nor `drawingPolyline`; after Esc/Cancel the polyline draft and its finish bar are alive "in Move" (J5 drift-patrol finding A; pre-existing since the 2026-05-30 split, not duct-caused — the duct trace guards S, the line tools don't) | **polish, S** — skip the tool reset when a draft is live (the modal never needs Move), or guard S the way the duct trace does; ship with X3 since S is the keyboard twin of the button | `[ ]` |
-| **J5-D** — Duct inline in the strip while Polyline sits behind ⋯ (⚑ contra D14's "keep the strip order") | The ⋯ overflow is unconditional on desktop; Duct got `strip: true` in D14, so a plumber sees the one HVAC drawing tool at hand and the bending-run tool a menu away (finding D, papercut) | **⚑ product call** — two honest options: (a) Duct joins the ⋯ group like Polyline (reverses D14, one flag); (b) the strip goes trade-aware — Duct inline for HVAC projects, Polyline inline for plumbing/electrical (`state.trade` exists since S1, the switch is per project). (b) honors both D14 and J5-D and costs one condition; recommended | `[ ]` |
+| **J5-D** (ratchet 2026-09-13: option (b) + a per-tool "Pin to strip" in the ⋯ menu, so the strip never shifts on its own) — Duct inline in the strip while Polyline sits behind ⋯ (⚑ contra D14's "keep the strip order") | The ⋯ overflow is unconditional on desktop; Duct got `strip: true` in D14, so a plumber sees the one HVAC drawing tool at hand and the bending-run tool a menu away (finding D, papercut) | **⚑ product call** — two honest options: (a) Duct joins the ⋯ group like Polyline (reverses D14, one flag); (b) the strip goes trade-aware — Duct inline for HVAC projects, Polyline inline for plumbing/electrical (`state.trade` exists since S1, the switch is per project). (b) honors both D14 and J5-D and costs one condition; recommended | `[ ]` |
 | **J6-H** — Delete Area over a duct run says "No items in this area." and leaves it | `deleteZonePreview` and the delete walk enumerate counters, lines, notes, zones, rooms — not `ductRuns` / fittings (J6 finding H, papercut; already a B19 line) | **stays in B19** — the only re-rank question is severity: a bulk-erase tool that denies what is plainly there is stumble-shaped by the J9 precedent; either way it ships in the batch | `[ ]` |
 
 ## Sequencing slot — with duct done, what is the next big build?

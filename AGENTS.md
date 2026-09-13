@@ -138,7 +138,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **56 `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->84<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -185,8 +185,10 @@
 - **Aggregate check**: `npm run check` runs [scripts/check.js](scripts/check.js),
   which executes EVERY step and reports all failures at once (one stale stamp
   no longer hides the next): lint + `test:unit` + `build:toc --check`
-  + `build:filemap --check` (the ARCHITECTURE.md Large-file map line counts are
-  generated — see [scripts/build-filemap.js](scripts/build-filemap.js))
+  + `build:filemap --check` (the ARCHITECTURE.md Large-file map line counts AND
+  the "N `features/*.js` registry files" figure above — between its
+  `<!-- feature-count -->` markers — are generated; see
+  [scripts/build-filemap.js](scripts/build-filemap.js))
   + `build:macros --check` (the Macros table rows in app/index.html are
   generated from `HOTKEYS` in constants.js — edit the table there, then run
   `npm run build:macros` AND `npm run build:sw`)

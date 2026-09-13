@@ -94,6 +94,13 @@
     const bundleNotesNone = document.getElementById('specificPagesBundleNotesNone');
     if (App.hasAnyNotes()) { bundleNotesNone.textContent = ''; bundleNotesBtn.disabled = false; } else { bundleNotesNone.textContent = ' — none to show'; bundleNotesBtn.disabled = true; bundleNotes.checked = false; }
     bundleNotesBtn.setAttribute('aria-pressed', bundleNotes.checked);
+    // D14 (B4 dialect): the "Every layer with marks" bulk button only means
+    // something when a page carries more than one layer (canvas) — same
+    // anyMultiCanvas rule app.js's updateUI applies to the .scope-qual
+    // "(active layer)" qualifiers on the scope menus.
+    const anyMultiCanvas = state.pages.some(p => App.getPageCanvases(p).length > 1);
+    const allCanvasesBtn = document.getElementById('specificPagesAllCanvases');
+    if (allCanvasesBtn) allCanvasesBtn.style.display = anyMultiCanvas ? '' : 'none';
     const grid = document.getElementById('specificPagesGrid');
     grid.innerHTML = '';
     state.pages.forEach((page, i) => {

@@ -14,7 +14,8 @@
  * to the REAL buttons (all tool logic, active classes, and gating preserved)
  * and forward right-clicks so the tool-context-menu settings still open.
  * Rows whose source button is inline-hidden (viewer mode) are skipped; if
- * every row is hidden the ⋯ button hides too. The ⋯ button takes .active
+ * every row is hidden the ⋯ button hides too. D14 (2026-09-12): Duct gets a
+ * menu row WITHOUT leaving the strip (see OVERFLOW_TOOLS' `strip` flag). The ⋯ button takes .active
  * (the shared gold treatment) whenever the active tool lives in the menu.
  *
  * Sequencing with body.header-collapsed (features/burger-menu.js): this mode
@@ -36,8 +37,15 @@
   // and feeds the ⋯ gold indicator); Legend/Grid are overlay TOGGLES whose
   // .active means "overlay on" — shown on their rows, excluded from the
   // indicator (the legend defaults on; the ⋯ would otherwise always glow).
+  // `strip: true` (D14, Will 2026-09-12 "keep the strip order"): the row is
+  // ALSO a menu entry for a button that STAYS inline in the strip — Duct is
+  // not in styles.css's body.header-more hide list, so its strip position is
+  // unchanged; the row is the reachable path when the strip scrolls
+  // (compact mode) and excluded from the ⋯ indicator (the inline button
+  // already shows the gold). Row order mirrors the strip's DOM order.
   const OVERFLOW_TOOLS = [
     { id: 'polylineBtn', name: 'Polyline', key: 'P', tool: true },
+    { id: 'ductBtn', name: 'Duct', key: '', tool: true, strip: true },
     { id: 'highlightBtn', name: 'Highlight', key: 'H', tool: true },
     { id: 'multiplyZoneBtn', name: 'Multiply Zone', key: 'X', tool: true },
     { id: 'scaleZoneBtn', name: 'Scale Zone', key: '', tool: true },
@@ -60,7 +68,7 @@
   function sourceHidden(id) { const el = sourceBtn(id); return !el || el.style.display === 'none'; }
 
   function anyOverflowedToolActive() {
-    return OVERFLOW_TOOLS.some((t) => { if (!t.tool) return false; const el = sourceBtn(t.id); return el && el.classList.contains('active'); });
+    return OVERFLOW_TOOLS.some((t) => { if (!t.tool || t.strip) return false; const el = sourceBtn(t.id); return el && el.classList.contains('active'); });
   }
 
   function closeMenu() {

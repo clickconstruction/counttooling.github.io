@@ -157,7 +157,7 @@ test.describe('Bid basis export (PipeTooling handoff)', () => {
     const promised = (await popup.locator('#specificPagesFilename').textContent() || '').trim();
     expect(promised).toMatch(FILENAME_RE);
 
-    // 3. "Only sheets with marks" is repeatable by hand: after All Marked Up it
+    // 3. "Only sheets with marks" is repeatable by hand: after "All marked up" it
     //    returns to the preset selection.
     await popup.locator('#specificPagesAllMarked').click();
     expect((await popup.evaluate(() => window.App.getSpecificPagesSelections())).selections).toEqual({ 0: 'marked', 1: 'marked' });

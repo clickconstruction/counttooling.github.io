@@ -107,4 +107,48 @@ test.describe('window.App registry pilot - Export PDFs modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('D14 bulk-button dialect: sentence case; "Every layer with marks" only with a multi-layer page', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    // One layer per page: the bulk row reads in the B4 sentence-case dialect
+    // and the layer button says nothing — so it is not rendered.
+    await page.evaluate(() => window.App.openSpecificPagesModal());
+    await page.waitForSelector('#specificPagesModal.visible', { timeout: 5000 });
+    await expect(page.locator('#specificPagesAllMarked')).toHaveText('All marked up');
+    await expect(page.locator('#specificPagesAllUnmarked')).toHaveText('All not marked up');
+    await expect(page.locator('#specificPagesAllExclude')).toHaveText('Exclude all');
+    await expect(page.locator('#specificPagesAllCanvases')).toHaveText('Every layer with marks');
+    await expect(page.locator('#specificPagesAllCanvases')).toBeHidden();
+    await page.locator('#specificPagesCancel').click();
+    await page.waitForFunction(() => !document.getElementById('specificPagesModal')?.classList.contains('visible'), { timeout: 5000 });
+
+    // A second layer on page 1 (the canvas-layers shape): the button renders
+    // and applies marked-up + "All canvases" to every page card.
+    await page.evaluate(() => {
+      const s = window.state;
+      const p = s.pages[0];
+      p.canvases.push({ id: window.App.uid(), name: 'Layer 2', annotations: window.App.makeAnnotations() });
+      window.App.updateUI();
+    });
+    await page.evaluate(() => window.App.openSpecificPagesModal());
+    await page.waitForSelector('#specificPagesModal.visible', { timeout: 5000 });
+    await expect(page.locator('#specificPagesAllCanvases')).toBeVisible();
+    await page.locator('#specificPagesAllCanvases').click();
+    const sel = await page.evaluate(() => window.App.getSpecificPagesSelections());
+    expect(sel.selections).toEqual({ 0: 'marked', 1: 'marked' });
+    expect(sel.canvasMode).toEqual({ 0: 'all', 1: 'all' });
+    await expect(page.locator('.specific-page-canvas-mode[data-page-index="0"]')).toBeVisible();
+    await expect(page.locator('.specific-page-canvas-mode[data-page-index="0"]')).toHaveValue('all');
+    await page.locator('#specificPagesCancel').click();
+
+    expect(errors).toEqual([]);
+  });
 });

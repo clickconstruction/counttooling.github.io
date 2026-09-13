@@ -225,6 +225,11 @@ test('ductWeightPerFoot: the DUCT-PLAN worked numbers, verbatim at 2dp', () => {
   assert.strictEqual(dm.ductWeightPerFoot(dm.makeRectSize(20, 12), 24).toFixed(2), '6.17');
   assert.strictEqual(dm.ductWeightPerFoot(dm.makeRectSize(16, 10), 26).toFixed(2), '3.93');
   assert.strictEqual(dm.ductWeightPerFoot(dm.makeRoundSize(12), 26).toFixed(2), '2.85');
+  // D14: the plan's 16×10 figure is what the SHIPPED table produces — the
+  // default class '1' picks 24 ga for a 16" side (>12"), so 5.01, not 3.93.
+  const g1610 = dm.selectGauge('1', dm.makeRectSize(16, 10));
+  assert.strictEqual(g1610, 24);
+  assert.strictEqual(dm.ductWeightPerFoot(dm.makeRectSize(16, 10), g1610).toFixed(2), '5.01');
 });
 
 test('ductWeightPerFoot: exact math + unknown gauge → null', () => {

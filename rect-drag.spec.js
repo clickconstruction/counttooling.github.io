@@ -14,6 +14,7 @@
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
+const fs = require('fs');
 
 async function boot(page) {
   await page.goto('/app/');
@@ -65,6 +66,14 @@ function captureErrors(page) {
 const TOL = 6;
 
 test.describe('Rect-tool drag gesture (T2-10)', () => {
+  test('bake-in closed (D14): the temp rect_drag_complete Save-Status probe is gone', async () => {
+    // T2-10 shipped a TEMP `pushSaveEvent('rect_drag_complete', …)` counter
+    // for the bake-in; D14 (2026-09-12) removed it. Static guard so it does
+    // not creep back in with a merge.
+    const src = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+    expect(src).not.toContain('rect_drag_complete');
+  });
+
   test('Highlight: drag completes one rect at press/release; next click arms fresh', async ({ page }) => {
     const errors = captureErrors(page);
     await boot(page);

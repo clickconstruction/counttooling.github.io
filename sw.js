@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '2021b3a71a84';
+const CACHE_VERSION = 'd1a2fd61f383';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -190,7 +190,7 @@ const PRECACHE_SHA256 = {
   '/app/': 'd27518c9378191f6b9cf32b00d27cf25aa95c2654179b99f553428d46dbee490',
   '/app/index.html': 'd27518c9378191f6b9cf32b00d27cf25aa95c2654179b99f553428d46dbee490',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '58e9e45edb116d0f0dbcbb65c5d5c4173e633b0693867a08570496cd92fd8ef1',
+  '/styles.css': '33d1b5d9a723017dc533561c790708c24c47538887cc032e6718c7686fe51b94',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '4fad0716f98809c79c9a32bb6c9e3365b737119f8e1f9e3ac5001caa4a6791ab',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -203,7 +203,7 @@ const PRECACHE_SHA256 = {
   '/bid-check-model.js': '90eda910553f550c47f5be81b777b6b334ea76687421305da9a282f41faa0950',
   '/tag-model.js': '26bb52e7a00b42f2e5e7168f07323c899cdf0e2b594546fccabd60742de3102e',
   '/support-model.js': '3bdf6da1ecca431ecb25904ea944e2f3838a445c088fe4d7fb0d616982839c21',
-  '/duct-model.js': '68e43f2b5229d60f1360d8e04716f44c7b96d7b7546532dbeb312b18b9bb800e',
+  '/duct-model.js': 'c2d330440c77978539258b76ae88312ce127b2fb0db917ea25c15fbb012ca21e',
   '/bid-basis-model.js': '825fc0a1cfd1a765dbb3bab5f06eb49c9780253d071def87784939e194a834f0',
   '/canvas-draw.js': '1c1db8273573fae7ce36eef730a0f124ad06df7fc7c6aa9e34b6b15ddd7a345b',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
@@ -285,10 +285,10 @@ const PRECACHE_SHA256 = {
   '/features/keyboard-map.js': 'adb5bc7bd0558467b919d29f5232167f994ed21e1d6b2cfe6e23164d6b9aa178',
   '/features/chain.js': '205296a761350bf9b6e1ad134923f8338f4a162f04fdb79bd8b4fcbdb01fb565',
   '/features/drop-mode.js': '72b38bebd6a78bf9287c770f8dce1d262171ed5aa1634b0f095ddae7b91eedda',
-  '/features/duct-tool.js': 'b4b109a1591943644381c1f3bc2582ff0a0f37eed52672ac5cf9ce0c2312dff2',
+  '/features/duct-tool.js': '5ab9c5b851ee5935c23149868dfb0d4a109739d42021f1a478eb2a16b8e9dd3d',
   '/features/duct-size-popover.js': '7815b986d05160667c6bfafc7c974e6d3787b64f7b9ad2ce287fd2b06dbc3622',
-  '/features/duct-fittings.js': 'e4c3d2cbc2d33067442555e9c4b7bba9cd11e6aec06b0d505acfcfaaab18bcaa',
-  '/features/duct-sidebar.js': 'ddd80bc3e7ee32978c4917f3c7a834dfcdf0572a6edeb69c683467a746b01415',
+  '/features/duct-fittings.js': 'c99c3e9c4245c25e8af99621b3a35fdca043c2acbd8b860f109944dae315555a',
+  '/features/duct-sidebar.js': 'a0056f59a8148c8a40bdc2597f9d0f396009c1c6412222e6708860885741e93a',
   '/features/duct-schedule.js': '6a32a9232901d43e3a91ef1f9efb87a969a1babe3efb1ab77d983f70737b877c',
   '/features/duct-suggest.js': '27454608bca020fbc97971c3944dfd58e065529278e4778427bdebd0adc6d4bf',
   '/features/duct-callouts.js': '6b3419d89e4f4e405fa4281e9e5d8cf64f821e38fc5c92c6c63c81bd9fde1166',
@@ -299,7 +299,7 @@ const PRECACHE_SHA256 = {
   '/features/conductors.js': '7ac2a8e47b3d9c73e91805cc95261fee801c0d8469cdb6428f1a399a428e03ef',
   '/features/circuits.js': '47821b96a2682b9cda3e0289ceb611bbf74881e93fe9ebac4cba1e720e29fae3',
   '/features/bid-check.js': 'dde760a4f8dbf419172a42f0ef843a315ffee48ce1a23c70a839e952b60a07b7',
-  '/features/duct-bidcheck.js': '27ab4f9192c3ad4fbbe25f1833d91420548642679fc84d65f161976a0d9c9b5f',
+  '/features/duct-bidcheck.js': '45061e13a60bc5983b96f8d297138413f90cc669ab564e9dbef8a211ef4d4bc4',
   '/features/rules.js': '177417cff5a2eca101fc311e47451f12b7af01eafda05d86525527af44af3152',
   '/features/tag-reader.js': 'c94c7d23fb91cb41cc40f1149a0b9238e6ab828e8261a555b3caf68e172f47f4',
   '/features/tutorial.js': 'da0126f5dd388665825e4ef697ff4ff1ea1e21cb9c2a6f1ed2a3dc0ada739ab9',

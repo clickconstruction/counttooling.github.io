@@ -17,7 +17,11 @@
  *                              vertices — the smallest containing room box) + the run's
  *                              size/liner are all known, then AUTO with its work
  *                              ("24×12 + 2" wrap = 14" · plenum 30" ✓" — duct-model
- *                              ductPlenumFit; depth = rect h / round d + 2 × insulation)
+ *                              ductPlenumFit; depth = rect h / round d + 2 × insulation;
+ *                              D12: a run ON EDGE (`run.orientation === 'edge'`, the
+ *                              run context menu's Orientation chip) hangs its larger
+ *                              side and the detail names it — "Supply Main (on edge):
+ *                              24×12 + 2" wrap = 26" · plenum 24" ⚠")
  *   Static path                D11 MANUAL until a system group carries `espInWg` AND has
  *                              a duct run, then AUTO: duct-model's ductStaticPath —
  *                              the critical path (longest equipment→terminal path in
@@ -55,7 +59,11 @@
  *   3. The S-popover DEPTH LINE at order 40 (the D2 seam): while tracing with
  *      deck height + a room ceiling under the last placed vertex known, a
  *      quiet "14" deep · plenum 30" ✓" (⚠ past it) for the current size —
- *      informative, never interrupts the trace.
+ *      informative, never interrupts the trace. It follows the draft's
+ *      orientation, and (D12) the ORIENTATION section at order 41 — a rect
+ *      draft's "Flat | On edge" toggle (the same house segment as the run
+ *      menu, routed through App.setDuctDraftOrientation so the draft stays
+ *      duct-tool's) — re-renders it on the spot ("26" deep · plenum 24" ⚠").
  *
  * Telemetry: `bid_check_row_state` ({ surface, kind: 'gate', open: [ids],
  * choice }) via App.logUserEvent (the S5 event, allowlisted).
@@ -116,7 +124,7 @@
       runSegmentSpans(run).forEach((span) => {
         const ceilingFt = segmentCeilingFt(run, span, pageIdx);
         if (!(ceilingFt > 0)) return;
-        items.push({ runName: run.name || 'Duct run', size: span.size, linerType: run.linerType || null, linerThicknessIn: run.linerThicknessIn || 0, ceilingFt });
+        items.push({ runName: run.name || 'Duct run', size: span.size, linerType: run.linerType || null, linerThicknessIn: run.linerThicknessIn || 0, orientation: run.orientation === 'edge' ? 'edge' : 'flat', ceilingFt });
       });
     });
     return items;
@@ -320,7 +328,7 @@
     const last = draft.vertices[draft.vertices.length - 1];
     const ceilingFt = App.roomHeightAtPoint ? App.roomHeightAtPoint(last, state.currentPage) : null;
     if (!(ceilingFt > 0)) return null;
-    const fit = ductPlenumFit({ deckHeightFt: ds.deckHeightFt, items: [{ runName: draft.name, size, linerType: draft.linerType, linerThicknessIn: draft.linerThicknessIn, ceilingFt }] });
+    const fit = ductPlenumFit({ deckHeightFt: ds.deckHeightFt, items: [{ runName: draft.name, size, linerType: draft.linerType, linerThicknessIn: draft.linerThicknessIn, orientation: draft.orientation === 'edge' ? 'edge' : 'flat', ceilingFt }] });
     if (!fit) return null;
     const t = fit.tightest;
     const inches = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10));
@@ -339,6 +347,40 @@
         div.textContent = line.text;
         div.title = line.ok ? 'Deepest duct + insulation clears the plenum (deck height − room ceiling)' : 'Too deep for the plenum here (deck height − room ceiling) — the Bid Check row will say so';
         container.appendChild(div);
+      },
+    });
+    // D12 — the draft's Flat | On edge toggle, right under the depth line it
+    // drives (rect drafts only; round duct has no orientation). Present even
+    // without a deck/ceiling: the orientation is the run's, not the check's.
+    App.registerDuctPopoverSection({
+      id: 'orientation',
+      order: 41,
+      render(container, ctx) {
+        const draft = ctx.draft;
+        if (!draft || !ctx.currentSize || ctx.currentSize.kind !== 'rect' || !App.setDuctDraftOrientation) return false;
+        const current = draft.orientation === 'edge' ? 'edge' : 'flat';
+        const row = document.createElement('div');
+        row.className = 'duct-orientation-row';
+        const label = document.createElement('span');
+        label.className = 'duct-orientation-label';
+        label.textContent = 'Orientation';
+        const seg = document.createElement('div');
+        seg.className = 'filter-scope-segment';
+        seg.id = 'ductDraftOrientationSegment';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', 'Orientation');
+        [['flat', 'Flat'], ['edge', 'On edge']].forEach(([value, text]) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.dataset.value = value;
+          b.textContent = text;
+          b.setAttribute('aria-pressed', String(value === current));
+          b.title = value === 'edge' ? 'The larger side hangs down (between joists) — the depth line reads it' : 'The width sits in plan — depth is the second number';
+          b.onclick = () => { App.setDuctDraftOrientation(value); ctx.requestRender(); };
+          seg.appendChild(b);
+        });
+        row.append(label, seg);
+        container.appendChild(row);
       },
     });
   }

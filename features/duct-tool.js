@@ -11,7 +11,8 @@
  *   { id, name, airside, pressureClass, linerType, linerThicknessIn,
  *     vertices: [{x,y}…],                    // PDF-space, like polyline.points
  *     segments: [{ startVertexIdx, size }],  // duct-model.js run shape
- *     sizeSteps: [{ vertexIdx, from, to }] } // D3 turns these into transitions
+ *     sizeSteps: [{ vertexIdx, from, to }],  // D3 turns these into transitions
+ *     orientation: 'flat' | 'edge' }         // D12 — a draft inherits 'flat'
  * Clicks stage vertices (45° snap + bounds, the commitPolylinePoint recipe);
  * `S` / tapping the cursor size chip / the finish-bar Size button open the
  * step popover (features/duct-size-popover.js — that file owns the surface,
@@ -164,6 +165,10 @@
       // auto? }; the popover's rise/drop section adds/removes them and the
       // commit carries them onto the run (duct-model verticalFt shape).
       verticalFt: [],
+      // D12: how the run hangs — a draft inherits 'flat'; the popover's
+      // Flat | On edge toggle (features/duct-bidcheck.js, beside the depth
+      // line) flips it mid-trace through App.setDuctDraftOrientation.
+      orientation: 'flat',
     };
     state.tool = App.TOOL.DUCT;
     App.hideModal('ductCreateModal');
@@ -266,6 +271,18 @@
     App.updateUI();
   }
 
+  // D12: the popover's Flat | On edge toggle — the draft is THIS file's, so
+  // the section (features/duct-bidcheck.js) routes through here like size
+  // picks route through applyDuctSizeStep. Round drafts ignore it.
+  function setDuctDraftOrientation(orientation) {
+    const draft = App.state.drawingDuct;
+    if (!draft || !DUCT_ORIENTATIONS.includes(orientation)) return;
+    if (draft.orientation === orientation) return;
+    draft.orientation = orientation;
+    App.markProjectDirty();
+    App.updateUI();
+  }
+
   // --- commit ---------------------------------------------------------------
 
   // Returns true when a run was committed (the dblclick caller uses it to
@@ -289,6 +306,7 @@
         vertices: draft.vertices,
         segments: draft.segments,
         verticalFt: draft.verticalFt,   // D8 — attached only when entries exist
+        orientation: draft.orientation, // D12 — attached only when 'edge'
       });
       run.sizeSteps = draft.sizeSteps;   // D3's transition-fitting input
       if (!canvas.annotations.ductRuns) canvas.annotations.ductRuns = [];
@@ -659,6 +677,7 @@
   App.setDuctCreateSize = setDuctCreateSize;   // D10 prefill writer
   App.commitDuctClick = commitDuctClick;
   App.applyDuctSizeStep = applyDuctSizeStep;
+  App.setDuctDraftOrientation = setDuctDraftOrientation;   // D12
   App.finishDuctRun = finishDuctRun;
   App.handleDuctEscape = handleDuctEscape;
   App.clearDuctDraft = clearDuctDraft;

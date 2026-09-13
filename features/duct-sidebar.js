@@ -7,7 +7,9 @@
  * lines-type-group idiom):
  *
  *   [airside header — only when MORE THAN ONE airside exists]   §1
- *   run header: airside swatch · name · "202' · 1,196 lb" badge (DM Mono)
+ *   run header: airside swatch · name · (D12) a tiny "on edge" tag when the
+ *     run hangs on edge (run.orientation === 'edge'; no chrome when flat)
+ *     · "202' · 1,196 lb" badge (DM Mono)
  *     size-segment rows: "24×12 24 ga — 86' · 597"   (per size, via
  *       runStraightItems + tallyStraightBySize over the app's scale glue)
  *     fittings line: "2 elbows · 1 transition · 1 tap"  (duct-model
@@ -134,6 +136,7 @@
         row.title = 'Click to view on the canvas';
         row.innerHTML = '<span class="duct-airside-swatch" style="background:' + color + '" title="' + AIRSIDE_LABELS[airside] + '"></span>'
           + '<span class="name duct-run-name">' + esc(run.name || 'Duct run') + '</span>'
+          + (run.orientation === 'edge' ? '<span class="duct-orientation-tag" title="Hangs on edge — the larger side down; Fits the roof reads it">on edge</span>' : '')
           + '<span class="badge">' + fmtFt(tally.totalLengthFt) + ' · ' + fmtLb(tally.totalPounds) + ' lb</span>';
         row.onclick = () => {
           if (isSelected) {

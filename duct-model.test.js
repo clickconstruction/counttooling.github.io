@@ -1310,6 +1310,65 @@ test('the roof row: manual (tick honored) until deck + ceiling + size are known,
   assert.strictEqual(roof.detail, 'Trunk: 24×12 + 2" wrap = 14" · plenum 12" ⚠');
 });
 
+// --- Orientation (D12) --------------------------------------------------------
+
+test('orientation (D12): makeDuctRun carries the key only when on edge; flat is byte-identical to a pre-D12 run; validate rejects junk', () => {
+  assert.deepStrictEqual(dm.DUCT_ORIENTATIONS, ['flat', 'edge']);
+  const base = { id: 'r1', name: 'Supply Main', vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }] };
+  const flat = dm.makeDuctRun({ ...base });
+  assert.ok(!('orientation' in flat), 'flat run has no orientation key');
+  assert.deepStrictEqual(dm.makeDuctRun({ ...base, orientation: 'flat' }), flat);
+  assert.deepStrictEqual(dm.makeDuctRun({ ...base, orientation: 'sideways' }), flat);
+  const edge = dm.makeDuctRun({ ...base, orientation: 'edge' });
+  assert.strictEqual(edge.orientation, 'edge');
+  assert.deepStrictEqual(Object.keys(edge).filter(k => k !== 'orientation'), Object.keys(flat));
+  assert.deepStrictEqual(dm.validateDuctRun(edge), []);
+  assert.deepStrictEqual(dm.validateDuctRun({ ...flat, orientation: 'sideways' }), ['invalid orientation: sideways']);
+});
+
+test('ductBareDepthIn / ductRunDepthIn: rect h when flat, the larger side on edge; round d either way', () => {
+  const rect = dm.makeRectSize(24, 12);
+  assert.strictEqual(dm.ductBareDepthIn(rect, 'flat'), 12);
+  assert.strictEqual(dm.ductBareDepthIn(rect, undefined), 12);
+  assert.strictEqual(dm.ductBareDepthIn(rect, 'edge'), 24);
+  assert.strictEqual(dm.ductBareDepthIn(dm.makeRectSize(12, 24), 'edge'), 24);   // already deeper than wide: the larger side still
+  assert.strictEqual(dm.ductBareDepthIn(dm.makeRoundSize(10), 'edge'), 10);
+  assert.strictEqual(dm.ductBareDepthIn({ kind: 'nope' }, 'edge'), null);
+  const seg = { startVertexIdx: 0, size: rect };
+  assert.strictEqual(dm.ductRunDepthIn({}, seg), 12);
+  assert.strictEqual(dm.ductRunDepthIn({ orientation: 'edge' }, seg), 24);
+  assert.strictEqual(dm.ductRunDepthIn({ orientation: 'edge' }, rect), 24);   // a bare size is tolerated
+  assert.strictEqual(dm.ductRunDepthIn({ orientation: 'edge' }, { startVertexIdx: 0, size: dm.makeRoundSize(12) }), 12);
+  assert.strictEqual(dm.ductRunDepthIn(null, null), null);
+  // the insulated depth + label follow the orientation
+  assert.deepStrictEqual(dm.ductDepthIn(rect, 'wrap', 0, 'edge'), { bareIn: 24, addIn: 2, depthIn: 26 });
+  assert.strictEqual(dm.ductDepthLabel(rect, 'wrap', 0, 'edge'), '24×12 + 2" wrap = 26"');
+  assert.strictEqual(dm.ductDepthLabel(rect, 'wrap', 0), '24×12 + 2" wrap = 14"');
+});
+
+test('the roof row on edge: the canvas numbers — 24×12 + 2" wrap flat = 14" ✓ at 30"; on edge = 26" ⚠ at 24" — and the subject names the orientation', () => {
+  const byId = (rows) => Object.fromEntries(rows.map(r => [r.id, r]));
+  const main = { runName: 'Supply Main', size: dm.makeRectSize(24, 12), linerType: 'wrap', ceilingFt: 10 };
+  // flat at a 12.5' deck (30" plenum): 14" ✓ — today's wording, byte for byte
+  let roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 12.5, items: [{ ...main, orientation: 'flat' }] } }, {}))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.kind, roof.verdict, roof.detail], ['auto', 'ok', '24×12 + 2" wrap = 14" · plenum 30" ✓']);
+  // the same run on edge at a 12' deck (24" plenum): 26" ⚠, the subject named
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 12, items: [{ ...main, orientation: 'edge' }] } }, {}))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.kind, roof.verdict, roof.detail], ['auto', 'warn', 'Supply Main (on edge): 24×12 + 2" wrap = 26" · plenum 24" ⚠']);
+  // flat at the same 12' deck fits (14" in 24")
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 12, items: [{ ...main, orientation: 'flat' }] } }, {}))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.verdict, roof.detail], ['ok', '24×12 + 2" wrap = 14" · plenum 24" ✓']);
+  // on edge but fitting (30" plenum): the passing subject is still named — the arithmetic reads as the larger side
+  roof = byId(dm.ductBidCheckRows({ plenum: { deckHeightFt: 12.5, items: [{ ...main, orientation: 'edge' }] } }, {}))['duct-fits-roof'];
+  assert.deepStrictEqual([roof.verdict, roof.detail], ['ok', 'Supply Main (on edge): 24×12 + 2" wrap = 26" · plenum 30" ✓']);
+  // round duct ignores the orientation
+  const fit = dm.ductPlenumFit({ deckHeightFt: 12, items: [{ runName: 'Branch', size: dm.makeRoundSize(10), orientation: 'edge', ceilingFt: 10 }] });
+  assert.deepStrictEqual([fit.ok, fit.tightest.orientation, fit.tightest.subject, fit.tightest.depthIn], [true, 'flat', 'Branch', 10]);
+  // the tightest row wins across orientations: an on-edge 12×8 (12") beside a flat 24×12 (14") in a 24" plenum → the flat trunk is tighter
+  const two = dm.ductPlenumFit({ deckHeightFt: 12, items: [{ ...main, orientation: 'flat' }, { runName: 'Branch', size: dm.makeRectSize(12, 8), orientation: 'edge', ceilingFt: 10 }] });
+  assert.deepStrictEqual([two.ok, two.tightest.runName, two.tightest.marginIn], [true, 'Supply Main', 10]);
+});
+
 test('ductBidCheckUnresolved: auto ⚠ first, then unticked manual — the first names the gate toast', () => {
   const rows = dm.ductBidCheckRows({ flex: { drops: 2, overCount: 1, maxFlexFt: 6 } }, { 'duct-fits-roof': true });
   const u = dm.ductBidCheckUnresolved(rows);

@@ -785,6 +785,23 @@ function tallyDuctFittingCounts(fittings) {
 // All positions/arclengths are raw vertex coordinates (PDF-space in the app).
 // Cycle-safe (two runs tap-snapping each other cannot loop the walk).
 
+/**
+ * THE PER-DEVICE CFM RULE (D15): a placed marker's air is its own
+ * `cfmOverride` when set (> 0 — "CFM for this one…" on the marker's context
+ * menu), else its counter type's `cfm`; null when neither is a positive
+ * number (not an air device). Every device collector resolves through this
+ * one function, so attachment, accumulation, the live suggestion, the room
+ * served sums and the system designed totals all read the same number.
+ * `cfmOverride` is ABSENT when unset (clearing deletes the key) — a marker
+ * without one is byte-identical to pre-D15.
+ */
+function ductMarkerCfm(marker, counter) {
+  const o = marker ? marker.cfmOverride : undefined;
+  if (Number.isFinite(o) && o > 0) return o;
+  const c = counter ? counter.cfm : undefined;
+  return Number.isFinite(c) && c > 0 ? c : null;
+}
+
 /** Nearest point on a polyline: { dist, s } — s = arclength from vertex 0 to
  * the nearest point. { dist: Infinity, s: 0 } for fewer than 2 vertices. */
 function ductNearestOnPolyline(p, verts) {
@@ -2029,7 +2046,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // VD-per-tap + flex drops (D8)
     ductVolumeDamperFittings, DUCT_FLEX_DEFAULTS, tallyFlexDrops,
     // design-build accumulation (D6)
-    ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
+    ductMarkerCfm, ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,
     // room CFM defaults + air balance (D7)
     ROOM_TYPE_CFM_PER_SQFT, DUCT_BALANCE_TOLERANCE, DUCT_SYSTEM_RULE_OF_THUMB,

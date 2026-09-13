@@ -964,6 +964,58 @@ test('roomServedCfm: point-in-rect sums, page scoping, overlap counted once', ()
   assert.strictEqual(dm.roomServedCfm(boxes, []), 0);
 });
 
+// --- D15: the per-marker CFM override --------------------------------------
+
+test('ductMarkerCfm: a positive marker override wins; else the type CFM; else null', () => {
+  const type = { id: 'c1', name: 'Diffuser', cfm: 150 };
+  assert.strictEqual(dm.ductMarkerCfm({ x: 0, y: 0 }, type), 150);
+  assert.strictEqual(dm.ductMarkerCfm({ x: 0, y: 0, cfmOverride: 250 }, type), 250);
+  // Junk overrides fall through to the type (absent / 0 / negative / NaN / string).
+  assert.strictEqual(dm.ductMarkerCfm({ cfmOverride: 0 }, type), 150);
+  assert.strictEqual(dm.ductMarkerCfm({ cfmOverride: -5 }, type), 150);
+  assert.strictEqual(dm.ductMarkerCfm({ cfmOverride: NaN }, type), 150);
+  assert.strictEqual(dm.ductMarkerCfm({ cfmOverride: '250' }, type), 150);
+  // Non-air type: null without an override, the override alone with one.
+  assert.strictEqual(dm.ductMarkerCfm({ x: 0, y: 0 }, { id: 'hb', name: 'Hose Bib' }), null);
+  assert.strictEqual(dm.ductMarkerCfm({ cfmOverride: 100 }, { id: 'hb', name: 'Hose Bib' }), 100);
+  assert.strictEqual(dm.ductMarkerCfm(null, null), null);
+  assert.strictEqual(dm.ductMarkerCfm(undefined, { cfm: 0 }), null);
+});
+
+test('ductMarkerCfm precedence flows into the accumulation, the draft remainder and the room served sum', () => {
+  // Three markers of ONE 150-CFM type on a trunk; the middle one overridden
+  // to 250 — the device list every collector builds through ductMarkerCfm.
+  const type = { id: 'c1', name: 'Diffuser', cfm: 150 };
+  const markers = [
+    { x: 100, y: 5 },
+    { x: 200, y: 5, cfmOverride: 250 },
+    { x: 300, y: 5 },
+  ];
+  const devices = markers.map(m => ({ x: m.x, y: m.y, cfm: dm.ductMarkerCfm(m, type), groupId: null }));
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+  // Downstream at the equipment end = every device: 150 + 250 + 150.
+  assert.strictEqual(dm.ductDownstreamCfm({ runs: [trunk], devices, runId: 'trunk', s: 0 }), 550);
+  // Past the first device: the override + the last.
+  assert.strictEqual(dm.ductDownstreamCfm({ runs: [trunk], devices, runId: 'trunk', s: 150 }), 400);
+  // The live suggestion's number: a draft that has passed the first device
+  // reports the overridden 250 + 150 still ahead.
+  const draft = { systemGroupId: null, vertices: [{ x: 0, y: 0 }, { x: 150, y: 0 }], segments: [] };
+  const r = dm.ductDraftRemainingCfm({ runs: [], draft, devices });
+  assert.strictEqual(r.totalCfm, 550);
+  assert.strictEqual(r.servedCfm, 150);
+  assert.strictEqual(r.cfm, 400);
+  // The room served sum reads the same resolved number.
+  const boxes = [{ x1: 150, y1: 0, x2: 350, y2: 50, pageIdx: 0 }];
+  const paged = devices.map(d => ({ ...d, pageIdx: 0 }));
+  assert.strictEqual(dm.roomServedCfm(boxes, paged), 400);
+  // 400 of a 420 target is inside the ~10% tolerance — balanced…
+  assert.deepStrictEqual(dm.roomAirBalance(420, dm.roomServedCfm(boxes, paged)), { targetCfm: 420, servedCfm: 400, under: false });
+  // …and without the override the same room is short: 300 of 420 → ⚠.
+  const plain = markers.map(m => ({ x: m.x, y: m.y, cfm: dm.ductMarkerCfm({ x: m.x, y: m.y }, type), pageIdx: 0 }));
+  assert.strictEqual(dm.roomServedCfm(boxes, plain), 300);
+  assert.strictEqual(dm.roomAirBalance(420, 300).under, true);
+});
+
 test('roomAirBalance: the ~10% tolerance gates the ⚠', () => {
   assert.strictEqual(dm.DUCT_BALANCE_TOLERANCE, 0.10);
   // Exactly served, over-served, and inside-tolerance shortfalls: no flag.

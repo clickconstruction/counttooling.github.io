@@ -83,7 +83,11 @@
       // D8 neck-size prefill (MINIMAL surface — a hover title, no new UI): a
       // CFM counter whose name carries no explicit size gets the D1-table
       // suggestion ("150 CFM → 8"Ø neck") on its name span.
-      const neckText = App.getDuctNeckSuggestionText ? App.getDuctNeckSuggestionText(c) : null;
+      // D8 neck prefill + D15 "(override 250)" note, both in the hover title.
+      const neckText = [
+        App.getDuctNeckSuggestionText ? App.getDuctNeckSuggestionText(c) : null,
+        App.getCounterCfmOverrideText ? App.getCounterCfmOverrideText(c) : null,
+      ].filter(Boolean).join(' ');
       const neckTitle = neckText ? ' title="' + esc(neckText) + '"' : '';
       div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name"' + neckTitle + '>' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + withRepeats + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {

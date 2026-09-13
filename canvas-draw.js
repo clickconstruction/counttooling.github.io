@@ -1098,6 +1098,28 @@ function createCanvasDraw(deps) {
         if (any) roomRows.push({ name: rm.name || 'Room', color: rm.color || '#47c88e', volStr: Math.round(vol) + ' ft³' });
       });
     }
+    // Room air lines (DUCT unit D15 — closing D7's deferral) behind the SAME
+    // legendSettings.showDuct gate as the duct rows (no new toggle): one
+    // "⚠ Office 101 needs 450 · served 300" line per UNDER-served room on
+    // this sheet (D7's ~10% tolerance). The number is cross-page (a room's
+    // target is its project-wide area × rate), so it is computed app-side
+    // (features/room-sizer.js getRoomBalanceForPage: project target, this
+    // page's point-in-rect served sum) and handed in through the deps seam —
+    // the core stays pure. Gated on the page having room boxes AND the dep,
+    // so duct-free payloads, the node tests and the render-pixels fixture
+    // (a room box with no room target → no rows) stay byte-identical.
+    const airRows = [];
+    if (state.legendSettings?.showDuct !== false && (ann.roomBoxes || []).length
+      && typeof deps.getRoomBalanceForPage === 'function') {
+      const pi = pageIdx >= 0 ? pageIdx : 0;
+      (deps.getRoomBalanceForPage(pi) || []).forEach(b => {
+        if (!b || !b.under) return;
+        airRows.push({
+          name: b.name || 'Room', color: b.color || '#47c88e',
+          text: '⚠ ' + (b.name || 'Room') + ' needs ' + Math.round(b.targetCfm).toLocaleString() + ' · served ' + Math.round(b.servedCfm).toLocaleString(),
+        });
+      });
+    }
     // Duct rows (DUCT unit D5, legendSettings.showDuct default ON — the
     // showRooms recipe: only projects that trace duct have ductRuns, so
     // legacy legends are unchanged): per-size "24×12  86' · 597 lb" lines
@@ -1138,7 +1160,7 @@ function createCanvasDraw(deps) {
         ductRows.push({ name: 'All duct', color: DUCT_LEGEND_SWATCH, lenStr: Math.round(allFt).toLocaleString() + "' · " + Math.round(allLb).toLocaleString() + ' lb' });
       }
     }
-    return { counterRows, lineRows, roomRows, ductRows, hasRows: counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0 || ductRows.length > 0 };
+    return { counterRows, lineRows, roomRows, airRows, ductRows, hasRows: counterRows.length > 0 || lineRows.length > 0 || roomRows.length > 0 || airRows.length > 0 || ductRows.length > 0 };
   }
 
   // hitTest mirror of the empty-legend gate (B10 / J8): an empty legend is not
@@ -1161,7 +1183,7 @@ function createCanvasDraw(deps) {
     const leg = ann.legend;
     const legendScale = state.legendSettings?.legendScale ?? 1;
     const effectiveScale = scale * legendScale;
-    const { counterRows, lineRows, roomRows, ductRows, hasRows } = computeLegendRows(ann, pageIdx);
+    const { counterRows, lineRows, roomRows, airRows, ductRows, hasRows } = computeLegendRows(ann, pageIdx);
     // B10 (J8): a zero-mark sheet used to grow a mystery white "No items" box
     // top-right (the overlay defaults on). An empty legend paints nothing at
     // all now; hitTest mirrors the gate via legendHasRows.
@@ -1180,6 +1202,10 @@ function createCanvasDraw(deps) {
       const w = ctx.measureText((r.name || '') + ' ' + r.volStr).width;
       if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
     });
+    airRows.forEach(r => {
+      const w = ctx.measureText(r.text).width;
+      if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
+    });
     ductRows.forEach(r => {
       const w = ctx.measureText((r.name || '') + ' ' + r.lenStr).width;
       if (w > maxTextWidthCanvas) maxTextWidthCanvas = w;
@@ -1189,7 +1215,7 @@ function createCanvasDraw(deps) {
     const headerWidthCanvas = ctx.measureText(LEGEND_HEADER_TEXT).width;
     const ROW_H_PDF = 14;
     const PAD_PDF = 6;
-    const totalRows = counterRows.length + lineRows.length + roomRows.length + ductRows.length;
+    const totalRows = counterRows.length + lineRows.length + roomRows.length + airRows.length + ductRows.length;
     const idealHeightPdf = legendScale * (2 * PAD_PDF + LEGEND_HEADER_H_PDF + totalRows * ROW_H_PDF);
     const idealWidthPdf = Math.max(
       legendScale * (24 + 6 + 6) + maxTextWidthCanvas / scale,
@@ -1305,6 +1331,16 @@ function createCanvasDraw(deps) {
       ctx.fillRect(tl.x + PAD + (LEFT_COL - SWATCH) / 2, rowY + (ROW_H - SWATCH) / 2, SWATCH, SWATCH);
       ctx.fillStyle = '#000';
       ctx.fillText((r.name || '') + ' ' + r.volStr, NAME_START, rowY);
+      rowY += ROW_H;
+    });
+    // Room air lines (D15): the room-row look (the room's swatch) with the
+    // "⚠ Office 101 needs 450 · served 300" text — under-served rooms only.
+    airRows.forEach(r => {
+      ctx.fillStyle = r.color;
+      const SWATCH = 8 * effectiveScale;
+      ctx.fillRect(tl.x + PAD + (LEFT_COL - SWATCH) / 2, rowY + (ROW_H - SWATCH) / 2, SWATCH, SWATCH);
+      ctx.fillStyle = '#000';
+      ctx.fillText(r.text, NAME_START, rowY);
       rowY += ROW_H;
     });
     // Duct rows (D5): the line-row look with the neutral sheet-metal swatch —

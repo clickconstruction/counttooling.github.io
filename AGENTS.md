@@ -399,7 +399,10 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the
   schedule modal's Suggestions row, and the D8 polish knobs on its Polish row:
-  `deckHeightFt` (null = unset; arms the auto-riser on equipment-started runs),
+  `deckHeightFt` (null = unset; arms the auto-riser on equipment-started runs — D17: also
+  editable from the Duct create modal and the Room Size dialog of an HVAC-shaped project,
+  all three through the ONE writer `App.setDuctDeckHeight`, which re-applies the auto riser
+  to every committed equipment-started run),
   `maxFlexFt` (6, the single-drop flex warning cap) and `countVdPerTap` (true —
   a Volume damper fittings row per tap; absent in pre-D8 saves ⇒ true), and the
   D11 static-path knob `terminalAllowanceInWg` (0.10 — the diffuser + flex

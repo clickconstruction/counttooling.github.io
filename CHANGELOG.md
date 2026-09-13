@@ -13,6 +13,52 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(duct): D17 — the J19 stumbles (2026-09-13)
+
+The drift patrol's J19 walk (journeys/duct-takeoff.md) and the J5/J6 re-walks filed five
+things a design-build estimator trips on; this unit closes them.
+
+- **Groups were a hidden precondition.** The duct surfaces that said "edit in Groups" /
+  "(Groups)" pointed at a section a project keeps off until Project Settings → Use groups.
+  Now the phrase is the door: the create modal's equipment-first line and the Bid Check
+  "Systems within capacity" hint render a **Turn on groups** link while the gate is off
+  (`App.turnOnGroups` flips it, expands the section, re-renders), and the first committed duct
+  run on a groups-off project turns them on with one quiet toast — *"Groups are on — assign this
+  run to a system in Groups."* — once per project (it fires only while the gate is off). Non-duct
+  projects: zero change.
+- **Deck height before any run.** Its only writer was the Duct Schedule modal, reachable only
+  after a run existed, so the RTU main never got its auto riser. The setting now sits on the New
+  Duct Run dialog (beside pressure class) and the Room Size dialog of an HVAC-shaped project,
+  all three routed through ONE writer (`App.setDuctDeckHeight`) that also applies the riser
+  RETROACTIVELY: every committed run whose vertex 0 sits on its system's equipment marker gets
+  its `{ vertexIdx: 0, auto: true }` entry added / updated / removed on clear, a manual vertex-0
+  entry is never duplicated, one undo step, a toast with the run count.
+- **Copy Summary and Copy to /Tooling carry the pounds.** Both texts end with a `--- Duct ---`
+  block of the Copy Schedule rows (per-size `size | gauge | LF | lb/ft | lb`, straight total,
+  fittings total or the factor line, Bid weight), tab-separated, only when the scope has duct
+  (`App.buildDuctCopyRows`). The copied-detail mirror buckets the block as `duct` (never
+  ea/ft/px) and reads "duct (1,804 lb bid weight)"; a duct-only project now exposes the copy
+  buttons. Copy Schedule's own text is byte-identical.
+- **Multiply zones multiply duct** (J6-G). A run follows the LINE rule (both end vertices inside
+  one zone → ×N; straddling counts once, silently, like a line), a fitting follows the COUNTER
+  rule (its anchor point), through pure duct-model helpers (`ductRepeatFactorForRun/ForPoint`,
+  `ductRepeatStraightItems`, a `repeat` field the two fitting tallies honor). Sidebar, schedule,
+  legend, report and every copy read the multiplied numbers; where placed and with-repeats
+  differ the schedule heading, the copy text ("Placed (before multiply zones)"), the report row
+  and the sidebar badge titles say both (the T2-11 honesty). The zone dialog's preview names
+  duct runs ("…, 1 duct run") through `countItemsInRect.ductRunCount`.
+- **Duct and Polyline drafts are mutually exclusive** (J5-B). Arming one settles the other by
+  its OWN commit rules first — a draft with ≥2 vertices commits, fewer cancels
+  (`App.settleDuctDraft` / `App.settlePolylineDraft`) — so two finish bars can never stack and
+  the Esc ladder (order unchanged) always unwinds the one draft that exists.
+
+Tests: duct-stumbles.spec.js (all five), duct-model.test.js (the multiply math),
+annotation-model.test.js (`ductRunCount`), report.test.js (the duct bucket). Docs: the duct
+guide (groups, deck height, copies, zones), reports-and-exports, scale-zones-and-multiply-zones,
+FEATURE-CATALOG, ARCHITECTURE Files rows, AGENTS persisted-settings note.
+
+---
+
 ## fix(tutorial): the tour shows where, Back stays, the lavs say why — and a Close project door (2026-09-10)
 
 Estimator feedback on the plumbing walkthrough (Wendi, relayed 2026-09-10): "it should show

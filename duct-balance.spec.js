@@ -232,11 +232,17 @@ test.describe('Duct air balance (D7)', () => {
     await expect(page.locator('#roomsList .room-balance-row')).toHaveText('needs 2,400 · served 500 ⚠');
 
     // No system group has a capacity → the quiet line shows the rule of
-    // thumb: 2,400 CFM → about 2 systems at 1,200.
+    // thumb: 2,400 CFM → about 2 systems at 1,200. D17: while the project's
+    // Groups gate is off the parenthetical is the "Turn on groups" link; with
+    // groups on it reads "(edit in Groups)" (duct-stumbles.spec pins the flip).
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
     const equipLine = page.locator('#ductCreateEquipFirst');
     await expect(equipLine).toBeVisible();
+    await expect(equipLine).toHaveText('Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (Turn on groups)');
+    await page.locator('#ductCreateCancel').click();
+    await page.evaluate(() => { window.state.groupsEnabled = true; window.App.updateUI(); });
+    await page.locator('#ductBtn').click();
     await expect(equipLine).toHaveText('Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (edit in Groups)');
     await page.locator('#ductCreateCancel').click();
 

@@ -1001,6 +1001,13 @@
   // core moved to annotation-model.js (node-tested there); performDeleteZone
   // keeps the UI choreography around the model's deleteCollectedItems.
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.countItemsInRect(ann, pageIdx, x1, y1, x2, y2); }
+  // The Multiply Zone dialog's preview line. Duct runs (D17, J6-G) are named
+  // only when the area holds one, so duct-free previews read as before.
+  function multiplyZonePreviewText(counts, lenStr) {
+    let txt = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
+    if (counts.ductRunCount > 0) txt += ', ' + counts.ductRunCount + (counts.ductRunCount === 1 ? ' duct run' : ' duct runs');
+    return txt;
+  }
   function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2); }
   function performDeleteZone(ann, collected) {
     pushUndoSnapshot();
@@ -3679,6 +3686,9 @@
       // T2-12: a line type is active — P behaves like L: no dialog, the run
       // takes the type's color and an auto-name; the dialog stays reachable
       // by pressing P with no active type. (JOURNEY-MAP Tier-2 #28)
+      // D17 (J5-B): a live duct draft is settled first by its own rules —
+      // two finish bars never coexist.
+      if (App.settleDuctDraft) App.settleDuctDraft();
       state.drawingPolyline = { id: uid(), name: nextPolylineName(), color: activeLt.color, points: [], closed: false, lineTypeId: activeLt.id, group: state.activeGroupId || null };
       state.tool = TOOL.POLYLINE;
       updateUI();
@@ -3893,6 +3903,21 @@
   // "No groups anywhere" is the default off state — nothing to migrate.
   function groupsUiVisible() {
     return !!state.groupsEnabled || (state.groups || []).length > 0;
+  }
+  // D17 (J19 #1): the duct surfaces that name Groups turn them on in place —
+  // flips the gate, expands the sidebar section, re-renders. Returns true when
+  // the gate was actually off (the callers' toast decision). No-op when on.
+  function turnOnGroups() {
+    if (groupsUiVisible()) return false;
+    state.groupsEnabled = true;
+    state.groupsListCollapsed = false;
+    const sec = document.getElementById('groupsSection');
+    if (sec) sec.classList.remove('collapsed');
+    const icon = document.getElementById('groupsCollapseIcon');
+    if (icon) icon.textContent = '▼';
+    markProjectDirty();
+    updateUI();
+    return true;
   }
   const settingsUseGroupsBtn = document.getElementById('settingsUseGroupsBtn');
   if (settingsUseGroupsBtn) {
@@ -4221,6 +4246,7 @@
     const name = document.getElementById('polylineName').value.trim() || 'Polyline';
     const colorSel = document.querySelector('#polylineColorRow .color-swatch.selected');
     const color = colorSel ? colorSel.dataset.color : COLORS[2];
+    if (App.settleDuctDraft) App.settleDuctDraft();   // D17 (J5-B): one draft at a time
     state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId, group: state.activeGroupId || null };
     state.tool = TOOL.POLYLINE;
     hideModal('polylineModal');
@@ -4238,6 +4264,17 @@
     return 'Polyline ' + (n + 1);
   }
 
+  // D17 (J5-B): the mutual-exclusion rule for drafts — settle a live polyline
+  // draft by its OWN commit rules before another drawing tool arms: ≥2 points
+  // commit (finishPolyline), fewer cancel. The duct twin is App.settleDuctDraft
+  // (features/duct-tool.js); the Duct arm calls this one.
+  function settlePolylineDraft() {
+    const d = state.drawingPolyline;
+    if (!d) return false;
+    if (d.points.length >= 2) finishPolyline(false);
+    else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); renderAnnotations(); }
+    return true;
+  }
   function finishPolyline(closed) {
     if (!state.drawingPolyline || state.drawingPolyline.points.length < 2) return;
     if (closed && state.drawingPolyline.points.length >= 3) state.drawingPolyline.closed = true;
@@ -5610,7 +5647,7 @@
             state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
             const mzTitleEl = document.querySelector('#multiplyZoneModal h2');
             if (mzTitleEl) mzTitleEl.textContent = 'Multiply Zone';
-            document.getElementById('multiplyZonePreview').textContent = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
+            document.getElementById('multiplyZonePreview').textContent = multiplyZonePreviewText(counts, lenStr);
             document.getElementById('multiplyZoneMultiplier').value = String(state.pendingMultiplyZoneValue);
             showModal('multiplyZoneModal');
           }
@@ -6614,7 +6651,7 @@
             state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
             const mzTitleElTouch = document.querySelector('#multiplyZoneModal h2');
             if (mzTitleElTouch) mzTitleElTouch.textContent = 'Multiply Zone';
-            document.getElementById('multiplyZonePreview').textContent = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
+            document.getElementById('multiplyZonePreview').textContent = multiplyZonePreviewText(counts, lenStr);
             document.getElementById('multiplyZoneMultiplier').value = String(state.pendingMultiplyZoneValue);
             showModal('multiplyZoneModal');
           }
@@ -7644,6 +7681,9 @@
   // Per-project Groups gate (spec seam; updateUI + showContextMenu consume it
   // internally).
   App.groupsUiVisible = groupsUiVisible;
+  App.turnOnGroups = turnOnGroups;   // D17: the duct surfaces' "Turn on groups" link
+  App.legendRowsFor = (ann, pi) => canvasDraw.computeLegendRows(ann, pi);   // D17 spec seam: the legend's rows (multiply-zone duct arithmetic)
+  App.settlePolylineDraft = settlePolylineDraft;   // D17 (J5-B): the Duct arm settles a live polyline draft
   // Same-id palette collapse (features/palette-insights.js id-aware merge +
   // spec seam; annotation-model.js pure helper).
   App.dedupePaletteById = dedupePaletteById;

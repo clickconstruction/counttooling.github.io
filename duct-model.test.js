@@ -1717,3 +1717,60 @@ test('nearestDuctCallout: nearest readable within radius, measured to the text b
   assert.strictEqual(dm.nearestDuctCallout(null, { x: 0, y: 0 }), null);
   assert.strictEqual(dm.ductDistToTextBox({ x: 0, y: 0 }, { x: 3, y: 4, w: 10, h: 10 }), 5);
 });
+
+// --- Multiply zones (D17, J6-G) ----------------------------------------------
+
+test('ductRepeatFactorForRun: the line rule — both ends inside one zone → its multiplier; straddling → 1', () => {
+  const zones = [{ x1: 0, y1: 0, x2: 100, y2: 100, multiplier: 3 }, { x1: 300, y1: 300, x2: 200, y2: 200, multiplier: 2 }];
+  const inside = { vertices: [{ x: 10, y: 10 }, { x: 50, y: 10 }, { x: 50, y: 90 }] };
+  const straddle = { vertices: [{ x: 10, y: 10 }, { x: 150, y: 10 }] };
+  const other = { vertices: [{ x: 210, y: 210 }, { x: 290, y: 290 }] };   // corners given reversed
+  assert.strictEqual(dm.ductRepeatFactorForRun(inside, zones), 3);
+  assert.strictEqual(dm.ductRepeatFactorForRun(straddle, zones), 1);
+  assert.strictEqual(dm.ductRepeatFactorForRun(other, zones), 2);
+  assert.strictEqual(dm.ductRepeatFactorForRun(inside, []), 1);
+  assert.strictEqual(dm.ductRepeatFactorForRun({ vertices: [{ x: 10, y: 10 }] }, zones), 1);
+  assert.strictEqual(dm.ductRepeatFactorForRun(null, zones), 1);
+  // a junk multiplier reads as 1 (never NaN / never 0)
+  assert.strictEqual(dm.ductRepeatFactorForRun(inside, [{ x1: 0, y1: 0, x2: 100, y2: 100, multiplier: 'x' }]), 1);
+});
+
+test('ductRepeatFactorForPoint: the counter rule — the containing zone\'s multiplier, else 1', () => {
+  const zones = [{ x1: 0, y1: 0, x2: 100, y2: 100, multiplier: 3 }];
+  assert.strictEqual(dm.ductRepeatFactorForPoint({ x: 50, y: 50 }, zones), 3);
+  assert.strictEqual(dm.ductRepeatFactorForPoint({ x: 150, y: 50 }, zones), 1);
+  assert.strictEqual(dm.ductRepeatFactorForPoint(null, zones), 1);
+  assert.strictEqual(dm.ductRepeatFactorForPoint({ x: 50, y: 50 }, null), 1);
+});
+
+test('ductRepeatStraightItems: lengths × factor on fresh objects; factor 1 is identity', () => {
+  const items = [{ size: dm.makeRectSize(24, 12), lengthFt: 10, liner: null }, { size: dm.makeRoundSize(10), lengthFt: 4, liner: 'wrap', vertical: true }];
+  const x3 = dm.ductRepeatStraightItems(items, 3);
+  assert.deepStrictEqual(x3.map(i => i.lengthFt), [30, 12]);
+  assert.strictEqual(x3[1].vertical, true);
+  assert.strictEqual(items[0].lengthFt, 10);   // inputs untouched
+  assert.strictEqual(dm.ductRepeatStraightItems(items, 1), items);
+  assert.deepStrictEqual(dm.ductRepeatStraightItems(null, 3), []);
+});
+
+test('rollupDuct + tallyDuctFittingCounts honor a fitting\'s `repeat`; the whole bid triples inside a ×3 zone', () => {
+  const size = dm.makeRectSize(24, 12);
+  const run = { vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }], segments: [{ startVertexIdx: 0, size: size }], linerType: 'wrap' };
+  const fittings = [{ type: 'elbow90', size: size, repeat: 3 }, { type: 'tap', size: size }];
+  const once = dm.rollupDuct({ straightItems: dm.runStraightItems(run), fittings: [{ type: 'elbow90', size: size }], seamWastePct: 15 });
+  const x3 = dm.rollupDuct({ straightItems: dm.ductRepeatStraightItems(dm.runStraightItems(run), 3), fittings: [fittings[0]], seamWastePct: 15 });
+  assert.ok(Math.abs(x3.straight.totalLengthFt - 30) < 1e-9);
+  assert.ok(Math.abs(x3.straight.totalPounds - once.straight.totalPounds * 3) < 1e-9);
+  assert.strictEqual(x3.fittings.rows[0].count, 3);
+  assert.ok(Math.abs(x3.fittings.totalPounds - once.fittings.totalPounds * 3) < 1e-9);
+  assert.ok(Math.abs(x3.bidWeightPounds - once.bidWeightPounds * 3) < 1e-9);
+  assert.ok(Math.abs(x3.wrapSqFt - once.wrapSqFt * 3) < 1e-9);
+  // counts tally: 3 elbows + 1 tap; VD derived from the tap carries its repeat
+  const counts = dm.tallyDuctFittingCounts(fittings);
+  assert.deepStrictEqual(counts.map(r => [r.type, r.count]), [['elbow90', 3], ['tap', 1]]);
+  assert.deepStrictEqual(dm.ductVolumeDamperFittings([{ type: 'tap', size: size, repeat: 2 }]), [{ type: 'vd', size: size, repeat: 2 }]);
+  assert.deepStrictEqual(dm.ductVolumeDamperFittings([{ type: 'tap', size: size }]), [{ type: 'vd', size: size }]);
+  assert.strictEqual(dm.ductRepeatOf({ repeat: 0 }), 1);
+  assert.strictEqual(dm.ductRepeatOf({ repeat: 2.5 }), 1);
+  assert.strictEqual(dm.ductRepeatOf(null), 1);
+});

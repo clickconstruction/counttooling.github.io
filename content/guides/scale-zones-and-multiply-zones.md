@@ -1,7 +1,7 @@
 ---
 title: Scale zones and multiply zones
 description: Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
-updated: 2026-08-30
+updated: 2026-09-13
 order: 5
 icon: scale-zone
 category: Working with plans
@@ -29,7 +29,7 @@ When the same layout repeats — typical floors, identical units, a row of match
 
 ![After drawing the zone rectangle, the multiplier dialog asks how many times the area repeats — everything inside counts that many times in the totals.](/guides/img/multiply-zone-value.png)
 
-Every counter and line whose anchor falls inside is multiplied by that factor in the totals. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten. Every total in the sidebar shows the with-repeats number; hover a counter's badge to see how many marks are physically placed.
+Every counter and line whose anchor falls inside is multiplied by that factor in the totals — [duct runs](/guides/duct-takeoff-by-the-pound/) too, pounds and fittings included, and the dialog says how many duct runs it found. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten. Every total in the sidebar shows the with-repeats number; hover a counter's badge (or a duct run's) to see how many are physically placed.
 
 Here's both zones live on a sheet — note the legend: the four lavatories inside the ×3 zone count as twelve, so the Lavatory total reads 15, not 7:
 

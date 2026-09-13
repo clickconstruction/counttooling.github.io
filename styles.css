@@ -1750,6 +1750,13 @@ body.tour-active .canvas-empty-hint { display: none; }
 .room-balance-row { padding: 0 6px 2px 26px; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); }
 .room-balance-row.under { color: var(--accent); }
 .duct-equip-first { margin: 0 0 12px; font-size: 0.8rem; color: var(--text2); line-height: 1.4; }
+/* D17: the "Turn on groups" link inside the equipment-first line / Bid Check hint */
+.duct-groups-link { background: none; border: none; color: var(--accent); font: inherit; font-size: inherit; cursor: pointer; padding: 0; }
+.duct-groups-link:hover { text-decoration: underline; }
+/* D17: pressure class + deck height side by side on the create modal */
+.duct-create-row { display: flex; gap: 16px; align-items: flex-start; }
+.duct-create-row > div { flex: 1; min-width: 0; }
+.room-box-deck-note { font-weight: 400; color: var(--text3); font-size: 0.75rem; }
 
 /* Highlight bookmarks panel (features/highlight-labels.js) — reuses the
    .chain-panel shell (position/drag/head/foot); rows below are its own. */

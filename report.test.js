@@ -149,6 +149,27 @@ test('summarizeToolingExport is empty for no text and ignores the footer alone',
   assert.strictEqual(s.ea.items + s.ft.items + s.px.items, 0);
 });
 
+test('summarizeToolingExport: the --- Duct --- block is its own unit (bid weight), never ea/ft/px — D17', () => {
+  const text = [
+    'WC\t12\t1',
+    'ft of 4in PVC\t60.00\t3',
+    '',
+    '--- Duct ---',
+    "24×12\t24 ga\t70'\t6.94 lb/ft\t486 lb",
+    "Straight total\t\t70'\t\t486 lb",
+    'Fittings total\t\t\t\t35 lb',
+    'Bid weight\t\t\t\t1,804 lb',
+  ].join('\n');
+  const s = summarizeToolingExport(text);
+  assert.deepStrictEqual(s.ea, { items: 1, total: 12 });
+  assert.deepStrictEqual(s.ft, { items: 1, total: 60 });
+  assert.deepStrictEqual(s.px, { items: 0, total: 0 });
+  assert.deepStrictEqual(s.duct, { rows: 4, bidWeightLb: 1804 });
+  assert.strictEqual(formatToolingExportSummary(s), '1 count (12 ea) · 1 line type (60 ft) · duct (1,804 lb bid weight)');
+  // duct-free text keeps the exact three-bucket shape
+  assert.strictEqual('duct' in summarizeToolingExport('WC\t12\t1'), false);
+});
+
 test('formatToolingExportSummary mirrors the PipeTooling import toast wording', () => {
   const s = summarizeToolingExport('WC\t1122\t1\nLav\t4\t1\nft of x\t444.74\t2');
   assert.strictEqual(formatToolingExportSummary(s), '2 counts (1,126 ea) · 1 line type (444.74 ft)');

@@ -129,6 +129,16 @@
       : null;
   }
 
+  // D17 (J19 #4): the duct rows Copy Summary / Copy to /Tooling append under
+  // a "--- Duct ---" heading — features/duct-schedule.js builds them from the
+  // same schedule the report table reads (per-size LF · lb, straight total,
+  // fittings total / factor, Bid weight; tab-separated). [] without duct.
+  const DUCT_COPY_HEADING = '--- Duct ---';
+  function getDuctCopyRows(pageIndices, getAnn) {
+    const s = getDuctSchedule(pageIndices, getAnn);
+    return (s && window.App && typeof window.App.buildDuctCopyRows === 'function') ? window.App.buildDuctCopyRows(s) : [];
+  }
+
   // Child counts (features/child-counts.js registers this on window.App after
   // this file loads; resolved at call time, optional). Shape:
   // byGroup[gid][kind][parentId] -> [{ name, qty, per, ftInterval, total,
@@ -430,6 +440,8 @@
         html += '<tr><td>' + escapeHtml(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : '—') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
       });
       html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFtR(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLbR(ds.straightTotalLb) + '</strong></td></tr>';
+      // D17: multiply-zone honesty (T2-11) — the placed figure beside the multiplied one.
+      if (ds.repeated) html += '<tr><td>Placed (before multiply zones)</td><td></td><td>' + fmtFtR(ds.straightPlacedFt) + '</td><td></td><td>' + fmtLbR(ds.straightPlacedLb) + '</td></tr>';
       if (ds.fittingMode === 'counted') {
         ds.fittingRows.forEach(r => {
           html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + r.sizeKey) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
@@ -529,6 +541,14 @@
         derived.wire.filter(r => r.feet > 0).forEach(r => lines.push([prefix + 'ft of ' + r.name, r.feet.toFixed(2), ''].join('\t')));
       }
     });
+    // D17: the duct pounds ride the handoff (DUCT-PLAN's promise) — the
+    // Copy Schedule rows under one heading, only when the scope has duct.
+    const ductRows = getDuctCopyRows(pageIndices, getAnn);
+    if (ductRows.length) {
+      if (lines.length) lines.push('');
+      lines.push(DUCT_COPY_HEADING);
+      lines.push(...ductRows);
+    }
     return lines.join('\n');
   }
 
@@ -602,8 +622,19 @@
   function summarizeToolingExport(text) {
     const out = { ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } };
     if (!text) return out;
+    // D17: the "--- Duct ---" block (features/duct-schedule.js rows) is its
+    // own unit — never ea/ft/px; `out.duct` = { rows, bidWeightLb } only when
+    // the text carries one, so duct-free summaries keep their exact shape.
+    let inDuct = false;
     String(text).split(/\r?\n/).forEach((line) => {
-      if (!line.trim()) return;
+      if (!line.trim()) { inDuct = false; return; }
+      if (line.trim() === DUCT_COPY_HEADING) { inDuct = true; out.duct = { rows: 0, bidWeightLb: 0 }; return; }
+      if (inDuct) {
+        out.duct.rows += 1;
+        const m = /^Bid weight\t.*?([\d,]+) lb$/.exec(line);
+        if (m) out.duct.bidWeightLb = parseFloat(m[1].replace(/,/g, '')) || 0;
+        return;
+      }
       if (/https?:\/\/\S*[?&]t=/.test(line) || /^\s*view link/i.test(line)) return;
       const cells = line.split('\t');
       const name = (cells[0] || '').trim().replace(/^\[[^\]]*\]\s*/, '');
@@ -623,6 +654,7 @@
     if (s.ea.items) parts.push(s.ea.items + (s.ea.items === 1 ? ' count (' : ' counts (') + fmt(s.ea.total) + ' ea)');
     if (s.ft.items) parts.push(s.ft.items + (s.ft.items === 1 ? ' line type (' : ' line types (') + fmt(s.ft.total) + ' ft)');
     if (s.px.items) parts.push(s.px.items + (s.px.items === 1 ? ' unscaled run (' : ' unscaled runs (') + fmt(s.px.total) + ' px)');
+    if (s.duct && s.duct.rows) parts.push('duct (' + fmt(s.duct.bidWeightLb) + ' lb bid weight)');
     return parts.join(' · ');
   }
 
@@ -651,6 +683,9 @@
       for (const poly of ann.polylines || []) {
         if (lineTypeIds.has(poly.lineTypeId)) return true;
       }
+      // D17: a duct run is copyable data too (the /Tooling text carries the
+      // schedule rows), once the schedule builder has registered.
+      if ((ann.ductRuns || []).length && window.App && typeof window.App.buildDuctCopyRows === 'function') return true;
     }
     return false;
   }
@@ -757,6 +792,14 @@
       lines.push('--- Bid Check (' + bidCheck.open.total + ' open) ---');
       bidCheck.auto.forEach(r => lines.push((r.verdict === 'ok' ? '✓ ' : r.verdict === 'warn' ? '⚠ ' : '— ') + r.label + ': ' + r.detail));
       bidCheck.manual.forEach(r => lines.push((r.done ? '☑ ' : '☐ ') + r.label));
+      lines.push('');
+    }
+    // D17: the duct block — the same rows the /Tooling text carries.
+    const ductRows = getDuctCopyRows(pageIndices, getAnn);
+    if (ductRows.length) {
+      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
+      lines.push(DUCT_COPY_HEADING);
+      lines.push(...ductRows);
       lines.push('');
     }
     const roomTotals = getRoomTotals(pageIndices, getAnn);

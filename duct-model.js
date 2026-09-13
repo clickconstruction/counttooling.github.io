@@ -1468,6 +1468,21 @@ function ductRunDepthIn(run, segment) {
 }
 
 /**
+ * The PLAN-VIEW width of a size as it hangs (D13, the true-width ghost): the
+ * horizontal extent a duct occupies on the sheet — rect w when flat (the
+ * normal case: the width sits in plan), the SMALLER side when on edge (D12
+ * hangs the larger side down, so what is left in plan is h for the usual
+ * wider-than-deep trunk — the complement of ductBareDepthIn); round d either
+ * way. Inches; null for a non-size. Callers convert through their scale glue
+ * (canvas-draw.js ductGhostWidthPx) — this module stays unit-free.
+ */
+function ductPlanWidthIn(size, orientation) {
+  if (!isDuctSize(size)) return null;
+  if (size.kind === 'round') return size.d;
+  return orientation === 'edge' ? Math.min(size.w, size.h) : size.w;
+}
+
+/**
  * The outside DEPTH of a duct in the plenum: the bare depth (ductBareDepthIn
  * — rect h flat / larger side on edge; round d) plus 2 × insulation. The
  * roof check reads the orientation, never the larger side by default: a
@@ -2040,6 +2055,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DUCT_INSULATION_DEFAULT_IN, ductInsulationThicknessIn, ductDepthIn, ductDepthLabel, ductPlenumFit,
     // orientation (D12)
     DUCT_ORIENTATIONS, ductBareDepthIn, ductRunDepthIn,
+    // true-width ghost (D13)
+    ductPlanWidthIn,
     DUCT_BID_CHECK_ROWS, ductBidCheckRows, ductBidCheckUnresolved,
     // static path (D11)
     DUCT_FITTING_EQ_FT, ductFittingEqFt, ductStaticPath, ductStaticPathLine, ductStaticPathFittingsLabel,

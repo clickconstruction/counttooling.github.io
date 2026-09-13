@@ -49,6 +49,10 @@
     const legendShowDuctBtn = document.getElementById('legendShowDuctBtn');
     legendShowDuctCb.checked = ls.showDuct !== false;   // default on; only projects that trace duct have rows (D5)
     legendShowDuctBtn.setAttribute('aria-pressed', legendShowDuctCb.checked);
+    const legendShowDuctGhostCb = document.getElementById('legendShowDuctGhost');
+    const legendShowDuctGhostBtn = document.getElementById('legendShowDuctGhostBtn');
+    legendShowDuctGhostCb.checked = ls.showDuctGhost !== false;   // default on; the D13 true-width band under every run (live + exports)
+    legendShowDuctGhostBtn.setAttribute('aria-pressed', legendShowDuctGhostCb.checked);
     App.showModal('legendSettingsModal');
   }
 
@@ -131,6 +135,19 @@
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showDuct = document.getElementById('legendShowDuct').checked;
+    App.renderAnnotations();
+  };
+  document.getElementById('legendShowDuctGhostBtn').onclick = (e) => {
+    e.preventDefault();
+    const cb = document.getElementById('legendShowDuctGhost');
+    cb.checked = !cb.checked;
+    document.getElementById('legendShowDuctGhostBtn').setAttribute('aria-pressed', cb.checked);
+    cb.dispatchEvent(new Event('change'));
+  };
+  document.getElementById('legendShowDuctGhost').onchange = () => {
+    const state = App.state;
+    if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+    state.legendSettings.showDuctGhost = document.getElementById('legendShowDuctGhost').checked;
     App.renderAnnotations();
   };
   document.getElementById('legendTextOpacity').oninput = () => {

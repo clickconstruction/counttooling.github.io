@@ -229,6 +229,11 @@ module.exports = [
     // read the pure duct math/model + the airside color map by bare name.
     ...ductModelGlobals,
     DUCT_AIRSIDE_COLORS: 'readonly',
+    // D13: the true-width ghost helpers (canvas-draw.js) the live duct trace
+    // shares with the committed painter.
+    DUCT_GHOST_ALPHA: 'readonly',
+    ductPxPerPdfPt: 'readonly',
+    ductGhostWidthPx: 'readonly',
   }),
   {
     // sw.js — the PWA service worker; its own ServiceWorkerGlobalScope (self,

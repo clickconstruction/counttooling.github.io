@@ -56,13 +56,19 @@
 //                     white value chip ("3 ft") beside every drop glyph,
 //                     offset along the run's outward direction. The export
 //                     env never sets it — PDFs/prints are unchanged.
+//   (no env flag)     D13 true-width duct ghost: painted in BOTH paths from
+//                     state.legendSettings.showDuctGhost (default ON), sized
+//                     from the run's effective scale × the px-per-pdf-pt the
+//                     env's tc yields — so it is sheet-true at any zoom, on
+//                     every export raster, and under rotation for free
+//                     (vertices already live in the rotated pdf frame).
 // Zone chrome (stroke 2, dash [6,4], label pad 4, inset 6, the 30x20 min-size
 // threshold) is deliberately raw in BOTH paths (does not scale on export) —
 // a preserved historical quirk, not an omission.
 //
-// The top-level functions below (drawDropMarker, hexToRgb, lineStyleToDash)
-// are pure — no state/deps — and are read by app.js by bare name like the
-// geometry primitives. Guarded CommonJS footer so canvas-draw.test.js can
+// The top-level functions below (drawDropMarker, hexToRgb, lineStyleToDash,
+// ductGhostWidthPx) are pure — no state/deps — and are read by app.js and the
+// duct feature files by bare name like the geometry primitives. Guarded CommonJS footer so canvas-draw.test.js can
 // `require()` the module under `node --test`.
 
 // Drop marker glyph at the start/end of a line with a drop length — style is
@@ -155,6 +161,41 @@ const DUCT_FITTING_COLORS = {
 // legend duct rows are PER SIZE, and one size can span supply/return/exhaust,
 // so no single airside color would be honest.
 const DUCT_LEGEND_SWATCH = '#8a919c';
+
+// The true-width ghost (DUCT unit D13, DUCT-PLAN "design-build": the ghost
+// over the floor plan makes the markup itself the submittable layout). A
+// translucent band in the run's airside color, NO outline, under each run's
+// symbolic stroke — its width is the segment's REAL plan-view width
+// (duct-model ductPlanWidthIn: rect w flat / the smaller side on edge / round
+// d, inches) converted through the sheet scale. Alpha is quiet on purpose:
+// the ghost shows footprint, the stroke stays the mark.
+const DUCT_GHOST_ALPHA = 0.14;
+// Below this on-canvas width (deep zoom-out) the band would be sub-stroke
+// noise; skip it so tiny cases paint byte-identically to a ghost-free run.
+const DUCT_GHOST_MIN_PX = 1.5;
+
+// px-per-pdf-pt of a pdf->canvas mapper — measured, not assumed, so the same
+// code serves the live overlay (zoom·DPR), every export raster (its scale),
+// and any future transform.
+function ductPxPerPdfPt(tc) {
+  const o = tc({ x: 0, y: 0 }), u = tc({ x: 1, y: 0 });
+  return Math.sqrt((u.x - o.x) * (u.x - o.x) + (u.y - o.y) * (u.y - o.y));
+}
+
+// The ghost's on-canvas width for one segment: inches → the scale's unit
+// (geometry.js convertUnitValue) → pdf pts (× pixelsPerUnit) → canvas px
+// (× pxPerPt). null when there is nothing honest to draw: no usable scale on
+// the page/zone (nothing to convert — the run keeps its symbolic stroke only),
+// a malformed size, or a band under DUCT_GHOST_MIN_PX.
+function ductGhostWidthPx(size, orientation, scale, pxPerPt) {
+  if (!scale || !(scale.pixelsPerUnit > 0) || !(pxPerPt > 0)) return null;
+  if (typeof ductPlanWidthIn !== 'function') return null;
+  const widthIn = ductPlanWidthIn(size, orientation);
+  if (!(widthIn > 0)) return null;
+  const pts = convertUnitValue(widthIn, 'in', scale.unit || 'ft') * scale.pixelsPerUnit;
+  const px = pts * pxPerPt;
+  return px >= DUCT_GHOST_MIN_PX ? px : null;
+}
 
 function createCanvasDraw(deps) {
   // Room Sizer boxes, shared by the live overlay and the export path (the two
@@ -515,6 +556,40 @@ function createCanvasDraw(deps) {
         drawLengthLabel(label, mid, segAngle);
       }
     });
+    // D13 true-width ghost: one pass over EVERY run before ANY run's stroke,
+    // so no ghost ever sits over another run's ink. Per segment, a round-
+    // capped/round-joined polyline stroke at the real plan-view width (the
+    // cheap correct way — corners and size steps never gap), in the airside
+    // color at DUCT_GHOST_ALPHA, no outline. The run's effective scale is the
+    // same one the tallies use (page scale, or the scale zone the run sits
+    // in); unscaled pages and sub-DUCT_GHOST_MIN_PX bands paint nothing, so
+    // those cases stay byte-identical to a ghost-free render. Toggle:
+    // legendSettings.showDuctGhost (default ON, beside D5's showDuct).
+    if ((ann.ductRuns || []).length && state.legendSettings?.showDuctGhost !== false && typeof ductGhostWidthPx === 'function') {
+      const pxPerPt = ductPxPerPdfPt(tc);
+      ann.ductRuns.forEach(run => {
+        const verts = run.vertices || [];
+        if (verts.length < 2) return;
+        const eff = deps.getEffectiveScaleForLine(ann, { points: verts }, true, env.pageIdx);
+        if (!eff) return;
+        const color = DUCT_AIRSIDE_COLORS[run.airside] || DUCT_AIRSIDE_COLORS.supply;
+        runSegmentSpans(run).forEach(span => {
+          const widthPx = ductGhostWidthPx(span.size, run.orientation, eff, pxPerPt);
+          if (widthPx == null) return;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = widthPx;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.globalAlpha = DUCT_GHOST_ALPHA;
+          ctx.beginPath();
+          const g0 = tc(verts[span.fromIdx]);
+          ctx.moveTo(g0.x, g0.y);
+          for (let i = span.fromIdx + 1; i <= span.toIdx; i++) { const p = tc(verts[i]); ctx.lineTo(p.x, p.y); }
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        });
+      });
+    }
     // Duct runs (DUCT-PLAN unit D2). One continuous trace whose stroke width
     // STEPS with each size segment (ductStrokePx band table in duct-model.js,
     // scaled by env.ductStrokeScale — 1 on the live overlay, raster scale on
@@ -1306,5 +1381,5 @@ function createCanvasDraw(deps) {
 // Dual-env export so canvas-draw.test.js can require() the module under
 // `node --test`; inert in the browser (classic script).
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS };
+  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS, DUCT_GHOST_ALPHA, DUCT_GHOST_MIN_PX, ductPxPerPdfPt, ductGhostWidthPx };
 }

@@ -8,10 +8,14 @@ const assert = require('node:assert');
 
 Object.assign(globalThis, require('./geometry.js'));
 Object.assign(globalThis, require('./icons.js'));
+// duct-model.js globals (runSegmentSpans / formatDuctSize / ductStrokePx /
+// ductPlanWidthIn) — the core reads them by bare name for the duct painters.
+Object.assign(globalThis, require('./duct-model.js'));
+const { makeRectSize, makeRoundSize } = require('./duct-model.js');
 const { CIRCLE_PATH, RING_PATH } = require('./icons.js');
 global.Path2D = class Path2D { constructor(d) { this.d = d; } };
 
-const { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash } = require('./canvas-draw.js');
+const { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_GHOST_ALPHA, DUCT_GHOST_MIN_PX, ductPxPerPdfPt, ductGhostWidthPx } = require('./canvas-draw.js');
 
 // Records every method call as [name, ...args] and every property write as
 // ['set:<prop>', value]; measureText returns a deterministic width.
@@ -592,4 +596,106 @@ test('homerun: a filled arrowhead at the run end with the circuit tag; per line 
   // no circuit group → arrow, no label
   const noTag = run('lt-hr', { group: null });
   assert.ok(!callsOf(noTag, 'fillText').some(c => c[1] === 'LP-1/7'));
+});
+
+// --- D13 true-width ghost ---------------------------------------------------
+
+test('ductPxPerPdfPt measures the mapper (live zoom·DPR, export scale) instead of assuming it', () => {
+  assert.strictEqual(ductPxPerPdfPt(tc1), 1);
+  assert.strictEqual(ductPxPerPdfPt((p) => ({ x: p.x * 2.5, y: p.y * 2.5 })), 2.5);
+  // a rotated mapper still measures the same length
+  assert.ok(Math.abs(ductPxPerPdfPt((p) => ({ x: -p.y * 3, y: p.x * 3 })) - 3) < 1e-12);
+});
+
+test('ductGhostWidthPx: inches → the scale unit → pdf pts → canvas px through a seeded scale', () => {
+  const rect = makeRectSize(24, 12);
+  const ftScale = { pixelsPerUnit: 12, unit: 'ft' };   // 1/4" = 1' on a 48 pt/in sheet
+  // 24" = 2 ft → 24 pdf pts → ×2 px/pt = 48 px
+  assert.ok(Math.abs(ductGhostWidthPx(rect, undefined, ftScale, 2) - 48) < 1e-9);
+  assert.ok(Math.abs(ductGhostWidthPx(rect, 'flat', ftScale, 1) - 24) < 1e-9);
+  // orientation swap (D12): on edge the smaller side sits in plan → 12" = 1 ft → 12 pt → 24 px
+  assert.ok(Math.abs(ductGhostWidthPx(rect, 'edge', ftScale, 2) - 24) < 1e-9);
+  // round: d either way
+  assert.ok(Math.abs(ductGhostWidthPx(makeRoundSize(10), 'edge', ftScale, 2) - 20) < 1e-9);
+  // an inch-unit scale needs no conversion; a metric one converts through geometry.js
+  assert.ok(Math.abs(ductGhostWidthPx(rect, 'flat', { pixelsPerUnit: 1.5, unit: 'in' }, 1) - 36) < 1e-9);
+  assert.ok(Math.abs(ductGhostWidthPx(rect, 'flat', { pixelsPerUnit: 100, unit: 'm' }, 1) - 24 * 0.0254 * 100) < 1e-9);
+  // a missing unit reads as feet (the app's default scale unit)
+  assert.ok(Math.abs(ductGhostWidthPx(rect, 'flat', { pixelsPerUnit: 12 }, 1) - 24) < 1e-9);
+});
+
+test('ductGhostWidthPx: nothing honest to draw → null (no scale, bad size, the deep zoom-out cutoff)', () => {
+  const rect = makeRectSize(24, 12);
+  const ftScale = { pixelsPerUnit: 12, unit: 'ft' };
+  assert.strictEqual(ductGhostWidthPx(rect, 'flat', null, 2), null);
+  assert.strictEqual(ductGhostWidthPx(rect, 'flat', undefined, 2), null);
+  assert.strictEqual(ductGhostWidthPx(rect, 'flat', { pixelsPerUnit: 0, unit: 'ft' }, 2), null);
+  assert.strictEqual(ductGhostWidthPx({ kind: 'nope' }, 'flat', ftScale, 2), null);
+  assert.strictEqual(ductGhostWidthPx(null, 'flat', ftScale, 2), null);
+  assert.strictEqual(ductGhostWidthPx(rect, 'flat', ftScale, 0), null);
+  // the < DUCT_GHOST_MIN_PX cutoff: 24 pt × 0.05 = 1.2 px → null; exactly 1.5 px still paints
+  assert.strictEqual(DUCT_GHOST_MIN_PX, 1.5);
+  assert.strictEqual(ductGhostWidthPx(rect, 'flat', ftScale, 0.05), null);
+  assert.ok(Math.abs(ductGhostWidthPx(rect, 'flat', ftScale, 1.5 / 24) - 1.5) < 1e-9);
+});
+
+// A two-segment supply run: 48×24 for the first leg, stepped to 24×12 at vertex 1.
+function ghostRun() {
+  return {
+    id: 'run-1', name: 'Supply Main', airside: 'supply', pressureClass: '1', linerType: null, linerThicknessIn: 0, systemGroupId: null,
+    vertices: [{ x: 10, y: 10 }, { x: 110, y: 10 }, { x: 110, y: 110 }],
+    segments: [{ startVertexIdx: 0, size: makeRectSize(48, 24) }, { startVertexIdx: 1, size: makeRectSize(24, 12) }],
+  };
+}
+const ghostStrokes = (ctx) => setsOf(ctx, 'globalAlpha').filter(a => a === DUCT_GHOST_ALPHA).length;
+
+test('drawAnnotationsCore: the ghost band paints under every run stroke at the real width, stepping per segment', () => {
+  const state = makeState({ legendSettings: {} });
+  const deps = Object.assign(makeDeps(state), { getEffectiveScaleForLine: () => ({ pixelsPerUnit: 12, unit: 'ft' }) });
+  const ctx = makeCtx();
+  const ann = Object.assign(emptyAnn(), { ductRuns: [ghostRun()] });
+  createCanvasDraw(deps).drawAnnotationsCore(ctx, ann, makeEnv({ tc: (p) => ({ x: p.x * 2, y: p.y * 2 }) }));
+  assert.strictEqual(ghostStrokes(ctx), 2, 'one ghost stroke per segment');
+  const widths = setsOf(ctx, 'lineWidth');
+  // 48" = 4 ft = 48 pt × 2 = 96 px, then 24" → 48 px; the symbolic strokes (10 px / 6 px bands × scale 1) follow
+  assert.deepStrictEqual(widths.slice(0, 2), [96, 48]);
+  assert.ok(widths.indexOf(96) < widths.indexOf(10), 'ghost paints BEFORE the band stroke');
+  assert.ok(widths.includes(10) && widths.includes(6), 'the symbolic strokes still paint');
+  assert.ok(setsOf(ctx, 'strokeStyle').includes('#2e86de'));
+  assert.ok(setsOf(ctx, 'lineCap').includes('round') && setsOf(ctx, 'lineJoin').includes('round'));
+  // the alpha is restored before the stroke pass
+  const alphas = setsOf(ctx, 'globalAlpha');
+  assert.strictEqual(alphas[alphas.indexOf(DUCT_GHOST_ALPHA) + 1], 1);
+});
+
+test('drawAnnotationsCore: on edge the ghost reads the smaller side; the export raster scale widens it like everything else', () => {
+  const state = makeState({ legendSettings: {} });
+  const deps = Object.assign(makeDeps(state), { getEffectiveScaleForLine: () => ({ pixelsPerUnit: 12, unit: 'ft' }) });
+  const run = Object.assign(ghostRun(), { orientation: 'edge' });
+  const ctx = makeCtx();
+  createCanvasDraw(deps).drawAnnotationsCore(ctx, Object.assign(emptyAnn(), { ductRuns: [run] }), makeEnv({ tc: (p) => ({ x: p.x * 3, y: p.y * 3 }), ductStrokeScale: 3 }));
+  // 24" → 24 pt × 3 = 72 px; 12" → 36 px
+  assert.deepStrictEqual(setsOf(ctx, 'lineWidth').slice(0, 2), [72, 36]);
+});
+
+test('drawAnnotationsCore: no ghost without a scale, under the cutoff, or with legendSettings.showDuctGhost off — and byte-identical call logs', () => {
+  const paint = (stateOverrides, scale, tc) => {
+    const state = makeState(Object.assign({ legendSettings: {} }, stateOverrides));
+    const deps = Object.assign(makeDeps(state), { getEffectiveScaleForLine: () => scale });
+    const ctx = makeCtx();
+    createCanvasDraw(deps).drawAnnotationsCore(ctx, Object.assign(emptyAnn(), { ductRuns: [ghostRun()] }), makeEnv({ tc: tc || tc1 }));
+    return ctx;
+  };
+  const off = paint({ legendSettings: { showDuctGhost: false } }, { pixelsPerUnit: 12, unit: 'ft' });
+  assert.strictEqual(ghostStrokes(off), 0);
+  const unscaled = paint({}, null);
+  assert.strictEqual(ghostStrokes(unscaled), 0);
+  // the toggled-off and unscaled logs are the same paint the run had before D13
+  assert.deepStrictEqual(off.calls, unscaled.calls);
+  // deep zoom-out: 48 pt × 0.02 = 0.96 px < 1.5 → nothing, and 24 pt × 0.02 either
+  const tiny = paint({}, { pixelsPerUnit: 12, unit: 'ft' }, (p) => ({ x: p.x * 0.02, y: p.y * 0.02 }));
+  assert.strictEqual(ghostStrokes(tiny), 0);
+  // default ON when the key is absent (pre-D13 legendSettings)
+  const on = paint({ legendSettings: { showRooms: true } }, { pixelsPerUnit: 12, unit: 'ft' });
+  assert.strictEqual(ghostStrokes(on), 2);
 });

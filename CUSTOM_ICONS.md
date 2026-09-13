@@ -80,4 +80,4 @@ Display names are derived from filenames:
 - `p-trap.svg` → "P Trap"
 - `mounted sink.svg` → "Mounted Sink"
 
-Hyphens and underscores become spaces; each word is title-cased. To override a name, rename the source `.svg` in `my-counters/` and rerun `npm run build:icons` (hand-edits to `icons-custom.js` are lost on the next regeneration).
+Hyphens and underscores become spaces; each word is title-cased. To override a name, rename the source `.svg` in `my-counters/` and rerun `npm run build:icons` (hand-edits to `icons-custom.js` are lost on the next regeneration). `npm run build:icons -- --check` exits 1 when `icons-custom.js` is stale against `my-counters/` — it is one of the `npm run check` steps, so a symbol added without a rerun cannot ship silently (then `npm run build:sw`, since the file is precached).

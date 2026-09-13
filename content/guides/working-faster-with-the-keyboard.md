@@ -29,6 +29,7 @@ The ones worth learning first:
 | `C` | Counter mode |
 | `L` | Quick Line |
 | `P` | Polyline |
+| `U` | Duct run (while tracing, `S` steps the duct size) |
 | `D` | Measure |
 | `H` | Highlight |
 | `N` | Note |

@@ -147,3 +147,14 @@ test('cfmDefaultIconFromList: resolves the HVAC Supply Diffuser by set + name; n
   assert.strictEqual(ir.cfmDefaultIconFromList([]), null);
   assert.strictEqual(ir.cfmDefaultIconFromList(undefined), null);
 });
+
+// D18: every custom cell names itself on hover (the HVAC grid stopped being a
+// guessing game); the built-in grid is unchanged (no title without one).
+test('iconCellHtml / customIconCellsHtml: the optional title rides the cell, escaped', () => {
+  assert.match(ir.iconCellHtml('M0 0', '0 0 24 24', false, 'Fire/Smoke "Damper" & Co'), /class="icon-cell" data-path="M0 0" title="Fire\/Smoke &quot;Damper&quot; &amp; Co"><svg/);
+  assert.doesNotMatch(ir.iconCellHtml('M0 0', '0 0 24 24', false), /title=/);
+  const custom = [{ value: 'H1', viewBox: '0 0 1 1', set: 'hvac', name: 'Supply Diffuser' }, { value: 'U1', viewBox: '0 0 1 1' }];
+  const html = ir.customIconCellsHtml(custom);
+  assert.match(html, /data-path="H1" title="Supply Diffuser">/);
+  assert.match(html, /data-path="U1"><svg/);   // an unnamed upload carries no title
+});

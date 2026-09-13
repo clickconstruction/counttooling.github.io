@@ -67,6 +67,11 @@ test.describe('Header ⋯ More tools overflow', () => {
     await expect(rows.first().locator('.hm-key')).toHaveText('P');
     await expect(rows.nth(1)).toContainText('Duct');   // strip order: Polyline, Duct, Highlight …
     await expect(rows.nth(1)).toHaveAttribute('data-tool-id', 'ductBtn');
+    // D18: the key column is READ from App.HOTKEYS (hotkeys.js) — Duct's row
+    // shows the letter the keydown handler executes, and a row whose button
+    // has no table entry renders no <kbd> at all.
+    await expect(rows.nth(1).locator('.hm-key')).toHaveText(await page.evaluate(() => window.App.HOTKEYS.find((h) => h.btnId === 'ductBtn').key.toUpperCase()));
+    await expect(rows.filter({ hasText: 'Scale Zone' }).locator('.hm-key')).toHaveCount(0);
     await expect(page.locator('#headerMoreMenu')).toContainText('Multiply Zone');
     await expect(page.locator('#headerMoreMenu')).toContainText('Room Sizer');
     await expect(rows.filter({ hasText: 'Ghost' }).locator('.hm-key')).toHaveText('G');

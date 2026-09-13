@@ -125,12 +125,64 @@
   // An SVG upload is an explicit choice too: the shared upload handler
   // (features/custom-icon-upload.js) rebuilds this panel's custom grid with
   // its own click wiring and selects the new icon, so it reports here.
-  App.markCreateIconPicked = () => { createIconPicked = true; };
+  App.markCreateIconPicked = () => { createIconPicked = true; syncCreateCfmChip(); };
   function syncCreateIconToCfm() {
-    if (createIconPicked) return;
+    if (createIconPicked) { syncCreateCfmChip(); return; }
     const v = parseFloat(document.getElementById('counterCfm')?.value);
     const cfmIcon = Number.isFinite(v) && v > 0 && App.cfmDefaultIcon ? App.cfmDefaultIcon() : null;
     selectCreateIconCell(cfmIcon || createPrefillPath);
+    syncCreateCfmChip();
+  }
+
+  // D18 (B19 ratchet, J19 #11): the inline icon chip beside a CFM field —
+  // "→ [icon] Supply Diffuser · change". D16 moved the selection to the HVAC
+  // Supply Diffuser on the hidden Custom Icons panel, so the pick was
+  // invisible; the chip names the glyph the counter WILL take right where the
+  // CFM is typed (the diffuser while nothing was picked, the picked icon after
+  // an explicit click/upload). "change" opens the Custom Icons grid scrolled to
+  // the HVAC group — no automatic tab switch (D16 never switched; the chip is
+  // the landing, not a jump). Hidden while the CFM is empty. Shared with the
+  // Quick Count twin (features/quick-modals.js) through App.syncCfmIconChip.
+  function syncCfmIconChip(chipId, opts) {
+    const chip = document.getElementById(chipId);
+    if (!chip) return;
+    const show = !!(opts.hasCfm && opts.iconPath);
+    chip.hidden = !show;
+    if (!show) { chip.innerHTML = ''; delete chip.dataset.path; return; }
+    const name = App.getIconName(opts.iconPath);
+    chip.innerHTML = '<span class="cfm-icon-chip-arrow" aria-hidden="true">→</span>'
+      + '<span class="cfm-icon-chip-glyph"><svg viewBox="' + App.iconVbFor(opts.iconPath) + '" width="18" height="18"><path fill="currentColor" d="' + opts.iconPath + '"/></svg></span>'
+      + '<span class="cfm-icon-chip-name">' + App.escapeHtml(name) + '</span>'
+      + '<span class="cfm-icon-chip-sep" aria-hidden="true">·</span>'
+      + '<button type="button" class="cfm-icon-chip-change" title="Pick a different icon — opens the Custom Icons grid at the HVAC group">change</button>';
+    chip.dataset.path = opts.iconPath;
+    chip.querySelector('.cfm-icon-chip-change').onclick = opts.onChange;
+  }
+  // Scroll an icon grid so the set heading ("HVAC") sits at its top, then
+  // bring the grid itself into the modal's view.
+  function scrollIconGridToSet(grid, setLabel) {
+    if (!grid) return false;
+    const heading = Array.from(grid.querySelectorAll('.icon-grid-heading')).find((h) => h.textContent.trim() === setLabel);
+    if (!heading) return false;
+    grid.scrollTop = heading.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop;
+    if (heading.scrollIntoView) heading.scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+  function createSelectedIconPath() {
+    const sel = document.querySelector('#counterIconGrid .icon-cell.selected') || document.querySelector('#counterIconGridCustom .icon-cell.selected');
+    return sel ? sel.dataset.path : null;
+  }
+  function syncCreateCfmChip() {
+    const v = parseFloat(document.getElementById('counterCfm')?.value);
+    const hasCfm = Number.isFinite(v) && v > 0;
+    const iconPath = createIconPicked ? createSelectedIconPath() : ((App.cfmDefaultIcon && App.cfmDefaultIcon()) || null);
+    syncCfmIconChip('counterCfmIconChip', {
+      hasCfm, iconPath,
+      onChange: () => {
+        showCounterIconTab('custom');
+        scrollIconGridToSet(document.getElementById('counterIconGridCustom'), 'HVAC');
+      },
+    });
   }
   function prepCreatePanel() {
     const state = App.state;
@@ -148,9 +200,17 @@
     if (cfmEl) cfmEl.value = '';
     const mountEl = document.getElementById('counterMountHeight');
     if (mountEl) mountEl.value = '';
-    // D8: same rule for the optional flex-drop length beside it.
+    // D8: same rule for the optional flex-drop length beside it. D18: its
+    // sublabel + placeholder read the data-table default (duct-model.js
+    // DUCT_FLEX_DEFAULTS.dropFt) at render — the two numbers can't drift.
     const flexEl = document.getElementById('counterFlexDrop');
-    if (flexEl) flexEl.value = '';
+    if (flexEl) {
+      flexEl.value = '';
+      const dropFt = typeof DUCT_FLEX_DEFAULTS !== 'undefined' && DUCT_FLEX_DEFAULTS.dropFt > 0 ? DUCT_FLEX_DEFAULTS.dropFt : null;
+      flexEl.placeholder = dropFt != null ? String(dropFt) : '';
+      const defEl = document.getElementById('counterFlexDropDefault');
+      if (defEl) defEl.textContent = dropFt != null ? dropFt + "'" : 'the default';
+    }
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
@@ -164,6 +224,7 @@
       createIconPicked = true;
       const path = c.dataset.path;
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+      syncCreateCfmChip();   // D18: an explicit pick replaces the chip's icon
     });
     customGrid.querySelectorAll('.icon-cell').forEach(c => {
       c.onclick = () => {
@@ -177,9 +238,11 @@
         createIconPicked = true;
         const path = c.dataset.path;
         if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+        syncCreateCfmChip();
       };
     });
     if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
+    syncCreateCfmChip();   // a fresh panel: CFM empty → chip hidden
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
   }
 
@@ -301,6 +364,7 @@
       createIconPicked = true;
       const path = c.dataset.path;
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+      syncCreateCfmChip();
     });
   };
   document.getElementById('counterCancel').onclick = () => App.hideModal('counterModal');
@@ -348,4 +412,6 @@
   };
 
   App.showCounterTab = showCounterTab;
+  App.syncCfmIconChip = syncCfmIconChip;         // D18: the Quick Count twin renders the same chip
+  App.scrollIconGridToSet = scrollIconGridToSet; // D18: "change" lands on the HVAC group
 })();

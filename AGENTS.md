@@ -192,9 +192,12 @@
   + `build:macros --check` (the Macros table rows in app/index.html are
   generated from `HOTKEYS` in constants.js — edit the table there, then run
   `npm run build:macros` AND `npm run build:sw`)
-  + `build:guides --check` + `build:sw --check`
+  + `build:guides --check` + `build:rules --check`
+  + `build:icons --check` (D18: [icons-custom.js](icons-custom.js) must match
+  `my-counters/` — a symbol added without `npm run build:icons` fails here)
+  + `build:sw --check`
   + `check-brand-tokens` (the styles.css ↔ marketing.css ↔ manifest token
-  mirror). Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  mirror) — ten steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is
@@ -498,7 +501,9 @@ is armed from the Counter modal's Create tab.
 
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
-(Polyline), T (Chain — counter + connecting line per click), B (Drop — one
+(Polyline), U (Duct — D18; D was taken, so the first free letter of "Duct";
+mid-trace S steps the duct size instead of Set Scale), T (Chain — counter +
+connecting line per click), B (Drop — one
 click per line end adds the palette's rise/fall), D (Measure),
 H (Highlight), X (Multiply Zone), V (Room Sizer), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav

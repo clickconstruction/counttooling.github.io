@@ -156,6 +156,10 @@ const DUCT_FITTING_COLORS = {
   transition: '#47c88e',
   tap: '#a47fff', boot: '#a47fff',
 };
+// D18: rise/drop (verticalFt) markers — the fitting family's fourth color, a
+// steel blue no fitting type uses (the marker is a filled up-triangle with a
+// "12'" tag; the model carries no sign — a rise and a drop weigh the same).
+const DUCT_VERTICAL_COLOR = '#4a7fb5';
 
 // The legend's duct-row swatch (DUCT unit D5): a neutral sheet-metal gray —
 // legend duct rows are PER SIZE, and one size can span supply/return/exhaust,
@@ -724,6 +728,56 @@ function createCanvasDraw(deps) {
         ctx.restore();
       });
     }
+    // D18 (J19 #14): rise/drop markers — every run's verticalFt entry paints
+    // in the fitting-marker pass: a filled up-triangle over the same white
+    // backing disc, in DUCT_VERTICAL_COLOR, at duct-model's
+    // ductVerticalMarkerAnchor (the vertex lifted 10 pt so a corner elbow at
+    // the same vertex still reads), with a "12'" tag to its right (the size
+    // tag idiom: white backing, chip text in the marker color). hitTest
+    // (app.js) resolves the same anchor, so paint and menu never disagree;
+    // the export env paints it too. Same hideMarks gate as the fittings.
+    (ann.ductRuns || []).forEach(run => {
+      if (!Array.isArray(run.verticalFt) || !run.verticalFt.length) return;
+      const strokeScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+      const sizeOf = (e) => (typeof ductSizeAtVertex === 'function' ? ductSizeAtVertex(run, e.vertexIdx) : null);
+      run.verticalFt.forEach(e => {
+        if (!e || !(e.ft > 0)) return;
+        const anchor = ductVerticalMarkerAnchor(run, e);
+        if (!anchor) return;
+        const p = tc(anchor);
+        const size = sizeOf(e);
+        const s = (4 + (size ? ductStrokePx(size) : 6) * 0.6) * strokeScale;
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, s + 2 * strokeScale, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = DUCT_VERTICAL_COLOR;
+        ctx.strokeStyle = DUCT_VERTICAL_COLOR;
+        ctx.lineWidth = 1.6 * strokeScale;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - s * 0.9);
+        ctx.lineTo(p.x + s * 0.8, p.y + s * 0.6);
+        ctx.lineTo(p.x - s * 0.8, p.y + s * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        // The feet tag — "12'" (one decimal when not whole), right of the glyph.
+        const label = (Number.isInteger(e.ft) ? String(e.ft) : String(Math.round(e.ft * 10) / 10)) + "'";
+        const fontSize = 9 * env.fontScale;
+        ctx.font = '600 ' + fontSize + 'px ' + env.fontFamily;
+        const tw = ctx.measureText(label).width;
+        const pad = env.labelPad;
+        const tx = p.x + s + 3 * strokeScale;
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(tx - pad, p.y - fontSize / 2 - pad, tw + pad * 2, fontSize + pad * 2);
+        ctx.fillStyle = DUCT_VERTICAL_COLOR;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, tx, p.y);
+        ctx.restore();
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      });
+    });
     (ann.highlights || []).forEach(h => {
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
@@ -1418,5 +1472,5 @@ function createCanvasDraw(deps) {
 // Dual-env export so canvas-draw.test.js can require() the module under
 // `node --test`; inert in the browser (classic script).
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS, DUCT_GHOST_ALPHA, DUCT_GHOST_MIN_PX, ductPxPerPdfPt, ductGhostWidthPx };
+  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS, DUCT_VERTICAL_COLOR, DUCT_GHOST_ALPHA, DUCT_GHOST_MIN_PX, ductPxPerPdfPt, ductGhostWidthPx };
 }

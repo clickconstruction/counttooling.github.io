@@ -65,8 +65,11 @@
   // custom-icon-upload.js. Pure string builders — callers wire the clicks
   // (each picker's selection-clearing pairs and pick callbacks differ).
   const ICON_UPLOAD_CELL_HTML = '<div class="icon-cell icon-cell-upload" data-upload="1" title="Upload SVG">+</div>';
-  function iconCellHtml(pathValue, viewBox, selected) {
-    return '<div class="icon-cell' + (selected ? ' selected' : '') + '" data-path="' + pathValue + '"><svg viewBox="' + viewBox + '" width="24" height="24"><path fill="currentColor" d="' + pathValue + '"/></svg></div>';
+  // `title` (optional, D18) names the cell on hover — the bundled sets pass
+  // the icon's display name so a grid of trade symbols is not a guessing game.
+  function iconCellHtml(pathValue, viewBox, selected, title) {
+    const titleAttr = title ? ' title="' + String(title).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"' : '';
+    return '<div class="icon-cell' + (selected ? ' selected' : '') + '" data-path="' + pathValue + '"' + titleAttr + '><svg viewBox="' + viewBox + '" width="24" height="24"><path fill="currentColor" d="' + pathValue + '"/></svg></div>';
   }
   // Built-in grid: vbFor(value) resolves the viewBox (the caller injects the
   // cache-coupled App.iconVbFor); isSelected(ic, i) marks the selected cell.
@@ -82,7 +85,9 @@
   // the top: the Quick creator leads with the project's trade.
   const ICON_SET_LABELS = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
   function customIconCellsHtml(effectiveCustom, selectedValue, firstSet) {
-    const cells = (list) => list.map((ic) => iconCellHtml(ic.value, ic.viewBox, ic.value === selectedValue)).join('');
+    // D18: every custom cell carries its name as a tooltip (the HVAC set's
+    // "Supply Diffuser" / "RTU" / … read on hover; uploads name themselves).
+    const cells = (list) => list.map((ic) => iconCellHtml(ic.value, ic.viewBox, ic.value === selectedValue, ic.name)).join('');
     const sets = [];
     effectiveCustom.forEach((ic) => { const k = ic.set || 'uploaded'; if (!sets.includes(k)) sets.push(k); });
     if (sets.length <= 1) return ICON_UPLOAD_CELL_HTML + cells(effectiveCustom);

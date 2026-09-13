@@ -358,7 +358,10 @@
     // Subtotal → seam & waste → Bid weight
     html += '<table class="duct-schedule-table duct-schedule-rollup">';
     html += '<tr><td>Straight + fittings</td><td class="mono num">' + fmtLb(s.subtotalLb) + ' lb</td></tr>';
-    html += '<tr><td>Seam &amp; waste +<input type="number" id="ductSeamWastePct" class="duct-schedule-pct" min="0" max="100" step="1" value="' + s.seamWastePct + '" aria-label="Seam and waste percent">%' + chip('hvac.duct.schedule-factors') + '</td><td class="mono num">' + fmtLb(s.seamWasteLb) + ' lb</td></tr>';
+    // D18 (J19 #13): the seam input carries `duct-schedule-num` like the
+    // knob row's inputs — without it the modal-card 100%-width input rule
+    // stretched this one box to the column (400 px) and broke the line.
+    html += '<tr><td>Seam &amp; waste +<input type="number" id="ductSeamWastePct" class="duct-schedule-pct duct-schedule-num" min="0" max="100" step="1" value="' + s.seamWastePct + '" aria-label="Seam and waste percent">%' + chip('hvac.duct.schedule-factors') + '</td><td class="mono num">' + fmtLb(s.seamWasteLb) + ' lb</td></tr>';
     html += '<tr class="duct-schedule-bid-row"><td>Bid weight</td><td class="mono num">' + fmtLb(s.bidWeightLb) + ' lb</td></tr>';
     html += '</table>';
 
@@ -529,11 +532,29 @@
     try {
       await navigator.clipboard.writeText(text);
       App.logUserEvent('copy_summary', App.state.currentProjectId || null, { surface: 'duct-schedule', mode: mode || 'project' });
-      App.showToast('Duct schedule copied — Bid weight ' + fmtLb(s.bidWeightLb) + ' lb.');
+      App.showToast(copiedToastText(s), 4000);
     } catch (err) {
       console.error('[copy]', err);
       alert('Nothing was copied — the browser blocked clipboard access. Click Copy Schedule again, and allow clipboard access if the browser asks.');
     }
+  }
+
+  // D18 (J19 #9): ONE toast on Copy Schedule. The S5 post-action advisory
+  // used to stack a second card ("Bid Check has 1 open item…") over the copied
+  // confirmation; features/duct-bidcheck.js now claims the 'duct-schedule'
+  // surface (App.ductBidGateHandles) so the advisory stays quiet, and the open
+  // ⚠ rows — the same list it would have named — ride this toast instead,
+  // after the number the estimator wants and the PipeTooling paste hint.
+  function copiedToastText(s) {
+    let text = 'Duct schedule copied — Bid weight ' + fmtLb(s.bidWeightLb) + ' lb. Pastes into PipeTooling in columns.';
+    const check = App.getBidCheck ? App.getBidCheck() : null;
+    const warn = check ? check.auto.filter((r) => r.verdict === 'warn') : [];
+    if (warn.length) {
+      // The gate's short row names ("fits the roof", "every room served").
+      const short = (r) => (r.short || r.label.replace(/ —.*$/, '')).replace(/ within.*| on plan.*| and reached.*/i, '').toLowerCase();
+      text += ' Bid Check: ' + warn.length + ' open item' + (warn.length === 1 ? '' : 's') + ' — ' + warn.map(short).join(', ') + '.';
+    }
+    return text;
   }
 
   // --- report seam (report.js resolves this at call time — rooms precedent) --
@@ -625,6 +646,7 @@
   App.computeDuctSchedule = computeDuctSchedule;
   App.getDuctScheduleForReport = getDuctScheduleForReport;
   App.buildDuctScheduleText = buildDuctScheduleText;   // spec seam
+  App.ductCopiedToastText = copiedToastText;   // D18 spec seam: the one-toast copy
   App.buildDuctCopyRows = buildDuctCopyRows;   // D17: report.js appends these to Copy Summary / Copy to /Tooling
   App.ductRepeatsLabel = repeatsLabel;   // D17: the T2-11 honesty phrase (sidebar total title, report)
 })();

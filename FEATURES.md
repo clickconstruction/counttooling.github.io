@@ -67,7 +67,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Background page warm-up** — After a document opens, every page pre-renders in idle time, so jumping deep into a 40-page set is instant instead of a cold multi-second load.
 - **Offline-grade caching of rendered pages** — Sheets you visited render from a persisted cache on reopen — yesterday's project opens warm today.
 - **Aim loupe (mobile)** — Press-and-hold magnifier for precise mark placement with a finger.
-- **Hotkeys for every tool** — M/S/C/L/P/D/H/N/V/X/R and friends keep one hand on the keyboard and one on the mouse.
+- **Hotkeys for every tool** — M/S/C/L/P/U/D/H/N/V/X/R and friends keep one hand on the keyboard and one on the mouse (U traces duct; mid-trace S steps its size).
 - **Keyboard Map** — A visual keyboard where every mapped key lights up — see the whole shortcut surface at a glance instead of reading a list.
 - **Hold Cmd to peek hotkeys** — Hold Cmd (or Alt) for a beat and every tool button shows its hotkey badge in place — learn the shortcuts without leaving the sheet.
 - **Quick Keys (number row)** — Bind your own counters and line types to 1–0, so switching what you're placing is a keystroke, not a sidebar trip; bindings ride your saved Artboard between bids.

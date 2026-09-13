@@ -52,7 +52,16 @@
  *      proceed() inside the click (clipboard writes stay permitted). No duct
  *      or every row resolved → proceed() straight away, silent. NEVER a block.
  *      S5's post-action advisory yields to this gate on those surfaces
- *      (App.ductBidGateHandles).
+ *      (App.ductBidGateHandles) — and (D18, J19 #9) on the 'duct-schedule'
+ *      copy, whose single "copied" toast carries the open ⚠ rows itself.
+ *      GATE MEMORY (D18, B19 ratchet — "Export anyway IS the acknowledgment"):
+ *      pressing Export anyway records the exact unresolved-row set on
+ *      `state.bidCheck.acknowledgedGate` — `{ rows: [{ id, verdict }], at }`,
+ *      verdict 'warn' for an auto ⚠ row, 'unchecked' for an unticked manual
+ *      row, ids sorted — and the next Export / Copy presses proceed silently
+ *      while the live set is IDENTICAL; any change (a row resolves, a new ⚠,
+ *      a manual row unticked) re-arms the toast. No new control: it rides the
+ *      project data like the ticks (every intake spreads state.bidCheck).
  *   2. The BADGES on `#forPipeTooling` / `#specificPages` ("2 ⚠ · 3 unchecked",
  *      `.bid-gate-badge`) — rendered by App.renderDuctBidBadges from
  *      renderBidCheck, present only while the gate would fire.
@@ -76,6 +85,9 @@
   const App = (window.App = window.App || {});
 
   const GATED_SURFACES = ['pipe-tooling', 'takeoff-tooling', 'export-pdfs'];
+  // Surfaces whose own confirmation toast carries the open-items line, so the
+  // S5 advisory card must not stack a second one (D18: Copy Schedule).
+  const FOLDED_ADVISORY_SURFACES = ['duct-schedule'];
 
   function scopeOf(opts) {
     const state = App.state;
@@ -244,7 +256,32 @@
   }
 
   function ductBidGateHandles(surface) {
+    if (FOLDED_ADVISORY_SURFACES.includes(surface)) return true;
     return GATED_SURFACES.includes(surface) && hasDuctRuns();
+  }
+
+  // --- gate memory (D18) -----------------------------------------------------
+
+  // The unresolved set as the memory records it: every auto ⚠ row and every
+  // unticked manual row, `{ id, verdict }`, sorted by id so two walks of the
+  // same state compare equal.
+  function unresolvedRows(status) {
+    return status.auto.map((r) => ({ id: r.id, verdict: 'warn' }))
+      .concat(status.manual.map((r) => ({ id: r.id, verdict: 'unchecked' })))
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+  const rowsKey = (rows) => (rows || []).map((r) => r.id + '=' + r.verdict).join('|');
+  function isAcknowledged(status) {
+    const bc = App.state && App.state.bidCheck;
+    const ack = bc && bc.acknowledgedGate;
+    if (!ack || !Array.isArray(ack.rows) || !ack.rows.length) return false;
+    return rowsKey(ack.rows) === rowsKey(unresolvedRows(status));
+  }
+  function acknowledgeGate(status) {
+    const state = App.state;
+    if (!state.bidCheck || typeof state.bidCheck !== 'object') state.bidCheck = { manual: {} };
+    state.bidCheck.acknowledgedGate = { rows: unresolvedRows(status), at: new Date().toISOString() };
+    App.markProjectDirty && App.markProjectDirty();
   }
 
   let gateTimer = null;
@@ -261,11 +298,18 @@
   function runDuctBidGate(proceed, surface) {
     const status = gateStatus();
     if (!status || !status.open) return proceed();
+    // D18 gate memory: the same unresolved set was already exported past —
+    // the earlier "Export anyway" stands until the set changes.
+    if (isAcknowledged(status)) {
+      App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null,
+        { surface, kind: 'gate', choice: 'remembered', open: status.auto.concat(status.manual).map((r) => r.id) });
+      return proceed();
+    }
     const el = document.getElementById('bidGateToastModal');
     const textEl = document.getElementById('bidGateToastText');
     if (!el || !textEl) return proceed();
     textEl.textContent = 'Bid Check: ' + shortLabel(status.first) + '?';
-    pendingProceed = { proceed, surface, rowId: status.first.id, projectId: App.state.currentProjectId || null };
+    pendingProceed = { proceed, surface, rowId: status.first.id, projectId: App.state.currentProjectId || null, rows: unresolvedRows(status) };
     App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null,
       { surface, kind: 'gate', open: status.auto.concat(status.manual).map((r) => r.id) });
     if (gateTimer) clearTimeout(gateTimer);
@@ -287,6 +331,9 @@
     hideGateToast();
     if (!pending || pending.projectId !== (App.state.currentProjectId || null)) return;
     App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null, { surface: pending.surface, kind: 'gate', choice: 'export-anyway' });
+    // D18: "Export anyway" IS the acknowledgment — remember the set the toast
+    // was raised for (not a re-walk: the state may have moved while it was up).
+    acknowledgeGate({ auto: pending.rows.filter((r) => r.verdict === 'warn'), manual: pending.rows.filter((r) => r.verdict === 'unchecked') });
     // The click is the user gesture: the clipboard write inside proceed stays permitted.
     pending.proceed();
   });
@@ -391,5 +438,6 @@
   App.runDuctBidGate = runDuctBidGate;
   App.ductBidGateHandles = ductBidGateHandles;
   App.renderDuctBidBadges = renderDuctBidBadges;
+  App.isDuctBidGateAcknowledged = () => { const s = gateStatus(); return !!(s && s.open && isAcknowledged(s)); };   // D18 spec seam
   App.getDuctDraftDepthLine = draftDepthLine;   // spec seam
 })();

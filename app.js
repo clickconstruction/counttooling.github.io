@@ -1233,6 +1233,18 @@
       const a = ductFittingAnchor(f, ann.ductRuns || []);
       if (a && ptDist(pos, a) <= r) return { type: 'ductFitting', index: i };
     }
+    // D18: rise/drop markers ride the same rung — every run's verticalFt entry
+    // at duct-model's ductVerticalMarkerAnchor (the vertex lifted 10 pt, the
+    // point canvas-draw paints the triangle at), so the right-click menu's
+    // Edit / Remove land where the estimator sees the mark.
+    const vRuns = ann.ductRuns || [];
+    for (let i = 0; i < vRuns.length; i++) {
+      const vf = Array.isArray(vRuns[i].verticalFt) ? vRuns[i].verticalFt : [];
+      for (let j = 0; j < vf.length; j++) {
+        const a = ductVerticalMarkerAnchor(vRuns[i], vf[j]);
+        if (a && ptDist(pos, a) <= r) return { type: 'ductVertical', index: i, entryIdx: j };
+      }
+    }
     const lineCandidates = [];
     for (let i = 0; i < (ann.quickLines || []).length; i++) {
       const q = ann.quickLines[i];
@@ -5828,7 +5840,7 @@
     // Duct fittings and runs get their own menu (features/duct-fittings.js,
     // D3) — the shared mark menu's rows are all built around counter/line
     // targets, and the fitting menu is a dynamic reclassify list.
-    if (state.ctxTarget && (state.ctxTarget.type === 'ductFitting' || state.ctxTarget.type === 'ductRun')) {
+    if (state.ctxTarget && (state.ctxTarget.type === 'ductFitting' || state.ctxTarget.type === 'ductRun' || state.ctxTarget.type === 'ductVertical')) {
       const ductTarget = state.ctxTarget;
       state.ctxTarget = null;
       App.tryOpenDuctContextMenu && App.tryOpenDuctContextMenu(ductTarget, e.clientX, e.clientY);

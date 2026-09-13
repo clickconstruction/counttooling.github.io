@@ -96,7 +96,7 @@ test.describe('Keyboard Map — desktop (inline in Macros)', () => {
     // until this feature landed.
     const lit = await page.evaluate(() =>
       [...document.querySelectorAll('#macrosKeyboardBoard .kb-key.is-mapped')].map((k) => k.dataset.key));
-    for (const k of ['M', 'S', 'C', 'L', 'J', 'P', 'D', 'R', 'H', 'X', 'V', 'N', 'G', 'Z', 'Q']) {
+    for (const k of ['M', 'S', 'C', 'L', 'J', 'P', 'U', 'D', 'R', 'H', 'X', 'V', 'N', 'G', 'Z', 'Q']) {
       expect(lit, `expected ${k} to be lit`).toContain(k);
     }
     expect(lit).toEqual(expect.arrayContaining(['Space', 'Escape', 'ArrowLeft']));
@@ -108,10 +108,10 @@ test.describe('Keyboard Map — desktop (inline in Macros)', () => {
     expect(lit).not.toContain('Shift');
 
     // An unmapped key stays a plain silhouette. (Was G until the Ghost tool
-    // claimed it, then B until the Drop tool did — pick a letter no tool has
-    // taken.)
+    // claimed it, then B until the Drop tool did, then U until Duct did (D18)
+    // — pick a letter no tool has taken.)
     expect(await page.evaluate(() =>
-      document.querySelector('#macrosKeyboardBoard .kb-key[data-key="U"]')?.className)).toBe('kb-key');
+      document.querySelector('#macrosKeyboardBoard .kb-key[data-key="K"]')?.className)).toBe('kb-key');
 
     // CAPTION: hovering a lit key names its action, in the INLINE caption.
     const caption = page.locator('#macrosKeyboardCaption');

@@ -240,8 +240,20 @@ test.describe('Duct Bid Check (D9)', () => {
     await expect(page.locator('#specificPagesModal')).toHaveClass(/visible/);
     await page.click('#specificPagesCancel');
 
-    // Copy to /Tooling runs the same gate through runGatedCopy: the copy
-    // waits for Export anyway; the S5 post-action advisory stays quiet.
+    // D18 gate memory: that "Export anyway" IS the acknowledgment — the same
+    // unresolved set (1 ⚠ + 8 unchecked) no longer gates Copy to /Tooling
+    // either: runGatedCopy proceeds silently, the S5 advisory stays quiet.
+    const remembered = await page.evaluate(async () => {
+      window.__copied = 0;
+      await window.App.runGatedCopy(null, [0], async () => { window.__copied++; }, 'pipe-tooling', 'this-canvas');
+      return window.__copied;
+    });
+    expect(remembered).toBe(1);
+    await expect(page.locator('#bidGateToastModal.visible')).toHaveCount(0);
+    await expect(page.locator('#bidCheckAdvisoryModal.visible')).toHaveCount(0);
+    // A change re-arms it (tick one trade-neutral manual row): the copy now
+    // waits for Export anyway again, then proceeds inside that click.
+    await page.evaluate(() => { window.state.bidCheck.manual['scale-verified'] = true; window.App.updateUI(); });
     const before = await page.evaluate(async () => {
       window.__copied = 0;
       await window.App.runGatedCopy(null, [0], async () => { window.__copied++; }, 'pipe-tooling', 'this-canvas');

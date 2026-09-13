@@ -1,6 +1,6 @@
 # J6 — Details at other scales; typical floors multiplied
 
-Personas: P E · Status: ● walked 2026-08-02 · re-walked 2026-08-09 (headless Chromium 1380×900, local static server on 4106, sample-plan.pdf; view-link leg stubbed locally — no cloud; re-walk aborted all supabase/functions requests at the driver)
+Personas: P E · Status: ● walked 2026-08-02 · re-walked 2026-08-09 (headless Chromium 1380×900, local static server on 4106, sample-plan.pdf; view-link leg stubbed locally — no cloud; re-walk aborted all supabase/functions requests at the driver) · re-walked 2026-09-13 (duct drift patrol — see the last section)
 
 > Seeded from the Phase-1 cross-index workflow (2026-08-02). Phase 2 walk done: route
 > corrected below, friction/proposals/demo added, open questions answered inline.
@@ -169,6 +169,7 @@ expected, the scale half produced a number that only looked right.
 - img/multi-scale-and-repeats-06.png — Multiply Zone Settings (label toggle, default multiplier 2, size 14, position Center)
 - img/multi-scale-and-repeats-07.png — Stubbed view-link recipient: zones + labels render, totals multiplied, zone tools hidden
 - img/multi-scale-and-repeats-08.png — *(re-walk)* friction #10: chip reads `1/8" = 1' · ANSI D` (corrected page scale) while Measure inside the uncorrected 1/4" zone reads "Distance: 7'-8"" across most of the 23'-4" open office — consistent read would be 20'-5"; also shows the 5s toast dimming the whole sheet
+- img/multi-scale-and-repeats-09.png — *(drift patrol 2026-09-13)* finding G: ×3 zone — COUNTERS "Water Closet 15" beside "Duct run 3 10' · 36 lb" / "All duct 60'" (the 12×12 run inside the zone is counted once); the 1/4" zone's 24×12 run reads 10' · 69 lb
 
 ## Demo moment
 
@@ -197,3 +198,41 @@ Under ten seconds once the scale is set, and both numbers explain themselves.
 - Quick friction check of the modal itself (img/multi-scale-and-repeats-v2-zone-settings.png): small card (~318px, no clipping risk), opens prefilled with current values, one **Done** button that commits and re-renders. Two papercut-grade observations, neither worth a new row: there is no Cancel (Done commits whatever the controls hold — same convention as the Multiply Zone sibling), and changes don't live-preview until Done. Findings #1–#11 are otherwise unaffected: the settings modal does not touch zone *scale values*, so #10, #7's edit path, and the zone-creation flow are unchanged.
 
 **What the walker missed:** nothing material beyond the #7 info line. The dossier's mechanism notes (toast z-index layering, modal-card overflow measurements, anchor-point semantics) all checked out against code.
+
+## Drift patrol 2026-09-13 (post-duct)
+
+Re-walked as persona P/E on the LOCAL app (main 2c55825, after the D1–D16 duct build): headless Chromium 1380×900, zero-dep static server on a free port serving the worktree, every non-127.0.0.1 request aborted (no cloud), `samples/sample-plan.pdf`; page scale seeded at the true 9 px/ft (no sheet correction — T1-04/T1-07 are not re-walked here), a WC counter with 7 markers and one waste line seeded. Then the two duct questions the unit asked: do scale zones feed duct width/pounds, and what do multiply zones do to a run. The 2026-08-30 Tier-2/Tier-3 batch changed several steps; those are noted, not re-reported.
+
+**Route re-verified (steps 0–6):**
+
+| step | as recorded | now | drift source |
+|---|---|---|---|
+| 0 | page scale + the correction trap | seeded (T1-04 shipped; not re-walked) | — |
+| 1 | Scale Zone from the header or sidebar; two corners; Esc after corner 1 resets | ✓ two corners; Esc after corner 1 clears the start with the tool armed. **Both zone buttons are gone from the strip** — the header ⋯ overflow (2026-08-13) holds Scale Zone / Multiply Zone on every desktop width and the sidebar twins are hidden on desktop; the ⋯ row and X are the routes | header-more (not duct) |
+| 2 | "Scale for zone", no sheet warning; preset drops the zone; tool → Move | ✓ title "Scale for zone", warning hidden, 1/4" preset → zone `pixelsPerUnit: 18`; **the tool now stays armed** with the toast "Zone scale set — Scale Zone stays armed: drag the next zone, or press Esc to finish." | B8 (#11 fixed; not duct) |
+| 3 | Measure inside uses the zone; one point outside → page scale, silently | ✓ 160 pt inside → "Distance: 8'-11"" (÷18); 320 pt straddling → "Distance: 35'-8"" (÷9); Measure is one-shot (tool → Move after the toast) | — |
+| 4 | X → two corners → "In this area: 3 counter(s), 0 line run(s) (0.00 ft)"; default 2 | ✓ "In this area: 4 counter(s), 0 line run(s) (0.00 ft)", default 2 | — |
+| 5 | Apply; anchor rule; tool → Move | ✓ Apply ×3; **tool stays armed** ("Zone added — Multiply Zone stays armed…"); anchor rule not re-driven | B8 (#11 fixed) |
+| 6 | Summary [13] vs COUNTERS 7 raw; LINE TYPES multiplied | ✓ one arithmetic now: COUNTERS row **15**, Summary **[15]**, footer `[15 counts \| 6.67 ft of lines]` (3 + 4×3); the waste line inside the 1/4" zone reads 6.67 ft (120 pt ÷ 18) | T2-11 (#5 fixed; not duct) |
+
+**The duct seams (persona H's questions, walked here because the zones are J6's):**
+
+- *Scale zone → duct:* a 24×12 run traced fully inside the 1/4" zone (180 pt) lands in the Duct section as **10' · 69 lb** (÷18; 24 ga at 6.94 lb/ft hand-checks) with the true-width ghost sized by the same effective scale — features/duct-tool.js and duct-schedule.js resolve every run through `App.getEffectiveScaleForLine(ann, { points: run.vertices }, true, pageIdx)`, the line rule. ✓ keep.
+- *Straddling run:* a run starting inside the zone and ending outside (360 pt) reads **40'** — the page scale, silently, exactly like a straddling line (geometry.js `getScaleZoneForLine` tests the first and last vertex only). Same silent rule as J6's existing teach row — one more sentence for the guide, no new finding. (Walk note: that second run started within 12 pt of the first and got an auto **tap** on both — D3's run-on-run rule, J19 #3's tolerance; recorded, not judged.)
+- *Multiply zone → duct:* finding G. *Delete Area → duct:* finding H.
+- *Zone context menu* — "Edit multiplier · Delete" as before; nothing duct leaks in. *Undo* of a duct commit inside a zone removes the run and leaves both zones intact ✓.
+
+**New findings (adversarially re-driven before filing):**
+
+| # | severity | what happens | why it hurts | verdict |
+|---|----------|--------------|--------------|---------|
+| G | stumble (H) | **Multiply zones skip duct.** Ring the ×3 typical floor: the four diffuser-stand-in counters go 7 → **15** on every rollup, but a 12×12 run traced fully inside the same zone stays **"Duct run 3 10' · 36 lb"**, the Duct section's "All duct 60' · 383 lb" and the Duct Schedule's Bid weight (488 lb) count it once (the legend's duct rows too — by code: computeLegendRows applies no factor to duct); the value dialog drawn over an area holding only duct previews **"In this area: 0 counter(s), 0 line run(s) (0.00 ft)"** ([img/multi-scale-and-repeats-09.png](img/multi-scale-and-repeats-09.png)). No duct file reads `getMultiplyZoneForLine`; the dialog's preview counts counters and line types only. The guide sells the zone as "multiply everything inside a boundary so typical floors … count correctly", and line footage IS multiplied | An HVAC estimator who rings three identical floors ×3 bids the diffusers three times and the duct once, with nothing on screen saying so — the sidebar reads a plausible number. Room volumes are the one deliberate exception (measuring-room-volumes.md says so); duct is footage, the thing multiply zones exist for | CONFIRMED — re-driven on a clean boot: counters 15, duct 10'/36 lb, Bid weight unmultiplied, preview 0/0. **gap** — product call: multiply duct LF / pounds / fittings like line footage (`lineLengthForTotals`'s factor, applied to `runStraightItems`), and say "N duct run(s)" in the preview. ⚑ severity: filed as a stumble because the preview's "0 line run(s)" is a visible tell; by the J6 #10 / T1 #5 precedent (silent short number in the bid) it is a blocker candidate for the re-rank |
+| H | papercut | **Delete Area ignores duct.** Rectangle over a run → "Delete in this area?" with an EMPTY preview line → Delete → toast "No items in this area." and the run survives; only right-click → Delete run removes it (app.js `deleteZonePreview` and the delete walk enumerate counters, lines, notes, zones, rooms — not `ductRuns` / fittings) | The one bulk-erase tool says there is nothing where a duct run plainly is; the estimator re-traces or hunts for the right-click | CONFIRMED — re-driven (tool 10 armed via ⋯, rectangle over the run, empty preview, "No items in this area.", `ductRuns.length` unchanged). **polish**: count and delete duct runs (with their fittings, and the taps of runs that hang off them) in the rectangle; preview "N duct run(s)". J9's surface; filed here because the re-walk found it |
+
+**What the duct work fixed for free:** nothing on J6 — the build reads zones through the existing line primitive (which is why scale zones "just work" for duct) and touches no zone code. The steps that read ✗-as-recorded were closed by B8 (#11 — both zone tools stay armed, with the hint the plan called for), T2-11 (#5) and T2-04 (#4 — the Distance readout is a corner card, so a scale-zone corner click no longer dies under it). T1-07 (#10) shipped 2026-08-10 and is not re-walked here (no corrected page in this seed).
+
+**Killed / not filed:** "duct ignores scale zones" (it reads them — the 10' · 69 lb hand-check); "the scale-zone label sits on room names" (top-left default since 6f3d75e — unchanged); "Measure straddling reads the zone" (first pass re-read a stale 5 s toast; the clean re-drive reads 35'-8" = page scale).
+
+**Not walkable / not walked:** cloud and the view-link leg (no-cloud rule; unchanged by the build — viewers never see the Duct button); T1-07's carried correction on a compressed sheet; the anchor rule; a scale zone drawn AROUND an existing duct run (re-render on zone apply — not exercised); duct inside BOTH zone types at once.
+
+**Net verdict:** J6's route holds post-duct with no new chrome for P/E; the duct tool inherits scale zones correctly (10' · 69 lb inside, page scale when straddling) but is invisible to multiply zones (G — the one number-trust drift this patrol found, H-only) and to Delete Area (H).

@@ -57,7 +57,14 @@ test.describe('Duct air balance (D7)', () => {
     if (cfm != null) await page.locator('#counterCfm').fill(String(cfm));
     await page.locator('#counterCreate').click();
     await page.waitForFunction(() => window.state.tool === window.App.TOOL.COUNTER);
-    return page.evaluate(() => window.state.counters[window.state.counters.length - 1]);
+    const created = await page.evaluate(() => window.state.counters[window.state.counters.length - 1]);
+    // Honest at the cause: the capacity line downstream can only be right if
+    // this counter carries the name and CFM that were typed. (2026-09-12: the
+    // Create tab's deferred name focus stole the caret under a parallel suite
+    // and the CFM keystrokes landed in the name — fixed in features/counter.js.)
+    expect(created.name).toBe(name);
+    if (cfm != null) expect(created.cfm).toBe(cfm);
+    return created;
   }
 
   // The last-placed marker's PDF position for a counter id.

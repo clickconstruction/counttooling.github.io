@@ -6,10 +6,11 @@
  * - GO-LIVE: #ductBtn is visible with NO preview flag (no localStorage key,
  *   the App.enableDuctPreview shim gone — also pinned in duct-tool.spec.js).
  * - The schedule modal's numbers are pinned END-TO-END against seeded runs
- *   whose rollup lands exactly on the DUCT-PLAN worked bid math:
- *   straight 1,435 lb + counted fittings 130 lb = 1,565 lb, ×1.15 seam &
- *   waste = 1,800 lb Bid weight. Rows re-derived through the REAL inference
- *   walk (elbows/transitions/tap) and the real gauge auto-pick — nothing
+ *   whose rollup lands exactly on the DUCT-PLAN worked bid math plus the D8
+ *   default-ON volume damper on the tap: straight 1,435 lb + counted
+ *   fittings 134 lb (130 + the 4 lb VD) = 1,569 lb, ×1.15 seam & waste =
+ *   1,804 lb Bid weight. Rows re-derived through the REAL inference walk
+ *   (elbows/transitions/tap) and the real gauge auto-pick — nothing
  *   hand-stamped. Round rows carry the joint count ("52' · 6 joints @ 10'").
  * - Counted ↔ Factor % toggle: flips the applied pounds without recomputing
  *   the takeoff (factor 40% default → 2,310 lb bid; editable %, both persist
@@ -37,8 +38,9 @@ test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 // 68' (elbow at 34'). Run B taps A (first vertex ON A's polyline): 10"Ø for
 // 52' with one elbow. Auto gauges @1" w.g.: 24 ga rect rows, 26 ga on the
 // 10"Ø. Straight = 1,435.01 lb; fittings (3+1 elbows + 2 transitions + tap)
-// = 130.25 lb; subtotal 1,565.26; +15% = 1,800.05 → the pinned display run:
-// 1,435 + 130 = 1,565 → ×1.15 → 1,800.
+// = 130.25 lb + the D8 default-ON volume damper on the tap (3.56 lb) =
+// 133.80; subtotal 1,568.82; +15% = 1,804.14 → the pinned display run:
+// 1,435 + 134 = 1,569 → ×1.15 → 1,804.
 const RUN_A = {
   id: 'run-a', name: 'Trunk', airside: 'supply', pressureClass: '1', linerType: 'liner',
   vertices: [
@@ -78,14 +80,15 @@ const EXPECTED_COPY = [
   'Transition\t20×12\t1\t12.3 lb ea\t12 lb',
   'Transition\t24×12\t1\t13.9 lb ea\t14 lb',
   'Tap\t10"Ø\t1\t3.6 lb ea\t4 lb',
-  'Fittings total\t\t\t\t130 lb',
+  'Volume damper\t10"Ø\t1\t3.6 lb ea\t4 lb',
+  'Fittings total\t\t\t\t134 lb',
   '',
   'Liner\t1,135 sq ft',
   'Wrap\t136 sq ft',
   '',
-  'Straight + fittings\t1,565 lb',
+  'Straight + fittings\t1,569 lb',
   'Seam & waste (+15%)\t235 lb',
-  'Bid weight\t1,800 lb',
+  'Bid weight\t1,804 lb',
 ].join('\n');
 
 test.describe('Duct Schedule + go-live (D5)', () => {
@@ -137,7 +140,7 @@ test.describe('Duct Schedule + go-live (D5)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('schedule modal: the worked bid math end-to-end (1,435 + 130 = 1,565 ×1.15 = 1,800 lb)', async ({ page }) => {
+  test('schedule modal: the worked bid math end-to-end (1,435 + 134 = 1,569 ×1.15 = 1,804 lb)', async ({ page }) => {
     await seedRun(page, RUN_A);
     await seedRun(page, RUN_B);
     await openSchedule(page);
@@ -151,21 +154,23 @@ test.describe('Duct Schedule + go-live (D5)', () => {
     await expect(straightRows.nth(4)).toHaveText('10"Ø26 ga52\' · 6 joints @ 10\'2.37123');
     await expect(straightRows.nth(5)).toHaveText("Straight total273'1,435");
 
-    // Counted fittings (default mode) — 7 rows totalling 130 lb.
+    // Counted fittings (default mode) — 7 real rows + the D8 default-ON
+    // Volume damper on the tap, totalling 134 lb.
     await expect(body.locator('#ductFitModeSegment button[data-fitmode="counted"]')).toHaveClass(/active/);
     const fitTable = body.locator('table').nth(1);
-    await expect(fitTable.locator('tr')).toHaveCount(9);   // header + 7 rows + total
+    await expect(fitTable.locator('tr')).toHaveCount(10);   // header + 8 rows + total
     await expect(fitTable.locator('tr').nth(1)).toHaveText('90° elbow10"Ø111.912');
-    await expect(fitTable.locator('tr').nth(8)).toHaveText('Fittings total130');
+    await expect(fitTable.locator('tr').nth(8)).toHaveText('Volume damper10"Ø13.64');
+    await expect(fitTable.locator('tr').nth(9)).toHaveText('Fittings total134');
 
     // Insulation, subtotal, seam & waste, Bid weight.
     await expect(body).toContainText('Liner');
     await expect(body).toContainText('1,135 sq ft');
     await expect(body).toContainText('136 sq ft');
     const rollup = body.locator('.duct-schedule-rollup').last();
-    await expect(rollup.locator('tr').nth(0)).toHaveText('Straight + fittings1,565 lb');
+    await expect(rollup.locator('tr').nth(0)).toHaveText('Straight + fittings1,569 lb');
     await expect(rollup.locator('tr').nth(1)).toContainText('235 lb');
-    await expect(rollup.locator('.duct-schedule-bid-row')).toHaveText('Bid weight1,800 lb');
+    await expect(rollup.locator('.duct-schedule-bid-row')).toHaveText('Bid weight1,804 lb');
 
     expect(errors).toEqual([]);
   });
@@ -189,14 +194,14 @@ test.describe('Duct Schedule + go-live (D5)', () => {
     await expect(body.locator('.duct-schedule-bid-row')).toHaveText('Bid weight2,475 lb');
     expect(await page.evaluate(() => window.state.ductSettings.fittingFactorPct)).toBe(50);
 
-    // Back to Counted → the pinned 1,800.
+    // Back to Counted → the pinned 1,804.
     await body.locator('#ductFitModeSegment button[data-fitmode="counted"]').click();
-    await expect(body.locator('.duct-schedule-bid-row')).toHaveText('Bid weight1,800 lb');
+    await expect(body.locator('.duct-schedule-bid-row')).toHaveText('Bid weight1,804 lb');
 
     // Seam & waste edit: 0% → bid = the bare subtotal.
     await body.locator('#ductSeamWastePct').fill('0');
     await body.locator('#ductSeamWastePct').dispatchEvent('change');
-    await expect(body.locator('.duct-schedule-bid-row')).toHaveText('Bid weight1,565 lb');
+    await expect(body.locator('.duct-schedule-bid-row')).toHaveText('Bid weight1,569 lb');
     expect(await page.evaluate(() => window.state.ductSettings.seamWastePct)).toBe(0);
 
     expect(errors).toEqual([]);
@@ -317,7 +322,7 @@ test.describe('Duct Schedule + go-live (D5)', () => {
     expect(html).toContain('Straight total');
     expect(html).toContain('1,435');
     expect(html).toContain('Bid weight');
-    expect(html).toContain('1,800 lb');
+    expect(html).toContain('1,804 lb');
     // Duct-free reports stay duct-free (a fresh page 1-only scope has runs —
     // use an empty-page scope instead).
     const emptyHtml = await page.evaluate(() => window.buildReportHtml({ pageIndices: [1] }));

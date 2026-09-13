@@ -1699,11 +1699,22 @@ body.tour-active .canvas-empty-hint { display: none; }
 .duct-schedule-design-row { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
 .duct-schedule-design-row label { color: var(--text2); font-size: 0.78rem; }
 .duct-schedule-num { width: 64px; }
-.duct-suggest-chip { width: 100%; padding: 7px 8px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-align: center; }
+.duct-suggest-chip { flex: 1 1 0; padding: 7px 8px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-align: center; }
 .duct-suggest-chip:hover { background: var(--accent); color: #17171a; }
+.duct-suggest-row { display: flex; gap: 6px; }
 .duct-suggest-from { display: block; margin-top: 4px; font-family: inherit; font-size: 0.7rem; font-weight: 400; color: var(--text2); }
 .duct-suggest-chip:hover .duct-suggest-from { color: #17171a; }
 .form-sublabel { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
+
+/* D8 polish: the second schedule knobs row (deck height / max flex / VD per
+   tap), the schedule's Flex section (⚠ label + "not in bid weight" sublabel),
+   and the S-popover Rise/drop section rows. */
+.duct-schedule-vd-label { display: inline-flex; align-items: center; gap: 8px; }
+.duct-schedule-sublabel { color: var(--text3); font-size: 0.68rem; text-transform: none; letter-spacing: 0; }
+.duct-flex-warn { color: var(--warn, #e8a13c); font-size: 0.78rem; white-space: nowrap; }
+.duct-vertical-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-family: 'DM Mono', monospace; font-size: 0.82rem; color: var(--text); }
+.duct-vertical-remove { background: none; border: none; color: var(--text3); font-size: 1rem; line-height: 1; cursor: pointer; padding: 2px 6px; }
+.duct-vertical-remove:hover { color: var(--danger, #e05d5d); }
 
 /* System groups (DUCT unit D4, DUCT-PLAN §2): the equipment tag + capacity
    line ("RTU-1 · 600 CFM") and the plenum-return note in a group's sidebar

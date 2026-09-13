@@ -169,6 +169,13 @@
       const actions = DUCT_FITTING_TYPES
         .filter((t) => t !== f.type)
         .map((t) => ({ label: FITTING_LABELS[t], run: () => reclassifyFitting(target.index, t) }));
+      // D8 §6: taps carry the per-fitting volume-damper toggle (only while
+      // the project counts VDs at all — the schedule-modal knob).
+      if (f.type === 'tap' && App.getDuctSettings && App.getDuctSettings().countVdPerTap) {
+        actions.push(f.noVd
+          ? { label: 'Add volume damper', run: () => setTapVolumeDamper(target.index, true) }
+          : { label: 'Remove volume damper', run: () => setTapVolumeDamper(target.index, false) });
+      }
       actions.push({ label: 'Delete fitting', run: () => deleteFitting(target.index) });
       return showMenu(clientX, clientY, heading, actions);
     }
@@ -197,6 +204,25 @@
     // twin at the same spot (see duct-model.js §3b).
     f.auto = false;
     f.suppressed = false;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
+
+  // D8 §6 — the per-tap "no volume damper here" flag. hasVd=false sets
+  // noVd:true (the tap stops contributing a Volume damper schedule row);
+  // hasVd=true clears it. Either way auto flips false — the reclassify
+  // preservation pattern — so the human's call survives re-inference by
+  // anchor (duct-model.js §3b; the reconcile walk also carries noVd as
+  // belt-and-braces).
+  function setTapVolumeDamper(index, hasVd) {
+    const ann = currentAnn();
+    const f = ann?.ductFittings?.[index];
+    if (!f || f.type !== 'tap') return;
+    App.pushUndoSnapshotCurrentPage();
+    if (hasVd) delete f.noVd;
+    else f.noVd = true;
+    f.auto = false;
     App.markProjectDirty();
     App.renderAnnotations();
     App.updateUI();

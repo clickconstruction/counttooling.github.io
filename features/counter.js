@@ -119,6 +119,9 @@
     if (cfmEl) cfmEl.value = '';
     const mountEl = document.getElementById('counterMountHeight');
     if (mountEl) mountEl.value = '';
+    // D8: same rule for the optional flex-drop length beside it.
+    const flexEl = document.getElementById('counterFlexDrop');
+    if (flexEl) flexEl.value = '';
     document.getElementById('counterIconSearch').value = '';
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
@@ -271,6 +274,10 @@
     // tool reads it for the default vertical (S2).
     const mountIn = App.parseMountHeightIn(document.getElementById('counterMountHeight')?.value);
     if (mountIn != null) newCounter.mountHeightIn = mountIn;
+    // D8: optional flex-drop length (ft) — same set-only-when-positive rule;
+    // absent means the DUCT_FLEX_DEFAULTS.dropFt table default (8').
+    const flexVal = parseFloat(document.getElementById('counterFlexDrop')?.value);
+    if (Number.isFinite(flexVal) && flexVal > 0) newCounter.flexDropFt = flexVal;
     state.counters.push(newCounter);
     App.pushRecentColor(color);
     state.activeCounterType = newCounter.id;

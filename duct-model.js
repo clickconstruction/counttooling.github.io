@@ -39,6 +39,21 @@
 //   { kind: 'rect', w, h }   — w × h sheet-metal rectangle
 //   { kind: 'round', d }     — spiral/round, diameter d
 //
+// VERTICAL FOOTAGE (unit D8, DUCT-PLAN §4 "Vertical footage lives in the S
+// popover"): a run may carry `verticalFt` — rises/drops the flat trace cannot
+// measure. Each entry is
+//   { vertexIdx, ft, auto? }
+// - vertexIdx anchors the vertical at a run vertex (the point where the duct
+//   turns up/down); ft is the vertical LINEAR FEET added there (> 0 — a rise
+//   and a drop weigh the same, so no sign).
+// - auto: true marks the project-deck-height riser added automatically when a
+//   run starts at its system's equipment marker (removable like any entry).
+// The key present ONLY when entries exist — pre-D8 runs keep their shape.
+// Straight-duct tallies include each entry at the SIZE OF THE SEGMENT at that
+// vertex (ductSizeAtVertex — the duct that turns vertical), via
+// runStraightItems, so pounds/insulation/legend/schedule all see the footage
+// without any caller changes.
+//
 // A FITTING:
 //   { id, runId, vertexIdx, position, type, size, auto }
 // - vertexIdx anchors a fitting inferred from run geometry (corner = elbow,
@@ -93,7 +108,7 @@ function formatDuctSize(size) {
  */
 function makeDuctRun(opts) {
   const o = opts || {};
-  return {
+  const run = {
     id: o.id || ductUid(),
     name: o.name || '',
     airside: DUCT_AIRSIDES.includes(o.airside) ? o.airside : 'supply',
@@ -104,6 +119,15 @@ function makeDuctRun(opts) {
     vertices: Array.isArray(o.vertices) ? o.vertices : [],
     segments: Array.isArray(o.segments) ? o.segments : [],
   };
+  // D8 verticalFt — attached only when entries exist (junk filtered), so a
+  // run without verticals keeps the pre-D8 shape byte-alike.
+  if (Array.isArray(o.verticalFt)) {
+    const vf = o.verticalFt
+      .filter((e) => e && Number.isInteger(e.vertexIdx) && e.vertexIdx >= 0 && Number.isFinite(e.ft) && e.ft > 0)
+      .map((e) => (e.auto ? { vertexIdx: e.vertexIdx, ft: e.ft, auto: true } : { vertexIdx: e.vertexIdx, ft: e.ft }));
+    if (vf.length) run.verticalFt = vf;
+  }
+  return run;
 }
 
 /**
@@ -113,7 +137,7 @@ function makeDuctRun(opts) {
  */
 function makeDuctFitting(opts) {
   const o = opts || {};
-  return {
+  const f = {
     id: o.id || ductUid(),
     runId: o.runId || null,
     vertexIdx: Number.isInteger(o.vertexIdx) ? o.vertexIdx : null,
@@ -132,6 +156,13 @@ function makeDuctFitting(opts) {
     // fittings are skipped by paint, hitTest, and the count tallies.
     suppressed: !!o.suppressed,
   };
+  // D8 — "no volume damper here" (taps only, §6 VD-per-tap): set only when
+  // true so pre-D8 fitting shapes are unchanged. The context-menu toggle also
+  // flips auto:false (the reclassify preservation pattern) so the flag
+  // survives re-inference by anchor; the reconcile walk additionally carries
+  // it onto a re-derived auto as belt-and-braces.
+  if (o.noVd) f.noVd = true;
+  return f;
 }
 
 /** Validation: array of human-readable problems; [] means valid. */
@@ -187,7 +218,10 @@ const SHEET_WEIGHT_LB_PER_SQFT = { 26: 0.906, 24: 1.156, 22: 1.406, 20: 1.656, 1
 // DATA TABLE — the Duct Schedule's per-project knob defaults (state.ductSettings
 // is seeded from a copy; every intake restores the saved values over it).
 // Rulebook: content/rules/hvac/duct-schedule-factors.md.
-const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200 };
+// D8 adds deckHeightFt (project deck height, null = unset — arms the auto-riser
+// on equipment-started runs), maxFlexFt (single-drop flex warning cap) and
+// countVdPerTap (a volume damper counted at every tap).
+const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true };
 
 // DATA TABLE — gauge schedule keyed by pressure class (in. w.g., as strings)
 // then by the LARGER side dimension (rect: max(w,h); round: diameter), inches.
@@ -279,6 +313,11 @@ const FITTING_EQUIV_LF = {
   elbow45: 2.5,
   transition: 2,
   tap: 1.5,
+  // D8 §6 — the volume damper counted per tap (a frame + blade in the branch
+  // collar ≈ the tap's own metal; rule of thumb, edit here). Not a
+  // DUCT_FITTING_TYPES member: VDs are DERIVED rows (ductVolumeDamperFittings
+  // over the taps), never stored fittings.
+  vd: 1.5,
   boot: 1,
   offset: 2.5,
 };
@@ -325,11 +364,25 @@ function ductVertexDistDefault(a, b) {
 function runStraightItems(run, distFt) {
   const d = distFt || ductVertexDistDefault;
   const verts = run?.vertices || [];
-  return runSegmentSpans(run).map(span => {
+  const spans = runSegmentSpans(run);
+  const items = spans.map(span => {
     let len = 0;
     for (let i = span.fromIdx; i < span.toIdx; i++) len += d(verts[i], verts[i + 1]);
     return { size: span.size, lengthFt: len, liner: run.linerType || null };
   });
+  // D8 vertical footage: each verticalFt entry is more straight duct at the
+  // size of the segment AT that vertex (the duct that turns vertical), so it
+  // tallies/prices/insulates exactly like the flat footage. `vertical: true`
+  // is informational (callers may distinguish; tallies don't need to).
+  if (spans.length && Array.isArray(run.verticalFt)) {
+    run.verticalFt.forEach((e) => {
+      if (!e || !(e.ft > 0) || !Number.isInteger(e.vertexIdx)) return;
+      const size = ductSizeAtVertex(run, e.vertexIdx);
+      if (!isDuctSize(size)) return;
+      items.push({ size: size, lengthFt: e.ft, liner: run.linerType || null, vertical: true });
+    });
+  }
+  return items;
 }
 
 /**
@@ -639,9 +692,26 @@ function reconcileDuctFittings(existing, inferred, runs) {
   (inferred || []).forEach(inf => {
     const prior = byKey.get(ductFittingAnchorKey(inf));
     if (prior && !prior.auto) return;   // the human's override outranks the walk
-    out.push(makeDuctFitting({ ...inf, id: prior ? prior.id : inf.id, auto: true }));
+    // D8: carry a prior auto's noVd forward — the "no damper here" call must
+    // survive re-derivation (the toggle also sets auto:false, which preserves
+    // the record above; this is the belt-and-braces for auto-flagged data).
+    out.push(makeDuctFitting({ ...inf, id: prior ? prior.id : inf.id, noVd: prior ? prior.noVd : inf.noVd, auto: true }));
   });
   return out;
+}
+
+/**
+ * D8 §6 (VD-per-tap): the DERIVED volume-damper pseudo-fittings for a fitting
+ * list — one { type: 'vd', size } per live tap (suppressed tombstones and
+ * taps flagged noVd skipped). Feed them to rollupDuct beside the real
+ * fittings when ductSettings.countVdPerTap is on: FITTING_EQUIV_LF.vd prices
+ * each at the tap's size/gauge. Pure and stateless — the toggle lives in app
+ * settings, not here.
+ */
+function ductVolumeDamperFittings(fittings) {
+  return (fittings || [])
+    .filter(f => f && f.type === 'tap' && !f.suppressed && !f.noVd && isDuctSize(f.size))
+    .map(f => ({ type: 'vd', size: cloneDuctSize(f.size) }));
 }
 
 /**
@@ -908,6 +978,49 @@ function ductDraftRemainingCfm(opts) {
   });
   if (!(totalCfm > 0)) return null;
   return { cfm: totalCfm - servedCfm, totalCfm: totalCfm, servedCfm: servedCfm };
+}
+
+// --- 3c-bis. Flex drops (unit D8) --------------------------------------------
+//
+// DUCT-PLAN §4 defaults: "each diffuser type carries a default flex-drop
+// length", and the master walkthrough warns past the max-flex length. Flex is
+// LF ONLY — it is catalog-priced by the drop/stick, never weighed, so it gets
+// its own schedule line per system and NEVER touches the bid-weight pounds.
+
+// DATA TABLE — flex rules of thumb (edit here, no code changes): the default
+// drop length a CFM device contributes when its counter type carries no
+// explicit flexDropFt, and the default single-drop length cap behind the
+// "N drops over X' max" warning (ductSettings.maxFlexFt seeds from it).
+const DUCT_FLEX_DEFAULTS = { dropFt: 8, maxFlexFt: 6 };
+
+/**
+ * Per-system flex-drop tally. devices = [{ x, y, cfm, flexDropFt?, … }] (CFM
+ * devices — the collectDuctDevices shape); runs = duct runs. A device counts
+ * only when ATTACHED (the D6 nearest-run-within-snap rule — flex hangs off
+ * duct, not off thin air); its drop length is its own flexDropFt when > 0,
+ * else opts.defaultDropFt (default DUCT_FLEX_DEFAULTS.dropFt), and its system
+ * is the attached run's systemGroupId (null = no system). opts.maxFlexFt
+ * (default DUCT_FLEX_DEFAULTS.maxFlexFt) sets the per-drop warning cap.
+ * Returns [{ systemGroupId, count, totalFt, overCount }].
+ */
+function tallyFlexDrops(devices, runs, opts) {
+  const o = opts || {};
+  const defaultDropFt = o.defaultDropFt > 0 ? o.defaultDropFt : DUCT_FLEX_DEFAULTS.dropFt;
+  const maxFlexFt = o.maxFlexFt > 0 ? o.maxFlexFt : DUCT_FLEX_DEFAULTS.maxFlexFt;
+  const { attached } = attachDuctDevices(devices, runs, o);
+  const runById = new Map((runs || []).filter(r => r && r.id).map(r => [r.id, r]));
+  const bySys = new Map();
+  attached.forEach(a => {
+    const sys = runById.get(a.runId)?.systemGroupId || null;
+    const key = sys || '';
+    const dropFt = a.device.flexDropFt > 0 ? a.device.flexDropFt : defaultDropFt;
+    const row = bySys.get(key) || { systemGroupId: sys, count: 0, totalFt: 0, overCount: 0 };
+    row.count++;
+    row.totalFt += dropFt;
+    if (dropFt > maxFlexFt) row.overCount++;
+    bySys.set(key, row);
+  });
+  return [...bySys.values()];
 }
 
 // --- 3d. Room CFM defaults + air balance (unit D7) ---------------------------
@@ -1298,6 +1411,8 @@ if (typeof module !== 'undefined' && module.exports) {
     ductBendAngleDeg, largerDuctSize, ductSizeAtVertex, ductDistToPolyline,
     inferAutoDuctFittings, ductFittingAnchorKey, ductFittingAnchor,
     ductFittingOutDirection, reconcileDuctFittings, tallyDuctFittingCounts,
+    // VD-per-tap + flex drops (D8)
+    ductVolumeDamperFittings, DUCT_FLEX_DEFAULTS, tallyFlexDrops,
     // design-build accumulation (D6)
     ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,

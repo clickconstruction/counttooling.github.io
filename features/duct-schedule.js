@@ -6,11 +6,23 @@
  *
  *   Straight duct   per-size rows (size | gauge | LF | lb/ft | lb; round rows
  *                   also show "LF · N joints @ 10'" — spiral lands in 10'
- *                   sticks, joints = ceil(LF/10)) + a total row.
+ *                   sticks, joints = ceil(LF/10)) + a total row. D8: rise/drop
+ *                   verticalFt entries ride these rows automatically
+ *                   (runStraightItems adds them at the segment's size).
  *   Fittings        Counted | Factor % segment. Counted: type+size rows from
  *                   the committed fittings (D3's walk, suppressed tombstones
- *                   skipped) at duct-model's lb-eq each. Factor: one row
- *                   applying the % to straight pounds (default 40, editable).
+ *                   skipped) at duct-model's lb-eq each, PLUS — D8 §6, when
+ *                   ductSettings.countVdPerTap (default ON) — one derived
+ *                   "Volume damper" row per tap size (duct-model
+ *                   ductVolumeDamperFittings; taps flagged noVd via the
+ *                   right-click menu are skipped). Factor: one row applying
+ *                   the % to straight pounds (default 40, editable).
+ *   Flex duct       D8 — per-system "N drops · X LF" rows over the CFM
+ *                   devices ATTACHED to duct (D6's nearest-run rule; drop
+ *                   length = the counter's flexDropFt, default 8'), with the
+ *                   "N drops over X' max" warning past ductSettings.maxFlexFt.
+ *                   LF ONLY — flex is priced by the drop, never weighed, so
+ *                   these rows deliberately do NOT touch the bid weight.
  *   Insulation      liner / wrap sq ft (duct-model insulationSqFt over the
  *                   same straight items — LF × perimeter/12).
  *   Seam & waste    its own labeled % line over the subtotal (default +15,
@@ -55,7 +67,13 @@
 
   const FITTING_LABELS = {
     elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition',
-    tap: 'Tap', boot: 'Boot', offset: 'Offset',
+    tap: 'Tap', boot: 'Boot', offset: 'Offset', vd: 'Volume damper',
+  };
+  // Row order for the fittings table: the D3 types in their canonical order,
+  // then the derived VD rows (not a DUCT_FITTING_TYPES member).
+  const fittingTypeOrder = (t) => {
+    const i = DUCT_FITTING_TYPES.indexOf(t);
+    return i < 0 ? DUCT_FITTING_TYPES.length : i;
   };
   /** Spiral/round duct lands in 10' sticks — one joint per stick landed. */
   const ROUND_JOINT_STICK_FT = 10;
@@ -85,6 +103,12 @@
     // velocity cap (DUCT-PLAN §5). Pre-D6 saves get the defaults here.
     if (!Number.isFinite(ds.frictionInPer100ft) || ds.frictionInPer100ft <= 0) ds.frictionInPer100ft = 0.08;
     if (!Number.isFinite(ds.maxVelocityFpm) || ds.maxVelocityFpm <= 0) ds.maxVelocityFpm = 1200;
+    // D8 polish knobs. deckHeightFt is deliberately null-until-set (the
+    // auto-riser only arms once the project has a real deck height);
+    // countVdPerTap defaults ON for pre-D8 saves (absent ⇒ true).
+    if (!(ds.deckHeightFt > 0)) ds.deckHeightFt = null;
+    if (!Number.isFinite(ds.maxFlexFt) || ds.maxFlexFt <= 0) ds.maxFlexFt = 6;
+    ds.countVdPerTap = ds.countVdPerTap !== false;
     return ds;
   }
 
@@ -135,10 +159,40 @@
       fittings.forEach((f) => {
         if (!f || f.suppressed || !isDuctSize(f.size)) return;
         const parent = runs.find((r) => r && r.id === f.runId);
-        bucket(parent ? parent.pressureClass : '1').fittings.push(f);
+        const b = bucket(parent ? parent.pressureClass : '1');
+        b.fittings.push(f);
+        // D8 §6: one derived Volume damper per live tap (noVd skipped), at
+        // the tap's size — same pressure-class bucket as its parent run.
+        if (ds.countVdPerTap) b.fittings.push(...ductVolumeDamperFittings([f]));
       });
     });
     if (!anyRun) return null;
+
+    // D8 flex drops: CFM devices attached to the scope's runs, per system
+    // (duct-model tallyFlexDrops — LF only, priced by count, no pounds).
+    // Devices are the live placed markers (App.collectDuctDevices — the same
+    // collection the suggestion/balance layers read).
+    const flexBySys = new Map();
+    universe.forEach(({ pageIdx, runs }) => {
+      if (!runs.length || !App.collectDuctDevices) return;
+      const devices = App.collectDuctDevices(pageIdx);
+      if (!devices.length) return;
+      tallyFlexDrops(devices, runs, { maxFlexFt: ds.maxFlexFt }).forEach((row) => {
+        const key = row.systemGroupId || '';
+        const agg = flexBySys.get(key) || { systemGroupId: row.systemGroupId, count: 0, totalFt: 0, overCount: 0 };
+        agg.count += row.count;
+        agg.totalFt += row.totalFt;
+        agg.overCount += row.overCount;
+        flexBySys.set(key, agg);
+      });
+    });
+    const groupName = (gid) => {
+      const g = gid ? (App.state.groups || []).find((x) => x.id === gid) : null;
+      return g ? (g.name || 'System') : 'No system';
+    };
+    const flexRows = [...flexBySys.values()]
+      .map((r) => ({ ...r, systemName: groupName(r.systemGroupId) }))
+      .sort((a, b) => a.systemName.localeCompare(b.systemName));
 
     const straightRows = [];
     const fittingRows = [];
@@ -159,7 +213,7 @@
       row.joints = row.size.kind === 'round' ? Math.ceil(row.lengthFt / ROUND_JOINT_STICK_FT) : null;
     });
     fittingRows.sort((a, b) =>
-      (DUCT_FITTING_TYPES.indexOf(a.type) - DUCT_FITTING_TYPES.indexOf(b.type))
+      (fittingTypeOrder(a.type) - fittingTypeOrder(b.type))
       || a.sizeKey.localeCompare(b.sizeKey));
 
     const fittingFactorLb = straightTotalLb * (ds.fittingFactorPct / 100);
@@ -174,6 +228,9 @@
       seamWastePct: ds.seamWastePct, seamWasteLb,
       bidWeightLb: subtotalLb + seamWasteLb,
       linerSqFt, wrapSqFt,
+      // D8: per-system flex-drop rows (LF only — never in the pounds above)
+      // and the warning cap they were checked against.
+      flexRows, maxFlexFt: ds.maxFlexFt,
     };
   }
 
@@ -181,6 +238,12 @@
   function lfLabel(row) {
     if (row.joints == null) return fmtFt(row.lengthFt);
     return fmtFt(row.lengthFt) + ' · ' + row.joints + (row.joints === 1 ? ' joint' : ' joints') + " @ " + ROUND_JOINT_STICK_FT + "'";
+  }
+
+  // D8: the max-flex warning label — "3 drops over 6' max" ('' when clean).
+  function flexOverLabel(row, maxFlexFt) {
+    if (!(row.overCount > 0)) return '';
+    return row.overCount + (row.overCount === 1 ? ' drop' : ' drops') + " over " + maxFlexFt + "' max";
   }
 
   // --- the modal -------------------------------------------------------------
@@ -234,6 +297,19 @@
       html += '</table>';
     } else {
       html += '<table class="duct-schedule-table"><tr class="duct-schedule-total-row"><td>Factor <input type="number" id="ductFitFactorPct" class="duct-schedule-pct" min="0" max="200" step="1" value="' + s.fittingFactorPct + '" aria-label="Fitting factor percent">% of straight</td><td class="mono num">' + fmtLb(s.fittingFactorLb) + '</td></tr></table>';
+    }
+
+    // Flex drops (D8 — only when CFM devices hang off the scope's duct).
+    // LF only, priced by the drop: deliberately outside the pounds rollup.
+    if (s.flexRows.length) {
+      html += '<div class="duct-schedule-section-label">Flex duct <span class="duct-schedule-sublabel">(by the drop — not in bid weight)</span></div>';
+      html += '<table class="duct-schedule-table"><tr><th>System</th><th>Drops</th><th>LF</th><th></th></tr>';
+      s.flexRows.forEach((r) => {
+        const warn = flexOverLabel(r, s.maxFlexFt);
+        html += '<tr><td>' + esc(r.systemName) + '</td><td class="mono">' + r.count + '</td><td class="mono">' + fmtFt(r.totalFt)
+          + '</td><td>' + (warn ? '<span class="duct-flex-warn">⚠ ' + esc(warn) + '</span>' : '') + '</td></tr>';
+      });
+      html += '</table>';
     }
 
     // Insulation (only when the takeoff carries liner/wrap)
@@ -299,6 +375,14 @@
     const velocity = document.getElementById('ductMaxVelocity');
     if (friction) friction.value = ds.frictionInPer100ft;
     if (velocity) velocity.value = ds.maxVelocityFpm;
+    // D8 knobs, same row: deck height (empty = unset — no auto-riser), the
+    // max-flex warning cap, and the VD-per-tap toggle.
+    const deck = document.getElementById('ductDeckHeight');
+    if (deck) deck.value = ds.deckHeightFt > 0 ? ds.deckHeightFt : '';
+    const maxFlex = document.getElementById('ductMaxFlex');
+    if (maxFlex) maxFlex.value = ds.maxFlexFt;
+    const vdBtn = document.getElementById('ductVdPerTapBtn');
+    if (vdBtn) vdBtn.setAttribute('aria-pressed', String(!!ds.countVdPerTap));
   }
 
   function openDuctScheduleModal() {
@@ -335,6 +419,15 @@
       lines.push(['Fittings (factor ' + s.fittingFactorPct + '% of straight)', fmtLb(s.fittingFactorLb) + ' lb'].join('\t'));
     }
     lines.push('');
+    if (s.flexRows.length) {
+      lines.push('Flex duct (by the drop — not in bid weight)');
+      s.flexRows.forEach((r) => {
+        const warn = flexOverLabel(r, s.maxFlexFt);
+        lines.push([r.systemName, r.count + (r.count === 1 ? ' drop' : ' drops'), fmtFt(r.totalFt)]
+          .concat(warn ? ['⚠ ' + warn] : []).join('\t'));
+      });
+      lines.push('');
+    }
     if (s.linerSqFt > 0) lines.push(['Liner', fmtSqFt(s.linerSqFt) + ' sq ft'].join('\t'));
     if (s.wrapSqFt > 0) lines.push(['Wrap', fmtSqFt(s.wrapSqFt) + ' sq ft'].join('\t'));
     if (s.linerSqFt > 0 || s.wrapSqFt > 0) lines.push('');
@@ -419,6 +512,32 @@
     syncDesignRow();
     App.markProjectDirty();
   });
+  // D8: deck height (empty clears — the auto-riser disarms), max-flex cap
+  // (re-renders the body so the ⚠ labels track), VD-per-tap toggle (re-renders
+  // so the Volume damper rows appear/disappear live).
+  const deckInput = document.getElementById('ductDeckHeight');
+  if (deckInput) deckInput.addEventListener('change', () => {
+    const v = parseFloat(deckInput.value);
+    getDuctSettings().deckHeightFt = Number.isFinite(v) && v > 0 ? v : null;
+    syncDesignRow();
+    App.markProjectDirty();
+  });
+  const maxFlexInput = document.getElementById('ductMaxFlex');
+  if (maxFlexInput) maxFlexInput.addEventListener('change', () => {
+    const v = parseFloat(maxFlexInput.value);
+    getDuctSettings().maxFlexFt = Number.isFinite(v) && v > 0 ? v : 6;
+    syncDesignRow();
+    App.markProjectDirty();
+    renderScheduleBody();
+  });
+  const vdBtn = document.getElementById('ductVdPerTapBtn');
+  if (vdBtn) vdBtn.onclick = () => {
+    const ds = getDuctSettings();
+    ds.countVdPerTap = !ds.countVdPerTap;
+    syncDesignRow();
+    App.markProjectDirty();
+    renderScheduleBody();
+  };
   const copyBtn = document.getElementById('ductScheduleCopy');
   if (copyBtn) copyBtn.onclick = async () => {
     // The same pre-copy scale gate as Copy to /Tooling / Copy Summary

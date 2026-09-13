@@ -1134,18 +1134,18 @@ function createCanvasDraw(deps) {
       && typeof runStraightItems === 'function' && typeof deps.getLineRealWorldLengthFeet === 'function') {
       const pi = pageIdx >= 0 ? pageIdx : 0;
       const distFt = (a, b) => deps.getLineRealWorldLengthFeet({ points: [a, b] }, pi, true, ann) || 0;
-      const items = [];
-      (ann.ductRuns || []).forEach(run => { items.push(...runStraightItems(run, distFt)); });
       // One class per row's gauge pick: tally per pressure class, then merge
-      // (the duct-schedule composition rule, kept tiny here).
+      // (the duct-schedule composition rule, kept tiny here). D17 (J6-G): a
+      // run inside a multiply zone counts × (the line rule, duct-model 3b —
+      // guarded so a pre-D17 duct-model still draws).
+      const zones = ann.multiplyZones || [];
       const byClass = new Map();
-      let cursor = 0;
       (ann.ductRuns || []).forEach(run => {
-        const n = runStraightItems(run, distFt).length;
+        let items = runStraightItems(run, distFt);
+        if (typeof ductRepeatFactorForRun === 'function') items = ductRepeatStraightItems(items, ductRepeatFactorForRun(run, zones));
         const pc = run.pressureClass != null ? String(run.pressureClass) : '1';
         if (!byClass.has(pc)) byClass.set(pc, []);
-        byClass.get(pc).push(...items.slice(cursor, cursor + n));
-        cursor += n;
+        byClass.get(pc).push(...items);
       });
       let allFt = 0, allLb = 0;
       byClass.forEach((classItems, pc) => {
@@ -1410,6 +1410,7 @@ function createCanvasDraw(deps) {
     drawGhosts,
     drawLegend,
     legendHasRows,
+    computeLegendRows,   // D17 spec seam (App.legendRowsFor) — the rows the legend paints
     drawGrid,
   };
 }

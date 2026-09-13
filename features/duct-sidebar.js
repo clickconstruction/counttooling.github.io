@@ -71,15 +71,30 @@
 
   // Per-size rows + totals for one run: duct-model's straight-item walk with
   // feet coming from the same per-page effective-scale calls Measure uses.
+  // D17 (J6-G): the run's multiply-zone factor rides the tally (the line
+  // rule — both end vertices inside one zone); `placed` keeps the un-multiplied
+  // totals for the T2-11 "N placed · M with repeats" title.
   function runTally(entry) {
     const distFt = (a, b) => App.getLineRealWorldLengthFeet({ points: [a, b] }, entry.pageIdx, true, entry.ann) || 0;
-    return tallyStraightBySize(runStraightItems(entry.run, distFt), entry.run.pressureClass);
+    const items = runStraightItems(entry.run, distFt);
+    const factor = ductRepeatFactorForRun(entry.run, entry.ann?.multiplyZones || []);
+    const tally = tallyStraightBySize(ductRepeatStraightItems(items, factor), entry.run.pressureClass);
+    tally.factor = factor;
+    tally.placed = factor === 1 ? tally : tallyStraightBySize(items, entry.run.pressureClass);
+    return tally;
   }
+  const repeatsTitle = (placedFt, placedLb, ft, lb) => fmtFt(placedFt) + ' · ' + fmtLb(placedLb) + ' lb placed · ' + fmtFt(ft) + ' · ' + fmtLb(lb) + ' lb with repeats';
 
   // "2 elbows · 1 transition · 1 tap" over the fittings anchored to this run
   // ('' when it has none). Suppressed tombstones are skipped by the tally.
+  // D17: a fitting inside a multiply zone counts × (the counter rule).
   function fittingsLineFor(entry) {
-    const fittings = (entry.ann?.ductFittings || []).filter((f) => f.runId === entry.run.id);
+    const runs = entry.ann?.ductRuns || [];
+    const zones = entry.ann?.multiplyZones || [];
+    const fittings = (entry.ann?.ductFittings || []).filter((f) => f.runId === entry.run.id).map((f) => {
+      const factor = ductRepeatFactorForPoint(ductFittingAnchor(f, runs), zones);
+      return factor !== 1 ? Object.assign({}, f, { repeat: factor }) : f;
+    });
     const byType = new Map();
     tallyDuctFittingCounts(fittings).forEach((row) => {
       byType.set(row.type, (byType.get(row.type) || 0) + row.count);
@@ -111,7 +126,7 @@
     // Group by airside; headers only when the takeoff actually mixes them.
     const airsides = [...new Set(entries.map((e) => AIRSIDE_ORDER.includes(e.run.airside) ? e.run.airside : 'supply'))];
     const showAirsideHeaders = airsides.length > 1;
-    let allFt = 0, allLb = 0;
+    let allFt = 0, allLb = 0, placedFt = 0, placedLb = 0;
 
     AIRSIDE_ORDER.forEach((airside) => {
       const subset = entries.filter((e) => (AIRSIDE_ORDER.includes(e.run.airside) ? e.run.airside : 'supply') === airside);
@@ -128,6 +143,8 @@
         const tally = runTally(entry);
         allFt += tally.totalLengthFt;
         allLb += tally.totalPounds;
+        placedFt += tally.placed.totalLengthFt;
+        placedLb += tally.placed.totalPounds;
         const wrap = document.createElement('div');
         wrap.className = 'duct-run-wrap';
         const isSelected = state.selectedDuctRunId === run.id && state.selectedDuctRunPageIdx === entry.pageIdx;
@@ -137,7 +154,7 @@
         row.innerHTML = '<span class="duct-airside-swatch" style="background:' + color + '" title="' + AIRSIDE_LABELS[airside] + '"></span>'
           + '<span class="name duct-run-name">' + esc(run.name || 'Duct run') + '</span>'
           + (run.orientation === 'edge' ? '<span class="duct-orientation-tag" title="Hangs on edge — the larger side down; Fits the roof reads it">on edge</span>' : '')
-          + '<span class="badge">' + fmtFt(tally.totalLengthFt) + ' · ' + fmtLb(tally.totalPounds) + ' lb</span>';
+          + '<span class="badge"' + (tally.factor !== 1 ? ' title="' + esc(repeatsTitle(tally.placed.totalLengthFt, tally.placed.totalPounds, tally.totalLengthFt, tally.totalPounds)) + '"' : '') + '>' + fmtFt(tally.totalLengthFt) + ' · ' + fmtLb(tally.totalPounds) + ' lb</span>';
         row.onclick = () => {
           if (isSelected) {
             state.selectedDuctRunId = null;
@@ -171,6 +188,7 @@
 
     const total = document.createElement('div');
     total.className = 'duct-all-total';
+    if (placedFt !== allFt || placedLb !== allLb) total.title = repeatsTitle(placedFt, placedLb, allFt, allLb);
     total.innerHTML = '<span>All duct</span><span class="duct-all-total-num">' + fmtFt(allFt) + ' · ' + fmtLb(allLb) + ' lb</span>';
     list.appendChild(total);
   }

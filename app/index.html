@@ -919,9 +919,20 @@
              ("from the plan: 24×12"). Editable as ever; hidden on scans. -->
         <p id="ductCreateCalloutNote" class="duct-callout-note" style="display:none;" title="Read from the nearest size callout in the sheet's text layer — change it if the plan says otherwise"></p>
       </div>
-      <div class="form-group">
-        <label>Pressure class (in. w.g.)</label>
-        <select id="ductCreatePressure"></select>
+      <!-- D17 (J19 #2): deck height beside pressure class — the project
+           setting (ductSettings.deckHeightFt, the same knob as the Duct
+           Schedule's Polish row), reachable BEFORE the first run so an
+           equipment-started main gets its auto riser; Start Tracing writes
+           it through App.setDuctDeckHeight (retroactive on existing runs). -->
+      <div class="form-group duct-create-row">
+        <div>
+          <label>Pressure class (in. w.g.)</label>
+          <select id="ductCreatePressure"></select>
+        </div>
+        <div>
+          <label title="Project-wide — the auto riser on runs that start at a system's equipment marker reads it">Deck height (project)</label>
+          <div class="duct-size-inputs"><input type="number" id="ductCreateDeck" min="0" step="0.5" placeholder="—" aria-label="Project deck height, feet"><span>ft</span></div>
+        </div>
       </div>
       <div class="form-group">
         <label>Insulation</label>
@@ -1812,6 +1823,15 @@
         <label>Ceiling height (ft)</label>
         <input type="text" id="roomBoxHeight" inputmode="decimal" placeholder="e.g. 9.5 or 9'6" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
         <div id="roomBoxRecentHeights" class="room-recent-heights" style="display:none;"></div>
+      </div>
+      <!-- D17 (J19 #2): the project deck height (ductSettings.deckHeightFt —
+           NOT per room) on the design-build front door, so it exists before
+           the first duct run. Shown by features/room-sizer.js only on an
+           HVAC-shaped project (trade hvac, a duct run, a room type, or a deck
+           already set); written on Apply through App.setDuctDeckHeight. -->
+      <div class="form-group" id="roomBoxDeckGroup" style="display:none;">
+        <label title="Project-wide — the duct auto riser on equipment-started runs reads it">Deck height <span class="room-box-deck-note">(project — for duct risers)</span></label>
+        <input type="text" id="roomBoxDeck" inputmode="decimal" placeholder="e.g. 12 or 12'6" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="form-group">
         <div class="room-picker-header">

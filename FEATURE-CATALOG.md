@@ -221,6 +221,11 @@ pastes the table into pricing; the report, Export PDFs, and the legend carry the
 engineered plan-and-spec sheet the trace also reads the printed callouts out of the PDF's text layer —
 the starting size pre-fills from the nearest one, and each step-down the cursor passes is offered
 ("Plan says 20×12 here — S accepts"), never applied on its own; a scanned sheet behaves as before.
+The pounds ride the handoff copies too — Copy Summary and Copy to /Tooling end with a `--- Duct ---`
+block (per-size LF · lb, totals, Bid weight) — multiply zones multiply duct like everything else
+(with the placed / with-repeats honesty), deck height is settable before the first run (create
+dialog, Room Size dialog, schedule) and applies its auto riser retroactively, the duct surfaces that
+name Groups turn them on in place, and a Duct draft and a Polyline draft never coexist.
 
 **Always-feet totals**
 *Problem:* Plan sets mix scale units (inches, feet, metric), and summing mixed units is a classic

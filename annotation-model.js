@@ -528,7 +528,7 @@ function createAnnotationModel(ctx) {
   // zones/highlights/room boxes hit on their center point; notes on their
   // anchor. pointInRect is a geometry.js global.
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) {
-    let counterCount = 0, lineRunCount = 0, lengthRealSum = 0;
+    let counterCount = 0, lineRunCount = 0, lengthRealSum = 0, ductRunCount = 0;
     const inRect = (p) => pointInRect(p, x1, y1, x2, y2);
     (ctx.getState().counters || []).forEach(c => {
       (ann?.counterMarkers?.[c.id] || []).forEach(m => { if (inRect(m)) counterCount++; });
@@ -542,7 +542,14 @@ function createAnnotationModel(ctx) {
       const start = pts[0], end = pts[pts.length - 1];
       if (start && end && inRect(start) && inRect(end)) { lineRunCount++; lengthRealSum += ctx.getLineRealWorldLengthFeet(poly, pageIdx, true, ann); }
     });
-    return { counterCount, lineRunCount, lengthRealSum };
+    // D17 (J6-G): duct runs follow the line rule — both end vertices inside —
+    // so the Multiply Zone dialog can say "… 1 duct run" before Apply.
+    (ann?.ductRuns || []).forEach(run => {
+      const verts = run?.vertices || [];
+      const start = verts[0], end = verts[verts.length - 1];
+      if (verts.length >= 2 && inRect(start) && inRect(end)) ductRunCount++;
+    });
+    return { counterCount, lineRunCount, lengthRealSum, ductRunCount };
   }
   function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) {
     const inRect = (p) => pointInRect(p, x1, y1, x2, y2);

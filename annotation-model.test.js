@@ -485,6 +485,19 @@ test('countItemsInRect: lines need both endpoints inside; counters per marker', 
   assert.strictEqual(r.counterCount, 2);        // wc[0] + lav[0]; wc[1] outside
   assert.strictEqual(r.lineRunCount, 2);        // quickLine #1 + the polyline
   assert.strictEqual(r.lengthRealSum, 5 + 7);   // stubbed lengths, feet
+  assert.strictEqual(r.ductRunCount, 0);        // no duct in the fixture
+});
+
+test('countItemsInRect: duct runs follow the line rule (both end vertices inside) — D17', () => {
+  const { m, ann } = rectFixture();
+  ann.ductRuns = [
+    { id: 'in', vertices: [{ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 60, y: 60 }] },
+    { id: 'straddle', vertices: [{ x: 10, y: 10 }, { x: 160, y: 10 }] },
+    { id: 'short', vertices: [{ x: 10, y: 10 }] },
+  ];
+  const r = m.countItemsInRect(ann, 0, 0, 0, 100, 100);
+  assert.strictEqual(r.ductRunCount, 1);
+  assert.strictEqual(r.counterCount, 2);        // unchanged
 });
 
 test('collectItemsToDeleteInRect: center-point hits for zones/highlights/rooms, anchor for notes', () => {

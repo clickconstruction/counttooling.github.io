@@ -166,6 +166,16 @@
       div.dataset.rowId = r.id;
       div.innerHTML = '<span class="bid-check-mark">' + (r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : '·') + '</span>'
         + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + ' <span class="bid-check-kind">auto</span>' + (r.rule && App.ruleChipHtml ? ' ' + App.ruleChipHtml(r.rule) : '') + '</div><div class="bid-check-detail">' + esc(r.detail) + '</div></div>';
+      // D17 (J19 #1): a hint that sends the estimator to Groups while the
+      // per-project gate is off becomes the door — "Turn on groups" in place.
+      if (showEdit && /\(Groups\)/.test(r.detail || '') && App.groupsUiVisible && !App.groupsUiVisible() && App.turnOnGroupsFromDuct) {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'duct-groups-link bid-check-groups-link';
+        link.textContent = 'Turn on groups';
+        link.onclick = (e) => { e.stopPropagation(); App.turnOnGroupsFromDuct(); };
+        div.querySelector('.bid-check-detail').append(' ', link);
+      }
       list.appendChild(div);
     });
     check.manual.forEach((r) => {

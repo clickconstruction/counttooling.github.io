@@ -149,24 +149,38 @@
     const byClass = new Map();
     const bucket = (pc) => {
       const key = pc != null ? String(pc) : '1';
-      if (!byClass.has(key)) byClass.set(key, { straightItems: [], fittings: [] });
+      if (!byClass.has(key)) byClass.set(key, { straightItems: [], placedItems: [], fittings: [] });
       return byClass.get(key);
     };
     let anyRun = false;
+    // D17 (J6-G): multiply zones multiply duct like everything else — a run
+    // by the line rule, a fitting by its anchor point (duct-model 3b). The
+    // PLACED tally rides beside the multiplied one for the T2-11 "N placed ·
+    // M with repeats" honesty wherever they differ.
+    let repeated = false;
     universe.forEach(({ pageIdx, ann, runs, fittings }) => {
       const distFt = (a, b) => App.getLineRealWorldLengthFeet({ points: [a, b] }, pageIdx, true, ann) || 0;
+      const zones = ann.multiplyZones || [];
       runs.forEach((run) => {
         anyRun = true;
-        bucket(run.pressureClass).straightItems.push(...runStraightItems(run, distFt));
+        const items = runStraightItems(run, distFt);
+        const factor = ductRepeatFactorForRun(run, zones);
+        if (factor !== 1) repeated = true;
+        const b = bucket(run.pressureClass);
+        b.straightItems.push(...ductRepeatStraightItems(items, factor));
+        b.placedItems.push(...items);
       });
       fittings.forEach((f) => {
         if (!f || f.suppressed || !isDuctSize(f.size)) return;
         const parent = runs.find((r) => r && r.id === f.runId);
         const b = bucket(parent ? parent.pressureClass : '1');
-        b.fittings.push(f);
+        const factor = ductRepeatFactorForPoint(ductFittingAnchor(f, runs), zones);
+        if (factor !== 1) repeated = true;
+        const rf = factor !== 1 ? Object.assign({}, f, { repeat: factor }) : f;
+        b.fittings.push(rf);
         // D8 §6: one derived Volume damper per live tap (noVd skipped), at
         // the tap's size — same pressure-class bucket as its parent run.
-        if (ds.countVdPerTap) b.fittings.push(...ductVolumeDamperFittings([f]));
+        if (ds.countVdPerTap) b.fittings.push(...ductVolumeDamperFittings([rf]));
       });
     });
     if (!anyRun) return null;
@@ -200,6 +214,7 @@
     const straightRows = [];
     const fittingRows = [];
     let straightTotalFt = 0, straightTotalLb = 0, fittingsCountedLb = 0, linerSqFt = 0, wrapSqFt = 0;
+    let straightPlacedFt = 0, straightPlacedLb = 0;
     byClass.forEach((b, pc) => {
       const r = rollupDuct({ straightItems: b.straightItems, fittings: b.fittings, pressureClass: pc });
       r.straight.rows.forEach((row) => straightRows.push(row));
@@ -209,6 +224,11 @@
       fittingsCountedLb += r.fittings.totalPounds;
       linerSqFt += r.linerSqFt;
       wrapSqFt += r.wrapSqFt;
+      if (repeated) {
+        const placed = tallyStraightBySize(b.placedItems, pc);
+        straightPlacedFt += placed.totalLengthFt;
+        straightPlacedLb += placed.totalPounds;
+      } else { straightPlacedFt = straightTotalFt; straightPlacedLb = straightTotalLb; }
     });
     // Big-to-small reads like a shop schedule; fittings in type order.
     straightRows.sort((a, b) => (ductGoverningDimIn(b.size) - ductGoverningDimIn(a.size)) || a.sizeKey.localeCompare(b.sizeKey));
@@ -234,7 +254,19 @@
       // D8: per-system flex-drop rows (LF only — never in the pounds above)
       // and the warning cap they were checked against.
       flexRows, maxFlexFt: ds.maxFlexFt,
+      // D17: multiply-zone honesty — true when any run/fitting in scope sits
+      // in a zone; the placed (before-zones) straight totals for the label.
+      repeated, straightPlacedFt, straightPlacedLb,
     };
+  }
+
+  // "61' · 438 lb placed · 183' · 1,314 lb with repeats" — the T2-11 honesty
+  // phrase for the surfaces that show a multiplied duct number ('' when no
+  // zone touches the scope, so duct-free and zone-free renders are unchanged).
+  function repeatsLabel(s) {
+    if (!s || !s.repeated) return '';
+    return fmtFt(s.straightPlacedFt) + ' · ' + fmtLb(s.straightPlacedLb) + ' lb placed · '
+      + fmtFt(s.straightTotalFt) + ' · ' + fmtLb(s.straightTotalLb) + ' lb with repeats';
   }
 
   // The LF cell — round rows carry the joint count ("40' · 4 joints @ 10'").
@@ -273,7 +305,7 @@
 
     let html = '';
     // Straight duct
-    html += '<div class="duct-schedule-section-label">Straight duct</div>';
+    html += '<div class="duct-schedule-section-label">Straight duct' + (s.repeated ? ' <span class="duct-schedule-sublabel" id="ductScheduleRepeats">(' + esc(repeatsLabel(s)) + ')</span>' : '') + '</div>';
     const chip = (id) => (App.ruleChipHtml ? ' ' + App.ruleChipHtml(id, { cls: 'rule-chip-th' }) : '');
     html += '<table class="duct-schedule-table"><tr><th>Size</th><th>Gauge' + chip('hvac.duct.gauge-schedule') + '</th><th>LF</th><th>lb/ft' + chip('hvac.duct.sheet-weight') + '</th><th>lb</th></tr>';
     s.straightRows.forEach((r) => {
@@ -413,6 +445,7 @@
       lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : '—'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
     });
     lines.push(['Straight total', '', fmtFt(s.straightTotalFt), '', fmtLb(s.straightTotalLb) + ' lb'].join('\t'));
+    if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));
     lines.push('');
     if (s.fittingMode === 'counted') {
       lines.push('Fittings (counted)');
@@ -440,6 +473,26 @@
     lines.push(['Seam & waste (+' + s.seamWastePct + '%)', fmtLb(s.seamWasteLb) + ' lb'].join('\t'));
     lines.push(['Bid weight', fmtLb(s.bidWeightLb) + ' lb'].join('\t'));
     return lines.join('\n');
+  }
+
+  // D17 (J19 #4): the duct rows Copy Summary and Copy to /Tooling append
+  // under their "--- Duct ---" heading — the SAME rows Copy Schedule emits
+  // (per-size size | gauge | LF | lb/ft | lb, the straight total, the
+  // fittings total when counted / the factor line, the Bid weight),
+  // tab-separated like the existing rows so a PipeTooling paste lands in
+  // columns. [] when the scope holds no duct (report.js appends nothing).
+  function buildDuctCopyRows(s) {
+    if (!s) return [];
+    const lines = [];
+    s.straightRows.forEach((r) => {
+      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : '—'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
+    });
+    lines.push(['Straight total', '', fmtFt(s.straightTotalFt), '', fmtLb(s.straightTotalLb) + ' lb'].join('\t'));
+    if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));
+    if (s.fittingMode === 'counted') lines.push(['Fittings total', '', '', '', fmtLb(s.fittingsCountedLb) + ' lb'].join('\t'));
+    else lines.push(['Fittings (factor ' + s.fittingFactorPct + '% of straight)', '', '', '', fmtLb(s.fittingFactorLb) + ' lb'].join('\t'));
+    lines.push(['Bid weight', '', '', '', fmtLb(s.bidWeightLb) + ' lb'].join('\t'));
+    return lines;
   }
 
   // T1-05 gate collector, duct edition: flag pages (of the walked set) where a
@@ -533,9 +586,12 @@
   const deckInput = document.getElementById('ductDeckHeight');
   if (deckInput) deckInput.addEventListener('change', () => {
     const v = parseFloat(deckInput.value);
-    getDuctSettings().deckHeightFt = Number.isFinite(v) && v > 0 ? v : null;
+    // D17 (J19 #2): one writer for every deck-height surface — sets the
+    // setting AND applies/updates the auto riser on every equipment-started
+    // run retroactively (features/duct-tool.js owns the riser rule).
+    if (App.setDuctDeckHeight) App.setDuctDeckHeight(Number.isFinite(v) && v > 0 ? v : null);
+    else { getDuctSettings().deckHeightFt = Number.isFinite(v) && v > 0 ? v : null; App.markProjectDirty(); }
     syncDesignRow();
-    App.markProjectDirty();
   });
   const maxFlexInput = document.getElementById('ductMaxFlex');
   if (maxFlexInput) maxFlexInput.addEventListener('change', () => {
@@ -569,4 +625,6 @@
   App.computeDuctSchedule = computeDuctSchedule;
   App.getDuctScheduleForReport = getDuctScheduleForReport;
   App.buildDuctScheduleText = buildDuctScheduleText;   // spec seam
+  App.buildDuctCopyRows = buildDuctCopyRows;   // D17: report.js appends these to Copy Summary / Copy to /Tooling
+  App.ductRepeatsLabel = repeatsLabel;   // D17: the T2-11 honesty phrase (sidebar total title, report)
 })();

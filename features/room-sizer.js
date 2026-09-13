@@ -192,6 +192,41 @@
     return App.parseRealWorldLength(document.getElementById('roomBoxHeight').value, 'ft');
   }
 
+  // D17 (J19 #2): the project deck height on the Room Size dialog — shown
+  // only on an HVAC-shaped project (trade hvac, any duct run, any room type,
+  // or a deck already set) so a plumber's dialog is unchanged; prefilled
+  // from ductSettings.deckHeightFt, written on Apply through the one writer
+  // (App.setDuctDeckHeight — retroactive risers included).
+  function deckFieldApplies() {
+    const state = App.state;
+    if (state.trade === 'hvac') return true;
+    if (App.getDuctSettings && App.getDuctSettings().deckHeightFt > 0) return true;
+    if (App.hasDuctRuns && App.hasDuctRuns()) return true;
+    return (state.rooms || []).some(r => r && (r.roomType || r.targetCfmOverride > 0));
+  }
+  function syncDeckField() {
+    const group = document.getElementById('roomBoxDeckGroup');
+    const input = document.getElementById('roomBoxDeck');
+    if (!group || !input) return;
+    const show = deckFieldApplies();
+    group.style.display = show ? '' : 'none';
+    if (!show) return;
+    const ds = App.getDuctSettings ? App.getDuctSettings() : null;
+    const deck = ds && ds.deckHeightFt > 0 ? ds.deckHeightFt : 0;
+    input.value = deck > 0 ? (Number.isInteger(deck) ? String(deck) : deck.toFixed(2)) : '';
+  }
+  function applyDeckField() {
+    const group = document.getElementById('roomBoxDeckGroup');
+    const input = document.getElementById('roomBoxDeck');
+    if (!group || !input || group.style.display === 'none' || !App.setDuctDeckHeight) return;
+    const raw = input.value.trim();
+    const next = raw ? App.parseRealWorldLength(raw, 'ft') : null;
+    const ds = App.getDuctSettings ? App.getDuctSettings() : null;
+    const cur = ds && ds.deckHeightFt > 0 ? ds.deckHeightFt : null;
+    const val = next > 0 ? next : null;
+    if (val !== cur) App.setDuctDeckHeight(val);
+  }
+
   function openRoomBoxModal(rect) {
     const state = App.state;
     if (state.isViewer) return;
@@ -212,6 +247,7 @@
     renderRoomPicker(stillExists ? lastRoomId : '__new__');
     document.getElementById('roomBoxNewRoomName').value = '';
     renderRecentHeightChips();
+    syncDeckField();
     updateDimsPreview(rect, currentHeightInput() || 0);
     App.showModal('roomBoxModal');
     if (!(lastHeightFt > 0)) h.focus();
@@ -232,6 +268,7 @@
     renderRoomPicker(box.roomId || '__new__');
     document.getElementById('roomBoxNewRoomName').value = '';
     renderRecentHeightChips();
+    syncDeckField();
     updateDimsPreview(box, box.heightFt || 0);
     App.showModal('roomBoxModal');
   }
@@ -297,6 +334,7 @@
     lastRoomId = roomId;
     lastHeightFt = heightFt;
     pushRecentHeight(heightFt);
+    applyDeckField();   // D17: the project deck height, when the field is shown
     state.pendingRoomBox = null;
     state.pendingRoomBoxEdit = null;
     App.hideModal('roomBoxModal');

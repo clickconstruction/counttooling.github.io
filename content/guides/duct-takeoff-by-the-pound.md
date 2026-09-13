@@ -1,7 +1,7 @@
 ---
 title: Duct takeoff by the pound
 description: Trace duct runs with size step-downs, let fittings count themselves, and read one Bid weight off the Duct Schedule — sheet metal priced like a bid.
-updated: 2026-09-12
+updated: 2026-09-13
 order: 9.15
 icon: duct
 category: By trade
@@ -58,11 +58,13 @@ Once a room has a target, its sidebar row keeps score: *"needs 450 · served 300
 
 And before any duct is traced at all, the New Duct Run dialog reads the room targets and offers the **equipment-first** rule of thumb: *"Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (edit in Groups)"* (~400 CFM per ton, ~5 tons per light-commercial rooftop unit). It's one quiet line, it never creates anything, and it disappears as soon as a system group carries a real capacity. Naming an equipment counter after a group's tag (place an "RTU-1" counter for the RTU-1 system) also anchors the system's unit on the sheet, so return mains accumulate correctly no matter which end you traced them from.
 
+Systems live in the **Groups** section of the sidebar, which a project keeps off until it needs it. You never have to go find the switch: wherever a duct surface names Groups while they're off — that equipment-first line, the Bid Check's *Systems within capacity* hint — the phrase is a **Turn on groups** link that flips them on in place, and the first duct run you commit turns them on by itself with one quiet note (*"Groups are on — assign this run to a system in Groups."*). Projects with no duct never see any of this.
+
 ### Vertical footage, flex, and necks
 
 A flat trace can't see the riser off the rooftop unit or the drop down a chase, so the `S` popover carries a **Rise / drop** row: type the feet and tap Add, and that vertical footage joins the run at the size of the segment it sits on — in the schedule, the legend, and the live readout, priced like any other straight duct. Two defaults absorb the common cases:
 
-- **Deck height** (bottom of the Duct Schedule, per project) — once it's set, a run that *starts* on its system's equipment marker gets the riser added automatically (deck height less the ceiling of the room box it starts in, when one is drawn; the full deck height otherwise). Open the popover right after that first click to see it — and to remove it if the unit sits on grade.
+- **Deck height** (per project — on the New Duct Run dialog beside the pressure class, on the Room Size dialog of an HVAC project, and at the bottom of the Duct Schedule; one setting, three doors) — once it's set, a run that *starts* on its system's equipment marker gets the riser added automatically (deck height less the ceiling of the room box it starts in, when one is drawn; the full deck height otherwise). Set it before the first trace and the main off the unit gets its riser on the first click; set or change it later and every run that already starts at its unit is brought up to date (a riser you typed yourself at that vertex is left alone). Open the popover right after that first click to see it — and to remove it if the unit sits on grade.
 - **Flex drop** — every CFM counter carries a per-drop flex length (5' unless you set one on the Create tab or the counter's settings). Devices that hang off a run feed a per-system **Flex duct** line on the schedule: *"RTU-1 · 5 drops · 40'"*. Flex is priced by the drop, so this line is linear feet only and never touches the bid weight. When any single drop runs past the **Max flex** cap (6' by default, editable beside deck height), the row says so — *"3 drops over 6' max"* — because that's exactly the drop a master flags on the walkthrough.
 
 One more prefill: a CFM counter whose name doesn't already say a size shows the neck-size rule of thumb as its hover title and in its settings — *"150 CFM → 8"Ø neck"* — so the exported layout reads like a submittal.
@@ -92,7 +94,9 @@ Click **Schedule** on the Duct section of the sidebar. The schedule prices like 
 
 On a multi-sheet set the schedule header offers **This sheet / Every sheet**, the same scope language as every export.
 
-**Copy Schedule** puts the whole table on the clipboard as tab-separated text — it pastes into a spreadsheet in columns, into an email legibly, and into PipeTooling alongside your [counts and line types](/guides/reports-and-exports/). Copying runs the same scale check as the other copies: if a sheet with duct on it has no scale, you're told before pixel-length garbage reaches a bid.
+**Copy Schedule** puts the whole table on the clipboard as tab-separated text — it pastes into a spreadsheet in columns, into an email legibly, and into PipeTooling alongside your [counts and line types](/guides/reports-and-exports/). Copying runs the same scale check as the other copies: if a sheet with duct on it has no scale, you're told before pixel-length garbage reaches a bid. The pounds also ride the two copies named for handoff: **Copy Summary** and **Copy to /Tooling** both end with a *--- Duct ---* block carrying the per-size LF · lb rows, the straight and fittings totals, and the Bid weight — the same rows, the same tab-separated columns — whenever the copied sheets hold duct.
+
+**Multiply zones** multiply duct the way they multiply everything else: a run drawn inside a ×3 zone counts three times in the Duct section, the schedule, the legend and the report (its fittings too), a run that starts inside and ends outside counts once — the same rule a line follows — and the zone dialog says how many duct runs it found before you apply. Where the placed and with-repeats numbers differ, the schedule says both (*"107' · 741 lb placed · 187' · 1,296 lb with repeats"*) and the sidebar badge shows it on hover.
 
 ## Bid Check: sign off before you send it
 

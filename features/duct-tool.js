@@ -88,6 +88,10 @@
   // 1,200 CFM (edit in Groups)". Rule of thumb from duct-model's
   // DUCT_SYSTEM_RULE_OF_THUMB (~400 CFM/ton, ~5 tons per light-commercial
   // RTU → ~2,000 CFM per system). Informative only — nothing auto-creates.
+  // D17 (J19 #1): when the project's Groups gate is off, "(edit in Groups)"
+  // points at a section that is not on screen — so the phrase becomes the
+  // door: a "Turn on groups" link flips the gate in place (App.turnOnGroups),
+  // and the line re-reads as plain "(edit in Groups)" once it is on.
   function syncEquipFirstLine() {
     const line = document.getElementById('ductCreateEquipFirst');
     if (!line) return;
@@ -99,11 +103,33 @@
       if (s) {
         txt = 'Rooms total ~' + Math.round(total).toLocaleString() + ' CFM — about '
           + s.systems + ' system' + (s.systems === 1 ? '' : 's') + ' at '
-          + s.cfmEach.toLocaleString() + ' CFM (edit in Groups)';
+          + s.cfmEach.toLocaleString() + ' CFM';
       }
     }
-    line.textContent = txt;
+    line.textContent = '';
+    if (txt) {
+      const groupsOn = !App.groupsUiVisible || App.groupsUiVisible();
+      line.append(txt + ' (');
+      if (groupsOn) line.append('edit in Groups');
+      else {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'duct-groups-link';
+        link.id = 'ductCreateTurnOnGroups';
+        link.textContent = 'Turn on groups';
+        link.title = 'Show the Groups section so this project can carry systems (equipment tag, capacity, ESP)';
+        link.onclick = () => { turnOnGroupsFromDuct(); syncEquipFirstLine(); };
+        line.append(link);
+      }
+      line.append(')');
+    }
     line.style.display = txt ? '' : 'none';
+  }
+
+  // The duct surfaces' shared "Turn on groups" action: flip the gate (app.js
+  // turnOnGroups expands the section + re-renders) and say so once.
+  function turnOnGroupsFromDuct() {
+    if (App.turnOnGroups && App.turnOnGroups()) App.showToast('Groups are on — the Groups section is in the sidebar.');
   }
 
   function openDuctCreateModal() {
@@ -114,6 +140,10 @@
     syncCreateShape();
     syncCreateAirside();
     syncEquipFirstLine();
+    // D17 (J19 #2): deck height is settable BEFORE the first run — prefilled
+    // from the project setting, written back on Start Tracing.
+    const deckEl = document.getElementById('ductCreateDeck');
+    if (deckEl) { const ds = App.getDuctSettings ? App.getDuctSettings() : null; deckEl.value = ds && ds.deckHeightFt > 0 ? ds.deckHeightFt : ''; }
     // D10 plan-and-spec: the nearest printed callout to the cursor's last
     // canvas position pre-fills the starting size (features/duct-callouts.js
     // — a no-op on scans; the fields stay editable).
@@ -148,6 +178,18 @@
     const state = App.state;
     const size = readCreateSize();
     if (!size) { App.showToast('Enter a starting size'); return; }
+    // D17 (J19 #2): the create modal's Deck height field writes the project
+    // setting (and the retroactive risers) before this run's first click.
+    const deckEl = document.getElementById('ductCreateDeck');
+    if (deckEl) {
+      const v = parseFloat(deckEl.value);
+      const next = Number.isFinite(v) && v > 0 ? v : null;
+      const cur = App.getDuctSettings ? App.getDuctSettings().deckHeightFt : null;
+      if (next !== cur) setDuctDeckHeight(next);
+    }
+    // D17 (J5-B): a live polyline draft is settled by its own rules first —
+    // ≥2 points commit, fewer cancel — so two finish bars never coexist.
+    App.settlePolylineDraft && App.settlePolylineDraft();
     state.drawingDuct = {
       id: App.uid(),
       name: document.getElementById('ductCreateName').value.trim() || nextDuctRunName(),
@@ -183,7 +225,7 @@
     if (!App.getPageScale(state.currentPage)) { App.showSetScaleFirstToast('Duct'); return; }
     // T2-12: an in-flight draft is resumed, never replaced — re-press mid-draw
     // just re-arms the tool; Finish/Esc/M remain the ways to start fresh.
-    if (state.drawingDuct) { state.tool = App.TOOL.DUCT; App.updateUI(); return; }
+    if (state.drawingDuct) { App.settlePolylineDraft && App.settlePolylineDraft(); state.tool = App.TOOL.DUCT; App.updateUI(); return; }
     openDuctCreateModal();
   }
 
@@ -230,21 +272,76 @@
   // of a containing roomBox on the page's merged annotations), else the full
   // deck height; nothing is added when that lands ≤ 0.
   function maybeAutoDeckRiser(draft) {
-    const state = App.state;
-    const ds = App.getDuctSettings ? App.getDuctSettings() : null;
-    const deck = ds && ds.deckHeightFt > 0 ? ds.deckHeightFt : 0;
-    if (!deck || !draft.systemGroupId) return;
-    const equip = App.getDuctSystemEquipmentPos && App.getDuctSystemEquipmentPos(draft.systemGroupId, state.currentPage);
-    if (!equip) return;
-    const v0 = draft.vertices[0];
-    if (Math.hypot(v0.x - equip.x, v0.y - equip.y) > DUCT_TAP_SNAP_PDF) return;
-    const page = state.pages[state.currentPage];
-    const ann = page && App.getMergedAnnotationsForPage(page);
-    const box = (ann?.roomBoxes || []).find((b) => b && b.heightFt > 0 && pointInRoomBox(v0, b));
-    const ft = box ? Math.round((deck - box.heightFt) * 100) / 100 : deck;
+    const ft = autoDeckRiserFt(draft, App.state.currentPage);
     if (!(ft > 0)) return;
     if (!draft.verticalFt) draft.verticalFt = [];
     draft.verticalFt.push({ vertexIdx: 0, ft: ft, auto: true });
+  }
+
+  // The riser a run/draft on `pageIdx` earns under the current deck height
+  // (the rule above), or 0 when it earns none. Shared by the first-click
+  // staging and the D17 retroactive pass.
+  function autoDeckRiserFt(run, pageIdx) {
+    const state = App.state;
+    const ds = App.getDuctSettings ? App.getDuctSettings() : null;
+    const deck = ds && ds.deckHeightFt > 0 ? ds.deckHeightFt : 0;
+    if (!deck || !run || !run.systemGroupId || !(run.vertices && run.vertices.length)) return 0;
+    const equip = App.getDuctSystemEquipmentPos && App.getDuctSystemEquipmentPos(run.systemGroupId, pageIdx);
+    if (!equip) return 0;
+    const v0 = run.vertices[0];
+    if (Math.hypot(v0.x - equip.x, v0.y - equip.y) > DUCT_TAP_SNAP_PDF) return 0;
+    const page = state.pages[pageIdx];
+    const ann = page && App.getMergedAnnotationsForPage(page);
+    const box = (ann?.roomBoxes || []).find((b) => b && b.heightFt > 0 && pointInRoomBox(v0, b));
+    const ft = box ? Math.round((deck - box.heightFt) * 100) / 100 : deck;
+    return ft > 0 ? ft : 0;
+  }
+
+  // D17 (J19 #2): apply the deck height RETROACTIVELY — every committed run
+  // (any canvas, any page) whose vertex 0 sits on its system's equipment
+  // marker gets its `{ vertexIdx: 0, auto: true }` riser added or updated;
+  // a cleared deck removes the auto entries; a MANUAL entry at vertex 0 is
+  // never duplicated (the run keeps what the estimator typed). Returns the
+  // number of runs touched; one undo snapshot when anything changed.
+  function applyDeckHeightToRuns() {
+    const state = App.state;
+    const touched = [];
+    (state.pages || []).forEach((p, pi) => {
+      App.getPageCanvases(p).forEach((c) => {
+        (c.annotations?.ductRuns || []).forEach((run) => {
+          const list = Array.isArray(run.verticalFt) ? run.verticalFt : [];
+          const autoIdx = list.findIndex((e) => e && e.vertexIdx === 0 && e.auto);
+          const manual = list.some((e) => e && e.vertexIdx === 0 && !e.auto);
+          const ft = manual ? 0 : autoDeckRiserFt(run, pi);
+          if (ft > 0) {
+            if (autoIdx >= 0) { if (list[autoIdx].ft !== ft) touched.push(() => { list[autoIdx].ft = ft; }); }
+            else touched.push(() => { run.verticalFt = list.concat([{ vertexIdx: 0, ft: ft, auto: true }]); });
+          } else if (autoIdx >= 0) {
+            touched.push(() => { const next = list.filter((_, i) => i !== autoIdx); if (next.length) run.verticalFt = next; else delete run.verticalFt; });
+          }
+        });
+      });
+    });
+    if (!touched.length) return 0;
+    App.pushUndoSnapshot();
+    touched.forEach((fn) => fn());
+    return touched.length;
+  }
+
+  // The ONE writer for ductSettings.deckHeightFt (the schedule modal's
+  // Polish row, the create modal, the Room Sizer dialog): sets it, runs the
+  // retroactive pass, says what changed, re-renders.
+  function setDuctDeckHeight(ft) {
+    const ds = App.getDuctSettings ? App.getDuctSettings() : (App.state.ductSettings || (App.state.ductSettings = {}));
+    const next = Number.isFinite(ft) && ft > 0 ? ft : null;
+    const changed = ds.deckHeightFt !== next;
+    ds.deckHeightFt = next;
+    const n = applyDeckHeightToRuns();
+    if (n) App.showToast((next ? 'Deck height ' + next + "' — auto riser " : 'Deck height cleared — auto riser ') + (next ? 'set on ' : 'removed from ') + n + (n === 1 ? ' run.' : ' runs.'));
+    if (changed || n) App.markProjectDirty();
+    App.updateUI();
+    App.renderAnnotations();
+    return n;
   }
 
   // A popover pick: end the current segment at the LAST placed vertex, start
@@ -311,6 +408,11 @@
       run.sizeSteps = draft.sizeSteps;   // D3's transition-fitting input
       if (!canvas.annotations.ductRuns) canvas.annotations.ductRuns = [];
       canvas.annotations.ductRuns.push(run);
+      // D17 (J19 #1): a duct project needs systems, and systems live in
+      // Groups — the first committed run turns the per-project gate on (the
+      // group-create latch's twin) with one quiet toast. Fires only while the
+      // gate is off, so it is once per project; non-duct projects never see it.
+      if (App.turnOnGroups && App.turnOnGroups()) App.showToast('Groups are on — assign this run to a system in Groups.', 5000);
       // D3: the commit is the inference moment — re-walk the canvas's runs
       // into auto fittings (corner/step/tap), reconciled against manual
       // overrides (features/duct-fittings.js).
@@ -347,6 +449,18 @@
     App.state.drawingDuct = null;
     cursorChipRect = null;
     App.closeDuctSizePopover && App.closeDuctSizePopover();
+  }
+
+  // D17 (J5-B): the duct half of the drafts' mutual exclusion — settle a live
+  // duct draft by ITS rules before Polyline arms (app.js calls this): ≥2
+  // vertices commit (finishDuctRun), fewer cancel. app.js's
+  // settlePolylineDraft is the twin the Duct arm calls.
+  function settleDuctDraft() {
+    const draft = App.state.drawingDuct;
+    if (!draft) return false;
+    if (draft.vertices.length >= 2) finishDuctRun();
+    else { clearDuctDraft(); App.state.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations(); }
+    return true;
   }
 
   // Esc ladder rung (staged per T2-02): popover → one vertex → draft+exit.
@@ -708,6 +822,10 @@
   App.finishDuctRun = finishDuctRun;
   App.handleDuctEscape = handleDuctEscape;
   App.clearDuctDraft = clearDuctDraft;
+  App.settleDuctDraft = settleDuctDraft;   // D17 (J5-B): the Polyline arm settles a live duct draft
+  App.setDuctDeckHeight = setDuctDeckHeight;   // D17 (J19 #2): the one deck-height writer (retroactive risers)
+  App.applyDeckHeightToRuns = applyDeckHeightToRuns;   // spec seam
+  App.turnOnGroupsFromDuct = turnOnGroupsFromDuct;   // D17 (J19 #1): shared by the Bid Check hint
   App.drawDuctOverlay = drawDuctOverlay;
   App.getDuctChipClientAnchor = getDuctChipClientAnchor;
   App.ductLiveReadout = ductLiveReadout;

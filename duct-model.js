@@ -465,7 +465,7 @@ function rollupDuct(opts) {
       row = { type: f.type, sizeKey: sizeKey, size: cloneDuctSize(f.size), gauge: gauge, count: 0, lbEach: lbEach, pounds: 0 };
       fByKey.set(key, row);
     }
-    row.count++;
+    row.count += ductRepeatOf(f);
   });
   let fittingsCountedPounds = 0;
   const fittingRows = [...fByKey.values()];
@@ -726,7 +726,7 @@ function reconcileDuctFittings(existing, inferred, runs) {
 function ductVolumeDamperFittings(fittings) {
   return (fittings || [])
     .filter(f => f && f.type === 'tap' && !f.suppressed && !f.noVd && isDuctSize(f.size))
-    .map(f => ({ type: 'vd', size: cloneDuctSize(f.size) }));
+    .map(f => (f.repeat > 1 ? { type: 'vd', size: cloneDuctSize(f.size), repeat: f.repeat } : { type: 'vd', size: cloneDuctSize(f.size) }));
 }
 
 /**
@@ -741,12 +741,74 @@ function tallyDuctFittingCounts(fittings) {
     const sizeKey = formatDuctSize(f.size);
     const key = f.type + '|' + sizeKey;
     const row = byKey.get(key) || { type: f.type, sizeKey: sizeKey, count: 0 };
-    row.count++;
+    row.count += ductRepeatOf(f);
     byKey.set(key, row);
   });
   return [...byKey.values()].sort((a, b) =>
     (DUCT_FITTING_TYPES.indexOf(a.type) - DUCT_FITTING_TYPES.indexOf(b.type))
     || (a.sizeKey < b.sizeKey ? -1 : a.sizeKey > b.sizeKey ? 1 : 0));
+}
+
+// --- 3b. Multiply zones (unit D17, J6-G) -------------------------------------
+//
+// Multiply zones (typical floors ×N) apply to duct exactly as they apply to
+// the rest of the takeoff: a RUN follows the LINE rule (both its first and
+// last vertex inside one zone → the zone's multiplier; a straddling run counts
+// once, silently — geometry.js getMultiplyZoneForLine's rule), a FITTING
+// follows the COUNTER rule (the mark's anchor point inside a zone →
+// multiplied; getMultiplyZoneForPoint). zones = the annotations'
+// `multiplyZones` [{ x1, y1, x2, y2, multiplier }] (any order of corners).
+// The factor rides straight items as more length (ductRepeatStraightItems)
+// and fittings as `repeat` (rollupDuct / tallyDuctFittingCounts add
+// `repeat` per fitting instead of 1). Tallies never multiply on their own —
+// the app decorates before it tallies, so every surface (sidebar, schedule,
+// legend, report, copy) reads one arithmetic and the draft readout stays
+// "placed".
+
+function ductPointInZone(pt, z) {
+  if (!pt || !z) return false;
+  const xMin = Math.min(z.x1, z.x2), xMax = Math.max(z.x1, z.x2);
+  const yMin = Math.min(z.y1, z.y2), yMax = Math.max(z.y1, z.y2);
+  return pt.x >= xMin && pt.x <= xMax && pt.y >= yMin && pt.y <= yMax;
+}
+function ductZoneMultiplier(z) {
+  const m = z && z.multiplier;
+  return Number.isFinite(m) && m >= 1 ? Math.round(m) : 1;
+}
+
+/** A run's repeat factor: the multiplier of the zone holding BOTH its first
+ * and last vertex (the line rule), else 1. */
+function ductRepeatFactorForRun(run, zones) {
+  const verts = run?.vertices || [];
+  if (verts.length < 2 || !zones || !zones.length) return 1;
+  const a = verts[0], b = verts[verts.length - 1];
+  for (const z of zones) {
+    if (ductPointInZone(a, z) && ductPointInZone(b, z)) return ductZoneMultiplier(z);
+  }
+  return 1;
+}
+
+/** A point's repeat factor (the counter rule): the multiplier of the first
+ * zone containing it, else 1. */
+function ductRepeatFactorForPoint(pt, zones) {
+  if (!pt || !zones || !zones.length) return 1;
+  for (const z of zones) if (ductPointInZone(pt, z)) return ductZoneMultiplier(z);
+  return 1;
+}
+
+/** Straight items × factor (lengthFt scaled; new objects, inputs untouched).
+ * A factor of 1 returns the items as they are. */
+function ductRepeatStraightItems(items, factor) {
+  const f = Number.isFinite(factor) && factor >= 1 ? factor : 1;
+  if (f === 1) return items || [];
+  return (items || []).map(it => Object.assign({}, it, { lengthFt: it.lengthFt * f }));
+}
+
+/** The count a fitting contributes to a tally: its `repeat` (a positive
+ * integer set by the app's zone decoration) or 1. */
+function ductRepeatOf(f) {
+  const r = f && f.repeat;
+  return Number.isInteger(r) && r > 0 ? r : 1;
 }
 
 // --- 3c. Design-build accumulation (unit D6) ---------------------------------
@@ -2045,6 +2107,8 @@ if (typeof module !== 'undefined' && module.exports) {
     ductFittingOutDirection, reconcileDuctFittings, tallyDuctFittingCounts,
     // VD-per-tap + flex drops (D8)
     ductVolumeDamperFittings, DUCT_FLEX_DEFAULTS, tallyFlexDrops,
+    // multiply zones (D17)
+    ductRepeatFactorForRun, ductRepeatFactorForPoint, ductRepeatStraightItems, ductRepeatOf,
     // design-build accumulation (D6)
     ductMarkerCfm, ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,

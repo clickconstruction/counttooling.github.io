@@ -382,7 +382,7 @@
     if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
     const preset = activePreset;
     const btn = document.getElementById('specificPages');
-    const origText = btn.textContent;
+    const origHtml = btn.innerHTML;   // the label AND the D9 Bid Check badge (features/duct-bidcheck.js)
     btn.textContent = 'Downloading…';
     try {
       const baseName = App.sanitizeForFilename(state.currentProjectName);
@@ -393,7 +393,7 @@
       if (preset && preset.preset === 'bid-basis' && App.beginBidBasisSave) {
         save = await App.beginBidBasisSave(filename);
         if (save && save.cancelled) {
-          btn.textContent = origText;
+          btn.innerHTML = origHtml;
           App.showToast && App.showToast('Download cancelled — nothing was saved. Click Download to try again.', 3500);
           openSpecificPagesModal(preset);
           return;
@@ -415,10 +415,17 @@
       console.error(err);
       alert('Download failed: ' + (err.message || err));
     }
-    btn.textContent = origText;
+    btn.innerHTML = origHtml;
   }
 
-  document.getElementById('specificPages').onclick = () => openSpecificPagesModal();
+  // D9: Export PDFs runs the Bid Check gate first (features/duct-bidcheck.js
+  // — the "Review · Export anyway" toast with duct present and rows
+  // unresolved; opens the modal straight away otherwise). The bid-basis
+  // entry (features/bid-basis.js → App.openSpecificPagesModal) is its own door.
+  document.getElementById('specificPages').onclick = () => {
+    if (App.runDuctBidGate) App.runDuctBidGate(() => openSpecificPagesModal(), 'export-pdfs');
+    else openSpecificPagesModal();
+  };
   document.getElementById('specificPagesCancel').onclick = () => App.hideModal('specificPagesModal');
   document.getElementById('specificPagesDownload').onclick = downloadSpecificPages;
   document.getElementById('specificPagesMarksOnly').onclick = () => setSpecificPagesToMarksOnly();

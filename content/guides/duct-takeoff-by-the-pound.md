@@ -50,7 +50,7 @@ And before any duct is traced at all, the New Duct Run dialog reads the room tar
 A flat trace can't see the riser off the rooftop unit or the drop down a chase, so the `S` popover carries a **Rise / drop** row: type the feet and tap Add, and that vertical footage joins the run at the size of the segment it sits on — in the schedule, the legend, and the live readout, priced like any other straight duct. Two defaults absorb the common cases:
 
 - **Deck height** (bottom of the Duct Schedule, per project) — once it's set, a run that *starts* on its system's equipment marker gets the riser added automatically (deck height less the ceiling of the room box it starts in, when one is drawn; the full deck height otherwise). Open the popover right after that first click to see it — and to remove it if the unit sits on grade.
-- **Flex drop** — every CFM counter carries a per-drop flex length (8' unless you set one on the Create tab or the counter's settings). Devices that hang off a run feed a per-system **Flex duct** line on the schedule: *"RTU-1 · 5 drops · 40'"*. Flex is priced by the drop, so this line is linear feet only and never touches the bid weight. When any single drop runs past the **Max flex** cap (6' by default, editable beside deck height), the row says so — *"3 drops over 6' max"* — because that's exactly the drop a master flags on the walkthrough.
+- **Flex drop** — every CFM counter carries a per-drop flex length (5' unless you set one on the Create tab or the counter's settings). Devices that hang off a run feed a per-system **Flex duct** line on the schedule: *"RTU-1 · 5 drops · 40'"*. Flex is priced by the drop, so this line is linear feet only and never touches the bid weight. When any single drop runs past the **Max flex** cap (6' by default, editable beside deck height), the row says so — *"3 drops over 6' max"* — because that's exactly the drop a master flags on the walkthrough.
 
 One more prefill: a CFM counter whose name doesn't already say a size shows the neck-size rule of thumb as its hover title and in its settings — *"150 CFM → 8"Ø neck"* — so the exported layout reads like a submittal.
 
@@ -80,6 +80,14 @@ Click **Schedule** on the Duct section of the sidebar. The schedule prices like 
 On a multi-sheet set the schedule header offers **This sheet / Every sheet**, the same scope language as every export.
 
 **Copy Schedule** puts the whole table on the clipboard as tab-separated text — it pastes into a spreadsheet in columns, into an email legibly, and into PipeTooling alongside your [counts and line types](/guides/reports-and-exports/). Copying runs the same scale check as the other copies: if a sheet with duct on it has no scale, you're told before pixel-length garbage reaches a bid.
+
+## Bid Check: sign off before you send it
+
+Quantity, capacity, physics — and then the sign-off. Once a project has a duct run, the **Bid Check** section in the sidebar (the same panel every trade gets; the badge counts what is open) grows the duct rows. Four are **auto** — the app knows, so they show their number and can't be ticked: *Every room served* (the Room Sizer balance — which rooms are still short), *Systems within capacity* (designed vs the unit), *Flex drops within max*, and *Scale set on every duct sheet*. The rest are the judgment calls only a master can make, as checkboxes that persist with the bid: fire dampers at rated walls, OA meets code, static path within the unit's ESP, curb & power coordinated, controls / stat locations set.
+
+One row starts as a checkbox and **upgrades itself**: *Fits the roof — deepest duct + insulation clears the plenum.* Give the project a deck height (bottom of the Duct Schedule), draw the room box with its ceiling under the run, and the row becomes auto and shows its work — *"24×12 + 2" wrap = 14" · plenum 30" ✓"*, or the run that doesn't fit by name. While you trace, the `S` popover carries the same arithmetic as a quiet line for the size under your cursor (*"14" deep · plenum 12" ⚠"*) — informative, never an interruption.
+
+The check surfaces once more at the moment that means "I'm done": **Copy to /Tooling** and **Export PDFs** carry a small badge (*"1 ⚠ · 3 unchecked"*) while anything is open, and pressing either shows a corner toast — *"Bid Check: Fits the roof? — Review · Export anyway."* Review jumps to that row; Export anyway does exactly that. Resolve the rows and the exports go silent. It never blocks you.
 
 ## On the sheet and in the report
 

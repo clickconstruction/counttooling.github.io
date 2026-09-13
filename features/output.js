@@ -227,8 +227,17 @@
   // since its numbers ride duct geometry, not line types. The collector is
   // stashed with the pending/resume state so Export-anyway and the
   // "Copy again" resume re-walk the SAME rule. Published as App.runGatedCopy.
-  async function runGatedCopy(getAnnFn, pageIndices, doCopy, surface, mode, collectFlagged) {
+  // D9: on the /Tooling surfaces the copy also runs the Bid Check gate
+  // (features/duct-bidcheck.js App.runDuctBidGate — the "Review · Export
+  // anyway" toast, only with duct present and rows unresolved; proceed() is
+  // synchronous otherwise so the clipboard gesture survives). Wrapped HERE so
+  // the scale gate's Export-anyway and the Copy-again resume run it too.
+  async function runGatedCopy(getAnnFn, pageIndices, doCopyRaw, surface, mode, collectFlagged) {
     resumeToolingExport = null;   // a fresh copy attempt supersedes any pending Copy-again resume
+    const bidGate = App.runDuctBidGate;
+    const doCopy = bidGate && (surface === 'pipe-tooling' || surface === 'takeoff-tooling')
+      ? (a, b, c) => bidGate(() => doCopyRaw(a, b, c), surface)
+      : doCopyRaw;
     const collect = collectFlagged || collectUnscaledLinePages;
     const flagged = collect(getAnnFn, pageIndices);
     if (flagged.length) {

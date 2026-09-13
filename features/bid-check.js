@@ -21,7 +21,16 @@
  *   { auto: [{ id, label, verdict, detail }], manual: [{ id, label, trade, done }],
  *     open: { auto, manual, total }, defaults: { loadAmps, volts } }
  * (report.js consumes it guarded for the Bid Check section, the email block and
- * the payload's `checks`), renderBidCheck() (updateUI), showBidCheckAdvisory(surface).
+ * the payload's `checks`), renderBidCheck() (updateUI), showBidCheckAdvisory(surface),
+ * openBidCheckAtRow(rowId) (expand + scroll + flash one row — the gate toast's Review).
+ *
+ * DUCT (D9, features/duct-bidcheck.js): once the project has a duct run the
+ * seam App.getDuctBidCheck contributes duct-model's DUCT_BID_CHECK_ROWS —
+ * its auto rows after the trade's, its manual rows BEFORE the trade-neutral
+ * ones (the duct judgment calls sit with the duct scope; generic sign-off
+ * last), ticked in the same state.bidCheck.manual map. The Copy / Export
+ * PDFs GATE (the interactive "Review · Export anyway" toast) is that file's;
+ * this file's post-action advisory yields to it on the gated surfaces.
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
@@ -116,8 +125,14 @@
       if (row) auto = [row];
     }
     const manualState = bidCheckState().manual;
-    const manual = bm.BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).map((r) => ({ id: r.id, label: r.label, trade: r.trade, done: !!manualState[r.id] }));
-    return { auto, manual, open: bm.bidCheckOpenCount(auto, manualState, trade), defaults: d };
+    let manual = bm.BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).map((r) => ({ id: r.id, label: r.label, trade: r.trade, done: !!manualState[r.id] }));
+    // D9: the duct rows, once the project has duct (null = none contributed).
+    const duct = App.getDuctBidCheck ? App.getDuctBidCheck({ pageIndices, getAnnotations: getAnn }) : null;
+    if (duct) {
+      auto = auto.concat(duct.auto);
+      manual = duct.manual.map((r) => ({ id: r.id, label: r.label, short: r.short, trade: 'duct', done: r.done })).concat(manual);
+    }
+    return { auto, manual, open: bm.bidCheckOpenCount(auto, manualState, trade, duct ? duct.manual : null), defaults: d };
   }
 
   // --- the sidebar section ----------------------------------------------------
@@ -136,6 +151,7 @@
       badge.className = 'badge bid-check-badge' + (check.open.auto ? ' warn' : '');
       badge.title = check.open.auto + ' check' + (check.open.auto === 1 ? '' : 's') + ' at ⚠ · ' + check.open.manual + ' unticked';
     }
+    if (App.renderDuctBidBadges) App.renderDuctBidBadges();   // D9: the Copy / Export PDFs gate badges
     const collapsed = state.bidCheckCollapsed !== false;   // collapsed by default
     document.getElementById('bidCheckCollapseIcon').textContent = collapsed ? '▶' : '▼';
     const list = document.getElementById('bidCheckList');
@@ -147,6 +163,7 @@
     check.auto.forEach((r) => {
       const div = document.createElement('div');
       div.className = 'bid-check-row auto ' + r.verdict;
+      div.dataset.rowId = r.id;
       div.innerHTML = '<span class="bid-check-mark">' + (r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : '·') + '</span>'
         + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + ' <span class="bid-check-kind">auto</span>' + (r.rule && App.ruleChipHtml ? ' ' + App.ruleChipHtml(r.rule) : '') + '</div><div class="bid-check-detail">' + esc(r.detail) + '</div></div>';
       list.appendChild(div);
@@ -154,6 +171,7 @@
     check.manual.forEach((r) => {
       const div = document.createElement('div');
       div.className = 'bid-check-row manual' + (r.done ? ' done' : '');
+      div.dataset.rowId = r.id;
       div.innerHTML = '<button type="button" class="bid-check-box" role="checkbox" aria-checked="' + r.done + '" data-id="' + esc(r.id) + '"' + (showEdit ? '' : ' disabled') + '></button>'
         + '<div class="bid-check-body"><div class="bid-check-label">' + esc(r.label) + '</div></div>';
       if (showEdit) {
@@ -205,6 +223,7 @@
   function showBidCheckAdvisory(surface) {
     const state = App.state;
     if (!state || !state.pages || !state.pages.length) return;
+    if (App.ductBidGateHandles && App.ductBidGateHandles(surface)) return;   // D9: the pre-action gate is the surface with duct present
     const check = getBidCheck();
     if (!check.open.auto) return;   // advisory only when the app itself found something
     const el = document.getElementById('bidCheckAdvisoryModal');
@@ -231,7 +250,26 @@
     renderBidCheck();
   });
 
+  // D9 (the gate toast's Review): expand the section, uncollapse the desktop
+  // sidebar / open the mobile one, scroll the row into view and flash it —
+  // B10's summary-flash recipe (remove + reflow so a repeat restarts it).
+  function openBidCheckAtRow(rowId) {
+    App.state.bidCheckCollapsed = false;
+    renderBidCheck();
+    document.body.classList.remove('sidebar-collapsed');
+    document.body.classList.add('sidebar-open');
+    const section = document.getElementById('bidCheckSection');
+    const row = rowId ? section?.querySelector('.bid-check-row[data-row-id="' + rowId + '"]') : null;
+    const target = row || section;
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    target.classList.remove(row ? 'bid-check-flash' : 'summary-flash');
+    void target.offsetWidth;
+    target.classList.add(row ? 'bid-check-flash' : 'summary-flash');
+  }
+
   App.getBidCheck = getBidCheck;
   App.renderBidCheck = renderBidCheck;
   App.showBidCheckAdvisory = showBidCheckAdvisory;
+  App.openBidCheckAtRow = openBidCheckAtRow;
 })();

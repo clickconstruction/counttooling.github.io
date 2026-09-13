@@ -76,6 +76,9 @@ test('bidCheckOpenCount: ⚠ auto rows + unticked manual rows for the trade', ()
   // plumbing: the 3 trade-neutral rows (addenda ticked) + the 4 plumbing rows
   assert.deepStrictEqual(bc.bidCheckOpenCount(auto, { addenda: true }, 'plumbing'), { auto: 1, manual: 6, total: 7 });
   assert.deepStrictEqual(bc.bidCheckOpenCount([], null, null), { auto: 0, manual: 3, total: 3 });
+  // D9: rows another table contributes (the duct manual rows) count by the same tick map; upgraded (auto) ones do not
+  const extra = [{ id: 'duct-fits-roof', kind: 'auto' }, { id: 'duct-oa-code', kind: 'manual' }, { id: 'duct-controls', kind: 'manual' }];
+  assert.deepStrictEqual(bc.bidCheckOpenCount([], { 'duct-controls': true }, null, extra), { auto: 0, manual: 4, total: 4 });
 });
 
 test('the auto rows that apply a public rule name it (rulebook chips)', () => {

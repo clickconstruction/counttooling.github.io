@@ -21,6 +21,7 @@
  *   5. Ductulator — equal-friction round sizing, velocity cap, round→rect
  *      equivalents, suggestRoundAndRect.
  *   6. Neck-size rules of thumb (CFM → device/neck suggestion).
+ *   7. Bid Check (D9) — the duct row table + pure evaluators (plenum fit).
  */
 
 // --- 1. Annotation model -----------------------------------------------------
@@ -991,7 +992,12 @@ function ductDraftRemainingCfm(opts) {
 // drop length a CFM device contributes when its counter type carries no
 // explicit flexDropFt, and the default single-drop length cap behind the
 // "N drops over X' max" warning (ductSettings.maxFlexFt seeds from it).
-const DUCT_FLEX_DEFAULTS = { dropFt: 8, maxFlexFt: 6 };
+// D9 correction: the default drop is 5' — a typical lay-in drop from a trunk
+// in the plenum above runs 4–6' — under the 6' spec cap (SMACNA/most specs
+// limit a single flex drop to 6'), so a FRESH drop never warns on its own;
+// only a device whose own flexDropFt runs past the cap does. (D8 shipped 8'
+// vs 6', which flagged every default drop — noise, not a check.)
+const DUCT_FLEX_DEFAULTS = { dropFt: 5, maxFlexFt: 6 };
 
 /**
  * Per-system flex-drop tally. devices = [{ x, y, cfm, flexDropFt?, … }] (CFM
@@ -1400,6 +1406,185 @@ function suggestNeckSize(cfm) {
 
 // Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
+// --- 7. Bid Check (unit D9) ---------------------------------------------------
+//
+// DUCT-PLAN "The Bid Check": the physics + judgment checks as ONE data table
+// the app renders into the sidebar's Bid Check panel (features/bid-check.js
+// owns the panel — S5's; features/duct-bidcheck.js feeds these rows in once
+// the project has duct). Two row kinds: AUTO rows carry `evaluate(inputs)` →
+// { verdict: 'ok' | 'warn' | 'na', detail } and show their number; MANUAL
+// rows are checkboxes ticked per project (state.bidCheck.manual[id]). A
+// MANUAL row MAY carry an evaluate too — the "Fits the roof" upgrade rule:
+// while evaluate returns null (inputs missing) it stays a checkbox; the moment
+// the app has every number it becomes an AUTO row showing its work. Static
+// path stays MANUAL — its evaluator (equivalent-length table + critical-path
+// walk) is deferred past D10 per the ledger. Trades skin the table by adding
+// rows here, never in the panel.
+
+// DATA TABLE — insulation thickness (in) assumed when a run carries a liner /
+// wrap type but no explicit linerThicknessIn (the create modal writes 0): 1"
+// liner and 1" wrap are the shop standards; the run's own linerThicknessIn
+// wins when > 0. Insulation adds TWICE its thickness to the outside depth
+// (top and bottom) — lined duct is drawn at its inside-clear size, wrap goes
+// around the sheet metal.
+const DUCT_INSULATION_DEFAULT_IN = { liner: 1, wrap: 1 };
+
+function ductInsulationThicknessIn(linerType, linerThicknessIn) {
+  if (linerType !== 'liner' && linerType !== 'wrap') return 0;
+  return linerThicknessIn > 0 ? linerThicknessIn : DUCT_INSULATION_DEFAULT_IN[linerType];
+}
+
+/**
+ * The outside DEPTH of a duct in the plenum: the vertical dimension (rect h —
+ * the size chip's "Depth"; round d) plus 2 × insulation. A 24×12 trunk hangs
+ * 12" deep — the width sits in plan — so the roof check reads h, not the
+ * larger side (a flat trunk in a shallow plenum is the normal case, and
+ * flagging it would make the gate click-through noise).
+ * → { bareIn, addIn, depthIn } or null for a non-size.
+ */
+function ductDepthIn(size, linerType, linerThicknessIn) {
+  if (!isDuctSize(size)) return null;
+  const bareIn = size.kind === 'round' ? size.d : size.h;
+  const addIn = 2 * ductInsulationThicknessIn(linerType, linerThicknessIn);
+  return { bareIn: bareIn, addIn: addIn, depthIn: bareIn + addIn };
+}
+
+/** "24×12 + 2\" wrap = 14\"" — the depth line's arithmetic, shown as work. */
+function ductDepthLabel(size, linerType, linerThicknessIn) {
+  const d = ductDepthIn(size, linerType, linerThicknessIn);
+  if (!d) return '';
+  const ins = d.addIn > 0 ? ' + ' + fmtIn(d.addIn) + '" ' + linerType : '';
+  return formatDuctSize(size) + ins + ' = ' + fmtIn(d.depthIn) + '"';
+}
+function fmtIn(v) { return Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10); }
+
+/**
+ * The plenum-fit evaluator behind "Fits the roof" — deepest duct + insulation
+ * vs the deck-to-ceiling space. opts = { deckHeightFt, items: [{ runName,
+ * size, linerType?, linerThicknessIn?, ceilingFt }] } — one item per segment
+ * whose vertices sit in a room box with a ceiling height (features/
+ * duct-bidcheck.js collects them; a segment with no room under it is not
+ * "known" and is left out). Returns null while the inputs are not all known
+ * (no deck height, or no item) — the row stays a manual checkbox. Otherwise
+ * { ok, tightest: { runName, size, depthIn, plenumIn, marginIn, label },
+ * offending: [...] } — the detail names the offending segment (or the
+ * tightest passing one) with its work: "24×12 + 2" wrap = 14" · plenum 30" ✓".
+ */
+function ductPlenumFit(opts) {
+  const o = opts || {};
+  if (!(o.deckHeightFt > 0)) return null;
+  const rows = [];
+  (o.items || []).forEach(it => {
+    if (!it || !(it.ceilingFt > 0)) return;
+    const d = ductDepthIn(it.size, it.linerType, it.linerThicknessIn);
+    if (!d) return;
+    const plenumIn = Math.round((o.deckHeightFt - it.ceilingFt) * 12 * 10) / 10;
+    rows.push({
+      runName: it.runName || 'Duct run', size: it.size, depthIn: d.depthIn, plenumIn: plenumIn,
+      marginIn: plenumIn - d.depthIn,
+      label: ductDepthLabel(it.size, it.linerType, it.linerThicknessIn) + ' · plenum ' + fmtIn(plenumIn) + '"',
+    });
+  });
+  if (!rows.length) return null;
+  rows.sort((a, b) => a.marginIn - b.marginIn);
+  const offending = rows.filter(r => r.marginIn < 0);
+  return { ok: !offending.length, tightest: rows[0], offending: offending };
+}
+
+// Inputs the duct rows evaluate (all optional — a missing block reads as
+// not-applicable, never as a ⚠):
+//   rooms:        [{ name, targetCfm, servedCfm, under }]   D7 getRoomAirBalance rows
+//   systems:      [{ name, designedCfm, capacityCfm }]      groups with a unit capacity
+//   flex:         { drops, overCount, maxFlexFt, overSystems: [name] }   D8 tallyFlexDrops rollup
+//   ductPages:    [label]   sheets carrying duct
+//   unscaledPages:[label]   sheets carrying duct with no effective scale (T1-05 collector)
+//   plenum:       { deckHeightFt, items }   see ductPlenumFit
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+const DUCT_BID_CHECK_ROWS = [
+  {
+    id: 'duct-rooms-served', kind: 'auto', label: 'Every room served', short: 'Every room served', rule: 'hvac.room.airflow-defaults',
+    evaluate(i) {
+      const rooms = (i && i.rooms) || [];
+      if (!rooms.length) return { verdict: 'na', detail: 'Give a room a type on its Edit Room dialog to check its air.' };
+      const under = rooms.filter(r => r.under);
+      if (!under.length) return { verdict: 'ok', detail: plural(rooms.length, 'room') + ' served ✓' };
+      return { verdict: 'warn', detail: under.length + ' of ' + plural(rooms.length, 'room') + ' under-served: ' + under.map(r => r.name + ' needs ' + Math.round(r.targetCfm).toLocaleString() + ' · served ' + Math.round(r.servedCfm).toLocaleString() + ' ⚠').join('; ') };
+    },
+  },
+  {
+    id: 'duct-systems-capacity', kind: 'auto', label: 'Systems within capacity', short: 'Systems within capacity',
+    evaluate(i) {
+      const systems = ((i && i.systems) || []).filter(s => s && s.capacityCfm > 0);
+      if (!systems.length) return { verdict: 'na', detail: 'Give a system group a unit capacity (Groups) to check it.' };
+      const line = s => s.name + ' · ' + Math.round(s.designedCfm || 0).toLocaleString() + ' designed / ' + Math.round(s.capacityCfm).toLocaleString() + ' capacity ' + ((s.designedCfm || 0) > s.capacityCfm ? '⚠' : '✓');
+      const over = systems.filter(s => (s.designedCfm || 0) > s.capacityCfm);
+      return { verdict: over.length ? 'warn' : 'ok', detail: (over.length ? over : systems).map(line).join('; ') };
+    },
+  },
+  {
+    id: 'duct-flex-max', kind: 'auto', label: 'Flex drops within max', short: 'Flex drops within max',
+    evaluate(i) {
+      const f = i && i.flex;
+      if (!f || !(f.drops > 0)) return { verdict: 'na', detail: 'No CFM device hangs off a duct run yet.' };
+      const cap = f.maxFlexFt > 0 ? f.maxFlexFt : DUCT_FLEX_DEFAULTS.maxFlexFt;
+      if (!(f.overCount > 0)) return { verdict: 'ok', detail: plural(f.drops, 'drop') + " · all within " + cap + "' ✓" };
+      const sys = (f.overSystems || []).filter(Boolean);
+      return { verdict: 'warn', detail: plural(f.overCount, 'drop') + " over " + cap + "' max ⚠" + (sys.length ? ' (' + sys.join(', ') + ')' : '') };
+    },
+  },
+  {
+    id: 'duct-sheets-scaled', kind: 'auto', label: 'Scale set on every duct sheet', short: 'Scale set on every duct sheet',
+    evaluate(i) {
+      const pages = (i && i.ductPages) || [];
+      const unscaled = (i && i.unscaledPages) || [];
+      if (!pages.length) return { verdict: 'na', detail: 'Trace a duct run to check its sheet.' };
+      if (!unscaled.length) return { verdict: 'ok', detail: plural(pages.length, 'duct sheet') + ' scaled ✓' };
+      return { verdict: 'warn', detail: unscaled.join(', ') + (unscaled.length === 1 ? ' has' : ' have') + ' duct but no scale ⚠' };
+    },
+  },
+  // The worked row: MANUAL until deck height + a room ceiling under the run +
+  // the run's size/liner are all known, then AUTO with its work.
+  {
+    id: 'duct-fits-roof', kind: 'manual', label: 'Fits the roof — deepest duct + insulation clears the plenum', short: 'Fits the roof',
+    evaluate(i) {
+      const fit = ductPlenumFit(i && i.plenum);
+      if (!fit) return null;   // inputs missing → stays a checkbox
+      if (fit.ok) return { verdict: 'ok', detail: fit.tightest.label + ' ✓' };
+      return { verdict: 'warn', detail: fit.offending.map(r => r.runName + ': ' + r.label + ' ⚠').join('; ') };
+    },
+  },
+  { id: 'duct-fire-dampers', kind: 'manual', label: 'Fire dampers at rated walls', short: 'Fire dampers at rated walls' },
+  { id: 'duct-oa-code', kind: 'manual', label: 'OA meets code', short: 'OA meets code' },
+  { id: 'duct-static-path', kind: 'manual', label: 'Static path within unit ESP', short: 'Static path within unit ESP' },   // auto deferred past D10
+  { id: 'duct-curb-power', kind: 'manual', label: 'Curb & power coordinated', short: 'Curb & power coordinated' },
+  { id: 'duct-controls', kind: 'manual', label: 'Controls / stat locations set', short: 'Controls / stat locations set' },
+];
+
+/**
+ * Resolve the table against live inputs + the project's ticks. Returns
+ * [{ id, kind: 'auto' | 'manual', label, short, rule?, verdict, detail, done,
+ * upgraded }] — a manual row whose evaluator answered arrives as kind 'auto'
+ * with upgraded: true (its tick, if any, is ignored: the app knows). Manual
+ * rows carry verdict 'done' | 'open'.
+ */
+function ductBidCheckRows(inputs, manualState) {
+  const ticks = manualState || {};
+  return DUCT_BID_CHECK_ROWS.map(row => {
+    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
+    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
+    const done = !!ticks[row.id];
+    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done: done, upgraded: false };
+  });
+}
+
+/** Unresolved rows in panel order — auto ⚠ first, then unticked manual
+ * (the gate toast names the first; the badge counts both). */
+function ductBidCheckUnresolved(rows) {
+  const auto = (rows || []).filter(r => r.kind === 'auto' && r.verdict === 'warn');
+  const manual = (rows || []).filter(r => r.kind === 'manual' && !r.done);
+  return { auto: auto, manual: manual, first: auto[0] || manual[0] || null };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // model
@@ -1437,5 +1622,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DUCT_STROKE_BANDS, ductStrokePx,
     // necks
     NECK_SIZE_TABLE, suggestNeckSize,
+    // Bid Check (D9)
+    DUCT_INSULATION_DEFAULT_IN, ductInsulationThicknessIn, ductDepthIn, ductDepthLabel, ductPlenumFit,
+    DUCT_BID_CHECK_ROWS, ductBidCheckRows, ductBidCheckUnresolved,
   };
 }

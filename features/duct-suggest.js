@@ -53,7 +53,7 @@
 
   // Placed air devices on a page: every marker of a counter type with cfm > 0,
   // from the MERGED annotations (any layer), carrying its marker group and —
-  // D8 — the counter's per-type flex-drop length (null = the 8' table
+  // D8 — the counter's per-type flex-drop length (null = the 5' table
   // default, resolved in duct-model's tallyFlexDrops).
   function collectDuctDevices(pageIdx) {
     const state = App.state;

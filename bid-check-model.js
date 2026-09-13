@@ -183,9 +183,15 @@ function bidCheckAutoRows(inputs) {
 }
 
 // Open items: auto rows at ⚠ plus manual rows for the trade that are not ticked.
-function bidCheckOpenCount(autoRows, manualState, trade) {
+// `extraManualRows` (D9): rows another table contributes to the panel — the
+// duct manual rows from duct-model's DUCT_BID_CHECK_ROWS, already resolved
+// (kind 'manual' only; an upgraded row arrives as auto) — counted by the same
+// tick map.
+function bidCheckOpenCount(autoRows, manualState, trade, extraManualRows) {
   const auto = (autoRows || []).filter((r) => r.verdict === 'warn').length;
-  const manual = BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).filter((r) => !(manualState && manualState[r.id])).length;
+  const unticked = (r) => !(manualState && manualState[r.id]);
+  const manual = BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).filter(unticked).length
+    + (extraManualRows || []).filter((r) => r.kind !== 'auto').filter(unticked).length;
   return { auto, manual, total: auto + manual };
 }
 

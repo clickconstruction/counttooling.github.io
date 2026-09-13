@@ -178,7 +178,13 @@ that reliably means "I believe I'm finished."
 5. **Plan-and-spec layer:** callout reading (needs one new primitive:
    query the PDF text layer near a point).
 
-Worked example numbers used across the mockups (for future specs):
-24×12 @ 24 ga = 6.94 lb/ft; 20×12 @ 24 ga = 6.17; 16×10 @ 26 ga =
-3.93; 12"Ø @ 26 ga = 2.85; elbow 24×12 ≈ 35 lb; transition ≈ 15 lb;
-tap ≈ 12 lb; seam & waste +15%; fitting factor fallback ≈ 40%.
+Worked example numbers used across the mockups (for future specs),
+corrected 2026-09-12 (D14) to what the shipped gauge table produces at the
+default 1" w.g. class (rule: the gauge keys on the LARGER side — ≤12" → 26 ga,
+≤30" → 24 ga, ≤54" → 22 ga, ≤84" → 20 ga, else 18 ga; lb/ft = perimeter ÷ 12 ×
+sheet lb/sq ft):
+24×12 @ 24 ga = 6.94 lb/ft; 20×12 @ 24 ga = 6.17; 16×10 @ 24 ga = 5.01
+(16" > 12" so the table picks 24 ga, not the 26 ga the early mockups assumed —
+26 ga would be 3.93); 12"Ø @ 26 ga = 2.85; elbow 24×12 ≈ 35 lb;
+transition ≈ 15 lb; tap ≈ 12 lb; seam & waste +15%; fitting factor
+fallback ≈ 40%.

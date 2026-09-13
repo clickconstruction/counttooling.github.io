@@ -300,7 +300,8 @@ function ductPerimeterIn(size) {
  * Pounds per linear foot for a size at a gauge:
  * perimeter(in)/12 → sq ft of sheet per LF, × sheet weight (lb/sq ft).
  * DUCT-PLAN worked numbers: 24×12 @ 24ga = 6.94, 20×12 @ 24ga = 6.17,
- * 16×10 @ 26ga = 3.93, 12"Ø @ 26ga = 2.85 (all lb/ft, 2-dp).
+ * 16×10 @ 24ga = 5.01 (selectGauge picks 24 ga at class '1' — 16" > 12";
+ * the early mockups' 26 ga would read 3.93), 12"Ø @ 26ga = 2.85 (all lb/ft, 2-dp).
  * Returns null for an unknown gauge (callers show the override chip).
  */
 function ductWeightPerFoot(size, gauge) {

@@ -1408,10 +1408,13 @@
       <p class="form-group" style="color:var(--text2);">Choose which pages to include and whether to show markup:</p>
       <div class="specific-pages-bulk-actions">
         <button type="button" id="specificPagesMarksOnly" class="bulk-marks-only" title="Include only the sheets that carry counters, runs, ducts or rooms">Only sheets with marks</button>
-        <button type="button" id="specificPagesAllMarked" class="bulk-marked">All Marked Up</button>
-        <button type="button" id="specificPagesAllUnmarked" class="bulk-unmarked">All Not Marked Up</button>
-        <button type="button" id="specificPagesAllExclude" class="bulk-exclude">Exclude All</button>
-        <button type="button" id="specificPagesAllCanvases" class="bulk-all-canvases">All Canvases with Marks</button>
+        <button type="button" id="specificPagesAllMarked" class="bulk-marked">All marked up</button>
+        <button type="button" id="specificPagesAllUnmarked" class="bulk-unmarked">All not marked up</button>
+        <button type="button" id="specificPagesAllExclude" class="bulk-exclude">Exclude all</button>
+        <!-- D14 (B4 dialect): "layer" = canvas; features/export-pdfs.js shows this
+             row only when some page has more than one layer (mirrors app.js's
+             anyMultiCanvas .scope-qual rule) — with one layer per page it says nothing. -->
+        <button type="button" id="specificPagesAllCanvases" class="bulk-all-canvases" style="display:none;">Every layer with marks</button>
       </div>
       <div class="specific-pages-carousel">
         <button type="button" class="specific-pages-nav specific-pages-nav-prev" aria-label="Previous pages" title="Previous pages">‹</button>

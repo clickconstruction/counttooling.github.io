@@ -6274,8 +6274,6 @@
         const pt = canvasPointFromEvent(e);
         const pdfUp = clampPointToPageBounds(canvasToPdf(pt.x, pt.y));   // same clamp the loupe uses
         handleCanvasClick(null, pdfUp);
-        // TEMP T2-10 bake-in — remove after: drag-completion debug counter (Save Status log).
-        pushSaveEvent('rect_drag_complete', 'Rectangle completed by drag', JSON.stringify({ tool: state.tool }));
       }
       state.justFinishedRectDrag = true;   // swallow the trailing native click
       return;

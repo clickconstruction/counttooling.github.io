@@ -108,6 +108,13 @@ which gaps become features, which become "no, deliberately."
 > X4 room-label design), 5 fold-into-passes, 3 already defused by shipped
 > tiers, 4 recommended "no, deliberately" — with duct-by-size framed as
 > the session's one sequencing decision. The conversation itself remains.
+>
+> **STATUS 2026-09-13:** session doc drafted in-repo:
+> [journeys/plans/_STAGE6.md](_STAGE6.md) — the 17 rows re-bucketed against
+> main after D17 (3 build / 2 call / 5 fold-in / 3 defused / 4 no — unchanged),
+> the three drift-patrol stumbles still awaiting re-rank (J5-A, J5-D ⚑, J6-H),
+> and the sequencing slot re-asked now that duct-by-size has shipped. Every
+> `[decision]` slot is blank — the conversation remains.
 
 ## Standing practice — drift patrol
 After any major feature ships (e.g. HVAC duct), re-run a single-journey walk +

@@ -75,6 +75,13 @@ const DUCT_FITTING_TYPES = ['elbow90', 'elbow45', 'transition', 'tap', 'boot', '
 /** Which inference rule anchored an auto fitting (D3). */
 const DUCT_FITTING_ORIGINS = ['bend', 'step', 'tap'];
 
+// D12 — how a rect run hangs in the plenum. 'flat' (the default: the width
+// sits in plan, h is the depth — the size chip's "Depth") or 'edge' (turned
+// on its side to slip between joists/beams: the LARGER side hangs down). The
+// key is present on a run ONLY when 'edge', so a flat run's shape is
+// byte-identical to every pre-D12 save. Round duct has no orientation.
+const DUCT_ORIENTATIONS = ['flat', 'edge'];
+
 // Same id shape the app's uid() produces (app.js: Math.random().toString(36)
 // .slice(2, 10)). Factories accept opts.id so app code passes ctx.uid();
 // the fallback keeps the module usable standalone (tests, node tooling).
@@ -122,6 +129,9 @@ function makeDuctRun(opts) {
     vertices: Array.isArray(o.vertices) ? o.vertices : [],
     segments: Array.isArray(o.segments) ? o.segments : [],
   };
+  // D12 orientation — attached only when 'edge' (flat is the default and
+  // stays keyless, so a flat run's shape is byte-identical to pre-D12 saves).
+  if (o.orientation === 'edge') run.orientation = 'edge';
   // D8 verticalFt — attached only when entries exist (junk filtered), so a
   // run without verticals keeps the pre-D8 shape byte-alike.
   if (Array.isArray(o.verticalFt)) {
@@ -174,6 +184,7 @@ function validateDuctRun(run) {
   if (!run || typeof run !== 'object') return ['run is not an object'];
   if (!run.id) errs.push('missing id');
   if (!DUCT_AIRSIDES.includes(run.airside)) errs.push('invalid airside: ' + run.airside);
+  if (run.orientation != null && !DUCT_ORIENTATIONS.includes(run.orientation)) errs.push('invalid orientation: ' + run.orientation);
   if (!Object.prototype.hasOwnProperty.call(DUCT_GAUGE_TABLE, run.pressureClass)) {
     errs.push('unknown pressure class: ' + run.pressureClass);
   }
@@ -1437,23 +1448,45 @@ function ductInsulationThicknessIn(linerType, linerThicknessIn) {
 }
 
 /**
- * The outside DEPTH of a duct in the plenum: the vertical dimension (rect h —
- * the size chip's "Depth"; round d) plus 2 × insulation. A 24×12 trunk hangs
- * 12" deep — the width sits in plan — so the roof check reads h, not the
- * larger side (a flat trunk in a shallow plenum is the normal case, and
- * flagging it would make the gate click-through noise).
+ * The BARE vertical dimension of a size as it hangs (D12): rect h when flat
+ * (the size chip's "Depth" — a 24×12 trunk hangs 12" deep, the width sits in
+ * plan, the normal case), the LARGER side when on edge (the same trunk turned
+ * to slip between joists hangs 24"); round d either way. null for a non-size.
+ */
+function ductBareDepthIn(size, orientation) {
+  if (!isDuctSize(size)) return null;
+  if (size.kind === 'round') return size.d;
+  return orientation === 'edge' ? Math.max(size.w, size.h) : size.h;
+}
+
+/** The bare depth of one of a run's segments per the run's orientation
+ * (run.orientation absent = flat). `segment` is a run segment / span
+ * ({ size }); a bare size object is tolerated. */
+function ductRunDepthIn(run, segment) {
+  const size = segment && isDuctSize(segment) ? segment : (segment && segment.size);
+  return ductBareDepthIn(size, run && run.orientation);
+}
+
+/**
+ * The outside DEPTH of a duct in the plenum: the bare depth (ductBareDepthIn
+ * — rect h flat / larger side on edge; round d) plus 2 × insulation. The
+ * roof check reads the orientation, never the larger side by default: a
+ * flat trunk in a shallow plenum is the normal case, and flagging it would
+ * make the gate click-through noise.
  * → { bareIn, addIn, depthIn } or null for a non-size.
  */
-function ductDepthIn(size, linerType, linerThicknessIn) {
-  if (!isDuctSize(size)) return null;
-  const bareIn = size.kind === 'round' ? size.d : size.h;
+function ductDepthIn(size, linerType, linerThicknessIn, orientation) {
+  const bareIn = ductBareDepthIn(size, orientation);
+  if (bareIn == null) return null;
   const addIn = 2 * ductInsulationThicknessIn(linerType, linerThicknessIn);
   return { bareIn: bareIn, addIn: addIn, depthIn: bareIn + addIn };
 }
 
-/** "24×12 + 2\" wrap = 14\"" — the depth line's arithmetic, shown as work. */
-function ductDepthLabel(size, linerType, linerThicknessIn) {
-  const d = ductDepthIn(size, linerType, linerThicknessIn);
+/** "24×12 + 2\" wrap = 14\"" — the depth line's arithmetic, shown as work
+ * (on edge the same size reads "24×12 + 2\" wrap = 26\""; the subject line
+ * names the orientation — see ductPlenumFit). */
+function ductDepthLabel(size, linerType, linerThicknessIn, orientation) {
+  const d = ductDepthIn(size, linerType, linerThicknessIn, orientation);
   if (!d) return '';
   const ins = d.addIn > 0 ? ' + ' + fmtIn(d.addIn) + '" ' + linerType : '';
   return formatDuctSize(size) + ins + ' = ' + fmtIn(d.depthIn) + '"';
@@ -1463,14 +1496,17 @@ function fmtIn(v) { return Number.isInteger(v) ? String(v) : String(Math.round(v
 /**
  * The plenum-fit evaluator behind "Fits the roof" — deepest duct + insulation
  * vs the deck-to-ceiling space. opts = { deckHeightFt, items: [{ runName,
- * size, linerType?, linerThicknessIn?, ceilingFt }] } — one item per segment
- * whose vertices sit in a room box with a ceiling height (features/
- * duct-bidcheck.js collects them; a segment with no room under it is not
- * "known" and is left out). Returns null while the inputs are not all known
- * (no deck height, or no item) — the row stays a manual checkbox. Otherwise
- * { ok, tightest: { runName, size, depthIn, plenumIn, marginIn, label },
- * offending: [...] } — the detail names the offending segment (or the
- * tightest passing one) with its work: "24×12 + 2" wrap = 14" · plenum 30" ✓".
+ * size, linerType?, linerThicknessIn?, orientation?, ceilingFt }] } — one
+ * item per segment whose vertices sit in a room box with a ceiling height
+ * (features/duct-bidcheck.js collects them; a segment with no room under it
+ * is not "known" and is left out). Returns null while the inputs are not all
+ * known (no deck height, or no item) — the row stays a manual checkbox.
+ * Otherwise { ok, tightest: { runName, subject, orientation, size, depthIn,
+ * plenumIn, marginIn, label }, offending: [...] } — the detail names the
+ * offending segment (or the tightest passing one) with its work: "24×12 +
+ * 2" wrap = 14" · plenum 30" ✓". D12: a run on edge hangs its larger side
+ * and its `subject` names it — "Supply Main (on edge): 24×12 + 2" wrap = 26"
+ * · plenum 24" ⚠"; flat runs keep the D9 wording (subject = runName).
  */
 function ductPlenumFit(opts) {
   const o = opts || {};
@@ -1478,13 +1514,16 @@ function ductPlenumFit(opts) {
   const rows = [];
   (o.items || []).forEach(it => {
     if (!it || !(it.ceilingFt > 0)) return;
-    const d = ductDepthIn(it.size, it.linerType, it.linerThicknessIn);
+    const edge = it.orientation === 'edge' && it.size && it.size.kind === 'rect';
+    const d = ductDepthIn(it.size, it.linerType, it.linerThicknessIn, edge ? 'edge' : 'flat');
     if (!d) return;
     const plenumIn = Math.round((o.deckHeightFt - it.ceilingFt) * 12 * 10) / 10;
+    const runName = it.runName || 'Duct run';
     rows.push({
-      runName: it.runName || 'Duct run', size: it.size, depthIn: d.depthIn, plenumIn: plenumIn,
+      runName: runName, subject: edge ? runName + ' (on edge)' : runName, orientation: edge ? 'edge' : 'flat',
+      size: it.size, depthIn: d.depthIn, plenumIn: plenumIn,
       marginIn: plenumIn - d.depthIn,
-      label: ductDepthLabel(it.size, it.linerType, it.linerThicknessIn) + ' · plenum ' + fmtIn(plenumIn) + '"',
+      label: ductDepthLabel(it.size, it.linerType, it.linerThicknessIn, edge ? 'edge' : 'flat') + ' · plenum ' + fmtIn(plenumIn) + '"',
     });
   });
   if (!rows.length) return null;
@@ -1818,8 +1857,10 @@ const DUCT_BID_CHECK_ROWS = [
     evaluate(i) {
       const fit = ductPlenumFit(i && i.plenum);
       if (!fit) return null;   // inputs missing → stays a checkbox
-      if (fit.ok) return { verdict: 'ok', detail: fit.tightest.label + ' ✓' };
-      return { verdict: 'warn', detail: fit.offending.map(r => r.runName + ': ' + r.label + ' ⚠').join('; ') };
+      // D12: an on-edge subject is named even when it passes (the arithmetic
+      // reads as the larger side); flat keeps the D9 wording byte for byte.
+      if (fit.ok) return { verdict: 'ok', detail: (fit.tightest.orientation === 'edge' ? fit.tightest.subject + ': ' : '') + fit.tightest.label + ' ✓' };
+      return { verdict: 'warn', detail: fit.offending.map(r => r.subject + ': ' + r.label + ' ⚠').join('; ') };
     },
   },
   { id: 'duct-fire-dampers', kind: 'manual', label: 'Fire dampers at rated walls', short: 'Fire dampers at rated walls' },
@@ -1997,6 +2038,8 @@ if (typeof module !== 'undefined' && module.exports) {
     NECK_SIZE_TABLE, suggestNeckSize,
     // Bid Check (D9)
     DUCT_INSULATION_DEFAULT_IN, ductInsulationThicknessIn, ductDepthIn, ductDepthLabel, ductPlenumFit,
+    // orientation (D12)
+    DUCT_ORIENTATIONS, ductBareDepthIn, ductRunDepthIn,
     DUCT_BID_CHECK_ROWS, ductBidCheckRows, ductBidCheckUnresolved,
     // static path (D11)
     DUCT_FITTING_EQ_FT, ductFittingEqFt, ductStaticPath, ductStaticPathLine, ductStaticPathFittingsLabel,

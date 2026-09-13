@@ -23,7 +23,12 @@
  *      (90°/45°/transition/tap/boot/offset — picking one sets auto:false so
  *      the walk can never overwrite the human's call) + Delete (a suppressed
  *      tombstone, so re-inference can't resurrect it); run targets get a
- *      name/size heading + Delete run (removes the run, then re-walks so its
+ *      name/size heading + (D12) the "Orientation: Flat | On edge" segment
+ *      control (house .filter-scope-segment — how a rect run hangs in the
+ *      plenum; `run.orientation` present only when 'edge', so a flat run
+ *      stays byte-identical; the Bid Check's "Fits the roof" row re-reads it
+ *      on the spot through updateUI, and the sidebar row tags it "on edge")
+ *      + Delete run (removes the run, then re-walks so its
  *      fittings and any taps from children onto it dissolve). Dismissal is
  *      the tool-context-menu.js pattern: listeners attached only while open,
  *      Escape handled in the CAPTURE phase with stopImmediatePropagation so
@@ -124,6 +129,38 @@
     }
   }
 
+  // D12 — a segment-control row inside the menu ({ segment: true, label,
+  // options: [{ value, label }], value, pick(value) }): the house
+  // .filter-scope-segment (aria-pressed marks the choice). Picking flips the
+  // state IN PLACE and keeps the menu open — a toggle is a state, not an
+  // action, so the human sees it land.
+  function buildSegmentRow(a) {
+    const row = document.createElement('div');
+    row.className = 'duct-menu-segment-row';
+    const label = document.createElement('span');
+    label.className = 'duct-menu-segment-label';
+    label.textContent = a.label;
+    const seg = document.createElement('div');
+    seg.className = 'filter-scope-segment';
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', a.label);
+    if (a.id) seg.id = a.id;
+    a.options.forEach((opt) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.value = opt.value;
+      b.textContent = opt.label;
+      b.setAttribute('aria-pressed', String(opt.value === a.value));
+      b.onclick = () => {
+        a.pick(opt.value);
+        seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.value === opt.value)));
+      };
+      seg.appendChild(b);
+    });
+    row.append(label, seg);
+    return row;
+  }
+
   function showMenu(clientX, clientY, heading, actions) {
     const menu = document.getElementById('ductFittingMenu');
     if (!menu) return false;
@@ -135,6 +172,7 @@
       menu.appendChild(h);
     }
     actions.forEach((a) => {
+      if (a.segment) { menu.appendChild(buildSegmentRow(a)); return; }
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.setAttribute('role', 'menuitem');
@@ -184,9 +222,19 @@
       if (!run) return false;
       const sizes = runSegmentSpans(run).map((s) => formatDuctSize(s.size));
       const heading = (run.name || 'Duct run') + (sizes.length ? ' · ' + sizes.join(' → ') : '');
-      return showMenu(clientX, clientY, heading, [
-        { label: 'Delete run', run: () => deleteRun(target.index) },
-      ]);
+      const actions = [];
+      // D12: rect runs hang flat (h down) or on edge (the larger side down);
+      // round duct has no orientation, so the chip stays off its menu.
+      if (run.segments.some((s) => s.size && s.size.kind === 'rect')) {
+        actions.push({
+          segment: true, id: 'ductRunOrientationSegment', label: 'Orientation',
+          options: [{ value: 'flat', label: 'Flat' }, { value: 'edge', label: 'On edge' }],
+          value: run.orientation === 'edge' ? 'edge' : 'flat',
+          pick: (v) => setRunOrientation(target.index, v),
+        });
+      }
+      actions.push({ label: 'Delete run', run: () => deleteRun(target.index) });
+      return showMenu(clientX, clientY, heading, actions);
     }
     return false;
   }
@@ -244,6 +292,24 @@
     App.updateUI();
   }
 
+  // D12 — the run's orientation. 'edge' writes run.orientation; 'flat'
+  // DELETES the key (flat is the default and a flat run's saved shape must
+  // stay byte-identical to pre-D12). updateUI re-renders the Bid Check
+  // ("Fits the roof" reads the larger side on edge) and the sidebar tag.
+  function setRunOrientation(index, orientation) {
+    const ann = currentAnn();
+    const run = ann?.ductRuns?.[index];
+    if (!run || !DUCT_ORIENTATIONS.includes(orientation)) return;
+    const current = run.orientation === 'edge' ? 'edge' : 'flat';
+    if (current === orientation) return;
+    App.pushUndoSnapshotCurrentPage();
+    if (orientation === 'edge') run.orientation = 'edge';
+    else delete run.orientation;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
+
   function deleteRun(index) {
     const ann = currentAnn();
     if (!ann?.ductRuns?.[index]) return;
@@ -261,6 +327,7 @@
   App.reinferDuctFittings = reinferDuctFittings;
   App.getDuctFittingCounts = getDuctFittingCounts;
   App.tryOpenDuctContextMenu = tryOpenDuctContextMenu;
+  App.setDuctRunOrientation = setRunOrientation;   // D12 (spec seam + the sidebar)
   App.hideDuctFittingMenu = hideDuctFittingMenu;
   App.isDuctFittingMenuOpen = () => menuOpen;   // spec seam
 })();

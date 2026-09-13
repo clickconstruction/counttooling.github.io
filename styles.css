@@ -1535,6 +1535,10 @@ body.hotkey-peek .hk-badge { display: block; }
 /* D9: the S-popover depth line ("14" deep · plenum 30" ✓") — quiet, informative. */
 .duct-depth-line { font-size: 0.74rem; color: var(--text2); padding: 2px 0; font-variant-numeric: tabular-nums; }
 .duct-depth-line.warn { color: var(--accent); }
+/* D12 — the draft's Flat | On edge toggle under the depth line (order 41):
+   the house .filter-scope-segment beside a quiet label. */
+.duct-orientation-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.duct-orientation-label { font-size: 0.74rem; color: var(--text2); }
 .bid-check-defaults { font-size: 0.74rem; color: var(--text2); padding: 8px 8px 4px; line-height: 1.6; }
 .bid-check-defaults input { width: 52px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font: inherit; padding: 1px 4px; }
 .schedule-palette-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow: auto; margin-bottom: 8px; }
@@ -1675,6 +1679,8 @@ body.tour-active .canvas-empty-hint { display: none; }
 .duct-run-row .duct-run-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .duct-seg-row { margin-left: 22px; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text2); padding: 1px 0; }
 .duct-fittings-line { margin-left: 22px; font-size: 0.72rem; color: var(--text3); padding: 2px 0 4px; }
+/* D12 — the run row's "on edge" tag (absent when flat). */
+.duct-orientation-tag { flex-shrink: 0; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; line-height: 1.3; }
 .duct-all-total { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; padding: 6px 8px 2px; border-top: 1px solid var(--border); color: var(--accent); font-weight: 600; font-size: 0.85rem; }
 .duct-all-total .duct-all-total-num { font-family: 'DM Mono', monospace; }
 
@@ -1975,6 +1981,13 @@ body.tour-active .canvas-empty-hint { display: none; }
 /* Heading row for target-bound menus (#ductFittingMenu, DUCT unit D3): the
    right-clicked fitting's type · size (· auto) or the run's name · sizes. */
 .tool-context-menu .tool-context-menu-heading { padding: 6px 12px 4px; font-size: 0.78rem; font-weight: 600; color: var(--text2); border-bottom: 1px solid var(--border2); margin-bottom: 4px; white-space: nowrap; }
+/* D12 — a segment-control row inside a target-bound menu (the run menu's
+   Orientation: Flat | On edge): the house .filter-scope-segment, its buttons
+   un-blocked from the menu's full-width item rule. */
+.tool-context-menu .duct-menu-segment-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 12px; }
+.tool-context-menu .duct-menu-segment-label { font-size: 0.8rem; color: var(--text2); }
+.tool-context-menu .filter-scope-segment button { display: inline-block; width: auto; text-align: center; padding: 5px 10px; border-radius: 0; }
+.tool-context-menu .filter-scope-segment button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 .macros-context-tip { margin-top: 10px; font-size: 0.8rem; color: var(--text3); }
 
 /* --- Bid Board (overseer "all bids" browser; features/bid-board.js).

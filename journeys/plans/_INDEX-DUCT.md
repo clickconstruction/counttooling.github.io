@@ -26,7 +26,7 @@ live users (new modules precached, no UI change).
 | D7 | Design-build layer 2: room-type CFM defaults on Room Sizer (editable table + per-room override, device prefill), air-balance badges (room needs/served ⚠ on Rooms rows, capacity line on system groups), equipment-first suggestion (area totals → system count/CFM) | claude/duct-d07-balance | ☑ merged 2026-09-06, pushed ckpt 2 |
 | D8 | Polish: rise/drop field in the S popover + project deck-height default + per-device flex-drop defaults + max-flex warning; VD-per-tap toggle (fittings rows, right-click remove); round-first dual suggestions ("10"Ø or 12×8"); neck-size prefill from CFM; true-width ghost | claude/duct-d08-polish | ☑ merged 2026-09-12 (true-width ghost split to D8b) |
 | D9 | Bid Check: sidebar panel (AUTO rows computed-with-numbers, MANUAL rows persistent checkboxes), export/copy gate badge + interactive toast ("Review · Export anyway", T2-04/T2-06 machinery), worked row "Fits the roof" (manual→auto when deck+ceiling+size known), S-popover depth line | claude/duct-d09-bidcheck | ☑ merged 2026-09-12, pushed ckpt 3 (extends the upstream S5 Bid Check panel) |
-| D10 | Plan-and-spec: PDF text-layer query primitive (callouts near a point), starting-size prefill, step-down offers while tracing ("Plan says 20×12 — S accepts") | claude/duct-d10-callouts | queued — **final push** |
+| D10 | Plan-and-spec: PDF text-layer query primitive (callouts near a point), starting-size prefill, step-down offers while tracing ("Plan says 20×12 — S accepts") | claude/duct-d10-callouts | ☑ merged 2026-09-12, final push — QUEUE COMPLETE (also fixed the Create-tab focus-steal bug behind the duct-balance flake) |
 
 Conflict/sequencing notes:
 - D2 owns the S popover; D6 (suggestion line), D8 (rise/drop, dual sizes),
@@ -50,3 +50,5 @@ open the Duct Schedule and sanity-check the bid weight against hand math →
 place CFM devices and confirm a ductulator suggestion → tick a Bid Check
 manual row → hit Export/Copy and confirm the gate toast + "Export anyway".
 The build is not done until this live walk passes.
+
+Follow-ups after the queue: D8b true-width ghost (needs linux baselines via ci/regen-baselines/*); static-path AUTO evaluator (equivalent-length table + critical-path walk); `duct_run` migration application (Will's call); callout-accept telemetry if wanted.

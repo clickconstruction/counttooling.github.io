@@ -145,6 +145,51 @@
     else if (unit === 'yd') inp.placeholder = 'e.g. 1.92';
     else inp.placeholder = 'e.g. 10';
   }
+  // D20 (X3, J7): the page scale's label, when the dialog is editing the PAGE
+  // (zone mode edits a zone's scale and must not be preloaded from the page).
+  function currentPageScaleLabel() {
+    const state = App.state;
+    if (state.scaleModalApplyTarget === 'zone') return null;
+    const sc = App.getPageScale(state.currentPage);
+    return sc ? (sc.label || null) : null;
+  }
+  // D20 (X3): open where the scale was SET, with its value preloaded, instead
+  // of always landing on Presets with empty fields. The three sources are
+  // distinguishable from the stored scale itself:
+  //   refLine            -> two points; offer a re-measure
+  //   label in SCALE_PRESETS -> that preset (highlighted by showScaleTab)
+  //   any other label    -> the custom fraction + feet, refilled from the label
+  // An unset page, or zone mode, keeps today's behavior exactly.
+  function preloadFromCurrentScale() {
+    const state = App.state;
+    const sc = state.scaleModalApplyTarget === 'zone' ? null : App.getPageScale(state.currentPage);
+    if (!sc) { showScaleTab('presets'); return; }
+    if (sc.refLine) {
+      showScaleTab('points');
+      const name = sc.label || ((sc.pixelsPerUnit != null ? Number(sc.pixelsPerUnit).toFixed(1) : '?') + ' px/' + (sc.unit || 'ft'));
+      const info = document.getElementById('scaleInfo');
+      if (info) {
+        info.textContent = 'Set from two points on the plan (' + name + '). '
+          + ((App.isCoarsePointer && App.isCoarsePointer()) ? 'Tap' : 'Click')
+          + ' Select on PDF to measure again, or switch tabs to pick a scale.';
+      }
+      return;
+    }
+    showScaleTab('presets');   // highlights the matching preset, if any
+    const isPreset = (App.SCALE_PRESETS || []).some((p) => p.label === sc.label);
+    if (isPreset || !sc.label) return;
+    // A custom scale: put its own numbers back in the custom row. The label is
+    // the only record of the fraction the estimator typed ('3/32" = 1.5 ft'),
+    // so it is parsed back; anything unrecognized leaves the row untouched
+    // rather than guessing.
+    const m = /^(.+?)"\s*=\s*([\d.]+)\s*ft$/.exec(sc.label);
+    if (!m) return;
+    const frac = document.getElementById('scaleCustomFraction');
+    const feet = document.getElementById('scaleCustomFeet');
+    if (frac) frac.value = m[1].trim();
+    if (feet) feet.value = m[2];
+  }
+
   function openScaleModal() {
     const state = App.state;
     // ONE no-plan gate for every scale entrance (Tier-3 B8 / J3): the header
@@ -223,7 +268,7 @@
           ? 'Tap Select on PDF, then tap two points on the drawing to define a scale line.'
           : 'Click Select on PDF, then click two points on the drawing to define a scale line.';
       }
-      showScaleTab('presets');
+      preloadFromCurrentScale();
     }
     const refChk = document.getElementById('scaleShowRefLine');
     if (refChk) refChk.checked = !!state.showScaleRefLine;
@@ -357,6 +402,9 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = p.label;
+        // D20 (X3): the preset that IS this page's scale reads as chosen, so
+        // reopening the dialog shows what is set rather than a blank slate.
+        if (currentPageScaleLabel() === p.label) btn.classList.add('selected');
         btn.onclick = () => {
           const scaleObj = { pixelsPerUnit: p.pixelsPerUnit, unit: p.unit, label: p.label };
           if (applyScaleObjectToZoneOrPage(withZoneSheetCorrection(scaleObj), 'preset')) return;   // zone: inherits the page's sheet correction
@@ -382,6 +430,41 @@
       refreshSheetWarning();
     }
   }
+  // D20 (J5-A): a live drawing draft is PARKED for the scale dialog and resumed
+  // when it closes. Before this, Set Scale dropped the tool to Move and cleared
+  // nothing, so a half-drawn polyline or quick line survived invisibly "in
+  // Move": every following click was dead and the draft could only be escaped,
+  // never finished. Parking is deliberately NOT the D17 settle rule — S is not
+  // another drawing tool arming (which must resolve the draft by its own commit
+  // rules), it is a modal the estimator steps into and back out of, so the
+  // draft is exactly where they left it. Esc still pops one vertex, because the
+  // ladder runs against the restored draft after the modal is gone.
+  function parkDraftForScaleModal() {
+    const state = App.state;
+    const hasDraft = !!state.drawingPolyline || !!state.quickLineStart;
+    state.parkedScaleDraft = hasDraft
+      ? { tool: state.tool, drawingPolyline: state.drawingPolyline, quickLineStart: state.quickLineStart }
+      : null;
+  }
+  function resumeParkedDraft() {
+    const state = App.state;
+    const parked = state.parkedScaleDraft;
+    state.parkedScaleDraft = null;
+    if (!parked) return false;
+    // Only resume into an empty hand: if the estimator armed something else
+    // from inside the dialog (or a scale apply moved the tool on), that wins.
+    if (state.tool !== App.TOOL.NONE) return false;
+    if (state.drawingPolyline || state.quickLineStart) return false;
+    state.tool = parked.tool;
+    state.drawingPolyline = parked.drawingPolyline;
+    state.quickLineStart = parked.quickLineStart;
+    App.updateUI();
+    App.renderAnnotations();
+    return true;
+  }
+  App.onScaleModalHidden = resumeParkedDraft;   // app.js hideModal('scaleModal')
+  App.resumeParkedDraft = resumeParkedDraft;    // spec seam
+
   const setScaleClick = () => {
     const state = App.state;
     resetScaleModalZoneMode();
@@ -389,7 +472,10 @@
     state.scalePointA = null;
     state.scalePointB = null;
     state.scaleMode = App.SCALE_MODES.NONE;
+    parkDraftForScaleModal();   // D20 (J5-A) — before the tool is dropped
     state.tool = App.TOOL.NONE;
+    state.drawingPolyline = null;
+    state.quickLineStart = null;
     openScaleModal();
   };
   document.getElementById('setScale').onclick = setScaleClick;

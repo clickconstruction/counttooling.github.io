@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '90ceeea3a287';
+const CACHE_VERSION = 'b3c9b16f15a3';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -190,7 +190,7 @@ const PRECACHE_SHA256 = {
   '/app/': '98a0b12ec296b20e4b56a252643978fb8f4b056347da25df5307b07426cbdba3',
   '/app/index.html': '98a0b12ec296b20e4b56a252643978fb8f4b056347da25df5307b07426cbdba3',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '16bb2a7cc8b763fc19908bf324e66796eabbd0a2b4b4b7f6f2617becc02e350b',
+  '/styles.css': '442372f27c307e2b94c678aaa7f5205f082155ae8f55ad1850f626f3b2d2eb53',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '4fad0716f98809c79c9a32bb6c9e3365b737119f8e1f9e3ac5001caa4a6791ab',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -220,7 +220,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': 'd17b643b180ef7ff6e55a2bd9905435ed3bbbcf3b750d91ad88f966c9431a203',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '51729a9d61ed2b5bcd35b7441b6b71ffe0ea3773ac7a3ba76c10ef3332a3e7a5',
+  '/app.js': 'fac5ab569d0506747904ee4561abe53a2b780983487ccea9e1f99e92e3bbb217',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '9661cefd7251eb82a9459bb348f31320500c590cbd745bb7153f424e612b51f9',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -239,7 +239,7 @@ const PRECACHE_SHA256 = {
   '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',
   '/features/line-type-settings.js': '91bcfa06e0f4d29360effb6b1178d869020cbb5aa427f2e2550eb3b1fa48ed60',
   '/features/choose-create-line-type.js': 'fd26611fd14483d91a3da3c823d2a0fd3331c665311653e11cc8a03cf7fdff81',
-  '/features/scale.js': 'dc5a5d2be704ffc1304d523f4e5f930d0d58cc047617d7fe6b9d439f2e178109',
+  '/features/scale.js': '311af842937797fbfbe23cb549d7bc425bc37c00155c0830d3421388cbf85416',
   '/features/scale-zone-settings.js': '67a8a802e7aeaf629a235dbd0e4d9c42ea5c746412ae6749b90ecf35be7a9c9f',
   '/features/groups.js': 'a6397bfbea34bfbd7b67b6eacee0c4f048c58bdd267a256b14fcde96696049c1',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',

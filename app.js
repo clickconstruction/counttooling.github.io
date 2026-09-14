@@ -367,6 +367,7 @@
     groups: [],
     rooms: [],
     roomsListCollapsed: false,
+    parkedScaleDraft: null,   // D20 (J5-A): a live polyline / quick-line draft held across the Set Scale modal and resumed when it closes. In-memory, one modal round-trip long.
     counterAirMoreOpen: null,   // D19: in-memory per project — the Counter modal's "More ▸ air & mounting" disclosure. null = follow the trade (open on hvac/electrical); true/false = the estimator's override for this project. A view preference like showAllCanvases, deliberately NOT in save/load.
     recentRoomHeights: [],
     activeGroupId: null,
@@ -796,6 +797,7 @@
     state.groupsEnabled = false;
     state.trade = null;
     state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
+    state.parkedScaleDraft = null;
     state.ceilingHeightFt = null;
     state.codes = null;
     state.makeUpFt = null;
@@ -2391,7 +2393,14 @@
         const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
         btn.title = scale.temp ? 'Temporary scale — only on this device' : '';
         if (isHeader) {
-          btn.innerHTML = scaleIconSvgHeader;
+          // D20 (X3): the header twin reads the value too, so the set scale is
+          // legible without opening anything and the button stays a target.
+          // One compact line — the label when there is one ('1/4" = 1 ft'),
+          // else the px readout, which is all an unlabelled scale has.
+          btn.innerHTML = scaleIconSvgHeader.replace('width="28" height="28"', 'width="18" height="18"')
+            + '<span class="set-scale-header-value">' + esc(scale.label || pxLine) + '</span>';
+          btn.title = (scale.temp ? 'Temporary scale — only on this device. ' : '')
+            + 'Scale: ' + (scale.label ? scale.label + ' · ' + pxLine : pxLine) + ' — click to edit';
         } else if (scale.label) {
           btn.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
         } else {
@@ -3158,6 +3167,7 @@
     if (id === 'deleteCanvasConfirmModal') App.onDeleteCanvasConfirmHidden && App.onDeleteCanvasConfirmHidden();
     if (id === 'summaryCountDetailModal') App.onSummaryCountDetailHidden && App.onSummaryCountDetailHidden();
     if (id === 'toolingScaleCheckModal') App.onToolingScaleCheckHidden && App.onToolingScaleCheckHidden();
+    if (id === 'scaleModal') App.onScaleModalHidden && App.onScaleModalHidden();   // D20 (J5-A): resume a parked draft
     document.getElementById(id).classList.remove('visible');
     // A "Project from Last Session" offer that arrived while this modal was
     // up gets its turn now (features/restore-last-session.js; no-op otherwise).

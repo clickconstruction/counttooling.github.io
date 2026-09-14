@@ -235,7 +235,12 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(await page.evaluate(() => window.state.pages[window.state.currentPage].scale.refLine)).toEqual({ x1: 0, y1: 0, x2: 151, y2: 0 });
 
     // A preset scale replaces it and carries no refLine.
+    // D20 (X3): the dialog now reopens on the tab that SET the scale, so a
+    // two-point scale lands on "Select two points" — reaching a preset from
+    // there is one tab click, the same one the estimator makes.
     await page.evaluate(() => window.App.openScaleModal());
+    await expect(page.locator('#scalePointsPanel')).toBeVisible();
+    await page.locator('#scaleModalTabs .counter-tab[data-tab="presets"]').click();
     await page.waitForSelector('#scalePresetsList button', { timeout: 5000 });
     await page.locator('#scalePresetsList button').first().click();
     await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });

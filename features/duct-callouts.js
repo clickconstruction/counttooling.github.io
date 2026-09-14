@@ -11,14 +11,24 @@
  * Two surfaces, one primitive:
  *
  *   1. Starting-size prefill. Arming Duct (#ductCreateModal) with a plan open
- *      pre-fills the size fields from the nearest callout to the cursor's
- *      LAST CANVAS POSITION (state.mousePos — the point the user was working
- *      at when they reached for the button) when one sits within
- *      DUCT_CALLOUT_RADIUS_PT (60 pt, duct-model.js), and says so beside the
- *      fields ("from the plan: 24×12", #ductCreateCalloutNote). The user can
- *      change it; no callout = the fields are left exactly as they were.
- *      A text layer still loading at open time lands via onPageTextLoaded
- *      and prefills then — unless the user has already touched the fields.
+ *      pre-fills the size fields from the plan, two tiers, first hit wins,
+ *      and says WHERE it came from beside the fields (#ductCreateCalloutNote):
+ *        a. the nearest callout to the cursor's LAST CANVAS POSITION
+ *           (state.mousePos — the point the user was working at when they
+ *           reached for the button / pressed U) when one sits within
+ *           DUCT_CALLOUT_RADIUS_PT (60 pt, duct-model.js) —
+ *           "from the plan: 24×12 near the cursor";
+ *        b. else the ONE size the current page prints (soleDuctCallout —
+ *           "24x12" three times and nothing else is the trunk size; two
+ *           distinct sizes are ambiguous and read nothing) —
+ *           "from the plan: 24×12 — the plan's only printed size".
+ *      (The 2026-09-13 live walk: U is pressed before the cursor is near any
+ *      callout, so tier a alone left the dialog empty and the size arrived
+ *      one step late through the S popover.) Never from another page. The
+ *      user can change it; no callout = the fields are left exactly as they
+ *      were. A text layer still loading at open time lands via
+ *      onPageTextLoaded and prefills then — unless the user has already
+ *      touched the fields (a typed size is never overwritten).
  *
  *   2. Step-down offers while tracing. As the cursor moves along a trace,
  *      a callout within the radius whose size DIFFERS from the current
@@ -43,7 +53,8 @@
  * cell so a burst of mousemoves inside one cell costs one scan.
  *
  * Pure parts in duct-model.js: parseDuctCallout (the grammar),
- * nearestDuctCallout (the pick), DUCT_CALLOUT_RADIUS_PT. Boundary rule: read
+ * nearestDuctCallout (the pick), soleDuctCallout (the page's one size),
+ * DUCT_CALLOUT_RADIUS_PT. Boundary rule: read
  * shared deps from App.* at call time. See ARCHITECTURE.md "Feature files /
  * window.App registry".
  */
@@ -173,14 +184,34 @@
   }
 
   /**
+   * The size to seed the create dialog with, or null: tier a, the nearest
+   * callout to the cursor's last canvas position; tier b, the one size the
+   * current page prints. { size, note } — `note` says where it came from.
+   * Reads only the current page (pageTextItems kicks the lazy fetch; []
+   * while it is in flight, and onPageTextLoaded re-runs the prefill then).
+   */
+  function armTimePrefill() {
+    const state = App.state;
+    if (!state.pages.length) return null;
+    const pageIdx = state.currentPage;
+    const near = state.mousePos ? calloutAt(pageIdx, state.mousePos) : null;
+    if (near) return { size: near.size, note: 'from the plan: ' + formatDuctSize(near.size) + ' near the cursor' };
+    if (typeof soleDuctCallout !== 'function' || !App.pageTextItems) return null;
+    const sole = soleDuctCallout(App.pageTextItems(pageIdx));
+    if (sole) return { size: sole.size, note: 'from the plan: ' + formatDuctSize(sole.size) + ", the plan's only printed size" };
+    return null;
+  }
+
+  /**
    * Called by duct-tool.js's openDuctCreateModal (and again by
    * onPageTextLoaded when the text layer lands after the open). Prefills the
-   * size fields from the nearest callout to the cursor's last canvas
-   * position and shows the "from the plan: 24×12" note; with no callout the
-   * fields are left untouched and the note hidden.
+   * size fields from the plan (armTimePrefill: nearest callout to the
+   * cursor, else the page's only printed size) and shows the "from the
+   * plan: 24×12 …" note naming the source; with nothing to read the fields
+   * are left untouched and the note hidden. The deferred pass never
+   * overwrites a size the user has typed since the open.
    */
   function syncDuctCalloutPrefill(opts) {
-    const state = App.state;
     const note = document.getElementById('ductCreateCalloutNote');
     const modal = document.getElementById('ductCreateModal');
     if (!note || !modal) return;
@@ -193,10 +224,10 @@
       note.style.display = 'none';
       note.textContent = '';
     }
-    const hit = state.pages.length && state.mousePos ? calloutAt(state.currentPage, state.mousePos) : null;
+    const hit = armTimePrefill();
     if (!hit || !App.setDuctCreateSize) return;
     App.setDuctCreateSize(hit.size);
-    note.textContent = 'from the plan: ' + formatDuctSize(hit.size);
+    note.textContent = hit.note;
     note.style.display = '';
   }
 

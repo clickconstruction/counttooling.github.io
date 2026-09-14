@@ -1784,6 +1784,25 @@ test('nearestDuctCallout: nearest readable within radius, measured to the text b
   assert.strictEqual(dm.ductDistToTextBox({ x: 0, y: 0 }, { x: 3, y: 4, w: 10, h: 10 }), 5);
 });
 
+test('soleDuctCallout: the one size a page prints (any spelling, counted); two sizes or none → null', () => {
+  const decoys = [{ str: '12/25/2026' }, { str: '1/4" = 1\'-0"' }, { str: 'MECHANICAL PLAN' }, { str: 'SUPPLY' }];
+  // one size, printed three ways: the trunk size, counted
+  const sole = dm.soleDuctCallout([{ str: '24x12' }, ...decoys, { str: '24×12 SA' }, { str: '24"x12"' }]);
+  assert.deepStrictEqual(sole.size, { kind: 'rect', w: 24, h: 12 });
+  assert.strictEqual(sole.str, '24x12');
+  assert.strictEqual(sole.count, 3);
+  // a round sheet reads too
+  assert.deepStrictEqual(dm.soleDuctCallout([{ str: '12"Ø' }, { str: 'Ø12' }]), { size: { kind: 'round', d: 12 }, str: '12"Ø', count: 2 });
+  // a second distinct size anywhere on the page → ambiguous → null, whatever the counts
+  assert.strictEqual(dm.soleDuctCallout([{ str: '24x12' }, { str: '24x12' }, { str: '20x12' }]), null);
+  assert.strictEqual(dm.soleDuctCallout([{ str: '24x12' }, { str: '12"Ø' }]), null);
+  // decoys only, an empty page, a scan, bad input → null
+  assert.strictEqual(dm.soleDuctCallout(decoys), null);
+  assert.strictEqual(dm.soleDuctCallout([]), null);
+  assert.strictEqual(dm.soleDuctCallout(null), null);
+  assert.strictEqual(dm.soleDuctCallout([null, { str: null }]), null);
+});
+
 // --- Multiply zones (D17, J6-G) ----------------------------------------------
 
 test('ductRepeatFactorForRun: the line rule — both ends inside one zone → its multiplier; straddling → 1', () => {

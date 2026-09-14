@@ -2186,6 +2186,28 @@ function nearestDuctCallout(items, pt, radius) {
   return best;
 }
 
+/**
+ * The ONE duct size a page prints, or null — the arm-time fallback when no
+ * callout sits within reach of the cursor (the U press usually lands before
+ * the cursor is near the run): a sheet that says "24x12" three times and no
+ * other size is telling you the trunk size; a sheet that prints two sizes is
+ * ambiguous and reads as null, so the S popover keeps that job. Over a page's
+ * text items (any order); { size, str, count } with `count` the number of
+ * items that read as that size and `str` the first one's text.
+ */
+function soleDuctCallout(items) {
+  let sole = null;
+  for (const it of items || []) {
+    if (!it) continue;
+    const size = parseDuctCallout(it.str);
+    if (!size) continue;
+    if (!sole) { sole = { size: size, str: it.str, count: 1 }; continue; }
+    if (formatDuctSize(size) !== formatDuctSize(sole.size)) return null;   // a second distinct size — ambiguous
+    sole.count++;
+  }
+  return sole;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // model
@@ -2240,6 +2262,6 @@ if (typeof module !== 'undefined' && module.exports) {
     // static path (D11)
     DUCT_FITTING_EQ_FT, ductFittingEqFt, ductStaticPath, ductStaticPathLine, ductStaticPathFittingsLabel,
     // plan-and-spec callouts (D10)
-    DUCT_CALLOUT_RADIUS_PT, parseDuctCallout, ductDistToTextBox, nearestDuctCallout,
+    DUCT_CALLOUT_RADIUS_PT, parseDuctCallout, ductDistToTextBox, nearestDuctCallout, soleDuctCallout,
   };
 }

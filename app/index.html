@@ -528,7 +528,7 @@
           <button id="ductSizeStepBtn" title="Step the duct size (S)">Size… (S)</button>
         </div>
         <div id="syncPausedBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
-          <span class="sync-paused-banner-msg">Cloud sync paused - your work is saved locally. Reconnecting...</span>
+          <span class="sync-paused-banner-msg">Cloud sync paused. Your work is saved locally. Reconnecting…</span>
           <button type="button" id="syncPausedBannerRetry" class="sync-paused-banner-retry">Retry now</button>
         </div>
         <div id="canvasOnlyNeedsPdfBanner" class="sync-paused-banner" style="display:none;" role="status" aria-live="polite">
@@ -1951,7 +1951,7 @@
        keeps its line breaks; Esc is Cancel (the ladder's first rung); it sits
        above every other modal. features/… call App.confirmDialog({ title,
        body, confirmLabel, danger }) and await the boolean. -->
-  <div class="modal-overlay" id="confirmModal" style="z-index:240;">
+  <div class="modal-overlay" id="confirmModal" style="z-index:340;">
     <div class="modal-card" role="alertdialog" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
       <h2 id="confirmTitle">Are you sure?</h2>
       <p id="confirmBody" class="form-group" style="margin-bottom:12px;color:var(--text2);white-space:pre-line;"></p>

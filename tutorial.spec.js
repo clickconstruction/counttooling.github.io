@@ -227,7 +227,7 @@ test.describe('Interactive walkthrough', () => {
     await page.click('#tourAction');
     const marks = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Water Closet'); return window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id]; });
     expect(marks.length).toBe(3);
-    marks.forEach((m) => { expect(m.x).toBeGreaterThan(322); expect(m.x).toBeLessThan(465); expect(m.y).toBeGreaterThan(266); expect(m.y).toBeLessThan(442); });
+    marks.forEach((m) => { expect(m.x).toBeGreaterThan(630); expect(m.x).toBeLessThan(765); expect(m.y).toBeGreaterThan(358); expect(m.y).toBeLessThan(520); });
     await waitForStep(page, 'linetype');
     // 6. the Quick Line name
     await page.click('#tourAction');
@@ -255,7 +255,7 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'rfi');
     // 11. the RFI note is collected by Copy RFI Flags' collector
     await page.click('#tourAction');
-    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).notes.map((n) => n.text))).toEqual(['RFI: floor drain in Men 105?']);
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).notes.map((n) => n.text))).toEqual(['RFI: ADA clearance at the end stall in Women 108?']);
     await waitForStep(page, 'proof');
     // 12. the proof modal opens on the Water Closet
     await page.click('#tourAction');
@@ -275,7 +275,7 @@ test.describe('Interactive walkthrough', () => {
     const summary = await page.evaluate(() => window.getPipeToolingSummary());
     expect(summary).toContain('Water Closet\t9');
     expect(summary).toContain('Lavatory\t9');
-    expect(summary).toContain('ft of 1in PEX\t26.33');
+    expect(summary).toContain('ft of 1in PEX\t28.00');   // 2 lav-to-lav runs of 3.17 ft × 3 floors + 3 risers of 3 ft
     expect(summary).toContain('  Hanger\t15');
     expect(errors).toEqual([]);
   });
@@ -318,7 +318,7 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'system');
     const marks = await page.evaluate(() => { const c = window.state.counters.find((x) => /diffuser/i.test(x.name)); return window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id].map((m) => [m.x, m.y]); });
     expect(marks.length).toBe(4);
-    marks.forEach(([x, y]) => { expect(x).toBeGreaterThan(114); expect(x).toBeLessThan(321); expect(y).toBeGreaterThan(268); expect(y).toBeLessThan(441); });
+    marks.forEach(([x, y]) => { expect(x).toBeGreaterThan(158); expect(x).toBeLessThan(412); expect(y).toBeGreaterThan(358); expect(y).toBeLessThan(520); });
     // 7. RTU-1 through the real Groups modal, and it is the active group
     await page.click('#tourAction');
     await waitForStep(page, 'duct');

@@ -49,6 +49,31 @@ re-numbered office TI) stays under review: adopting it re-derives every tour coo
 
 ---
 
+## feat(samples): candidate A promoted to the simple plan — the design-build sheet (2026-09-14)
+
+Rung 1 of [journeys/plans/SAMPLE-PLANS.md](journeys/plans/SAMPLE-PLANS.md): the simple plan
+teaches design-build, so `samples/sample-plan.pdf` is now candidate A (Suite 200 Office TI,
+A-101) rendered on a true ANSI B sheet with the plan at 9 pt/ft (`PLAN_AT` in
+`scripts/sample-plan-candidates.js`: a drawing point lands at 60 + 0.75·px, 70 + 0.75·py).
+
+- **Inputs, no answers.** A room schedule (areas, ceiling heights, type / occupancy, deck
+  12'-0"), panel LP-1 on the janitor room wall, notes naming RTU-1 (2,000 CFM), the water
+  service and gas meter, and "MEP design-build by contractor". No piping, duct or circuits.
+- **Drawing fixes from the review:** the entry door swings into the lobby; the drinking
+  fountains sit in a recess on the corridor's south wall.
+- **The three tours re-pinned** (features/tutorial.js): the 20'-0" proof is the left-edge
+  dimension from grid A to the corridor; the plumbing tour counts Women 108 (three WCs in
+  stalls on the south wall, three lavs on the north counter — Men 107 has two of each plus
+  urinals); the HVAC room box and the electrical spots sit in Open Office 105; the RFI asks
+  about the end stall's ADA clearance. `tutorial.spec.js` bounds and the PEX footage (28.00
+  ft: two 3.17 ft lav runs × 3 floors + three 3 ft risers) follow; hangers stay 15.
+- **Guide screenshots regenerated** (`scripts/build-screenshots.js` re-pinned to the new
+  fixtures, rooms, waste line and schedule; the drawing extent is 830 × 660 pt).
+- `scripts/build-sample-plan.js` is now a thin renderer of candidate A; the first synthetic
+  office plan is gone.
+
+---
+
 ## fix(settings): Project Settings reachable on small viewports; the project rows as one section (2026-09-14)
 
 Reported from a phone-sized window: the settings sheet had grown (Trade, Codes, Jurisdiction,

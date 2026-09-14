@@ -8,6 +8,13 @@
 > the three tours all open the simple plan today, and candidate A (an office TI, A-101)
 > is drawn but not wired. The `[decision]` slots are the owner's; everything else is a
 > recommendation with its reasoning beside it.
+>
+> **Rung 1 shipped 2026-09-14:** candidate A is the simple plan (`samples/sample-plan.pdf`,
+> true ANSI B, plan at 9 pt/ft) with the §2 inputs — room schedule, LP-1, RTU-1 / service /
+> gas notes, the design-build note — and the two review fixes; the three tours, their spec
+> and the guide screenshots are re-pinned. Not done in that rung: the entry-point rename
+> (§6's fourth decision). The advanced sheet still prints at 918 × 594 pt; move it to the
+> same ANSI B composition when the set's scale lesson is built (§3).
 
 ## 1. The distinction, in the app's terms
 

@@ -23,12 +23,12 @@ const ROOT = path.join(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'guides', 'img');
 const PLAN = path.join(ROOT, 'samples', 'sample-plan.pdf');
 const ACCENT = '#e8c547';
-// The sample plan is a true ANSI B sheet (1224 × 792 pt); the drawing itself occupies
-// the top-left PLAN_W × PLAN_H of it (the SVG source at 0.75 — see
-// scripts/build-sample-plan.js). Markup is placed as fractions of the DRAWING's extent,
-// and every shot frames the drawing (fitPlan) rather than the whole sheet, so the
-// images keep the framing they had when the drawing filled the page.
-const PLAN_W = 918, PLAN_H = 594;
+// The sample plan is a true ANSI B sheet (1224 × 792 pt); the drawing (candidate A at
+// 0.75, placed at (60, 70) — see scripts/sample-plan-candidates.js PLAN_AT) and its
+// room schedule occupy the top-left PLAN_W × PLAN_H of it. Markup is placed as
+// fractions of that extent (a PDF point p is p/PLAN_W, p/PLAN_H), and every shot
+// frames the drawing (fitPlan) rather than the whole sheet.
+const PLAN_W = 830, PLAN_H = 660;
 const FIT_PLAN_SRC = `window.__fitPlan = () => {
   const s = window.state, App = window.App;
   const wrap = document.querySelector('.canvas-wrapper');
@@ -111,11 +111,11 @@ async function takeoffSetup(page) {
     s.counters.push({ id: lav, name: 'Lavatory', icon: dot, color: '#4a9eff', size: 16 });
     s.lineTypes.push({ id: lt, name: 'Waste line', color: '#47c88e', curveStyle: 'straight' });
     const ann = s.pages[0].canvases[0].annotations;
-    const wcX = [0.3717, 0.4003, 0.4289, 0.5310, 0.5596, 0.5882, 0.6168];
-    const lavX = [0.3676, 0.3962, 0.4248, 0.5270, 0.5556, 0.5841, 0.6127];
-    ann.counterMarkers[wc] = wcX.map((fx) => ({ x: fx * pw, y: 0.4962 * ph, id: uid(), group: null }));
-    ann.counterMarkers[lav] = lavX.map((fx) => ({ x: fx * pw, y: 0.7134 * ph, id: uid(), group: null }));
-    ann.quickLines.push({ id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: lt, color: '#47c88e', group: null });
+    const wcX = [0.6136, 0.6479, 0.7771, 0.8133, 0.8494];   // bowls at y 506.5 pt
+    const lavX = [0.6660, 0.6931, 0.8295, 0.8639, 0.8982];   // counters at y 369 pt
+    ann.counterMarkers[wc] = wcX.map((fx) => ({ x: fx * pw, y: 0.7674 * ph, id: uid(), group: null }));
+    ann.counterMarkers[lav] = lavX.map((fx) => ({ x: fx * pw, y: 0.5595 * ph, id: uid(), group: null }));
+    ann.quickLines.push({ id: uid(), x1: 0.5964 * pw, y1: 0.7045 * ph, x2: 0.8675 * pw, y2: 0.7045 * ph, lineTypeId: lt, color: '#47c88e', group: null });
     // the legend at the drawing's top-right corner, above the north arrow (the page's
     // own default corner is off the framed area now that the sheet is wider)
     ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
@@ -139,7 +139,7 @@ async function dropSetup(page) {
     waste.startDrop = 3; waste.startDropUnit = 'ft';
     const cu = uid();
     s.lineTypes.push({ id: cu, name: '2" Cu riser', color: '#4a9eff', curveStyle: 'straight' });
-    ann.quickLines.push({ id: uid(), x1: 0.68 * pw, y1: 0.30 * ph, x2: 0.68 * pw, y2: 0.62 * ph, lineTypeId: cu, color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' });
+    ann.quickLines.push({ id: uid(), x1: 0.5301 * pw, y1: 0.6061 * ph, x2: 0.5301 * pw, y2: 0.7652 * ph, lineTypeId: cu, color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' });
     App.renderPdf();
     App.updateUI();
   }, { pw: PLAN_W, ph: PLAN_H });
@@ -156,8 +156,8 @@ async function roomSetup(page) {
     s.rooms.push({ id: office, name: 'Office 101', color: '#e85447' });
     s.rooms.push({ id: conf, name: 'Conference 103', color: '#4a9eff' });
     const ann = s.pages[0].canvases[0].annotations;
-    ann.roomBoxes.push({ id: uid(), x1: 0.135 * pw, y1: 0.175 * ph, x2: 0.345 * pw, y2: 0.41 * ph, heightFt: 9.5, roomId: office });
-    ann.roomBoxes.push({ id: uid(), x1: 0.575 * pw, y1: 0.175 * ph, x2: 0.755 * pw, y2: 0.41 * ph, heightFt: 8, roomId: conf });
+    ann.roomBoxes.push({ id: uid(), x1: 0.3434 * pw, y1: 0.2197 * ph, x2: 0.4970 * pw, y2: 0.4924 * ph, heightFt: 9.5, roomId: office });
+    ann.roomBoxes.push({ id: uid(), x1: 0.6506 * pw, y1: 0.2197 * ph, x2: 0.7861 * pw, y2: 0.4924 * ph, heightFt: 8, roomId: conf });
     ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
     s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
     App.renderPdf();
@@ -173,8 +173,8 @@ async function roomSetup(page) {
 const VIEW_TOKEN = 'demo-view-token';
 function viewProjectPayload(withDrops) {
   const pw = PLAN_W, ph = PLAN_H; // the drawing's extent on the ANSI B sample sheet
-  const wcX = [0.3717, 0.4003, 0.4289, 0.5310, 0.5596, 0.5882, 0.6168];
-  const lavX = [0.3676, 0.3962, 0.4248, 0.5270, 0.5556, 0.5841, 0.6127];
+  const wcX = [0.6136, 0.6479, 0.7771, 0.8133, 0.8494];
+  const lavX = [0.6660, 0.6931, 0.8295, 0.8639, 0.8982];
   let n = 0; const uid = () => 'view-demo-' + (++n);
   return {
     projectId: 'proj-view-demo', name: 'Sample Plan', pdfHash: 'hash-view-demo',
@@ -196,15 +196,15 @@ function viewProjectPayload(withDrops) {
           id: 'cv1', name: 'Main',
           annotations: {
             counterMarkers: {
-              wc: wcX.map((fx) => ({ x: fx * pw, y: 0.4962 * ph, id: uid(), group: null })),
-              lav: lavX.map((fx) => ({ x: fx * pw, y: 0.7134 * ph, id: uid(), group: null })),
+              wc: wcX.map((fx) => ({ x: fx * pw, y: 0.7674 * ph, id: uid(), group: null })),
+              lav: lavX.map((fx) => ({ x: fx * pw, y: 0.5595 * ph, id: uid(), group: null })),
             },
             quickLines: withDrops
               ? [
-                  { id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: 'lt', color: '#47c88e', group: null, startDrop: 3, startDropUnit: 'ft' },
-                  { id: uid(), x1: 0.68 * pw, y1: 0.30 * ph, x2: 0.68 * pw, y2: 0.62 * ph, lineTypeId: 'cu', color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' },
+                  { id: uid(), x1: 0.5964 * pw, y1: 0.7045 * ph, x2: 0.8675 * pw, y2: 0.7045 * ph, lineTypeId: 'lt', color: '#47c88e', group: null, startDrop: 3, startDropUnit: 'ft' },
+                  { id: uid(), x1: 0.5301 * pw, y1: 0.6061 * ph, x2: 0.5301 * pw, y2: 0.7652 * ph, lineTypeId: 'cu', color: '#4a9eff', group: null, endDrop: 10, endDropUnit: 'ft' },
                 ]
-              : [{ id: uid(), x1: 0.372 * pw, y1: 0.655 * ph, x2: 0.617 * pw, y2: 0.655 * ph, lineTypeId: 'lt', color: '#47c88e', group: null }],
+              : [{ id: uid(), x1: 0.5964 * pw, y1: 0.7045 * ph, x2: 0.8675 * pw, y2: 0.7045 * ph, lineTypeId: 'lt', color: '#47c88e', group: null }],
             polylines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [],
             // withDrops: legend sits lower so the shot's "label them all" callout
             // (anchored under the header's Drop sizes button) doesn't cover it.
@@ -329,8 +329,8 @@ const SHOTS = [
     async setup(page) {
       await roomSetup(page);
       await page.evaluate(() => {
-        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
-        window.App.openRoomBoxModal({ x1: 0.13 * pw, y1: 0.5 * ph, x2: 0.38 * pw, y2: 0.72 * ph });
+        const pw = 830, ph = 660;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
+        window.App.openRoomBoxModal({ x1: 0.1904 * pw, y1: 0.5424 * ph, x2: 0.4964 * pw, y2: 0.7879 * ph });
         const h = document.getElementById('roomBoxHeight');
         h.value = "9'6";
         h.dispatchEvent(new Event('input'));
@@ -432,9 +432,9 @@ const SHOTS = [
     async setup(page) {
       await takeoffSetup(page);
       await page.evaluate(() => { window.state.tool = window.App.TOOL.DELETE_ZONE; window.App.updateUI(); });
-      { const pt = await planPoint(page, 0.30, 0.42); await page.mouse.click(pt.x, pt.y); }
+      { const pt = await planPoint(page, 0.5964, 0.5303); await page.mouse.click(pt.x, pt.y); }
       await page.waitForTimeout(150);
-      { const pt = await planPoint(page, 0.68, 0.80); await page.mouse.click(pt.x, pt.y); }
+      { const pt = await planPoint(page, 0.9277, 0.7955); await page.mouse.click(pt.x, pt.y); }
       await page.waitForSelector('#deleteZoneModal.visible', { timeout: 5000 });
       await page.waitForTimeout(150);
     },
@@ -557,10 +557,10 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
+        const pw = 830, ph = 660;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
         const ann = s.pages[0].canvases[0].annotations;
-        ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid(), label: 'Fixture schedule' });
-        ann.notes.push({ x: 0.135 * pw, y: 0.64 * ph, text: 'Confirm fixture spec — see addendum 2', id: App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' });
+        ann.highlights.push({ x1: 0.4096 * pw, y1: 0.8303 * ph, x2: 0.9398 * pw, y2: 0.9879 * ph, id: App.uid(), label: 'Room schedule' });
+        ann.notes.push({ x: 0.2048 * pw, y: 0.6061 * ph, text: 'Confirm fixture spec — see addendum 2', id: App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' });
         App.renderAnnotations();
       });
       await page.waitForTimeout(250);
@@ -575,10 +575,10 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
+        const pw = 830, ph = 660;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
         const ann = s.pages[0].canvases[0].annotations;
-        ann.highlights.push({ x1: 0.535 * pw, y1: 0.55 * ph, x2: 0.755 * pw, y2: 0.86 * ph, id: App.uid(), label: 'Fixture schedule' });
-        ann.highlights.push({ x1: 0.09 * pw, y1: 0.13 * ph, x2: 0.4 * pw, y2: 0.3 * ph, id: App.uid(), label: 'Pipe material' });
+        ann.highlights.push({ x1: 0.4096 * pw, y1: 0.8303 * ph, x2: 0.9398 * pw, y2: 0.9879 * ph, id: App.uid(), label: 'Room schedule' });
+        ann.highlights.push({ x1: 0.1892 * pw, y1: 0.2197 * ph, x2: 0.3434 * pw, y2: 0.4924 * ph, id: App.uid(), label: 'Lobby finishes' });
         App.renderAnnotations();
         // Arm the Highlight tool — its bookmarks panel opens with the rows.
         document.getElementById('highlightBtn').click();
@@ -594,7 +594,7 @@ const SHOTS = [
     clip: '#canvasWrapper',
     async setup(page) {
       await takeoffSetup(page);
-      { const pt = await planPoint(page, 0.4003, 0.4962); await page.mouse.click(pt.x, pt.y, { button: 'right' }); }
+      { const pt = await planPoint(page, 0.6479, 0.7674); await page.mouse.click(pt.x, pt.y, { button: 'right' }); }
       await page.waitForSelector('#contextMenu', { state: 'visible', timeout: 5000 });
       await page.waitForTimeout(150);
     },
@@ -629,9 +629,9 @@ const SHOTS = [
       await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
       await page.locator('#scaleVerifyBtn').click();
       await page.waitForTimeout(500);
-      { const pt = await planPoint(page, 0.372, 0.655); await page.mouse.click(pt.x, pt.y); }
+      { const pt = await planPoint(page, 0.5964, 0.7045); await page.mouse.click(pt.x, pt.y); }
       await page.waitForTimeout(500); // scale taps are debounced 400ms
-      { const pt = await planPoint(page, 0.617, 0.655); await page.mouse.click(pt.x, pt.y); }
+      { const pt = await planPoint(page, 0.8675, 0.7045); await page.mouse.click(pt.x, pt.y); }
       await page.waitForSelector('#scaleCheckPanel', { state: 'visible', timeout: 5000 });
       await page.locator('#scaleCheckValue').fill('25');
       await page.locator('#scaleCheckBtn').click();
@@ -676,12 +676,12 @@ const SHOTS = [
     clip: '#multiplyZoneModal',
     async setup(page) {
       await takeoffSetup(page);
-      // the real two-click tool path around Women 106, so the "In this area" count is
+      // the real two-click tool path around Women 108, so the "In this area" count is
       // the app's own reading of what the box holds
       await page.evaluate(() => { window.state.tool = window.App.TOOL.MULTIPLY_ZONE; window.App.updateUI(); });
-      { const pt = await planPoint(page, 0.515, 0.44); await page.mouse.click(pt.x, pt.y); }
+      { const pt = await planPoint(page, 0.7590, 0.5424); await page.mouse.click(pt.x, pt.y); }
       await page.waitForTimeout(150);
-      { const pt = await planPoint(page, 0.75, 0.76); await page.mouse.click(pt.x, pt.y); }
+      { const pt = await planPoint(page, 0.9217, 0.7879); await page.mouse.click(pt.x, pt.y); }
       await page.waitForSelector('#multiplyZoneModal.visible', { timeout: 5000 });
       await page.evaluate(() => { const el = document.getElementById('multiplyZoneMultiplier'); if (el) el.value = '3'; });
       await page.waitForTimeout(150);
@@ -734,7 +734,7 @@ const SHOTS = [
     clip: '#canvasWrapper',
     async setup(page) {
       await roomSetup(page);
-      { const pt = await planPoint(page, 0.24, 0.29); await page.mouse.click(pt.x, pt.y, { button: 'right' }); }
+      { const pt = await planPoint(page, 0.42, 0.35); await page.mouse.click(pt.x, pt.y, { button: 'right' }); }
       await page.waitForSelector('#contextMenu', { state: 'visible', timeout: 5000 });
       await page.waitForTimeout(150);
     },
@@ -750,13 +750,13 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        const pw = 918, ph = 594;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
+        const pw = 830, ph = 660;   // the drawing's extent on the sheet (PLAN_W × PLAN_H)
         const ann = s.pages[0].canvases[0].annotations;
         // Zone labels render at the rectangle's CENTER (canvas-draw.js), so both
         // rects are placed with their centers on empty floor — clear of room
         // names, fixtures, and the title block — and inside the building.
-        ann.multiplyZones.push({ x1: 0.512 * pw, y1: 0.615 * ph, x2: 0.745 * pw, y2: 0.73 * ph, multiplier: 3, id: App.uid() });
-        ann.scaleZones.push({ x1: 0.16 * pw, y1: 0.61 * ph, x2: 0.335 * pw, y2: 0.725 * ph, scale: { pixelsPerUnit: 18, unit: 'ft', label: '1/4" = 1\'' }, id: App.uid() });
+        ann.multiplyZones.push({ x1: 0.7590 * pw, y1: 0.5424 * ph, x2: 0.9217 * pw, y2: 0.7879 * ph, multiplier: 3, id: App.uid() });
+        ann.scaleZones.push({ x1: 0.6506 * pw, y1: 0.2197 * ph, x2: 0.7861 * pw, y2: 0.4924 * ph, scale: { pixelsPerUnit: 18, unit: 'ft', label: '1/4" = 1\'' }, id: App.uid() });
         App.renderAnnotations();
       });
       await page.waitForTimeout(250);

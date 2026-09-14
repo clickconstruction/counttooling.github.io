@@ -9,8 +9,15 @@
  * - the text layer is fetched LAZILY and ONCE (getTextContent spied on the
  *   page proxy: 0 calls before the first arm, exactly 1 for the whole trace);
  * - arming Duct beside a callout pre-fills the starting size and says so
- *   ("from the plan: 24×12") — including when the text layer lands AFTER the
- *   modal opened (the deferred path);
+ *   ("from the plan: 24×12 near the cursor") — including when the text layer
+ *   lands AFTER the modal opened (the deferred path);
+ * - the 2026-09-13 walk papercut (U lands before the cursor is near the run):
+ *   arming FAR from every callout on a sheet that prints ONE size (the `sole`
+ *   fixture — "24x12" three times, same decoys) pre-fills from it with the
+ *   "— the plan's only printed size" wording, both when the text layer lands
+ *   after the open and when it is already cached; a size typed before the
+ *   layer lands is never overwritten (the fetch is held behind a gate); the
+ *   two-size sheet leaves the fields alone at arm time;
  * - hovering a callout of a different size while tracing yields the offer
  *   ("Plan says 20×12 here — S accepts"), the same size yields nothing, a
  *   decoy yields nothing; the S popover shows the callout FIRST and accepting
@@ -35,6 +42,9 @@ const unfoldAirMore = (page, which) => page.evaluate((w) => {
 // Letter page 612 × 792 pt; pdf-lib y is bottom-up, the app's PDF-space is
 // top-down: a 12-pt string drawn at (x, y) lands in app-space at
 // x..x+w, (792 − y − 12)..(792 − y). Both callouts sit at app y ≈ 300..312.
+// `withText`: true = the two-size sheet (24x12 + 20x12), 'sole' = ONE size
+// printed three times (24x12 at both ends of the run and once more at app
+// y ≈ 380..392, x 400..433 — the arm-time fallback's sheet), false = a scan.
 async function bootWithPdf(page, withText) {
   await page.goto('/app/');
   await page.waitForLoadState('networkidle');
@@ -48,7 +58,8 @@ async function bootWithPdf(page, withText) {
       const t = (s, x, y, size = 12) => p.drawText(s, { x, y, size, font });
       t('24x12', 100, 480);
       t('12/25/2026', 250, 480);     // a date beside the run — must never read as a size
-      t('20x12', 400, 480);
+      if (withText === 'sole') { t('24x12', 400, 480); t('24x12', 400, 400); }
+      else t('20x12', 400, 480);
       t('1/4" = 1\'-0"', 50, 740);   // the scale ratio in the title block
       t('MECHANICAL PLAN', 300, 740);
     }
@@ -60,10 +71,16 @@ async function bootWithPdf(page, withText) {
     const s = window.state;
     s.pages[0].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
     // Spy on the text-layer fetch so laziness and once-ness are provable.
+    // window.__textHold (a promise the spec resolves) holds the fetched text
+    // back so "typed before the layer landed" can be staged deterministically.
     const proxy = s.pages[0].pdfPage;
     const orig = proxy.getTextContent;
     proxy.__textContentCalls = 0;
-    proxy.getTextContent = function (...a) { proxy.__textContentCalls++; return orig.apply(this, a); };
+    proxy.getTextContent = function (...a) {
+      proxy.__textContentCalls++;
+      const p = orig.apply(this, a);
+      return window.__textHold ? window.__textHold.then(() => p) : p;
+    };
     window.App.updateUI();
   });
 }
@@ -96,6 +113,7 @@ const NEAR_24 = { x: 115, y: 322 };   // 10 pt under the "24x12" box
 const NEAR_20 = { x: 415, y: 322 };   // 10 pt under the "20x12" box
 const NEAR_DATE = { x: 280, y: 322 }; // under the date — 150 pt from 24x12, 120 from 20x12
 const MID = { x: 250, y: 340 };       // a second vertex, off every callout
+const FAR = { x: 300, y: 460 };       // ≥ 120 pt from every callout on both sheets — the walk's arm position
 
 const offer = (page) => page.evaluate(() => window.App.getDuctCalloutOffer());
 const cursorLine = (page) => page.evaluate(() => window.App.getDuctCursorLine());
@@ -127,7 +145,7 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
     const note = page.locator('#ductCreateCalloutNote');
     await expect(note).toBeVisible();
-    await expect(note).toHaveText('from the plan: 24×12');
+    await expect(note).toHaveText('from the plan: 24×12 near the cursor');
     await expect(page.locator('#ductCreateW')).toHaveValue('24');
     await expect(page.locator('#ductCreateH')).toHaveValue('12');
     expect(await textCalls(page)).toBe(1);
@@ -202,6 +220,69 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     });
     expect(committed).toEqual({ runs: 1, steps: 1, transitions: 1 });
     expect(await textCalls(page)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('arm-time prefill far from every callout: the sheet\'s only printed size seeds the dialog (deferred + cached), a typed size is never overwritten, the cursor tier still names itself', async ({ page }) => {
+    await bootWithPdf(page, 'sole');
+    await page.evaluate(() => { document.getElementById('ductCreateW').value = '18'; document.getElementById('ductCreateH').value = '10'; });
+    const note = page.locator('#ductCreateCalloutNote');
+
+    // 1. Typed before the text layer lands → kept. Hold the fetch, arm with U
+    //    (the walk's key — it clicks #ductBtn) with the cursor far from every
+    //    callout, type a height, then release the layer.
+    await hoverPdf(page, FAR);
+    await page.evaluate(() => { window.__textHold = new Promise((r) => { window.__releaseText = r; }); });
+    await page.keyboard.press('u');
+    await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    expect(await textCalls(page)).toBe(1);
+    await expect(note).toBeHidden();   // nothing to read yet
+    await page.locator('#ductCreateH').fill('14');
+    await page.evaluate(() => { window.__releaseText(); window.__textHold = null; });
+    await expect.poll(() => page.evaluate(() => window.App.peekPageTextItems(0).length)).toBeGreaterThan(0);
+    await expect(note).toBeHidden();
+    await expect(page.locator('#ductCreateW')).toHaveValue('18');
+    await expect(page.locator('#ductCreateH')).toHaveValue('14');
+    await page.locator('#ductCreateCancel').click();
+    await expect(page.locator('#ductCreateModal')).not.toHaveClass(/visible/);
+
+    // 2. Re-arm from the same far position with the layer cached: the sheet
+    //    prints one size, three times → the dialog seeds from it and says so.
+    await hoverPdf(page, FAR);
+    await page.keyboard.press('u');
+    await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText('from the plan: 24×12, the plan\'s only printed size');
+    await expect(page.locator('#ductCreateW')).toHaveValue('24');
+    await expect(page.locator('#ductCreateH')).toHaveValue('12');
+    await page.locator('#ductCreateCancel').click();
+    await expect(page.locator('#ductCreateModal')).not.toHaveClass(/visible/);
+
+    // 3. Beside a callout the cursor tier still wins and names itself.
+    await page.evaluate(() => { document.getElementById('ductCreateW').value = '18'; document.getElementById('ductCreateH').value = '10'; });
+    await hoverPdf(page, NEAR_24);
+    await page.keyboard.press('u');
+    await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    await expect(note).toHaveText('from the plan: 24×12 near the cursor');
+    await expect(page.locator('#ductCreateW')).toHaveValue('24');
+    await page.locator('#ductCreateCancel').click();
+    // One fetch for all three arms.
+    expect(await textCalls(page)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('arm-time prefill far from every callout on a sheet printing two sizes: ambiguous, nothing is seeded', async ({ page }) => {
+    await bootWithPdf(page, true);
+    await page.evaluate(() => { document.getElementById('ductCreateW').value = '18'; document.getElementById('ductCreateH').value = '10'; });
+    await hoverPdf(page, FAR);
+    await page.keyboard.press('u');
+    await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    await expect.poll(() => textCalls(page)).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.App.peekPageTextItems(0).length)).toBeGreaterThan(0);
+    await expect(page.locator('#ductCreateCalloutNote')).toBeHidden();
+    await expect(page.locator('#ductCreateW')).toHaveValue('18');
+    await expect(page.locator('#ductCreateH')).toHaveValue('10');
+    await page.locator('#ductCreateCancel').click();
     expect(errors).toEqual([]);
   });
 

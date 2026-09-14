@@ -21,9 +21,13 @@ test.describe('Boot sanity guard', () => {
     await expect(page.locator('#globalReloadBannerText')).toHaveText("Something didn't load. Reload to try again.");
 
     // Reload with app.js unblocked boots normally and the banner stays gone.
+    // The guard's Reload first unregisters every service worker and deletes
+    // every cache (the 2026-08-30 stale-shell cure), so the reload lands a beat
+    // after the click: wait for the rebooted app, not for network-idle on the
+    // dead page.
     block = false;
     await page.locator('#globalReloadBannerReload').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
     expect(await page.evaluate(() => !!(window.App && window.App.state))).toBe(true);
     await page.waitForTimeout(2000);
     await expect(page.locator('#globalReloadBanner')).toBeHidden();

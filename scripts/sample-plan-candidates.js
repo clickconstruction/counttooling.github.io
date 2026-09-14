@@ -54,7 +54,9 @@ const doorDouble = (x, y, size, rot = 0) => `<g transform="translate(${x},${y}) 
 const lightFix = (x, y) => `<g transform="translate(${x},${y})" fill="none" stroke="${INK}" stroke-width="1.1">
   <circle r="5.5"/><line x1="-3.9" y1="-3.9" x2="3.9" y2="3.9"/><line x1="3.9" y1="-3.9" x2="-3.9" y2="3.9"/></g>`;
 // A stall against the bottom wall: partition, back wall, partition, open to the room.
-const stallUp = (x, y, w, h) => `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y} ${x},${y + h} ${x + w},${y + h}"/></g>`;
+const stallUp = (x, y, w, h, side = 'left') => side === 'right'
+  ? `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y + h} ${x + w},${y + h} ${x + w},${y}"/></g>`
+  : `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y} ${x},${y + h} ${x + w},${y + h}"/></g>`;
 
 const roomTag = (x, y, label, num) => `<g font-family="${F}" text-anchor="middle">
   <text x="${x}" y="${y}" font-size="13" font-weight="bold" fill="${INK}">${label}</text>
@@ -201,10 +203,11 @@ function candidateA() {
   ${floorDrain(525, 560)}
 
   <!-- men 107: 2 stalls + wc on the bottom wall (2026-09-14: they used to sit on the top wall
-       and block the door), lavs on the top wall clear of the door swing, 2 urinals, FD -->
-  ${stallUp(590, 540, 38, 52)}${stallUp(628, 540, 38, 52)}
+       and block the door), lavs on the top wall clear of the door swing, 2 urinals on the bottom wall beside the stalls
+       (partitions on the right of each stall), FD -->
+  ${stallUp(590, 540, 38, 52, 'right')}${stallUp(628, 540, 38, 52, 'right')}
   ${wc(609, 586, 180)}${wc(647, 586, 180)}
-  ${urinal(711, 389)}${urinal(733, 389)}
+  ${urinal(686, 596, 180)}${urinal(712, 596, 180)}
   <rect x="642" y="387" width="60" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   ${lavCtr(657, 399)}${lavCtr(687, 399)}
   ${floorDrain(712, 505)}

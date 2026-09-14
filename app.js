@@ -401,12 +401,16 @@
   // D21 (J5-D): the device's last strip pins seed a new project, so an
   // estimator who pinned Duct keeps it across a plain reload and into the next
   // bid. A project that carries its own pins overwrites this on hydrate.
-  try {
-    const sp = JSON.parse(localStorage.getItem('stripPins') || '{}');
-    if (sp && typeof sp === 'object' && !Array.isArray(sp)) {
-      state.stripPins = Object.fromEntries(Object.entries(sp).filter(([, v]) => typeof v === 'boolean'));
-    }
-  } catch (_) { /* corrupted entry -> trade defaults */ }
+  function readDeviceStripPins() {
+    try {
+      const sp = JSON.parse(localStorage.getItem('stripPins') || '{}');
+      if (sp && typeof sp === 'object' && !Array.isArray(sp)) {
+        return Object.fromEntries(Object.entries(sp).filter(([, v]) => typeof v === 'boolean'));
+      }
+    } catch (_) { /* corrupted entry -> trade defaults */ }
+    return {};
+  }
+  state.stripPins = readDeviceStripPins();
   try {
     const rrh = JSON.parse(localStorage.getItem('recentRoomHeights') || '[]');
     if (Array.isArray(rrh)) state.recentRoomHeights = rrh.filter(h => typeof h === 'number' && h > 0).slice(0, 5);
@@ -809,7 +813,7 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.trade = null;
-    state.stripPins = {};   // D21: pins are per project; the device default is re-read at boot
+    state.stripPins = readDeviceStripPins();   // D21: per project — the next project starts from the device's last arrangement
     state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
     state.parkedScaleDraft = null;
     state.ceilingHeightFt = null;
@@ -7227,6 +7231,9 @@
         state.scalePointB = null;
         App.resetScaleModalZoneMode();
         App.resetScaleCheckMode && App.resetScaleCheckMode();
+        // D20 (J5-A): the pick was reached from Set Scale over a live draft —
+        // give the draft back now that the hand-off ended without a modal hide.
+        App.resumeParkedDraft && App.resumeParkedDraft();
         updateUI();
         renderAnnotations();
       } else if (state.tool === TOOL.MEASURE) {

@@ -83,6 +83,9 @@
   // touched, so the strip cannot re-order on its own mid-session. The resolved
   // set is a function of (trade, pins) alone: nothing about the current tool,
   // the window size or a click feeds it.
+  // The pin glyph, in currentColor like every other icon in the chrome (an emoji
+  // would render in the platform's color font against a monochrome menu).
+  const PIN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M416 64H224a32 32 0 0 0 0 64h16v134.4L157.7 320H128a32 32 0 0 0 0 64h160v160a32 32 0 0 0 64 0V384h160a32 32 0 0 0 0-64h-29.7L400 262.4V128h16a32 32 0 0 0 0-64z"/></svg>';
   const BASE_OVERFLOW = ['polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'roomBtn', 'ghostBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'gridBtn'];
   // The trade the project (or the device) has actually STATED — null when
   // nothing has been. Deliberately not App.getQuickTrade, whose final fallback
@@ -136,7 +139,7 @@
     if (next == null) delete pins[id]; else pins[id] = !!next;
     state.stripPins = pins;
     try { localStorage.setItem('stripPins', JSON.stringify(pins)); } catch (_) { /* private window */ }
-    if (App.markProjectDirty) App.markProjectDirty();
+    if (App.markProjectDirty && state.pages && state.pages.length) App.markProjectDirty();
     applyOverflowClasses();
     updateHeaderMore();
     if (menuOpen) buildMenuRows();
@@ -188,7 +191,7 @@
       const pinTitle = overflowed ? 'Pin ' + t.name + ' to the toolbar' : 'Unpin ' + t.name + ' — move it into this menu';
       row.innerHTML = '<span class="hm-icon">' + (svg ? svg.outerHTML : '') + '</span>'
         + '<span class="hm-name">' + t.name + '</span>'
-        + '<button type="button" class="hm-pin' + (overflowed ? '' : ' pinned') + '" data-pin-id="' + t.id + '" title="' + pinTitle + '" aria-label="' + pinTitle + '">' + (overflowed ? '📌' : '📍') + '</button>'
+        + '<button type="button" class="hm-pin' + (overflowed ? '' : ' pinned') + '" data-pin-id="' + t.id + '" title="' + pinTitle + '" aria-label="' + pinTitle + '">' + PIN_SVG + '</button>'
         + (key ? '<kbd class="hm-key">' + key + '</kbd>' : '');
       const pinBtn = row.querySelector('.hm-pin');
       if (pinBtn) pinBtn.onclick = (e) => {
@@ -249,6 +252,9 @@
   function syncMoreState() {
     const b = moreBtn();
     if (!b) return;
+    // D21: re-resolve the strip/⋯ split on every sync — a loaded project's
+    // pins and trade arrive through hydrate + updateUI, never a resize.
+    if (document.body.classList.contains('header-more')) applyOverflowClasses();
     b.classList.toggle('active', document.body.classList.contains('header-more') && anyOverflowedToolActive());
     if (menuOpen) buildMenuRows();
   }

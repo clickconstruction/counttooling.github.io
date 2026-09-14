@@ -1,7 +1,7 @@
 ---
 title: Measuring room volumes with the Room Sizer
 description: Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.
-updated: 2026-07-31
+updated: 2026-09-14
 order: 5.5
 icon: room
 category: Measuring
@@ -25,7 +25,8 @@ When the second corner lands, the Room Size dialog opens:
 
 1. The table at the top shows **Length**, **Width**, and the running totals — floor area immediately, air volume as soon as a height is entered.
 2. Enter the **ceiling height** in feet — `9.5` and `9'6` both work. Heights you've used recently appear as one-tap chips.
-3. Pick which room the box belongs to under **Add to Room** (each room shows its area and volume so far), or create one with **+ New room**.
+3. Pick which room the box belongs to under **Add to Room** (each room shows its area and volume so far), or create one with **+ New room**. If the plan prints the room's name inside your box — *OPEN OFFICE 204* — the new-room name is already filled in and says so (*from the plan*); a name that matches a room you already have selects that room instead. Type over it if the sheet is wrong.
+4. On an HVAC project the dialog also carries the **room type** (for CFM defaults) and the project's **deck height**, so a room is fully described the moment it's drawn — the derived target (*Target 200 CFM from 200 ft²*) reads live under the type as you pick it.
 
 The tool stays armed after Apply, so the loop for the next room is just two clicks — your last height and room are already selected.
 

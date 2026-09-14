@@ -29,8 +29,8 @@
   "headline": "Measuring room volumes with the Room Sizer",
   "description": "Draw room boxes, give each a ceiling height, and get floor area and air volume per room — the numbers behind airflow, air changes, and equipment sizing.",
   "image": "https://counttooling.com/og-image.png",
-  "datePublished": "2026-07-31",
-  "dateModified": "2026-07-31",
+  "datePublished": "2026-09-14",
+  "dateModified": "2026-09-14",
   "author": {
     "@type": "Organization",
     "name": "CountTooling",
@@ -90,7 +90,7 @@
     <article class="article">
     <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/hvac/">HVAC track</a><span id="pathBannerStep"> — step 1 of 3</span></div>
       <h1>Measuring room volumes with the Room Sizer</h1>
-      <p class="article-meta">Last updated Jul 31, 2026</p>
+      <p class="article-meta">Last updated Sep 14, 2026</p>
       <div class="prose">
 <p>Counting fixtures and measuring runs covers most of a takeoff, but HVAC work starts from a different number: <strong>how much air is in the room</strong>. The Room Sizer turns the rooms on a plan into floor areas (ft²) and air volumes (ft³) — the inputs for ventilation rates, air changes per hour, and rough equipment sizing.</p>
 <p><img src="/guides/img/room-sizer.png" alt="A plan with two room boxes drawn on it, each labeled with its room name and length, width, and height."></p>
@@ -106,7 +106,8 @@
 <ol>
 <li>The table at the top shows <strong>Length</strong>, <strong>Width</strong>, and the running totals — floor area immediately, air volume as soon as a height is entered.</li>
 <li>Enter the <strong>ceiling height</strong> in feet — <code>9.5</code> and <code>9&#39;6</code> both work. Heights you&#39;ve used recently appear as one-tap chips.</li>
-<li>Pick which room the box belongs to under <strong>Add to Room</strong> (each room shows its area and volume so far), or create one with <strong>+ New room</strong>.</li>
+<li>Pick which room the box belongs to under <strong>Add to Room</strong> (each room shows its area and volume so far), or create one with <strong>+ New room</strong>. If the plan prints the room&#39;s name inside your box — <em>OPEN OFFICE 204</em> — the new-room name is already filled in and says so (<em>from the plan</em>); a name that matches a room you already have selects that room instead. Type over it if the sheet is wrong.</li>
+<li>On an HVAC project the dialog also carries the <strong>room type</strong> (for CFM defaults) and the project&#39;s <strong>deck height</strong>, so a room is fully described the moment it&#39;s drawn — the derived target (<em>Target 200 CFM from 200 ft²</em>) reads live under the type as you pick it.</li>
 </ol>
 <p>The tool stays armed after Apply, so the loop for the next room is just two clicks — your last height and room are already selected.</p>
 <p><strong>L-shaped or irregular room?</strong> Draw it as two or more boxes and assign them all to the same room. The room&#39;s area and volume are the sum of its boxes.</p>

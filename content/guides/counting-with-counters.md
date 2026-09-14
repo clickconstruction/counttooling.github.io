@@ -1,7 +1,7 @@
 ---
 title: Counting fixtures with counters
 description: Place point counts on a plan with custom icons and colors, keep a live tally, and organize them into groups — the heart of any takeoff.
-updated: 2026-08-27
+updated: 2026-09-14
 order: 3
 icon: counter
 category: Counting
@@ -19,6 +19,8 @@ Before you count, set up the type you're counting:
 - Choose an **icon** — pick from the built-in set or **upload your own SVG** for a symbol that matches your trade.
 
 ![The Create Counter dialog: ① name the counter, ② pick a built-in icon or upload your own, and ③ choose a color.](/guides/img/counter-create.png)
+
+The trade-specific fields — **CFM** and **Flex drop** for air devices, **Mount height** for wall devices — fold under **More ▸ air & mounting** below the name, so a plumbing counter is name, icon, color and done; on an HVAC or Electrical project the disclosure opens by itself, and it remembers how you left it for the rest of the project.
 
 Then select the counter and start clicking. The running total updates as you go, and it adds up across every sheet and canvas in the project — not just the page you're on.
 

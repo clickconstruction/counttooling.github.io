@@ -1,7 +1,7 @@
 ---
 title: Canvas layers — alternates and options on one sheet
 description: Every page can hold multiple annotation layers — keep the base bid and alternates side by side, switch with the arrow keys, and compare with one tap.
-updated: 2026-08-10
+updated: 2026-09-14
 order: 5.7
 icon: layers
 category: Working with plans
@@ -29,6 +29,8 @@ The **show-all** peek (the eye-on-layers button next to the layer selector, show
 On a phone the same peek lives in the layers menu as **Show all layers**, appearing once a page has two of them.
 
 On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** (desktop) to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary — it isn't saved with the project, and it clears when a page is back to a single layer.
+
+When you **copy** with more than one layer on a page, the copy menus add a layer picker pre-checked to what's on screen, and the pasted text's first line names the layers it includes — see [Reports and exports](/guides/reports-and-exports/).
 
 ## Move marks between projects: canvas JSON
 

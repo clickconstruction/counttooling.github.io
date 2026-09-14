@@ -880,16 +880,20 @@ function ductMarkerCfm(marker, counter) {
 /** Nearest point on a polyline: { dist, s } — s = arclength from vertex 0 to
  * the nearest point. { dist: Infinity, s: 0 } for fewer than 2 vertices. */
 function ductNearestOnPolyline(p, verts) {
-  let best = { dist: Infinity, s: 0 };
+  // D19: `point` (the foot of the perpendicular) rides along so callers that
+  // need to DRAW to the run — the flex leaders — do not recompute the walk.
+  // Additive: every existing caller reads .dist / .s only.
+  let best = { dist: Infinity, s: 0, point: null };
   let acc = 0;
   for (let i = 0; i < (verts?.length || 0) - 1; i++) {
     const a = verts[i], b = verts[i + 1];
     const dx = b.x - a.x, dy = b.y - a.y;
     const len2 = dx * dx + dy * dy;
     const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
-    const d = Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    const fx = a.x + t * dx, fy = a.y + t * dy;
+    const d = Math.hypot(p.x - fx, p.y - fy);
     const segLen = Math.sqrt(len2);
-    if (d < best.dist) best = { dist: d, s: acc + t * segLen };
+    if (d < best.dist) best = { dist: d, s: acc + t * segLen, point: { x: fx, y: fy } };
     acc += segLen;
   }
   return best;
@@ -917,12 +921,63 @@ function attachDuctDevices(devices, runs, opts) {
     let best = null;
     list.forEach(run => {
       const hit = ductNearestOnPolyline(dev, run.vertices);
-      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { device: dev, runId: run.id, s: hit.s, dist: hit.dist };
+      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { device: dev, runId: run.id, s: hit.s, dist: hit.dist, point: hit.point };
     });
     if (best) attached.push(best);
     else unattached.push(dev);
   });
   return { attached: attached, unattached: unattached };
+}
+
+/**
+ * D19 (J19 Friction #3) — the flex leaders. Attachment was invisible: a branch
+ * ending 1.5' short of a diffuser attached nothing, with no toast, chip or
+ * hint, and the estimator only found out when the system numbers came up
+ * short. A device that IS attached now paints a dashed leader to the point on
+ * the run that taps it, so attachment is shown rather than announced; a stray
+ * device paints nothing, and its bare glyph is the tell.
+ *
+ * Pure: devices = [{ x, y, … }], runs = duct runs. Returns
+ * [{ device, runId, from: {x,y}, to: {x,y}, dist }] in PDF-space, one per
+ * ATTACHED device (same snap rule as attachDuctDevices — one source of truth).
+ * A zero-length leader (device sitting exactly on the run) is dropped: there
+ * is nothing to draw and a dashed dot would read as dirt on the sheet.
+ */
+function ductDeviceLeaders(devices, runs, opts) {
+  const { attached } = attachDuctDevices(devices, runs, opts);
+  const out = [];
+  attached.forEach(a => {
+    if (!a.point) return;
+    const from = { x: a.device.x, y: a.device.y };
+    if (Math.hypot(a.point.x - from.x, a.point.y - from.y) < 0.5) return;
+    out.push({ device: a.device, runId: a.runId, from: from, to: { x: a.point.x, y: a.point.y }, dist: a.dist });
+  });
+  return out;
+}
+
+/**
+ * D19 — "Attach to nearest run" for a stray device. Attachment in this model is
+ * DERIVED from proximity (attachDuctDevices), never stored, so rescuing a stray
+ * means moving it onto the run rather than minting a link that the geometry
+ * would contradict. Returns the point to move the device to — the foot of the
+ * perpendicular on the nearest run within opts.searchDist — or null when no run
+ * is close enough to be the obvious intent. searchDist is deliberately wider
+ * than the tap snap (the device is by definition outside that) but bounded, so
+ * a click never teleports a diffuser across the sheet.
+ */
+const DUCT_ATTACH_SEARCH_PDF = 96;
+function ductNearestRunPoint(device, runs, opts) {
+  const search = opts?.searchDist > 0 ? opts.searchDist : DUCT_ATTACH_SEARCH_PDF;
+  const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  if (!device || !Number.isFinite(device.x) || !Number.isFinite(device.y)) return null;
+  let best = null;
+  list.forEach(run => {
+    const hit = ductNearestOnPolyline(device, run.vertices);
+    if (hit.point && hit.dist <= search && (!best || hit.dist < best.dist)) {
+      best = { runId: run.id, point: hit.point, dist: hit.dist };
+    }
+  });
+  return best;
 }
 
 /**
@@ -2126,6 +2181,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // design-build accumulation (D6)
     ductMarkerCfm, ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,
+    // flex leaders + stray rescue (D19)
+    ductDeviceLeaders, ductNearestRunPoint, DUCT_ATTACH_SEARCH_PDF,
     // room CFM defaults + air balance (D7)
     ROOM_TYPE_CFM_PER_SQFT, DUCT_BALANCE_TOLERANCE, DUCT_SYSTEM_RULE_OF_THUMB,
     roomTargetCfm, pointInRoomBox, roomServedCfm, roomAirBalance,

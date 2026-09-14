@@ -5392,6 +5392,29 @@
   };
 
   // SECTION: Canvas Event Handlers
+  // D19 (J19 Friction #3): the context target, when it is a CFM device that no
+  // run currently taps and a run is within reach. Returns
+  // { marker, point, runId } or null. Attachment in this model is DERIVED from
+  // proximity (duct-model attachDuctDevices), never stored, so the rescue moves
+  // the device onto the run rather than minting a link the geometry would
+  // contradict.
+  function strayDeviceAttachTarget() {
+    const t = state.ctxTarget;
+    if (state.isViewer || !t || t.type !== 'marker') return null;
+    if (typeof ductMarkerCfm !== 'function' || typeof ductNearestRunPoint !== 'function' || typeof attachDuctDevices !== 'function') return null;
+    const counter = (state.counters || []).find(c => c.id === t.typeId);
+    if (!counter) return null;
+    const page = state.pages[state.currentPage];
+    const ann = page ? getActiveAnnotations(page) : null;
+    const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
+    if (!marker || !(ductMarkerCfm(marker, counter) > 0)) return null;
+    const runs = ann?.ductRuns || [];
+    if (!runs.length) return null;
+    // Already attached? Then there is nothing to rescue.
+    if (attachDuctDevices([{ x: marker.x, y: marker.y }], runs).attached.length) return null;
+    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs);
+    return near ? { marker, point: near.point, runId: near.runId } : null;
+  }
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
@@ -5436,6 +5459,12 @@
         ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
       ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
     }
+    // D19 (J19 Friction #3): "Attach to nearest run" — the rescue for a CFM
+    // device that finished a foot short of its branch. Offered ONLY when the
+    // device is genuinely unattached AND a run sits close enough to be the
+    // obvious intent, so the row never appears as a no-op.
+    const ctxAttachBtn = document.getElementById('ctxAttachToRun');
+    if (ctxAttachBtn) ctxAttachBtn.style.display = strayDeviceAttachTarget() ? 'block' : 'none';
     const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
     if (ctxNameHighlightBtn) {
       const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';
@@ -7515,6 +7544,7 @@
   App.syncTradeSegment = syncTradeSegment;
   App.saveTradeModifiers = saveTradeModifiers;
   App.getQuickTrade = getQuickTrade;
+  App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;
   App.tradeIconForType = tradeIconForType;

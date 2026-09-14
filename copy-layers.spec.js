@@ -6,9 +6,15 @@
  * "Every sheet (visible layers)" copied the ACTIVE layer per page and ignored
  * the show-all peek — J11's "11 on screen, 6 copied". The scopes are now This
  * sheet / Everything, plus a layer picker that appears only when a page in
- * scope has 2+ layers, pre-checked to what is on screen at copy time; the
- * paste header names the layers included, so the number is reproducible and
- * never silently depends on a view toggle.
+ * scope has 2+ layers; the paste header names what the copy holds, so the
+ * number is reproducible and never silently depends on a view toggle.
+ *
+ * 2026-09-14 (Will: "everything be every layer on every page"): Everything is
+ * every layer on every sheet, no matter what is on screen — the picker shows
+ * them all ticked and locked, the header says "every layer". This sheet keeps
+ * the on-screen default and the pickable rows. An estimator reported marks
+ * missing from a /Tooling paste; Everything narrowing to the visible layers
+ * was the cause.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -57,29 +63,33 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
   test.beforeEach(async ({ page }) => { errors = []; await boot(page, errors); });
   test.afterEach(() => { expect(errors).toEqual([]); });
 
-  test('the retired scope is gone; the picker lists the layers in scope and defaults to what is on screen', async ({ page }) => {
+  const pickerRows = (page) => page.evaluate(() => [...document.querySelectorAll('#pipeToolingLayerPicker input')].map((i) => ({ name: i.dataset.layerName, checked: i.checked, locked: i.disabled })));
+
+  test('the retired scope is gone; Everything lists every layer ticked and locked; This sheet defaults to what is on screen', async ({ page }) => {
     await page.locator('#forPipeTooling').click();
     const opts = await page.evaluate(() => [...document.querySelectorAll('.pipe-tooling-option')].map((o) => o.dataset.mode));
     expect(opts).toEqual(['this-canvas', 'all']);
     const picker = page.locator('#pipeToolingLayerPicker');
     await expect(picker).toBeVisible();
-    // Peek OFF: Main is on screen (and locked — the active layer always rides), Gas is not.
-    expect(await page.evaluate(() => [...document.querySelectorAll('#pipeToolingLayerPicker input')].map((i) => ({ name: i.dataset.layerName, checked: i.checked, locked: i.disabled }))))
-      .toEqual([{ name: 'Main', checked: true, locked: true }, { name: 'Gas', checked: false, locked: false }]);
+    // The menu opens on Everything: every layer, none of it optional.
+    expect(await pickerRows(page)).toEqual([{ name: 'Main', checked: true, locked: true }, { name: 'Gas', checked: true, locked: true }]);
+    // This sheet, peek OFF: Main is on screen (and locked — the active layer always rides), Gas is not.
+    await page.locator('.pipe-tooling-option[data-mode="this-canvas"]').hover();
+    expect(await pickerRows(page)).toEqual([{ name: 'Main', checked: true, locked: true }, { name: 'Gas', checked: false, locked: false }]);
   });
 
-  test('the J11 moment cannot happen: with the peek on, the copy matches the screen and the header names the layers', async ({ page }) => {
+  test('with the peek on, Everything copies every layer and the header says so', async ({ page }) => {
     // Peek on: 9 WC on screen on page 1, 2 on page 2 → Everything copies 11.
     await page.evaluate(() => { window.state.showAllCanvases = true; window.App.renderAnnotations(); window.App.updateUI(); });
     const text = await copyVia(page, '.pipe-tooling-option[data-mode="all"]');
     expect(wcCount(text)).toBe(11);
-    expect(text.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet · layers: Main, Gas ---');
+    expect(text.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet · every layer ---');
   });
 
-  test('peek off: Everything copies the active layers and says so; This sheet scopes the picker to this page', async ({ page }) => {
+  test('peek off: Everything still copies every layer on every sheet; This sheet scopes the picker to this page', async ({ page }) => {
     const all = await copyVia(page, '.pipe-tooling-option[data-mode="all"]');
-    expect(wcCount(all)).toBe(6);                                  // 4 + 2, Gas not on screen
-    expect(all.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet · layers: Main ---');
+    expect(wcCount(all)).toBe(11);                                 // 4 + 5 + 2 — Gas is not on screen and is copied anyway
+    expect(all.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet · every layer ---');
     // This sheet, from page 2 (one layer): no picker, no layers clause.
     await page.evaluate(() => { window.state.currentPage = 1; window.App.updateUI(); });
     await page.locator('#forPipeTooling').click();
@@ -90,15 +100,20 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
     expect(one.split('\n')[0]).toBe('--- Counts, Maple St TI · this sheet ---');
   });
 
-  test('ticking a layer in the picker includes it; the choice is explicit in the header', async ({ page }) => {
+  test('This sheet: ticking a layer in the picker includes it, the tick survives a hover across Everything, and the choice is explicit in the header', async ({ page }) => {
     await page.locator('#forPipeTooling').click();
+    await page.locator('.pipe-tooling-option[data-mode="this-canvas"]').hover();
     await page.locator('#pipeToolingLayerPicker input[data-layer-name="Gas"]').check();
     await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);   // a tick does not close the menu
-    await page.locator('.pipe-tooling-option[data-mode="all"]').click();
+    await page.locator('.pipe-tooling-option[data-mode="all"]').hover();        // every layer, locked
+    expect(await pickerRows(page)).toEqual([{ name: 'Main', checked: true, locked: true }, { name: 'Gas', checked: true, locked: true }]);
+    await page.locator('.pipe-tooling-option[data-mode="this-canvas"]').hover(); // the estimator's tick is still there
+    expect(await pickerRows(page)).toEqual([{ name: 'Main', checked: true, locked: true }, { name: 'Gas', checked: true, locked: false }]);
+    await page.locator('.pipe-tooling-option[data-mode="this-canvas"]').click();
     await page.waitForFunction(() => document.getElementById('pipeToolingCopiedModal')?.classList.contains('visible') || (document.getElementById('toastRegion')?.textContent || '').includes('opied'));
     const text = await page.evaluate(() => navigator.clipboard.readText());
-    expect(wcCount(text)).toBe(11);
-    expect(text.split('\n')[0]).toContain('layers: Main, Gas');
+    expect(wcCount(text)).toBe(9);                                 // page 1: Main 4 + Gas 5
+    expect(text.split('\n')[0]).toBe('--- Counts, Maple St TI · this sheet · layers: Main, Gas ---');
   });
 
   test('Copy Summary (Email/Text) carries the same scope line under its title', async ({ page }) => {
@@ -108,7 +123,7 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
     const text = await page.evaluate(() => navigator.clipboard.readText());
     const lines = text.split('\n');
     expect(lines[0]).toBe('Takeoff Summary');
-    expect(lines[2]).toBe('Counts, Maple St TI · every sheet · layers: Main');
+    expect(lines[2]).toBe('Counts, Maple St TI · every sheet · every layer');
   });
 
   test('a copy with no scope (the bid-basis manifest path) carries no header — legacy pins hold', async ({ page }) => {

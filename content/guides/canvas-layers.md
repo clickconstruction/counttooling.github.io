@@ -30,7 +30,7 @@ On a phone the same peek lives in the layers menu as **Show all layers**, appear
 
 On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** (desktop) to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary: it isn't saved with the project, and it clears when a page is back to a single layer.
 
-When you **copy** with more than one layer on a page, the copy menus add a layer picker pre-checked to what's on screen, and the pasted text's first line names the layers it includes; see [Reports and exports](/guides/reports-and-exports/).
+When you **copy** with more than one layer on a page, **Everything** takes every layer on every sheet no matter what is showing, and **This sheet** adds a layer picker pre-checked to what's on screen; the pasted text's first line names what it includes. See [Reports and exports](/guides/reports-and-exports/).
 
 ## Move marks between projects: canvas JSON
 

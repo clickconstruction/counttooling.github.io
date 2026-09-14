@@ -28,7 +28,7 @@
  *
  * Both tours run on samples/sample-plan.pdf (fetched into #pdfInput like a
  * drop, so it goes through the normal intake; 1224 × 792 PDF points, the
- * restrooms Men 105 / Women 106 carry drawn water closets and lavatories; a
+ * restrooms Men 107 / Women 108 carry drawn water closets and lavatories; a
  * true ANSI B sheet at a true 1/8", so the Set Scale dialog shows no sheet-size
  * warning) and
  * nothing they do touches a cloud project: a tour refuses to start while a
@@ -73,8 +73,11 @@
   const firstIcon = () => customIcon('Toilet') || App.getOrderedIcons()[0].value;
 
   // ===== steps both tours share ==============================================================
-  // The 20'-0" dimension under Women 106, in PDF points.
-  const DIM_20FT = [{ x: 517.5, y: 461.25 }, { x: 697.5, y: 461.25 }];
+  // Sample-plan geometry in PDF points: the drawing is candidate A's 12 px/ft SVG
+  // placed at (60, 70) × 0.75 (scripts/sample-plan-candidates.js PLAN_AT), so a
+  // drawing point lands at (60 + 0.75·px, 70 + 0.75·py). The 20'-0" dimension on
+  // the left edge, grid A down to the corridor, is SVG (112,100)–(112,340).
+  const DIM_20FT = [{ x: 144, y: 145 }, { x: 144, y: 325 }];
   const SCALE_STEP = {
     id: 'scale', title: 'Set the scale', kind: 'do',
     body: 'Every length starts here.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].\nThe title block says the sample plan is drawn at 1/8". On a real sheet, that is where you look.',
@@ -92,7 +95,7 @@
   };
   const PROVE_STEP = {
     id: 'measure', title: 'Prove the scale', kind: 'do',
-    body: '1. In the header, click [[Measure]] (or press D).\n2. Click one end of the 20\'-0" dimension under Women 106.\n3. Click the other end.\nThe footer should read 20\'-0". If it reads anything else, click [[Back]] and set the scale again. Do this on every real sheet: a PDF printed to a smaller sheet looks right and measures short.',
+    body: '1. In the header, click [[Measure]] (or press D).\n2. Click one end of the 20\'-0" dimension on the left edge, between grid A and the corridor.\n3. Click the other end.\nThe footer should read 20\'-0". If it reads anything else, click [[Back]] and set the scale again. Do this on every real sheet: a PDF printed to a smaller sheet looks right and measures short.',
     target: ['#measureBtn', '#measureBtnSidebar'],
     check: () => { const ft = measuredFeet(); return ft != null && Math.abs(ft - PROVE_FT) <= PROVE_TOL_FT; },
     hint: () => { const ft = measuredFeet(); const lm = state().lastMeasure; return ft == null ? '' : 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Go Back and set the scale again'; },
@@ -129,7 +132,7 @@
     },
     {
       id: 'place', title: 'Count three receptacles', kind: 'do',
-      body: 'The counter tool is armed.\n1. Click a spot on a wall of Open Office 104.\n2. Click a second spot.\n3. Click a third spot.\nEach click is one tally; the sidebar count moves as you go.',
+      body: 'The counter tool is armed.\n1. Click a spot on a wall of Open Office 105.\n2. Click a second spot.\n3. Click a third spot.\nEach click is one tally; the sidebar count moves as you go.',
       target: ['#annCanvas'],
       check: () => { const c = eCounter(); return !!c && markCount(c.id) >= 3; },
       action: { label: 'Place three for me', run: placeThreeReceptacles },
@@ -190,16 +193,15 @@
   ];
 
   // ===== the plumbing tour =================================================================
-  // Sample-plan geometry in PDF points (an ANSI B sheet, 1224 × 792 pt; the plan
-  // group is the 1224 × 792 SVG source at 0.75, so a fixture's point = SVG px × 0.75):
-  // Men 105 is the box (322, 266)–(465, 442); its three water closets sit on the
-  // north wall at y ≈ 289, its three lavatories on the south wall at y ≈ 424;
-  // the 20'-0" dimension under Women 106 runs (517, 461)–(697, 461).
-  const WC_SPOTS = [{ x: 341, y: 289 }, { x: 367, y: 289 }, { x: 394, y: 289 }];
-  const LAV_SPOTS = [{ x: 338, y: 424 }, { x: 364, y: 424 }, { x: 390, y: 424 }];
-  const MEN_ROOM = { x1: 318, y1: 262, x2: 468, y2: 446 };
-  const RFI_SPOT = { x: 395, y: 350 };
-  const RFI_TEXT = 'RFI: floor drain in Men 105?';
+  // Women 108 is SVG (760,384)–(940,600) → PDF (630, 358)–(765, 520): its three water
+  // closets sit in stalls on the south wall (bowls at y ≈ 506), its three lavatories
+  // on the north-wall counter (y ≈ 369). Men 107 has two of each plus urinals, so
+  // the tour counts the women's room.
+  const WC_SPOTS = [{ x: 645, y: 506 }, { x: 675, y: 506 }, { x: 705, y: 506 }];
+  const LAV_SPOTS = [{ x: 688.5, y: 369 }, { x: 717, y: 369 }, { x: 745.5, y: 369 }];
+  const WOMEN_ROOM = { x1: 628, y1: 356, x2: 767, y2: 522 };
+  const RFI_SPOT = { x: 690, y: 425 };
+  const RFI_TEXT = 'RFI: ADA clearance at the end stall in Women 108?';
 
   const pCounter = () => findCounter(tourCounterId, /water closet|toilet|\bwc\b/i);
   const pLav = () => findCounter(tourSecondCounterId, /lav|sink/i);
@@ -229,7 +231,7 @@
     },
     {
       id: 'place', title: 'Count the Men\'s room', kind: 'do',
-      body: 'The counter tool is armed.\n1. Click the first water closet on the north wall of Men 105.\n2. Click the second.\n3. Click the third.\nOne click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
+      body: 'The counter tool is armed.\n1. Click the first water closet in the stalls on the south wall of Women 108.\n2. Click the second.\n3. Click the third.\nOne click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
       target: ['#annCanvas'],
       check: () => { const c = pCounter(); return !!c && markCount(c.id) >= 3; },
       action: { label: 'Count three for me', run: placeThreeWcs },
@@ -243,7 +245,7 @@
     },
     {
       id: 'chain', title: 'Chain the lav battery', kind: 'do',
-      body: 'The three lavatories on the south wall of Men 105 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose a Lavatory counter ([[+ New counter]] makes one right there) and 1in PEX.\n3. Click the first lavatory.\n4. Click the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
+      body: 'The three lavatories on the north wall of Women 108 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose a Lavatory counter ([[+ New counter]] makes one right there) and 1in PEX.\n3. Click the first lavatory.\n4. Click the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
       target: ['#counterCreate', '#counterQuickCountAdd', '#chainPanel', '#chainBtn'],
       check: () => { const a = ann(); return !!a && (a.quickLines || []).length >= 2; },
       action: { label: 'Chain the three lavs for me', run: chainThreeLavs },
@@ -264,14 +266,14 @@
     },
     {
       id: 'zone', title: 'A typical floor', kind: 'do',
-      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Men 105.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
+      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Women 108.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
       check: () => { const a = ann(); return !!a && (a.multiplyZones || []).some((z) => (z.multiplier || 1) > 1); },
-      action: { label: 'Wrap Men 105 in a ×3 zone', run: addTypicalFloorZone },
+      action: { label: 'Wrap Women 108 in a ×3 zone', run: addTypicalFloorZone },
     },
     {
       id: 'rfi', title: 'Flag a question', kind: 'do',
-      body: 'Something the drawing does not say: is there a floor drain in Men 105?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click the spot.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
+      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click the spot.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
       target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
       check: anyNoteRfi,
       action: { label: 'Drop the RFI note for me', run: addRfiNote },
@@ -302,11 +304,9 @@
   // names, air devices with a CFM, the system, the main sized by the
   // ductulator at S, strays hung from the menu, pounds, sign-off, hand-off.
   // Every step is shipped behavior with a seam; the tour adds no product code.
-  // The sample plan's drawing sits at 0.75× its SVG units on the 1224-pt sheet
-  // (the SVG is 1224 CSS px at 96 dpi) — the same factor DIM_20FT carries.
-  const OPEN_OFFICE = { x1: 114, y1: 268, x2: 321, y2: 441 };   // OPEN OFFICE 104's outline (SVG 150,355 280×235), PDF pts
-  const DIFFUSER_SPOTS = [{ x: 165, y: 358.5 }, { x: 270, y: 358.5 }, { x: 165, y: 420 }, { x: 270, y: 420 }];   // two 6 pt from the main (attached), two 67 pt off (strays, within the 96 pt rescue)
-  const MAIN_VERTICES = [{ x: 120, y: 352.5 }, { x: 225, y: 352.5 }, { x: 315, y: 352.5 }];
+  const OPEN_OFFICE = { x1: 158, y1: 358, x2: 412, y2: 520 };   // OPEN OFFICE 105's outline (SVG 130,384 340×216), PDF pts
+  const DIFFUSER_SPOTS = [{ x: 215, y: 458 }, { x: 340, y: 458 }, { x: 215, y: 512 }, { x: 340, y: 512 }];   // two 6 pt from the main (attached), two 60 pt off (strays, within the 96 pt rescue)
+  const MAIN_VERTICES = [{ x: 164, y: 452 }, { x: 285, y: 452 }, { x: 406, y: 452 }];   // below the room's printed name
   const hCounter = () => findCounter(tourCounterId, /diffuser/i);
   const hRoom = () => (state().rooms || []).find((r) => /open office/i.test(r.name || ''));
   const ductRuns = () => { const a = ann(); return (a && a.ductRuns) || []; };
@@ -329,7 +329,7 @@
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 104.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
+      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
       target: ['#roomBoxApply', '#roomBoxType', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'],
       check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType && a && (a.roomBoxes || []).some((b) => b.roomId === r.id) && ds && ds.deckHeightFt > 0); },
       action: { label: 'Box the open office for me', run: boxOpenOffice },
@@ -343,7 +343,7 @@
     },
     {
       id: 'place', title: 'Place four diffusers', kind: 'do',
-      body: 'The counter tool is armed.\n1. Click two spots in OPEN OFFICE 104, near where the main will run.\n2. Click two more, deeper in the room.\nEach mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
+      body: 'The counter tool is armed.\n1. Click two spots in OPEN OFFICE 105, near where the main will run.\n2. Click two more, deeper in the room.\nEach mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
       target: ['#annCanvas'],
       check: () => cfmDevices().length >= 4,
       action: { label: 'Place four for me', run: placeFourDiffusers },
@@ -496,10 +496,10 @@
     tourCounterId = c.id;
     pushCounter(c);
   }
-  // Open Office 104 is the box (112, 266)–(322, 442) in PDF points: three spots
-  // along its north wall, and the chain along its south wall.
-  const RECEPTACLE_SPOTS = [{ x: 150, y: 285 }, { x: 210, y: 285 }, { x: 270, y: 285 }];
-  const CHAIN_SPOTS = [{ x: 150, y: 425 }, { x: 210, y: 425 }, { x: 270, y: 425 }];
+  // Open Office 105 is the box (158, 358)–(412, 520) in PDF points: three spots
+  // along its north (corridor) wall east of the door, the chain along its south wall.
+  const RECEPTACLE_SPOTS = [{ x: 250, y: 372 }, { x: 310, y: 372 }, { x: 370, y: 372 }];
+  const CHAIN_SPOTS = [{ x: 250, y: 506 }, { x: 310, y: 506 }, { x: 370, y: 506 }];
   function placeThreeReceptacles() {
     if (!eCounter()) addReceptacle();
     placeMarkers(eCounter().id, RECEPTACLE_SPOTS);
@@ -602,7 +602,7 @@
     if ((canvas.annotations.multiplyZones || []).some((z) => (z.multiplier || 1) > 1)) return;
     App.pushUndoSnapshotCurrentPage();
     if (!canvas.annotations.multiplyZones) canvas.annotations.multiplyZones = [];
-    canvas.annotations.multiplyZones.push({ x1: MEN_ROOM.x1, y1: MEN_ROOM.y1, x2: MEN_ROOM.x2, y2: MEN_ROOM.y2, multiplier: 3, id: App.uid() });
+    canvas.annotations.multiplyZones.push({ x1: WOMEN_ROOM.x1, y1: WOMEN_ROOM.y1, x2: WOMEN_ROOM.x2, y2: WOMEN_ROOM.y2, multiplier: 3, id: App.uid() });
     App.markProjectDirty(); App.updateUI(); App.renderAnnotations();
   }
   function addRfiNote() {
@@ -625,7 +625,7 @@
     // D24 reads the name off the plan; the text layer may land a beat later.
     const nameEl = el('roomBoxNewRoomName');
     for (let i = 0; i < 20 && nameEl && !nameEl.value.trim(); i++) await wait(100);
-    if (nameEl && !nameEl.value.trim()) nameEl.value = 'OPEN OFFICE 104';
+    if (nameEl && !nameEl.value.trim()) nameEl.value = 'OPEN OFFICE 105';
     const h = el('roomBoxHeight'); if (h) h.value = '9';
     const deck = el('roomBoxDeck'); if (deck) deck.value = '12';
     const type = el('roomBoxType'); if (type) { type.value = 'office'; type.dispatchEvent(new Event('change')); }

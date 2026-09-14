@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 /**
- * Sample-plan candidates. Candidate B is SHIPPED as the advanced sample plan
- * (scripts/build-sample-plan-advanced.js requires this module); candidate A is
- * still under review (not wired; build-screenshots uses the current sample plan). Same pipeline as scripts/build-sample-plan.js (inline SVG ->
- * Playwright PDF). Outputs land in samples/candidates/ (gitignored).
+ * Sample-plan candidates — both SHIPPED (2026-09-14): candidate A is the simple
+ * (design-build) plan, rendered by scripts/build-sample-plan.js to
+ * samples/sample-plan.pdf on a true ANSI B sheet; candidate B is the advanced
+ * (restaurant plumbing) plan, rendered by scripts/build-sample-plan-advanced.js.
+ * Inline SVG -> Playwright PDF. Preview outputs land in samples/candidates/ (gitignored).
  *
  *   node scripts/sample-plan-candidates.js   # writes candidate-a/-b .pdf + .png
  *
- * On approval: fold the winning design into scripts/build-sample-plan.js, retune
- * the takeoffSetup/roomSetup coordinates in scripts/build-screenshots.js to the
- * new geometry, and regenerate the guide screenshots.
  */
 const fs = require('fs');
 const path = require('path');
@@ -155,9 +153,48 @@ const sheetFrame = () => `<rect width="${W}" height="${H}" fill="#fff"/>
   <rect x="22" y="22" width="${W - 44}" height="${H - 44}" fill="none" stroke="${INK}" stroke-width="0.6"/>`;
 
 // ---------------- Candidate A: commercial office TI (A-101) --------------------
-function candidateA() {
+// PROMOTED 2026-09-14: candidate A is the simple plan (scripts/build-sample-plan.js
+// renders it to samples/sample-plan.pdf on a true ANSI B sheet). The plan geometry
+// is drawn at 12 px/ft in its own space and placed on the sheet at PLAN_AT (0.75 →
+// 9 pt/ft = 1/8" = 1'-0", so the title block's scale is literally true); the frame,
+// notes, legend, room schedule and title block sit in sheet coordinates. A point on
+// the drawing lands at (PLAN_AT.x + 0.75·px, PLAN_AT.y + 0.75·py) PDF pt — the
+// figure the tours and build-screenshots carry.
+//
+// It is the DESIGN-BUILD sheet (journeys/plans/SAMPLE-PLANS.md §2): an architectural
+// plan with the inputs the design math reads — a room schedule with areas, ceiling
+// heights and types; fixture counts as drawn; the water heater, panel LP-1, the
+// service entry and RTU-1 named — and none of the answers: no piping, duct or
+// circuits on the sheet.
+const PLAN_AT = { x: 60, y: 70, k: 0.75 };
+const ROOM_SCHEDULE = [
+  ['100', 'LOBBY', '283', "9'-0\"", 'LOBBY'],
+  ['101', 'OFFICE', '283', "9'-0\"", 'OFFICE'],
+  ['102', 'OFFICE', '283', "9'-0\"", 'OFFICE'],
+  ['103', 'CONFERENCE', '250', "9'-0\"", 'CONFERENCE'],
+  ['104', 'BREAK', '250', "9'-0\"", 'BREAK'],
+  ['105', 'OPEN OFFICE', '510', "9'-0\"", 'OFFICE'],
+  ['106', 'JAN.', '165', "8'-0\"", 'STORAGE / MECH'],
+  ['107', 'MEN', '270', "8'-0\"", 'RESTROOM, PUBLIC'],
+  ['108', 'WOMEN', '270', "8'-0\"", 'RESTROOM, PUBLIC'],
+  ['C-1', 'CORRIDOR', '337', "8'-0\"", 'CIRCULATION'],
+];
+function roomSchedule(x, y) {
+  const cols = [0, 32, 110, 165, 210];
+  const head = ['NO.', 'ROOM', 'AREA SF', 'CLG', 'TYPE / OCCUPANCY'];
+  const row = (cells, yy, bold) => cells.map((c, i) => `<text x="${x + cols[i]}" y="${yy}" font-size="7.5"${bold ? ' font-weight="bold"' : ''} fill="${INK}">${c}</text>`).join('');
+  return `<g font-family="${F}">
+    <text x="${x}" y="${y}" font-size="10" font-weight="bold" fill="${INK}">ROOM SCHEDULE</text>
+    <line x1="${x}" y1="${y + 5}" x2="${x + 330}" y2="${y + 5}" stroke="${INK}" stroke-width="1"/>
+    ${row(head, y + 16, true)}
+    <line x1="${x}" y1="${y + 20}" x2="${x + 330}" y2="${y + 20}" stroke="${INK}" stroke-width="0.6"/>
+    ${ROOM_SCHEDULE.map((r, i) => row(r, y + 30 + i * 9)).join('')}
+    <text x="${x}" y="${y + 30 + ROOM_SCHEDULE.length * 9 + 4}" font-size="7.5" fill="#444">DECK 12'-0" A.F.F. TYP. · MEP DESIGN-BUILD, SEE NOTE 6</text>
+  </g>`;
+}
+function candidateAPlan() {
   const L = 130, R = 940, T = 100, B = 600, COR_T = 340, COR_B = 384;
-  return `${sheetFrame()}
+  return `
   <!-- structural grid -->
   ${gridLine(L, 66, L, 630)}${gridLine(420, 66, 420, 630)}${gridLine(640, 66, 640, 630)}${gridLine(R, 66, R, 630)}
   ${gridLine(96, T, 968, T)}${gridLine(96, B, 968, B)}
@@ -199,14 +236,15 @@ function candidateA() {
   ${handSink(852, 117)}
   <text x="912" y="150" font-family="${F}" font-size="8.5" fill="${INK}" text-anchor="middle">REF</text>
 
-  <!-- janitor / mech: mop sink, WH, FD -->
+  <!-- janitor / mech: mop sink, WH, FD, panel LP-1 on the east wall -->
   ${mopSink(536, 399)}
   ${waterHeater(564, 401, 14)}
   ${floorDrain(525, 560)}
+  <rect x="572" y="480" width="8" height="32" fill="#fff" stroke="${INK}" stroke-width="1.2"/>
+  <text x="566" y="496" font-family="${F}" font-size="7.5" fill="${INK}" text-anchor="middle" transform="rotate(-90 566 496)">LP-1</text>
 
-  <!-- men 107: 2 stalls + wc on the bottom wall (2026-09-14: they used to sit on the top wall
-       and block the door), lavs on the top wall clear of the door swing, 2 urinals on the bottom wall beside the stalls
-       (stalls enclose the fixture: partitions to the wall, front line on top), FD -->
+  <!-- men 107: 2 stalls + wc on the bottom wall, lavs on the top wall clear of the door
+       swing, 2 urinals on the bottom wall beside the stalls, FD -->
   ${stallEnc(580, 540, 38, 57)}${stallEnc(618, 540, 38, 57, true)}
   ${wc(599, 591, 180)}${wc(637, 591, 180)}
   ${urinal(676, 596, 180)}${urinal(702, 596, 180)}
@@ -214,15 +252,17 @@ function candidateA() {
   ${lavCtr(657, 399)}${lavCtr(687, 399)}
   ${floorDrain(712, 505)}
 
-  <!-- women 108: 3 stalls, 3 lavs, FD -->
+  <!-- women 108: 3 stalls, 3 lavs, FD (the plumbing tour counts this room) -->
   ${stallEnc(760, 540, 40, 57)}${stallEnc(800, 540, 40, 57)}${stallEnc(840, 540, 40, 57, true)}
   ${wc(780, 591, 180)}${wc(820, 591, 180)}${wc(860, 591, 180)}
   <rect x="820" y="387" width="112" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   ${lavCtr(838, 399)}${lavCtr(876, 399)}${lavCtr(914, 399)}
   ${floorDrain(905, 505)}
 
-  <!-- corridor drinking fountains + FD -->
-  ${drinkFtn(740, 342)}${drinkFtn(762, 342)}
+  <!-- corridor: hi-lo drinking fountains in a recess on the south wall between the
+       janitor and men's doors (2026-09-14: they sat under the conference wall), FD -->
+  <rect x="538" y="381" width="44" height="12" fill="#fff" stroke="${INK}" stroke-width="1"/>
+  ${drinkFtn(548, 382, 180)}${drinkFtn(570, 382, 180)}
   ${floorDrain(660, 362)}
 
   <!-- doors (openings onto corridor) -->
@@ -235,8 +275,8 @@ function candidateA() {
   ${door(500, COR_B, 22, 90)}
   ${door(608, COR_B, 24, 90)}
   ${door(788, COR_B, 24, 90)}
-  <!-- entry door -->
-  ${door(L, 190, 28, 270)}
+  <!-- entry door, swinging into the lobby (2026-09-14: it swung outside the building line) -->
+  ${door(L, 162, 28, 90)}
 
   <!-- dimensions -->
   ${dimH(L, 84, 420, "24'-0\"")}${dimH(420, 84, 640, "18'-4\"")}${dimH(640, 84, R, "25'-0\"")}
@@ -244,7 +284,13 @@ function candidateA() {
   ${dimV(112, T, COR_T, "20'-0\"")}${dimV(112, COR_T, COR_B, "5'-0\"")}${dimV(112, COR_B, B, "18'-0\"")}
 
   ${northArrow(990, 132)}
-  ${scaleBar(130, 648)}
+  ${scaleBar(130, 648)}`;
+}
+function candidateA() {
+  return `${sheetFrame()}
+  <g transform="translate(${PLAN_AT.x},${PLAN_AT.y}) scale(${PLAN_AT.k})">${candidateAPlan()}</g>
+
+  ${roomSchedule(390, 556)}
 
   ${notesColumn(985, 200, 'GENERAL NOTES', [
     '1. ALL DIMENSIONS TO FACE OF STUD',
@@ -257,13 +303,20 @@ function candidateA() {
     '   PER FOOT TO DRAIN, TYP.',
     '5. WH = 50 GAL ELECTRIC WATER',
     '   HEATER ON 18" STAND.',
+    '6. MEP DESIGN-BUILD BY CONTRACTOR:',
+    '   SIZE AND ROUTE PER CODE.',
+    '7. RTU-1, 2,000 CFM, ON ROOF OVER',
+    '   JAN. 106; DUCT BY D-B CONTRACTOR.',
+    '8. PANEL LP-1, 42 POLE, IN JAN. 106.',
+    '9. WATER SERVICE + GAS METER AT',
+    '   THE JAN. 106 EXTERIOR WALL.',
   ])}
-  ${notesColumn(985, 396, 'LEGEND', [])}
+  ${notesColumn(985, 500, 'LEGEND', [])}
   <g font-family="${F}" font-size="9.5" fill="${INK}">
-    <g transform="translate(996,428)">${floorDrain(0, 0)}</g><text x="1016" y="431">FLOOR DRAIN</text>
-    <g transform="translate(996,460)">${waterHeater(0, 0, 14)}</g><text x="1016" y="463">WATER HEATER</text>
-    <g transform="translate(988,492)">${mopSink(8, 6)}</g><text x="1016" y="501">MOP SINK</text>
-    <g transform="translate(988,524)">${drinkFtn(8, 0)}</g><text x="1016" y="533">DRINKING FOUNTAIN</text>
+    <g transform="translate(996,530)">${floorDrain(0, 0)}</g><text x="1016" y="533">FLOOR DRAIN</text>
+    <g transform="translate(996,560)">${waterHeater(0, 0, 12)}</g><text x="1016" y="563">WATER HEATER</text>
+    <g transform="translate(988,588)">${mopSink(8, 6)}</g><text x="1016" y="597">MOP SINK</text>
+    <g transform="translate(988,616)">${drinkFtn(8, 0)}</g><text x="1016" y="625">DRINKING FOUNTAIN</text>
   </g>
 
   ${titleBlock({ sheet: 'A-101', sheetName: 'FIRST FLOOR PLAN', project: 'SUITE 200 OFFICE TI', scale: '1/8" = 1&#39;-0"', date: '07/31/26' })}`;
@@ -558,9 +611,9 @@ async function render(name, body) {
   console.log('wrote ' + name + '.pdf/.png');
 }
 
-// Candidate B ships as the ADVANCED sample plan (scripts/build-sample-plan-advanced.js
-// renders it to samples/sample-plan-advanced.pdf); candidate A stays under review.
-module.exports = { W, H, candidateA, candidateB, pageHtml };
+// Candidate A ships as the SIMPLE sample plan (scripts/build-sample-plan.js), candidate B
+// as the ADVANCED one (scripts/build-sample-plan-advanced.js).
+module.exports = { W, H, PLAN_AT, candidateA, candidateB, pageHtml };
 
 if (require.main === module) {
   (async () => {

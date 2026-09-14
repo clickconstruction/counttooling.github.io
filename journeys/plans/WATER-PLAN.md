@@ -6,7 +6,9 @@
 > here is built. The artboards for the plumber walkthrough are the "Water
 > Sizing" artifact (six boards, listed in §9; private, ask Stephen for the
 > link — https://claude.ai/code/artifact/4aeb6e7b-7aab-41e2-ba3c-dca15af6404a). The electrical J20 dossier walk
-> (candidate 1) runs as a program unit in the gaps.
+> (candidate 1) runs as a program unit in the gaps. **2026-09-14:** the advanced sample
+> plan (`samples/sample-plan-advanced.pdf`, a restaurant plumbing sheet) shipped as the
+> walkthrough's sheet — the plumber pokes at the real thing in the app, not only the boards.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams

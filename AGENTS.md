@@ -31,7 +31,7 @@
   includes `build:guides -- --check` (fails if the committed HTML is stale). Authoring steps:
   `content/guides/README.md`. Tests: `guides.test.js` (Node, CI — SEO/link/sitemap integrity)
   + `guides.spec.js` (Playwright, local). **Guide visuals** are generated, not hand-captured:
-  `npm run build:sample-plan` makes a synthetic floor plan (`samples/sample-plan.pdf`), and
+  `npm run build:sample-plan` makes a synthetic floor plan (`samples/sample-plan.pdf`; `build:sample-plan-advanced` the restaurant plumbing sheet `samples/sample-plan-advanced.pdf`), and
   `npm run build:screenshots` (`scripts/build-screenshots.js`) drives the real app headlessly,
   lays a sample takeoff on it, opens dialogs, overlays numbered callouts, and writes
   `guides/img/*.png` referenced from articles via Markdown `![]()`. Both are manual (browser +

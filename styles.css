@@ -1647,6 +1647,7 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-nav { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 6px; padding: 5px 10px; font: inherit; font-size: 0.82rem; cursor: pointer; }
 .tour-next.tour-next-ready { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600; }
 .canvas-empty-hint-tour a { color: var(--accent); pointer-events: auto; position: relative; z-index: 6; }
+.canvas-empty-hint-advanced a { color: var(--accent); pointer-events: auto; position: relative; z-index: 6; }
 #canvasEmptyHint { z-index: 6; }
 body.tour-active .canvas-empty-hint { display: none; }
 .panel-check-rows { margin: 4px 0 6px; }

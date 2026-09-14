@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * CANDIDATE replacements for samples/sample-plan.pdf — under review, not yet wired
- * into anything (not in npm run check; build-screenshots still uses the current
- * sample plan). Same pipeline as scripts/build-sample-plan.js (inline SVG ->
+ * Sample-plan candidates. Candidate B is SHIPPED as the advanced sample plan
+ * (scripts/build-sample-plan-advanced.js requires this module); candidate A is
+ * still under review (not wired; build-screenshots uses the current sample plan). Same pipeline as scripts/build-sample-plan.js (inline SVG ->
  * Playwright PDF). Outputs land in samples/candidates/ (gitignored).
  *
  *   node scripts/sample-plan-candidates.js   # writes candidate-a/-b .pdf + .png
@@ -46,6 +46,11 @@ const sink3Comp = (x, y, w = 66) => `<g transform="translate(${x},${y})" fill="n
   <rect x="4" y="3" width="${w / 3 - 6}" height="14"/><rect x="${w / 3 + 2}" y="3" width="${w / 3 - 6}" height="14"/><rect x="${2 * w / 3 + 1}" y="3" width="${w / 3 - 6}" height="14"/></g>`;
 const door = (x, y, size, rot = 0) => `<g transform="translate(${x},${y}) rotate(${rot})" fill="none" stroke="${INK}" stroke-width="1.1">
   <line x1="0" y1="0" x2="0" y2="${-size}"/><path d="M0 ${-size} A ${size} ${size} 0 0 1 ${size} 0"/></g>`;
+// Double door: two mirrored leaves hinged at opposite jambs, meeting mid-opening.
+// The opening spans 2*size from the hinge point along the local +x axis.
+const doorDouble = (x, y, size, rot = 0) => `<g transform="translate(${x},${y}) rotate(${rot})" fill="none" stroke="${INK}" stroke-width="1.1">
+  <line x1="0" y1="0" x2="0" y2="${-size}"/><path d="M0 ${-size} A ${size} ${size} 0 0 1 ${size} 0"/>
+  <line x1="${2 * size}" y1="0" x2="${2 * size}" y2="${-size}"/><path d="M${2 * size} ${-size} A ${size} ${size} 0 0 0 ${size} 0"/></g>`;
 const lightFix = (x, y) => `<g transform="translate(${x},${y})" fill="none" stroke="${INK}" stroke-width="1.1">
   <circle r="5.5"/><line x1="-3.9" y1="-3.9" x2="3.9" y2="3.9"/><line x1="3.9" y1="-3.9" x2="-3.9" y2="3.9"/></g>`;
 const stall = (x, y, w, h) => `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y + h} ${x},${y} ${x + w},${y}"/></g>`;
@@ -64,11 +69,19 @@ const dimH = (x1, y, x2, label) => `<g stroke="${INK}" stroke-width="0.9" font-f
   <line x1="${x1}" y1="${y - 4}" x2="${x1}" y2="${y + 4}"/><line x1="${x2}" y1="${y - 4}" x2="${x2}" y2="${y + 4}"/>
   <line x1="${x1 - 3}" y1="${y + 3}" x2="${x1 + 3}" y2="${y - 3}"/><line x1="${x2 - 3}" y1="${y + 3}" x2="${x2 + 3}" y2="${y - 3}"/>
   <text x="${(x1 + x2) / 2}" y="${y - 5}" text-anchor="middle" stroke="none">${label}</text></g>`;
-const dimV = (x, y1, y2, label) => `<g stroke="${INK}" stroke-width="0.9" font-family="${F}" font-size="11" fill="${INK}">
-  <line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/>
+// opts.labelDx flips the rotated label to the other side of the line (right-hand
+// dimension strings read better with the text outboard); opts.extFrom draws
+// extension lines from the building edge out past the dimension line.
+const dimV = (x, y1, y2, label, opts = {}) => {
+  const lx = x + (opts.labelDx ?? -7);
+  const ext = opts.extFrom == null ? '' : [y1, y2].map((y) =>
+    `<line x1="${opts.extFrom}" y1="${y}" x2="${x + (opts.extFrom < x ? 6 : -6)}" y2="${y}" stroke-width="0.6"/>`).join('');
+  return `<g stroke="${INK}" stroke-width="0.9" font-family="${F}" font-size="11" fill="${INK}">
+  ${ext}<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/>
   <line x1="${x - 4}" y1="${y1}" x2="${x + 4}" y2="${y1}"/><line x1="${x - 4}" y1="${y2}" x2="${x + 4}" y2="${y2}"/>
   <line x1="${x - 3}" y1="${y1 + 3}" x2="${x + 3}" y2="${y1 - 3}"/><line x1="${x - 3}" y1="${y2 + 3}" x2="${x + 3}" y2="${y2 - 3}"/>
-  <text x="${x - 7}" y="${(y1 + y2) / 2}" text-anchor="middle" transform="rotate(-90 ${x - 7} ${(y1 + y2) / 2})" stroke="none">${label}</text></g>`;
+  <text x="${lx}" y="${(y1 + y2) / 2}" text-anchor="middle" transform="rotate(-90 ${lx} ${(y1 + y2) / 2})" stroke="none">${label}</text></g>`;
+};
 
 const gridBubble = (x, y, label) => `<g font-family="${F}">
   <circle cx="${x}" cy="${y}" r="11" fill="#fff" stroke="${INK}" stroke-width="1.1"/>
@@ -80,10 +93,23 @@ const northArrow = (x, y) => `<g transform="translate(${x},${y})" stroke="${INK}
   <path d="M0 12 L6 8 L0 -13 L-6 8 Z" stroke="none"/>
   <text x="0" y="-22" text-anchor="middle" font-size="12" stroke="none">N</text></g>`;
 
-const scaleBar = (x, y, unit = 24, label = "0      8'     16'            32'") => `<g transform="translate(${x},${y})" font-family="${F}" font-size="10" fill="${INK}">
-  <rect x="0" y="0" width="${unit}" height="6" fill="${INK}"/><rect x="${unit}" y="0" width="${unit}" height="6" fill="none" stroke="${INK}" stroke-width="0.8"/>
-  <rect x="${unit * 2}" y="0" width="${unit * 2}" height="6" fill="${INK}"/>
-  <text x="0" y="18">${label}</text></g>`;
+// Graphic scale bar, calibrated to the sheets' true geometry (~12 px/ft per the
+// dimension strings): four alternating 4-ft segments with ticks and aligned labels.
+const scaleBar = (x, y, pxPerFt = 12) => {
+  const seg = 4 * pxPerFt;
+  const boxes = [0, 1, 2, 3].map((i) =>
+    `<rect x="${i * seg}" y="0" width="${seg}" height="7" ${i % 2 === 0 ? `fill="${INK}"` : `fill="#fff" stroke="${INK}" stroke-width="0.9"`}/>`).join('');
+  const ticks = [0, 1, 2, 3, 4].map((i) =>
+    `<line x1="${i * seg}" y1="-3" x2="${i * seg}" y2="10" stroke="${INK}" stroke-width="0.9"/>`).join('');
+  const labels = [0, 4, 8, 12, 16].map((ft, i) =>
+    `<text x="${i * seg}" y="22" text-anchor="middle">${ft === 0 ? '0' : ft + "'"}</text>`).join('');
+  return `<g transform="translate(${x},${y})" font-family="${F}" font-size="9.5" fill="${INK}">
+    <rect x="0" y="0" width="${seg * 4}" height="7" fill="none" stroke="${INK}" stroke-width="0.9"/>
+    ${boxes}${ticks}${labels}
+    <text x="0" y="-9" font-size="9" letter-spacing="1.5">GRAPHIC SCALE</text>
+    <text x="${seg * 4 + 12}" y="7" font-size="9" fill="#444">1/4" = 1'-0"</text>
+  </g>`;
+};
 
 function titleBlock({ sheet, sheetName, project, scale, date }) {
   return `<g font-family="${F}">
@@ -243,9 +269,17 @@ function candidateB() {
   <!-- outer wall (entry opening 480-510 masked out of the top run) -->
   <rect x="${L}" y="${T}" width="${R - L}" height="${B - T}" fill="#fff" stroke="${INK}" stroke-width="6"/>
   <line x1="480" y1="${T}" x2="510" y2="${T}" stroke="#fff" stroke-width="8"/>
+  <!-- kitchen service/exit door in the east wall (outswing, per egress) -->
+  <line x1="${R}" y1="420" x2="${R}" y2="456" stroke="#fff" stroke-width="8"/>
   <!-- main partitions, segmented at door openings -->
-  <line x1="560" y1="${T}" x2="560" y2="300" stroke="${INK}" stroke-width="2.5"/>
-  <line x1="560" y1="324" x2="560" y2="${B}" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="560" y1="${T}" x2="560" y2="258" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="560" y1="288" x2="560" y2="416" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="560" y1="460" x2="560" y2="${B}" stroke="${INK}" stroke-width="2.5"/>
+  <!-- hallway between restrooms and kitchen: open to dining at the left
+       (guests never cross the kitchen), door into the kitchen at the right -->
+  <line x1="560" y1="296" x2="870" y2="296" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="910" y1="296" x2="${R}" y2="296" stroke="${INK}" stroke-width="2.5"/>
+  ${doorDouble(910, 296, 20, 180)}
   <line x1="560" y1="252" x2="662" y2="252" stroke="${INK}" stroke-width="2.5"/>
   <line x1="684" y1="252" x2="796" y2="252" stroke="${INK}" stroke-width="2.5"/>
   <line x1="818" y1="252" x2="862" y2="252" stroke="${INK}" stroke-width="2.5"/>
@@ -255,8 +289,8 @@ function candidateB() {
   <line x1="${L}" y1="470" x2="300" y2="470" stroke="${INK}" stroke-width="2.5"/>
   <line x1="324" y1="470" x2="420" y2="470" stroke="${INK}" stroke-width="2.5"/>
   <line x1="420" y1="470" x2="420" y2="${B}" stroke="${INK}" stroke-width="2.5"/>
-  <line x1="700" y1="470" x2="700" y2="505" stroke="${INK}" stroke-width="2.5"/>
-  <line x1="700" y1="527" x2="700" y2="${B}" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="700" y1="470" x2="700" y2="497" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="700" y1="537" x2="700" y2="${B}" stroke="${INK}" stroke-width="2.5"/>
   <line x1="700" y1="470" x2="758" y2="470" stroke="${INK}" stroke-width="2.5"/>
   <line x1="812" y1="470" x2="${R}" y2="470" stroke="${INK}" stroke-width="2.5"/>
   <!-- pass-through window kitchen <-> dish (counter sill in the opening) -->
@@ -269,6 +303,7 @@ function candidateB() {
   ${roomTag(628, 160, 'MEN', '102')}
   ${roomTag(763, 160, 'WOMEN', '103')}
   ${roomTag(884, 150, 'MOP', '104')}
+  ${roomTag(614, 268, 'HALL', '107')}
   ${roomTag(872, 388, 'KITCHEN', '105')}
   ${roomTag(745, 545, 'DISH', '106')}
 
@@ -284,6 +319,15 @@ function candidateB() {
   ${lightFix(200, 285)}${lightFix(345, 285)}${lightFix(490, 285)}
   ${lightFix(200, 410)}${lightFix(345, 410)}${lightFix(490, 410)}
   ${lightFix(265, 505)}${lightFix(330, 505)}${lightFix(390, 505)}
+  <!-- dining alcove between bar and kitchen -->
+  ${lightFix(490, 535)}
+  <!-- kitchen fixtures (between the equipment, hood, and drain rows) -->
+  ${lightFix(704, 334)}${lightFix(912, 350)}${lightFix(770, 398)}${lightFix(622, 458)}${lightFix(848, 458)}
+  ${lightFix(618, 505)}
+  <!-- hallway fixtures -->
+  ${lightFix(665, 272)}${lightFix(775, 272)}${lightFix(885, 272)}
+  <!-- dish room fixtures -->
+  ${lightFix(778, 538)}${lightFix(872, 556)}
   <text x="150" y="136" font-family="${F}" font-size="8.5" fill="#444">PENDANT, TYP.</text>
 
   <!-- bar: counter anchored to the left wall, parallel to the rear wall, with a
@@ -294,23 +338,29 @@ function candidateB() {
   ${handSink(272, 585)}
   ${floorDrain(238, 542)}${floorDrain(340, 545)}
 
-  <!-- kitchen equipment wall: 3-comp, prep sink, hand sinks -->
-  ${sink3Comp(566, 262, 66)}
-  <text x="599" y="298" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">3-COMP</text>
-  ${handSink(676, 266)}
-  ${handSink(575, 380, 90)}
-  <rect x="740" y="262" width="60" height="20" fill="none" stroke="${INK}" stroke-width="1.2"/>
-  <text x="770" y="298" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">PREP</text>
-  <ellipse cx="770" cy="272" rx="9" ry="6" fill="none" stroke="${INK}" stroke-width="1.1"/>
+  <!-- kitchen equipment wall (below the hallway): 3-comp, prep sink, hand sinks -->
+  ${sink3Comp(566, 304, 66)}
+  <text x="599" y="340" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">3-COMP</text>
+  ${handSink(676, 308)}
+  ${handSink(575, 400, 90)}
+  <rect x="740" y="304" width="60" height="20" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  <text x="770" y="340" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">PREP</text>
+  <ellipse cx="770" cy="314" rx="9" ry="6" fill="none" stroke="${INK}" stroke-width="1.1"/>
 
   <!-- cook line (dashed hood above) -->
-  <rect x="590" y="330" width="200" height="26" fill="none" stroke="${INK}" stroke-width="1.2"/>
-  <rect x="580" y="322" width="220" height="42" fill="none" stroke="${INK}" stroke-width="0.8" stroke-dasharray="6 4"/>
-  <text x="690" y="348" font-family="${F}" font-size="9" fill="#444" text-anchor="middle">COOK LINE — HOOD ABOVE</text>
+  <rect x="590" y="356" width="200" height="26" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  <rect x="580" y="348" width="220" height="42" fill="none" stroke="${INK}" stroke-width="0.8" stroke-dasharray="6 4"/>
+  <text x="690" y="374" font-family="${F}" font-size="9" fill="#444" text-anchor="middle">COOK LINE — HOOD ABOVE</text>
+
+  <!-- kitchen utility corner (bottom-left): mop sink + water heater + hand sink
+       against the west and south walls, out of the cook/dish traffic path -->
+  ${mopSink(582, 578)}
+  ${handSink(682, 578)}
+  ${floorDrain(614, 556)}
 
   <!-- kitchen floor drains / floor sinks -->
-  ${floorDrain(610, 420)}${floorDrain(700, 420)}${floorDrain(790, 420)}${floorDrain(870, 300)}
-  ${floorSink(655, 300)}${floorSink(884, 444)}
+  ${floorDrain(610, 425)}${floorDrain(700, 425)}${floorDrain(790, 425)}${floorDrain(846, 326)}
+  ${floorSink(655, 336)}${floorSink(884, 444)}
 
   <!-- dish room, straight-line flow along the top wall:
        soiled table w/ pre-rinse -> DW -> clean table down the right wall.
@@ -326,7 +376,7 @@ function candidateB() {
   ${floorDrain(835, 552)}
 
   <!-- water heater + grease interceptor (exterior) -->
-  ${waterHeater(795, 572)}
+  ${waterHeater(640, 572)}
   <g font-family="${F}">
     <rect x="965" y="520" width="56" height="34" fill="none" stroke="${INK}" stroke-width="1.5"/>
     <text x="993" y="540" font-size="9.5" fill="${INK}" text-anchor="middle">GI</text>
@@ -360,33 +410,36 @@ function candidateB() {
     <line x1="1021" y1="537" x2="1105" y2="537" stroke="${INK}" stroke-width="1.8" stroke-dasharray="8 4"/>
     <circle cx="1105" cy="537" r="2.4" fill="${INK}"/>
     <text x="1032" y="530" font-size="8.5" fill="#444">4" SS</text>
-    <text x="1096" y="600" font-size="8.5" fill="#444" transform="rotate(-90 1096 600)">8" CITY SANITARY MAIN</text>
+    <text x="1114" y="622" font-size="8.5" fill="#444" transform="rotate(-90 1114 622)">8" CITY SANITARY MAIN</text>
   </g>
 
   <!-- keynote tags, anchored beside their fixtures -->
   ${keyTag(652, 192, 'FD')}${keyTag(788, 196, 'FD')}
   ${keyTag(622, 124, 'WC')}${keyTag(758, 124, 'WC')}
-  ${keyTag(646, 272, '3CS')}
-  ${keyTag(600, 380, 'HS')}
+  ${keyTag(646, 314, '3CS')}
+  ${keyTag(606, 402, 'HS')}
   ${keyTag(848, 158, 'MS')}
+  ${keyTag(582, 550, 'MS')}${keyTag(682, 552, 'HS')}
 
   <!-- doors (each hinge sits at a real wall opening) -->
+  ${door(R, 456, 36, 0)}
   ${door(480, T, 30, 90)}
-  ${door(560, 300, 24, 90)}
+  ${doorDouble(560, 416, 22, 90)}
   ${door(662, 252, 22, 0)}
   ${door(796, 252, 22, 0)}
   ${door(862, 252, 20, 0)}
-  ${door(700, 505, 22, 90)}
+  ${doorDouble(700, 497, 20, 90)}
   ${door(324, 470, 24, 180)}
 
   <!-- dimensions -->
   ${dimH(L, 84, 560, "36'-0\"")}${dimH(560, 84, R, "31'-8\"")}
   ${dimV(112, T, 470, "30'-8\"")}${dimV(112, 470, B, "10'-10\"")}
+  ${dimV(958, T, 252, "12'-7\"", { labelDx: 8, extFrom: 944 })}${dimV(958, 252, 296, "3'-8\"", { labelDx: 8, extFrom: 944 })}
 
   ${northArrow(990, 132)}
   ${scaleBar(130, 648)}
 
-  ${notesColumn(985, 200, 'PLUMBING KEYNOTES', [
+  ${notesColumn(996, 200, 'PLUMBING KEYNOTES', [
     'WC   WATER CLOSET, FLOOR MTD',
     'HS   HAND SINK, WALL HUNG',
     '3CS  3-COMPARTMENT SINK',
@@ -404,32 +457,40 @@ function candidateB() {
     'G    GAS SERVICE FROM CITY',
   ])}
   <g font-family="${F}" font-size="9" fill="#8a2727">
-    <text x="985" y="464" font-weight="bold">ALL KITCHEN WASTE THROUGH</text>
-    <text x="985" y="478" font-weight="bold">GREASE INTERCEPTOR, TYP.</text>
+    <text x="996" y="464" font-weight="bold">ALL KITCHEN WASTE THROUGH</text>
+    <text x="996" y="478" font-weight="bold">GREASE INTERCEPTOR, TYP.</text>
   </g>
-  ${lightFix(992, 504)}
-  <text x="1008" y="508" font-family="${F}" font-size="9.5" fill="${INK}">PENDANT LIGHT FIXTURE, TYP.</text>
+  ${lightFix(1003, 504)}
+  <text x="1019" y="508" font-family="${F}" font-size="9.5" fill="${INK}">LIGHT FIXTURE, TYP.</text>
 
   ${titleBlock({ sheet: 'P-101', sheetName: 'PLUMBING PLAN', project: 'MAIN ST RESTAURANT', scale: '1/4" = 1&#39;-0"', date: '07/31/26' })}`;
 }
 
 // ---------------- render ---------------------------------------------------------
-async function render(name, body) {
+function pageHtml(body) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${body}</svg>`;
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
     @page { size: ${W}px ${H}px; margin: 0; } html,body { margin:0; padding:0; } svg { display:block; }
   </style></head><body>${svg}</body></html>`;
+}
+async function render(name, body) {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
-  await page.setContent(html, { waitUntil: 'networkidle' });
+  await page.setContent(pageHtml(body), { waitUntil: 'networkidle' });
   await page.pdf({ path: path.join(OUT_DIR, name + '.pdf'), width: `${W}px`, height: `${H}px`, printBackground: true, pageRanges: '1' });
   await page.screenshot({ path: path.join(OUT_DIR, name + '.png') });
   await browser.close();
   console.log('wrote ' + name + '.pdf/.png');
 }
 
-(async () => {
-  fs.mkdirSync(OUT_DIR, { recursive: true });
-  await render('candidate-a-office-ti', candidateA());
-  await render('candidate-b-restaurant-plumbing', candidateB());
-})().catch((e) => { console.error(e); process.exit(1); });
+// Candidate B ships as the ADVANCED sample plan (scripts/build-sample-plan-advanced.js
+// renders it to samples/sample-plan-advanced.pdf); candidate A stays under review.
+module.exports = { W, H, candidateA, candidateB, pageHtml };
+
+if (require.main === module) {
+  (async () => {
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    await render('candidate-a-office-ti', candidateA());
+    await render('candidate-b-restaurant-plumbing', candidateB());
+  })().catch((e) => { console.error(e); process.exit(1); });
+}

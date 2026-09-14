@@ -13,6 +13,17 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(samples): the advanced sample plan (2026-09-14)
+
+Will: "use both, A as the simple plan and B as the advanced plan." Candidate B from the parked
+`wip/sample-plan-candidate-b` ships as `samples/sample-plan-advanced.pdf` (a restaurant
+plumbing sheet, Main St Restaurant P-101), built by `npm run build:sample-plan-advanced`. It
+opens through the intake from the empty canvas ("or open the advanced sample plan") and from
+Project Settings; the three tours keep today's simple plan untouched. Candidate A (the
+re-numbered office TI) stays under review: adopting it re-derives every tour coordinate.
+
+---
+
 ## fix(settings): Project Settings reachable on small viewports; the project rows as one section (2026-09-14)
 
 Reported from a phone-sized window: the settings sheet had grown (Trade, Codes, Jurisdiction,

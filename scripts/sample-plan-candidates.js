@@ -204,7 +204,7 @@ function candidateA() {
        and block the door), lavs on the top wall clear of the door swing, 2 urinals, FD -->
   ${stallUp(590, 540, 38, 52)}${stallUp(628, 540, 38, 52)}
   ${wc(609, 586, 180)}${wc(647, 586, 180)}
-  ${urinal(712, 392)}${urinal(740, 392)}
+  ${urinal(711, 389)}${urinal(733, 389)}
   <rect x="642" y="387" width="60" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   ${lavCtr(657, 399)}${lavCtr(687, 399)}
   ${floorDrain(712, 505)}

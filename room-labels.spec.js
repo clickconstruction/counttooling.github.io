@@ -186,4 +186,31 @@ test.describe('D24 — room names from the plan (X4 option D)', () => {
     await expect(page.locator('#roomBoxNewRoomName')).toHaveValue('Mine');
     await page.locator('#roomBoxCancel').click();
   });
+
+  test('X4 option A: a room the estimator named, drawn as three boxes, is labelled once — name + room totals on the largest, "name · k/n" on the rest; a single-box room keeps the full label', async ({ page }) => {
+    const errors = [];
+    await bootWithPlan(page, errors, false);
+    const plan = await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.pages[0].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1\'' };
+      s.rooms = [{ id: 'r-cor', name: 'Corridor', color: '#4a9eff' }, { id: 'r-one', name: 'Closet', color: '#47c88e' }];
+      const ann = App.getActiveAnnotations(s.pages[0]);
+      ann.roomBoxes = [
+        { id: 'b1', x1: 60, y1: 100, x2: 240, y2: 160, heightFt: 9, roomId: 'r-cor' },   // 15' × 5'  = 75 ft²
+        { id: 'b2', x1: 240, y1: 100, x2: 360, y2: 160, heightFt: 9, roomId: 'r-cor' },  // 10' × 5'  = 50 ft²
+        { id: 'b3', x1: 60, y1: 160, x2: 420, y2: 232, heightFt: 9, roomId: 'r-cor' },   // 30' × 6'  = 180 ft² (largest)
+        { id: 'b4', x1: 420, y1: 300, x2: 540, y2: 380, heightFt: 8, roomId: 'r-one' },  // a single-box room
+      ];
+      App.updateUI();
+      return App.planRoomLabels(ann, 0);
+    });
+    expect(plan.boxes.map((b) => b.mode)).toEqual(['namePart', 'namePart', 'roomFull', 'full']);
+    expect(plan.boxes.map((b) => b.part || null)).toEqual(['1/3', '2/3', '3 boxes', null]);
+    expect(Math.round(plan.boxes[2].roomSqft)).toBe(305);          // 75 + 50 + 180
+    expect(Math.round(plan.boxes[2].roomVolume)).toBe(305 * 9);
+    expect(plan.tags).toEqual([]);                                  // no plan-named room → no D24 tag
+    // the sheet paints with no error
+    await page.evaluate(() => window.App.renderAnnotations && window.App.renderAnnotations());
+    expect(errors).toEqual([]);
+  });
 });

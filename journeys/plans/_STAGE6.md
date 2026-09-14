@@ -186,7 +186,7 @@ mode may or may not have). `[decision]` ____
 
 Either A or B wants a mockup round first (the DUCT-PLAN way — artboards, an
 estimator walkthrough); this is a design call before it is a build.
-`[decision]` ____
+`[decision]` **A (Will, 2026-09-14, from the before/after boards): label once per room** — shipped the same day in canvas-draw's `planRoomLabels` (`roomFull` / `namePart` modes); D24's option-D tag stays for plan-named rooms.
 
 ## The "no, deliberately" four — reasons, written once
 

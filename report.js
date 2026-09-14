@@ -168,7 +168,7 @@
       ? window.App.getCircuitSchedule({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
       : { panels: [], crossCheck: [] };
   }
-  const fmtFt = (n) => (typeof n === 'number' ? n.toFixed(2) + ' ft' : '—');
+  const fmtFt = (n) => (typeof n === 'number' ? n.toFixed(2) + ' ft' : 'none');
   // Bid Check (features/bid-check.js registers this on window.App after this
   // file loads; resolved at call time, optional — S5). Shape: { auto: [{ id,
   // label, verdict, detail }], manual: [{ id, label, done }], open: { auto,
@@ -389,8 +389,8 @@
         html += '<p class="report-group-totals"><strong>' + escapeHtml(p.panel === '—' ? 'No panel' : 'Panel ' + p.panel) + '</strong>' + (checkText ? ' · ' + escapeHtml(checkText) : '') + '</p>';
         html += '<table class="report-table"><tr><th>Circuit</th><th>Devices</th><th>Conduit</th><th>Homerun</th><th>Wire</th><th>Farthest device</th></tr>';
         p.circuits.forEach(c => {
-          const devices = c.devices.map(d => d.count + ' × ' + escapeHtml(d.name)).join(', ') || '—';
-          const far = c.farthestFt != null ? c.farthestFt.toFixed(0) + ' ft' + (c.farthestFrom === 'homerun' ? ' (from the homerun)' : '') : '—';
+          const devices = c.devices.map(d => d.count + ' × ' + escapeHtml(d.name)).join(', ') || 'none';
+          const far = c.farthestFt != null ? c.farthestFt.toFixed(0) + ' ft' + (c.farthestFrom === 'homerun' ? ' (from the homerun)' : '') : 'none';
           html += '<tr><td>' + escapeHtml((c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group) + (c.loadAmps ? ' <span style="color:#999;">' + c.loadAmps + ' A</span>' : '') + '</td><td>' + devices + '</td><td>' + fmtFt(c.conduitFt) + '</td><td>' + fmtFt(c.homerunFt) + '</td><td>' + fmtFt(c.wireFt) + '</td><td>' + far + (c.devicesOffRuns ? ' <span style="color:#999;">(' + c.devicesOffRuns + ' not on a run)</span>' : '') + '</td></tr>';
         });
         html += '</table>';
@@ -403,7 +403,7 @@
       html += '<p class="report-group-totals">' + escapeHtml(bidCheck.open.total + ' open item' + (bidCheck.open.total === 1 ? '' : 's') + ' · ' + bidCheck.open.auto + ' from the checks, ' + bidCheck.open.manual + ' unticked') + '</p>';
       html += '<table class="report-table"><tr><th>Check</th><th>Verdict</th><th>Detail</th></tr>';
       bidCheck.auto.forEach(r => {
-        const mark = r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : '—';
+        const mark = r.verdict === 'ok' ? '✓' : r.verdict === 'warn' ? '⚠' : 'n/a';
         html += '<tr><td>' + escapeHtml(r.label) + ' <span style="color:#999;">(auto)</span></td><td>' + mark + '</td><td style="color:#535353;">' + escapeHtml(r.detail) + '</td></tr>';
       });
       bidCheck.manual.forEach(r => {
@@ -437,7 +437,7 @@
       html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
       ds.straightRows.forEach(r => {
         const lf = r.joints == null ? fmtFtR(r.lengthFt) : fmtFtR(r.lengthFt) + ' · ' + r.joints + (r.joints === 1 ? ' joint' : ' joints') + " @ 10'";
-        html += '<tr><td>' + escapeHtml(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : '—') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+        html += '<tr><td>' + escapeHtml(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
       });
       html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFtR(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLbR(ds.straightTotalLb) + '</strong></td></tr>';
       // D17: multiply-zone honesty (T2-11) — the placed figure beside the multiplied one.

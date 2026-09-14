@@ -106,7 +106,7 @@
     let warn = '';
     if (family && cited && ['IPC', 'UPC', 'NEC', 'SMACNA'].includes(cited) && ['IPC', 'UPC', 'NEC', 'SMACNA'].includes(family) && family !== cited) warn = 'cited from the ' + esc(cited) + ' — this project follows ' + esc(edition) + '; read that section there';
     else if (year && checked.length && !checked.includes(year)) warn = 'not checked against ' + esc(edition);
-    return '<div class="rule-pop-project"><span class="rule-pop-k">This project</span> ' + esc([edition, jurisdiction].filter(Boolean).join(' · ') || '—')
+    return '<div class="rule-pop-project"><span class="rule-pop-k">This project</span> ' + esc([edition, jurisdiction].filter(Boolean).join(' · ') || 'none')
       + (warn ? ' <span class="rule-pop-warn">' + warn + '</span>' : '') + '</div>';
   }
   function amendmentsFor(rule) {

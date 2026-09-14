@@ -37,7 +37,7 @@
     let html = '<ul class="load-project-access-list">';
     for (let ai = 0; ai < rows.length; ai++) {
       const r = rows[ai];
-      html += '<li><span class="load-project-access-email">' + escFn(r.email || '—') + '</span> <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:10px;">' + escFn(r.role || '') + '</span></li>';
+      html += '<li><span class="load-project-access-email">' + escFn(r.email || 'none') + '</span> <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:10px;">' + escFn(r.role || '') + '</span></li>';
     }
     html += '</ul>';
     panel.innerHTML = html;

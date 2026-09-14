@@ -116,7 +116,7 @@
   }
 
   function formatUserActivityDateTime(iso) {
-    if (!iso) return '—';
+    if (!iso) return 'none';
     return new Date(iso).toLocaleString('en-US', { timeZone: USER_ACTIVITY_TZ, dateStyle: 'short', timeStyle: 'short' });
   }
 
@@ -138,10 +138,10 @@
     const esc = escapeHtml;
     const head = '<thead><tr><th>Email</th><th>Event</th><th title="US Central (Chicago)">Time</th><th>Project</th><th>Details</th></tr></thead>';
     const body = rows.map((row) => {
-      const when = row.created_at ? formatUserActivityDateTime(row.created_at) : '—';
+      const when = row.created_at ? formatUserActivityDateTime(row.created_at) : 'none';
       let meta;
       try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
-      const pid = row.project_id ? String(row.project_id) : '—';
+      const pid = row.project_id ? String(row.project_id) : 'none';
       return '<tr><td>' + esc(row.email) + '</td><td>' + esc(row.event_type) + '</td><td>' + esc(when) + '</td><td>' + esc(pid) + '</td><td class="col-meta">' + esc(meta) + '</td></tr>';
     }).join('');
     return '<table class="user-activity-table">' + head + '<tbody>' + body + '</tbody></table>';

@@ -200,9 +200,9 @@
       if (App.isSaveInProgress() && App.getSaveProgressMessage()) {
         mode = App.getSaveProgressMessage();
       } else {
-        const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : '—'))
+        const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : 'none'))
           + (state.currentProjectExternalRef ? ' · ' + state.currentProjectExternalRef : '');
-        let lastSavedSegment = '—';
+        let lastSavedSegment = 'none';
         // Same text unless the local-save branch below offers a shorter twin.
         let lastSavedSegmentCompact = null;
         if (lastLocalBackupAt) {
@@ -331,7 +331,7 @@
     }
     if (state.hoverLegendResize) mode += ' | Drag to resize';
     if (modeEl) { modeEl.textContent = mode; modeEl.title = mode || ''; }
-    if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : '—';
+    if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : 'none';
     const totalsEl = document.getElementById('statusTotals');
     if (totalsEl) {
       if (!state.pages || !state.pages.length) {

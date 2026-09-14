@@ -36,8 +36,8 @@ test('calendarDaysFromSignInToNowInZone: integer day deltas', () => {
 });
 
 test('formatUserActivityDateTime: null -> em dash, ISO -> short date/time string', () => {
-  assert.strictEqual(f.formatUserActivityDateTime(null), '—');
-  assert.strictEqual(f.formatUserActivityDateTime(''), '—');
+  assert.strictEqual(f.formatUserActivityDateTime(null), 'none');
+  assert.strictEqual(f.formatUserActivityDateTime(''), 'none');
   const s = f.formatUserActivityDateTime('2026-06-15T18:00:00Z');
   assert.strictEqual(typeof s, 'string');
   assert.ok(s.includes('/'), 'expected a slash-separated short date');
@@ -62,7 +62,7 @@ test('filterUserActivityRows: matches email / event / metadata, case-insensitive
   assert.strictEqual(f.filterUserActivityRows(rows, 'zzz').length, 0);
 });
 
-test('renderUserActivityAllUsersTableHtml: builds cells, escapes, em-dashes missing fields', () => {
+test('renderUserActivityAllUsersTableHtml: builds cells, escapes, "none" for missing fields', () => {
   const html = f.renderUserActivityAllUsersTableHtml([
     { email: 'a@x.com', event_type: 'sign_in', created_at: '2026-06-15T18:00:00Z', project_id: 'p1', metadata: { a: 1 } },
     { email: '<script>', event_type: 'evt' },
@@ -70,7 +70,7 @@ test('renderUserActivityAllUsersTableHtml: builds cells, escapes, em-dashes miss
   assert.ok(html.startsWith('<table class="user-activity-table">'));
   assert.ok(html.includes('<td>a@x.com</td>'));
   // Missing created_at and project_id render as em dash.
-  assert.ok(html.includes('<td>—</td>'));
+  assert.ok(html.includes('<td>none</td>'));
   // HTML in a field is escaped.
   assert.ok(html.includes('&lt;script&gt;'));
   assert.ok(!html.includes('<td><script></td>'));

@@ -2465,7 +2465,7 @@
         scaleDisplay.title = scale.temp ? 'Temporary scale, only on this device' : 'Click to set scale';
         scaleDisplay.onclick = () => document.getElementById('setScale').click();
       } else {
-        scaleDisplay.textContent = '—';
+        scaleDisplay.textContent = 'none';
         scaleDisplay.style.display = '';
         scaleDisplay.style.flexDirection = '';
         scaleDisplay.style.gap = '';
@@ -3863,7 +3863,7 @@
       updateUI();
       return;
     }
-    document.getElementById('polylineLineType').innerHTML = state.lineTypes.map(lt => '<option value="' + lt.id + '">' + lt.name + '</option>').join('') || '<option value="">—</option>';
+    document.getElementById('polylineLineType').innerHTML = state.lineTypes.map(lt => '<option value="' + lt.id + '">' + lt.name + '</option>').join('') || '<option value="">none</option>';
     document.getElementById('polylineName').value = '';
     const cr = document.getElementById('polylineColorRow');
     cr.innerHTML = COLORS.map((c, i) => '<span class="color-swatch' + (i === 2 ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></span>').join('');
@@ -4018,7 +4018,7 @@
     const txt = document.getElementById('gridOriginText');
     if (disp) disp.style.display = 'none';
     if (setGrp) setGrp.style.display = '';
-    if (txt) txt.textContent = '—';
+    if (txt) txt.textContent = 'none';
   }
   document.getElementById('doneEditingSidebar').onclick = () => document.getElementById('doneEditing').click();
 

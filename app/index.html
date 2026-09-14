@@ -1880,6 +1880,18 @@
         <label>Add new room</label>
         <input type="text" id="roomBoxNewRoomName" placeholder="e.g. Office 101" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
+      <!-- D19 (J19 Friction #6): the room TYPE on the dialog that draws the box.
+           D7 put it on Edit Room only, so five rooms cost fifteen extra
+           actions on the design-build front door. Same HVAC-shaped gate as the
+           deck row above (features/room-sizer.js deckFieldApplies), so a
+           plumber's dialog is unchanged. The derived target reads live off the
+           room's area INCLUDING the box about to be added; the per-room
+           override stays on Edit Room. -->
+      <div class="form-group" id="roomBoxTypeGroup" style="display:none;">
+        <label>Room type <span class="form-sublabel">(CFM defaults)</span></label>
+        <select id="roomBoxType" style="width:100%;"></select>
+        <div id="roomBoxTypeDerived" class="room-box-type-derived" hidden></div>
+      </div>
       <div class="actions">
         <button id="roomBoxDelete" class="danger" style="display:none;margin-right:auto;">Delete</button>
         <button id="roomBoxCancel">Cancel</button>
